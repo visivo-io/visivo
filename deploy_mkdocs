@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+PYTHONPATH=$PWD mkdocs build && PYTHONPATH=$PWD mkdocs gh-deploy

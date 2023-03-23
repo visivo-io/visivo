@@ -1,0 +1,138 @@
+version: 2
+
+
+models:
+  - name: fact_transaction
+    description: production model of transaction
+    config:
+      meta:
+        charts:
+          - name: sales #required should be letters and underscores only
+            template: default # default template is based on plotly and will split out groupby into traces
+            traces: #list of plotly trace objects
+              - cohort_on: query( product ) # groups on this expression and splits data from each group into seperate traces  
+                filter: query( product in ('Premium Photo', 'White Paper') )
+                #base_sql: "SELECT * FROM model.fact_transaction"  ##filled out by default with the model when the chart is configured on the model
+                order_by: query( date_trunc('quarter', created_at) )
+
+                #rest of the keys are all standard plotly trace configurations
+                name: sales_over_time_premium_white # required and needs to be unique across the project
+                type: bar # first trace in chart
+                x: query( date_trunc('quarter', created_at) ) # Multiple columns can be added in a list to the x or y columns but not both
+                y: query( SUM(amount) ) # If an aggregation is used a group_by clause is required
+              - cohort_on: query( 'Stanley - ' || product ) # groups on this expression and splits data from each group into seperate traces  
+                filter: 
+                  - query( product in ('Premium Photo', 'White Paper') )
+                  - query( sales_rep = 'Stanley Hudson')
+                order_by: query( date_trunc('quarter', created_at) )
+
+                #rest of the keys are all standard plotly trace configurations
+                name: stanley_sales_over_time_premium_white # required and needs to be unique across the project
+                type: bar # first trace in chart
+                x: query( date_trunc('quarter', created_at) ) # Multiple columns can be added in a list to the x or y columns but not both
+                y: query( SUM(amount) )
+  
+            layout:
+              title: 'Sales of Premium Photo & White Paper Over Time'
+              yaxis: 
+                title: 'Sales Count'
+              xaxis:
+                title: 'Completed Date'
+              stack: False # If true will stack the bars if not they will sit next to each other.
+            tests:
+              - min_y_value:
+                  value: 3000
+              - x_y_equal_for_cohort:
+                  set_param_values: #sets a value for any paramters
+                    - "Time Grain": 'Day'
+                  x: 42932
+                  y: '2022-01-01'
+                  color: 'Widget A'
+
+          - name: pie_breakout
+            traces:
+              - type: pie
+                name: pie_breakout_f2022_exclude_stanley
+                values: query( SUM(amount) )
+                labels: query( sales_rep )
+                filter:
+                  - query( created_at BETWEEN '2022-03-01' AND '2023-03-01' )
+                  - query( lower(sales_rep) not like '%stan%' )
+                  - query( SUM(amount) > 10 ) #filter config knows when to inject into the WHERE vs the HAVING clause of the query.
+            layout:
+              show_ledgend: false # Determines if the legend shows up in the viz
+              label_chart: true # Adds data labels to the chart.
+              margin: {"t": 0, "b": 0, "l": 0, "r": 0}
+              title: "Breakout of Sales Since March"
+            tests:
+              - min_value:
+                  value: 10
+          - name: pam_product_breakout
+            traces:
+              - type: pie
+                hole: .4
+                domain: {column: 0}
+                name: pam_product_sales_trace
+                values: query( SUM(amount) )
+                labels: query( product )
+                filter: query( sales_rep = 'Pam Halpert' )
+                textinfo: "label+percent"
+              - type: pie
+                hole: .4
+                domain: {column: 1}
+                name: jim_product_sales_trace
+                values: query( SUM(amount) )
+                labels: query( product )
+                filter: query( sales_rep = 'Jim Halpert' )
+                textinfo: "label+percent"
+            layout:
+              title: "Breakdown of Pam's sales by Product"
+              grid: {rows: 1, columns: 2}
+          - name: waterfall_sales
+            traces:
+              - type: waterfall
+                order_by: query( YEAR(created_at) || ' Q' || QUARTER(created_at) )
+                name: waterfall_sales_trace
+                x: query( YEAR(created_at) || ' Q' || QUARTER(created_at) )
+                measure: query( 'relative' )
+                y: query( sum(amount) )
+              - type: waterfall
+                cohort_on: query( sales_rep )
+                order_by: query( YEAR(created_at) || ' Q' || QUARTER(created_at) )
+                name: waterfall_sales_rep_trace
+                x: query( YEAR(created_at) || ' Q' || QUARTER(created_at) )
+                measure: query( 'relative' )
+                y: query( sum(amount) )
+            layout:
+              title: Cumulative Sales by Quarter
+              xaxis: 
+                title: "Quarters"
+                tickfont: {size: 14}
+                ticks: "outside"
+              updatemenus:
+                - buttons:
+                    - method: 'update'
+                      args:
+                        - visible: [true, false, false, false, false, false]
+                        - title: 'Cumulative Sales per Quarter'
+                      label: 'Total'
+                    - method: 'update'
+                      args:
+                        - visible: [false, true, true, true, true, true]
+                        - title: 'Sales Rep Preformance - Cumulative Sales Per Quarter'
+                      label: 'Cut By Rep'
+                  direction: 'down'
+                  showactive: true
+
+    columns:
+      - name: product
+        description: PLEASE UPDATE DESCRIPTION
+
+      - name: amount
+        description: PLEASE UPDATE DESCRIPTION
+
+      - name: created_at
+        description: PLEASE UPDATE DESCRIPTION
+
+      - name: sales_rep
+        description: PLEASE UPDATE DESCRIPTION
