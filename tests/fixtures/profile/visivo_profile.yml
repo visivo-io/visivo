@@ -1,0 +1,18 @@
+targets:
+  - name: local
+    connection:
+    url: http://url.value
+    username: username
+    password: password      
+    database: visivo_local
+  - name: local_cloud_testing
+    url: http://url.value
+    username: username
+    password: password
+    database: visivo_cloud
+
+config:
+  debug: false
+
+vars:
+  company_name: visivo

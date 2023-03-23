@@ -1,0 +1,21 @@
+/visivo.egg-info
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+
+# Environments
+.env
+.venv
+env/
+venv/
+cli_venv/
+api_venv/
+ENV/
+env.bak/
+venv.bak/
+
+target
+tmp
+mkdocs_build/
+dist/

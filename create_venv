@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python3.10 -m venv ./cli_venv

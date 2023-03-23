@@ -1,0 +1,20 @@
+{%- macro write_dict(d) -%}
+  {%- for key, value in d.items() %}
+    "{{ key }}": 
+        {%- if value is mapping %}{
+          {{ write_dict(value) }}
+        }
+        {%- elif key == 'name' -%}
+            cohort
+        {%- elif value is sameas true -%}
+            true
+        {%- elif value is sameas false -%}
+            false
+        {%- elif value is string and 'obj[' not in value -%}
+            "{{ value }}"
+        {%- else -%}
+            {{value}}
+        {%- endif -%}{% if not loop.last %},{% endif %}
+  {% endfor %}
+{%- endmacro -%}
+        { {{ write_dict(dictionary) }} }

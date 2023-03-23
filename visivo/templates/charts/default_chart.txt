@@ -1,0 +1,50 @@
+// accepts:
+// chart_name - the name of the chart
+// trace_dict - key value store of trace names and JS object strings
+// layout - dictionary of layout, feed to chart 1:1
+// config - dictionary of the config object to be fed to the chart 1:1
+
+var readJSONFile = file => {
+    return fetch(file).then(response => response.json());
+  };
+
+var readJSONFiles = async () => {
+  let files = [
+      {%- for trace_name in trace_dict.keys() %}
+          '../traces/{{ trace_name }}/data.json' {% if not loop.last%},{% endif %}
+      {% endfor %}
+  ];
+  let promises = files.map(file => readJSONFile(file));
+  let objects = await Promise.all(promises);
+  return objects.reduce((acc, object, index) => {
+    let file = files[index];
+    let key = file.replace('/data.json', '').replace('../traces/', '');
+    acc[key] = object;
+    return acc;
+  }, {});
+};
+
+var data = readJSONFiles();
+  data.then( function (obj) {
+    
+    let graphDiv = document.getElementById('{{ chart_name }}')
+    
+    let traces = [];
+    
+    {% for trace_name, trace_js_obj in trace_dict.items() %}
+    const {{ trace_name }}_cohorts = Object.keys(obj['{{ trace_name }}']);
+    for (const cohort of {{ trace_name }}_cohorts) {
+        let trace_{{ trace_name }} = {{trace_js_obj}};
+        traces.push(
+            trace_{{ trace_name }}
+        );
+    }
+    {% endfor %}
+    
+    let layout = {{ layout }};
+
+    let config = {{ config }};
+
+    Plotly.newPlot(graphDiv, traces, layout, config);
+
+});

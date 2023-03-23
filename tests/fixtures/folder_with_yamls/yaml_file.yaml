@@ -1,0 +1,22 @@
+words: 1
+
+dashboards:
+  - name: 'Lorem ipsum'
+    widgets:
+      charts: 
+        - name: 'The name of a chart'
+          x_position: 0 
+          y_position: 0 
+        - name: 'The name of another chart'
+          x_position: 0 
+          y_position: 1
+  - name: 'dolor sit amet'
+    widgets:
+      charts: 
+        - name: 'The name of a chart'
+          x_position: 0 
+          y_position: 0 
+        - name: 'The name of another chart'
+          x_position: 1 
+          y_position: 1
+  

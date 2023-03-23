@@ -1,0 +1,80 @@
+from tests.support.utils import temp_yml_file
+from pathlib import Path
+from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FILE_NAME
+
+
+def test_Core_Parser_with_empty_project():
+    tmp = temp_yml_file(
+        {"name": "project"},
+        name="visivo_project.yml",
+    )
+
+    core_parser = CoreParser(files=[tmp])
+    project = core_parser.parse()
+    assert project.name == "project"
+
+
+def test_Core_Parser_with_one_of_each_project():
+    tmp = temp_yml_file(
+        {
+            "name": "project",
+            "dashboards": [{"name": "dashboard"}],
+            "charts": [{"name": "chart"}],
+            "traces": [
+                {"name": "trace", "base_sql": "select * from table", "x": "x", "y": "y"}
+            ],
+        },
+        name=PROJECT_FILE_NAME,
+    )
+
+    core_parser = CoreParser(files=[tmp])
+    project = core_parser.parse()
+    assert project.name == "project"
+    assert project.dashboards[0].name == "dashboard"
+    assert project.charts[0].name == "chart"
+    assert project.traces[0].name == "trace"
+
+
+def test_Core_Parser_project_overrides_profile_target():
+    project_file = temp_yml_file(
+        {
+            "name": "project",
+            "targets": [{"name": "target", "database": "project_url"}],
+        },
+        name=PROJECT_FILE_NAME,
+    )
+    profile_file = temp_yml_file(
+        {
+            "name": "project",
+            "targets": [{"name": "target", "database": "profile_url"}],
+        },
+        name=PROFILE_FILE_NAME,
+    )
+
+    core_parser = CoreParser(files=[project_file, profile_file])
+    project = core_parser.parse()
+    assert len(project.targets) == 1
+    assert project.targets[0].database == "project_url"
+
+
+def test_Core_Parser_combines_different_targets_on_name():
+    project_file = temp_yml_file(
+        {
+            "name": "project",
+            "targets": [{"name": "target", "database": "project_url"}],
+        },
+        name=PROJECT_FILE_NAME,
+    )
+    profile_file = temp_yml_file(
+        {
+            "name": "project",
+            "targets": [{"name": "local", "database": "profile_url"}],
+        },
+        name=PROFILE_FILE_NAME,
+    )
+
+    core_parser = CoreParser(files=[project_file, profile_file])
+    project = core_parser.parse()
+    assert len(project.targets) == 2
+    assert project.targets[0].database == "project_url"
+    assert project.targets[1].database == "profile_url"

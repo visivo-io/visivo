@@ -1,0 +1,1 @@
+For some reason dbt uses the yml prefix in a a few folder paths so we need to make sure we exclude it.
