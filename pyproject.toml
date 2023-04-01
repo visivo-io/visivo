@@ -3,6 +3,7 @@ name = "visivo"
 version = "0.1.0"
 description = ""
 authors = ["Visivo People"]
+documentation = "https://docs.visivo.io/"
 
 [tool.poetry.scripts]
 visivo = "visivo.command_line:visivo"
@@ -21,7 +22,7 @@ Flask = "^2.2.3"
 livereload = "^2.6.3"
 psycopg2-binary = "^2.9.5"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"
 factory-boy = "^3.2.1"
 mkdocs = "^1.4.2"
