@@ -1,5 +1,6 @@
 import click
 from visivo.models.target import Target, TypeEnum
+
 # from tests.support.utils import create_file_database
 
 

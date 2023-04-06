@@ -1,5 +1,5 @@
 # supports more generic connections than the snowflake specific connector
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.dialect import Dialect
 from visivo.testing.test_query_string_factory import TestQueryStringFactory
@@ -12,6 +12,9 @@ from pandas import read_sql
 import os
 import click
 from datetime import datetime
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class Runner:
@@ -37,21 +40,18 @@ class Runner:
                 with open(f"{trace_directory}/{test.name}.sql", "w") as fp:
                     fp.write(test_query_string)
 
-                engine = create_engine(self.target.url())
+                data_frame = data_frame = self.target.read_sql(test_query_string)
 
-                with engine.connect() as connection:
-                    data_frame = read_sql(text(test_query_string), connection)
-
-                    if len(data_frame) > 0:
-                        failure = TestFailure(
-                            test_id=test.name, message=data_frame.loc[0][0]
-                        )
-                        click.echo(click.style("F", fg="red"), nl=False)
-                        test_run.add_failure(failure=failure)
-                    else:
-                        click.echo(click.style(".", fg="green"), nl=False)
-                        success = TestSuccess(test_id=test.name)
-                        test_run.add_success(success=success)
+                if len(data_frame) > 0:
+                    failure = TestFailure(
+                        test_id=test.name, message=data_frame.loc[0][0]
+                    )
+                    click.echo(click.style("F", fg="red"), nl=False)
+                    test_run.add_failure(failure=failure)
+                else:
+                    click.echo(click.style(".", fg="green"), nl=False)
+                    success = TestSuccess(test_id=test.name)
+                    test_run.add_success(success=success)
         test_run.finished_at = datetime.now()
         click.echo("")
         click.echo(test_run.summary())

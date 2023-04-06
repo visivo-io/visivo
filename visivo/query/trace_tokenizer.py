@@ -66,11 +66,13 @@ class TraceTokenizer:
                 order_by.append(statement_clean)
         else:
             order_by = []
-        query_statements = list(self.select_items.values()) + order_by + [self._get_cohort_on()]
+        query_statements = (
+            list(self.select_items.values()) + order_by + [self._get_cohort_on()]
+        )
         groupby = []
         for statement in query_statements:
             if re.findall("^\s*'.*'\s*$", statement):
-                continue 
+                continue
             classification = self.statement_classifier.classify(statement)
             match classification:
                 case StatementEnum.window:

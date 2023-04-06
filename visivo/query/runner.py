@@ -1,8 +1,11 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from visivo.models.target import Target
 from visivo.models.trace import Trace
 from typing import List
 from pandas import read_sql, read_json
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class Runner:
@@ -16,12 +19,8 @@ class Runner:
             trace_directory = f"{self.output_dir}/{trace.name}"
             with open(f"{trace_directory}/query.sql", "r") as file:
                 query_string = file.read()
-
-                engine = create_engine(self.target.url())
-
-                with engine.connect() as connection:
-                    data_frame = read_sql(text(query_string), connection)
-                    self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
+                data_frame = self.target.read_sql(query_string)
+                self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):

@@ -2,7 +2,7 @@ WITH
 base_query as (
     {{base_sql}}
 )
-SELECT DISTINCT 
+SELECT 
     {%- if select_items is defined and (select_items) %}
         {%- for key, value in select_items.items() %}
             {{ value }} as "{{ key }}", 

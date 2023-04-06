@@ -23,7 +23,7 @@ def test_TestQueryStringFactory_coordinate_exists():
         base_query as (
             select * from test_table
         )
-        SELECT DISTINCT
+        SELECT
                 *,
             'values' as "cohort_on"
         FROM base_query 
