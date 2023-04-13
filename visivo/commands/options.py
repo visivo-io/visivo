@@ -56,9 +56,9 @@ def host(function):
     return function
 
 
-def filter(function):
+def trace_filter(function):
     click.option(
-        "-f", "--filter", help="Run traces that match this filter", default=".*"
+        "-tf", "--trace-filter", help="Run traces that match this filter", default=".*"
     )(function)
     return function
 

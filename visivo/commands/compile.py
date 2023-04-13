@@ -1,6 +1,7 @@
 import click
 import os
 import json
+from pathlib import Path
 from visivo.discovery.discover import Discover
 from visivo.models.project import Project
 from visivo.models.target import Target
@@ -9,6 +10,7 @@ from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.dialect import Dialect
+from visivo.query.query_writer import QueryWriter
 from .options import output_dir, working_dir, target
 
 
@@ -27,12 +29,9 @@ def compile_phase(target_or_name: str, working_dir: str, output_dir: str):
     for trace in project.trace_objs:
         tokenized_trace = TraceTokenizer(trace=trace, dialect=dialect).tokenize()
         query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
-
-        trace_directory = f"{output_dir}/{trace.name}"
-        os.makedirs(trace_directory, exist_ok=True)
-
-        with open(f"{trace_directory}/query.sql", "w") as fp:
-            fp.write(query_string)
+        QueryWriter(
+            trace=trace, query_string=query_string, output_dir=output_dir
+        ).write()
 
     return project
 

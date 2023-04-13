@@ -86,6 +86,7 @@ def serve_phase(output_dir, working_dir, target_or_name, beta):
             output_dir=output_dir,
             working_dir=working_dir,
             target_or_name=target_or_name,
+            run_only_changed=True,
         )
         click.echo("Files changed. Reloading . . .")
 
