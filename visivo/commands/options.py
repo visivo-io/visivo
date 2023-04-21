@@ -41,7 +41,10 @@ def user_dir(function):
 
 def stage(function):
     click.option(
-        "-s", "--stage", help="The stage of the project to deploy i.e. staging"
+        "-s",
+        "--stage",
+        help="The stage of the project to deploy i.e. staging",
+        required=True,
     )(function)
     return function
 

@@ -60,7 +60,7 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
             files = {"file": open(data_file, "rb")}
             response = requests.post(url, files=files, data={}, headers=form_headers)
             if response.status_code != 201:
-                raise click.ClickException(f"Trace '{trace.name}' data not uploaed")
+                raise click.ClickException(f"Trace '{trace.name}' data not uploaded")
             click.echo(f"Trace '{trace.name}' data uploaded")
             url = f"{host}/api/traces/"
             body = {
@@ -73,3 +73,5 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
                 click.echo(response.json())
                 raise click.ClickException(f"Trace '{trace.name}' not created")
             click.echo(f"Trace '{trace.name}' created")
+    else:
+        raise click.ClickException(f"There was an unexpected error: {response.content}")

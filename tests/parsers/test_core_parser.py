@@ -1,6 +1,7 @@
 from tests.support.utils import temp_yml_file
 from pathlib import Path
 from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FILE_NAME
+import pytest
 
 
 def test_Core_Parser_with_empty_project():
@@ -26,13 +27,25 @@ def test_Core_Parser_with_one_of_each_project():
         },
         name=PROJECT_FILE_NAME,
     )
-
+    # {{ env_var("ECHO_VAL") }}
     core_parser = CoreParser(files=[tmp])
     project = core_parser.parse()
     assert project.name == "project"
     assert project.dashboards[0].name == "dashboard"
     assert project.charts[0].name == "chart"
     assert project.traces[0].name == "trace"
+
+
+def test_Core_Parser_with_env_var(monkeypatch):
+    monkeypatch.setenv("NAME", "test_name")
+
+    tmp = temp_yml_file(
+        {"name": '{{ env_var("NAME") }}'},
+        name=PROJECT_FILE_NAME,
+    )
+    core_parser = CoreParser(files=[tmp])
+    project = core_parser.parse()
+    assert project.name == "test_name"
 
 
 def test_Core_Parser_project_overrides_profile_target():

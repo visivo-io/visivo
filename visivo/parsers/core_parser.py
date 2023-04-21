@@ -1,8 +1,10 @@
+import os
 import yaml
+import jinja2
 from typing import List
 from pathlib import Path
-from ..models.project import Project
 from pydantic import ValidationError
+from ..models.project import Project
 
 PROJECT_FILE_NAME = "visivo_project.yml"
 PROFILE_FILE_NAME = "profile.yml"
@@ -24,8 +26,13 @@ class CoreParser:
         if file == None:
             return {}
 
+        def env_var(key):
+            return os.getenv(key, "NOT-SET")
+
         with open(file, "r") as stream:
-            return yaml.safe_load(stream)
+            template_string = stream.read()
+            template = jinja2.Template(template_string)
+            return yaml.safe_load(template.render({"env_var": env_var}))
 
     def __build_project(self):
         data = self.__merged_project_data()
