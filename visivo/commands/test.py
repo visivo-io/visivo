@@ -1,20 +1,27 @@
 import os
 import click
+
+from visivo.commands.utils import find_or_create_target
 from ..testing.runner import Runner
 from .compile import compile_phase
-from .options import output_dir, working_dir, target
+from .options import output_dir, working_dir, target, alert
 
 
-def test_phase(output_dir: str, target_name: str, working_dir: str):
+def test_phase(
+    output_dir: str, default_target: str, working_dir: str, alert_names: str
+):
     project = compile_phase(
-        target_or_name=target_name, working_dir=working_dir, output_dir=output_dir
+        default_target=default_target, working_dir=working_dir, output_dir=output_dir
     )
     click.echo("Testing project")
-    target = project.find_target(name=target_name)
-    if not target:
-        raise click.ClickException(f"Target with name: '{target_name}' was not found.")
+    target = find_or_create_target(project=project, target_or_name=default_target)
+    alerts = list(map(lambda an: project.find_alert(name=an), alert_names))
+    alerts = list(filter(None, alerts))
     test_runner = Runner(
-        traces=project.trace_objs, target=target, output_dir=output_dir
+        traces=project.trace_objs,
+        target=target,
+        output_dir=output_dir,
+        alerts=alerts,
     )
     test_runner.run()
 
@@ -23,5 +30,11 @@ def test_phase(output_dir: str, target_name: str, working_dir: str):
 @target
 @working_dir
 @output_dir
-def test(output_dir, working_dir, target):
-    test_phase(target_name=target, output_dir=output_dir, working_dir=working_dir)
+@alert
+def test(output_dir, working_dir, target, alert):
+    test_phase(
+        default_target=target,
+        output_dir=output_dir,
+        working_dir=working_dir,
+        alert_names=alert,
+    )

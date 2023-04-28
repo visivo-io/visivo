@@ -1,16 +1,23 @@
 import re
-from typing import List
+from typing import List, Optional, Union
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
 from .target import Target
+from .alert import EmailAlert, SlackAlert, ConsoleAlert
+from .defaults import Defaults
 from typing import List
 from .base_model import BaseModel
-from pydantic import root_validator
+from pydantic import root_validator, Field
+from typing_extensions import Annotated
+
+Alert = Annotated[Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")]
 
 
 class Project(BaseModel):
+    defaults: Optional[Defaults]
     targets: List[Target] = []
+    alerts: List[Alert] = []
     dashboards: List[Dashboard] = []
     charts: List[Chart] = []
     traces: List[Trace] = []
@@ -44,7 +51,27 @@ class Project(BaseModel):
         return next((t for t in self.targets if t.name == name), None)
 
     def find_chart(self, name: str) -> Chart:
-        return next((t for t in self.chart_objs if t.name == name), None)
+        return next((c for c in self.chart_objs if c.name == name), None)
+
+    def find_alert(self, name: str) -> Alert:
+        return next((a for a in self.alerts if a.name == name), None)
+
+    @root_validator
+    def validate_default_names(cls, values):
+        targets, alerts = (values.get("targets"), values.get("alerts"))
+        target_names = [target.name for target in targets]
+        alert_names = [alert.name for alert in alerts]
+        defaults = values.get("defaults")
+        if not defaults:
+            return values
+
+        if defaults.target_name and defaults.target_name not in target_names:
+            raise ValueError(f"default target '{defaults.target_name}' does not exist")
+
+        if defaults.alert_name and defaults.alert_name not in alert_names:
+            raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
+
+        return values
 
     @root_validator
     def validate_trace_refs(cls, values):

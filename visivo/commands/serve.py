@@ -17,7 +17,7 @@ def get_project_json(output_dir):
     return project_json
 
 
-def app_phase(output_dir, working_dir, target_or_name, beta):
+def app_phase(output_dir, working_dir, default_target, beta):
     app = Flask(
         __name__,
         static_folder=output_dir,
@@ -26,7 +26,7 @@ def app_phase(output_dir, working_dir, target_or_name, beta):
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
     run_phase(
-        output_dir=output_dir, working_dir=working_dir, target_or_name=target_or_name
+        output_dir=output_dir, working_dir=working_dir, default_target=default_target
     )
 
     origin = ""
@@ -73,11 +73,11 @@ def app_phase(output_dir, working_dir, target_or_name, beta):
     return app
 
 
-def serve_phase(output_dir, working_dir, target_or_name, beta):
+def serve_phase(output_dir, working_dir, default_target, beta):
     app = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
-        target_or_name=target_or_name,
+        default_target=default_target,
         beta=beta,
     )
 
@@ -85,7 +85,7 @@ def serve_phase(output_dir, working_dir, target_or_name, beta):
         run_phase(
             output_dir=output_dir,
             working_dir=working_dir,
-            target_or_name=target_or_name,
+            default_target=default_target,
             run_only_changed=True,
         )
         click.echo("Files changed. Reloading . . .")
@@ -106,7 +106,7 @@ def serve(output_dir, working_dir, target, beta, port):
     server = serve_phase(
         output_dir=output_dir,
         working_dir=working_dir,
-        target_or_name=target,
+        default_target=target,
         beta=beta,
     )
     click.echo(

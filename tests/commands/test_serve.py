@@ -23,7 +23,7 @@ def test_serve():
     app = app_phase(
         working_dir=working_dir,
         output_dir=output_dir,
-        target_or_name="target",
+        default_target="target",
         beta=False,
     )
 

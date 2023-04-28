@@ -23,7 +23,16 @@ def output_dir(function):
 
 
 def target(function):
-    click.option("-t", "--target", help="Name of the target connection to use")(
+    click.option(
+        "-t",
+        "--target",
+        help="Name of the target connection to use. This overrides the default target in the project.",
+    )(function)
+    return function
+
+
+def alert(function):
+    click.option("-a", "--alert", help="Name of the alert to use", multiple=True)(
         function
     )
     return function

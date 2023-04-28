@@ -6,6 +6,7 @@ from ..factories.model_factories import (
     ChartFactory,
     DashboardFactory,
     RowFactory,
+    AlertFactory,
 )
 from pydantic import ValidationError
 import pytest
@@ -153,4 +154,56 @@ def test_Project_validate_trace_names():
 
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"trace name 'trace' is not unique in the project"
+    assert error["type"] == "value_error"
+
+
+def test_Project_validate_default_target_exists():
+    target = TargetFactory()
+    data = {
+        "name": "development",
+        "targets": [target],
+        "defaults": {"target_name": target.name},
+    }
+
+    Project(**data)
+
+
+def test_Project_validate_default_target_does_not_exists():
+    target = TargetFactory()
+    data = {
+        "name": "development",
+        "defaults": {"target_name": target.name},
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+
+    error = exc_info.value.errors()[0]
+    assert error["msg"] == f"default target '{target.name}' does not exist"
+    assert error["type"] == "value_error"
+
+
+def test_Project_validate_default_alerts_exists():
+    alert = AlertFactory()
+    data = {
+        "name": "development",
+        "alerts": [alert],
+        "defaults": {"alert_name": alert.name},
+    }
+
+    Project(**data)
+
+
+def test_Project_validate_default_target_does_not_exists():
+    alert = TargetFactory()
+    data = {
+        "name": "development",
+        "defaults": {"alert_name": alert.name},
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+
+    error = exc_info.value.errors()[0]
+    assert error["msg"] == f"default alert '{alert.name}' does not exist"
     assert error["type"] == "value_error"

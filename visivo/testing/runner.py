@@ -7,21 +7,30 @@ from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
-from typing import List
+from visivo.models.alert import Alert
+from typing import List, Optional
 from pandas import read_sql
 import os
 import click
 from datetime import datetime
 import warnings
 
+
 warnings.filterwarnings("ignore")
 
 
 class Runner:
-    def __init__(self, traces: List[Trace], target: Target, output_dir: str):
+    def __init__(
+        self,
+        traces: List[Trace],
+        target: Target,
+        output_dir: str,
+        alerts: List[Alert] = [],
+    ):
         self.traces = traces
         self.target = target
         self.output_dir = output_dir
+        self.alerts = alerts
 
     def run(self):
         dialect = Dialect(type=self.target.type)
@@ -56,5 +65,5 @@ class Runner:
         click.echo("")
         click.echo(test_run.summary())
 
-        for alert in self.target.alerts:
+        for alert in self.alerts:
             alert.alert(test_run=test_run)

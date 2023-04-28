@@ -1,5 +1,6 @@
 import click
 import os
+from dotenv import load_dotenv
 
 from .commands.deploy import deploy
 from .commands.serve import serve
@@ -11,8 +12,9 @@ from .commands.aggregate import aggregate
 
 
 @click.group()
-def visivo():
-    pass
+@click.option("-e", "--env-file", default=".env")
+def visivo(env_file):
+    load_env(env_file)
 
 
 visivo.add_command(init)
@@ -22,6 +24,12 @@ visivo.add_command(serve)
 visivo.add_command(deploy)
 visivo.add_command(test)
 visivo.add_command(aggregate)
+
+
+def load_env(env_file):
+    if os.path.isfile(env_file):
+        load_dotenv(env_file)
+
 
 if __name__ == "__main__":
     visivo()

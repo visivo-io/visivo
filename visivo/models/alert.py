@@ -1,8 +1,12 @@
-from typing import Literal
+from typing import Literal, List
+import smtplib
+import click
 import requests
 import json
 from .base_model import BaseModel
 from .test_run import TestRun
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 
 class Alert(BaseModel):
@@ -10,19 +14,57 @@ class Alert(BaseModel):
         raise NotImplementedError("Please Implement this method")
 
 
-class TestAlert(Alert):
+class ConsoleAlert(Alert):
     called: bool = False
-    type: Literal["test"]
+    message: str = "Console Alert Run"
+    type: Literal["console"]
 
     def alert(self, test_run: TestRun):
+        click.echo(self.message)
         self.called = True
-
-    __test__ = False
 
 
 class EmailAlert(Alert):
     type: Literal["email"]
-    pass
+    subject: str = "Visivo Alert"
+    to: str
+    port: int = 2525
+    host: str
+    username: str
+    password: str
+
+    def alert(self, test_run: TestRun):
+        if not test_run.failures:
+            return
+
+        body = f"There were test failures running against {test_run.target_name}\n\n"
+
+        for test_failure in test_run.failures:
+            body += f"* {test_failure.test_id} - {test_failure.message}\n"
+
+        sender_email = "alerts@visio.io"
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = self.subject
+        message["From"] = sender_email
+        message["To"] = self.to
+
+        html = f"""\
+        <html>
+        <body>
+            {body}
+        </body>
+        </html>
+        """
+
+        part1 = MIMEText(body, "plain")
+        part2 = MIMEText(html, "html")
+        message.attach(part1)
+        message.attach(part2)
+
+        with smtplib.SMTP(self.host, self.port) as server:
+            server.login(self.login, self.password)
+            server.sendmail(sender_email, self.to, message.as_string())
 
 
 class SlackAlert(Alert):

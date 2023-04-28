@@ -64,6 +64,7 @@ class InvalidTestConiguration(Exception):
 
 class Trace(BaseModel, extra=Extra.allow):
     type: TypeEnum = TypeEnum.line
+    target_name: Optional[str]
     changed: Optional[bool] = True
     base_sql: str
     cohort_on: Optional[str]

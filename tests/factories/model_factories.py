@@ -4,15 +4,23 @@ from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
+from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
 from visivo.models.target import Target, TypeEnum
+
+
+class AlertFactory(factory.Factory):
+    class Meta:
+        model = ConsoleAlert
+
+    name = "alert"
+    type = "console"
 
 
 class TargetFactory(factory.Factory):
     class Meta:
         model = Target
 
-    alerts = []
     name = "target"
     database = "tmp/test.db"
     type = TypeEnum.sqlite
@@ -110,6 +118,7 @@ class ProjectFactory(factory.Factory):
     targets = factory.List([factory.SubFactory(TargetFactory) for _ in range(1)])
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])
     traces = []
+    alerts = []
 
     class Params:
         trace_ref = factory.Trait(
