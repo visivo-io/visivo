@@ -2,15 +2,24 @@ site_name: Visivo
 
 plugins:
   - search: {}
-  - encryptcontent:
-      search_index: 'clear'
-      global_password: 'secrets'
-      title_prefix: ''
-      summary: '<p class="--md-accent-fg-color">We are carefully rolling out our product.  Interested in learning more? Contact us at <a href="mailto:join@visivo.io" class="text-highlight">join@visivo.io</a></p>'
-      placeholder: 'Input Password Here'
-      encryption_info_message: 'Password'
-      remember_password: True
-      default_expire_delay: 72
+  - macros
+  - spellcheck:
+      backends:  # the backends you want to use
+        - symspellpy  # as strings
+        - codespell:  # or nested configs
+            dictionaries: [clear, rare]
+
+      # known_words can also be a list of words
+      known_words: known_words.txt
+
+      # ignore words in <code> tags
+      ignore_code: yes
+
+      # minimum length of words to consider
+      min_length: 2
+
+      # maximum number of capital letters in a word
+      max_capital: 1
 
 markdown_extensions:
   - mkdocs-click
@@ -22,6 +31,7 @@ theme:
   name: material
   features:
     - content.tabs.link
+    - navigation.sections
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
   palette:
@@ -47,7 +57,15 @@ extra_css:
 nav:
   - Home: index.md
   - Getting Started: getting_started.md
-  - Use Cases: use_cases.md
-  - Tutorials: how_tos.md
+  # - Use Cases: use_cases.md
+  # - Tutorials: how_tos.md
   - How It Works: how_it_works.md
-  - CLI Referrence: referrence.md
+  - Reference: 
+      - CLI: cli-reference.md
+      - Configuration: 
+        - model-docs/trace.md
+        - model-docs/chart.md
+        - model-docs/target.md
+        - model-docs/dashboard.md
+        - model-docs/default.md
+        - model-docs/alert.md

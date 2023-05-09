@@ -1,0 +1,58 @@
+import pydantic
+from enum import Enum
+from pydantic import Extra
+
+
+class TypeEnum(str, Enum):
+    line = "line"
+    mesh3d = "mesh3d"
+    barpolar = "barpolar"
+    streamtube = "streamtube"
+    cone = "cone"
+    scattermapbox = "scattermapbox"
+    scattergeo = "scattergeo"
+    scatterpolar = "scatterpolar"
+    sunburst = "sunburst"
+    histogram2d = "histogram2d"
+    heatmap = "heatmap"
+    scatter = "scatter"
+    image = "image"
+    ohlc = "ohlc"
+    indicator = "indicator"
+    funnelarea = "funnelarea"
+    carpet = "carpet"
+    heatmapgl = "heatmapgl"
+    contour = "contour"
+    scatterternary = "scatterternary"
+    parcats = "parcats"
+    treemap = "treemap"
+    funnel = "funnel"
+    histogram2dcontour = "histogram2dcontour"
+    table = "table"
+    parcoords = "parcoords"
+    pie = "pie"
+    splom = "splom"
+    choropleth = "choropleth"
+    bar = "bar"
+    candlestick = "candlestick"
+    scatter3d = "scatter3d"
+    scattersmith = "scattersmith"
+    isosurface = "isosurface"
+    histogram = "histogram"
+    volume = "volume"
+    icicle = "icicle"
+    surface = "surface"
+    densitymapbox = "densitymapbox"
+    contourcarpet = "contourcarpet"
+    box = "box"
+    scatterpolargl = "scatterpolargl"
+    scattergl = "scattergl"
+    choroplethmapbox = "choroplethmapbox"
+    violin = "violin"
+    sankey = "sankey"
+    scattercarpet = "scattercarpet"
+    waterfall = "waterfall"
+
+
+class TraceProps(pydantic.BaseModel, extra=Extra.allow):
+    type: TypeEnum = TypeEnum.line

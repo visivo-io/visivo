@@ -4,6 +4,7 @@ from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
+from visivo.models.trace_props import TraceProps
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
 from visivo.models.target import Target, TypeEnum
@@ -26,15 +27,22 @@ class TargetFactory(factory.Factory):
     type = TypeEnum.sqlite
 
 
+class TracePropsFactory(factory.Factory):
+    class Meta:
+        model = TraceProps
+
+    x = "x"
+    y = "y"
+
+
 class TraceFactory(factory.Factory):
     class Meta:
         model = Trace
 
     name = "trace"
     base_sql = "select * from test_table"
-    x = "x"
-    y = "y"
     tests = None
+    props = factory.SubFactory(TracePropsFactory)
 
     class Params:
         include_tests = factory.Trait(

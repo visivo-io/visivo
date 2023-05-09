@@ -62,7 +62,7 @@ You can generate a trace in a yml file directly your project. The trace can be j
           - name: quantity
             description: The number of widgets sold
           - name: completed_at
-            description: Timestamp of when the transaction occured
+            description: Timestamp of when the transaction occurred
     ```
     Where the dbt model is defined like this:
     ``` sql title="project_dir/models/widget_sales.sql" 
@@ -70,7 +70,7 @@ You can generate a trace in a yml file directly your project. The trace can be j
       widget, 
       quantity, 
       completed_at
-    FROM {{ source('crm', 'sales_of_widgets') }}
+    FROM {% raw %}{{ source('crm', 'sales_of_widgets') }}{% endraw %}
     ```
 
 Using that context, Visivo will produce this query and store it in your target directory:
@@ -89,7 +89,7 @@ GROUP BY
   "cohort_on",
   "x"
 ```
-After small transformations on the output of the query you get this `data.json` which is stored in the target directy next to the query to enable debugging:
+After small transformations on the output of the query you get this `data.json` which is stored in the target directly next to the query to enable debugging:
 ``` json title="project_dir/target/traces/simple_trace/data.json"
 {
 "Useful Widget": {

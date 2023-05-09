@@ -50,7 +50,11 @@ class TraceTokenizer:
                     self._set_select_items(value, path + [key])
         else:
             query_id = ".".join([str(i) for i in path])
-            query_statement = extract_value_from_function(str(obj), "query")
+            query_statement = False
+            if path[0] == "props":
+                query_statement = extract_value_from_function(str(obj), "query")
+            if path[0] == "columns":
+                query_statement = str(obj)
 
             if query_statement and query_id not in ("cohort_on", "filter", "order_by"):
                 self.select_items.update({query_id: query_statement})

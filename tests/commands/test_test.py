@@ -3,10 +3,10 @@ from click.testing import CliRunner
 import json
 from visivo.commands.test import test
 from visivo.parsers.core_parser import PROJECT_FILE_NAME
-from tests.support.utils import temp_yml_file
+from visivo.commands.utils import create_file_database
 from tests.factories.model_factories import ProjectFactory
+from tests.support.utils import temp_folder, temp_yml_file
 from tests.factories.model_factories import AlertFactory
-from tests.support.utils import temp_folder, create_file_database
 
 runner = CliRunner()
 

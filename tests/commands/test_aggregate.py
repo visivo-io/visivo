@@ -1,12 +1,9 @@
-from visivo.commands.aggregate import aggregate
-from tests.support.utils import temp_yml_file
-from pathlib import Path
-from click.testing import CliRunner
-from tests.factories.model_factories import ProjectFactory
-from visivo.parsers.core_parser import PROJECT_FILE_NAME
 import os
-from tests.support.utils import temp_folder, create_file_database
 import json
+from visivo.commands.aggregate import aggregate
+from visivo.parsers.core_parser import PROJECT_FILE_NAME
+from click.testing import CliRunner
+from tests.support.utils import temp_folder
 
 runner = CliRunner()
 

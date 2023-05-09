@@ -2,7 +2,8 @@ import pydantic
 import re
 from typing import Optional
 
-REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z\s'\"-_]+)\)$"
+REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
+NAME_REGEX = "^[a-zA-Z0-9\s'\"\-_]+$"
 
 
 class BaseModel(pydantic.BaseModel):

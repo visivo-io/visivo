@@ -1,13 +1,11 @@
-from visivo.commands.serve import app_phase
-from tests.support.utils import temp_yml_file
-from pathlib import Path
-from click.testing import CliRunner
-from tests.factories.model_factories import ProjectFactory
-from visivo.parsers.core_parser import PROJECT_FILE_NAME
 import os
-from tests.support.utils import temp_folder, create_file_database
 import json
-from threading import Thread
+from visivo.commands.serve import app_phase
+from visivo.parsers.core_parser import PROJECT_FILE_NAME
+from visivo.commands.utils import create_file_database
+from click.testing import CliRunner
+from tests.support.utils import temp_yml_file, temp_folder
+from tests.factories.model_factories import ProjectFactory
 
 runner = CliRunner()
 

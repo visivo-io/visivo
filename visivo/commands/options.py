@@ -1,5 +1,13 @@
 import click
 import os
+import re
+
+from visivo.models.base_model import NAME_REGEX
+
+
+def name(function):
+    click.option("-n", "--name", help="Name of the project", required=True)(function)
+    return function
 
 
 def working_dir(function):
@@ -48,11 +56,24 @@ def user_dir(function):
     return function
 
 
+def validate_stage(ctx, param, value):
+    if value.strip() == "":
+        raise click.BadParameter("Only whitespace is not permitted for stage name.")
+
+    if not re.search(NAME_REGEX, value):
+        raise click.BadParameter(
+            "Only alphanumeric, whitespace, and '\"-_ characters permitted for stage name."
+        )
+
+    return value
+
+
 def stage(function):
     click.option(
         "-s",
         "--stage",
         help="The stage of the project to deploy i.e. staging",
+        callback=validate_stage,
         required=True,
     )(function)
     return function

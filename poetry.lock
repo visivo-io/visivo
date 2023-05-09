@@ -163,6 +163,24 @@ files = [
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "codespell"
+version = "2.2.4"
+description = "Codespell"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "codespell-2.2.4-py3-none-any.whl", hash = "sha256:7d984b8130108e6f82524b7d09f8b7bf2fb1e398c5d4b37d9e2bd310145b3e29"},
+    {file = "codespell-2.2.4.tar.gz", hash = "sha256:0b4620473c257d9cde1ff8998b26b2bb209a35c2b7489f5dc3436024298ce83a"},
+]
+
+[package.extras]
+dev = ["Pygments", "build", "chardet", "flake8", "flake8-pyproject", "pytest", "pytest-cov", "pytest-dependency", "tomli"]
+hard-encoding-detection = ["chardet"]
+toml = ["tomli"]
+types = ["chardet (>=5.1.0)", "mypy", "pytest", "pytest-cov", "pytest-dependency"]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -215,6 +233,24 @@ ssh = ["bcrypt (>=3.1.5)"]
 test = ["iso8601", "pretend", "pytest (>=6.2.0)", "pytest-benchmark", "pytest-cov", "pytest-shard (>=0.1.2)", "pytest-subtests", "pytest-xdist"]
 test-randomorder = ["pytest-randomly"]
 tox = ["tox"]
+
+[[package]]
+name = "editdistpy"
+version = "0.1.3"
+description = "Fast Levenshtein and Damerau optimal string alignment algorithms."
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "editdistpy-0.1.3-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7f951243c0f7074415849ca18d107891e98afe0f5381fb65bd39768633ab6748"},
+    {file = "editdistpy-0.1.3-cp36-cp36m-win_amd64.whl", hash = "sha256:4e7e1ac3c59d479f568e38729b022240cc46f5e6753ba1c023456314970bb149"},
+    {file = "editdistpy-0.1.3-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b747995aebe987a565cff0e56812bf08e4e4e9ba8b7f094804845d9e53b20533"},
+    {file = "editdistpy-0.1.3-cp37-cp37m-win_amd64.whl", hash = "sha256:a74fdc3becf0dc115d9f34cc45dcfa0e5154f5348f2b34ccc71026b064c22689"},
+    {file = "editdistpy-0.1.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:28f71c6343a996776f5691da19136a558593428ad6a10baab85795fa21a461ff"},
+    {file = "editdistpy-0.1.3-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aa559312e07ff8835470d0d9b2f245aa2bc9c2d3370a6c5812508e6f0265a523"},
+    {file = "editdistpy-0.1.3-cp38-cp38-win_amd64.whl", hash = "sha256:7c00a540d17b998519b100a610acc1e1f2aa015b2b8dc268dcd62eeae4259916"},
+    {file = "editdistpy-0.1.3.tar.gz", hash = "sha256:b3cad07319d79fe8b3ba6bf92293de962932917d88e9c624df7b6a44bddf1dcc"},
+]
 
 [[package]]
 name = "exceptiongroup"
@@ -616,6 +652,28 @@ pycryptodome = "*"
 pyyaml = "*"
 
 [[package]]
+name = "mkdocs-macros-plugin"
+version = "0.7.0"
+description = "Unleash the power of MkDocs with macros and variables"
+category = "dev"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "mkdocs-macros-plugin-0.7.0.tar.gz", hash = "sha256:9e64e1cabcf6925359de29fe54f62d5847fb455c2528c440b87f8f1240650608"},
+    {file = "mkdocs_macros_plugin-0.7.0-py3-none-any.whl", hash = "sha256:96bdabeb98b96139544f0048ea2f5cb80c7befde6b21e94c6d4596c22774cbcf"},
+]
+
+[package.dependencies]
+jinja2 = "*"
+mkdocs = ">=0.17"
+python-dateutil = "*"
+pyyaml = "*"
+termcolor = "*"
+
+[package.extras]
+test = ["mkdocs-include-markdown-plugin", "mkdocs-macros-test", "mkdocs-material (>=6.2)"]
+
+[[package]]
 name = "mkdocs-material"
 version = "9.1.8"
 description = "Documentation that simply works"
@@ -649,6 +707,27 @@ files = [
     {file = "mkdocs_material_extensions-1.1.1-py3-none-any.whl", hash = "sha256:e41d9f38e4798b6617ad98ca8f7f1157b1e4385ac1459ca1e4ea219b556df945"},
     {file = "mkdocs_material_extensions-1.1.1.tar.gz", hash = "sha256:9c003da71e2cc2493d910237448c672e00cefc800d3d6ae93d2fc69979e3bd93"},
 ]
+
+[[package]]
+name = "mkdocs-spellcheck"
+version = "1.0.0"
+description = "A spell checker plugin for MkDocs."
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "mkdocs-spellcheck-1.0.0.tar.gz", hash = "sha256:b2fd6fc507b1a23238cd614c73a2ff632eaeae65db67956c7a292e71d59728f3"},
+    {file = "mkdocs_spellcheck-1.0.0-py3-none-any.whl", hash = "sha256:dbdbec6289aa3af786d0cd8d6e0715dec627c38f5810a5ad85857a10ea6f8d20"},
+]
+
+[package.dependencies]
+codespell = {version = ">=2.2.2", optional = true, markers = "extra == \"codespell\""}
+symspellpy = {version = ">=6.7.6", optional = true, markers = "extra == \"symspellpy\""}
+
+[package.extras]
+all = ["mkdocs-spellcheck[codespell,symspellpy]"]
+codespell = ["codespell (>=2.2.2)"]
+symspellpy = ["symspellpy (>=6.7.6)"]
 
 [[package]]
 name = "numpy"
@@ -1293,6 +1372,23 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
+name = "setuptools"
+version = "67.7.2"
+description = "Easily download, build, install, upgrade, and uninstall Python packages"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "setuptools-67.7.2-py3-none-any.whl", hash = "sha256:23aaf86b85ca52ceb801d32703f12d77517b2556af839621c641fca11287952b"},
+    {file = "setuptools-67.7.2.tar.gz", hash = "sha256:f104fa03692a2602fa0fec6c6a9e63b6c8a968de13e17c026957dd1f53d80990"},
+]
+
+[package.extras]
+docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-hoverxref (<2)", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (==0.8.3)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
+testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8 (<5)", "flake8-2020", "ini2toml[lite] (>=0.9)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pip (>=19.1)", "pip-run (>=8.8)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf", "pytest-timeout", "pytest-xdist", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
+testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -1464,6 +1560,36 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3-binary"]
 
 [[package]]
+name = "symspellpy"
+version = "6.7.7"
+description = "Python SymSpell"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "symspellpy-6.7.7-py3-none-any.whl", hash = "sha256:633ddfd9735aea65f792aa33233d9ec89685f1669c2394b24a9336c5282d5c4c"},
+    {file = "symspellpy-6.7.7.tar.gz", hash = "sha256:f6c315187780bc2dd30fc9ca32ef076f89bbfcb2a7b3f9a377926f1f6ade0085"},
+]
+
+[package.dependencies]
+editdistpy = ">=0.1.3"
+
+[[package]]
+name = "termcolor"
+version = "2.3.0"
+description = "ANSI color formatting for output in terminal"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "termcolor-2.3.0-py3-none-any.whl", hash = "sha256:3afb05607b89aed0ffe25202399ee0867ad4d3cb4180d98aaf8eefa6a5f7d475"},
+    {file = "termcolor-2.3.0.tar.gz", hash = "sha256:b5b08f68937f138fe92f6c089b99f1e2da0ae56c52b78bf7075fd95420fd9a5a"},
+]
+
+[package.extras]
+tests = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "tomli"
 version = "2.0.1"
 description = "A lil' TOML parser"
@@ -1586,4 +1712,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "db79780d8bf1b2156957d01abef81a3aecf7fcaf1cc32b9ac57dc813da760bd9"
+content-hash = "9f5b70cf88857a2fdbcea57815e54a4c4bf80aa6b3e7e2923d323e706804b0eb"

@@ -3,7 +3,8 @@ from typing import Literal
 from visivo.models.trace import Trace
 from visivo.testing.runner import Runner
 from visivo.models.test_run import TestRun
-from tests.support.utils import create_file_database, temp_folder
+from tests.support.utils import temp_folder
+from visivo.commands.utils import create_file_database
 from visivo.models.target import Target, TypeEnum as TargetTypeEnum
 
 
