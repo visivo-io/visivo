@@ -4,6 +4,7 @@ from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
+from visivo.models.table import Table
 from visivo.models.trace_props import TraceProps
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
@@ -64,18 +65,30 @@ class ChartFactory(factory.Factory):
         trace_ref = factory.Trait(traces=["ref(trace_name)"])
 
 
+class TableFactory(factory.Factory):
+    class Meta:
+        model = Table
+
+    name = "table"
+    columns = []
+    trace = factory.SubFactory(TraceFactory)
+
+
 class ItemFactory(factory.Factory):
     class Meta:
         model = Item
 
     width = 1
     chart = factory.SubFactory(ChartFactory)
+    table = None
 
     class Params:
         trace_ref = factory.Trait(
             chart=factory.SubFactory(ChartFactory, trace_ref=True)
         )
         chart_ref = factory.Trait(chart="ref(chart_name)")
+        table_item = factory.Trait(chart=None, table=factory.SubFactory(TableFactory))
+        table_ref = factory.Trait(chart=None, table="ref(table_name)")
 
 
 class RowFactory(factory.Factory):
@@ -94,6 +107,16 @@ class RowFactory(factory.Factory):
         chart_ref = factory.Trait(
             items=factory.List(
                 [factory.SubFactory(ItemFactory, chart_ref=True) for _ in range(1)]
+            )
+        )
+        table_ref = factory.Trait(
+            items=factory.List(
+                [factory.SubFactory(ItemFactory, table_ref=True) for _ in range(1)]
+            )
+        )
+        table_item = factory.Trait(
+            items=factory.List(
+                [factory.SubFactory(ItemFactory, table_item=True) for _ in range(1)]
             )
         )
 
@@ -115,6 +138,16 @@ class DashboardFactory(factory.Factory):
                 [factory.SubFactory(RowFactory, chart_ref=True) for _ in range(1)]
             )
         )
+        table_ref = factory.Trait(
+            rows=factory.List(
+                [factory.SubFactory(RowFactory, table_ref=True) for _ in range(1)]
+            )
+        )
+        table_item = factory.Trait(
+            rows=factory.List(
+                [factory.SubFactory(RowFactory, table_item=True) for _ in range(1)]
+            )
+        )
 
 
 class ProjectFactory(factory.Factory):
@@ -127,6 +160,8 @@ class ProjectFactory(factory.Factory):
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])
     traces = []
     alerts = []
+    tables = []
+    charts = []
 
     class Params:
         trace_ref = factory.Trait(
@@ -143,5 +178,21 @@ class ProjectFactory(factory.Factory):
             ),
             dashboards=factory.List(
                 [factory.SubFactory(DashboardFactory, chart_ref=True) for _ in range(1)]
+            ),
+        )
+        table_ref = factory.Trait(
+            tables=factory.List(
+                [factory.SubFactory(TableFactory, name="table_name") for _ in range(1)]
+            ),
+            dashboards=factory.List(
+                [factory.SubFactory(DashboardFactory, table_ref=True) for _ in range(1)]
+            ),
+        )
+        table_item = factory.Trait(
+            dashboards=factory.List(
+                [
+                    factory.SubFactory(DashboardFactory, table_item=True)
+                    for _ in range(1)
+                ]
             ),
         )

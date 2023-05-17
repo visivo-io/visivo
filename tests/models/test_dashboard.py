@@ -26,3 +26,19 @@ def test_Dashboard_find_trace():
     dashboard = DashboardFactory()
     trace = dashboard.rows[0].items[0].chart.traces[0]
     assert dashboard.find_trace(name=trace.name) == trace
+
+    dashboard = DashboardFactory(table_item=True)
+    trace = dashboard.rows[0].items[0].table.trace
+    assert dashboard.find_trace(name=trace.name) == trace
+
+
+def test_Dashboard_all_tables():
+    dashboard = DashboardFactory(table_item=True)
+    table = dashboard.rows[0].items[0].table
+    assert dashboard.all_tables == [table]
+
+
+def test_Dashboard_all_charts():
+    dashboard = DashboardFactory()
+    chart = dashboard.rows[0].items[0].chart
+    assert dashboard.all_charts == [chart]

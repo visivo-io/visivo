@@ -22,5 +22,24 @@ def test_Serializer_with_chart_ref():
     assert project.dashboards[0].rows[0].items[0].chart == "ref(chart_name)"
     project = Serializer(project=project).dereference()
     assert project.name == "project"
-    assert project.traces == []
+    assert project.charts == []
     assert project.dashboards[0].rows[0].items[0].chart.name == "chart_name"
+
+
+def test_Serializer_with_table_ref():
+    project = ProjectFactory(table_ref=True)
+    assert project.dashboards[0].rows[0].items[0].table == "ref(table_name)"
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.tables == []
+    assert project.dashboards[0].rows[0].items[0].table.name == "table_name"
+
+
+def test_Serializer_with_table_trace_ref():
+    trace = TraceFactory(name="trace_name")
+    project = ProjectFactory(table_item=True, traces=[trace])
+    project.dashboards[0].rows[0].items[0].table.trace = "ref(trace_name)"
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.traces == []
+    assert project.dashboards[0].rows[0].items[0].table.trace.name == "trace_name"

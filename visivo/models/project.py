@@ -4,6 +4,7 @@ from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
 from .target import Target
+from .table import Table
 from .alert import EmailAlert, SlackAlert, ConsoleAlert
 from .defaults import Defaults
 from typing import List
@@ -11,7 +12,9 @@ from .base_model import BaseModel
 from pydantic import root_validator, Field
 from typing_extensions import Annotated
 
-Alert = Annotated[Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")]
+Alert = Annotated[
+    Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")
+]
 
 
 class Project(BaseModel):
@@ -20,6 +23,7 @@ class Project(BaseModel):
     alerts: List[Alert] = []
     dashboards: List[Dashboard] = []
     charts: List[Chart] = []
+    tables: List[Table] = []
     traces: List[Trace] = []
 
     @property
@@ -38,6 +42,14 @@ class Project(BaseModel):
     def chart_refs(self) -> List[str]:
         return list(filter(Chart.is_ref, self.__all_charts()))
 
+    @property
+    def table_objs(self) -> List[Chart]:
+        return list(filter(Table.is_obj, self.__all_tables()))
+
+    @property
+    def chart_refs(self) -> List[str]:
+        return list(filter(Table.is_ref, self.__all_tables()))
+
     def filter_traces(self, pattern) -> List[Trace]:
         def name_match(trace):
             return re.search(pattern, trace.name)
@@ -52,6 +64,9 @@ class Project(BaseModel):
 
     def find_chart(self, name: str) -> Chart:
         return next((c for c in self.chart_objs if c.name == name), None)
+
+    def find_table(self, name: str) -> Chart:
+        return next((t for t in self.table_objs if t.name == name), None)
 
     def find_alert(self, name: str) -> Alert:
         return next((a for a in self.alerts if a.name == name), None)
@@ -138,6 +153,8 @@ class Project(BaseModel):
     def __all_traces(self):
         traces = []
         traces += self.traces
+        for table in self.tables:
+            traces += [table.trace]
         for chart in self.charts:
             traces += chart.traces
         for dashboard in self.dashboards:
@@ -150,3 +167,10 @@ class Project(BaseModel):
         for dashboard in self.dashboards:
             charts += dashboard.all_charts
         return charts
+
+    def __all_tables(self):
+        tables = []
+        tables += self.tables
+        for dashboard in self.dashboards:
+            tables += dashboard.all_tables
+        return tables

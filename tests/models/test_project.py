@@ -7,6 +7,7 @@ from ..factories.model_factories import (
     DashboardFactory,
     RowFactory,
     AlertFactory,
+    TableFactory,
 )
 from pydantic import ValidationError
 import pytest
@@ -45,7 +46,15 @@ def test_Project_find_trace():
     project = Project(charts=[chart])
     assert project.find_trace(name=chart.traces[0].name) == trace
 
+    table = TableFactory()
+    project = Project(tables=[table])
+    assert project.find_trace(name=table.trace.name) == trace
+
     dashboard = DashboardFactory()
+    project = Project(dashboards=[dashboard])
+    assert project.find_trace(name=dashboard.all_traces[0].name) == trace
+
+    dashboard = DashboardFactory(table_item=True)
     project = Project(dashboards=[dashboard])
     assert project.find_trace(name=dashboard.all_traces[0].name) == trace
 
