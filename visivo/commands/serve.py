@@ -110,6 +110,6 @@ def serve(output_dir, working_dir, target, beta, port):
         beta=beta,
     )
     click.echo(
-        f"Serving project at http://localhost:{port}/{socket.gethostname()}/projects/{project_json['name']}/local "
+        f"Serving project at http://localhost:{port}/{socket.gethostname()}/projects/local/{project_json['name']}"
     )
     server.serve(host="0.0.0.0", port=port)
