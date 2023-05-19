@@ -7,7 +7,9 @@ NAME_REGEX = "^[a-zA-Z0-9\s'\"\-_]+$"
 
 
 class BaseModel(pydantic.BaseModel):
-    name: Optional[str]
+    name: Optional[str] = pydantic.Field(
+        None, description="The unique name of the object across the entire project."
+    )
 
     @classmethod
     def is_obj(cls, obj) -> bool:

@@ -7,7 +7,8 @@ from visivo.models.dashboard import Dashboard
 from visivo.models.defaults import Defaults
 from visivo.models.item import Item
 from visivo.models.row import Row
-from visivo.models.alert import Alert
+from visivo.models.alert import Alert, SlackAlert, EmailAlert
+from textwrap import dedent
 
 from mkdocs_click._extension import replace_command_docs
 
@@ -31,6 +32,10 @@ def _return_model(model_name: str) -> BaseModel:
             return Row
         case 'alert':
             return Alert
+        case 'slack-alert':
+            return SlackAlert
+        case 'email-alert':
+            return EmailAlert
 
 
 def define_env(env):
@@ -38,13 +43,21 @@ def define_env(env):
         """Generates markdown tables for pydantics models"""
         model = _return_model(model_name)
         fields = model.__fields__
-        model_md = '' if model.__doc__  == None else model.__doc__
-        md_table = "| Field | Type | Description |\n|-------|------|-------------|\n"
+        model_md = '' if model.__doc__  == None else dedent(model.__doc__)        
+        md_table = "| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n"
+
+        def clean_field_type(field):
+            field_annotation = str(field.annotation)
+            if 'typing' in field_annotation:
+                return field_annotation.replace('typing.', '')
+            else:
+                return field.type_.__name__
 
         for field_name, field in fields.items():
-            field_type = field.outer_type_.__name__
+            field_type = clean_field_type(field=field)
             field_description = field.field_info.description
-            md_table += f"| {field_name} | {field_type} | {field_description} |\n"
+            field_default = '-' if field.default == None else field.default
+            md_table += f"| {field_name} | {field_type} | {field_default} | {field_description} |\n"
 
         return model_md + '\n' + md_table
     

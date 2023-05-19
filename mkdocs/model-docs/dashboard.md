@@ -1,8 +1,9 @@
-# Dashboard
+# Dashboards
+## Dashboard
 {{ render_pydantic_model(model_name='dashboard') }}
 
-# Row
+## Row
 {{ render_pydantic_model(model_name='row') }}
 
-# Item
+## Item
 {{ render_pydantic_model(model_name='item') }}

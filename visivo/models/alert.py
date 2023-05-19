@@ -1,4 +1,5 @@
 from typing import Literal, List
+from pydantic import Field
 import smtplib
 import click
 import requests
@@ -25,13 +26,39 @@ class ConsoleAlert(Alert):
 
 
 class EmailAlert(Alert):
-    type: Literal["email"]
-    subject: str = "Visivo Alert"
-    to: str
-    port: int = 2525
-    host: str
-    username: str
-    password: str
+    """
+    You can configure email alert destinations for any SMTP provider. Here's an example of this configuration looks in your yaml file:
+    ``` yaml
+    alerts:
+      - name: email-destination #any unique name of your choosing
+        type: email
+        subject: "[ALERT] Your Visivo Tests Have Failed" #can be any message you want
+        to: someone@your_company.com
+        port: 2525 #is this port by default
+        host: your_company_email_server.com
+        username: someones_username
+        password: {{ env_var('EMAIL_PASSWORD')}} #We'd reccommend using enviornment variables here for security
+
+    ```
+    """
+
+    type: Literal["email"] = Field(None, description="The type of alert destination.")
+    subject: str = Field("Visivo Alert", description="Subject of the alert email.")
+    to: str = Field(None, description="The email to send the alert to.")
+    port: int = Field(
+        2525,
+        description="The port of the email server that the destination is connecting to.",
+    )
+    host: str = Field(
+        None,
+        description="The host of the email server that the destination is connecting to.",
+    )
+    username: str = Field(
+        None, description="The username for authenticating the email server."
+    )
+    password: str = Field(
+        None, description="The password for authenticating the email server."
+    )
 
     def alert(self, test_run: TestRun):
         if not test_run.failures:
@@ -68,8 +95,24 @@ class EmailAlert(Alert):
 
 
 class SlackAlert(Alert):
-    webhook_url: str
-    type: Literal["slack"]
+    """
+    You can configure slack alerts by setting up an incoming message slack webhook. Once you do that, the set up in Visivo is super simple:
+    ``` yaml
+    alerts:
+      - name: slack-destination #any name you choose
+        type: slack
+        webhook_url: {{ env_var("SLACK_WEBHOOK")}}
+    ```
+    """
+
+    webhook_url: str = Field(
+        None,
+        description="An incoming message slack webhook url. You can set one of those up by following <a href='https://api.slack.com/messaging/webhooks'>these instructions</a>.",
+    )
+    type: Literal["slack"] = Field(
+        None,
+        description="The type of Alert Destination. Needs to be `slack` to configure a slack destination",
+    )
 
     def alert(self, test_run: TestRun):
         json_headers = {"content-type": "application/json"}
