@@ -1,20 +1,22 @@
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.dialect import Dialect
 from ..factories.model_factories import TraceFactory
+from ..factories.model_factories import TargetFactory
 from visivo.models.trace import Trace
 import pytest
 
 
 def test_TraceTonkenizer():
     trace = TraceFactory()
-    dialect = Dialect(type="sqlite")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory()
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     tokenized_trace.dict(exclude_none=True)
     assert {
         "base_sql": "select * from test_table",
         "cohort_on": "'values'",
         "select_items": {},
+        "target": "target",
     } == tokenized_trace.dict(exclude_none=True)
 
 
@@ -29,8 +31,8 @@ def test_tokenization_with_query_functions():
         },
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
     assert tokenized_trace.select_items["props.y"] == "sum(amount)"
@@ -51,8 +53,9 @@ def test_tokenization_with_column_functions():
         },
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory()
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
     assert tokenized_trace.select_items["columns.x"] == "sum(amount)"
@@ -74,8 +77,8 @@ def test_tokenization_cohort_on():
         },
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
     assert "cohort_on" not in tokenized_trace.select_items.keys()
@@ -90,8 +93,8 @@ def test_tokenization_cohort_on():
         },
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
 
@@ -111,8 +114,8 @@ def test_tokenization_order_by():
         ],
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert len(tokenized_trace.order_by) == 2
     assert "count(amount) desc" not in tokenized_trace.groupby_statements
@@ -131,8 +134,8 @@ def test_tokenization_order_by_window():
         ],
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert "count(completed_at)OVER(PARTITION BY widget)" in tokenized_trace.order_by
     assert (
@@ -152,8 +155,8 @@ def test_tokenization_filter_window_agg_vanilla():
         ],
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert (
         "count(completed_at)OVER(PARTITION BY widget) > 2"
@@ -174,9 +177,9 @@ def test_tokenization_warn_for_windows_filters_on_non_snowflake():
         ],
     }
     trace = Trace(**data)
-    dialect = Dialect(type="sqlite")
+    target = TargetFactory(type="sqlite")
     with pytest.warns(Warning, match="Window function filtering") as warn:
-        trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+        trace_tokenizer = TraceTokenizer(trace=trace, target=target)
 
     tokenized_trace = trace_tokenizer.tokenize()
 
@@ -199,8 +202,8 @@ def test_tokenization_of_nested_inputs():
         },
     }
     trace = Trace(**data)
-    dialect = Dialect(type="snowflake")
-    trace_tokenizer = TraceTokenizer(trace=trace, dialect=dialect)
+    target = TargetFactory(type="snowflake")
+    trace_tokenizer = TraceTokenizer(trace=trace, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert (
         tokenized_trace.select_items["props.marker.color"]

@@ -33,10 +33,9 @@ class Runner:
         self.alerts = alerts
 
     def run(self):
-        dialect = Dialect(type=self.target.type)
         test_run = TestRun(target_name=self.target.name)
         for trace in self.traces:
-            tokenized_trace = TraceTokenizer(trace=trace, dialect=dialect).tokenize()
+            tokenized_trace = TraceTokenizer(trace=trace, target=self.target).tokenize()
             query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
             if not trace.tests:
                 continue

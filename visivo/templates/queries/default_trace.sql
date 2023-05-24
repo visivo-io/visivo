@@ -44,3 +44,4 @@ FROM base_query
         {{ order }}{% if not loop.last %}, {% endif %}
     {%- endfor %}
 {%- endif %} 
+-- target: {{ target }}

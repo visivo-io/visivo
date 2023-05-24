@@ -24,7 +24,7 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
         fp.write(serializer.dereference().json())
 
     for trace in project.trace_objs:
-        tokenized_trace = TraceTokenizer(trace=trace, dialect=dialect).tokenize()
+        tokenized_trace = TraceTokenizer(trace=trace, target=target).tokenize()
         query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
         QueryWriter(
             trace=trace, query_string=query_string, output_dir=output_dir

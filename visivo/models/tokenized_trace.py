@@ -5,6 +5,7 @@ from typing import List, Optional, Dict
 class TokenizedTrace(BaseModel):
     base_sql: str
     cohort_on: str
+    target: str
     groupby_statements: Optional[List[str]]
     select_items: Optional[Dict]
     filter_by: Optional[Dict[str, List[Optional[str]]]]

@@ -17,7 +17,7 @@ class Dashboard(BaseModel):
       - name: any-name-you-want  #unique name of your dashboard
         rows:
           - height: medium
-            items: 
+            items:
               - width: 2  #widths are evaluated relative to other items in the row
                 table: ref(a-table-name)
               - width 1  #this chart will be 1/3 of the row

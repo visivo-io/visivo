@@ -1,4 +1,5 @@
 from ..models.trace import Trace
+from ..models.target import Target
 from ..models.tokenized_trace import TokenizedTrace
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
@@ -10,10 +11,11 @@ DEFAULT_COHORT_ON = "'values'"
 
 
 class TraceTokenizer:
-    def __init__(self, trace: Trace, dialect: Dialect):
+    def __init__(self, trace: Trace, target: Target):
         self.trace = trace
-        self.dialect = dialect
-        self.statement_classifier = StatementClassifier(dialect=dialect)
+        self.target = target
+        self.dialect = Dialect(type=target.type)
+        self.statement_classifier = StatementClassifier(dialect=self.dialect)
         self.select_items = {}
         self._set_select_items()
         self._set_order_by()
@@ -26,6 +28,7 @@ class TraceTokenizer:
             "base_sql": self.trace.base_sql,
             "cohort_on": cohort_on,
             "select_items": self.select_items,
+            "target": self.target.name,
         }
         if hasattr(self, "groupby_statements"):
             data.update({"groupby_statements": self.groupby_statements})

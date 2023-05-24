@@ -7,10 +7,12 @@ def test_TokenizedTrace_simple_data():
     data = {
         "base_sql": "select * from table",
         "cohort_on": "query(x)",
+        "target": "name",
     }
     trace = TokenizedTrace(**data)
     assert trace.base_sql == "select * from table"
     assert trace.cohort_on == "query(x)"
+    assert trace.target == "name"
 
 
 def test_TokenizedTrace_missing_data():
@@ -29,10 +31,11 @@ def test_TokenizedTrace_invalid_order_by_input():
         "groupby_statements": ["widget", "completed_at"],
         "select_items": {"y": "sum(amount)", "x": "completed_at"},
         "order_by": {"no": "dicts allowed!"},
+        "target": "name",
     }
     with pytest.raises(ValidationError) as exc_info:
         TokenizedTrace(**data)
-    
+
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"value is not a valid list"
     assert error["type"] == "type_error.list"
