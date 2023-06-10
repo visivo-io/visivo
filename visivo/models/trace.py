@@ -1,5 +1,5 @@
 import re
-from pydantic import root_validator
+from pydantic import root_validator, Field
 from .base_model import BaseModel, REF_REGEX
 from .test import Test
 from .trace_props import TraceProps
@@ -68,15 +68,41 @@ class Trace(BaseModel):
     ## Configuration Attributes
     """
 
-    target_name: Optional[str]
-    changed: Optional[bool] = True
-    base_sql: str
-    cohort_on: Optional[str]
-    order_by: Optional[List[str]]
-    filters: Optional[List[str]]
-    tests: Optional[List[dict]]
-    columns: Optional[TraceColumns]
-    props: Optional[TraceProps]
+    target_name: Optional[str] = Field(
+        None,
+        description="Enables setting a target that this trace will always point to. If this value is set, it overrides targets passed to the CLI or set in the default block.",
+    )
+    changed: Optional[bool] = Field(
+        True,
+        description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
+    )
+    base_sql: str = Field(
+        ..., description="The database table that visivo should use to build the trace."
+    )
+    cohort_on: Optional[str] = Field(
+        None,
+        description="`cohort_on` enables spliting the trace out into different series or cohorts. The column or query referenced here will be used to cut the resulting trace.",
+    )
+    order_by: Optional[List[str]] = Field(
+        None,
+        description="Takes a `column()` or `query()` reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using `asc` and `desc`.",
+    )
+    filters: Optional[List[str]] = Field(
+        None,
+        description="A list of `column()` or `query()` functions that evaluate to `true` or `false`. Can include aggreages in the sql statement.",
+    )
+    tests: Optional[List[dict]] = Field(
+        None,
+        description="A list of tests to run agains the trace data. Enables making assertions about the nullability of data and relationships between data.",
+    )
+    columns: Optional[TraceColumns] = Field(
+        None,
+        description="Place where you can define named sql select statements. Once they are definined here they can be referenced in the trace props or in tables built on the trace.",
+    )
+    props: Optional[TraceProps] = Field(
+        None,
+        description="This is where plotly trace configurations live. Including the type of trace (bar, scatter, ect), x, y and anything else found in their docs.",
+    )
 
     def all_tests(self) -> List[Optional[Test]]:
         tests = []

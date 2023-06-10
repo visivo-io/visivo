@@ -40,6 +40,9 @@ def run_phase(
 @working_dir
 @output_dir
 def run(output_dir, working_dir, target, trace_filter):
+    """
+    Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory. 
+    """
     run_phase(
         default_target=target,
         output_dir=output_dir,

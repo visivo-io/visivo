@@ -5,11 +5,6 @@ import re
 from visivo.models.base_model import NAME_REGEX
 
 
-def name(function):
-    click.option("-n", "--name", help="Name of the project", required=True)(function)
-    return function
-
-
 def working_dir(function):
     click.option(
         "-w",
@@ -92,16 +87,6 @@ def host(function):
 def trace_filter(function):
     click.option(
         "-tf", "--trace-filter", help="Run traces that match this filter", default=".*"
-    )(function)
-    return function
-
-
-def beta(function):
-    click.option(
-        "-b",
-        "--beta",
-        help="Whether to use the beta app",
-        is_flag=True,
     )(function)
     return function
 

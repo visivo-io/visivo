@@ -19,3 +19,5 @@ target
 tmp
 mkdocs_build/
 dist/
+
+node_modules

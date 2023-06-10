@@ -28,6 +28,7 @@ markdown_extensions:
       alternate_style: true
 
 theme:
+  custom_dir: mkdocs/overrides
   name: material
   features:
     - content.tabs.link
@@ -36,14 +37,14 @@ theme:
   favicon: assets/favicon_io/favicon-32x32.png
   palette:
     - media: "(prefers-color-scheme: light)"
-      scheme: default
+      scheme: visivo_light 
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
 
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
-      scheme: slate
+      scheme: visivo_dark 
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -51,12 +52,18 @@ theme:
 docs_dir: 'mkdocs'
 site_dir: 'mkdocs_build'
 
+extra:
+  analytics:
+    provider: google
+    property: G-50DF3C95TL
+
 extra_css:
   - stylesheets/brand_colors.css
 
 nav:
   - Home: index.md
   - Getting Started: getting_started.md
+  - Viewpoint: viewpoint.md
   # - Use Cases: use_cases.md
   # - Tutorials: how_tos.md
   - How It Works: how_it_works.md

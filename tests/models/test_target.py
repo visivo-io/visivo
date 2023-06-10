@@ -1,5 +1,6 @@
 from visivo.models.target import Target
 from pydantic import ValidationError
+from tests.factories.model_factories import TargetFactory
 import pytest
 
 
@@ -20,3 +21,9 @@ def test_Target_missing_data():
 
     assert error["msg"] == "field required"
     assert error["type"] == "value_error.missing"
+
+
+def test_Target_password_json():
+    target = TargetFactory(password="password")
+
+    assert "**********" in target.json()

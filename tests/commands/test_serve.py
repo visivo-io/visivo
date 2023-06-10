@@ -22,7 +22,6 @@ def test_serve():
         working_dir=working_dir,
         output_dir=output_dir,
         default_target="target",
-        beta=False,
     )
 
     client = app.test_client()
