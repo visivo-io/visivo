@@ -1,4 +1,6 @@
-from tests.support.utils import temp_yml_file
+import click
+import pytest
+from tests.support.utils import temp_yml_file, temp_file
 from pathlib import Path
 from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FILE_NAME
 
@@ -89,3 +91,22 @@ def test_Core_Parser_combines_different_targets_on_name():
     assert len(project.targets) == 2
     assert project.targets[0].database == "project_url"
     assert project.targets[1].database == "profile_url"
+
+
+def test_Core_Parser_invalid_yaml():
+    project_file = temp_file(
+        contents="""
+        name: project
+        targets invalid
+        """,
+        name=PROJECT_FILE_NAME,
+    )
+
+    core_parser = CoreParser(files=[project_file])
+    with pytest.raises(click.ClickException) as exc_info:
+        project = core_parser.parse()
+
+    assert (
+        exc_info.value.message
+        == f"Invalid yaml in project\n  File: {project_file}\n  Location: line 4, column 9\n  Issue: could not find expected ':'"
+    )

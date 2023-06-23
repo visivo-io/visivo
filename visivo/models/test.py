@@ -4,7 +4,7 @@ from typing import Optional
 
 
 class TypeEnum(str, Enum):
-    """Enums corrisponde to testing template names"""
+    """Enums corresponded to testing template names"""
 
     coordinate_exists = "coordinate_exists"
     not_null = "not_null"

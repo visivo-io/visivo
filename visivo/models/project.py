@@ -47,7 +47,7 @@ class Project(BaseModel):
         return list(filter(Table.is_obj, self.__all_tables()))
 
     @property
-    def chart_refs(self) -> List[str]:
+    def table_refs(self) -> List[str]:
         return list(filter(Table.is_ref, self.__all_tables()))
 
     def filter_traces(self, pattern) -> List[Trace]:
@@ -132,7 +132,7 @@ class Project(BaseModel):
 
         for chart_ref in chart_refs:
             if chart_ref not in chart_names:
-                raise ValueError(f"chart 'ref({chart_ref})' does not reference a trace")
+                raise ValueError(f"chart 'ref({chart_ref})' does not reference a chart")
         return values
 
     @root_validator

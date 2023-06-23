@@ -1,5 +1,6 @@
 import click
 import os
+import re
 import json
 import pkg_resources
 from flask import Flask, current_app, send_from_directory
@@ -54,7 +55,10 @@ def app_phase(output_dir, working_dir, default_target):
     @app.route("/", defaults={"path": "index.html"})
     @app.route("/<path:path>")
     def viewer_file(path):
-        return send_from_directory(VIEWER_PATH, path)
+        regex = r"\S*(\.png|\.ico|\.js|\.css|\.webmanifest|\.js\.map|\.css\.map)$"
+        if re.match(regex, path):
+            return send_from_directory(VIEWER_PATH, path)
+        return send_from_directory(VIEWER_PATH, "index.html")
 
     return app
 
@@ -67,13 +71,16 @@ def serve_phase(output_dir, working_dir, default_target):
     )
 
     def cli_changed():
-        run_phase(
-            output_dir=output_dir,
-            working_dir=working_dir,
-            default_target=default_target,
-            run_only_changed=True,
-        )
-        click.echo("Files changed. Reloading . . .")
+        try:
+            run_phase(
+                output_dir=output_dir,
+                working_dir=working_dir,
+                default_target=default_target,
+                run_only_changed=True,
+            )
+            click.echo("Files changed. Reloading . . .")
+        except Exception as e:
+            click.echo(e)
 
     server = Server(app.wsgi_app)
     server.watch(f"**/*.yml", cli_changed)

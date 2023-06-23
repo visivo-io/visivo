@@ -31,5 +31,13 @@ def load_env(env_file):
         load_dotenv(env_file)
 
 
+def safe_visivo():
+    try:
+        visivo()
+    except Exception as e:
+        click.echo("An unexpected error has occurred")
+        click.echo(e)
+
+
 if __name__ == "__main__":
-    visivo()
+    safe_visivo()

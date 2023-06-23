@@ -51,14 +51,14 @@ class Trace(BaseModel):
           high: query( max("Value") )
           low: query( min("Value") )
           open: query( min_by("Value", "Date") )
-        increasing:
-          line:
-            color: 'green'
-        decreasing:
+          increasing:
             line:
-            color: 'red'
-        xaxis: 'x'
-        yaxis: 'y'
+              color: 'green'
+          decreasing:
+            line:
+              color: 'red'
+          xaxis: 'x'
+          yaxis: 'y'
         filters:
         - query("Date" >= '2015-01-01')
         - query( "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') )
@@ -81,7 +81,7 @@ class Trace(BaseModel):
     )
     cohort_on: Optional[str] = Field(
         None,
-        description="`cohort_on` enables spliting the trace out into different series or cohorts. The column or query referenced here will be used to cut the resulting trace.",
+        description="`cohort_on` enables splitting the trace out into different series or cohorts. The column or query referenced here will be used to cut the resulting trace.",
     )
     order_by: Optional[List[str]] = Field(
         None,
@@ -89,15 +89,15 @@ class Trace(BaseModel):
     )
     filters: Optional[List[str]] = Field(
         None,
-        description="A list of `column()` or `query()` functions that evaluate to `true` or `false`. Can include aggreages in the sql statement.",
+        description="A list of `column()` or `query()` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
     )
     tests: Optional[List[dict]] = Field(
         None,
-        description="A list of tests to run agains the trace data. Enables making assertions about the nullability of data and relationships between data.",
+        description="A list of tests to run against the trace data. Enables making assertions about the nullability of data and relationships between data.",
     )
     columns: Optional[TraceColumns] = Field(
         None,
-        description="Place where you can define named sql select statements. Once they are definined here they can be referenced in the trace props or in tables built on the trace.",
+        description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
     props: Optional[TraceProps] = Field(
         None,

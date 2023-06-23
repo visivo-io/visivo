@@ -43,7 +43,7 @@ class Target(BaseModel):
 
     Different data stores, which you specify with the `type` attribute, require different configurations. For example the snowflake `type` require that you specify a `warehouse` while the sqlite `type` does not require that attribute.
 
-    It is best practice to leverage the `{{ env_var() }}` jinja function for storing secrects and enabling different permissions in production, staging and dev.
+    It is best practice to leverage the `{{ env_var() }}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
     """
 
     type: TypeEnum = TypeEnum.postgresql

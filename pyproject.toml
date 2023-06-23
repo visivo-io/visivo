@@ -6,7 +6,7 @@ authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
 
 [tool.poetry.scripts]
-visivo = "visivo.command_line:visivo"
+visivo = "visivo.command_line:safe_visivo"
 
 [tool.poetry.dependencies]
 python = "^3.10"

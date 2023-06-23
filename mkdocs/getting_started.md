@@ -13,6 +13,12 @@ python -m pip install 'visivo @ git+https://github.com/visivo-io/visivo@main'
 ```
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
+# Using `visivo init`
+
+To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `visivo_project.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
+
+# Manual Setup 
+
 ## Create a `visivo_project.yml` file
 The `visivo_project.yml` is a special file that visivo uses for your project configurations. You will want to put the file at the root directory where you want your project to live. If you are using dbt, this will likely in the same folder as the `dbt_project.yml` file. 
 
@@ -52,12 +58,13 @@ traces:
   - name: simple_trace
     model: "widget_sales"
     cohort_on: query( widget )
-    x: query( date_trunc('week', completed_at) )
-    y: query( sum(amount) )
-    marker: 
-      color: query( case sum(amount) > 200 then 'green' else 'blue' end )
-      shape: square
-    mode: 'lines'
+    props:
+      x: query( date_trunc('week', completed_at) )
+      y: query( sum(amount) )
+      marker: 
+        color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+        shape: square
+      mode: 'lines'
 charts:
   - name: simple_chart
     traces:
@@ -158,14 +165,15 @@ Here's a simple example of a trace:
 traces:
   - name: simple_trace
     model: "widget_sales"
-    type: scatter
     cohort_on: query( widget )
-    x: query( date_trunc('week', completed_at) )
-    y: query( sum(amount) )
-    marker: 
-      color: query( case sum(amount) > 200 then 'green' else 'blue' end )
-      shape: square
-    mode: 'lines'
+    props:
+      type: scatter
+      x: query( date_trunc('week', completed_at) )
+      y: query( sum(amount) )
+      marker: 
+        color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+        shape: square
+      mode: 'lines'
 ```
 We won't go into all of the details of the trace here, but a few things to note: 
 
@@ -220,7 +228,7 @@ Alright, now that you have all of the major components in place you can checkout
 Once you run that command you should see something similar to this:
 ![](assets/visivo_serve_example.png)
 
-Click through the the link after `Serving project at`, which in the example above was `http://localhost:8000/MacBook-Pro-8.local/projects/project/local `
+Click through the the link after `Serving project at`, which in the example above was `http://localhost:8000`
 
 every time you change your configurations in your project, Visivo will automatically update impacted items with a live reload. 
 ## Deploy your Project to Remote

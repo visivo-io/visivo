@@ -29,7 +29,7 @@ class Dashboard(BaseModel):
               - width: 1
                 chart: ref(another-chart)
               - width: 2
-                chart: ref(a-thrid-chart)
+                chart: ref(a-third-chart)
     ```
     """
 

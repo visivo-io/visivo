@@ -1,5 +1,6 @@
 import click
 import os
+import yaml
 from visivo.discovery.discover import Discover
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
@@ -15,9 +16,17 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
     click.echo("Compiling project")
     discover = Discover(working_directory=working_dir)
     parser = ParserFactory().build(files=discover.files())
-    project = parser.parse()
+    project = None
+    try:
+        project = parser.parse()
+    except yaml.YAMLError as e:
+        message = "";
+        if hasattr(e, 'problem_mark'):
+            mark = e.problem_mark
+            message = f"Error position: line:{mark.line+1} column:{mark.column+1}"
+        raise click.ClickException(f"There was an error parsing the yml file(s):\n {e}")
     target = find_or_create_target(project=project, target_or_name=default_target)
-    dialect = Dialect(type=target.type)
+
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
@@ -39,6 +48,6 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
 @output_dir
 def compile(working_dir, output_dir, target):
     """
-    Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the trace queries and a project.json file in your target directory. Queries are not run on compile, just written.  
+    Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the trace queries and a project.json file in your target directory. Queries are not run on compile, just written.
     """
     compile_phase(default_target=target, working_dir=working_dir, output_dir=output_dir)

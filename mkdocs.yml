@@ -26,6 +26,10 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
 
 theme:
   custom_dir: mkdocs/overrides
@@ -67,6 +71,7 @@ nav:
   # - Use Cases: use_cases.md
   # - Tutorials: how_tos.md
   - How It Works: how_it_works.md
+  - Pricing: pricing.md
   - Reference: 
       - CLI: cli-reference.md
       - Configuration: 
@@ -76,3 +81,4 @@ nav:
         - model-docs/dashboard.md
         - model-docs/default.md
         - model-docs/alert.md
+

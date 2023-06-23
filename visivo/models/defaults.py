@@ -8,7 +8,7 @@ class Defaults(BaseModel):
     """
     Defaults enable you to set a target and alert that will be used whenever one is not explicitly passed.
 
-    Defaults will be overidden if:
+    Defaults will be overridden if:
 
     1. A target / alert is passed to a command. ex: `visivo serve -t target-name`
     2. A target is specified in the trace using the `target_name` attribute. when this attribute is set the trace will always run queries against that target.
@@ -32,8 +32,8 @@ class Defaults(BaseModel):
     """
 
     alert_name: Optional[str] = Field(
-        None, description="The name of an alert defined elswhere in the Visivo project."
+        None, description="The name of an alert defined elsewhere in the Visivo project."
     )
     target_name: Optional[str] = Field(
-        None, description="The name of a target defined elswhere in the Visivo project."
+        None, description="The name of a target defined elsewhere in the Visivo project."
     )

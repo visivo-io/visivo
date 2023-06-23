@@ -24,7 +24,7 @@ def run_phase(
 
     traces = list(filter(changed, traces))
 
-    click.echo(f"Running project with {len(traces)} traces")
+    click.echo(f"Running project with {len(traces)} traces(s)")
     runner = Runner(
         traces=traces,
         project=project,
@@ -41,7 +41,7 @@ def run_phase(
 @output_dir
 def run(output_dir, working_dir, target, trace_filter):
     """
-    Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory. 
+    Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory.
     """
     run_phase(
         default_target=target,

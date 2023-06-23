@@ -1,4 +1,6 @@
 # How Visivo Works
+When working with Visivo, all you have to do is write yaml configurations & CLI commands. Visivo handles everything else automatically so you and your team can focus on just the stuff that matters. While the example that we will go through here is not exactly how Visivo functions under the hood, it's a pretty nice approximation to give you an idea of how the sauce is made!
+
 Say you have a model called `widget_sales` that looks like this: 
 
 | widget           | quantity | completed_at |
@@ -10,7 +12,7 @@ Say you have a model called `widget_sales` that looks like this:
 | Expensive Widget | 50       | 2023-01-03   |
 | Expensive Widget | 50       | 2023-01-09   |
 
-You can generate a trace in a yml file directly your project. The trace can be just a few lines or get more complex if you want to customize it. Here's an example of a fairly simple trace that builds on the `widget_sales` model: 
+You can write a trace in any yml file directly your project. The trace can be just a few lines or more complex if you want to customize it. Here's an example of a fairly simple trace that builds on the `widget_sales` model: 
 
 === "Relational Db"
 
@@ -19,12 +21,13 @@ You can generate a trace in a yml file directly your project. The trace can be j
       - name: simple_trace
         base_sql: "Select * from widget_sales"
         cohort_on: query( widget )
-        x: query( date_trunc('week', completed_at) )
-        y: query( sum(amount) )
-        marker: 
-          color: query( case sum(amount) > 200 then 'green' else 'blue' end )
-          shape: square
-        mode: 'lines'
+        props:
+          x: query( date_trunc('week', completed_at) )
+          y: query( sum(amount) )
+          marker: 
+            color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+            shape: square
+          mode: 'lines'
     charts:
       - name: simple_chart
         traces:
@@ -39,12 +42,13 @@ You can generate a trace in a yml file directly your project. The trace can be j
       - name: simple_trace
         base_sql: ref('widget_sales')
         cohort_on: query( widget )
-        x: query( date_trunc('week', completed_at) )
-        y: query( sum(amount) )
-        marker: 
-          color: query( case sum(amount) > 200 then 'green' else 'blue' end )
-          shape: square
-        mode: 'lines'
+        props:
+          x: query( date_trunc('week', completed_at) )
+          y: query( sum(amount) )
+          marker: 
+            color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+            shape: square
+          mode: 'lines'
     charts:
       - name: simple_chart
         traces:

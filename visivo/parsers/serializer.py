@@ -13,17 +13,17 @@ class Serializer:
             def replace_item_ref(item):
                 if item.chart and BaseModel.is_ref(obj=item.chart):
                     name = BaseModel.get_name(obj=item.chart)
-                    item.chart = self.project.find_chart(name=name)
+                    item.chart = project.find_chart(name=name)
                 if item.table and BaseModel.is_ref(obj=item.table):
                     name = BaseModel.get_name(obj=item.table)
-                    item.table = self.project.find_table(name=name)
+                    item.table = project.find_table(name=name)
 
             def replace_chart_trace_ref(chart):
                 traces = []
                 for trace in chart.traces:
                     if BaseModel.is_ref(obj=trace):
                         name = BaseModel.get_name(obj=trace)
-                        traces.append(self.project.find_trace(name=name))
+                        traces.append(project.find_trace(name=name))
                     else:
                         traces.append(trace)
                 chart.traces = traces
@@ -31,7 +31,7 @@ class Serializer:
             def replace_table_trace_ref(table):
                 if BaseModel.is_ref(obj=table.trace):
                     name = BaseModel.get_name(obj=table.trace)
-                    table.trace = self.project.find_trace(name=name)
+                    table.trace = project.find_trace(name=name)
 
             dashboard.for_each_item(replace_item_ref)
 
