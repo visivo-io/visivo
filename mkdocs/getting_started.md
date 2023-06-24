@@ -9,7 +9,7 @@ We will be publishing a pypi open-source version of visivo soon! In the meantime
 
 Once you have access you can download visivo by running: 
 ```
-python -m pip install 'visivo @ git+https://github.com/visivo-io/visivo@main'
+python -m pip install git+ssh://git@github.com/visivo-io/visivo.git --force-reinstall
 ```
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
