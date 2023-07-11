@@ -1,11 +1,13 @@
 from typing import List, Union
 from pydantic import Field
-from .base_model import BaseModel, REF_REGEX
+from .base.named_model import NamedModel
+from .base.parent_model import ParentModel
+from .base.base_model import REF_REGEX
 from .trace import Trace
 from pydantic import constr
 
 
-class Chart(BaseModel):
+class Chart(NamedModel, ParentModel):
     """
     Charts are used to house traces and set up layout configurations (titles, axis labels, ect.).
 
@@ -27,6 +29,9 @@ class Chart(BaseModel):
     ```
     """
 
+    def child_items(self):
+        return self.traces
+
     traces: List[Union[constr(regex=REF_REGEX), Trace]] = Field(
         [],
         description="A list of trace either written in line in the chart called using the ref() function.",
@@ -35,9 +40,6 @@ class Chart(BaseModel):
         {},
         description="The layout attribute of the chart accepts any valid plotly layout configurations. You can read more about those here: [plotly layout docs](https://plotly.com/javascript/reference/layout/).",
     )
-
-    def find_trace(self, name: str):
-        return next((t for t in self.traces if t.name == name), None)
 
     @property
     def trace_objs(self) -> List[Trace]:

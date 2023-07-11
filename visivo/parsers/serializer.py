@@ -1,5 +1,10 @@
 from ..models.project import Project
-from ..models.base_model import BaseModel
+from ..models.base.base_model import BaseModel
+from ..models.base.parent_model import ParentModel
+from visivo.models.chart import Chart
+from visivo.models.table import Table
+from visivo.models.trace import Trace
+from visivo.models.model import Model
 
 
 class Serializer:
@@ -8,36 +13,34 @@ class Serializer:
 
     def dereference(self) -> Project:
         project = self.project.copy(deep=True)
+        dag = project.dag()
         for dashboard in project.dashboards:
 
             def replace_item_ref(item):
-                if item.chart and BaseModel.is_ref(obj=item.chart):
-                    name = BaseModel.get_name(obj=item.chart)
-                    item.chart = project.find_chart(name=name)
-                if item.table and BaseModel.is_ref(obj=item.table):
-                    name = BaseModel.get_name(obj=item.table)
-                    item.table = project.find_table(name=name)
+                if item.chart:
+                    item.chart = ParentModel.all_descendants_of_type(
+                        type=Chart, dag=dag, from_node=item
+                    )[0]
+                    item.chart.traces = ParentModel.all_descendants_of_type(
+                        type=Trace, dag=dag, from_node=item.chart
+                    )
+                    for trace in item.chart.traces:
+                        trace.model = ParentModel.all_descendants_of_type(
+                            type=Model, dag=dag, from_node=trace
+                        )[0]
 
-            def replace_chart_trace_ref(chart):
-                traces = []
-                for trace in chart.traces:
-                    if BaseModel.is_ref(obj=trace):
-                        name = BaseModel.get_name(obj=trace)
-                        traces.append(project.find_trace(name=name))
-                    else:
-                        traces.append(trace)
-                chart.traces = traces
-
-            def replace_table_trace_ref(table):
-                if BaseModel.is_ref(obj=table.trace):
-                    name = BaseModel.get_name(obj=table.trace)
-                    table.trace = project.find_trace(name=name)
+                if item.table:
+                    item.table = ParentModel.all_descendants_of_type(
+                        type=Table, dag=dag, from_node=item
+                    )[0]
+                    item.table.trace = ParentModel.all_descendants_of_type(
+                        type=Trace, dag=dag, from_node=item.table
+                    )[0]
+                    item.table.trace.model = ParentModel.all_descendants_of_type(
+                        type=Model, dag=dag, from_node=item.table.trace
+                    )[0]
 
             dashboard.for_each_item(replace_item_ref)
-
-            dashboard.for_each_chart(replace_chart_trace_ref)
-
-            dashboard.for_each_table(replace_table_trace_ref)
 
         project.charts = []
         project.traces = []

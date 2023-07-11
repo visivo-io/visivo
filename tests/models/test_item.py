@@ -1,5 +1,5 @@
 from visivo.models.item import Item
-from visivo.models.base_model import REF_REGEX
+from visivo.models.base.base_model import REF_REGEX
 from pydantic import ValidationError
 import pytest
 

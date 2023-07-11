@@ -19,18 +19,6 @@ def test_Dashboard_missing_data():
         assert error["type"] == "value_error.missing"
 
 
-def test_Dashboard_find_trace():
-    dashboard = Dashboard()
-    assert dashboard.find_trace(name="trace") == None
-
-    dashboard = DashboardFactory()
-    trace = dashboard.rows[0].items[0].chart.traces[0]
-    assert dashboard.find_trace(name=trace.name) == trace
-
-    dashboard = DashboardFactory(table_item=True)
-    trace = dashboard.rows[0].items[0].table.trace
-    assert dashboard.find_trace(name=trace.name) == trace
-
 
 def test_Dashboard_all_tables():
     dashboard = DashboardFactory(table_item=True)

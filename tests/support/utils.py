@@ -8,7 +8,7 @@ def temp_folder():
     return f"tmp/{str(uuid.uuid1())}"
 
 
-def temp_file(name:str, contents: str):
+def temp_file(name: str, contents: str):
     output_dir = temp_folder()
     os.makedirs(output_dir, exist_ok=True)
     path = f"{output_dir}/{name}"
@@ -28,5 +28,3 @@ def temp_yml_file(dict, name=str(uuid.uuid1()) + ".yml"):
     fp.close()
 
     return Path(path)
-
-

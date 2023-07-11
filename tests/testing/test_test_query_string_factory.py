@@ -10,7 +10,7 @@ def test_TestQueryStringFactory_coordinate_exists():
     trace = TraceFactory(include_tests=True)
     target = TargetFactory()
     test_coordinates_exist = trace.all_tests()[0]
-    tokenized_trace = TraceTokenizer(trace=trace, target=target).tokenize()
+    tokenized_trace = TraceTokenizer(trace=trace, model=trace.model, target=target).tokenize()
     query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
     test_coordinate_exists_string = TestQueryStringFactory(
         test=test_coordinates_exist, query_string_factory=query_string_factory
@@ -56,7 +56,7 @@ def test_TestQueryStringFactory_not_null():
     trace = TraceFactory(include_tests=True)
     target = TargetFactory()
     test_not_null = trace.all_tests()[1]
-    tokenized_trace = TraceTokenizer(trace=trace, target=target).tokenize()
+    tokenized_trace = TraceTokenizer(trace=trace, model=trace.model, target=target).tokenize()
     query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
     test_not_null_string = TestQueryStringFactory(
         test=test_not_null, query_string_factory=query_string_factory

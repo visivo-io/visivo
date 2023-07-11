@@ -1,4 +1,4 @@
-from .base_model import BaseModel
+from .base.named_model import NamedModel
 from enum import Enum
 from typing import Optional
 
@@ -10,7 +10,7 @@ class TypeEnum(str, Enum):
     not_null = "not_null"
 
 
-class Test(BaseModel):
+class Test(NamedModel):
     type: TypeEnum
     kwargs: Optional[dict]
 

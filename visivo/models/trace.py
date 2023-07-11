@@ -1,18 +1,119 @@
 import re
-from pydantic import root_validator, Field
-from .base_model import BaseModel, REF_REGEX
+from pydantic import root_validator, Field, constr
+from .base.named_model import NamedModel
+from .base.parent_model import ParentModel
+
 from .test import Test
-from .trace_props import TraceProps
+from typing import Union
+from .trace_props import (
+    Mesh3d,
+    Barpolar,
+    Scattersmith,
+    Streamtube,
+    Cone,
+    Scattermapbox,
+    Scattergeo,
+    Scatterpolar,
+    Sunburst,
+    Histogram2d,
+    Isosurface,
+    Violin,
+    Scatter,
+    Image,
+    Ohlc,
+    Heatmapgl,
+    Indicator,
+    Funnelarea,
+    Carpet,
+    Icicle,
+    Surface,
+    Parcats,
+    Treemap,
+    Funnel,
+    Histogram2dcontour,
+    Contourcarpet,
+    Parcoords,
+    Candlestick,
+    Scatter3d,
+    Waterfall,
+    Choropleth,
+    Heatmap,
+    Histogram,
+    Volume,
+    Contour,
+    Scatterternary,
+    Sankey,
+    Scattercarpet,
+    Densitymapbox,
+    Choroplethmapbox,
+    Box,
+    Pie,
+    Bar,
+    Scatterpolargl,
+    Scattergl,
+    Splom,
+)
 from .trace_columns import TraceColumns
-from typing import Optional, List
+from typing import Optional, List, Union
 from collections import Counter
+from .base.base_model import REF_REGEX
+from .model import Model
+
+Props = Union[
+    Mesh3d,
+    Barpolar,
+    Scattersmith,
+    Streamtube,
+    Cone,
+    Scattermapbox,
+    Scattergeo,
+    Scatterpolar,
+    Sunburst,
+    Histogram2d,
+    Isosurface,
+    Violin,
+    Scatter,
+    Image,
+    Ohlc,
+    Heatmapgl,
+    Indicator,
+    Funnelarea,
+    Carpet,
+    Icicle,
+    Surface,
+    Parcats,
+    Treemap,
+    Funnel,
+    Histogram2dcontour,
+    Contourcarpet,
+    Parcoords,
+    Candlestick,
+    Scatter3d,
+    Waterfall,
+    Choropleth,
+    Heatmap,
+    Histogram,
+    Volume,
+    Contour,
+    Scatterternary,
+    Sankey,
+    Scattercarpet,
+    Densitymapbox,
+    Choroplethmapbox,
+    Box,
+    Pie,
+    Bar,
+    Scatterpolargl,
+    Scattergl,
+    Splom,
+]
 
 
 class InvalidTestConfiguration(Exception):
     pass
 
 
-class Trace(BaseModel):
+class Trace(NamedModel, ParentModel):
     """
     The Trace is one of the most important and unique objects within a Visivo Project. You can think of traces as collection of lines or bars on a chart. For example, `Total Revenue by Week` would be a trace. Once you define this metric in a single trace in your project, you can add it to as many charts as you want. This is especially powerful since charts are able to join disparate axis automatically. Meaning you can define a trace for `Revenue Per Week` and then define another trace for `Revenue per Day` and include both of those traces on the same chart with no extra configuration needed.
 
@@ -41,7 +142,8 @@ class Trace(BaseModel):
     ```  yaml
     traces:
       - name: crypto ohlc
-        base_sql: "SELECT * FROM finance_data_atlas.FINANCE.CMCCD2019"
+        model:
+          sql: 'SELECT * finance_data_atlas.FINANCE.CMCCD2019'
         target_name: remote-snowflake
         cohort_on: query( "Cryptocurrency Name" )
         props:
@@ -76,8 +178,9 @@ class Trace(BaseModel):
         True,
         description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
     )
-    base_sql: str = Field(
-        ..., description="The database table that visivo should use to build the trace."
+    model: Union[constr(regex=REF_REGEX), Model] = Field(
+        ...,
+        description="The model or model ref that visivo should use to build the trace.",
     )
     cohort_on: Optional[str] = Field(
         None,
@@ -99,10 +202,13 @@ class Trace(BaseModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    props: Optional[TraceProps] = Field(
-        None,
-        description="This is where plotly trace configurations live. Including the type of trace (bar, scatter, ect), x, y and anything else found in their docs.",
+    props: Props = Field(
+        Scatter,
+        discriminator="type"
     )
+
+    def child_items(self):
+        return [self.model]
 
     def all_tests(self) -> List[Optional[Test]]:
         tests = []

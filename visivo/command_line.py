@@ -35,6 +35,8 @@ def safe_visivo():
     try:
         visivo()
     except Exception as e:
+        if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
+            raise e
         click.echo("An unexpected error has occurred")
         click.echo(e)
 

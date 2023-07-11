@@ -24,6 +24,8 @@ psycopg2-binary = "^2.9.5"
 sqlalchemy = "^2.0.8"
 snowflake-connector-python = "^3.0.2"
 python-dotenv = "^1.0.0"
+networkx = "^3.1"
+matplotlib = "^3.7.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"

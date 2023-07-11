@@ -2,7 +2,8 @@ traces:
 #test popping nested statements
   - cohort_on: query( product ) # groups on this expression and splits data from each group into seperate traces  
     filter: query( product in ('Premium Photo', 'White Paper') )
-    base_sql: "SELECT * FROM jared_dev.salesmart.fact_transaction"  #Compiled version of base sql just to illistrate how to use. 
+    model:
+      sql: "SELECT * FROM jared_dev.salesmart.fact_transaction"  #Compiled version of base sql just to illistrate how to use. 
     order_by: query( date_trunc('quarter', created_at) )
 
     #rest of the keys are all standard plotly trace configurations
@@ -13,7 +14,8 @@ traces:
   
   - cohort_on: query( product ) # groups on this expression and splits data from each group into seperate traces  
     filter: query( product in ('Premium Photo', 'White Paper') )
-    base_sql: "SELECT * FROM jared_dev.salesmart.fact_transaction"  #Compiled version of base sql just to illistrate how to use. 
+    model:
+      sql: "SELECT * FROM jared_dev.salesmart.fact_transaction"  #Compiled version of base sql just to illistrate how to use. 
     order_by: query( date_trunc('quarter', created_at) )
 
     #rest of the keys are all standard plotly trace configurations

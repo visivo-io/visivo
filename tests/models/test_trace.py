@@ -7,9 +7,8 @@ import pytest
 def test_Trace_simple_data():
     data = {
         "name": "development",
-        "x": "x",
-        "y": "y",
-        "base_sql": "select * from table",
+        "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+        "model": {"sql": "select * from table"},
     }
     trace = Trace(**data)
     assert trace.name == "development"
@@ -18,15 +17,15 @@ def test_Trace_simple_data():
 def test_Trace_Test_generation():
     data = {
         "name": "development",
-        "x": "x",
-        "y": "y",
-        "base_sql": "select * from table",
-        "tests": [{"coordinate_exists": {"coordinates": {"x": 2, "y": 1}}}],
+        "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+        "model": {"sql": "select * from table"},
+        "tests": [{"coordinate_exists": {"coordinates": {"query.x": 2, "query.y": 1}}}],
+
     }
     trace = Trace(**data)
     tests = trace.all_tests()
     assert tests[0].name == "development-coordinate_exists-1"
-    assert tests[0].kwargs == {"coordinates": {"x": 2, "y": 1}}
+    assert tests[0].kwargs == {"coordinates": {"query.x": 2, "query.y": 1}}
     assert tests[0].type == "coordinate_exists"
 
 
@@ -47,8 +46,8 @@ def test_Trace_get_trace_name():
     data = {
         "name": "development",
         "columns": {"x": "query"},
-        "props": {"type": "line", "x": "column(y)"},
-        "base_sql": "select * from table",
+        "props": {"type": "scatter", "x": "column(y)"},
+        "model": {"sql": "select * from table"},
     }
 
     with pytest.raises(ValidationError) as exc_info:

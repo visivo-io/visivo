@@ -13,5 +13,6 @@ def test_compile():
     target = {"name": "local", "database": "target/local.db", "type": "sqlite"}
 
     response = runner.invoke(compile, ["-w", dir, "-t", json.dumps(target)])
+
     assert "Compiling project" in response.output
     assert response.exit_code == 0

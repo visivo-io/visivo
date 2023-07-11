@@ -12,7 +12,7 @@ models:
             traces: #list of plotly trace objects
               - cohort_on: query( product ) # groups on this expression and splits data from each group into seperate traces  
                 filter: query( product in ('Premium Photo', 'White Paper') )
-                #base_sql: "SELECT * FROM model.fact_transaction"  ##filled out by default with the model when the chart is configured on the model
+                #sql: "SELECT * FROM model.fact_transaction"  ##filled out by default with the model when the chart is configured on the model
                 order_by: query( date_trunc('quarter', created_at) )
 
                 #rest of the keys are all standard plotly trace configurations

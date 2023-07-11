@@ -1,5 +1,8 @@
 from visivo.models.project import Project
 from visivo.models.item import Item
+from visivo.models.trace import Trace
+from visivo.models.table import Table
+from visivo.models.chart import Chart
 from ..factories.model_factories import (
     TraceFactory,
     TargetFactory,
@@ -7,10 +10,12 @@ from ..factories.model_factories import (
     DashboardFactory,
     RowFactory,
     AlertFactory,
-    TableFactory,
+    ProjectFactory,
 )
 from pydantic import ValidationError
 import pytest
+import networkx
+import click
 
 
 def test_Project_simple_data():
@@ -34,35 +39,7 @@ def test_Project_filter_trace():
     assert project.filter_traces(pattern="^cat") == [cat_trace]
 
 
-def test_Project_find_trace():
-    project = Project(traces=[])
-    assert project.find_trace(name="trace") == None
-
-    trace = TraceFactory()
-    project = Project(traces=[trace])
-    assert project.find_trace(name=trace.name) == trace
-
-    chart = ChartFactory()
-    project = Project(charts=[chart])
-    assert project.find_trace(name=chart.traces[0].name) == trace
-
-    table = TableFactory()
-    project = Project(tables=[table])
-    assert project.find_trace(name=table.trace.name) == trace
-
-    dashboard = DashboardFactory()
-    project = Project(dashboards=[dashboard])
-    assert project.find_trace(name=dashboard.all_traces[0].name) == trace
-
-    dashboard = DashboardFactory(table_item=True)
-    project = Project(dashboards=[dashboard])
-    assert project.find_trace(name=dashboard.all_traces[0].name) == trace
-
-
 def test_Project_find_target():
-    project = Project(traces=[])
-    assert project.find_trace(name="trace") == None
-
     target = TargetFactory()
     project = Project(targets=[target])
     assert project.find_target(name=target.name) == target
@@ -216,3 +193,64 @@ def test_Project_validate_default_target_does_not_exists():
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"default alert '{alert.name}' does not exist"
     assert error["type"] == "value_error"
+
+
+def test_simple_Project_dag():
+    project = ProjectFactory()
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 8
+    assert len(project.dashboards[0].descendants()) == 6
+    assert project.descendants_of_type(type=Trace) == [
+        project.dashboards[0].rows[0].items[0].chart.traces[0]
+    ]
+
+
+def test_ref_trace_Project_dag():
+    project = ProjectFactory(trace_ref=True)
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 8
+    assert project.descendants_of_type(type=Trace) == [project.traces[0]]
+
+
+def test_ref_chart_Project_dag():
+    project = ProjectFactory(chart_ref=True)
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 8
+    assert project.descendants_of_type(type=Trace) == [project.charts[0].traces[0]]
+    assert project.descendants_of_type(type=Chart) == [project.charts[0]]
+
+
+def test_ref_table_Project_dag():
+    project = ProjectFactory(table_ref=True)
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 8
+    assert project.descendants_of_type(type=Trace) == [project.tables[0].trace]
+    assert project.descendants_of_type(type=Table) == [project.tables[0]]
+
+
+def test_ref_table_Project_dag():
+    project = ProjectFactory(table_ref=True)
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 8
+    assert project.descendants_of_type(type=Trace) == [project.tables[0].trace]
+    assert project.descendants_of_type(type=Table) == [project.tables[0]]
+
+
+def test_invalid_ref_Project_dag():
+    project = ProjectFactory(table_ref=True)
+
+    with pytest.raises(click.ClickException) as exc_info:
+        # It is an incomplete reference from the level of dashboards.
+        project.dashboards[0].descendants()
+
+    assert 'The reference "ref(table_name)" on item ' in exc_info.value.message

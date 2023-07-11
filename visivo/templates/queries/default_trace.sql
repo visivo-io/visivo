@@ -1,6 +1,6 @@
 WITH 
 base_query as (
-    {{base_sql}}
+    {{sql}}
 )
 SELECT 
     {%- if select_items is defined and (select_items) %}

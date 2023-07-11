@@ -1,4 +1,4 @@
-from .base_model import BaseModel
+from .base.named_model import NamedModel
 from pydantic import Field, SecretStr
 from typing import Optional
 from enum import Enum
@@ -15,7 +15,7 @@ class TypeEnum(str, Enum):
     mysql = "mysql"
 
 
-class Target(BaseModel):
+class Target(NamedModel):
     """
     Targets hold the connection information to your data sources.
 

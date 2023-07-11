@@ -1,16 +1,18 @@
 from typing import List, Union
-from .base_model import BaseModel, REF_REGEX
 from .trace import Trace
 from pydantic import constr
+from .base.named_model import NamedModel
+from .base.parent_model import ParentModel
+from .base.base_model import REF_REGEX
 
 
-class Table(BaseModel):
+class Table(NamedModel, ParentModel):
     trace: Union[constr(regex=REF_REGEX), Trace]
     columns: List[dict]
 
-    def find_trace(self, name: str):
-        if self.trace.name == name:
-            return self.trace
+    def child_items(self):
+        return [self.trace]
+
 
     @property
     def trace_objs(self) -> List[Trace]:

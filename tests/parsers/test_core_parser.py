@@ -23,7 +23,12 @@ def test_Core_Parser_with_one_of_each_project():
             "dashboards": [{"name": "dashboard"}],
             "charts": [{"name": "chart"}],
             "traces": [
-                {"name": "trace", "base_sql": "select * from table", "x": "x", "y": "y"}
+                {
+                    "name": "trace",
+                    "model": {"sql": "select * from table"},
+                    "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+
+                }
             ],
         },
         name=PROJECT_FILE_NAME,

@@ -1,4 +1,6 @@
-from .base_model import BaseModel
+from .base.named_model import NamedModel
+from .base.base_model import REF_REGEX
+from .base.parent_model import ParentModel
 from pydantic import Field
 from .row import Row
 from .trace import Trace
@@ -7,7 +9,7 @@ from .table import Table
 from typing import List
 
 
-class Dashboard(BaseModel):
+class Dashboard(NamedModel, ParentModel):
     """
     Dashboards are grids where you are able to organize and present `charts`, `tables` and `markdown`.
 
@@ -32,6 +34,9 @@ class Dashboard(BaseModel):
                 chart: ref(a-third-chart)
     ```
     """
+
+    def child_items(self):
+        return self.rows
 
     rows: List[Row] = Field([], description="A list of `Row` objects")
 
@@ -103,19 +108,3 @@ class Dashboard(BaseModel):
     @property
     def table_objs(self) -> List[Table]:
         return list(filter(Table.is_obj, self.all_tables))
-
-    @property
-    def table_refs(self) -> List[str]:
-        return list(filter(Table.is_ref, self.all_tables))
-
-    def find_trace(self, name: str):
-        for row in self.rows:
-            for item in row.items:
-                if item.chart:
-                    trace = item.chart.find_trace(name)
-                    if trace:
-                        return trace
-                if item.table:
-                    trace = item.table.find_trace(name)
-                    if trace:
-                        return trace

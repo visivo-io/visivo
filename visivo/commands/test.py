@@ -20,6 +20,7 @@ def test_phase(
     test_runner = Runner(
         traces=project.trace_objs,
         target=target,
+        project=project,
         output_dir=output_dir,
         alerts=alerts,
     )
@@ -41,4 +42,3 @@ def test(output_dir, working_dir, target, alert):
         working_dir=working_dir,
         alert_names=alert,
     )
-

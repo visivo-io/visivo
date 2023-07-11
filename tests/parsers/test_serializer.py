@@ -1,5 +1,10 @@
 from visivo.parsers.serializer import Serializer
-from tests.factories.model_factories import ProjectFactory, TraceFactory, ChartFactory
+from tests.factories.model_factories import (
+    ProjectFactory,
+    TraceFactory,
+    ChartFactory,
+    ModelFactory,
+)
 
 
 def test_Serializer_with_basic_project():
@@ -43,6 +48,28 @@ def test_Serializer_with_table_trace_ref():
     assert project.name == "project"
     assert project.traces == []
     assert project.dashboards[0].rows[0].items[0].table.trace.name == "trace_name"
+
+
+def test_Serializer_with_model_ref():
+    project = ProjectFactory(model_ref=True)
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model = "ref(model_name)"
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.traces == []
+    assert (
+        project.dashboards[0].rows[0].items[0].chart.traces[0].model.name
+        == "model_name"
+    )
+
+
+def test_Serializer_with_table_model_ref():
+    model = ModelFactory(name="model_name")
+    project = ProjectFactory(table_item=True, models=[model])
+    project.dashboards[0].rows[0].items[0].table.trace.model = "ref(model_name)"
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.traces == []
+    assert project.dashboards[0].rows[0].items[0].table.trace.model.name == "model_name"
 
 
 def test_Serializer_with_refs_does_not_change_original():

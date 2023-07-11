@@ -2,7 +2,7 @@ import click
 import os
 import re
 
-from visivo.models.base_model import NAME_REGEX
+from visivo.models.base.named_model import NAME_REGEX
 
 
 def working_dir(function):

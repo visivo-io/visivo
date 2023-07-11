@@ -1,6 +1,7 @@
-from ..models.trace import Trace
-from ..models.target import Target
-from ..models.tokenized_trace import TokenizedTrace
+from visivo.models.trace import Trace
+from visivo.models.target import Target
+from visivo.models.model import Model
+from visivo.models.tokenized_trace import TokenizedTrace
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
 from ..utils import extract_value_from_function
@@ -11,9 +12,10 @@ DEFAULT_COHORT_ON = "'values'"
 
 
 class TraceTokenizer:
-    def __init__(self, trace: Trace, target: Target):
+    def __init__(self, trace: Trace, model: Model, target: Target):
         self.trace = trace
         self.target = target
+        self.model = model
         self.dialect = Dialect(type=target.type)
         self.statement_classifier = StatementClassifier(dialect=self.dialect)
         self.select_items = {}
@@ -25,7 +27,7 @@ class TraceTokenizer:
     def tokenize(self):
         cohort_on = self._get_cohort_on()
         data = {
-            "base_sql": self.trace.base_sql,
+            "sql": self.model.sql,
             "cohort_on": cohort_on,
             "select_items": self.select_items,
             "target": self.target.name,

@@ -1,8 +1,6 @@
-from ..factories.model_factories import AlertFactory, TraceFactory
-from typing import Literal
+from ..factories.model_factories import AlertFactory, TraceFactory, ProjectFactory
 from visivo.models.trace import Trace
 from visivo.testing.runner import Runner
-from visivo.models.test_run import TestRun
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
 from visivo.models.target import Target, TypeEnum as TargetTypeEnum
@@ -14,7 +12,7 @@ def test_TestQueryStringFactory_errors(capsys):
         "type": "line",
         "x": "x",
         "y": "y",
-        "base_sql": "select * from test_table",
+        "model": {"sql": "select * from test_table"},
         "tests": [
             {"coordinate_exists": {"coordinates": {"x": 3, "y": 2}}},
             {"coordinate_exists": {"coordinates": {"x": 19, "y": 26}}},
@@ -23,6 +21,7 @@ def test_TestQueryStringFactory_errors(capsys):
     trace = Trace(**data)
     trace2 = TraceFactory()
 
+    project = ProjectFactory(traces=[trace, trace2], dashboards=[])
     output_dir = temp_folder()
     alert = AlertFactory()
     target = Target(
@@ -33,7 +32,11 @@ def test_TestQueryStringFactory_errors(capsys):
 
     create_file_database(url=target.url(), output_dir=output_dir)
     Runner(
-        traces=[trace, trace2], target=target, output_dir=output_dir, alerts=[alert]
+        traces=[trace, trace2],
+        project=project,
+        target=target,
+        output_dir=output_dir,
+        alerts=[alert],
     ).run()
     captured = capsys.readouterr()
     assert (

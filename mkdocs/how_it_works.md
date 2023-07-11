@@ -4,7 +4,7 @@ When working with Visivo, all you have to do is write yaml configurations & CLI 
 Say you have a model called `widget_sales` that looks like this: 
 
 | widget           | quantity | completed_at |
-|------------------|----------|--------------|
+| ---------------- | -------- | ------------ |
 | Useful Widget    | 300      | 2023-01-01   |
 | Useful Widget    | 250      | 2023-01-07   |
 | Useful Widget    | 150      | 2023-01-08   |
@@ -17,9 +17,12 @@ You can write a trace in any yml file directly your project. The trace can be ju
 === "Relational Db"
 
     ``` yaml title="project_dir/visivo_project.yml"
+    models:
+      - name: widget_sales
+        sql: select * from widget_sales
     traces:
       - name: simple_trace
-        base_sql: "Select * from widget_sales"
+        model: ref('widget_sales')
         cohort_on: query( widget )
         props:
           x: query( date_trunc('week', completed_at) )
@@ -40,7 +43,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
     ``` yaml title="project_dir/models/schema.yml" 
     traces:
       - name: simple_trace
-        base_sql: ref('widget_sales')
+        model: ref('widget_sales')
         cohort_on: query( widget )
         props:
           x: query( date_trunc('week', completed_at) )
@@ -80,7 +83,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
 Using that context, Visivo will produce this query and store it in your target directory:
 ``` sql title="project_dir/target/traces/simple_trace/query.sql"
 WITH 
-base_sql as (
+sql as (
 select * from widget_sales --context set to target.database & target.schema
 )
 select 
@@ -88,7 +91,7 @@ select
   date_trunc('week', completed_at) as "x", 
   sum(amount) as "y", 
   case sum(amount) > 300 then 'green' else 'blue' end as "marker.color"
-from base_sql 
+from sql 
 GROUP BY 
   "cohort_on",
   "x"

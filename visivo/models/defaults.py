@@ -1,6 +1,4 @@
-from typing import List, Optional
-from enum import Enum
-from .item import Item
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -32,8 +30,13 @@ class Defaults(BaseModel):
     """
 
     alert_name: Optional[str] = Field(
-        None, description="The name of an alert defined elsewhere in the Visivo project."
+        None,
+        description="The name of an alert defined elsewhere in the Visivo project.",
     )
     target_name: Optional[str] = Field(
-        None, description="The name of a target defined elsewhere in the Visivo project."
+        None,
+        description="The name of a target defined elsewhere in the Visivo project.",
     )
+
+    def __hash__(self):
+        return hash((type(self),) + tuple(self.__dict__.values()))

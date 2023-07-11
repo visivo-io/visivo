@@ -16,7 +16,7 @@ from .options import output_dir, working_dir, user_dir, stage, host
 @user_dir
 def deploy(working_dir, user_dir, output_dir, stage, host):
     """
-    Sends the current version of your project, traces & data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production enviornments. 
+    Sends the current version of your project, traces & data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production enviornments.
     """
     files = Discover(working_directory=working_dir, home_directory=user_dir).files()
     parser = ParserFactory().build(files=files)
@@ -30,7 +30,7 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
 
     project = parser.parse()
     serializer = Serializer(project=project)
-    project_json = json.loads(serializer.dereference().json())
+    project_json = json.loads(serializer.dereference().json(exclude_none=True))
 
     body = {
         "project_json": project_json,

@@ -1,10 +1,12 @@
 # supports more generic connections than the snowflake specific connector
 from sqlalchemy import text
 from visivo.query.query_string_factory import QueryStringFactory
-from visivo.query.dialect import Dialect
 from visivo.testing.test_query_string_factory import TestQueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.target import Target
+from visivo.models.model import Model
+from visivo.models.project import Project
+from visivo.models.base.parent_model import ParentModel
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
 from visivo.models.alert import Alert
@@ -24,9 +26,11 @@ class Runner:
         self,
         traces: List[Trace],
         target: Target,
+        project: Project,
         output_dir: str,
         alerts: List[Alert] = [],
     ):
+        self.project = project
         self.traces = traces
         self.target = target
         self.output_dir = output_dir
@@ -34,8 +38,14 @@ class Runner:
 
     def run(self):
         test_run = TestRun(target_name=self.target.name)
+        dag = self.project.dag()
         for trace in self.traces:
-            tokenized_trace = TraceTokenizer(trace=trace, target=self.target).tokenize()
+            model = ParentModel.all_descendants_of_type(
+                type=Model, dag=dag, from_node=trace
+            )[0]
+            tokenized_trace = TraceTokenizer(
+                trace=trace, model=model, target=self.target
+            ).tokenize()
             query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
             if not trace.tests:
                 continue

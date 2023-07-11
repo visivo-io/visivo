@@ -1,7 +1,7 @@
 import click
 from visivo.query.runner import Runner
-from visivo.models.target import Target
-from .compile import compile_phase, find_or_create_target
+from visivo.models.trace import Trace
+from .compile import compile_phase
 from .options import output_dir, working_dir, target, trace_filter
 
 
@@ -15,7 +15,8 @@ def run_phase(
     project = compile_phase(
         default_target, working_dir=working_dir, output_dir=output_dir
     )
-    traces = project.filter_traces(trace_filter)
+
+    traces = Trace.filtered(trace_filter, project.descendants_of_type(Trace))
 
     def changed(trace):
         if not run_only_changed:

@@ -3,7 +3,7 @@ from typing import List, Optional, Dict
 
 
 class TokenizedTrace(BaseModel):
-    base_sql: str
+    sql: str
     cohort_on: str
     target: str
     groupby_statements: Optional[List[str]]

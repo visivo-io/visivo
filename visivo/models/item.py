@@ -1,4 +1,5 @@
-from .base_model import BaseModel, REF_REGEX
+from .base.base_model import BaseModel, REF_REGEX
+from .base.parent_model import ParentModel
 from pydantic import Field
 from typing import Optional, Union
 from .chart import Chart
@@ -6,7 +7,7 @@ from .table import Table
 from pydantic import root_validator, constr
 
 
-class Item(BaseModel):
+class Item(BaseModel, ParentModel):
     """
     The Item houses one chart, table or markdown object. It also informs the width that the chart, table or markdown should occupy within a row. Widths are evaluated for each item in the row by summing all of the widths and then using the relative weights.
 
@@ -22,6 +23,13 @@ class Item(BaseModel):
         chart: ref(chart-name)
     ```
     """
+
+    def id(self):
+        child = self.__get_child()
+        if isinstance(child, str):
+            return f"Item - {hash(child)}"
+        if isinstance(self.chart, Chart) or isinstance(self.table, Table):
+            return f"Item - {child.id()}"
 
     width: int = Field(
         1,
@@ -44,8 +52,20 @@ class Item(BaseModel):
             values.get("chart"),
             values.get("table"),
         )
+        # Fix and test this method
         if markdown is not None and chart is not None:
             raise ValueError(
                 'only one of the "markdown", "chart", or "table" properties should be set on an item'
             )
         return values
+
+    def child_items(self):
+        return [self.__get_child()]
+
+    def __get_child(self):
+        if self.markdown is not None:
+            return self.markdown
+        if self.table is not None:
+            return self.table
+        if self.chart is not None:
+            return self.chart

@@ -1,6 +1,6 @@
 from visivo.models.chart import Chart
 from ..factories.model_factories import TraceFactory
-from visivo.models.base_model import REF_REGEX
+from visivo.models.base.base_model import REF_REGEX
 from pydantic import ValidationError
 import pytest
 
@@ -18,15 +18,6 @@ def test_Chart_missing_data():
         error = e.errors()[0]
         assert error["msg"] == "field required"
         assert error["type"] == "value_error.missing"
-
-
-def test_Chart_find_trace():
-    project = Chart(data={}, traces=[])
-    assert project.find_trace(name="trace") == None
-
-    trace = TraceFactory()
-    project = Chart(data={}, traces=[trace])
-    assert project.find_trace(name="trace") == trace
 
 
 def test_Chart_ref_string():

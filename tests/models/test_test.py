@@ -18,7 +18,5 @@ def test_Test_invalid_type():
 
     error = exc_info.value.errors()[0]
 
-    assert (
-        "value is not a valid enumeration member; permitted:" in error["msg"]
-    )
+    assert "value is not a valid enumeration member; permitted:" in error["msg"]
     assert error["type"] == "type_error.enum"

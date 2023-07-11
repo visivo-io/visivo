@@ -1,14 +1,17 @@
 import re
 from typing import List, Optional, Union
+
+from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
 from .target import Target
 from .table import Table
+from .model import Model
 from .alert import EmailAlert, SlackAlert, ConsoleAlert
 from .defaults import Defaults
 from typing import List
-from .base_model import BaseModel
+from .base.named_model import NamedModel
 from pydantic import root_validator, Field
 from typing_extensions import Annotated
 
@@ -17,14 +20,26 @@ Alert = Annotated[
 ]
 
 
-class Project(BaseModel):
+class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults]
-    targets: List[Target] = []
     alerts: List[Alert] = []
-    dashboards: List[Dashboard] = []
-    charts: List[Chart] = []
-    tables: List[Table] = []
+    targets: List[Target] = []
+    models: List[Model] = []
     traces: List[Trace] = []
+    tables: List[Table] = []
+    charts: List[Chart] = []
+    dashboards: List[Dashboard] = []
+
+    def child_items(self):
+        return (
+            self.alerts
+            + self.targets
+            + self.models
+            + self.traces
+            + self.tables
+            + self.charts
+            + self.dashboards
+        )
 
     @property
     def trace_objs(self) -> List[Trace]:
@@ -46,18 +61,11 @@ class Project(BaseModel):
     def table_objs(self) -> List[Chart]:
         return list(filter(Table.is_obj, self.__all_tables()))
 
-    @property
-    def table_refs(self) -> List[str]:
-        return list(filter(Table.is_ref, self.__all_tables()))
-
     def filter_traces(self, pattern) -> List[Trace]:
         def name_match(trace):
             return re.search(pattern, trace.name)
 
         return list(filter(name_match, self.trace_objs))
-
-    def find_trace(self, name: str) -> Trace:
-        return next((t for t in self.trace_objs if t.name == name), None)
 
     def find_target(self, name: str) -> Target:
         return next((t for t in self.targets if t.name == name), None)
@@ -145,7 +153,7 @@ class Project(BaseModel):
 
     @classmethod
     def __append_name(cls, obj, names, type):
-        name = BaseModel.get_name(obj=obj)
+        name = Project.get_name(obj=obj)
         if name in names:
             raise ValueError(f"{type} name '{name}' is not unique in the project")
         names.append(name)
