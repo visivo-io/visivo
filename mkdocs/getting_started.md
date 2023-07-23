@@ -118,6 +118,7 @@ targets:
     type: postgresql
     username: postgres
     password: postgres
+    host: localhost
     port: 5434
   - name: remote-snowflake
     type: snowflake

@@ -4,6 +4,15 @@ import json
 import os
 from pathlib import Path
 from visivo.models.target import Target, TypeEnum
+from visivo.models.project import Project
+from visivo.models.dashboard import Dashboard
+from visivo.models.chart import Chart
+from visivo.models.item import Item
+from visivo.models.row import Row
+from visivo.models.trace import Trace
+from visivo.models.model import Model
+from visivo.models.defaults import Defaults
+from visivo.models.trace_props import Scatter
 from visivo.commands.utils import create_file_database
 from visivo.parsers.core_parser import PROFILE_FILE_NAME
 
@@ -24,7 +33,12 @@ def init():
     password = None
     username = None
     database = None
+    warehouse = None
+    account = None
+    host = None
     if target_type != TypeEnum.sqlite:
+        if target_type == TypeEnum.postgresql:
+            host = click.prompt("? Database host", type=str)
         database = click.prompt("? Database name", type=str)
         username = click.prompt("? Database username", type=str)
         password = click.prompt(
@@ -36,11 +50,19 @@ def init():
     else:
         database = f"{project_name}/local.db"
 
+    if target_type == TypeEnum.snowflake:
+        account = click.prompt("? Snowflake account", type=str)
+        warehouse = click.prompt("? Snowflake warehouse", type=str)
+
     target = Target(
+        name="Example Target",
+        host=host,
         database=database,
         type=target_type,
         password=password,
         username=username,
+        account=account,
+        warehouse=warehouse,
     )
 
     if target_type == TypeEnum.sqlite:
@@ -50,19 +72,30 @@ def init():
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
 
+    model = Model(name="Example Model", sql="select * from table_in_database")
+    props = Scatter(
+        type="scatter", x="query(x_value_from_model)", y="query(y_value_from_model)"
+    )
+    trace = Trace(name="Example Trace", model=model, props=props, changed=None)
+    chart = Chart(name="Example Chart", traces=[trace])
+    item = Item(chart=chart)
+    row = Row(items=[item])
+    dashboard = Dashboard(name="Example Dashboard", rows=[row])
+    defaults = Defaults(target_name=target.name)
+    project = Project(
+        name=project_name, defaults=defaults, targets=[target], dashboards=[dashboard]
+    )
+
     fp = open(f"{project_name}/visivo_project.yml", "w")
     fp.write(
-        yaml.dump(
-            {
-                "name": project_name,
-                "targets": [json.loads(target.json(exclude_none=True))],
-            }
-        ).replace("'**********'", "env_var('DB_PASSWORD')")
+        yaml.dump(json.loads(project.json(exclude_none=True)), sort_keys=False).replace(
+            "'**********'", "{{ env_var('DB_PASSWORD') }}"
+        )
     )
     fp.close()
 
     fp = open(f"{project_name}/.gitignore", "w")
-    fp.write(".env")
+    fp.write(".env\ntarget")
     fp.close()
 
     profile_path = f"{user_home}/.visivo/{PROFILE_FILE_NAME}"
