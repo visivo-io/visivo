@@ -29,12 +29,16 @@ def test_Project_filter_trace():
     assert project.filter_traces(pattern="trace") == []
 
     cat_trace = TraceFactory(name="cat")
+    cat_trace.model.name = "cat_model"
     bobcat_trace = TraceFactory(name="bobcat")
+    bobcat_trace.model.name = "bobcat_trace"
     project = Project(traces=[cat_trace, bobcat_trace])
     assert project.filter_traces(pattern="cat") == [cat_trace, bobcat_trace]
 
     cat_trace = TraceFactory(name="cat")
+    cat_trace.model.name = "cat_model"
     bobcat_trace = TraceFactory(name="bobcat")
+    bobcat_trace.model.name = "bobcat_trace"
     project = Project(traces=[cat_trace, bobcat_trace])
     assert project.filter_traces(pattern="^cat") == [cat_trace]
 
@@ -57,7 +61,10 @@ def test_Project_validate_project_trace_refs():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"trace 'ref(trace_name)' does not reference a trace"
+    assert (
+        error["msg"]
+        == f'Value error, The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+    )
     assert error["type"] == "value_error"
 
     trace = TraceFactory(name="trace_name")
@@ -76,7 +83,10 @@ def test_Project_validate_chart_refs():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"trace 'ref(trace_name)' does not reference a trace"
+    assert (
+        error["msg"]
+        == f'Value error, The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+    )
     assert error["type"] == "value_error"
 
     trace = TraceFactory(name="trace_name")
@@ -103,7 +113,10 @@ def test_Project_validate_dashboard_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"dashboard name 'dashboard' is not unique in the project"
+    assert (
+        error["msg"]
+        == f"Value error, Dashboard name 'dashboard' is not unique in the project"
+    )
     assert error["type"] == "value_error"
 
 
@@ -121,7 +134,9 @@ def test_Project_validate_chart_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"chart name 'chart' is not unique in the project"
+    assert (
+        error["msg"] == f"Value error, Chart name 'chart' is not unique in the project"
+    )
     assert error["type"] == "value_error"
 
 
@@ -139,7 +154,9 @@ def test_Project_validate_trace_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"trace name 'trace' is not unique in the project"
+    assert (
+        error["msg"] == f"Value error, Trace name 'trace' is not unique in the project"
+    )
     assert error["type"] == "value_error"
 
 
@@ -165,7 +182,7 @@ def test_Project_validate_default_target_does_not_exists():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"default target '{target.name}' does not exist"
+    assert error["msg"] == f"Value error, default target '{target.name}' does not exist"
     assert error["type"] == "value_error"
 
 
@@ -191,7 +208,7 @@ def test_Project_validate_default_target_does_not_exists():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"default alert '{alert.name}' does not exist"
+    assert error["msg"] == f"Value error, default alert '{alert.name}' does not exist"
     assert error["type"] == "value_error"
 
 
@@ -249,8 +266,8 @@ def test_ref_table_Project_dag():
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
 
-    with pytest.raises(click.ClickException) as exc_info:
+    with pytest.raises(ValueError) as exc_info:
         # It is an incomplete reference from the level of dashboards.
         project.dashboards[0].descendants()
 
-    assert 'The reference "ref(table_name)" on item ' in exc_info.value.message
+    assert 'The reference "ref(table_name)" on item "Item -' in str(exc_info.value)

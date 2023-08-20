@@ -13,5 +13,5 @@ class QueryStringFactory:
 
     def build(self):
         return Template(self.template_string).render(
-            **self.tokenized_trace.dict(exclude_none=True)
+            **self.tokenized_trace.model_dump(exclude_none=True)
         )

@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional, Union
 
+
 from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
@@ -12,7 +13,8 @@ from .alert import EmailAlert, SlackAlert, ConsoleAlert
 from .defaults import Defaults
 from typing import List
 from .base.named_model import NamedModel
-from pydantic import root_validator, Field
+from .base.base_model import BaseModel
+from pydantic import model_validator, Field
 from typing_extensions import Annotated
 
 Alert = Annotated[
@@ -21,7 +23,7 @@ Alert = Annotated[
 
 
 class Project(NamedModel, ParentModel):
-    defaults: Optional[Defaults]
+    defaults: Optional[Defaults] = None
     alerts: List[Alert] = []
     targets: List[Target] = []
     models: List[Model] = []
@@ -79,14 +81,14 @@ class Project(NamedModel, ParentModel):
     def find_alert(self, name: str) -> Alert:
         return next((a for a in self.alerts if a.name == name), None)
 
-    @root_validator
-    def validate_default_names(cls, values):
-        targets, alerts = (values.get("targets"), values.get("alerts"))
+    @model_validator(mode="after")
+    def validate_default_names(self):
+        targets, alerts = (self.targets, self.alerts)
         target_names = [target.name for target in targets]
         alert_names = [alert.name for alert in alerts]
-        defaults = values.get("defaults")
+        defaults = self.defaults
         if not defaults:
-            return values
+            return self
 
         if defaults.target_name and defaults.target_name not in target_names:
             raise ValueError(f"default target '{defaults.target_name}' does not exist")
@@ -94,69 +96,31 @@ class Project(NamedModel, ParentModel):
         if defaults.alert_name and defaults.alert_name not in alert_names:
             raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
 
-        return values
+        return self
 
-    @root_validator
-    def validate_trace_refs(cls, values):
-        traces, dashboards, charts = (
-            values.get("traces"),
-            values.get("dashboards"),
-            values.get("charts"),
-        )
-        trace_names = []
-        trace_refs = []
+    @model_validator(mode="after")
+    def validate_dag(self):
+        self.dag()
+        return self
 
-        def append_values(obj_with_traces):
-            for trace in obj_with_traces.trace_objs:
-                cls.__append_name(trace, trace_names, "trace")
-            for trace_ref in obj_with_traces.trace_refs:
-                trace_refs.append(Trace.get_name(obj=trace_ref))
-
-        [cls.__append_name(trace, trace_names, "trace") for trace in traces]
-        [append_values(dashboard) for dashboard in dashboards]
-        [append_values(chart) for chart in charts]
-
-        for trace_ref in trace_refs:
-            if trace_ref not in trace_names:
-                raise ValueError(f"trace 'ref({trace_ref})' does not reference a trace")
-        return values
-
-    @root_validator
-    def validate_chart_refs(cls, values):
-        dashboards, charts = (
-            values.get("dashboards"),
-            values.get("charts"),
-        )
-        chart_names = []
-        chart_refs = []
-
-        [cls.__append_name(chart, chart_names, "chart") for chart in charts]
-
-        for dashboard in dashboards:
-            for chart in dashboard.chart_objs:
-                cls.__append_name(chart, chart_names, "chart")
-            for chart_ref in dashboard.chart_refs:
-                chart_refs.append(Chart.get_name(obj=chart_ref))
-
-        for chart_ref in chart_refs:
-            if chart_ref not in chart_names:
-                raise ValueError(f"chart 'ref({chart_ref})' does not reference a chart")
-        return values
-
-    @root_validator
-    def validate_dashboard_names(cls, values):
-        dashboard_names = []
-        for dashboard in values.get("dashboards"):
-            cls.__append_name(dashboard, dashboard_names, "dashboard")
-
-        return values
+    @model_validator(mode="after")
+    def validate_names(self):
+        Project.traverse_names([], self)
+        return self
 
     @classmethod
-    def __append_name(cls, obj, names, type):
-        name = Project.get_name(obj=obj)
-        if name in names:
-            raise ValueError(f"{type} name '{name}' is not unique in the project")
-        names.append(name)
+    def traverse_names(cls, names, object):
+        if isinstance(object, ParentModel):
+            for child_item in object.child_items():
+                if isinstance(child_item, BaseModel) and hasattr(child_item, "name"):
+                    name = NamedModel.get_name(obj=child_item)
+                    if name in names:
+                        raise ValueError(
+                            f"{child_item.__class__.__name__} name '{name}' is not unique in the project"
+                        )
+                    if name:
+                        names.append(name)
+                Project.traverse_names(names, child_item)
 
     def __all_traces(self):
         traces = []

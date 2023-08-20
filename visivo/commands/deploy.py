@@ -18,11 +18,11 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     """
     Sends the current version of your project, traces & data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production enviornments.
     """
-    files = Discover(working_directory=working_dir, home_directory=user_dir).files()
-    parser = ParserFactory().build(files=files)
-    profile = parser.data_by_name(
-        name=PROFILE_FILE_NAME
-    )  # Maybe this should be a different command
+    discover = Discover(working_directory=working_dir, home_directory=user_dir)
+    parser = ParserFactory().build(
+        project_file=discover.project_file, files=discover.files
+    )
+    profile = next((f for f in parser.files if f.name == PROFILE_FILE_NAME), None)
     if not profile or "token" not in profile:
         raise click.ClickException(
             f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
@@ -30,7 +30,9 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
 
     project = parser.parse()
     serializer = Serializer(project=project)
-    project_json = json.loads(serializer.dereference().json(exclude_none=True))
+    project_json = json.loads(
+        serializer.dereference().model_dump_json(exclude_none=True)
+    )
 
     body = {
         "project_json": project_json,
@@ -53,7 +55,7 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
         raise click.ClickException(f"404 error raised. Does your user have an account?")
     if response.status_code == 201:
         click.echo("Project uploaded")
-        project_data = response.json()
+        project_data = response.model_dump_json()
         project_id = project_data["id"]
 
         for trace in project.trace_objs:
@@ -69,11 +71,11 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
             body = {
                 "name": trace.name,
                 "project_id": project_id,
-                "data_file_id": response.json()["id"],
+                "data_file_id": response.model_dump_json()["id"],
             }
             response = requests.post(url, data=json.dumps(body), headers=json_headers)
             if response.status_code != 201:
-                click.echo(response.json())
+                click.echo(response.model_dump_json())
                 raise click.ClickException(f"Trace '{trace.name}' not created")
             click.echo(f"Trace '{trace.name}' created")
     else:

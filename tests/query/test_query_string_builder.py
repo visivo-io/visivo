@@ -13,7 +13,7 @@ def test_QueryStringBuilder_with_only_base_query():
     )
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert format_sql(query_string) == format_sql(
-        """WITH base_query as ( select * from table ) SELECT *, "value" as "cohort_on" FROM base_query\n-- target: name"""
+        """WITH base_query as ( select * from table ) SELECT *, "value" as "cohort_on" FROM base_query GROUP BY "value" \n-- target: name"""
     )
 
 

@@ -49,6 +49,7 @@ def test_TestQueryStringFactory_coordinate_exists():
         JOIN error e 
             ON e.condition = tc.condition
     """
+
     assert format_sql(expected_sql) == format_sql(test_coordinate_exists_string)
 
 

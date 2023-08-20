@@ -1,10 +1,9 @@
-import os
-import yaml
 import jinja2
-import click
+from deepmerge import always_merger
 from typing import List
 from pathlib import Path
 from pydantic import ValidationError
+from visivo.utils import load_yaml_file
 from ..models.project import Project
 
 PROJECT_FILE_NAME = "visivo_project.yml"
@@ -12,8 +11,9 @@ PROFILE_FILE_NAME = "profile.yml"
 
 
 class CoreParser:
-    def __init__(self, files: List[Path]):
+    def __init__(self, project_file: Path, files: List[Path]):
         self.files = files
+        self.project_file = project_file
 
     def parse(self) -> Project:
         try:
@@ -22,15 +22,8 @@ class CoreParser:
             print("Error parsing base project")
             print(e)
 
-    def data_by_name(self, name):
-        file = next((f for f in self.files if f.name == name), None)
-        if file == None:
-            return {}
-
-        with open(file, "r") as stream:
-            template_string = stream.read()
-            template = jinja2.Template(template_string)
-            return self.__parse_yaml_file(template, file)
+    def project_file_data(self):
+       return load_yaml_file(self.project_file) 
 
     def __build_project(self):
         data = self.__merged_project_data()
@@ -38,32 +31,35 @@ class CoreParser:
         return project
 
     def __merged_project_data(self):
-        project_data = self.data_by_name(PROJECT_FILE_NAME)
-        profile_data = self.data_by_name(PROFILE_FILE_NAME)
+        project_data = self.project_file_data()
 
-        for key_to_merge in ["targets"]:
-            if key_to_merge in profile_data:
-                for profile_target in profile_data[key_to_merge]:
-                    if not self.__dicts_contains_name(
-                        project_data[key_to_merge], profile_target["name"]
-                    ):
-                        project_data[key_to_merge].append(profile_target)
+        data_files = []
+        for file in self.files:
+            if file == self.project_file:
+                continue
+            data_files.append(load_yaml_file(file))
+
+        return self.__merge_data_into_project(
+            project_data=project_data, data_files=data_files
+        )
+
+    def __merge_data_into_project(self, project_data: dict, data_files: List[dict]):
+        keys_to_merge = [
+            "alerts",
+            "targets",
+            "models",
+            "traces",
+            "tables",
+            "charts",
+            "dashboards",
+        ]
+        for data_file in data_files:
+            for key_to_merge in keys_to_merge:
+                if key_to_merge in data_file:
+                    base_merge = []
+                    if key_to_merge in project_data:
+                        base_merge = project_data[key_to_merge]
+                    project_data[key_to_merge] = always_merger.merge(
+                        base_merge, data_file[key_to_merge]
+                    )
         return project_data
-
-    def __dicts_contains_name(self, dicts: List[dict], name):
-        return next((d for d in dicts if d["name"] == name), None)
-
-    def __parse_yaml_file(self, template, file_path):
-        def env_var(key):
-            return os.getenv(key, "NOT-SET")
-
-        try:
-            with open(file_path, "r") as file:
-                return yaml.safe_load(template.render({"env_var": env_var}))
-        except yaml.YAMLError as exc:
-            if hasattr(exc, "problem_mark"):
-                mark = exc.problem_mark
-                error_location = f"Invalid yaml in project\n  File: {str(file_path)}\n  Location: line {mark.line + 1}, column {mark.column + 1}\n  Issue: {exc.problem}"
-                raise click.ClickException(error_location)
-            else:
-                raise click.ClickException(exc)

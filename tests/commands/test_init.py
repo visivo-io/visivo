@@ -17,7 +17,7 @@ def test_init_with_sqlite():
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=EXAMPLE_password_l0cation"
-    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget"
+    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget\n.visivo_cache"
     assert os.path.exists(f"{tmp}/visivo_project.yml")
     assert os.path.exists(f"{tmp}/local.db")
 
@@ -40,7 +40,7 @@ def test_init_with_postgres():
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=password"
-    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget"
+    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget\n.visivo_cache"
     assert os.path.exists(f"{tmp}/visivo_project.yml")
     assert "username" in Path(f"{tmp}/visivo_project.yml").read_text()
     assert (

@@ -1,10 +1,11 @@
 from .base.base_model import BaseModel, REF_REGEX
 from .base.parent_model import ParentModel
-from pydantic import Field
+from pydantic import StringConstraints, Field
 from typing import Optional, Union
 from .chart import Chart
 from .table import Table
-from pydantic import root_validator, constr
+from pydantic import model_validator
+from typing_extensions import Annotated
 
 
 class Item(BaseModel, ParentModel):
@@ -38,26 +39,26 @@ class Item(BaseModel, ParentModel):
     markdown: Optional[str] = Field(
         None, description="Markdown text to include in the dashboard."
     )
-    chart: Optional[Union[constr(regex=REF_REGEX), Chart]] = Field(
-        None, description="A chart object defined inline or a ref() to a chart."
-    )
-    table: Optional[Union[constr(regex=REF_REGEX), Table]] = Field(
-        None, description="A Table object defined inline or a ref() to a table"
-    )
+    chart: Optional[
+        Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Chart]
+    ] = Field(None, description="A chart object defined inline or a ref() to a chart.")
+    table: Optional[
+        Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Table]
+    ] = Field(None, description="A Table object defined inline or a ref() to a table")
 
-    @root_validator
-    def check_only_one(cls, values):
+    @model_validator(mode="after")
+    def check_only_one(self):
         markdown, chart, table = (
-            values.get("markdown"),
-            values.get("chart"),
-            values.get("table"),
+            self.markdown,
+            self.chart,
+            self.table,
         )
         # Fix and test this method
         if markdown is not None and chart is not None:
             raise ValueError(
                 'only one of the "markdown", "chart", or "table" properties should be set on an item'
             )
-        return values
+        return self
 
     def child_items(self):
         return [self.__get_child()]

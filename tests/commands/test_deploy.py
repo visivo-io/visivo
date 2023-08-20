@@ -17,7 +17,9 @@ def test_deploy_with_no_profile():
     project = ProjectFactory()
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(
@@ -45,7 +47,9 @@ def test_deploy_with_whitespace_stage():
     project = ProjectFactory()
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(
@@ -73,7 +77,9 @@ def test_deploy_with_symbol_stage():
     project = ProjectFactory()
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(

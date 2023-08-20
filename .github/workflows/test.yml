@@ -1,0 +1,148 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  test-server:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+      stripe:
+        image: "stripe/stripe-mock:latest"
+        ports:
+          - "12111:12111"
+          - "12112:12112"
+      gcloud-tasks-emulator:
+        image: tgsoverly/visivo.io:latest
+        ports:
+          - 8001:8001
+        env:
+          APP_ENGINE_EMULATOR_HOST: http://localhost:8000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+      
+      - uses: Gr1N/setup-poetry@v8 
+
+      - name: Install Dependencies
+        run: cd api && poetry install && cd ..
+
+      - name: Migrate
+        run: cd api && poetry run python manage.py migrate && cd ..
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.ci
+
+      - name: Test Django
+        run: cd api && poetry run python manage.py test && cd ..
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.ci
+      
+  test-cli:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - uses: Gr1N/setup-poetry@v8 
+      
+      - name: Install Dependencies
+        run: cd cli && poetry install && cd ..
+      
+      - name: Test CLI
+        run: cd cli && poetry run pytest && cd ..
+
+  test-app:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      
+      - name: Install App Dependencies
+        run: cd app && yarn install && cd ..
+      
+      - name: Test App
+        run: cd app && yarn test --watchAll=false && yarn lint && cd ..
+  
+  test-rails:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0.2'
+          bundler-cache: true
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+
+      - uses: Gr1N/setup-poetry@v8 
+
+      - name: Install CLI Dependencies
+        run: cd cli && poetry install && cd ..
+      
+      - name: Install CLI Visivo Package
+        run: cd cli && poetry build && pip install dist/visivo-0.1.0-py3-none-any.whl && cd ..
+      
+      - name: Install Dependencies
+        run: cd test-projects/ror && bundle install && cd ../..
+      
+      - name: Test App
+        run: cd test-projects/ror && bundle exec rspec && cd ../..
+  test-snowflake:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+
+      - uses: Gr1N/setup-poetry@v8 
+
+      - name: Install CLI Dependencies
+        run: cd cli && poetry install && cd ..
+      
+      - name: Install CLI Visivo Package
+        run: cd cli && poetry build && pip install dist/visivo-0.1.0-py3-none-any.whl && cd ..
+      
+      - name: Test App
+        run: |
+          cd test-projects/simple-database && visivo run -t remote-snowflake && cd ../..
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+          CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}

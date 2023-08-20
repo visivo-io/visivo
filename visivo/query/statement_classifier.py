@@ -14,8 +14,7 @@ class StatementClassifier:
         self.dialect = dialect
 
     def classify(self, statement):
-        agg_pattern = "|".join(self.dialect.aggregates)
-        has_aggregates = bool(re.search(agg_pattern, statement, re.IGNORECASE))
+        has_aggregates = bool(re.search(self.dialect.aggregates_regex_pattern, statement, re.IGNORECASE))
         window_pattern = "over\s*\(.*\)"
         has_windows = bool(re.search(window_pattern, statement, re.IGNORECASE))
         if has_windows:

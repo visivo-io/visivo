@@ -1,4 +1,4 @@
-import os
+import sys
 import click
 
 from visivo.commands.utils import find_or_create_target
@@ -24,7 +24,8 @@ def test_phase(
         output_dir=output_dir,
         alerts=alerts,
     )
-    test_runner.run()
+    if not test_runner.run().success:
+        sys.exit(1)
 
 
 @click.command()

@@ -8,8 +8,7 @@ def temp_folder():
     return f"tmp/{str(uuid.uuid1())}"
 
 
-def temp_file(name: str, contents: str):
-    output_dir = temp_folder()
+def temp_file(name: str, contents: str, output_dir: str = temp_folder()):
     os.makedirs(output_dir, exist_ok=True)
     path = f"{output_dir}/{name}"
     file = open(path, "w")

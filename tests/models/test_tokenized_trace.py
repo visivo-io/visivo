@@ -20,8 +20,8 @@ def test_TokenizedTrace_missing_data():
         TokenizedTrace()
     except ValidationError as e:
         error = e.errors()[0]
-        assert error["msg"] == "field required"
-        assert error["type"] == "value_error.missing"
+        assert error["msg"] == "Field required"
+        assert error["type"] == "missing"
 
 
 def test_TokenizedTrace_invalid_order_by_input():
@@ -37,5 +37,5 @@ def test_TokenizedTrace_invalid_order_by_input():
         TokenizedTrace(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"value is not a valid list"
-    assert error["type"] == "type_error.list"
+    assert error["msg"] == f"Input should be a valid list"
+    assert error["type"] == "list_type"
