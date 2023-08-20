@@ -23,16 +23,16 @@ jobs:
           node-version: '18.x' 
 
       - name: Install CLI Dependencies
-        run: cd cli && pip install poetry && poetry install --with dev && poetry run visivo && cd ..
+        run: pip install poetry && poetry install --with dev && poetry run visivo
       
       - name: Install CSS Dependencies
-        run: cd cli && yarn install && cd ..
+        run: yarn install 
 
       - name: Build CSS 
-        run: cd cli && npx tailwindcss -i ./mkdocs/stylesheets/input.css -o ./mkdocs/overrides/assets/css/home.css && cd ..
+        run: npx tailwindcss -i ./mkdocs/stylesheets/input.css -o ./mkdocs/overrides/assets/css/home.css 
       
       - name: Build Mkdocs
-        run: cd cli && PYTHONPATH=$PWD poetry run mkdocs build 
+        run: PYTHONPATH=$PWD poetry run mkdocs build 
       
       - name: Deploy to Netlify
         uses: jsmrcaga/action-netlify-deploy@v2.0.0
