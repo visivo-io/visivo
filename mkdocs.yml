@@ -65,13 +65,9 @@ extra_css:
   - stylesheets/brand_colors.css
 
 nav:
-  - Home: index.md
-  - Getting Started: getting_started.md
-  - Viewpoint: viewpoint.md
-  # - Use Cases: use_cases.md
-  # - Tutorials: how_tos.md
-  - How It Works: how_it_works.md
-  - Pricing: pricing.md
+  - Getting Started: index.md
+    # - Use Cases: use_cases.md
+    # - Tutorials: how_tos.md
   - Reference: 
       - CLI: cli-reference.md
       - Configuration: 
@@ -81,4 +77,7 @@ nav:
         - model-docs/dashboard.md
         - model-docs/default.md
         - model-docs/alert.md
+  - Background:
+    - Viewpoint: viewpoint.md
+    - How It Works: how_it_works.md
 

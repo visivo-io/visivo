@@ -18,18 +18,8 @@ jobs:
         with:
           python-version: '3.10' 
 
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18.x' 
-
       - name: Install CLI Dependencies
         run: pip install poetry && poetry install --with dev && poetry run visivo
-      
-      - name: Install CSS Dependencies
-        run: yarn install 
-
-      - name: Build CSS 
-        run: npx tailwindcss -i ./mkdocs/stylesheets/input.css -o ./mkdocs/overrides/assets/css/home.css 
       
       - name: Build Mkdocs
         run: PYTHONPATH=$PWD poetry run mkdocs build 
