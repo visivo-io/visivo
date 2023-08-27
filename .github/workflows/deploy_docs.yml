@@ -21,16 +21,6 @@ jobs:
       - name: Install CLI Dependencies
         run: pip install poetry && poetry install --with dev && poetry run visivo
       
-      - name: Build Mkdocs
-        run: PYTHONPATH=$PWD poetry run mkdocs build 
+      - name: Deploy mkdocs to docs.visivo.io
+        run: cd cli && PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
       
-      - name: Deploy to Netlify
-        uses: jsmrcaga/action-netlify-deploy@v2.0.0
-        with:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          NETLIFY_DEPLOY_MESSAGE: "Deployed from GitHub action"
-          NETLIFY_DEPLOY_TO_PROD: true
-          build_directory: 'mkdocs_build'
-          install_command: "echo Skipping installing the dependencies"
-          build_command: "echo Skipping building the web files"
