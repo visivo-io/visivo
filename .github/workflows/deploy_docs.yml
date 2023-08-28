@@ -2,7 +2,7 @@ name: Deploy Docs to Github Pages
 
 on:
   push:
-    branches: [ "main", "tim/open-source" ]
+    branches: [ "main" ]
 
   workflow_dispatch:
 
@@ -22,5 +22,5 @@ jobs:
         run: pip install poetry && poetry install --with dev && poetry run visivo
       
       - name: Deploy mkdocs to docs.visivo.io
-        run: cd cli && PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
+        run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
       

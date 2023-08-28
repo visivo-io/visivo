@@ -11,13 +11,11 @@ def test_TraceTonkenizer():
     target = TargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
-    tokenized_trace.model_dump(exclude_none=True)
-    assert {
-        "sql": "select * from test_table",
-        "cohort_on": "'values'",
-        "select_items": {},
-        "target": "target",
-    } == tokenized_trace.model_dump(exclude_none=True)
+    trace_dict = tokenized_trace.model_dump(exclude_none=True)
+    assert trace_dict["sql"] == "select * from test_table"
+    assert trace_dict["cohort_on"] == "'values'"
+    assert trace_dict["select_items"] == {'props.x': 'x', 'props.y': 'y'}
+    assert trace_dict["target"] == "target"
 
 
 def test_tokenization_with_query_functions():

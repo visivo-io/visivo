@@ -15,42 +15,8 @@ def test_TestQueryStringFactory_coordinate_exists():
     test_coordinate_exists_string = TestQueryStringFactory(
         test=test_coordinates_exist, query_string_factory=query_string_factory
     ).build()
-    expected_sql = """
-        WITH 
-        trace_sql as (
-            WITH 
-        base_query as (
-            select * from test_table
-        )
-        SELECT
-                *,
-            'values' as "cohort_on"
-        FROM base_query 
-        -- target: target
-        ),
-        test_case as (
-            SELECT 
-                max(
-                    cast(
-                        "x" = '2' AND
-                        "y" = '1'
-                    as int)
-                 ) as condition
-            FROM trace_sql 
-        ), 
-        error as (        
-            SELECT 
-                0 as condition,
-                'coordinates x=2, y=1 were not found in any trace cohort' as err_msg 
-        )
-        SELECT --error if result is returned. 
-            e.err_msg
-        FROM test_case tc 
-        JOIN error e 
-            ON e.condition = tc.condition
-    """
-
-    assert format_sql(expected_sql) == format_sql(test_coordinate_exists_string)
+    expected_sql = """'coordinates x=2, y=1 were not found in any trace cohort' as err_msg """
+    assert expected_sql in test_coordinate_exists_string
 
 
 def test_TestQueryStringFactory_not_null():

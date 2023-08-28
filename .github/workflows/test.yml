@@ -21,7 +21,7 @@ jobs:
       - uses: Gr1N/setup-poetry@v8 
       
       - name: Install Dependencies
-        run: cd cli && poetry install && cd ..
+        run: poetry install
       
       - name: Test CLI
-        run: cd cli && poetry run pytest && cd ..
+        run: poetry run pytest 
