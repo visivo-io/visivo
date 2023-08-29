@@ -1,10 +1,10 @@
-# Getting Started with Visivo
+## Getting Started with Visivo
 There's a few things that you will need to get configured to get started with your visivo project. We will walk through those together in this article to help get you up and running fast! 
 ![](assets/start.jpeg)
 
 _Still have questions after reading? Reach out to [join@visivo.io](mailto:join@visiov.io) and we'd be happy to help._
 
-## Install Visivo Python Package
+### Install Visivo Python Package
 We will be publishing a pypi open-source version of visivo soon! In the meantime, reach out to join@visivo.io and we will provide you with access to a repository you can download it from. 
 
 Once you have access you can download visivo by running: 
@@ -13,13 +13,13 @@ python -m pip install git+ssh://git@github.com/visivo-io/visivo.git --force-rein
 ```
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
-# Using `visivo init`
+## Using `visivo init`
 
 To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `visivo_project.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
 
-# Manual Setup 
+## Manual Setup 
 
-## Create a `visivo_project.yml` file
+### Create a `visivo_project.yml` file
 The `visivo_project.yml` is a special file that visivo uses for your project configurations. You will want to put the file at the root directory where you want your project to live. If you are using dbt, this will likely in the same folder as the `dbt_project.yml` file. 
 
 The `visivo_project.yml` only requires that the name attribute is filled out however below is a taste of where we are heading to get a full project set up. Don't worry we will walk through all of these configurations one by one.
@@ -86,7 +86,7 @@ dashboards:
               1. List
 ```
 
-## Get a Visivo API Key & Store It Locally
+### Get a Visivo API Key & Store It Locally
 1. Visit [app.visivo.io](https://app.visivo.io/accounts/register/) and register or login.
 2. On login you will be routed to [the profile page](https://app.visivo.io/profile). 
 3. Create a new token.
@@ -106,7 +106,7 @@ dashboards:
 
         This approach is a little easier for those who are not sure how to configure environment variables. 
 
-## Set up a Target & Store Secrets Safely
+### Set up a Target & Store Secrets Safely
 Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up targets by configuring them in your `visivo_project.yml`. 
 ``` yaml title="project_dir/visivo_project.yml"
 targets:
@@ -132,7 +132,7 @@ targets:
 For some targets like the `local-sqlite` and `local-postgres` you may not need to store any secrets since they are just running locally. However remote connections like the `remote-snowflake` target, you will definitely want to make sure that you are not storing these attributes in plain text. 
 
 This is where the `env_var()` jinja function comes in handy. You can use this jinja function to reference environment variables that are either stored on your machine or in a `.env` file. 
-## [Optional] Set up Alerts
+### [Optional] Set up Alerts
 When you run `visivo test` you are able to validate assumptions that you have about your charts and traces. Sometimes you might want a notification about testing failures. This is where alerts come in! You can set up slack alerts using webhooks or email alerts. 
 
 To set up a slack alert destination you will first need to configure an incoming webhook in slack. You can follow [this guide](https://api.slack.com/messaging/webhooks) to get started there
@@ -145,7 +145,7 @@ alerts:
     webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
 ```    
 
-## Configure Defaults
+### Configure Defaults
 Defaults are also optional, but highly recommended configurations to run Visivo. 
 
 Without defaults you would need to specify the target and / or alert whenever you needed to use them. For example to run the `test` command you would need to pass the target and alert flag: `visivo test -t remote-snowflake -a slack`
@@ -158,7 +158,7 @@ defaults:
 ```
 Then you can just run `visivo test` and Visivo will default to remote-snowflake for the target and slack for the destination. 
 
-## Create a Trace
+### Create a Trace
 You can think of traces like lines on a chart with specific configurations. With Visivo you can configure pretty much anything from the curve of a line, to if data should be represented as a bar, line or area. Additionally you can set these configurations based on attributes of your underlying data. 
 
 Here's a simple example of a trace:
@@ -198,7 +198,7 @@ charts:
       - title: Widget Sales by Week
 ```
 
-## Create a Dashboard
+### Create a Dashboard
 Dashboards house `charts`, `tables` and `markdown`. They help you set up a highly flexible grid so that you can put all of your information exactly where you need it. 
 
 You can structure the grid by specifying rows that house many items. Items have a particular width that is evaluated relative to the other item widths in the row. So if for example you had 3 items in a row with widths of 5, 2 and 3. The first item would take up 50% of the row, the second 20% and the third 30%. 
@@ -223,7 +223,7 @@ dashboards:
               1. Numbered
               1. List
 ```
-## Run Your Project Locally 
+### Run Your Project Locally 
 Alright, now that you have all of the major components in place you can checkout the results of your project! Visivo gives you the ability to run your project locally and view dashboards on local host using the command `visivo serve`. 
 
 Once you run that command you should see something similar to this:
@@ -232,7 +232,9 @@ Once you run that command you should see something similar to this:
 Click through the the link after `Serving project at`, which in the example above was `http://localhost:8000`
 
 every time you change your configurations in your project, Visivo will automatically update impacted items with a live reload. 
-## Deploy your Project to Remote
+
+
+### Deploy your Project to Remote
 Now that you have a project that you are happy with, you can push it to a deployment where you will be able to share these insights with your team. 
 
 We recommend setting up a CI process that performs production deploys after your transformations run and performs deploys for pull requests. However you can also deploy from local if you want to share development version of your work.

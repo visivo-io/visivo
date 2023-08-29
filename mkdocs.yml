@@ -37,6 +37,7 @@ theme:
   features:
     - content.tabs.link
     - navigation.sections
+    - toc.integrate
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
   palette:
