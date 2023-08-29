@@ -8,8 +8,8 @@ def test_Test_missing_data():
         Test()
     except ValidationError as e:
         error = e.errors()[0]
-        assert error["msg"] == "field required"
-        assert error["type"] == "value_error.missing"
+        assert error["msg"] == "Field required"
+        assert error["type"] == "missing"
 
 
 def test_Test_invalid_type():
@@ -18,5 +18,5 @@ def test_Test_invalid_type():
 
     error = exc_info.value.errors()[0]
 
-    assert "value is not a valid enumeration member; permitted:" in error["msg"]
-    assert error["type"] == "type_error.enum"
+    assert "Input should be 'coordinate_exists','not_null' or 'fail'" in error["msg"]
+    assert error["type"] == "enum"

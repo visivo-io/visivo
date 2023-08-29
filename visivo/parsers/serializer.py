@@ -12,7 +12,7 @@ class Serializer:
         self.project = project
 
     def dereference(self) -> Project:
-        project = self.project.copy(deep=True)
+        project = self.project.model_copy(deep=True)
         dag = project.dag()
         for dashboard in project.dashboards:
 

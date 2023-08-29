@@ -48,7 +48,7 @@ class TraceTokenizer:
 
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
-            obj = self.trace.dict()
+            obj = self.trace.model_dump()
         if isinstance(obj, dict):
             for key, value in obj.items():
                 if value != None:
@@ -93,7 +93,7 @@ class TraceTokenizer:
             self.groupby_statements = list(set(groupby))
 
     def _set_filter(self):
-        trace_dict = self.trace.dict()
+        trace_dict = self.trace.model_dump()
         filters = trace_dict.get("filters")
         if filters:
             filter_by = {"aggregate": [], "window": [], "vanilla": []}
@@ -117,7 +117,7 @@ class TraceTokenizer:
             self.filter_by = filter_by
 
     def _set_order_by(self):
-        trace_dict = self.trace.dict()
+        trace_dict = self.trace.model_dump()
         order_by = trace_dict.get("order_by")
         if order_by:
             parsed_order_by = []

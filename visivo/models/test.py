@@ -8,10 +8,11 @@ class TypeEnum(str, Enum):
 
     coordinate_exists = "coordinate_exists"
     not_null = "not_null"
+    fail = "fail"
 
 
 class Test(NamedModel):
     type: TypeEnum
-    kwargs: Optional[dict]
+    kwargs: Optional[dict] = None
 
     __test__ = False

@@ -15,7 +15,9 @@ def test_serve():
     project = ProjectFactory()
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     app = app_phase(

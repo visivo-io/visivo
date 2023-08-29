@@ -47,4 +47,4 @@ class Runner:
     def __aggregate(cls, data_frame, trace_dir):
         aggregated = data_frame.groupby("cohort_on").aggregate(list).transpose()
         with open(f"{trace_dir}/data.json", "w") as fp:
-            fp.write(aggregated.to_json())
+            fp.write(aggregated.to_json(default_handler=str))

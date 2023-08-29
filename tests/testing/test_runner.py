@@ -9,9 +9,11 @@ from visivo.models.target import Target, TypeEnum as TargetTypeEnum
 def test_TestQueryStringFactory_errors(capsys):
     data = {
         "name": "two_test_trace",
-        "type": "line",
-        "x": "x",
-        "y": "y",
+        "props": {
+            "type": "scatter",
+            "x": "query(x)",
+            "y": "query(y)",
+        },
         "model": {"sql": "select * from test_table"},
         "tests": [
             {"coordinate_exists": {"coordinates": {"x": 3, "y": 2}}},

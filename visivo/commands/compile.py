@@ -17,7 +17,9 @@ from .options import output_dir, working_dir, target
 def compile_phase(default_target: str, working_dir: str, output_dir: str):
     click.echo("Compiling project")
     discover = Discover(working_directory=working_dir)
-    parser = ParserFactory().build(files=discover.files())
+    parser = ParserFactory().build(
+        project_file=discover.project_file, files=discover.files
+    )
     project = None
     try:
         project = parser.parse()
@@ -34,7 +36,7 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
-        fp.write(serializer.dereference().json(exclude_none=True))
+        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
 
     dag = project.dag()
     for trace in ParentModel.all_descendants_of_type(type=Trace, dag=dag):

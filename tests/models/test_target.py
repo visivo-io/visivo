@@ -19,11 +19,11 @@ def test_Target_missing_data():
 
     error = exc_info.value.errors()[0]
 
-    assert error["msg"] == "field required"
-    assert error["type"] == "value_error.missing"
+    assert error["msg"] == "Field required"
+    assert error["type"] == "missing"
 
 
 def test_Target_password_json():
     target = TargetFactory(password="password")
 
-    assert "**********" in target.json()
+    assert "**********" in target.model_dump_json()

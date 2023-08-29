@@ -31,7 +31,7 @@ class ParentModel(ABC):
                 if len(dereferenced_items) == 1:
                     dereferenced_item = dereferenced_items[0]
                 else:
-                    raise click.ClickException(
+                    raise ValueError(
                         f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.'
                     )
 

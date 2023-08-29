@@ -88,14 +88,14 @@ def init():
 
     fp = open(f"{project_name}/visivo_project.yml", "w")
     fp.write(
-        yaml.dump(json.loads(project.json(exclude_none=True)), sort_keys=False).replace(
-            "'**********'", "{{ env_var('DB_PASSWORD') }}"
-        )
+        yaml.dump(
+            json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False
+        ).replace("'**********'", "{{ env_var('DB_PASSWORD') }}")
     )
     fp.close()
 
     fp = open(f"{project_name}/.gitignore", "w")
-    fp.write(".env\ntarget")
+    fp.write(".env\ntarget\n.visivo_cache")
     fp.close()
 
     profile_path = f"{user_home}/.visivo/{PROFILE_FILE_NAME}"

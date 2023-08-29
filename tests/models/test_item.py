@@ -17,7 +17,7 @@ def test_Item_both_chart_and_markdown():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == 'only one of the "markdown", "chart", or "table" properties should be set on an item'
+        == 'Value error, only one of the "markdown", "chart", or "table" properties should be set on an item'
     )
     assert error["type"] == "value_error"
 
@@ -29,5 +29,5 @@ def test_Item_invalid_ref_string():
         Item(chart="ref(chart")
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f'string does not match regex "{REF_REGEX}"'
-    assert error["type"] == "value_error.str.regex"
+    assert error["msg"] == f"String should match pattern '{REF_REGEX}'"
+    assert error["type"] == "string_pattern_mismatch"

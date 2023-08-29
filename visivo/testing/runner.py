@@ -76,3 +76,5 @@ class Runner:
 
         for alert in self.alerts:
             alert.alert(test_run=test_run)
+
+        return test_run

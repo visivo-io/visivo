@@ -24,9 +24,13 @@ class TestFailure(TestResult):
 class TestRun(pydantic.BaseModel):
     target_name: str
     started_at: datetime = datetime.now()
-    finished_at: Optional[datetime]
+    finished_at: Optional[datetime] = None
     failures: List[TestFailure] = []
     successes: List[TestSuccess] = []
+
+    @property
+    def success(self):
+        return len(self.failures) == 0
 
     def add_failure(self, failure: TestFailure):
         self.failures.append(failure)

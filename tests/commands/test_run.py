@@ -17,7 +17,9 @@ def test_run():
     project = ProjectFactory()
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-t", "target"])
@@ -31,12 +33,21 @@ def test_run_with_passed_target():
     project = ProjectFactory()
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(
         run,
-        ["-w", working_dir, "-o", output_dir, "-t", project.targets[0].json()],
+        [
+            "-w",
+            working_dir,
+            "-o",
+            output_dir,
+            "-t",
+            project.targets[0].model_dump_json(),
+        ],
     )
 
     assert "Running project" in response.output
@@ -48,7 +59,9 @@ def test_run_with_model_ref():
     project = ProjectFactory(model_ref=True)
 
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-t", "target"])

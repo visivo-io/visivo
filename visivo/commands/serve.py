@@ -96,7 +96,6 @@ def serve(output_dir, working_dir, target, port):
     """
     Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.
     """
-    project_json = get_project_json(output_dir)
     server = serve_phase(
         output_dir=output_dir,
         working_dir=working_dir,

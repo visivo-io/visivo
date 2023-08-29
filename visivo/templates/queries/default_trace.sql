@@ -18,11 +18,14 @@ FROM base_query
         {{ filter }}{% if not loop.last %} AND {% endif %}
     {%- endfor %} 
 {%- endif %}    
-{%- if groupby_statements is defined %}
+{%- if groupby_statements is defined or cohort_on != "'values'" %}
     GROUP BY 
     {%- for statement in groupby_statements %}
         {{statement}} {% if not loop.last %} , {% endif %}
     {%- endfor %}
+    {%- if cohort_on is defined %}
+        {% if groupby_statements is defined%},{% endif %}{{cohort_on}}
+    {%- endif %}
 {%- endif %}
 {%- if filter_by is defined %}
     {%- if filter_by.aggregate|length > 0 %}

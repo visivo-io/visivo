@@ -33,8 +33,8 @@ class TracePropsFactory(factory.Factory):
     class Meta:
         model = Scatter
     type = 'scatter'
-    x = "x"
-    y = "y"
+    x = "query(x)"
+    y = "query(y)"
 
 
 class ModelFactory(factory.Factory):

@@ -15,7 +15,9 @@ def test_test():
     output_dir = temp_folder()
     project = ProjectFactory()
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
     response = runner.invoke(
         test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
@@ -24,12 +26,30 @@ def test_test():
     assert response.exit_code == 0
 
 
+def test_test_failure():
+    output_dir = temp_folder()
+    project = ProjectFactory()
+    project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [{"fail": {}}]
+    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
+    working_dir = os.path.dirname(tmp)
+    response = runner.invoke(
+        test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
+    )
+    assert "tests run" in response.output
+    assert response.exit_code == 1
+
+
 def test_test_alert():
     output_dir = temp_folder()
     alert = AlertFactory()
     project = ProjectFactory(alerts=[alert])
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(dict=json.loads(project.json()), name=PROJECT_FILE_NAME)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
     working_dir = os.path.dirname(tmp)
     response = runner.invoke(
         test, ["-o", output_dir, "-w", working_dir, "-t", "target", "-a", alert.name]

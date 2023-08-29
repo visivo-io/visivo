@@ -2,9 +2,12 @@
 
 ## What's Up With Data visualization? 
 
-There's a number of code based frameworks for defining transformations and for creating charts, but... They are very difficult to use, requiring technical experience in 2-5 different programming languages, and require that you maintain infrastructure to support your internal BI product.
+There's a number of code based frameworks for defining transformations and for creating charts, but... 
 
-There's also a number of BI tools that are easy to use and deploy, However... 
+1. They are very difficult to use, requiring technical experience in 2-5 different programming languages.
+2. They require that you maintain infrastructure to support your internal BI product.
+
+There's also a number of BI tools that are easy to use and deploy, however... 
 
 1. They are not version controlled meaning that they sit outside of your transformation stack. This causes bottle necks in improving and expanding the transformation layer since it's unclear which charts depend on which models. 
 1. They are not testable. This makes exposures like dashboards and analyses very expensive for the team to maintain. It also means that breaking changes in production go undetected until someone stumbles across them... if your lucky enough for someone to find them. 

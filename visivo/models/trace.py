@@ -1,5 +1,5 @@
 import re
-from pydantic import root_validator, Field, constr
+from pydantic import StringConstraints, model_validator, Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 
@@ -58,6 +58,7 @@ from typing import Optional, List, Union
 from collections import Counter
 from .base.base_model import REF_REGEX
 from .model import Model
+from typing_extensions import Annotated
 
 Props = Union[
     Mesh3d,
@@ -178,7 +179,7 @@ class Trace(NamedModel, ParentModel):
         True,
         description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
     )
-    model: Union[constr(regex=REF_REGEX), Model] = Field(
+    model: Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Model] = Field(
         ...,
         description="The model or model ref that visivo should use to build the trace.",
     )
@@ -202,10 +203,7 @@ class Trace(NamedModel, ParentModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    props: Props = Field(
-        Scatter,
-        discriminator="type"
-    )
+    props: Props = Field(Scatter, discriminator="type")
 
     def child_items(self):
         return [self.model]
@@ -226,15 +224,15 @@ class Trace(NamedModel, ParentModel):
             tests.append(Test(name=name, type=type, kwargs=kwargs))
         return tests
 
-    @root_validator
-    def validate_column_refs(cls, values):
-        columns, props = (values.get("columns"), values.get("props"))
+    @model_validator(mode="after")
+    def validate_column_refs(self):
+        columns, props = (self.columns, self.props)
         if columns is None:
-            return values
+            return self
 
-        columnKeys = list(columns.dict().keys())
+        columnKeys = list(columns.model_dump().keys())
         pattern = r"column\((.+)\)"
-        for value in props.dict().values():
+        for value in props.model_dump().values():
             match = re.search(pattern, str(value))
             if match:
                 value = match.group(1)
@@ -243,4 +241,4 @@ class Trace(NamedModel, ParentModel):
                         f"referenced column name '{value}' is not in columns definition"
                     )
 
-        return values
+        return self

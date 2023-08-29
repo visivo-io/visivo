@@ -1,0 +1,40 @@
+name: project
+targets:
+  - name: development 
+    database: db/development.sqlite3
+    type: sqlite
+
+models:
+  - name: accounts_per_week
+    sql: |
+                    SELECT 
+                      count(*) as account_count, 
+                      strftime('%W', created_at) as week_number, 
+                      max(date(created_at, 'weekday 0', '-7 day')) as week 
+                    FROM 
+                      accounts group by 2 
+dashboards:
+  - name: Weekly Accounts
+    rows:
+      - height: medium
+        items:
+          - width: 2
+            chart: 
+              name: Weekly Accounts Chart
+              traces:
+                - name: Accounts per Week
+                  model: ref(accounts_per_week) 
+                  props: 
+                    type: scatter 
+                    x: query(week)
+                    y: query(account_count)
+                  order_by:
+                    - query(week desc)
+              layout:
+                title: 'Weekly Account Counts'
+                yaxis: 
+                  title: 'Count'
+                xaxis:
+                  title: 'Week'
+                stack: False
+

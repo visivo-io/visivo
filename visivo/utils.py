@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 import re
+import jinja2
+import click
 
 
 def yml_to_dict(relative_path):
@@ -74,3 +76,20 @@ def extract_value_from_function(function_text, function_name):
         return None
     value = match.group(1)
     return value.strip()
+
+def load_yaml_file(file):
+    def env_var(key):
+        return os.getenv(key, "NOT-SET")
+
+    with open(file, "r") as stream:
+            template_string = stream.read()
+            template = jinja2.Template(template_string)
+            try:
+                return yaml.safe_load(template.render({"env_var": env_var}))
+            except yaml.YAMLError as exc:
+                if hasattr(exc, "problem_mark"):
+                    mark = exc.problem_mark
+                    error_location = f"Invalid yaml in project\n  File: {str(file)}\n  Location: line {mark.line + 1}, column {mark.column + 1}\n  Issue: {exc.problem}"
+                    raise click.ClickException(error_location)
+                else:
+                    raise click.ClickException(exc)

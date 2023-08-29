@@ -2,7 +2,8 @@ import pydantic
 import re
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
-
+STATEMENT_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$|^\s*column\(\s*(?P<column_name>.+)\)\s*$"
+INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[[0-9]+\]\s*$"
 
 class BaseModel(pydantic.BaseModel):
     def id(self):

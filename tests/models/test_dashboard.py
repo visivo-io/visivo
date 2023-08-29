@@ -15,9 +15,8 @@ def test_Dashboard_missing_data():
         Dashboard()
     except ValidationError as e:
         error = e.errors()[0]
-        assert error["msg"] == "field required"
-        assert error["type"] == "value_error.missing"
-
+        assert error["msg"] == "Field required"
+        assert error["type"] == "missing"
 
 
 def test_Dashboard_all_tables():

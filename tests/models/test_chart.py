@@ -16,8 +16,8 @@ def test_Chart_missing_data():
         Chart()
     except ValidationError as e:
         error = e.errors()[0]
-        assert error["msg"] == "field required"
-        assert error["type"] == "value_error.missing"
+        assert error["msg"] == "Field required"
+        assert error["type"] == "missing"
 
 
 def test_Chart_ref_string():
@@ -28,5 +28,5 @@ def test_Chart_ref_string():
         Chart(traces=["ref(trace"])
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f'string does not match regex "{REF_REGEX}"'
-    assert error["type"] == "value_error.str.regex"
+    assert error["msg"] == f"String should match pattern '{REF_REGEX}'"
+    assert error["type"] == "string_pattern_mismatch"
