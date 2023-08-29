@@ -1,4 +1,4 @@
-site_name: Visivo
+site_name: Visivo Docs
 
 plugins:
   - search: {}
