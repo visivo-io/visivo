@@ -48,14 +48,11 @@ def define_env(env):
 
         def clean_field_type(field):
             field_annotation = str(field.annotation)
-            if 'typing' in field_annotation:
-                return field_annotation.replace('typing.', '')
-            else:
-                return field.type_.__name__
+            return field_annotation.replace('typing.', '')
 
         for field_name, field in fields.items():
             field_type = clean_field_type(field=field)
-            field_description = field.field_info.description
+            field_description = field.description
             field_default = '-' if field.default == None else field.default
             md_table += f"| {field_name} | {field_type} | {field_default} | {field_description} |\n"
 
