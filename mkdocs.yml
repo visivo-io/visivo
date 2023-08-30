@@ -31,13 +31,14 @@ markdown_extensions:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
 
+repo_url: https://github.com/visivo-io/visivo
+repo_name: visivo-io/visivo
 theme:
   custom_dir: mkdocs/overrides
   name: material
   features:
     - content.tabs.link
     - navigation.sections
-    - toc.integrate
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
   palette:

@@ -13,11 +13,11 @@ python -m pip install git+ssh://git@github.com/visivo-io/visivo.git --force-rein
 ```
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
-## Using `visivo init`
+## Setup using `visivo init`
 
 To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `visivo_project.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
 
-## Manual Setup 
+## Manual setup 
 
 ### Create a `visivo_project.yml` file
 The `visivo_project.yml` is a special file that visivo uses for your project configurations. You will want to put the file at the root directory where you want your project to live. If you are using dbt, this will likely in the same folder as the `dbt_project.yml` file. 
@@ -106,7 +106,7 @@ dashboards:
 
         This approach is a little easier for those who are not sure how to configure environment variables. 
 
-### Set up a Target & Store Secrets Safely
+### Set up a Target & store secrets safely
 Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up targets by configuring them in your `visivo_project.yml`. 
 ``` yaml title="project_dir/visivo_project.yml"
 targets:
@@ -132,18 +132,6 @@ targets:
 For some targets like the `local-sqlite` and `local-postgres` you may not need to store any secrets since they are just running locally. However remote connections like the `remote-snowflake` target, you will definitely want to make sure that you are not storing these attributes in plain text. 
 
 This is where the `env_var()` jinja function comes in handy. You can use this jinja function to reference environment variables that are either stored on your machine or in a `.env` file. 
-### [Optional] Set up Alerts
-When you run `visivo test` you are able to validate assumptions that you have about your charts and traces. Sometimes you might want a notification about testing failures. This is where alerts come in! You can set up slack alerts using webhooks or email alerts. 
-
-To set up a slack alert destination you will first need to configure an incoming webhook in slack. You can follow [this guide](https://api.slack.com/messaging/webhooks) to get started there
-
-Once you have your webhook key you can set up the alert like this:
-```  yaml title="project_dir/visivo_project.yml"
-alerts:
-  - name: slack
-    type: slack
-    webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
-```    
 
 ### Configure Defaults
 Defaults are also optional, but highly recommended configurations to run Visivo. 
@@ -185,7 +173,7 @@ We won't go into all of the details of the trace here, but a few things to note:
 
 Traces are able to be sourced from different targets. You can set the default target at the trace level by specifying a target name in the `target_name` attribute of the target. 
 
-## Create a Chart 
+### Create a Chart 
 Charts are objects that can contain one to many traces and traces can be present on many charts. This allows both modularity, the ability to connect traces of different grains on the same chart, and the ability to connect traces from different data sources on the same chart. 
 
 Here's a simple example of the chart configuration:
@@ -223,6 +211,20 @@ dashboards:
               1. Numbered
               1. List
 ```
+
+### Set up Alerts - Optional
+When you run `visivo test` you are able to validate assumptions that you have about your charts and traces. Sometimes you might want a notification about testing failures. This is where alerts come in! You can set up slack alerts using webhooks or email alerts. 
+
+To set up a slack alert destination you will first need to configure an incoming webhook in slack. You can follow [this guide](https://api.slack.com/messaging/webhooks) to get started there
+
+Once you have your webhook key you can set up the alert like this:
+```  yaml title="project_dir/visivo_project.yml"
+alerts:
+  - name: slack
+    type: slack
+    webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
+```    
+
 ### Run Your Project Locally 
 Alright, now that you have all of the major components in place you can checkout the results of your project! Visivo gives you the ability to run your project locally and view dashboards on local host using the command `visivo serve`. 
 
