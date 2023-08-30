@@ -37,6 +37,7 @@ theme:
   features:
     - content.tabs.link
     - navigation.sections
+    - content.tooltips
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
   palette:
@@ -72,6 +73,8 @@ nav:
       - CLI: cli-reference.md
       - Configuration: 
         - model-docs/trace.md
+        - Trace Properties: 
+          - model-docs/trace-props/scatter.md
         - model-docs/chart.md
         - model-docs/target.md
         - model-docs/dashboard.md
