@@ -187,15 +187,12 @@ def is_pydantic_model(cls) -> bool:
     """Check if a given class is a Pydantic model."""
     return isinstance(cls, type) and issubclass(cls, BaseModel)
 
-# ... other parts of your code remain unchanged
-
 def extract_model_info(model: Type[BaseModel]) -> Dict[str, Any]:
     output = {}
 
     for field_name, field_info in model.model_fields.items():
         field_type = field_info.annotation
         field_description = '' if field_info.description == None else ' #' + field_info.description
-        # Check if the field is Optional
         if hasattr(field_type, "__origin__") and field_type.__origin__ == Union:
             actual_type = next(t for t in field_type.__args__ if t != type(None))
             optional_indicator = " (optional)"
