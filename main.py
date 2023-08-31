@@ -129,11 +129,11 @@ def _return_trace_prop_model(model_name: str) -> TraceProps:
         case 'indicator':
             return Indicator
         case 'funnelarea':
-            Funnelarea
+            return Funnelarea
         case 'carpet': 
             return Carpet
         case 'icicle':
-            Icicle
+            return Icicle
         case 'surface':
             return Surface
         case 'parcats': 
