@@ -16,11 +16,7 @@ class CoreParser:
         self.project_file = project_file
 
     def parse(self) -> Project:
-        try:
-            return self.__build_project()
-        except ValidationError as e:
-            print("Error parsing base project")
-            print(e)
+        return self.__build_project()
 
     def project_file_data(self):
        return load_yaml_file(self.project_file) 

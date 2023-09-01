@@ -25,9 +25,11 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
         project_file=discover.project_file, files=discover.files
     )
     profile_file = next((f for f in parser.files if f.name == PROFILE_FILE_NAME), None)
+    profile = None
     if profile_file:
         profile = load_yaml_file(profile_file)
-    if not profile or "token" not in Path(profile).read_text():
+
+    if not profile or "token" not in profile:
         raise click.ClickException(
             f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
         )
