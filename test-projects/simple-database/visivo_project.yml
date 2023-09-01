@@ -33,7 +33,7 @@ targets:
     password: {{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}
 
 models:
-  - name: test table
+  - name: test table local
     sql: "SELECT * FROM test_table" 
 
   - name: waterfall_model

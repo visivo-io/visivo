@@ -1,13 +1,12 @@
 import os
 import json
-from tests.support.utils import temp_yml_file
+from tests.support.utils import temp_file, temp_yml_file, temp_folder
 from pathlib import Path
 from click.testing import CliRunner
 from visivo.commands.deploy import deploy
 from visivo.parsers.core_parser import PROJECT_FILE_NAME, PROFILE_FILE_NAME
 from visivo.commands.utils import create_file_database
 from tests.factories.model_factories import ProjectFactory
-from tests.support.utils import temp_folder
 
 runner = CliRunner()
 
@@ -21,6 +20,7 @@ def test_deploy_with_no_profile():
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
+    temp_file(PROFILE_FILE_NAME, "key: value", working_dir + "/.visivo")
 
     response = runner.invoke(
         deploy,
