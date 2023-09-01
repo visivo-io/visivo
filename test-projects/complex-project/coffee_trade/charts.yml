@@ -1,0 +1,58 @@
+    
+
+charts:
+  - name: import_percentages
+    traces:
+      - ref(percent_imports)
+    layout:
+      title: "Imports by Country"
+  - name: export_percentages
+    traces:
+      - ref(percent_exports)
+    layout:
+      title: "Exports by Country"
+  - name: importers
+    traces:
+      - ref(top_importers)
+      - ref(total_import_production)
+    layout:
+      title: "Imports"
+      xaxis:
+        title: "Year"
+      yaxis:
+        title: "Kilograms"
+      yaxis2:
+        title: 'Total'
+        tickfont:
+          color: 'rgb(148, 103, 189)'
+        overlaying: 'y'
+        side: 'right'
+      legend:
+        x: 0.01
+        y: 1.12
+        orientation: h
+        xanchor: left
+        yanchor: top
+  
+  - name: exporters
+    traces:
+      - ref(top_exporters)
+      - ref(total_export_production)
+    layout:
+      title: "Exports"
+      xaxis:
+        title: "Year"
+      yaxis:
+        title: "Kilograms"
+      yaxis2:
+        title: 'Total'
+        tickfont:
+          color: 'rgb(148, 103, 189)'
+        overlaying: 'y'
+        side: 'right'
+      legend:
+        x: 0.3
+        y: 1.12
+        orientation: h
+        xanchor: left
+        yanchor: top

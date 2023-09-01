@@ -1,0 +1,17 @@
+dashboards:
+  - name: Fun with Coffee Data
+    rows:
+      - height: medium
+        items:
+          - width: 1
+            chart: ref(export_percentages)
+          - width: 1
+            chart: ref(import_percentages)
+      - height: large
+        items:
+          - width: 1
+            chart: ref(importers)
+          - width: 1
+            chart: ref(exporters)
+  
+

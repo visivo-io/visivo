@@ -1,0 +1,54 @@
+
+models:
+  - name: exports
+    sql: | 
+      with 
+      base as (
+      SELECt 
+        country,
+        total_export,
+        (year || '-01-01')::date as year,
+        kilograms,
+        SUM(kilograms) OVER(PARTITION BY country) as total_kilograms,
+        SUM(kilograms) OVER() as total_kg_all_countries
+      FROM coffee_export
+      )
+      SELECT 
+        *,
+        CASE 
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 10 
+            THEN country
+          ELSE  'Everyone Else'
+        END as top_countries,
+        CASE 
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 15 
+            THEN round((total_kilograms / total_kg_all_countries)*100, 2) || ' %'
+          ELSE  ''
+        END as top_countries_perc
+      FROM base 
+  - name: imports
+    sql: | 
+      with 
+      base as (
+      SELECt 
+        country,
+        total_import,
+        (year || '-01-01')::date as year,
+        kilograms,
+        SUM(kilograms) OVER(PARTITION BY country) as total_kilograms,
+        SUM(kilograms) OVER() as total_kg_all_countries
+      FROM coffee_import
+      )
+      SELECT 
+        *,
+        CASE 
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 10 
+            THEN country
+          ELSE  'Everyone Else'
+        END as top_countries,
+        CASE 
+          WHEN DENSE_RANK() OVER(ORDER BY total_kilograms desc) <= 15 
+            THEN round((total_kilograms / total_kg_all_countries)*100, 2) || ' %'
+          ELSE  ''
+        END as top_countries_perc
+      FROM base 
