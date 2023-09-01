@@ -1,10 +1,12 @@
 import click
 import requests
 import json
+from pathlib import Path
 from visivo.discovery.discover import Discover
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.core_parser import PROFILE_FILE_NAME
+from visivo.utils import load_yaml_file
 from .options import output_dir, working_dir, user_dir, stage, host
 
 
@@ -22,7 +24,11 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
     )
-    profile = next((f for f in parser.files if f.name == PROFILE_FILE_NAME), None)
+    profile_file = next((f for f in parser.files if f.name == PROFILE_FILE_NAME), None)
+    profile = None
+    if profile_file:
+        profile = load_yaml_file(profile_file)
+
     if not profile or "token" not in profile:
         raise click.ClickException(
             f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
