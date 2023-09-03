@@ -1,0 +1,81 @@
+traces:
+  - name: top_exporters
+    model: ref(exports)
+    cohort_on: query(top_countries)
+    props:
+      type: scatter
+      x: query(year::varchar)
+      y: query(SUM(abs(kilograms)))
+      mode: line
+      line:
+        shape: spline
+    order_by:
+      - query(year)
+    filters:
+      - query(SUM(abs(kilograms)) > 0)
+  
+  - name: percent_exports
+    model: ref(exports)
+    columns:
+      amount: sum(kilograms)
+      labels: country
+      top_countries_percent: max(top_countries_perc)
+    props:
+      type: pie
+      values: column(amount)
+      labels: column(labels)
+      text: column(top_countries_percent)
+      textinfo: text
+
+  - name: percent_imports
+    model: ref(imports)
+    columns:
+      amount: sum(kilograms)
+      labels: country
+      top_countries_percent: max(top_countries_perc)
+    props:
+      type: pie
+      values: column(amount)
+      labels: column(labels)
+      text: column(top_countries_percent)
+      textinfo: text
+
+    
+  - name: total_export_production
+    model: ref(exports)
+    cohort_on: query('Total')
+    yaxis: 'y2'
+    props:
+      type: bar 
+      marker:
+        opacity: .20
+        color: 'grey'
+      x: query(year::varchar)
+      y: query(sum(kilograms))
+      text: query(round(sum(kilograms)/1000000000, 1) || 'B')
+  - name: top_importers
+    model: ref(imports)
+    cohort_on: query(top_countries)
+    props:
+      type: scatter
+      x: query(year::varchar)
+      y: query(SUM(kilograms))
+      mode: line
+      line:
+        shape: spline
+    order_by:
+      - query(year)
+    filters:
+      - query(SUM(kilograms) > 0)
+  - name: total_import_production
+    model: ref(imports)
+    cohort_on: query('Total')
+    yaxis: 'y2'
+    props:
+      type: bar 
+      marker:
+        opacity: .20
+        color: 'grey'
+      x: query(year::varchar)
+      y: query(sum(kilograms))
+      text: query(round(sum(kilograms)/1000000000, 1) || 'B')

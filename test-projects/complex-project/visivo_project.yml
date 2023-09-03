@@ -1,0 +1,16 @@
+name: coffee_facts
+
+defaults:
+  target_name: snowflake
+
+includes:
+  - path: coffee_trade/coffee_trade.yml
+
+targets:
+  - name: snowflake
+    database: raw
+    account: {{ env_var('SNOWFLAKE_ACCOUNT') }}
+    db_schema: coffee
+    username: {{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}
+    password: {{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}
+    type: snowflake
