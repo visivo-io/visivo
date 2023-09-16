@@ -203,7 +203,7 @@ class Trace(NamedModel, ParentModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    props: Props = Field(Scatter, discriminator="type")
+    props: Props = Field(Scatter(type="scatter"), discriminator="type")
 
     def child_items(self):
         return [self.model]
