@@ -5,4 +5,4 @@ from visivo.models.trace import Trace
 
 
 def generate_schema():
-    return Trace.model_json_schema()
+    return Project.model_json_schema()
