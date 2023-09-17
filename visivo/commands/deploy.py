@@ -1,7 +1,7 @@
+import os
 import click
 import requests
 import json
-from pathlib import Path
 from visivo.discovery.discover import Discover
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
@@ -29,10 +29,13 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     if profile_file:
         profile = load_yaml_file(profile_file)
 
-    if not profile or "token" not in profile:
-        raise click.ClickException(
-            f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
-        )
+    profile_token = os.getenv('VISIVO_TOKEN')
+    if not profile_token:
+        if not profile or "token" not in profile:
+            raise click.ClickException(
+                f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
+            )
+        profile_token = profile['token']
 
     project = parser.parse()
     serializer = Serializer(project=project)
@@ -47,10 +50,10 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     }
     json_headers = {
         "content-type": "application/json",
-        "Authorization": f"Api-Key {profile['token']}",
+        "Authorization": f"Api-Key {profile_token}",
     }
     form_headers = {
-        "Authorization": f"Api-Key {profile['token']}",
+        "Authorization": f"Api-Key {profile_token}",
     }
 
     url = f"{host}/api/projects/"

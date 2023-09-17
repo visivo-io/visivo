@@ -52,6 +52,7 @@ def user_dir(function):
 
 
 def validate_stage(ctx, param, value):
+    value = value.replace("/", "-")
     if value.strip() == "":
         raise click.BadParameter("Only whitespace is not permitted for stage name.")
 
