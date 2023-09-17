@@ -15,7 +15,7 @@ alerts:
 
 targets:
   - name: local-sqlite
-    database: target/local.db
+    database: local.db
     type: sqlite
   - name: local-postgres
     database: postgres

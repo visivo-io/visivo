@@ -1,7 +1,7 @@
+import os
 import click
 import requests
 import json
-from pathlib import Path
 from visivo.discovery.discover import Discover
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
@@ -29,10 +29,13 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     if profile_file:
         profile = load_yaml_file(profile_file)
 
-    if not profile or "token" not in profile:
-        raise click.ClickException(
-            f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
-        )
+    profile_token = os.getenv('VISIVO_TOKEN')
+    if not profile_token:
+        if not profile or "token" not in profile:
+            raise click.ClickException(
+                f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}: {user_dir}"
+            )
+        profile_token = profile['token']
 
     project = parser.parse()
     serializer = Serializer(project=project)
@@ -47,10 +50,10 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     }
     json_headers = {
         "content-type": "application/json",
-        "Authorization": f"Api-Key {profile['token']}",
+        "Authorization": f"Api-Key {profile_token}",
     }
     form_headers = {
-        "Authorization": f"Api-Key {profile['token']}",
+        "Authorization": f"Api-Key {profile_token}",
     }
 
     url = f"{host}/api/projects/"
@@ -61,7 +64,7 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
         raise click.ClickException(f"404 error raised. Does your user have an account?")
     if response.status_code == 201:
         click.echo("Project uploaded")
-        project_data = response.model_dump_json()
+        project_data = response.json()
         project_id = project_data["id"]
 
         for trace in project.trace_objs:
@@ -77,11 +80,11 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
             body = {
                 "name": trace.name,
                 "project_id": project_id,
-                "data_file_id": response.model_dump_json()["id"],
+                "data_file_id": response.json()["id"],
             }
             response = requests.post(url, data=json.dumps(body), headers=json_headers)
             if response.status_code != 201:
-                click.echo(response.model_dump_json())
+                click.echo(response.json())
                 raise click.ClickException(f"Trace '{trace.name}' not created")
             click.echo(f"Trace '{trace.name}' created")
     else:
