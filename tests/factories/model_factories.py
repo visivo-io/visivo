@@ -32,7 +32,8 @@ class TargetFactory(factory.Factory):
 class TracePropsFactory(factory.Factory):
     class Meta:
         model = Scatter
-    type = 'scatter'
+
+    type = "scatter"
     x = "query(x)"
     y = "query(y)"
 
@@ -184,7 +185,6 @@ class ProjectFactory(factory.Factory):
     class Meta:
         model = Project
 
-    data = {}
     name = "project"
     targets = factory.List([factory.SubFactory(TargetFactory) for _ in range(1)])
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])

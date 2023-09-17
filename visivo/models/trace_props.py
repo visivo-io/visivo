@@ -60,8 +60,9 @@ class TracePropsAttribute(BaseModel):
 		kwargs.setdefault('exclude_none', True)
 		return super().model_dump(*args, **kwargs)
 	model_config = ConfigDict(extra="forbid")
+
 class TraceProps(TracePropsAttribute):
-    type: str = 'scatter'
+	type: str = 'scatter'
 
 ## Produced from the script plotly_docs_to_pydantic.sql below this point
 class BarMarkerColorbarTitleFont(TracePropsAttribute):

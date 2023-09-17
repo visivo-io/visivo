@@ -1,5 +1,5 @@
 import re
-from pydantic import StringConstraints, model_validator, Field
+from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator, Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 
@@ -203,7 +203,8 @@ class Trace(NamedModel, ParentModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    props: Props = Field(Scatter(type="scatter"), discriminator="type")
+    # props: Props = Field(Scatter(type="scatter"), discriminator="type")
+    props: BaseModel = Field(None)
 
     def child_items(self):
         return [self.model]
