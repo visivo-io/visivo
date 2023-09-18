@@ -9,6 +9,7 @@ from .commands.compile import compile
 from .commands.init import init
 from .commands.test import test
 from .commands.aggregate import aggregate
+from .commands.archive import archive
 
 
 @click.group()
@@ -24,6 +25,7 @@ visivo.add_command(serve)
 visivo.add_command(deploy)
 visivo.add_command(test)
 visivo.add_command(aggregate)
+visivo.add_command(archive)
 
 
 def load_env(env_file):
@@ -39,6 +41,7 @@ def safe_visivo():
             raise e
         click.echo("An unexpected error has occurred")
         click.echo(e)
+        exit(1)
 
 
 if __name__ == "__main__":
