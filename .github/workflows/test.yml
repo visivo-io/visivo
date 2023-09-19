@@ -77,7 +77,7 @@ jobs:
       
       - name: Test App
         run: |
-          cd test-projects/simple-database && visivo run -t remote-snowflake && cd ../..
+          cd test-projects/simple-database && STACKTRACE=true visivo run -t remote-snowflake && cd ../..
         env:
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
