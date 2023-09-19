@@ -25,6 +25,8 @@ jobs:
       
       - name: Test CLI
         run: poetry run pytest 
+        env:
+          STACKTRACE: true
   
   test-rails:
     runs-on: ubuntu-latest
@@ -79,6 +81,7 @@ jobs:
         run: |
           cd test-projects/simple-database && visivo run -t remote-snowflake && cd ../..
         env:
+          STACKTRACE: true
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
           CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
@@ -106,6 +109,7 @@ jobs:
         run: |
           cd test-projects/complex-project && visivo run && cd ../..
         env:
+          STACKTRACE: true
           SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
           CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
           CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}

@@ -1,9 +1,13 @@
 import click
 import json
 import os
+from pathlib import Path
 from visivo.models.project import Project
 from visivo.models.target import Target
 from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert, String
+from visivo.parsers.core_parser import PROFILE_FILE_NAME
+
+from visivo.utils import load_yaml_file
 
 
 def find_or_create_target(project: Project, target_or_name: str) -> Target:
@@ -38,6 +42,26 @@ def find_or_create_target(project: Project, target_or_name: str) -> Target:
         )
 
     return target
+
+
+def get_profile_token(profile_file):
+    profile_token = os.getenv("VISIVO_TOKEN")
+    if profile_token:
+        return profile_token
+
+    profile = None
+    if profile_file:
+        profile = load_yaml_file(profile_file)
+
+    if not profile or "token" not in profile:
+        raise click.ClickException(
+            f"{PROFILE_FILE_NAME} not present or token not present in {PROFILE_FILE_NAME}"
+        )
+    return profile["token"]
+
+
+def get_profile_file(home_directory=os.path.expanduser("~")):
+    return Path(f"{home_directory}/.visivo/{PROFILE_FILE_NAME}")
 
 
 def create_file_database(url, output_dir: str):

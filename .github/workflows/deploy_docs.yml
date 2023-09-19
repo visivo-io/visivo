@@ -1,4 +1,4 @@
-name: Deploy Docs to Github Pages
+name: Deploy Docs 
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-docs:
     runs-on: ubuntu-latest
     
     steps:

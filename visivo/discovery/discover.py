@@ -1,6 +1,6 @@
+from visivo.commands.utils import get_profile_file
 from visivo.utils import list_all_ymls_in_dir
 import os
-import yaml
 import click
 from pathlib import Path
 from visivo.parsers.core_parser import PROJECT_FILE_NAME, PROFILE_FILE_NAME
@@ -26,7 +26,7 @@ class Discover:
 
         self.__add_includes(files=files, file=self.project_file)
 
-        profile_file = Path(f"{self.home_directory}/.visivo/{PROFILE_FILE_NAME}")
+        profile_file = get_profile_file(home_directory=self.home_directory)
         if os.path.exists(profile_file):
             files.append(profile_file)
 

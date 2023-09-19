@@ -1,7 +1,6 @@
 import os
 import json
 from tests.support.utils import temp_file, temp_yml_file, temp_folder
-from pathlib import Path
 from click.testing import CliRunner
 from visivo.commands.deploy import deploy
 from visivo.parsers.core_parser import PROJECT_FILE_NAME, PROFILE_FILE_NAME
