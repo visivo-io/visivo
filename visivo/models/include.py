@@ -1,10 +1,10 @@
 from pydantic import Field
 from pathlib import Path
-import pydantic
-import os
+
+from visivo.models.base.base_model import BaseModel
 
 
-class Include(pydantic.BaseModel):
+class Include(BaseModel):
     """
     Include's can be used to break apart a project file with references to other files.
     """
