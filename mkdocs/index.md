@@ -5,11 +5,11 @@ There's a few things that you will need to get configured to get started with yo
 _Still have questions after reading? Reach out to [join@visivo.io](mailto:join@visiov.io) and we'd be happy to help._
 
 ### Install Visivo Python Package
-We will be publishing a pypi open-source version of visivo soon! In the meantime, reach out to join@visivo.io and we will provide you with access to a repository you can download it from. 
+We will be publishing a pypi version of visivo soon! 
 
-Once you have access you can download visivo by running: 
+However, the command line _is_ open source and you can still install it via git:
 ```
-python -m pip install git+ssh://git@github.com/visivo-io/visivo.git --force-reinstall
+pip install git+https://github.com/visivo-io/visivo
 ```
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
