@@ -28,9 +28,9 @@ targets:
     database: JARED_DEV
     account: bu13083.us-east-2.aws
     db_schema: DEFAULT
-    username: { { env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') } }
+    username: {{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}
     warehouse: DEV
-    password: { { env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') } }
+    password: {{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}
 
 models:
   - name: test table local
