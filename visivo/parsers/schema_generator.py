@@ -1,8 +1,12 @@
+import json
 from visivo.models.project import Project
-from visivo.models.table import Table
-from visivo.models.alert import EmailAlert
-from visivo.models.trace import Trace
 
 
 def generate_schema():
-    return Project.model_json_schema()
+    schema = Project.model_json_schema()
+    schema_string = json.dumps(schema)
+    schema_string = schema_string.replace("?P<ref_name>", "")
+    schema_string = schema_string.replace("?P<column_name>", "")
+    schema_string = schema_string.replace("?P<query_statement>", "")
+
+    return schema_string
