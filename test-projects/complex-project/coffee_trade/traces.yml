@@ -44,8 +44,8 @@ traces:
   - name: total_export_production
     model: ref(exports)
     cohort_on: query('Total')
-    yaxis: 'y2'
     props:
+      yaxis: 'y2'
       type: bar 
       marker:
         opacity: .20
@@ -70,8 +70,8 @@ traces:
   - name: total_import_production
     model: ref(imports)
     cohort_on: query('Total')
-    yaxis: 'y2'
     props:
+      yaxis: 'y2'
       type: bar 
       marker:
         opacity: .20
