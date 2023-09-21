@@ -34,10 +34,10 @@ targets:
 
 models:
   - name: test table local
-    sql: "SELECT * FROM test_table" 
+    sql: "SELECT * FROM test_table"
 
   - name: waterfall_model
-    sql: | 
+    sql: |
       SELECT * FROM (
         SELECT 
           'y*3+1' as grouping,
@@ -50,74 +50,73 @@ models:
           CASE WHEN x%2=1 THEN y*2+2 ELSE -y END as y, 
           x as week_day 
         FROM test_table WHERE x between 0 and 6) a
-        ORDER BY week_day asc , grouping 
+        ORDER BY week_day asc , grouping
 
 traces:
   - name: example_indicator
     model: ref(test table)
     columns:
-      x_data: x    
+      x_data: x
     props:
       type: indicator
       value: column(x_data)[0]
       delta:
         reference: column(x_data)[1]
-  - name: Indicator Trace 
+  - name: Indicator Trace
     model: ref(test table)
     columns:
       x_data: x
       y_data: y
-    props: 
+    props:
       type: "indicator"
       mode: "number+delta"
       value: column(x_data)[0]
       number:
-        prefix: "$" 
-      delta: 
+        prefix: "$"
+      delta:
         position: "top"
-        reference: 320 
-      domain: 
+        reference: 320
+      domain:
         x: [0, 1]
         y: [0, 1]
 
   - name: funnel trace
     model: ref(test table)
     order_by:
-        - query(x desc)
+      - query(x desc)
     props:
       type: funnel
       y: query( 'Position:' || x)
       x: query(y)
       textinfo: "percent initial"
       marker:
-        color: query( case when y >= 12 then '#713B57' else 'grey' end ) 
+        color: query( case when y >= 12 then '#713B57' else 'grey' end )
         opacity: .2
       textfont:
-        color: 'white'
-        family: 'Gravitas One'
+        color: "white"
+        family: "Gravitas One"
         size: 38
       connector:
-        fillcolor: '#edbdb5'
-
+        fillcolor: "#edbdb5"
 
   - name: Aggregated Line
     model: ref(test table)
     props:
-      type: bar 
+      type: bar
       x: query( CASE WHEN x <= 3 THEN 'less' else 'More' END )
       y: query( avg(y) )
       marker:
-        color: ['rgb(142,124,195)', 'rgba(204,204,204,1)']
+        color: ["rgb(142,124,195)", "rgba(204,204,204,1)"]
         line:
           color: query(CASE WHEN x <= 3 THEN '#D25946' else '#191D33' END)
           width: 2.5
         pattern:
-          shape: ['/','']
+          shape: ["/", ""]
     tests:
       - coordinate_exists:
           coordinates:
-            props.marker.line.color: '#D25946'
-            props.x: 'less'
+            props.marker.line.color: "#D25946"
+            props.x: "less"
 
   - name: Simple Line
     model: ref(test table)
@@ -127,10 +126,10 @@ traces:
       x: query(x)
       y: query(y)
       marker:
-        color: query( case when x >= 5 then '#713B57' else 'grey' end ) 
+        color: query( case when x >= 5 then '#713B57' else 'grey' end )
         pattern:
           shape: query( case when x = 5 then '/' when x = 6 THEN 'x' else '' end )
-        line: 
+        line:
           width: query( Case when x in (5,6) then 2.5 else null end)
     tests:
       - coordinate_exists:
@@ -146,7 +145,7 @@ traces:
       type: scatter3d
       x: query(x)
       y: query(y)
-      z: query( -2*(x%2)*x + x + y*(y-3)) 
+      z: query( -2*(x%2)*x + x + y*(y-3))
     tests:
       - coordinate_exists:
           coordinates:
@@ -168,7 +167,7 @@ traces:
       x: query(x)
       y: query(y)
       z: query( (-3*(x%2)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y)
-   
+
   - name: Fibonacci Waterfall
     model: ref(waterfall_model)
     cohort_on: query(grouping)
@@ -183,16 +182,16 @@ traces:
       text: query(cast(y as text))
       increasing:
         marker:
-          color: '#b97a9b'
+          color: "#b97a9b"
       decreasing:
         marker:
-          color: '#edbdb5' 
+          color: "#edbdb5"
     order_by:
       - query(week_day asc)
 
 charts:
   - name: indicator_chart
-    traces: 
+    traces:
       - ref(Indicator Trace)
 
 dashboards:
@@ -205,10 +204,10 @@ dashboards:
               ## Sub heading
               1. Numbered
               1. Lists are cool
-              
+
               But we can have lots of other _content_ as well
           - width: 3
-            table: 
+            table:
               name: awesome-table
               trace: ref(Fibonacci Waterfall)
               columns:
@@ -216,7 +215,7 @@ dashboards:
                   column: x_data
                 - header: Widget Sales
                   column: y_data
-          - width: 2 
+          - width: 2
             chart: ref(indicator_chart)
 
   - name: Simple Dashboard
@@ -227,21 +226,21 @@ dashboards:
             chart:
               name: A very Fibonacci Waterfall
               traces:
-                - 'ref(Fibonacci Waterfall)'
+                - "ref(Fibonacci Waterfall)"
                 - ref(example_indicator)
               layout:
-                title: 'A Great Fibonacci Waterfall'
+                title: "A Great Fibonacci Waterfall"
           - width: 2
-            chart: 
-              name: Aggregated Fib 
+            chart:
+              name: Aggregated Fib
               traces:
-                - 'ref(Aggregated Line)'
+                - "ref(Aggregated Line)"
               layout:
-                title: 'Aggregated Fibonacci'
-                yaxis: 
-                  title: 'output'
+                title: "Aggregated Fibonacci"
+                yaxis:
+                  title: "output"
                 xaxis:
-                  title: 'More if x>3 Less if x<=3'
+                  title: "More if x>3 Less if x<=3"
                 stack: False
       - height: medium
         items:
@@ -252,7 +251,7 @@ dashboards:
                 - ref(3d Line One)
                 - ref(3d Line Two)
               layout:
-                title: 'The Greatest 3d Lines'
+                title: "The Greatest 3d Lines"
                 legend:
                   orientation: "h"
                   yanchor: "bottom"
@@ -260,28 +259,28 @@ dashboards:
                   xanchor: "right"
                   x: 1
           - width: 4
-            chart: 
-              name: fibonacci 
+            chart:
+              name: fibonacci
               traces:
-                - 'ref(Simple Line)'
+                - "ref(Simple Line)"
               layout:
-                title: 'A great fibonacci series'
-                yaxis: 
-                  title: 'Output'
+                title: "A great fibonacci series"
+                yaxis:
+                  title: "Output"
                 xaxis:
-                  title: 'Input'
+                  title: "Input"
                 stack: False
-          
+
           - width: 3
-            chart: 
+            chart:
               name: fibonacci times 2
               traces:
                 - name: Double Simple Line
                   cohort_on: "query('Fibonacci times 2')"
                   model:
-                    sql: "SELECT x, y*2 as y FROM test_table" 
+                    sql: "SELECT x, y*2 as y FROM test_table"
                   props:
-                    type: scatter 
+                    type: scatter
                     x: query(x)
                     y: query(y)
                     line:
@@ -294,26 +293,25 @@ dashboards:
                         coordinates:
                           props.x: 2
                           props.y: 1
-                - 'ref(Simple Line)'
+                - "ref(Simple Line)"
               layout:
-                title: 'A not great fibonacci series'
-                yaxis: 
-                  title: 'Output'
+                title: "A not great fibonacci series"
+                yaxis:
+                  title: "Output"
                 xaxis:
-                  title: 'Input'
+                  title: "Input"
                 stack: False
       - height: medium
-        items: 
+        items:
           - width: 2
             markdown: |
               # Here is the first
               1. Numbered
               1. List
           - width: 2
-            chart: 
+            chart:
               name: funnel chart
               traces:
-                - 'ref(funnel trace)'
+                - "ref(funnel trace)"
               layout:
-                title: 'Funnel Chart'
-            
+                title: "Funnel Chart"

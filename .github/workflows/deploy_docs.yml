@@ -21,6 +21,11 @@ jobs:
       - name: Install CLI Dependencies
         run: pip install poetry && poetry install --with dev && poetry run visivo
       
+      - name: Generate Schema
+        run: |
+          poetry run pytest tests/parsers/test_schema_generator.py 
+          find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
+      
       - name: Deploy mkdocs to docs.visivo.io
         run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
       

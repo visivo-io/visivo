@@ -4,9 +4,9 @@ plugins:
   - search: {}
   - macros
   - spellcheck:
-      backends:  # the backends you want to use
-        - symspellpy  # as strings
-        - codespell:  # or nested configs
+      backends: # the backends you want to use
+        - symspellpy # as strings
+        - codespell: # or nested configs
             dictionaries: [clear, rare]
 
       # known_words can also be a list of words
@@ -34,7 +34,6 @@ markdown_extensions:
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
 theme:
-  custom_dir: mkdocs/overrides
   name: material
   features:
     - content.tabs.link
@@ -44,20 +43,20 @@ theme:
   favicon: assets/favicon_io/favicon-32x32.png
   palette:
     - media: "(prefers-color-scheme: light)"
-      scheme: visivo_light 
+      scheme: visivo_light
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
 
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
-      scheme: visivo_dark 
+      scheme: visivo_dark
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
 
-docs_dir: 'mkdocs'
-site_dir: 'mkdocs_build'
+docs_dir: "mkdocs"
+site_dir: "mkdocs_build"
 
 extra:
   analytics:
@@ -69,64 +68,67 @@ extra_css:
 
 nav:
   - Getting Started: index.md
+  - Tooling:
+      - Linting: tooling/linting.md
+      - Deployment: tooling/deployments.md
     # - Use Cases: use_cases.md
     # - Tutorials: how_tos.md
-  - Reference: 
+  - Reference:
       - CLI: cli-reference.md
-      - Configuration: 
-        - model-docs/trace.md
-        - Trace Properties: 
-          - model-docs/trace-props/mesh3d.md
-          - model-docs/trace-props/barpolar.md
-          - model-docs/trace-props/scattersmith.md
-          - model-docs/trace-props/streamtube.md
-          - model-docs/trace-props/cone.md
-          - model-docs/trace-props/scattermapbox.md
-          - model-docs/trace-props/scattergeo.md
-          - model-docs/trace-props/scatterpolar.md
-          - model-docs/trace-props/sunburst.md
-          - model-docs/trace-props/histogram2d.md
-          - model-docs/trace-props/isosurface.md
-          - model-docs/trace-props/violin.md
-          - model-docs/trace-props/scatter.md
-          - model-docs/trace-props/image.md
-          - model-docs/trace-props/ohlc.md
-          - model-docs/trace-props/heatmapgl.md
-          - model-docs/trace-props/indicator.md
-          - model-docs/trace-props/funnelarea.md
-          - model-docs/trace-props/carpet.md
-          - model-docs/trace-props/icicle.md
-          - model-docs/trace-props/surface.md
-          - model-docs/trace-props/parcats.md
-          - model-docs/trace-props/treemap.md
-          - model-docs/trace-props/funnel.md
-          - model-docs/trace-props/histogram2dcontour.md
-          - model-docs/trace-props/contourcarpet.md
-          - model-docs/trace-props/parcoords.md
-          - model-docs/trace-props/candlestick.md
-          - model-docs/trace-props/scatter3d.md
-          - model-docs/trace-props/waterfall.md
-          - model-docs/trace-props/choropleth.md
-          - model-docs/trace-props/heatmap.md
-          - model-docs/trace-props/histogram.md
-          - model-docs/trace-props/volume.md
-          - model-docs/trace-props/contour.md
-          - model-docs/trace-props/scatterternary.md
-          - model-docs/trace-props/sankey.md
-          - model-docs/trace-props/scattercarpet.md
-          - model-docs/trace-props/densitymapbox.md
-          - model-docs/trace-props/choroplethmapbox.md
-          - model-docs/trace-props/box.md
-          - model-docs/trace-props/pie.md
-          - model-docs/trace-props/bar.md
-          - model-docs/trace-props/scatterpolargl.md
-          - model-docs/trace-props/scattergl.md
-          - model-docs/trace-props/splom.md
-        - model-docs/chart.md
-        - model-docs/target.md
-        - model-docs/dashboard.md
-        - model-docs/default.md
-        - model-docs/alert.md
+      - Configuration:
+          - model-docs/trace.md
+          - Trace Properties:
+              - model-docs/trace-props/mesh3d.md
+              - model-docs/trace-props/barpolar.md
+              - model-docs/trace-props/scattersmith.md
+              - model-docs/trace-props/streamtube.md
+              - model-docs/trace-props/cone.md
+              - model-docs/trace-props/scattermapbox.md
+              - model-docs/trace-props/scattergeo.md
+              - model-docs/trace-props/scatterpolar.md
+              - model-docs/trace-props/sunburst.md
+              - model-docs/trace-props/histogram2d.md
+              - model-docs/trace-props/isosurface.md
+              - model-docs/trace-props/violin.md
+              - model-docs/trace-props/scatter.md
+              - model-docs/trace-props/image.md
+              - model-docs/trace-props/ohlc.md
+              - model-docs/trace-props/heatmapgl.md
+              - model-docs/trace-props/indicator.md
+              - model-docs/trace-props/funnelarea.md
+              - model-docs/trace-props/carpet.md
+              - model-docs/trace-props/icicle.md
+              - model-docs/trace-props/surface.md
+              - model-docs/trace-props/parcats.md
+              - model-docs/trace-props/treemap.md
+              - model-docs/trace-props/funnel.md
+              - model-docs/trace-props/histogram2dcontour.md
+              - model-docs/trace-props/contourcarpet.md
+              - model-docs/trace-props/parcoords.md
+              - model-docs/trace-props/candlestick.md
+              - model-docs/trace-props/scatter3d.md
+              - model-docs/trace-props/waterfall.md
+              - model-docs/trace-props/choropleth.md
+              - model-docs/trace-props/heatmap.md
+              - model-docs/trace-props/histogram.md
+              - model-docs/trace-props/volume.md
+              - model-docs/trace-props/contour.md
+              - model-docs/trace-props/scatterternary.md
+              - model-docs/trace-props/sankey.md
+              - model-docs/trace-props/scattercarpet.md
+              - model-docs/trace-props/densitymapbox.md
+              - model-docs/trace-props/choroplethmapbox.md
+              - model-docs/trace-props/box.md
+              - model-docs/trace-props/pie.md
+              - model-docs/trace-props/bar.md
+              - model-docs/trace-props/scatterpolargl.md
+              - model-docs/trace-props/scattergl.md
+              - model-docs/trace-props/splom.md
+          - model-docs/chart.md
+          - model-docs/target.md
+          - model-docs/dashboard.md
+          - model-docs/default.md
+          - model-docs/alert.md
   - Background:
-    - Viewpoint: viewpoint.md
-    - How It Works: how_it_works.md
+      - Viewpoint: viewpoint.md
+      - How It Works: how_it_works.md

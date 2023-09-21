@@ -64,7 +64,7 @@ def test_Core_Parser_combines_different_files():
     other_file = temp_yml_file(
         {
             "name": "project",
-            "targets": [{"other": "local", "database": "other_url"}],
+            "targets": [{"name": "local", "database": "other_url"}],
         },
         name="other.yml",
     )

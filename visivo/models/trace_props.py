@@ -60,25 +60,12 @@ class TracePropsAttribute(BaseModel):
 		kwargs.setdefault('exclude_none', True)
 		return super().model_dump(*args, **kwargs)
 	model_config = ConfigDict(extra="forbid")
+
 class TraceProps(TracePropsAttribute):
-    type: str = 'scatter'
+	type: str = 'scatter'
 
 ## Produced from the script plotly_docs_to_pydantic.sql below this point
 class BarMarkerColorbarTitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class BarMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -114,6 +101,20 @@ class BarMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
+class BarMarkerColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class BarMarkerColorbarTitle(TracePropsAttribute):
 	font: Optional[BarMarkerColorbarTitleFont]= Field(
 		None,
@@ -128,6 +129,12 @@ class BarMarkerColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
+class BarSelectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of selected points. """
+	)
+
 class BarSelectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -138,10 +145,44 @@ class BarSelectedMarker(TracePropsAttribute):
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
 
-class BarSelectedTextfont(TracePropsAttribute):
+class BarUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the text font color of selected points. """
+		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+	)
+
+class BarMarkerPattern(TracePropsAttribute):
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
+	)
+	fgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
+	)
+	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
+	)
+	fillmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
+	)
+	shape: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
+	)
+	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
 	)
 
 class BarLegendgrouptitleFont(TracePropsAttribute):
@@ -156,6 +197,26 @@ class BarLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class BarHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class BarUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
 class BarMarkerLine(TracePropsAttribute):
@@ -183,7 +244,7 @@ class BarMarkerLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -374,53 +435,7 @@ class BarMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class BarUnselectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-
-class BarUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
-	)
-
-class BarMarkerPattern(TracePropsAttribute):
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
-	)
-	fgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
-	)
-	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
-	)
-	fillmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
-	)
-	shape: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
-	)
-	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
-	)
-
-class BarHoverlabelFont(TracePropsAttribute):
+class BarInsidetextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -466,26 +481,6 @@ class BarSelected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class BarUnselected(TracePropsAttribute):
-	marker: Optional[BarUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[BarUnselectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class BarLegendgrouptitle(TracePropsAttribute):
-	font: Optional[BarLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
 class BarTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -498,64 +493,6 @@ class BarTextfont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class BarMarker(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorbar: Optional[BarMarkerColorbar]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	line: Optional[BarMarkerLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the bars. """
-	)
-	pattern: Optional[BarMarkerPattern]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the pattern within the marker. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.color` is set to a numerical array. If true, `marker.cmin` will correspond to the last color in the array and `marker.cmax` will correspond to the first color. """
-	)
-	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
 	)
 
 class BarError_y(TracePropsAttribute):
@@ -606,6 +543,64 @@ class BarError_y(TracePropsAttribute):
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
+	)
+
+class BarMarker(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorbar: Optional[BarMarkerColorbar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	line: Optional[BarMarkerLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the bars. """
+	)
+	pattern: Optional[BarMarkerPattern]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the pattern within the marker. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.color` is set to a numerical array. If true, `marker.cmin` will correspond to the last color in the array and `marker.cmax` will correspond to the first color. """
+	)
+	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
 	)
 
 class BarError_x(TracePropsAttribute):
@@ -662,7 +657,7 @@ class BarError_x(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
 	)
 
-class BarInsidetextfont(TracePropsAttribute):
+class BarOutsidetextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -676,18 +671,24 @@ class BarInsidetextfont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class BarOutsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class BarLegendgrouptitle(TracePropsAttribute):
+	font: Optional[BarLegendgrouptitleFont]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	family: Optional[str | List[str]]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string<br>Sets the title of the legend group. """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+
+class BarUnselected(TracePropsAttribute):
+	marker: Optional[BarUnselectedMarker]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[BarUnselectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class Bar(TraceProps):
@@ -803,11 +804,11 @@ class Bar(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -944,20 +945,6 @@ class BarpolarMarkerColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class BarpolarMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[BarpolarMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class BarpolarMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -980,6 +967,20 @@ class BarpolarMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
+class BarpolarMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[BarpolarMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
 class BarpolarHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -994,108 +995,18 @@ class BarpolarHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class BarpolarUnselectedTextfont(TracePropsAttribute):
+class BarpolarLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+		description=""" color<br> """
 	)
-
-class BarpolarMarkerPattern(TracePropsAttribute):
-	bgcolor: Optional[str | List[str]]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	fgcolor: Optional[str | List[str]]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
-	)
-	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
-	)
-	fillmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
-	)
-	shape: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
-	)
-	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
-	)
-
-class BarpolarUnselectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-
-class BarpolarSelectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of selected points. """
-	)
-
-class BarpolarMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class BarpolarSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class BarpolarMarkerColorbar(TracePropsAttribute):
@@ -1272,18 +1183,138 @@ class BarpolarMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class BarpolarLegendgrouptitleFont(TracePropsAttribute):
+class BarpolarUnselectedTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br> """
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
-	family: Optional[str]= Field(
+
+class BarpolarSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" color<br>Sets the marker color of selected points. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+
+class BarpolarUnselectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+	)
+
+class BarpolarSelectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of selected points. """
+	)
+
+class BarpolarMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class BarpolarMarkerPattern(TracePropsAttribute):
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
+	)
+	fgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
+	)
+	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
+	)
+	fillmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
+	)
+	shape: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
+	)
+	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
+	)
+
+class BarpolarLegendgrouptitle(TracePropsAttribute):
+	font: Optional[BarpolarLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class BarpolarSelected(TracePropsAttribute):
+	marker: Optional[BarpolarSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[BarpolarSelectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class BarpolarUnselected(TracePropsAttribute):
+	marker: Optional[BarpolarUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[BarpolarUnselectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class BarpolarHoverlabel(TracePropsAttribute):
@@ -1306,26 +1337,6 @@ class BarpolarHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class BarpolarUnselected(TracePropsAttribute):
-	marker: Optional[BarpolarUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[BarpolarUnselectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class BarpolarLegendgrouptitle(TracePropsAttribute):
-	font: Optional[BarpolarLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class BarpolarMarker(TracePropsAttribute):
@@ -1353,7 +1364,7 @@ class BarpolarMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -1384,16 +1395,6 @@ class BarpolarMarker(TracePropsAttribute):
 	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
-	)
-
-class BarpolarSelected(TracePropsAttribute):
-	marker: Optional[BarpolarSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[BarpolarSelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class Barpolar(TraceProps):
@@ -1497,7 +1498,7 @@ class Barpolar(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a polar subplot. If "polar" (the default value), the data refer to `layout.polar`. If "polar2", the data refer to `layout.polar2`, and so on. """
 	)
@@ -1538,20 +1539,6 @@ class BoxHoverlabelFont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class BoxSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
 
 class BoxMarkerLine(TracePropsAttribute):
@@ -1600,8 +1587,32 @@ class BoxUnselectedMarker(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
-class BoxUnselected(TracePropsAttribute):
-	marker: Optional[BoxUnselectedMarker]= Field(
+class BoxSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+	)
+
+class BoxLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of line bounding the box(es). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). """
+	)
+
+class BoxSelected(TracePropsAttribute):
+	marker: Optional[BoxSelectedMarker]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -1626,32 +1637,6 @@ class BoxHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class BoxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[BoxLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class BoxLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of line bounding the box(es). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). """
-	)
-
-class BoxSelected(TracePropsAttribute):
-	marker: Optional[BoxSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class BoxMarker(TracePropsAttribute):
@@ -1682,6 +1667,22 @@ class BoxMarker(TracePropsAttribute):
 	symbol: Optional[str]= Field(
 		None,
 		description=""" enumerated , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
+	)
+
+class BoxUnselected(TracePropsAttribute):
+	marker: Optional[BoxUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class BoxLegendgrouptitle(TracePropsAttribute):
+	font: Optional[BoxLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class Box(TraceProps):
@@ -1781,11 +1782,11 @@ class Box(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -1934,7 +1935,31 @@ class Box(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
+class CandlestickHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
 class CandlestickDecreasingLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of line bounding the box(es). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). """
+	)
+
+class CandlestickIncreasingLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the color of line bounding the box(es). """
@@ -1956,66 +1981,6 @@ class CandlestickLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class CandlestickHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class CandlestickIncreasingLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of line bounding the box(es). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). """
-	)
-
-class CandlestickDecreasing(TracePropsAttribute):
-	fillcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the fill color. Defaults to a half-transparent variant of the line color, marker color, or marker line color, whichever is available. """
-	)
-	line: Optional[CandlestickDecreasingLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class CandlestickLegendgrouptitle(TracePropsAttribute):
-	font: Optional[CandlestickLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class CandlestickLine(TracePropsAttribute):
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). Note that this style setting can also be set per direction via `increasing.line.width` and `decreasing.line.width`. """
-	)
-
-class CandlestickIncreasing(TracePropsAttribute):
-	fillcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the fill color. Defaults to a half-transparent variant of the line color, marker color, or marker line color, whichever is available. """
-	)
-	line: Optional[CandlestickIncreasingLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class CandlestickHoverlabel(TracePropsAttribute):
@@ -2042,6 +2007,42 @@ class CandlestickHoverlabel(TracePropsAttribute):
 	split: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" boolean<br>Show hover information (open, close, high, low) in separate labels. """
+	)
+
+class CandlestickLegendgrouptitle(TracePropsAttribute):
+	font: Optional[CandlestickLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class CandlestickIncreasing(TracePropsAttribute):
+	fillcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the fill color. Defaults to a half-transparent variant of the line color, marker color, or marker line color, whichever is available. """
+	)
+	line: Optional[CandlestickIncreasingLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class CandlestickLine(TracePropsAttribute):
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). Note that this style setting can also be set per direction via `increasing.line.width` and `decreasing.line.width`. """
+	)
+
+class CandlestickDecreasing(TracePropsAttribute):
+	fillcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the fill color. Defaults to a half-transparent variant of the line color, marker color, or marker line color, whichever is available. """
+	)
+	line: Optional[CandlestickDecreasingLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class Candlestick(TraceProps):
@@ -2129,11 +2130,11 @@ class Candlestick(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -2232,18 +2233,18 @@ class CarpetBaxisTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class CarpetBaxisTitle(TracePropsAttribute):
-	font: Optional[CarpetBaxisTitleFont]= Field(
+class CarpetBaxisTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+		description=""" color<br> """
 	)
-	offset: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" number<br>An additional amount by which to offset the title from the tick labels, given in pixels. Note that this used to be set by the now deprecated `titleoffset` attribute. """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	text: Optional[str]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>Sets the title of this axis. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class CarpetLegendgrouptitleFont(TracePropsAttribute):
@@ -2262,6 +2263,20 @@ class CarpetLegendgrouptitleFont(TracePropsAttribute):
 
 class CarpetAaxisTitle(TracePropsAttribute):
 	font: Optional[CarpetAaxisTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	offset: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>An additional amount by which to offset the title from the tick labels, given in pixels. Note that this used to be set by the now deprecated `titleoffset` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of this axis. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class CarpetBaxisTitle(TracePropsAttribute):
+	font: Optional[CarpetBaxisTitleFont]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2294,20 +2309,6 @@ class CarpetAaxisTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class CarpetBaxisTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
 	)
 
 class CarpetAaxisTickfont(TracePropsAttribute):
@@ -2853,11 +2854,11 @@ class Carpet(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -2896,26 +2897,6 @@ class ChoroplethColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ChoroplethUnselectedMarker(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-
-class ChoroplethLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ChoroplethColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -2936,6 +2917,26 @@ class ChoroplethColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
+class ChoroplethLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ChoroplethSelectedMarker(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
 
 class ChoroplethHoverlabelFont(TracePropsAttribute):
@@ -2960,6 +2961,12 @@ class ChoroplethMarkerLine(TracePropsAttribute):
 	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class ChoroplethUnselectedMarker(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
 	)
 
 class ChoroplethColorbarTitle(TracePropsAttribute):
@@ -2990,22 +2997,14 @@ class ChoroplethColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ChoroplethSelectedMarker(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-
-class ChoroplethSelected(TracePropsAttribute):
-	marker: Optional[ChoroplethSelectedMarker]= Field(
+class ChoroplethMarker(TracePropsAttribute):
+	line: Optional[ChoroplethMarkerLine]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-
-class ChoroplethUnselected(TracePropsAttribute):
-	marker: Optional[ChoroplethUnselectedMarker]= Field(
+	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the locations. """
 	)
 
 class ChoroplethLegendgrouptitle(TracePropsAttribute):
@@ -3016,6 +3015,40 @@ class ChoroplethLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ChoroplethSelected(TracePropsAttribute):
+	marker: Optional[ChoroplethSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ChoroplethHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[ChoroplethHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class ChoroplethUnselected(TracePropsAttribute):
+	marker: Optional[ChoroplethUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ChoroplethColorbar(TracePropsAttribute):
@@ -3192,38 +3225,6 @@ class ChoroplethColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ChoroplethHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ChoroplethHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class ChoroplethMarker(TracePropsAttribute):
-	line: Optional[ChoroplethMarkerLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the locations. """
-	)
-
 class Choropleth(TraceProps):
 	type: Literal["choropleth"]= Field(
 		...,
@@ -3297,11 +3298,11 @@ class Choropleth(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	geo: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	geo: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's geospatial coordinates and a geographic map. If "geo" (the default value), the geospatial coordinates refer to `layout.geo`. If "geo2", the geospatial coordinates refer to `layout.geo2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -3384,6 +3385,70 @@ class ChoroplethmapboxColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class ChoroplethmapboxColorbarTitle(TracePropsAttribute):
+	font: Optional[ChoroplethmapboxColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class ChoroplethmapboxUnselectedMarker(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+	)
+
+class ChoroplethmapboxColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ChoroplethmapboxLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ChoroplethmapboxMarkerLine(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class ChoroplethmapboxSelectedMarker(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+
 class ChoroplethmapboxColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -3406,50 +3471,6 @@ class ChoroplethmapboxColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ChoroplethmapboxColorbarTitle(TracePropsAttribute):
-	font: Optional[ChoroplethmapboxColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class ChoroplethmapboxMarkerLine(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class ChoroplethmapboxUnselectedMarker(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-
-class ChoroplethmapboxLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ChoroplethmapboxHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -3464,30 +3485,58 @@ class ChoroplethmapboxHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class ChoroplethmapboxColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ChoroplethmapboxMarker(TracePropsAttribute):
+	line: Optional[ChoroplethmapboxMarkerLine]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	family: Optional[str]= Field(
+	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the locations. """
 	)
 
-class ChoroplethmapboxSelectedMarker(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class ChoroplethmapboxUnselected(TracePropsAttribute):
+	marker: Optional[ChoroplethmapboxUnselectedMarker]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ChoroplethmapboxSelected(TracePropsAttribute):
 	marker: Optional[ChoroplethmapboxSelectedMarker]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ChoroplethmapboxLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ChoroplethmapboxLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ChoroplethmapboxHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[ChoroplethmapboxHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class ChoroplethmapboxColorbar(TracePropsAttribute):
@@ -3664,54 +3713,6 @@ class ChoroplethmapboxColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ChoroplethmapboxMarker(TracePropsAttribute):
-	line: Optional[ChoroplethmapboxMarkerLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the locations. """
-	)
-
-class ChoroplethmapboxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ChoroplethmapboxLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class ChoroplethmapboxUnselected(TracePropsAttribute):
-	marker: Optional[ChoroplethmapboxUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ChoroplethmapboxHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ChoroplethmapboxHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
 class Choroplethmapbox(TraceProps):
 	type: Literal["choroplethmapbox"]= Field(
 		...,
@@ -3785,11 +3786,11 @@ class Choroplethmapbox(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a mapbox subplot. If "mapbox" (the default value), the data refer to `layout.mapbox`. If "mapbox2", the data refer to `layout.mapbox2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -3872,20 +3873,6 @@ class ConeColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ConeColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ConeColorbarTitle(TracePropsAttribute):
 	font: Optional[ConeColorbarTitleFont]= Field(
 		None,
@@ -3898,6 +3885,34 @@ class ConeColorbarTitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class ConeHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ConeColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class ConeLegendgrouptitleFont(TracePropsAttribute):
@@ -3934,96 +3949,6 @@ class ConeColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class ConeHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ConeHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ConeHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class ConeLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ConeLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class ConeLightposition(TracePropsAttribute):
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
-	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
-	)
-	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
-	)
-
-class ConeLighting(TracePropsAttribute):
-	ambient: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Ambient light increases overall color visibility but can wash out the image. """
-	)
-	diffuse: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Represents the extent that incident rays are reflected in a range of angles. """
-	)
-	facenormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Epsilon for face normals calculation avoids math issues arising from degenerate geometry. """
-	)
-	fresnel: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 5<br>Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine. """
-	)
-	roughness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Alters specular reflection; the rougher the surface, the wider and less contrasty the shine. """
-	)
-	specular: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 2<br>Represents the level that incident rays are reflected in a single direction, causing shine. """
-	)
-	vertexnormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
 	)
 
 class ConeColorbar(TracePropsAttribute):
@@ -4200,6 +4125,82 @@ class ConeColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class ConeLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ConeLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ConeLighting(TracePropsAttribute):
+	ambient: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Ambient light increases overall color visibility but can wash out the image. """
+	)
+	diffuse: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Represents the extent that incident rays are reflected in a range of angles. """
+	)
+	facenormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Epsilon for face normals calculation avoids math issues arising from degenerate geometry. """
+	)
+	fresnel: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 5<br>Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine. """
+	)
+	roughness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Alters specular reflection; the rougher the surface, the wider and less contrasty the shine. """
+	)
+	specular: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 2<br>Represents the level that incident rays are reflected in a single direction, causing shine. """
+	)
+	vertexnormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
+	)
+
+class ConeLightposition(TracePropsAttribute):
+	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
+	)
+	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
+	)
+	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
+	)
+
+class ConeHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[ConeHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
 class Cone(TraceProps):
 	type: Literal["cone"]= Field(
 		...,
@@ -4305,11 +4306,11 @@ class Cone(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -4396,20 +4397,6 @@ class ContourColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ContourColorbarTitle(TracePropsAttribute):
-	font: Optional[ContourColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class ContourHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -4424,7 +4411,7 @@ class ContourHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class ContourLegendgrouptitleFont(TracePropsAttribute):
+class ContourContoursLabelfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -4460,6 +4447,20 @@ class ContourColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
+class ContourLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class ContourColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -4474,7 +4475,39 @@ class ContourColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ContourContoursLabelfont(TracePropsAttribute):
+class ContourColorbarTitle(TracePropsAttribute):
+	font: Optional[ContourColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class ContourLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour level. Has no effect if `contours.coloring` is set to "lines". """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1.3<br>Sets the amount of smoothing for the contour lines, where "0" corresponds to no smoothing. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the contour line width in (in px) Defaults to "0.5" when `contours.type` is "levels". Defaults to "2" when `contour.type` is "constraint". """
+	)
+
+class ContourTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -4662,36 +4695,26 @@ class ContourColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ContourTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ContourHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
 		None,
-		description=""" color<br> """
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
 	)
-	family: Optional[str]= Field(
+	bgcolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	bordercolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
 	)
-
-class ContourLine(TracePropsAttribute):
-	color: Optional[str]= Field(
+	font: Optional[ContourHoverlabelFont]= Field(
 		None,
-		description=""" color<br>Sets the color of the contour level. Has no effect if `contours.coloring` is set to "lines". """
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	dash: Optional[str]= Field(
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1.3<br>Sets the amount of smoothing for the contour lines, where "0" corresponds to no smoothing. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the contour line width in (in px) Defaults to "0.5" when `contours.type` is "levels". Defaults to "2" when `contour.type` is "constraint". """
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class ContourLegendgrouptitle(TracePropsAttribute):
@@ -4748,28 +4771,6 @@ class ContourContours(TracePropsAttribute):
 	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the value or values of the constraint boundary. When `operation` is set to one of the comparison values (=,<,>=,>,<=) "value" is expected to be a number. When `operation` is set to one of the interval values ([],(),[),(],][,)(,](,)[) "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. """
-	)
-
-class ContourHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ContourHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class Contour(TraceProps):
@@ -4881,15 +4882,15 @@ class Contour(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -5024,21 +5025,7 @@ class ContourcarpetColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ContourcarpetColorbarTitle(TracePropsAttribute):
-	font: Optional[ContourcarpetColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class ContourcarpetColorbarTickfont(TracePropsAttribute):
+class ContourcarpetContoursLabelfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -5052,7 +5039,7 @@ class ContourcarpetColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ContourcarpetLegendgrouptitleFont(TracePropsAttribute):
+class ContourcarpetColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -5088,7 +5075,7 @@ class ContourcarpetColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ContourcarpetContoursLabelfont(TracePropsAttribute):
+class ContourcarpetLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -5102,78 +5089,18 @@ class ContourcarpetContoursLabelfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ContourcarpetLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ContourcarpetLegendgrouptitleFont]= Field(
+class ContourcarpetColorbarTitle(TracePropsAttribute):
+	font: Optional[ContourcarpetColorbarTitleFont]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
 	)
 	text: Optional[str]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class ContourcarpetLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the contour level. Has no effect if `contours.coloring` is set to "lines". """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1.3<br>Sets the amount of smoothing for the contour lines, where "0" corresponds to no smoothing. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the contour line width in (in px) Defaults to "0.5" when `contours.type` is "levels". Defaults to "2" when `contour.type` is "constraint". """
-	)
-
-class ContourcarpetContours(TracePropsAttribute):
-	coloring: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "fill" | "lines" | "none" )<br>Determines the coloring method showing the contour values. If "fill", coloring is done evenly between each contour level If "lines", coloring is done on the contour lines. If "none", no coloring is applied on this trace. """
-	)
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
-	)
-	labelfont: Optional[ContourcarpetContoursLabelfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used for labeling the contour levels. The default color comes from the lines, if shown. The default family and size come from `layout.font`. """
-	)
-	labelformat: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the contour label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. """
-	)
-	operation: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "=" | "&lt;" | "&gt;=" | "&gt;" | "&lt;=" | "[]" | "()" | "[)" | "(]" | "][" | ")(" | "](" | ")[" )<br>Sets the constraint operation. "=" keeps regions equal to `value` "<" and "<=" keep regions less than `value` ">" and ">=" keep regions greater than `value` "[]", "()", "[)", and "(]" keep regions inside `value[0]` to `value[1]` "][", ")(", "](", ")[" keep regions outside `value[0]` to value[1]` Open vs. closed intervals make no difference to constraint display, but all versions are allowed for consistency with filter transforms. """
-	)
-	showlabels: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether to label the contour lines with their values. """
-	)
-	showlines: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the contour lines are drawn. Has an effect only if `contours.coloring` is set to "fill". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the step between each contour level. Must be positive. """
-	)
-	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the starting contour level value. Must be less than `contours.end` """
-	)
-	type: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "levels" | "constraint" )<br>If `levels`, the data is represented as a contour plot with multiple levels displayed. If `constraint`, the data is represented as constraints with the invalid region shaded as specified by the `operation` and `value` parameters. """
-	)
-	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the value or values of the constraint boundary. When `operation` is set to one of the comparison values (=,<,>=,>,<=) "value" is expected to be a number. When `operation` is set to one of the interval values ([],(),[),(],][,)(,](,)[) "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. """
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class ContourcarpetColorbar(TracePropsAttribute):
@@ -5350,6 +5277,80 @@ class ContourcarpetColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class ContourcarpetLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour level. Has no effect if `contours.coloring` is set to "lines". """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1.3<br>Sets the amount of smoothing for the contour lines, where "0" corresponds to no smoothing. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the contour line width in (in px) Defaults to "0.5" when `contours.type` is "levels". Defaults to "2" when `contour.type` is "constraint". """
+	)
+
+class ContourcarpetContours(TracePropsAttribute):
+	coloring: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "fill" | "lines" | "none" )<br>Determines the coloring method showing the contour values. If "fill", coloring is done evenly between each contour level If "lines", coloring is done on the contour lines. If "none", no coloring is applied on this trace. """
+	)
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
+	)
+	labelfont: Optional[ContourcarpetContoursLabelfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used for labeling the contour levels. The default color comes from the lines, if shown. The default family and size come from `layout.font`. """
+	)
+	labelformat: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the contour label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. """
+	)
+	operation: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "=" | "&lt;" | "&gt;=" | "&gt;" | "&lt;=" | "[]" | "()" | "[)" | "(]" | "][" | ")(" | "](" | ")[" )<br>Sets the constraint operation. "=" keeps regions equal to `value` "<" and "<=" keep regions less than `value` ">" and ">=" keep regions greater than `value` "[]", "()", "[)", and "(]" keep regions inside `value[0]` to `value[1]` "][", ")(", "](", ")[" keep regions outside `value[0]` to value[1]` Open vs. closed intervals make no difference to constraint display, but all versions are allowed for consistency with filter transforms. """
+	)
+	showlabels: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether to label the contour lines with their values. """
+	)
+	showlines: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the contour lines are drawn. Has an effect only if `contours.coloring` is set to "fill". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the step between each contour level. Must be positive. """
+	)
+	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the starting contour level value. Must be less than `contours.end` """
+	)
+	type: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "levels" | "constraint" )<br>If `levels`, the data is represented as a contour plot with multiple levels displayed. If `constraint`, the data is represented as constraints with the invalid region shaded as specified by the `operation` and `value` parameters. """
+	)
+	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the value or values of the constraint boundary. When `operation` is set to one of the comparison values (=,<,>=,>,<=) "value" is expected to be a number. When `operation` is set to one of the interval values ([],(),[),(],][,)(,](,)[) "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. """
+	)
+
+class ContourcarpetLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ContourcarpetLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class Contourcarpet(TraceProps):
 	type: Literal["contourcarpet"]= Field(
 		...,
@@ -5439,15 +5440,15 @@ class Contourcarpet(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -5548,21 +5549,7 @@ class DensitymapboxHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class DensitymapboxColorbarTitle(TracePropsAttribute):
-	font: Optional[DensitymapboxColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class DensitymapboxColorbarTickfont(TracePropsAttribute):
+class DensitymapboxLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -5576,7 +5563,7 @@ class DensitymapboxColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class DensitymapboxLegendgrouptitleFont(TracePropsAttribute):
+class DensitymapboxColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -5612,14 +5599,18 @@ class DensitymapboxColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class DensitymapboxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[DensitymapboxLegendgrouptitleFont]= Field(
+class DensitymapboxColorbarTitle(TracePropsAttribute):
+	font: Optional[DensitymapboxColorbarTitleFont]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
 	)
 	text: Optional[str]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class DensitymapboxHoverlabel(TracePropsAttribute):
@@ -5818,6 +5809,16 @@ class DensitymapboxColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class DensitymapboxLegendgrouptitle(TracePropsAttribute):
+	font: Optional[DensitymapboxLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class Densitymapbox(TraceProps):
 	type: Literal["densitymapbox"]= Field(
 		...,
@@ -5895,11 +5896,11 @@ class Densitymapbox(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a mapbox subplot. If "mapbox" (the default value), the data refer to `layout.mapbox`. If "mapbox2", the data refer to `layout.mapbox2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -5966,6 +5967,34 @@ class FunnelMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class FunnelMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[FunnelMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class FunnelMarkerColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class FunnelMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -5988,7 +6017,7 @@ class FunnelMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class FunnelMarkerColorbarTickfont(TracePropsAttribute):
+class FunnelLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -6000,34 +6029,6 @@ class FunnelMarkerColorbarTickfont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class FunnelMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FunnelMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class FunnelConnectorLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the line color. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
 class FunnelMarkerLine(TracePropsAttribute):
@@ -6055,7 +6056,7 @@ class FunnelMarkerLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -6070,6 +6071,20 @@ class FunnelMarkerLine(TracePropsAttribute):
 	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class FunnelHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class FunnelMarkerColorbar(TracePropsAttribute):
@@ -6246,21 +6261,75 @@ class FunnelMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class FunnelLegendgrouptitleFont(TracePropsAttribute):
+class FunnelConnectorLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br> """
+		description=""" color<br>Sets the line color. """
 	)
-	family: Optional[str]= Field(
+	dash: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
-class FunnelHoverlabelFont(TracePropsAttribute):
+class FunnelMarker(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorbar: Optional[FunnelMarkerColorbar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	line: Optional[FunnelMarkerLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the bars. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.color` is set to a numerical array. If true, `marker.cmin` will correspond to the last color in the array and `marker.cmax` will correspond to the first color. """
+	)
+	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
+	)
+
+class FunnelOutsidetextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -6296,18 +6365,18 @@ class FunnelHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
-class FunnelConnector(TracePropsAttribute):
-	fillcolor: Optional[str]= Field(
+class FunnelInsidetextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br>Sets the fill color. """
+		description=""" color or array of colors<br> """
 	)
-	line: Optional[FunnelConnectorLine]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" boolean<br>Determines if connector regions and lines are drawn. """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class FunnelLegendgrouptitle(TracePropsAttribute):
@@ -6334,86 +6403,18 @@ class FunnelTextfont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class FunnelOutsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class FunnelConnector(TracePropsAttribute):
+	fillcolor: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" color<br>Sets the fill color. """
 	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class FunnelMarker(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorbar: Optional[FunnelMarkerColorbar]= Field(
+	line: Optional[FunnelConnectorLine]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	colorscale: Optional[str]= Field(
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	line: Optional[FunnelMarkerLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the bars. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.color` is set to a numerical array. If true, `marker.cmin` will correspond to the last color in the array and `marker.cmax` will correspond to the first color. """
-	)
-	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
-	)
-
-class FunnelInsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" boolean<br>Determines if connector regions and lines are drawn. """
 	)
 
 class Funnel(TraceProps):
@@ -6525,11 +6526,11 @@ class Funnel(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -6622,20 +6623,6 @@ class Funnel(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
-class FunnelareaLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class FunnelareaTitleFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -6648,6 +6635,20 @@ class FunnelareaTitleFont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class FunnelareaLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class FunnelareaMarkerLine(TracePropsAttribute):
@@ -6674,20 +6675,6 @@ class FunnelareaHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class FunnelareaTitle(TracePropsAttribute):
-	font: Optional[FunnelareaTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used for `title`. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	position: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "top left" | "top center" | "top right" )<br>Specifies the location of the `title`. Note that the title's position used to be set by the now deprecated `titleposition` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the chart. If it is empty, no title is displayed. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class FunnelareaLegendgrouptitle(TracePropsAttribute):
 	font: Optional[FunnelareaLegendgrouptitleFont]= Field(
 		None,
@@ -6696,38 +6683,6 @@ class FunnelareaLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class FunnelareaDomain(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this funnelarea trace . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this funnelarea trace . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this funnelarea trace (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this funnelarea trace (in plot fraction). """
-	)
-
-class FunnelareaInsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class FunnelareaHoverlabel(TracePropsAttribute):
@@ -6752,6 +6707,48 @@ class FunnelareaHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
+class FunnelareaInsidetextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class FunnelareaDomain(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this funnelarea trace . """
+	)
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this funnelarea trace . """
+	)
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the horizontal domain of this funnelarea trace (in plot fraction). """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the vertical domain of this funnelarea trace (in plot fraction). """
+	)
+
+class FunnelareaMarker(TracePropsAttribute):
+	colors: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the color of each sector. If not specified, the default trace color set is used to pick the sector colors. """
+	)
+	line: Optional[FunnelareaMarkerLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
 class FunnelareaTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -6766,14 +6763,18 @@ class FunnelareaTextfont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class FunnelareaMarker(TracePropsAttribute):
-	colors: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+class FunnelareaTitle(TracePropsAttribute):
+	font: Optional[FunnelareaTitleFont]= Field(
 		None,
-		description=""" data array<br>Sets the color of each sector. If not specified, the default trace color set is used to pick the sector colors. """
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used for `title`. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
-	line: Optional[FunnelareaMarkerLine]= Field(
+	position: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" enumerated , one of ( "top left" | "top center" | "top right" )<br>Specifies the location of the `title`. Note that the title's position used to be set by the now deprecated `titleposition` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the chart. If it is empty, no title is displayed. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class Funnelarea(TraceProps):
@@ -6920,20 +6921,6 @@ class HeatmapColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class HeatmapColorbarTitle(TracePropsAttribute):
-	font: Optional[HeatmapColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class HeatmapColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -6956,18 +6943,18 @@ class HeatmapColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class HeatmapColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class HeatmapColorbarTitle(TracePropsAttribute):
+	font: Optional[HeatmapColorbarTitleFont]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
-	family: Optional[str]= Field(
+	side: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class HeatmapLegendgrouptitleFont(TracePropsAttribute):
@@ -6996,6 +6983,66 @@ class HeatmapHoverlabelFont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class HeatmapColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class HeatmapHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[HeatmapHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class HeatmapTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class HeatmapLegendgrouptitle(TracePropsAttribute):
+	font: Optional[HeatmapLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class HeatmapColorbar(TracePropsAttribute):
@@ -7172,52 +7219,6 @@ class HeatmapColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class HeatmapHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[HeatmapHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class HeatmapLegendgrouptitle(TracePropsAttribute):
-	font: Optional[HeatmapLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class HeatmapTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class Heatmap(TraceProps):
 	type: Literal["heatmap"]= Field(
 		...,
@@ -7335,15 +7336,15 @@ class Heatmap(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -7476,18 +7477,18 @@ class HeatmapglColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class HeatmapglHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class HeatmapglLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" color<br> """
 	)
-	family: Optional[str | List[str]]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class HeatmapglColorbarTickformatstops(TracePropsAttribute):
@@ -7512,6 +7513,20 @@ class HeatmapglColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
+class HeatmapglHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
 class HeatmapglColorbarTitle(TracePropsAttribute):
 	font: Optional[HeatmapglColorbarTitleFont]= Field(
 		None,
@@ -7524,52 +7539,6 @@ class HeatmapglColorbarTitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class HeatmapglLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class HeatmapglLegendgrouptitle(TracePropsAttribute):
-	font: Optional[HeatmapglLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class HeatmapglHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[HeatmapglHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class HeatmapglColorbar(TracePropsAttribute):
@@ -7746,6 +7715,38 @@ class HeatmapglColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class HeatmapglHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[HeatmapglHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class HeatmapglLegendgrouptitle(TracePropsAttribute):
+	font: Optional[HeatmapglLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class Heatmapgl(TraceProps):
 	type: Literal["heatmapgl"]= Field(
 		...,
@@ -7827,15 +7828,15 @@ class Heatmapgl(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -7906,20 +7907,6 @@ class HistogramMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class HistogramMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[HistogramMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class HistogramMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -7932,6 +7919,20 @@ class HistogramMarkerColorbarTickfont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class HistogramMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[HistogramMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class HistogramMarkerColorbarTickformatstops(TracePropsAttribute):
@@ -7954,6 +7955,128 @@ class HistogramMarkerColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
+class HistogramHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class HistogramLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class HistogramSelectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of selected points. """
+	)
+
+class HistogramSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+
+class HistogramUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+	)
+
+class HistogramMarkerPattern(TracePropsAttribute):
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
+	)
+	fgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
+	)
+	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
+	)
+	fillmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
+	)
+	shape: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
+	)
+	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
+	)
+
+class HistogramMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
 class HistogramMarkerColorbar(TracePropsAttribute):
@@ -8130,22 +8253,6 @@ class HistogramMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class HistogramSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-
-class HistogramSelectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of selected points. """
-	)
-
 class HistogramUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -8156,69 +8263,17 @@ class HistogramUnselectedMarker(TracePropsAttribute):
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
 	)
 
-class HistogramHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class HistogramLegendgrouptitle(TracePropsAttribute):
+	font: Optional[HistogramLegendgrouptitleFont]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	family: Optional[str | List[str]]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
-class HistogramUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
-	)
-
-class HistogramMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class HistogramLegendgrouptitleFont(TracePropsAttribute):
+class HistogramTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -8232,48 +8287,104 @@ class HistogramLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class HistogramMarkerPattern(TracePropsAttribute):
-	bgcolor: Optional[str | List[str]]= Field(
+class HistogramInsidetextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
+		description=""" color<br> """
 	)
-	fgcolor: Optional[str | List[str]]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
-	)
-	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
-	)
-	fillmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
-	)
-	shape: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
-	)
-	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
-	)
-
-class HistogramXbins(TracePropsAttribute):
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the end value for the x axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or categorical coordinate string<br>Sets the size of each x axis bin. Default behavior: If `nbinsx` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsx` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1). If multiple non-overlaying histograms share a subplot, the first explicit `size` is used and all others discarded. If no `size` is provided,the sample data from all traces is combined to determine `size` as described above. """
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class HistogramYbins(TracePropsAttribute):
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the end value for the y axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the size of each y axis bin. Default behavior: If `nbinsy` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsy` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1). If multiple non-overlaying histograms share a subplot, the first explicit `size` is used and all others discarded. If no `size` is provided,the sample data from all traces is combined to determine `size` as described above. """
 	)
 	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or categorical coordinate string<br>Sets the starting value for the x axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5. If multiple non-overlaying histograms share a subplot, the first explicit `start` is used exactly and all others are shifted down (if necessary) to differ from that one by an integer number of bins. """
+		description=""" number or categorical coordinate string<br>Sets the starting value for the y axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5. If multiple non-overlaying histograms share a subplot, the first explicit `start` is used exactly and all others are shifted down (if necessary) to differ from that one by an integer number of bins. """
+	)
+
+class HistogramMarker(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorbar: Optional[HistogramMarkerColorbar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	line: Optional[HistogramMarkerLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the bars. """
+	)
+	pattern: Optional[HistogramMarkerPattern]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the pattern within the marker. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.color` is set to a numerical array. If true, `marker.cmin` will correspond to the last color in the array and `marker.cmax` will correspond to the first color. """
+	)
+	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
+	)
+
+class HistogramOutsidetextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class HistogramError_y(TracePropsAttribute):
@@ -8326,62 +8437,18 @@ class HistogramError_y(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
 	)
 
-class HistogramMarker(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class HistogramCumulative(TracePropsAttribute):
+	currentbin: Optional[str]= Field(
 		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+		description=""" enumerated , one of ( "include" | "exclude" | "half" )<br>Only applies if cumulative is enabled. Sets whether the current bin is included, excluded, or has half of its value included in the current cumulative value. "include" is the default for compatibility with various other tools, however it introduces a half-bin bias to the results. "exclude" makes the opposite half-bin bias, and "half" removes it. """
 	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	direction: Optional[str]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user. """
+		description=""" enumerated , one of ( "increasing" | "decreasing" )<br>Only applies if cumulative is enabled. If "increasing" (default) we sum all prior bins, so the result increases from left to right. If "decreasing" we sum later bins so the result decreases from left to right. """
 	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorbar: Optional[HistogramMarkerColorbar]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	line: Optional[HistogramMarkerLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the opacity of the bars. """
-	)
-	pattern: Optional[HistogramMarkerPattern]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the pattern within the marker. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.color` is set to a numerical array. If true, `marker.cmin` will correspond to the last color in the array and `marker.cmax` will correspond to the first color. """
-	)
-	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `marker.color` is set to a numerical array. """
+		description=""" boolean<br>If true, display the cumulative distribution by summing the binned values. Use the `direction` and `centralbin` attributes to tune the accumulation method. Note: in this mode, the "density" `histnorm` settings behave the same as their equivalents without "density": "" and "density" both rise to the number of data points, and "probability" and "probability density" both rise to the number of sample points. """
 	)
 
 class HistogramSelected(TracePropsAttribute):
@@ -8394,18 +8461,18 @@ class HistogramSelected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class HistogramYbins(TracePropsAttribute):
+class HistogramXbins(TracePropsAttribute):
 	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or categorical coordinate string<br>Sets the end value for the y axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
+		description=""" number or categorical coordinate string<br>Sets the end value for the x axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
 	)
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or categorical coordinate string<br>Sets the size of each y axis bin. Default behavior: If `nbinsy` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsy` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1). If multiple non-overlaying histograms share a subplot, the first explicit `size` is used and all others discarded. If no `size` is provided,the sample data from all traces is combined to determine `size` as described above. """
+		description=""" number or categorical coordinate string<br>Sets the size of each x axis bin. Default behavior: If `nbinsx` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsx` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1). If multiple non-overlaying histograms share a subplot, the first explicit `size` is used and all others discarded. If no `size` is provided,the sample data from all traces is combined to determine `size` as described above. """
 	)
 	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or categorical coordinate string<br>Sets the starting value for the y axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5. If multiple non-overlaying histograms share a subplot, the first explicit `start` is used exactly and all others are shifted down (if necessary) to differ from that one by an integer number of bins. """
+		description=""" number or categorical coordinate string<br>Sets the starting value for the x axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5. If multiple non-overlaying histograms share a subplot, the first explicit `start` is used exactly and all others are shifted down (if necessary) to differ from that one by an integer number of bins. """
 	)
 
 class HistogramHoverlabel(TracePropsAttribute):
@@ -8428,40 +8495,6 @@ class HistogramHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class HistogramUnselected(TracePropsAttribute):
-	marker: Optional[HistogramUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[HistogramUnselectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class HistogramCumulative(TracePropsAttribute):
-	currentbin: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "include" | "exclude" | "half" )<br>Only applies if cumulative is enabled. Sets whether the current bin is included, excluded, or has half of its value included in the current cumulative value. "include" is the default for compatibility with various other tools, however it introduces a half-bin bias to the results. "exclude" makes the opposite half-bin bias, and "half" removes it. """
-	)
-	direction: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "increasing" | "decreasing" )<br>Only applies if cumulative is enabled. If "increasing" (default) we sum all prior bins, so the result increases from left to right. If "decreasing" we sum later bins so the result decreases from left to right. """
-	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>If true, display the cumulative distribution by summing the binned values. Use the `direction` and `centralbin` attributes to tune the accumulation method. Note: in this mode, the "density" `histnorm` settings behave the same as their equivalents without "density": "" and "density" both rise to the number of data points, and "probability" and "probability density" both rise to the number of sample points. """
-	)
-
-class HistogramLegendgrouptitle(TracePropsAttribute):
-	font: Optional[HistogramLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class HistogramError_x(TracePropsAttribute):
@@ -8518,46 +8551,14 @@ class HistogramError_x(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
 	)
 
-class HistogramInsidetextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class HistogramUnselected(TracePropsAttribute):
+	marker: Optional[HistogramUnselectedMarker]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	family: Optional[str]= Field(
+	textfont: Optional[HistogramUnselectedTextfont]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class HistogramTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class HistogramOutsidetextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class Histogram(TraceProps):
@@ -8645,11 +8646,11 @@ class Histogram(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -8788,42 +8789,6 @@ class Histogram2dColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class Histogram2dHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class Histogram2dColorbarTickformatstops(TracePropsAttribute):
-	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
-	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
-	)
-	name: Optional[str]= Field(
-		None,
-		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
-	)
-	templateitemname: Optional[str]= Field(
-		None,
-		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
-	)
-	value: Optional[str]= Field(
-		None,
-		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
 class Histogram2dLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -8866,6 +8831,42 @@ class Histogram2dColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class Histogram2dColorbarTickformatstops(TracePropsAttribute):
+	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
+	)
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
+	)
+	name: Optional[str]= Field(
+		None,
+		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
+	)
+	templateitemname: Optional[str]= Field(
+		None,
+		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
+	)
+	value: Optional[str]= Field(
+		None,
+		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
+class Histogram2dHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
 class Histogram2dHoverlabel(TracePropsAttribute):
 	align: Optional[str | List[str] ]= Field(
 		None,
@@ -8888,14 +8889,10 @@ class Histogram2dHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
-class Histogram2dLegendgrouptitle(TracePropsAttribute):
-	font: Optional[Histogram2dLegendgrouptitleFont]= Field(
+class Histogram2dMarker(TracePropsAttribute):
+	color: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" data array<br>Sets the aggregation data. """
 	)
 
 class Histogram2dXbins(TracePropsAttribute):
@@ -8912,10 +8909,28 @@ class Histogram2dXbins(TracePropsAttribute):
 		description=""" number or categorical coordinate string<br>Sets the starting value for the x axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
 	)
 
-class Histogram2dMarker(TracePropsAttribute):
-	color: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+class Histogram2dYbins(TracePropsAttribute):
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" data array<br>Sets the aggregation data. """
+		description=""" number or categorical coordinate string<br>Sets the end value for the y axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the size of each y axis bin. Default behavior: If `nbinsy` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsy` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1).  """
+	)
+	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the starting value for the y axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
+	)
+
+class Histogram2dLegendgrouptitle(TracePropsAttribute):
+	font: Optional[Histogram2dLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class Histogram2dColorbar(TracePropsAttribute):
@@ -9092,20 +9107,6 @@ class Histogram2dColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class Histogram2dYbins(TracePropsAttribute):
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the end value for the y axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the size of each y axis bin. Default behavior: If `nbinsy` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsy` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1).  """
-	)
-	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the starting value for the y axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
-	)
-
 class Histogram2dTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -9205,15 +9206,15 @@ class Histogram2d(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -9344,20 +9345,6 @@ class Histogram2dcontourColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class Histogram2dcontourContoursLabelfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class Histogram2dcontourColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -9372,6 +9359,34 @@ class Histogram2dcontourColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class Histogram2dcontourLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class Histogram2dcontourColorbarTitle(TracePropsAttribute):
+	font: Optional[Histogram2dcontourColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
 class Histogram2dcontourHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -9384,6 +9399,20 @@ class Histogram2dcontourHoverlabelFont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class Histogram2dcontourContoursLabelfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class Histogram2dcontourColorbarTickformatstops(TracePropsAttribute):
@@ -9406,48 +9435,6 @@ class Histogram2dcontourColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class Histogram2dcontourColorbarTitle(TracePropsAttribute):
-	font: Optional[Histogram2dcontourColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class Histogram2dcontourLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class Histogram2dcontourYbins(TracePropsAttribute):
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the end value for the y axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the size of each y axis bin. Default behavior: If `nbinsy` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsy` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1).  """
-	)
-	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the starting value for the y axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
 	)
 
 class Histogram2dcontourContours(TracePropsAttribute):
@@ -9496,6 +9483,56 @@ class Histogram2dcontourContours(TracePropsAttribute):
 		description=""" number or categorical coordinate string<br>Sets the value or values of the constraint boundary. When `operation` is set to one of the comparison values (=,<,>=,>,<=) "value" is expected to be a number. When `operation` is set to one of the interval values ([],(),[),(],][,)(,](,)[) "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. """
 	)
 
+class Histogram2dcontourXbins(TracePropsAttribute):
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the end value for the x axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the size of each x axis bin. Default behavior: If `nbinsx` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsx` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1).  """
+	)
+	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the starting value for the x axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
+	)
+
+class Histogram2dcontourTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class Histogram2dcontourHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[Histogram2dcontourHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
 class Histogram2dcontourLegendgrouptitle(TracePropsAttribute):
 	font: Optional[Histogram2dcontourLegendgrouptitleFont]= Field(
 		None,
@@ -9504,6 +9541,44 @@ class Histogram2dcontourLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class Histogram2dcontourYbins(TracePropsAttribute):
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the end value for the y axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the size of each y axis bin. Default behavior: If `nbinsy` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsy` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1).  """
+	)
+	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the starting value for the y axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
+	)
+
+class Histogram2dcontourMarker(TracePropsAttribute):
+	color: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the aggregation data. """
+	)
+
+class Histogram2dcontourLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour level. Has no effect if `contours.coloring` is set to "lines". """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1.3<br>Sets the amount of smoothing for the contour lines, where "0" corresponds to no smoothing. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the contour line width in (in px) """
 	)
 
 class Histogram2dcontourColorbar(TracePropsAttribute):
@@ -9680,80 +9755,6 @@ class Histogram2dcontourColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class Histogram2dcontourMarker(TracePropsAttribute):
-	color: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the aggregation data. """
-	)
-
-class Histogram2dcontourXbins(TracePropsAttribute):
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the end value for the x axis bins. The last bin may not end exactly at this value, we increment the bin edge by `size` from `start` until we reach or exceed `end`. Defaults to the maximum data value. Like `start`, for dates use a date string, and for category data `end` is based on the category serial numbers. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the size of each x axis bin. Default behavior: If `nbinsx` is 0 or omitted, we choose a nice round bin size such that the number of bins is about the same as the typical number of samples in each bin. If `nbinsx` is provided, we choose a nice round bin size giving no more than that many bins. For date data, use milliseconds or "M<n>" for months, as in `axis.dtick`. For category data, the number of categories to bin together (always defaults to 1).  """
-	)
-	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the starting value for the x axis bins. Defaults to the minimum data value, shifted down if necessary to make nice round values and to remove ambiguous bin edges. For example, if most of the data is integers we shift the bin edges 0.5 down, so a `size` of 5 would have a default `start` of -0.5, so it is clear that 0-4 are in the first bin, 5-9 in the second, but continuous data gets a start of 0 and bins [0,5), [5,10) etc. Dates behave similarly, and `start` should be a date string. For category data, `start` is based on the category serial numbers, and defaults to -0.5.  """
-	)
-
-class Histogram2dcontourTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class Histogram2dcontourLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the contour level. Has no effect if `contours.coloring` is set to "lines". """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1.3<br>Sets the amount of smoothing for the contour lines, where "0" corresponds to no smoothing. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the contour line width in (in px) """
-	)
-
-class Histogram2dcontourHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[Histogram2dcontourHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
 class Histogram2dcontour(TraceProps):
 	type: Literal["histogram2dcontour"]= Field(
 		...,
@@ -9831,15 +9832,15 @@ class Histogram2dcontour(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -9982,6 +9983,34 @@ class IcicleMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class IcicleMarkerColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class IcicleMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[IcicleMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
 class IcicleMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -10002,72 +10031,6 @@ class IcicleMarkerColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class IcicleMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[IcicleMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class IcicleMarkerColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class IcicleLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class IcicleMarkerLine(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. Defaults to the `paper_bgcolor` value. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
-	)
-
-class IciclePathbarTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class IcicleHoverlabelFont(TracePropsAttribute):
@@ -10258,6 +10221,96 @@ class IcicleMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class IciclePathbarTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class IcicleMarkerLine(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. Defaults to the `paper_bgcolor` value. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
+	)
+
+class IcicleLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class IcicleLeaf(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the opacity of the leaves. With colorscale it is defaulted to 1; otherwise it is defaulted to 0.7 """
+	)
+
+class IciclePathbar(TracePropsAttribute):
+	edgeshape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "&gt;" | "&lt;" | "|" | "/" | "\" )<br>Determines which shape is used for edges between `barpath` labels. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "top" | "bottom" )<br>Determines on which side of the the treemap the `pathbar` should be presented. """
+	)
+	textfont: Optional[IciclePathbarTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used inside `pathbar`. """
+	)
+	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 12<br>Sets the thickness of `pathbar` (in px). If not specified the `pathbar.textfont.size` is used with 3 pixles extra padding on each side. """
+	)
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines if the path bar is drawn i.e. outside the trace `domain` and with one pixel gap. """
+	)
+
+class IcicleOutsidetextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class IcicleLegendgrouptitle(TracePropsAttribute):
+	font: Optional[IcicleLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class IcicleMarker(TracePropsAttribute):
 	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -10279,7 +10332,7 @@ class IcicleMarker(TracePropsAttribute):
 		None,
 		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if colors is set to a numerical array. Value should have the same units as colors and if set, `marker.cmax` must be set as well. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -10308,6 +10361,24 @@ class IcicleMarker(TracePropsAttribute):
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if colors is set to a numerical array. """
 	)
 
+class IcicleDomain(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this icicle trace . """
+	)
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this icicle trace . """
+	)
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the horizontal domain of this icicle trace (in plot fraction). """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the vertical domain of this icicle trace (in plot fraction). """
+	)
+
 class IcicleHoverlabel(TracePropsAttribute):
 	align: Optional[str | List[str] ]= Field(
 		None,
@@ -10330,20 +10401,6 @@ class IcicleHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
-class IcicleTiling(TracePropsAttribute):
-	flip: Optional[str]= Field(
-		None,
-		description=""" flaglist string. any combination of "x", "y" joined with a "+"<br>Determines if the positions obtained from solver are flipped on each axis. """
-	)
-	orientation: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "v" | "h" )<br>When set in conjunction with `tiling.flip`, determines on which side the root nodes are drawn in the chart. If `tiling.orientation` is "v" and `tiling.flip` is "", the root nodes appear at the top. If `tiling.orientation` is "v" and `tiling.flip` is "y", the root nodes appear at the bottom. If `tiling.orientation` is "h" and `tiling.flip` is "", the root nodes appear at the left. If `tiling.orientation` is "h" and `tiling.flip` is "x", the root nodes appear at the right. """
-	)
-	pad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the inner padding (in px). """
-	)
-
 class IcicleInsidetextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -10356,6 +10413,12 @@ class IcicleInsidetextfont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class IcicleRoot(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>sets the color of the root node for a sunburst/treemap/icicle trace. this has no effect when a colorscale is used to set the markers. """
 	)
 
 class IcicleTextfont(TracePropsAttribute):
@@ -10372,80 +10435,18 @@ class IcicleTextfont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class IcicleLegendgrouptitle(TracePropsAttribute):
-	font: Optional[IcicleLegendgrouptitleFont]= Field(
+class IcicleTiling(TracePropsAttribute):
+	flip: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" flaglist string. any combination of "x", "y" joined with a "+"<br>Determines if the positions obtained from solver are flipped on each axis. """
 	)
-	text: Optional[str]= Field(
+	orientation: Optional[str]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" enumerated , one of ( "v" | "h" )<br>When set in conjunction with `tiling.flip`, determines on which side the root nodes are drawn in the chart. If `tiling.orientation` is "v" and `tiling.flip` is "", the root nodes appear at the top. If `tiling.orientation` is "v" and `tiling.flip` is "y", the root nodes appear at the bottom. If `tiling.orientation` is "h" and `tiling.flip` is "", the root nodes appear at the left. If `tiling.orientation` is "h" and `tiling.flip` is "x", the root nodes appear at the right. """
 	)
-
-class IcicleLeaf(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	pad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the opacity of the leaves. With colorscale it is defaulted to 1; otherwise it is defaulted to 0.7 """
-	)
-
-class IcicleDomain(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this icicle trace . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this icicle trace . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this icicle trace (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this icicle trace (in plot fraction). """
-	)
-
-class IciclePathbar(TracePropsAttribute):
-	edgeshape: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "&gt;" | "&lt;" | "|" | "/" | "\" )<br>Determines which shape is used for edges between `barpath` labels. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "top" | "bottom" )<br>Determines on which side of the the treemap the `pathbar` should be presented. """
-	)
-	textfont: Optional[IciclePathbarTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used inside `pathbar`. """
-	)
-	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 12<br>Sets the thickness of `pathbar` (in px). If not specified the `pathbar.textfont.size` is used with 3 pixles extra padding on each side. """
-	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines if the path bar is drawn i.e. outside the trace `domain` and with one pixel gap. """
-	)
-
-class IcicleRoot(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>sets the color of the root node for a sunburst/treemap/icicle trace. this has no effect when a colorscale is used to set the markers. """
-	)
-
-class IcicleOutsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" number greater than or equal to 0<br>Sets the inner padding (in px). """
 	)
 
 class Icicle(TraceProps):
@@ -10590,6 +10591,20 @@ class Icicle(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
+class ImageLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class ImageHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -10604,18 +10619,14 @@ class ImageHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class ImageLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ImageLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ImageLegendgrouptitleFont]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	family: Optional[str]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class ImageHoverlabel(TracePropsAttribute):
@@ -10638,16 +10649,6 @@ class ImageHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class ImageLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ImageLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class Image(TraceProps):
@@ -10727,11 +10728,11 @@ class Image(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -10760,39 +10761,7 @@ class Image(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
-class IndicatorGaugeAxisTickformatstops(TracePropsAttribute):
-	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
-	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
-	)
-	name: Optional[str]= Field(
-		None,
-		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
-	)
-	templateitemname: Optional[str]= Field(
-		None,
-		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
-	)
-	value: Optional[str]= Field(
-		None,
-		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
 class IndicatorGaugeStepsLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the line enclosing each sector. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
-	)
-
-class IndicatorGaugeBarLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the color of the line enclosing each sector. """
@@ -10816,6 +10785,16 @@ class IndicatorGaugeAxisTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class IndicatorGaugeBarLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the line enclosing each sector. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
+	)
+
 class IndicatorGaugeThresholdLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -10826,6 +10805,28 @@ class IndicatorGaugeThresholdLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the threshold line. """
 	)
 
+class IndicatorGaugeAxisTickformatstops(TracePropsAttribute):
+	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
+	)
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
+	)
+	name: Optional[str]= Field(
+		None,
+		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
+	)
+	templateitemname: Optional[str]= Field(
+		None,
+		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
+	)
+	value: Optional[str]= Field(
+		None,
+		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
 class IndicatorDeltaDecreasing(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -10834,6 +10835,48 @@ class IndicatorDeltaDecreasing(TracePropsAttribute):
 	symbol: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the symbol to display for increasing value """
+	)
+
+class IndicatorDeltaFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class IndicatorNumberFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class IndicatorTitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class IndicatorGaugeSteps(TracePropsAttribute):
@@ -10862,34 +10905,6 @@ class IndicatorGaugeSteps(TracePropsAttribute):
 		description=""" number between or equal to 0 and 1<br>Sets the thickness of the bar as a fraction of the total thickness of the gauge. """
 	)
 
-class IndicatorTitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class IndicatorDeltaFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class IndicatorDeltaIncreasing(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -10898,34 +10913,6 @@ class IndicatorDeltaIncreasing(TracePropsAttribute):
 	symbol: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the symbol to display for increasing value """
-	)
-
-class IndicatorGaugeBar(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the background color of the arc. """
-	)
-	line: Optional[IndicatorGaugeBarLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the thickness of the bar as a fraction of the total thickness of the gauge. """
-	)
-
-class IndicatorNumberFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
 	)
 
 class IndicatorLegendgrouptitleFont(TracePropsAttribute):
@@ -10940,6 +10927,20 @@ class IndicatorLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class IndicatorGaugeBar(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the background color of the arc. """
+	)
+	line: Optional[IndicatorGaugeBarLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the thickness of the bar as a fraction of the total thickness of the gauge. """
 	)
 
 class IndicatorGaugeAxis(TracePropsAttribute):
@@ -11062,64 +11063,6 @@ class IndicatorGaugeThreshold(TracePropsAttribute):
 		description=""" number<br>Sets a treshold value drawn as a line. """
 	)
 
-class IndicatorGauge(TracePropsAttribute):
-	axis: Optional[IndicatorGaugeAxis]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	bar: Optional[IndicatorGaugeBar]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Set the appearance of the gauge's value """
-	)
-	bgcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the gauge background color. """
-	)
-	bordercolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the border enclosing the gauge. """
-	)
-	borderwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of the border enclosing the gauge. """
-	)
-	shape: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "angular" | "bullet" )<br>Set the shape of the gauge """
-	)
-	steps: Optional[List[IndicatorGaugeSteps]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	threshold: Optional[IndicatorGaugeThreshold]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class IndicatorLegendgrouptitle(TracePropsAttribute):
-	font: Optional[IndicatorLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class IndicatorTitle(TracePropsAttribute):
-	align: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets the horizontal alignment of the title. It defaults to `center` except for bullet charts for which it defaults to right. """
-	)
-	font: Optional[IndicatorTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Set the font used to display the title """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of this indicator. """
-	)
-
 class IndicatorDelta(TracePropsAttribute):
 	decreasing: Optional[IndicatorDeltaDecreasing]= Field(
 		None,
@@ -11192,6 +11135,64 @@ class IndicatorDomain(TracePropsAttribute):
 	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
 		description=""" array<br>Sets the vertical domain of this indicator trace (in plot fraction). """
+	)
+
+class IndicatorTitle(TracePropsAttribute):
+	align: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets the horizontal alignment of the title. It defaults to `center` except for bullet charts for which it defaults to right. """
+	)
+	font: Optional[IndicatorTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Set the font used to display the title """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of this indicator. """
+	)
+
+class IndicatorLegendgrouptitle(TracePropsAttribute):
+	font: Optional[IndicatorLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class IndicatorGauge(TracePropsAttribute):
+	axis: Optional[IndicatorGaugeAxis]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	bar: Optional[IndicatorGaugeBar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Set the appearance of the gauge's value """
+	)
+	bgcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the gauge background color. """
+	)
+	bordercolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the border enclosing the gauge. """
+	)
+	borderwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of the border enclosing the gauge. """
+	)
+	shape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "angular" | "bullet" )<br>Set the shape of the gauge """
+	)
+	steps: Optional[List[IndicatorGaugeSteps]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	threshold: Optional[IndicatorGaugeThreshold]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class Indicator(TraceProps):
@@ -11278,6 +11279,62 @@ class IsosurfaceColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class IsosurfaceHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class IsosurfaceSlicesY(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis y except start and end. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not slice planes about the y dimension are drawn. """
+	)
+
+class IsosurfaceSlicesZ(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis z except start and end. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not slice planes about the z dimension are drawn. """
+	)
+
+class IsosurfaceSlicesX(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis x except start and end. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not slice planes about the x dimension are drawn. """
+	)
+
 class IsosurfaceLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -11292,6 +11349,26 @@ class IsosurfaceLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class IsosurfaceCapsY(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the y `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+
+class IsosurfaceCapsZ(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the z `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+
 class IsosurfaceCapsX(TracePropsAttribute):
 	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -11300,6 +11377,20 @@ class IsosurfaceCapsX(TracePropsAttribute):
 	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the x `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+
+class IsosurfaceColorbarTitle(TracePropsAttribute):
+	font: Optional[IsosurfaceColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class IsosurfaceColorbarTickformatstops(TracePropsAttribute):
@@ -11324,72 +11415,6 @@ class IsosurfaceColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class IsosurfaceCapsZ(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the z `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-
-class IsosurfaceSlicesZ(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis z except start and end. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not slice planes about the z dimension are drawn. """
-	)
-
-class IsosurfaceSlicesY(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis y except start and end. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not slice planes about the y dimension are drawn. """
-	)
-
-class IsosurfaceSlicesX(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis x except start and end. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not slice planes about the x dimension are drawn. """
-	)
-
-class IsosurfaceHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
 class IsosurfaceColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -11402,108 +11427,6 @@ class IsosurfaceColorbarTickfont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class IsosurfaceColorbarTitle(TracePropsAttribute):
-	font: Optional[IsosurfaceColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class IsosurfaceCapsY(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the y `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-
-class IsosurfaceContour(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the contour lines. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
-	)
-
-class IsosurfaceHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[IsosurfaceHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class IsosurfaceSurface(TracePropsAttribute):
-	count: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 1<br>Sets the number of iso-surfaces between minimum and maximum iso-values. By default this value is 2 meaning that only minimum and maximum surfaces would be drawn. """
-	)
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the iso-surface. The default fill value of the surface is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	pattern: Optional[str]= Field(
-		None,
-		description=""" flaglist string. any combination of "a", "b", "c", "d", "e" joined with a "+" or "all" or "odd" or "even".<br>Sets the surface pattern of the iso-surface 3-D sections. The default pattern of the surface is `all` meaning that the rest of surface elements would be shaded. The check options (either 1 or 2) could be used to draw half of the squares on the surface. Using various combinations of capital `A`, `B`, `C`, `D` and `E` may also be used to reduce the number of triangles on the iso-surfaces and creating other patterns of interest. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Hides/displays surfaces between minimum and maximum iso-values. """
-	)
-
-class IsosurfaceSpaceframe(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 0.15 meaning that only 15% of the area of every faces of tetras would be shaded. Applying a greater `fill` ratio would allow the creation of stronger elements or could be sued to have entirely closed areas (in case of using 1). """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Displays/hides tetrahedron shapes between minimum and maximum iso-values. Often useful when either caps or surfaces are disabled or filled with values less than 1. """
-	)
-
-class IsosurfaceCaps(TracePropsAttribute):
-	x: Optional[IsosurfaceCapsX]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	y: Optional[IsosurfaceCapsY]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	z: Optional[IsosurfaceCapsZ]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class IsosurfaceLighting(TracePropsAttribute):
@@ -11534,6 +11457,80 @@ class IsosurfaceLighting(TracePropsAttribute):
 	vertexnormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
+	)
+
+class IsosurfaceCaps(TracePropsAttribute):
+	x: Optional[IsosurfaceCapsX]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	y: Optional[IsosurfaceCapsY]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	z: Optional[IsosurfaceCapsZ]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class IsosurfaceSlices(TracePropsAttribute):
+	x: Optional[IsosurfaceSlicesX]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	y: Optional[IsosurfaceSlicesY]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	z: Optional[IsosurfaceSlicesZ]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class IsosurfaceContour(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour lines. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
+	)
+
+class IsosurfaceLegendgrouptitle(TracePropsAttribute):
+	font: Optional[IsosurfaceLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class IsosurfaceHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[IsosurfaceHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class IsosurfaceColorbar(TracePropsAttribute):
@@ -11710,6 +11707,16 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class IsosurfaceSpaceframe(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 0.15 meaning that only 15% of the area of every faces of tetras would be shaded. Applying a greater `fill` ratio would allow the creation of stronger elements or could be sued to have entirely closed areas (in case of using 1). """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Displays/hides tetrahedron shapes between minimum and maximum iso-values. Often useful when either caps or surfaces are disabled or filled with values less than 1. """
+	)
+
 class IsosurfaceLightposition(TracePropsAttribute):
 	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -11724,28 +11731,22 @@ class IsosurfaceLightposition(TracePropsAttribute):
 		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
 	)
 
-class IsosurfaceSlices(TracePropsAttribute):
-	x: Optional[IsosurfaceSlicesX]= Field(
+class IsosurfaceSurface(TracePropsAttribute):
+	count: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" integer greater than or equal to 1<br>Sets the number of iso-surfaces between minimum and maximum iso-values. By default this value is 2 meaning that only minimum and maximum surfaces would be drawn. """
 	)
-	y: Optional[IsosurfaceSlicesY]= Field(
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the iso-surface. The default fill value of the surface is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	z: Optional[IsosurfaceSlicesZ]= Field(
+	pattern: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" flaglist string. any combination of "a", "b", "c", "d", "e" joined with a "+" or "all" or "odd" or "even".<br>Sets the surface pattern of the iso-surface 3-D sections. The default pattern of the surface is `all` meaning that the rest of surface elements would be shaded. The check options (either 1 or 2) could be used to draw half of the squares on the surface. Using various combinations of capital `A`, `B`, `C`, `D` and `E` may also be used to reduce the number of triangles on the iso-surfaces and creating other patterns of interest. """
 	)
-
-class IsosurfaceLegendgrouptitle(TracePropsAttribute):
-	font: Optional[IsosurfaceLegendgrouptitleFont]= Field(
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" boolean<br>Hides/displays surfaces between minimum and maximum iso-values. """
 	)
 
 class Isosurface(TraceProps):
@@ -11837,11 +11838,11 @@ class Isosurface(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -11948,6 +11949,20 @@ class Mesh3dColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class Mesh3dLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class Mesh3dColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -11974,20 +11989,6 @@ class Mesh3dColorbarTitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class Mesh3dLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
 	)
 
 class Mesh3dColorbarTickformatstops(TracePropsAttribute):
@@ -12054,66 +12055,6 @@ class Mesh3dLighting(TracePropsAttribute):
 	vertexnormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
-	)
-
-class Mesh3dHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[Mesh3dHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class Mesh3dContour(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the contour lines. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
-	)
-
-class Mesh3dLegendgrouptitle(TracePropsAttribute):
-	font: Optional[Mesh3dLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class Mesh3dLightposition(TracePropsAttribute):
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
-	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
-	)
-	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
 	)
 
 class Mesh3dColorbar(TracePropsAttribute):
@@ -12290,6 +12231,66 @@ class Mesh3dColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class Mesh3dLightposition(TracePropsAttribute):
+	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
+	)
+	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
+	)
+	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
+	)
+
+class Mesh3dContour(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour lines. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
+	)
+
+class Mesh3dLegendgrouptitle(TracePropsAttribute):
+	font: Optional[Mesh3dLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class Mesh3dHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[Mesh3dHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
 class Mesh3d(TraceProps):
 	type: Literal["mesh3d"]= Field(
 		...,
@@ -12399,11 +12400,11 @@ class Mesh3d(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -12496,6 +12497,20 @@ class Mesh3d(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
+class OhlcIncreasingLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color. """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
+	)
+
 class OhlcHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -12524,20 +12539,6 @@ class OhlcLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class OhlcIncreasingLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the line color. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
-	)
-
 class OhlcDecreasingLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -12552,20 +12553,26 @@ class OhlcDecreasingLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
+class OhlcLegendgrouptitle(TracePropsAttribute):
+	font: Optional[OhlcLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class OhlcIncreasing(TracePropsAttribute):
 	line: Optional[OhlcIncreasingLine]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class OhlcLine(TracePropsAttribute):
-	dash: Optional[str]= Field(
+class OhlcDecreasing(TracePropsAttribute):
+	line: Optional[OhlcDecreasingLine]= Field(
 		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). Note that this style setting can also be set per direction via `increasing.line.dash` and `decreasing.line.dash`. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>[object Object] Note that this style setting can also be set per direction via `increasing.line.width` and `decreasing.line.width`. """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class OhlcHoverlabel(TracePropsAttribute):
@@ -12594,20 +12601,14 @@ class OhlcHoverlabel(TracePropsAttribute):
 		description=""" boolean<br>Show hover information (open, close, high, low) in separate labels. """
 	)
 
-class OhlcLegendgrouptitle(TracePropsAttribute):
-	font: Optional[OhlcLegendgrouptitleFont]= Field(
+class OhlcLine(TracePropsAttribute):
+	dash: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). Note that this style setting can also be set per direction via `increasing.line.dash` and `decreasing.line.dash`. """
 	)
-	text: Optional[str]= Field(
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class OhlcDecreasing(TracePropsAttribute):
-	line: Optional[OhlcDecreasingLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" number greater than or equal to 0<br>[object Object] Note that this style setting can also be set per direction via `increasing.line.width` and `decreasing.line.width`. """
 	)
 
 class Ohlc(TraceProps):
@@ -12695,11 +12696,11 @@ class Ohlc(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -12762,20 +12763,6 @@ class ParcatsLineColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ParcatsLineColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ParcatsLineColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -12810,6 +12797,20 @@ class ParcatsLineColorbarTitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class ParcatsLineColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class ParcatsLineColorbar(TracePropsAttribute):
@@ -13000,6 +13001,20 @@ class ParcatsLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class ParcatsTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class ParcatsLabelfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -13014,18 +13029,14 @@ class ParcatsLabelfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ParcatsTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ParcatsLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ParcatsLegendgrouptitleFont]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	family: Optional[str]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class ParcatsDimensions(TracePropsAttribute):
@@ -13058,14 +13069,22 @@ class ParcatsDimensions(TracePropsAttribute):
 		description=""" boolean<br>Shows the dimension when set to `true` (the default). Hides the dimension for `false`. """
 	)
 
-class ParcatsLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ParcatsLegendgrouptitleFont]= Field(
+class ParcatsDomain(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this parcats trace . """
 	)
-	text: Optional[str]= Field(
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this parcats trace . """
+	)
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the horizontal domain of this parcats trace (in plot fraction). """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the vertical domain of this parcats trace (in plot fraction). """
 	)
 
 class ParcatsLine(TracePropsAttribute):
@@ -13093,7 +13112,7 @@ class ParcatsLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `line.cmin` and `line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -13120,24 +13139,6 @@ class ParcatsLine(TracePropsAttribute):
 	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `line.color` is set to a numerical array. """
-	)
-
-class ParcatsDomain(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this parcats trace . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this parcats trace . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this parcats trace (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this parcats trace (in plot fraction). """
 	)
 
 class Parcats(TraceProps):
@@ -13228,6 +13229,20 @@ class ParcoordsLineColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class ParcoordsLineColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class ParcoordsLineColorbarTitle(TracePropsAttribute):
 	font: Optional[ParcoordsLineColorbarTitleFont]= Field(
 		None,
@@ -13262,34 +13277,6 @@ class ParcoordsLineColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class ParcoordsLineColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class ParcoordsLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
 	)
 
 class ParcoordsLineColorbar(TracePropsAttribute):
@@ -13466,6 +13453,20 @@ class ParcoordsLineColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class ParcoordsLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class ParcoordsUnselectedLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -13504,20 +13505,6 @@ class ParcoordsRangefont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ParcoordsTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ParcoordsDomain(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -13536,14 +13523,64 @@ class ParcoordsDomain(TracePropsAttribute):
 		description=""" array<br>Sets the vertical domain of this parcoords trace (in plot fraction). """
 	)
 
-class ParcoordsLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ParcoordsLegendgrouptitleFont]= Field(
+class ParcoordsTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" color<br> """
 	)
-	text: Optional[str]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ParcoordsLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `line.colorscale`. Has an effect only if in `line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `line.color`) or the bounds set in `line.cmin` and `line.cmax` Has an effect only if in `line.color` is set to a numerical array. Defaults to `false` when `line.cmin` and `line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `line.cmin` and/or `line.cmax` to be equidistant to this point. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color`. Has no effect when `line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `line.cmin` and `line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorbar: Optional[ParcoordsLineColorbar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `line.cmin` and `line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `line.color` is set to a numerical array. If true, `line.cmin` will correspond to the last color in the array and `line.cmax` will correspond to the first color. """
+	)
+	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `line.color` is set to a numerical array. """
 	)
 
 class ParcoordsDimensions(TracePropsAttribute):
@@ -13598,50 +13635,14 @@ class ParcoordsUnselected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class ParcoordsLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class ParcoordsLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ParcoordsLegendgrouptitleFont]= Field(
 		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `line.colorscale`. Has an effect only if in `line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `line.color`) or the bounds set in `line.cmin` and `line.cmax` Has an effect only if in `line.color` is set to a numerical array. Defaults to `false` when `line.cmin` and `line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `line.cmin` and/or `line.cmax` to be equidistant to this point. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color`. Has no effect when `line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `line.cmin` and `line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorbar: Optional[ParcoordsLineColorbar]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `line.cmin` and `line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `line.color` is set to a numerical array. If true, `line.cmin` will correspond to the last color in the array and `line.cmax` will correspond to the first color. """
-	)
-	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `line.color` is set to a numerical array. """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class Parcoords(TraceProps):
@@ -13718,6 +13719,20 @@ class Parcoords(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
+class PieLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class PieMarkerLine(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -13742,21 +13757,35 @@ class PieTitleFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class PieLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class PieHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br> """
+		description=""" color or array of colors<br> """
 	)
-	family: Optional[str]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class PieHoverlabelFont(TracePropsAttribute):
+class PieOutsidetextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class PieTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -13798,18 +13827,14 @@ class PieDomain(TracePropsAttribute):
 		description=""" array<br>Sets the vertical domain of this pie trace (in plot fraction). """
 	)
 
-class PieOutsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class PieMarker(TracePropsAttribute):
+	colors: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" data array<br>Sets the color of each sector. If not specified, the default trace color set is used to pick the sector colors. """
 	)
-	family: Optional[str | List[str]]= Field(
+	line: Optional[PieMarkerLine]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class PieHoverlabel(TracePropsAttribute):
@@ -13835,30 +13860,6 @@ class PieHoverlabel(TracePropsAttribute):
 	)
 
 class PieInsidetextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class PieMarker(TracePropsAttribute):
-	colors: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the color of each sector. If not specified, the default trace color set is used to pick the sector colors. """
-	)
-	line: Optional[PieMarkerLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class PieTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -14068,16 +14069,6 @@ class SankeyNodeHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class SankeyLinkLine(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the color of the `line` around each `link`. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `link`. """
-	)
-
 class SankeyHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -14112,6 +14103,16 @@ class SankeyNodeHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class SankeyLinkLine(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the color of the `line` around each `link`. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `link`. """
 	)
 
 class SankeyLegendgrouptitleFont(TracePropsAttribute):
@@ -14154,16 +14155,6 @@ class SankeyLinkColorscales(TracePropsAttribute):
 		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
 	)
 
-class SankeyNodeLine(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the color of the `line` around each `node`. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `node`. """
-	)
-
 class SankeyLinkHoverlabel(TracePropsAttribute):
 	align: Optional[str | List[str] ]= Field(
 		None,
@@ -14186,14 +14177,36 @@ class SankeyLinkHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
-class SankeyLegendgrouptitle(TracePropsAttribute):
-	font: Optional[SankeyLegendgrouptitleFont]= Field(
+class SankeyNodeLine(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" color or array of colors<br>Sets the color of the `line` around each `node`. """
 	)
-	text: Optional[str]= Field(
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `node`. """
+	)
+
+class SankeyHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[SankeyHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class SankeyNode(TracePropsAttribute):
@@ -14296,28 +14309,6 @@ class SankeyLink(TracePropsAttribute):
 		description=""" data array<br>A numeric value representing the flow volume value. """
 	)
 
-class SankeyHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[SankeyHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
 class SankeyDomain(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -14334,6 +14325,16 @@ class SankeyDomain(TracePropsAttribute):
 	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
 		description=""" array<br>Sets the vertical domain of this sankey trace (in plot fraction). """
+	)
+
+class SankeyLegendgrouptitle(TracePropsAttribute):
+	font: Optional[SankeyLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class SankeyTextfont(TracePropsAttribute):
@@ -14446,34 +14447,6 @@ class ScatterMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScatterMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[ScatterMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class ScatterMarkerColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ScatterMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -14496,21 +14469,7 @@ class ScatterMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ScatterSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
-	)
-
-class ScatterLegendgrouptitleFont(TracePropsAttribute):
+class ScatterMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -14522,6 +14481,34 @@ class ScatterLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScatterMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[ScatterMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class ScatterHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScatterSelectedTextfont(TracePropsAttribute):
@@ -14538,82 +14525,6 @@ class ScatterMarkerGradient(TracePropsAttribute):
 	type: Optional[str | List[str] ]= Field(
 		None,
 		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
-	)
-
-class ScatterMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class ScatterUnselectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
-	)
-
-class ScatterUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
-	)
-
-class ScatterHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScatterMarkerColorbar(TracePropsAttribute):
@@ -14790,68 +14701,94 @@ class ScatterMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScatterError_y(TracePropsAttribute):
-	array: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the data corresponding the length of each error bar. Values are plotted relative to the underlying data. """
-	)
-	arrayminus: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the data corresponding the length of each error bar in the bottom (left) direction for vertical (horizontal) bars Values are plotted relative to the underlying data. """
-	)
+class ScatterUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the stoke color of the error bars. """
+		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
 	)
-	symmetric: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not the error bars have the same length in both direction (top/bottom for vertical bars, left/right for horizontal bars. """
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
 	)
-	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the thickness (in px) of the error bars. """
-	)
-	traceref: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br> """
-	)
-	tracerefminus: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br> """
-	)
-	type: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "percent" | "constant" | "sqrt" | "data" )<br>Determines the rule used to generate the error bars. If "constant`, the bar lengths are of a constant value. Set this constant in `value`. If "percent", the bar lengths correspond to a percentage of underlying data. Set this percentage in `value`. If "sqrt", the bar lengths correspond to the square of the underlying data. If "data", the bar lengths are set with data set `array`. """
-	)
-	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars. """
-	)
-	valueminus: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars in the bottom (left) direction for vertical (horizontal) bars """
-	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not this set of error bars is visible. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
+		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
-class ScatterTextfont(TracePropsAttribute):
+class ScatterSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+	)
+
+class ScatterUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+	)
+
+class ScatterMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
 	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	family: Optional[str | List[str]]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	colorscale: Optional[str]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class ScatterLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class ScatterError_x(TracePropsAttribute):
@@ -14908,46 +14845,6 @@ class ScatterError_x(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
 	)
 
-class ScatterFillpattern(TracePropsAttribute):
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
-	)
-	fgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
-	)
-	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
-	)
-	fillmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
-	)
-	shape: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
-	)
-	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
-	)
-
-class ScatterSelected(TracePropsAttribute):
-	marker: Optional[ScatterSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScatterSelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
 class ScatterUnselected(TracePropsAttribute):
 	marker: Optional[ScatterUnselectedMarker]= Field(
 		None,
@@ -14958,6 +14855,56 @@ class ScatterUnselected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
+class ScatterError_y(TracePropsAttribute):
+	array: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the data corresponding the length of each error bar. Values are plotted relative to the underlying data. """
+	)
+	arrayminus: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the data corresponding the length of each error bar in the bottom (left) direction for vertical (horizontal) bars Values are plotted relative to the underlying data. """
+	)
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the stoke color of the error bars. """
+	)
+	symmetric: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the error bars have the same length in both direction (top/bottom for vertical bars, left/right for horizontal bars. """
+	)
+	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the thickness (in px) of the error bars. """
+	)
+	traceref: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br> """
+	)
+	tracerefminus: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br> """
+	)
+	type: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "percent" | "constant" | "sqrt" | "data" )<br>Determines the rule used to generate the error bars. If "constant`, the bar lengths are of a constant value. Set this constant in `value`. If "percent", the bar lengths correspond to a percentage of underlying data. Set this percentage in `value`. If "sqrt", the bar lengths correspond to the square of the underlying data. If "data", the bar lengths are set with data set `array`. """
+	)
+	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars. """
+	)
+	valueminus: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars in the bottom (left) direction for vertical (horizontal) bars """
+	)
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this set of error bars is visible. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
+	)
+
 class ScatterLegendgrouptitle(TracePropsAttribute):
 	font: Optional[ScatterLegendgrouptitleFont]= Field(
 		None,
@@ -14966,6 +14913,30 @@ class ScatterLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ScatterTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ScatterSelected(TracePropsAttribute):
+	marker: Optional[ScatterSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScatterSelectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ScatterMarker(TracePropsAttribute):
@@ -15001,7 +14972,7 @@ class ScatterMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -15114,6 +15085,36 @@ class ScatterHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
+class ScatterFillpattern(TracePropsAttribute):
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of background pattern fill. Defaults to a `marker.color` background when `fillmode` is "overlay". Otherwise, defaults to a transparent background. """
+	)
+	fgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>When there is no colorscale sets the color of foreground pattern fill. Defaults to a `marker.color` background when `fillmode` is "replace". Otherwise, defaults to dark grey or white to increase contrast with the `bgcolor`. """
+	)
+	fgopacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when `fillmode` is "overlay". Otherwise, defaults to 1. """
+	)
+	fillmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "replace" | "overlay" )<br>Determines whether `marker.color` should be used as a default to `bgcolor` or a `fgcolor`. """
+	)
+	shape: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "" | "/" | "\" | "x" | "-" | "|" | "+" | "." )<br>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. """
+	)
+	solidity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
+	)
+
 class Scatter(TraceProps):
 	type: Literal["scatter"]= Field(
 		...,
@@ -15219,11 +15220,11 @@ class Scatter(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -15340,20 +15341,6 @@ class Scatter(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
-class Scatter3dLineColorbarTitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class Scatter3dMarkerColorbarTitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -15368,8 +15355,80 @@ class Scatter3dMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class Scatter3dLineColorbarTitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class Scatter3dMarkerColorbarTickformatstops(TracePropsAttribute):
+	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
+	)
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
+	)
+	name: Optional[str]= Field(
+		None,
+		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
+	)
+	templateitemname: Optional[str]= Field(
+		None,
+		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
+	)
+	value: Optional[str]= Field(
+		None,
+		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
+class Scatter3dLineColorbarTickformatstops(TracePropsAttribute):
+	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
+	)
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
+	)
+	name: Optional[str]= Field(
+		None,
+		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
+	)
+	templateitemname: Optional[str]= Field(
+		None,
+		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
+	)
+	value: Optional[str]= Field(
+		None,
+		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
 class Scatter3dMarkerColorbarTitle(TracePropsAttribute):
 	font: Optional[Scatter3dMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class Scatter3dLineColorbarTitle(TracePropsAttribute):
+	font: Optional[Scatter3dLineColorbarTitleFont]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -15396,65 +15455,35 @@ class Scatter3dMarkerColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class Scatter3dLineColorbarTitle(TracePropsAttribute):
-	font: Optional[Scatter3dLineColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class Scatter3dLineColorbarTickformatstops(TracePropsAttribute):
-	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
-	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
-	)
-	name: Optional[str]= Field(
-		None,
-		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
-	)
-	templateitemname: Optional[str]= Field(
-		None,
-		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
-	)
-	value: Optional[str]= Field(
-		None,
-		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class Scatter3dMarkerColorbarTickformatstops(TracePropsAttribute):
-	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
-	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
-	)
-	name: Optional[str]= Field(
-		None,
-		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
-	)
-	templateitemname: Optional[str]= Field(
-		None,
-		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
-	)
-	value: Optional[str]= Field(
-		None,
-		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
 class Scatter3dLineColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class Scatter3dHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class Scatter3dLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -15480,278 +15509,6 @@ class Scatter3dProjectionY(TracePropsAttribute):
 	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" boolean<br>Sets whether or not projections are shown along the y axis. """
-	)
-
-class Scatter3dMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class Scatter3dHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class Scatter3dLineColorbar(TracePropsAttribute):
-	bgcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of padded area. """
-	)
-	bordercolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the axis line color. """
-	)
-	borderwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) or the border enclosing this color bar. """
-	)
-	dtick: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to "log" and "date" axes. If the axis `type` is "log", then ticks are set every 10^(n"dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. "log" has several special values; "L<f>", where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = "L0.5" will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use "D1" (all digits) or "D2" (only 2 and 5). `tick0` is ignored for "D1" and "D2". If the axis `type` is "date", then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. "date" also has special values "M<n>" gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to "2000-01-15" and `dtick` to "M3". To set ticks every 4 years, set `dtick` to "M48" """
-	)
-	exponentformat: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "none" | "e" | "e" | "power" | "si" | "b" )<br>Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If "none", it appears as 1,000,000,000. If "e", 1e+9. If "E", 1E+9. If "power", 1x10^9 (with 9 in a super script). If "SI", 1G. If "B", 1B. """
-	)
-	len: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends. """
-	)
-	lenmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot "fraction" or in "pixels. Use `len` to set the value. """
-	)
-	minexponent: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Hide SI prefix for 10^n if |n| is below this number. This only has an effect when `tickformat` is "SI" or "B". """
-	)
-	nticks: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """
-	)
-	orientation: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "h" | "v" )<br>Sets the orientation of the colorbar. """
-	)
-	outlinecolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the axis line color. """
-	)
-	outlinewidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of the axis line. """
-	)
-	separatethousands: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>If "true", even 4-digit integers are separated """
-	)
-	showexponent: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>If "all", all exponents are shown besides their significands. If "first", only the exponent of the first tick is shown. If "last", only the exponent of the last tick is shown. If "none", no exponents appear. """
-	)
-	showticklabels: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the tick labels are drawn. """
-	)
-	showtickprefix: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>If "all", all tick labels are displayed with a prefix. If "first", only the first tick is displayed with a prefix. If "last", only the last tick is displayed with a suffix. If "none", tick prefixes are hidden. """
-	)
-	showticksuffix: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>Same as `showtickprefix` but for tick suffixes. """
-	)
-	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels. """
-	)
-	thicknessmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot "fraction" or in "pixels". Use `thickness` to set the value. """
-	)
-	tick0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Sets the placement of the first tick on this axis. Use with `dtick`. If the axis `type` is "log", then you must take the log of your starting tick (e.g. to set the starting tick to 100, set the `tick0` to 2) except when `dtick`="L<f>" (see `dtick` for more info). If the axis `type` is "date", it should be a date string, like date data. If the axis `type` is "category", it should be a number, using the scale where each category is assigned a serial number from zero in the order it appears. """
-	)
-	tickangle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """
-	)
-	tickcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the tick color. """
-	)
-	tickfont: Optional[Scatter3dLineColorbarTickfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
-	)
-	tickformat: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46" """
-	)
-	tickformatstops: Optional[List[Scatter3dLineColorbarTickformatstops]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	ticklabeloverflow: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "allow" | "hide past div" | "hide past domain" )<br>Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is "hide past domain". In other cases the default is "hide past div". """
-	)
-	ticklabelposition: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "outside" | "inside" | "outside top" | "inside top" | "outside left" | "inside left" | "outside right" | "inside right" | "outside bottom" | "inside bottom" )<br>Determines where tick labels are drawn relative to the ticks. Left and right options are used when `orientation` is "h", top and bottom when `orientation` is "v". """
-	)
-	ticklabelstep: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 1<br>Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. `tick0` determines which labels are shown. Not implemented for axes with `type` "log" or "multicategory", or when `tickmode` is "array". """
-	)
-	ticklen: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the tick length (in px). """
-	)
-	tickmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "auto" | "linear" | "array" )<br>Sets the tick mode for this axis. If "auto", the number of ticks is set via `nticks`. If "linear", the placement of the ticks is determined by a starting position `tick0` and a tick step `dtick` ("linear" is the default value if `tick0` and `dtick` are provided). If "array", the placement of the ticks is set via `tickvals` and the tick text is `ticktext`. ("array" is the default value if `tickvals` is provided). """
-	)
-	tickprefix: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets a tick label prefix. """
-	)
-	ticks: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "outside" | "inside" | "" )<br>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. """
-	)
-	ticksuffix: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets a tick label suffix. """
-	)
-	ticktext: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """
-	)
-	tickvals: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """
-	)
-	tickwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the tick width (in px). """
-	)
-	title: Optional[Scatter3dLineColorbarTitle]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -2 and 3<br>Sets the x position of the color bar (in plot fraction). Defaults to 1.02 when `orientation` is "v" and 0.5 when `orientation` is "h". """
-	)
-	xanchor: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets this color bar's horizontal position anchor. This anchor binds the `x` position to the "left", "center" or "right" of the color bar. Defaults to "left" when `orientation` is "v" and "center" when `orientation` is "h". """
-	)
-	xpad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the x direction. """
-	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -2 and 3<br>Sets the y position of the color bar (in plot fraction). Defaults to 0.5 when `orientation` is "v" and 1.02 when `orientation` is "h". """
-	)
-	yanchor: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "top" | "middle" | "bottom" )<br>Sets this color bar's vertical position anchor This anchor binds the `y` position to the "top", "middle" or "bottom" of the color bar. Defaults to "middle" when `orientation` is "v" and "bottom" when `orientation` is "h". """
-	)
-	ypad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
-	)
-
-class Scatter3dProjectionZ(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the projection color. """
-	)
-	scale: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 10<br>Sets the scale factor determining the size of the projection marker points. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets whether or not projections are shown along the z axis. """
-	)
-
-class Scatter3dLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class Scatter3dProjectionX(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the projection color. """
-	)
-	scale: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 10<br>Sets the scale factor determining the size of the projection marker points. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets whether or not projections are shown along the x axis. """
 	)
 
 class Scatter3dMarkerColorbar(TracePropsAttribute):
@@ -15928,58 +15685,316 @@ class Scatter3dMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class Scatter3dError_y(TracePropsAttribute):
-	array: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+class Scatter3dProjectionZ(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" data array<br>Sets the data corresponding the length of each error bar. Values are plotted relative to the underlying data. """
+		description=""" number between or equal to 0 and 1<br>Sets the projection color. """
 	)
-	arrayminus: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	scale: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" data array<br>Sets the data corresponding the length of each error bar in the bottom (left) direction for vertical (horizontal) bars Values are plotted relative to the underlying data. """
+		description=""" number between or equal to 0 and 10<br>Sets the scale factor determining the size of the projection marker points. """
 	)
-	color: Optional[str]= Field(
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color<br>Sets the stoke color of the error bars. """
+		description=""" boolean<br>Sets whether or not projections are shown along the z axis. """
 	)
-	copy_zstyle: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+
+class Scatter3dMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" boolean<br> """
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
 	)
-	symmetric: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not the error bars have the same length in both direction (top/bottom for vertical bars, left/right for horizontal bars. """
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
 	)
-	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the thickness (in px) of the error bars. """
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
 	)
-	traceref: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br> """
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
 	)
-	tracerefminus: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br> """
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
 	)
-	type: Optional[str]= Field(
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" enumerated , one of ( "percent" | "constant" | "sqrt" | "data" )<br>Determines the rule used to generate the error bars. If "constant`, the bar lengths are of a constant value. Set this constant in `value`. If "percent", the bar lengths correspond to a percentage of underlying data. Set this percentage in `value`. If "sqrt", the bar lengths correspond to the square of the underlying data. If "data", the bar lengths are set with data set `array`. """
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars. """
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
-	valueminus: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	colorscale: Optional[str]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars in the bottom (left) direction for vertical (horizontal) bars """
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
 	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not this set of error bars is visible. """
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
 	)
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class Scatter3dProjectionX(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the projection color. """
+	)
+	scale: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 10<br>Sets the scale factor determining the size of the projection marker points. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets whether or not projections are shown along the x axis. """
+	)
+
+class Scatter3dLineColorbar(TracePropsAttribute):
+	bgcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of padded area. """
+	)
+	bordercolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the axis line color. """
+	)
+	borderwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) or the border enclosing this color bar. """
+	)
+	dtick: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to "log" and "date" axes. If the axis `type` is "log", then ticks are set every 10^(n"dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. "log" has several special values; "L<f>", where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = "L0.5" will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use "D1" (all digits) or "D2" (only 2 and 5). `tick0` is ignored for "D1" and "D2". If the axis `type` is "date", then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. "date" also has special values "M<n>" gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to "2000-01-15" and `dtick` to "M3". To set ticks every 4 years, set `dtick` to "M48" """
+	)
+	exponentformat: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "none" | "e" | "e" | "power" | "si" | "b" )<br>Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If "none", it appears as 1,000,000,000. If "e", 1e+9. If "E", 1E+9. If "power", 1x10^9 (with 9 in a super script). If "SI", 1G. If "B", 1B. """
+	)
+	len: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends. """
+	)
+	lenmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot "fraction" or in "pixels. Use `len` to set the value. """
+	)
+	minexponent: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Hide SI prefix for 10^n if |n| is below this number. This only has an effect when `tickformat` is "SI" or "B". """
+	)
+	nticks: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """
+	)
+	orientation: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "h" | "v" )<br>Sets the orientation of the colorbar. """
+	)
+	outlinecolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the axis line color. """
+	)
+	outlinewidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of the axis line. """
+	)
+	separatethousands: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>If "true", even 4-digit integers are separated """
+	)
+	showexponent: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>If "all", all exponents are shown besides their significands. If "first", only the exponent of the first tick is shown. If "last", only the exponent of the last tick is shown. If "none", no exponents appear. """
+	)
+	showticklabels: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the tick labels are drawn. """
+	)
+	showtickprefix: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>If "all", all tick labels are displayed with a prefix. If "first", only the first tick is displayed with a prefix. If "last", only the last tick is displayed with a suffix. If "none", tick prefixes are hidden. """
+	)
+	showticksuffix: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>Same as `showtickprefix` but for tick suffixes. """
+	)
+	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels. """
+	)
+	thicknessmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot "fraction" or in "pixels". Use `thickness` to set the value. """
+	)
+	tick0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Sets the placement of the first tick on this axis. Use with `dtick`. If the axis `type` is "log", then you must take the log of your starting tick (e.g. to set the starting tick to 100, set the `tick0` to 2) except when `dtick`="L<f>" (see `dtick` for more info). If the axis `type` is "date", it should be a date string, like date data. If the axis `type` is "category", it should be a number, using the scale where each category is assigned a serial number from zero in the order it appears. """
+	)
+	tickangle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """
+	)
+	tickcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the tick color. """
+	)
+	tickfont: Optional[Scatter3dLineColorbarTickfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
+	)
+	tickformat: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46" """
+	)
+	tickformatstops: Optional[List[Scatter3dLineColorbarTickformatstops]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	ticklabeloverflow: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "allow" | "hide past div" | "hide past domain" )<br>Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is "hide past domain". In other cases the default is "hide past div". """
+	)
+	ticklabelposition: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "outside" | "inside" | "outside top" | "inside top" | "outside left" | "inside left" | "outside right" | "inside right" | "outside bottom" | "inside bottom" )<br>Determines where tick labels are drawn relative to the ticks. Left and right options are used when `orientation` is "h", top and bottom when `orientation` is "v". """
+	)
+	ticklabelstep: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 1<br>Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. `tick0` determines which labels are shown. Not implemented for axes with `type` "log" or "multicategory", or when `tickmode` is "array". """
+	)
+	ticklen: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the tick length (in px). """
+	)
+	tickmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "auto" | "linear" | "array" )<br>Sets the tick mode for this axis. If "auto", the number of ticks is set via `nticks`. If "linear", the placement of the ticks is determined by a starting position `tick0` and a tick step `dtick` ("linear" is the default value if `tick0` and `dtick` are provided). If "array", the placement of the ticks is set via `tickvals` and the tick text is `ticktext`. ("array" is the default value if `tickvals` is provided). """
+	)
+	tickprefix: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets a tick label prefix. """
+	)
+	ticks: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "outside" | "inside" | "" )<br>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. """
+	)
+	ticksuffix: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets a tick label suffix. """
+	)
+	ticktext: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """
+	)
+	tickvals: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """
+	)
+	tickwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the tick width (in px). """
+	)
+	title: Optional[Scatter3dLineColorbarTitle]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -2 and 3<br>Sets the x position of the color bar (in plot fraction). Defaults to 1.02 when `orientation` is "v" and 0.5 when `orientation` is "h". """
+	)
+	xanchor: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets this color bar's horizontal position anchor. This anchor binds the `x` position to the "left", "center" or "right" of the color bar. Defaults to "left" when `orientation` is "v" and "center" when `orientation` is "h". """
+	)
+	xpad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the x direction. """
+	)
+	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -2 and 3<br>Sets the y position of the color bar (in plot fraction). Defaults to 0.5 when `orientation` is "v" and 1.02 when `orientation` is "h". """
+	)
+	yanchor: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "top" | "middle" | "bottom" )<br>Sets this color bar's vertical position anchor This anchor binds the `y` position to the "top", "middle" or "bottom" of the color bar. Defaults to "middle" when `orientation` is "v" and "bottom" when `orientation` is "h". """
+	)
+	ypad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
+	)
+
+class Scatter3dTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class Scatter3dLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `line.colorscale`. Has an effect only if in `line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `line.color`) or the bounds set in `line.cmin` and `line.cmax` Has an effect only if in `line.color` is set to a numerical array. Defaults to `false` when `line.cmin` and `line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `line.cmin` and/or `line.cmax` to be equidistant to this point. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color`. Has no effect when `line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `line.cmin` and `line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorbar: Optional[Scatter3dLineColorbar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `line.cmin` and `line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "dash" | "dashdot" | "dot" | "longdash" | "longdashdot" | "solid" )<br>Sets the dash style of the lines. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `line.color` is set to a numerical array. If true, `line.cmin` will correspond to the last color in the array and `line.cmax` will correspond to the first color. """
+	)
+	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `line.color` is set to a numerical array. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
 class Scatter3dError_z(TracePropsAttribute):
@@ -16042,6 +16057,60 @@ class Scatter3dLegendgrouptitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the legend group. """
 	)
 
+class Scatter3dError_y(TracePropsAttribute):
+	array: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the data corresponding the length of each error bar. Values are plotted relative to the underlying data. """
+	)
+	arrayminus: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the data corresponding the length of each error bar in the bottom (left) direction for vertical (horizontal) bars Values are plotted relative to the underlying data. """
+	)
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the stoke color of the error bars. """
+	)
+	copy_zstyle: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br> """
+	)
+	symmetric: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the error bars have the same length in both direction (top/bottom for vertical bars, left/right for horizontal bars. """
+	)
+	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the thickness (in px) of the error bars. """
+	)
+	traceref: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br> """
+	)
+	tracerefminus: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br> """
+	)
+	type: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "percent" | "constant" | "sqrt" | "data" )<br>Determines the rule used to generate the error bars. If "constant`, the bar lengths are of a constant value. Set this constant in `value`. If "percent", the bar lengths correspond to a percentage of underlying data. Set this percentage in `value`. If "sqrt", the bar lengths correspond to the square of the underlying data. If "data", the bar lengths are set with data set `array`. """
+	)
+	value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars. """
+	)
+	valueminus: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the value of either the percentage (if `type` is set to "percent") or the constant (if `type` is set to "constant") corresponding to the lengths of the error bars in the bottom (left) direction for vertical (horizontal) bars """
+	)
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this set of error bars is visible. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
+	)
+
 class Scatter3dMarker(TracePropsAttribute):
 	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -16067,7 +16136,7 @@ class Scatter3dMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -16116,72 +16185,26 @@ class Scatter3dMarker(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "circle" | "circle-open" | "cross" | "diamond" | "diamond-open" | "square" | "square-open" | "x" )<br>Sets the marker symbol type. """
 	)
 
-class Scatter3dLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class Scatter3dHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
 		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `line.colorscale`. Has an effect only if in `line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
 	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	bgcolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `line.color`) or the bounds set in `line.cmin` and `line.cmax` Has an effect only if in `line.color` is set to a numerical array. Defaults to `false` when `line.cmin` and `line.cmax` are set by the user. """
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
 	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	bordercolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmin` must be set as well. """
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
 	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	font: Optional[Scatter3dHoverlabelFont]= Field(
 		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `line.cmin` and/or `line.cmax` to be equidistant to this point. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color`. Has no effect when `line.cauto` is `false`. """
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `line.cmin` and `line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorbar: Optional[Scatter3dLineColorbar]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `line.cmin` and `line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "dash" | "dashdot" | "dot" | "longdash" | "longdashdot" | "solid" )<br>Sets the dash style of the lines. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `line.color` is set to a numerical array. If true, `line.cmin` will correspond to the last color in the array and `line.cmax` will correspond to the first color. """
-	)
-	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `line.color` is set to a numerical array. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
-	)
-
-class Scatter3dTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class Scatter3dError_x(TracePropsAttribute):
@@ -16236,28 +16259,6 @@ class Scatter3dError_x(TracePropsAttribute):
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
-	)
-
-class Scatter3dHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[Scatter3dHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class Scatter3dProjection(TracePropsAttribute):
@@ -16371,7 +16372,7 @@ class Scatter3d(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
@@ -16450,6 +16451,34 @@ class ScattercarpetMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class ScattercarpetMarkerColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScattercarpetMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[ScattercarpetMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
 class ScattercarpetMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -16472,42 +16501,10 @@ class ScattercarpetMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ScattercarpetMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[ScattercarpetMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class ScattercarpetMarkerColorbarTickfont(TracePropsAttribute):
+class ScattercarpetUnselectedTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class ScattercarpetMarkerGradient(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
-	)
-	type: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
 class ScattercarpetUnselectedMarker(TracePropsAttribute):
@@ -16522,6 +16519,16 @@ class ScattercarpetUnselectedMarker(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
+	)
+
+class ScattercarpetMarkerGradient(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
+	)
+	type: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
 	)
 
 class ScattercarpetSelectedMarker(TracePropsAttribute):
@@ -16542,6 +16549,20 @@ class ScattercarpetSelectedTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the text font color of selected points. """
+	)
+
+class ScattercarpetLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class ScattercarpetMarkerColorbar(TracePropsAttribute):
@@ -16718,26 +16739,6 @@ class ScattercarpetMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScattercarpetUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
-	)
-
-class ScattercarpetLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ScattercarpetHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -16777,7 +16778,7 @@ class ScattercarpetMarkerLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -16794,36 +16795,18 @@ class ScattercarpetMarkerLine(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
-class ScattercarpetHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
+class ScattercarpetTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+		description=""" color or array of colors<br> """
 	)
-	bgcolor: Optional[str | List[str]]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	bordercolor: Optional[str | List[str]]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ScattercarpetHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class ScattercarpetLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ScattercarpetLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScattercarpetLine(TracePropsAttribute):
@@ -16852,28 +16835,26 @@ class ScattercarpetLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
-class ScattercarpetTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class ScattercarpetHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
 	)
-	family: Optional[str | List[str]]= Field(
+	bgcolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	bordercolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
 	)
-
-class ScattercarpetSelected(TracePropsAttribute):
-	marker: Optional[ScattercarpetSelectedMarker]= Field(
+	font: Optional[ScattercarpetHoverlabelFont]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	textfont: Optional[ScattercarpetSelectedTextfont]= Field(
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class ScattercarpetMarker(TracePropsAttribute):
@@ -16909,7 +16890,7 @@ class ScattercarpetMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -16970,12 +16951,32 @@ class ScattercarpetMarker(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
 	)
 
+class ScattercarpetLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ScattercarpetLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class ScattercarpetUnselected(TracePropsAttribute):
 	marker: Optional[ScattercarpetUnselectedMarker]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	textfont: Optional[ScattercarpetUnselectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ScattercarpetSelected(TracePropsAttribute):
+	marker: Optional[ScattercarpetSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScattercarpetSelectedTextfont]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -17061,11 +17062,11 @@ class Scattercarpet(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -17186,10 +17187,14 @@ class ScattergeoMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ScattergeoUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ScattergeoMarkerGradient(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
+	)
+	type: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
 	)
 
 class ScattergeoHoverlabelFont(TracePropsAttribute):
@@ -17206,92 +17211,6 @@ class ScattergeoHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class ScattergeoMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class ScattergeoSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
-	)
-
-class ScattergeoMarkerGradient(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
-	)
-	type: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
-	)
-
-class ScattergeoSelectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of selected points. """
-	)
-
-class ScattergeoLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ScattergeoUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -17304,6 +17223,12 @@ class ScattergeoUnselectedMarker(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
+	)
+
+class ScattergeoSelectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of selected points. """
 	)
 
 class ScattergeoMarkerColorbar(TracePropsAttribute):
@@ -17480,36 +17405,94 @@ class ScattergeoMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScattergeoLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ScattergeoLegendgrouptitleFont]= Field(
+class ScattergeoMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
 	)
-	text: Optional[str]= Field(
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
-class ScattergeoHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
+class ScattergeoSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+		description=""" color<br>Sets the marker color of selected points. """
 	)
-	bgcolor: Optional[str | List[str]]= Field(
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
-	bordercolor: Optional[str | List[str]]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
-	font: Optional[ScattergeoHoverlabelFont]= Field(
+
+class ScattergeoUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+
+class ScattergeoLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScattergeoTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScattergeoMarker(TracePropsAttribute):
@@ -17545,7 +17528,7 @@ class ScattergeoMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -17602,6 +17585,38 @@ class ScattergeoMarker(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
 	)
 
+class ScattergeoSelected(TracePropsAttribute):
+	marker: Optional[ScattergeoSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScattergeoSelectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ScattergeoHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[ScattergeoHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
 class ScattergeoUnselected(TracePropsAttribute):
 	marker: Optional[ScattergeoUnselectedMarker]= Field(
 		None,
@@ -17626,28 +17641,14 @@ class ScattergeoLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
-class ScattergeoTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class ScattergeoLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ScattergeoLegendgrouptitleFont]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	family: Optional[str | List[str]]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ScattergeoSelected(TracePropsAttribute):
-	marker: Optional[ScattergeoSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScattergeoSelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class Scattergeo(TraceProps):
@@ -17743,7 +17744,7 @@ class Scattergeo(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	geo: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	geo: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's geospatial coordinates and a geographic map. If "geo" (the default value), the geospatial coordinates refer to `layout.geo`. If "geo2", the geospatial coordinates refer to `layout.geo2`, and so on. """
 	)
@@ -17810,20 +17811,6 @@ class ScatterglMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScatterglMarkerColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class ScatterglMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -17860,35 +17847,7 @@ class ScatterglMarkerColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
-class ScatterglUnselectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
-	)
-
-class ScatterglSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
-	)
-
-class ScatterglLegendgrouptitleFont(TracePropsAttribute):
+class ScatterglMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -17900,32 +17859,6 @@ class ScatterglLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class ScatterglUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
-	)
-
-class ScatterglSelectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of selected points. """
-	)
-
-class ScatterglHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScatterglMarkerLine(TracePropsAttribute):
@@ -17953,7 +17886,7 @@ class ScatterglMarkerLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -17968,6 +17901,46 @@ class ScatterglMarkerLine(TracePropsAttribute):
 	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
+class ScatterglUnselectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
+	)
+
+class ScatterglLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScatterglSelectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of selected points. """
+	)
+
+class ScatterglUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
 class ScatterglMarkerColorbar(TracePropsAttribute):
@@ -18144,6 +18117,34 @@ class ScatterglMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
+class ScatterglHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ScatterglSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+	)
+
 class ScatterglHoverlabel(TracePropsAttribute):
 	align: Optional[str | List[str] ]= Field(
 		None,
@@ -18220,6 +18221,24 @@ class ScatterglError_x(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the cross-bar at both ends of the error bars. """
 	)
 
+class ScatterglLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color. """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "dash" | "dashdot" | "dot" | "longdash" | "longdashdot" | "solid" )<br>Sets the style of the lines. """
+	)
+	shape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "linear" | "hv" | "vh" | "hvh" | "vhv" )<br>Determines the line shape. The values correspond to step-wise line shapes. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
+	)
+
 class ScatterglMarker(TracePropsAttribute):
 	angle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -18249,7 +18268,7 @@ class ScatterglMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -18296,58 +18315,6 @@ class ScatterglMarker(TracePropsAttribute):
 	symbol: Optional[str | List[str] ]= Field(
 		None,
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
-	)
-
-class ScatterglTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ScatterglSelected(TracePropsAttribute):
-	marker: Optional[ScatterglSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScatterglSelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScatterglLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ScatterglLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class ScatterglLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the line color. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "dash" | "dashdot" | "dot" | "longdash" | "longdashdot" | "solid" )<br>Sets the style of the lines. """
-	)
-	shape: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "linear" | "hv" | "vh" | "hvh" | "vhv" )<br>Determines the line shape. The values correspond to step-wise line shapes. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
 class ScatterglError_y(TracePropsAttribute):
@@ -18406,6 +18373,40 @@ class ScatterglUnselected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	textfont: Optional[ScatterglUnselectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ScatterglLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ScatterglLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ScatterglTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ScatterglSelected(TracePropsAttribute):
+	marker: Optional[ScatterglSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScatterglSelectedTextfont]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -18515,11 +18516,11 @@ class Scattergl(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -18622,18 +18623,18 @@ class ScattermapboxMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScattermapboxMarkerColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ScattermapboxMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[ScattermapboxMarkerColorbarTitleFont]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
-	family: Optional[str]= Field(
+	side: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class ScattermapboxMarkerColorbarTickformatstops(TracePropsAttribute):
@@ -18658,35 +18659,7 @@ class ScattermapboxMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ScattermapboxMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[ScattermapboxMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class ScattermapboxSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
-	)
-
-class ScattermapboxLegendgrouptitleFont(TracePropsAttribute):
+class ScattermapboxMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -18698,6 +18671,20 @@ class ScattermapboxLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScattermapboxHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScattermapboxUnselectedMarker(TracePropsAttribute):
@@ -18888,27 +18875,7 @@ class ScattermapboxMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScattermapboxHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ScattermapboxUnselected(TracePropsAttribute):
-	marker: Optional[ScattermapboxUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScattermapboxTextfont(TracePropsAttribute):
+class ScattermapboxLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -18922,30 +18889,24 @@ class ScattermapboxTextfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScattermapboxCluster(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class ScattermapboxSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the color for each cluster step. """
+		description=""" color<br>Sets the marker color of selected points. """
 	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" boolean<br>Determines whether clustering is enabled or disabled. """
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
-	maxzoom: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 24<br>Sets the maximum zoom level. At zoom levels equal to or greater than this, points will never be clustered. """
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
-	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+
+class ScattermapboxSelected(TracePropsAttribute):
+	marker: Optional[ScattermapboxSelectedMarker]= Field(
 		None,
-		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the marker opacity. """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the size for each cluster step. """
-	)
-	step: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to -1<br>Sets how many points it takes to create a cluster or advance to the next cluster step. Use this in conjunction with arrays for `size` and / or `color`. If an integer, steps start at multiples of this number. If an array, each step extends from the given value until one less than the next value. """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ScattermapboxLegendgrouptitle(TracePropsAttribute):
@@ -18978,6 +18939,12 @@ class ScattermapboxHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class ScattermapboxUnselected(TracePropsAttribute):
+	marker: Optional[ScattermapboxUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ScattermapboxMarker(TracePropsAttribute):
@@ -19013,7 +18980,7 @@ class ScattermapboxMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -19058,10 +19025,44 @@ class ScattermapboxMarker(TracePropsAttribute):
 		description=""" string or array of strings<br>Sets the marker symbol. Full list: https://www.mapbox.com/maki-icons/ Note that the array `marker.color` and `marker.size` are only available for "circle" symbols. """
 	)
 
-class ScattermapboxSelected(TracePropsAttribute):
-	marker: Optional[ScattermapboxSelectedMarker]= Field(
+class ScattermapboxTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br> """
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScattermapboxCluster(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the color for each cluster step. """
+	)
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether clustering is enabled or disabled. """
+	)
+	maxzoom: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 24<br>Sets the maximum zoom level. At zoom levels equal to or greater than this, points will never be clustered. """
+	)
+	opacity: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the marker opacity. """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the size for each cluster step. """
+	)
+	step: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to -1<br>Sets how many points it takes to create a cluster or advance to the next cluster step. Use this in conjunction with arrays for `size` and / or `color`. If an integer, steps start at multiples of this number. If an array, each step extends from the given value until one less than the next value. """
 	)
 
 class ScattermapboxLine(TracePropsAttribute):
@@ -19159,7 +19160,7 @@ class Scattermapbox(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a mapbox subplot. If "mapbox" (the default value), the data refer to `layout.mapbox`. If "mapbox2", the data refer to `layout.mapbox2`, and so on. """
 	)
@@ -19240,20 +19241,6 @@ class ScatterpolarMarkerColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScatterpolarMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[ScatterpolarMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class ScatterpolarMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -19274,6 +19261,62 @@ class ScatterpolarMarkerColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
+class ScatterpolarMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[ScatterpolarMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class ScatterpolarMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
 class ScatterpolarLegendgrouptitleFont(TracePropsAttribute):
@@ -19464,20 +19507,6 @@ class ScatterpolarMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScatterpolarSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
-	)
-
 class ScatterpolarMarkerGradient(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -19488,46 +19517,10 @@ class ScatterpolarMarkerGradient(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
 	)
 
-class ScatterpolarMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class ScatterpolarUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
 class ScatterpolarSelectedTextfont(TracePropsAttribute):
@@ -19550,10 +19543,18 @@ class ScatterpolarHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class ScatterpolarUnselectedTextfont(TracePropsAttribute):
+class ScatterpolarSelectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
 
 class ScatterpolarUnselectedMarker(TracePropsAttribute):
@@ -19570,18 +19571,30 @@ class ScatterpolarUnselectedMarker(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
-class ScatterpolarTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class ScatterpolarLine(TracePropsAttribute):
+	backoff: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With "auto" the lines would trim before markers if `marker.angleref` is set to "previous". """
 	)
-	family: Optional[str | List[str]]= Field(
+	color: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" color<br>Sets the line color. """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	dash: Optional[str]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	shape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "linear" | "spline" )<br>Determines the line shape. With "spline" the lines are drawn using spline interpolation. The other available values correspond to step-wise line shapes. """
+	)
+	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1.3<br>Has an effect only if `shape` is set to "spline" Sets the amount of smoothing. "0" corresponds to no smoothing (equivalent to a "linear" shape). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
 class ScatterpolarMarker(TracePropsAttribute):
@@ -19617,7 +19630,7 @@ class ScatterpolarMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -19688,32 +19701,6 @@ class ScatterpolarSelected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class ScatterpolarLine(TracePropsAttribute):
-	backoff: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With "auto" the lines would trim before markers if `marker.angleref` is set to "previous". """
-	)
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the line color. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	shape: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "linear" | "spline" )<br>Determines the line shape. With "spline" the lines are drawn using spline interpolation. The other available values correspond to step-wise line shapes. """
-	)
-	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1.3<br>Has an effect only if `shape` is set to "spline" Sets the amount of smoothing. "0" corresponds to no smoothing (equivalent to a "linear" shape). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
-	)
-
 class ScatterpolarUnselected(TracePropsAttribute):
 	marker: Optional[ScatterpolarUnselectedMarker]= Field(
 		None,
@@ -19744,6 +19731,20 @@ class ScatterpolarHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class ScatterpolarTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScatterpolarLegendgrouptitle(TracePropsAttribute):
@@ -19857,7 +19858,7 @@ class Scatterpolar(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a polar subplot. If "polar" (the default value), the data refer to `layout.polar`. If "polar2", the data refer to `layout.polar2`, and so on. """
 	)
@@ -19928,20 +19929,6 @@ class ScatterpolarglMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScatterpolarglMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[ScatterpolarglMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class ScatterpolarglMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -19954,6 +19941,20 @@ class ScatterpolarglMarkerColorbarTickfont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScatterpolarglMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[ScatterpolarglMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class ScatterpolarglMarkerColorbarTickformatstops(TracePropsAttribute):
@@ -19978,6 +19979,60 @@ class ScatterpolarglMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
+class ScatterpolarglUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+	)
+
+class ScatterpolarglSelectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of selected points. """
+	)
+
+class ScatterpolarglMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
+	)
+
 class ScatterpolarglUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -19990,6 +20045,34 @@ class ScatterpolarglUnselectedMarker(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
+	)
+
+class ScatterpolarglSelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+	)
+
+class ScatterpolarglHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class ScatterpolarglMarkerColorbar(TracePropsAttribute):
@@ -20166,68 +20249,6 @@ class ScatterpolarglMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScatterpolarglMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class ScatterpolarglSelectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of selected points. """
-	)
-
-class ScatterpolarglHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
 class ScatterpolarglLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -20242,24 +20263,28 @@ class ScatterpolarglLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScatterpolarglUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ScatterpolarglTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class ScatterpolarglSelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ScatterpolarglSelected(TracePropsAttribute):
+	marker: Optional[ScatterpolarglSelectedMarker]= Field(
 		None,
-		description=""" color<br>Sets the marker color of selected points. """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	textfont: Optional[ScatterpolarglSelectedTextfont]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ScatterpolarglHoverlabel(TracePropsAttribute):
@@ -20284,20 +20309,6 @@ class ScatterpolarglHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
-class ScatterpolarglTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
 class ScatterpolarglUnselected(TracePropsAttribute):
 	marker: Optional[ScatterpolarglUnselectedMarker]= Field(
 		None,
@@ -20306,44 +20317,6 @@ class ScatterpolarglUnselected(TracePropsAttribute):
 	textfont: Optional[ScatterpolarglUnselectedTextfont]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScatterpolarglLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the line color. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "dash" | "dashdot" | "dot" | "longdash" | "longdashdot" | "solid" )<br>Sets the style of the lines. """
-	)
-	shape: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "linear" | "hv" | "vh" | "hvh" | "vhv" )<br>Determines the line shape. The values correspond to step-wise line shapes. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
-	)
-
-class ScatterpolarglSelected(TracePropsAttribute):
-	marker: Optional[ScatterpolarglSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScatterpolarglSelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScatterpolarglLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ScatterpolarglLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class ScatterpolarglMarker(TracePropsAttribute):
@@ -20375,7 +20348,7 @@ class ScatterpolarglMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -20422,6 +20395,34 @@ class ScatterpolarglMarker(TracePropsAttribute):
 	symbol: Optional[str | List[str] ]= Field(
 		None,
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
+	)
+
+class ScatterpolarglLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ScatterpolarglLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ScatterpolarglLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color. """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "dash" | "dashdot" | "dot" | "longdash" | "longdashdot" | "solid" )<br>Sets the style of the lines. """
+	)
+	shape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "linear" | "hv" | "vh" | "hvh" | "vhv" )<br>Determines the line shape. The values correspond to step-wise line shapes. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
 class Scatterpolargl(TraceProps):
@@ -20525,7 +20526,7 @@ class Scatterpolargl(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a polar subplot. If "polar" (the default value), the data refer to `layout.polar`. If "polar2", the data refer to `layout.polar2`, and so on. """
 	)
@@ -20638,78 +20639,6 @@ class ScattersmithMarkerColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
-class ScattersmithSelectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the text font color of selected points. """
-	)
-
-class ScattersmithHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ScattersmithMarkerLine(TracePropsAttribute):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
-	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
-	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
-	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
-	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
-	)
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
-	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
-	)
-	colorscale: Optional[str]= Field(
-		None,
-		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
-	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
-	)
-
-class ScattersmithMarkerGradient(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
-	)
-	type: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
-	)
-
 class ScattersmithLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -20722,6 +20651,22 @@ class ScattersmithLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScattersmithMarkerGradient(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
+	)
+	type: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
+	)
+
+class ScattersmithUnselectedTextfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
 class ScattersmithMarkerColorbar(TracePropsAttribute):
@@ -20898,10 +20843,60 @@ class ScattersmithMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class ScattersmithUnselectedTextfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ScattersmithHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ScattersmithMarkerLine(TracePropsAttribute):
+	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.line.colorscale`. Has an effect only if in `marker.line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
+	)
+	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here in `marker.line.color`) or the bounds set in `marker.line.cmin` and `marker.line.cmax` Has an effect only if in `marker.line.color` is set to a numerical array. Defaults to `false` when `marker.line.cmin` and `marker.line.cmax` are set by the user. """
+	)
+	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the upper bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmin` must be set as well. """
+	)
+	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the mid-point of the color domain by scaling `marker.line.cmin` and/or `marker.line.cmax` to be equidistant to this point. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color`. Has no effect when `marker.line.cauto` is `false`. """
+	)
+	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if in `marker.line.color` is set to a numerical array. Value should have the same units as in `marker.line.color` and if set, `marker.line.cmax` must be set as well. """
+	)
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
+	)
+	coloraxis: Optional[str]= Field(
+		None,
+		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
+	)
+	colorscale: Optional[str]= Field(
+		None,
+		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.line.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.line.cmin` and `marker.line.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
+	)
+	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color. """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
 class ScattersmithUnselectedMarker(TracePropsAttribute):
@@ -20932,82 +20927,10 @@ class ScattersmithSelectedMarker(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
 
-class ScattersmithHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ScattersmithHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class ScattersmithSelected(TracePropsAttribute):
-	marker: Optional[ScattersmithSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScattersmithSelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScattersmithLine(TracePropsAttribute):
-	backoff: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With "auto" the lines would trim before markers if `marker.angleref` is set to "previous". """
-	)
+class ScattersmithSelectedTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the line color. """
-	)
-	dash: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
-	)
-	shape: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "linear" | "spline" )<br>Determines the line shape. With "spline" the lines are drawn using spline interpolation. The other available values correspond to step-wise line shapes. """
-	)
-	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1.3<br>Has an effect only if `shape` is set to "spline" Sets the amount of smoothing. "0" corresponds to no smoothing (equivalent to a "linear" shape). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
-	)
-
-class ScattersmithUnselected(TracePropsAttribute):
-	marker: Optional[ScattersmithUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScattersmithUnselectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScattersmithLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ScattersmithLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" color<br>Sets the text font color of selected points. """
 	)
 
 class ScattersmithMarker(TracePropsAttribute):
@@ -21043,7 +20966,7 @@ class ScattersmithMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -21104,6 +21027,52 @@ class ScattersmithMarker(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
 	)
 
+class ScattersmithLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ScattersmithLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ScattersmithLine(TracePropsAttribute):
+	backoff: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With "auto" the lines would trim before markers if `marker.angleref` is set to "previous". """
+	)
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color. """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	shape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "linear" | "spline" )<br>Determines the line shape. With "spline" the lines are drawn using spline interpolation. The other available values correspond to step-wise line shapes. """
+	)
+	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1.3<br>Has an effect only if `shape` is set to "spline" Sets the amount of smoothing. "0" corresponds to no smoothing (equivalent to a "linear" shape). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
+	)
+
+class ScattersmithUnselected(TracePropsAttribute):
+	marker: Optional[ScattersmithUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScattersmithUnselectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
 class ScattersmithTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -21116,6 +21085,38 @@ class ScattersmithTextfont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ScattersmithSelected(TracePropsAttribute):
+	marker: Optional[ScattersmithSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScattersmithSelectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ScattersmithHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[ScattersmithHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class Scattersmith(TraceProps):
@@ -21199,7 +21200,7 @@ class Scattersmith(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a smith subplot. If "smith" (the default value), the data refer to `layout.smith`. If "smith2", the data refer to `layout.smith2`, and so on. """
 	)
@@ -21270,18 +21271,18 @@ class ScatterternaryMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class ScatterternaryMarkerColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class ScatterternaryMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[ScatterternaryMarkerColorbarTitleFont]= Field(
 		None,
-		description=""" color<br> """
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
-	family: Optional[str]= Field(
+	side: Optional[str]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
 class ScatterternaryMarkerColorbarTickformatstops(TracePropsAttribute):
@@ -21306,49 +21307,7 @@ class ScatterternaryMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class ScatterternaryMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[ScatterternaryMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
-class ScatterternarySelectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
-	)
-
-class ScatterternaryHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ScatterternaryLegendgrouptitleFont(TracePropsAttribute):
+class ScatterternaryMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -21360,20 +21319,6 @@ class ScatterternaryLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class ScatterternaryUnselectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
 class ScatterternaryMarkerColorbar(TracePropsAttribute):
@@ -21556,16 +21501,6 @@ class ScatterternarySelectedTextfont(TracePropsAttribute):
 		description=""" color<br>Sets the text font color of selected points. """
 	)
 
-class ScatterternaryMarkerGradient(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
-	)
-	type: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
-	)
-
 class ScatterternaryMarkerLine(TracePropsAttribute):
 	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -21591,7 +21526,7 @@ class ScatterternaryMarkerLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -21608,39 +21543,55 @@ class ScatterternaryMarkerLine(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
+class ScatterternarySelectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+	)
+
 class ScatterternaryUnselectedTextfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
-class ScatterternaryLine(TracePropsAttribute):
-	backoff: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With "auto" the lines would trim before markers if `marker.angleref` is set to "previous". """
-	)
+class ScatterternaryUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the line color. """
+		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
 	)
-	dash: Optional[str]= Field(
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
 	)
-	shape: Optional[str]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" enumerated , one of ( "linear" | "spline" )<br>Determines the line shape. With "spline" the lines are drawn using spline interpolation. The other available values correspond to step-wise line shapes. """
-	)
-	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1.3<br>Has an effect only if `shape` is set to "spline" Sets the amount of smoothing. "0" corresponds to no smoothing (equivalent to a "linear" shape). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
+		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
-class ScatterternaryTextfont(TracePropsAttribute):
+class ScatterternaryLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ScatterternaryHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -21652,6 +21603,26 @@ class ScatterternaryTextfont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ScatterternaryMarkerGradient(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
+	)
+	type: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
+	)
+
+class ScatterternaryUnselected(TracePropsAttribute):
+	marker: Optional[ScatterternaryUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[ScatterternaryUnselectedTextfont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class ScatterternaryMarker(TracePropsAttribute):
@@ -21687,7 +21658,7 @@ class ScatterternaryMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -21748,6 +21719,20 @@ class ScatterternaryMarker(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
 	)
 
+class ScatterternaryTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
 class ScatterternaryLegendgrouptitle(TracePropsAttribute):
 	font: Optional[ScatterternaryLegendgrouptitleFont]= Field(
 		None,
@@ -21756,6 +21741,32 @@ class ScatterternaryLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
+	)
+
+class ScatterternaryLine(TracePropsAttribute):
+	backoff: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With "auto" the lines would trim before markers if `marker.angleref` is set to "previous". """
+	)
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color. """
+	)
+	dash: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
+	)
+	shape: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "linear" | "spline" )<br>Determines the line shape. With "spline" the lines are drawn using spline interpolation. The other available values correspond to step-wise line shapes. """
+	)
+	smoothing: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1.3<br>Has an effect only if `shape` is set to "spline" Sets the amount of smoothing. "0" corresponds to no smoothing (equivalent to a "linear" shape). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
 class ScatterternaryHoverlabel(TracePropsAttribute):
@@ -21786,16 +21797,6 @@ class ScatterternarySelected(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	textfont: Optional[ScatterternarySelectedTextfont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ScatterternaryUnselected(TracePropsAttribute):
-	marker: Optional[ScatterternaryUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[ScatterternaryUnselectedTextfont]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -21885,7 +21886,7 @@ class Scatterternary(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	subplot: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	subplot: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's data coordinates and a ternary subplot. If "ternary" (the default value), the data refer to `layout.ternary`. If "ternary2", the data refer to `layout.ternary2`, and so on. """
 	)
@@ -22010,18 +22011,18 @@ class SplomMarkerColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
-class SplomUnselectedMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
+class SplomHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
+		description=""" color or array of colors<br> """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class SplomMarkerLine(TracePropsAttribute):
@@ -22049,7 +22050,7 @@ class SplomMarkerLine(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.line.cmin` and `marker.line.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -22078,6 +22079,30 @@ class SplomSelectedMarker(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
+	)
+
+class SplomDimensionsAxis(TracePropsAttribute):
+	matches: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not the x & y axes generated by this dimension match. Equivalent to setting the `matches` axis attribute in the layout with the correct axis id. """
+	)
+	type: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "linear" | "log" | "date" | "category" )<br>Sets the axis type for this dimension's generated x and y axes. Note that the axis `type` values set in layout take precedence over this attribute. """
+	)
+
+class SplomUnselectedMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
 class SplomMarkerColorbar(TracePropsAttribute):
@@ -22268,46 +22293,6 @@ class SplomLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class SplomHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class SplomDimensionsAxis(TracePropsAttribute):
-	matches: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not the x & y axes generated by this dimension match. Equivalent to setting the `matches` axis attribute in the layout with the correct axis id. """
-	)
-	type: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "linear" | "log" | "date" | "category" )<br>Sets the axis type for this dimension's generated x and y axes. Note that the axis `type` values set in layout take precedence over this attribute. """
-	)
-
-class SplomLegendgrouptitle(TracePropsAttribute):
-	font: Optional[SplomLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class SplomUnselected(TracePropsAttribute):
-	marker: Optional[SplomUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
 class SplomMarker(TracePropsAttribute):
 	angle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -22337,7 +22322,7 @@ class SplomMarker(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to `marker.cmin` and `marker.cmax` if set. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -22386,38 +22371,26 @@ class SplomMarker(TracePropsAttribute):
 		description=""" enumerated or array of enumerateds , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
 	)
 
+class SplomUnselected(TracePropsAttribute):
+	marker: Optional[SplomUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
 class SplomSelected(TracePropsAttribute):
 	marker: Optional[SplomSelectedMarker]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class SplomDiagonal(TracePropsAttribute):
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class SplomLegendgrouptitle(TracePropsAttribute):
+	font: Optional[SplomLegendgrouptitleFont]= Field(
 		None,
-		description=""" boolean<br>Determines whether or not subplots on the diagonal are displayed. """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-
-class SplomHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[SplomHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class SplomDimensions(TracePropsAttribute):
@@ -22444,6 +22417,34 @@ class SplomDimensions(TracePropsAttribute):
 	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not this dimension is shown on the graph. Note that even visible false dimension contribute to the default grid generate by this splom trace. """
+	)
+
+class SplomHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[SplomHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class SplomDiagonal(TracePropsAttribute):
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not subplots on the diagonal are displayed. """
 	)
 
 class Splom(TraceProps):
@@ -22578,20 +22579,6 @@ class StreamtubeColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class StreamtubeLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class StreamtubeColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -22606,18 +22593,18 @@ class StreamtubeColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class StreamtubeHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class StreamtubeLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" color<br> """
 	)
-	family: Optional[str | List[str]]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class StreamtubeColorbarTickformatstops(TracePropsAttribute):
@@ -22654,6 +22641,20 @@ class StreamtubeColorbarTitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class StreamtubeHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class StreamtubeColorbar(TracePropsAttribute):
@@ -22830,20 +22831,6 @@ class StreamtubeColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class StreamtubeStarts(TracePropsAttribute):
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the x components of the starting position of the streamtubes """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the y components of the starting position of the streamtubes """
-	)
-	z: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Sets the z components of the starting position of the streamtubes """
-	)
-
 class StreamtubeLegendgrouptitle(TracePropsAttribute):
 	font: Optional[StreamtubeLegendgrouptitleFont]= Field(
 		None,
@@ -22884,20 +22871,6 @@ class StreamtubeLighting(TracePropsAttribute):
 		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
 	)
 
-class StreamtubeLightposition(TracePropsAttribute):
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
-	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
-	)
-	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
-	)
-
 class StreamtubeHoverlabel(TracePropsAttribute):
 	align: Optional[str | List[str] ]= Field(
 		None,
@@ -22918,6 +22891,34 @@ class StreamtubeHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class StreamtubeLightposition(TracePropsAttribute):
+	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
+	)
+	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
+	)
+	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
+	)
+
+class StreamtubeStarts(TracePropsAttribute):
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the x components of the starting position of the streamtubes """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the y components of the starting position of the streamtubes """
+	)
+	z: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Sets the z components of the starting position of the streamtubes """
 	)
 
 class Streamtube(TraceProps):
@@ -23025,11 +23026,11 @@ class Streamtube(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -23116,6 +23117,20 @@ class SunburstMarkerColorbarTitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
+class SunburstMarkerColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
 class SunburstMarkerColorbarTickformatstops(TracePropsAttribute):
 	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
@@ -23152,18 +23167,18 @@ class SunburstMarkerColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
-class SunburstMarkerColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
+class SunburstHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br> """
+		description=""" color or array of colors<br> """
 	)
-	family: Optional[str]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class SunburstMarkerLine(TracePropsAttribute):
@@ -23364,32 +23379,32 @@ class SunburstLegendgrouptitleFont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class SunburstHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class SunburstRoot(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" color<br>sets the color of the root node for a sunburst/treemap/icicle trace. this has no effect when a colorscale is used to set the markers. """
 	)
 
-class SunburstTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class SunburstHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
 	)
-	family: Optional[str | List[str]]= Field(
+	bgcolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	bordercolor: Optional[str | List[str]]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[SunburstHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
 class SunburstDomain(TracePropsAttribute):
@@ -23431,7 +23446,7 @@ class SunburstMarker(TracePropsAttribute):
 		None,
 		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if colors is set to a numerical array. Value should have the same units as colors and if set, `marker.cmax` must be set as well. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -23460,12 +23475,6 @@ class SunburstMarker(TracePropsAttribute):
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if colors is set to a numerical array. """
 	)
 
-class SunburstLeaf(TracePropsAttribute):
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the opacity of the leaves. With colorscale it is defaulted to 1; otherwise it is defaulted to 0.7 """
-	)
-
 class SunburstLegendgrouptitle(TracePropsAttribute):
 	font: Optional[SunburstLegendgrouptitleFont]= Field(
 		None,
@@ -23476,32 +23485,18 @@ class SunburstLegendgrouptitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the legend group. """
 	)
 
-class SunburstRoot(TracePropsAttribute):
-	color: Optional[str]= Field(
+class SunburstTextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color<br>sets the color of the root node for a sunburst/treemap/icicle trace. this has no effect when a colorscale is used to set the markers. """
+		description=""" color or array of colors<br> """
 	)
-
-class SunburstHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	bgcolor: Optional[str | List[str]]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[SunburstHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class SunburstOutsidetextfont(TracePropsAttribute):
@@ -23530,6 +23525,12 @@ class SunburstInsidetextfont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class SunburstLeaf(TracePropsAttribute):
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the opacity of the leaves. With colorscale it is defaulted to 1; otherwise it is defaulted to 0.7 """
 	)
 
 class Sunburst(TraceProps):
@@ -23684,20 +23685,6 @@ class SurfaceContoursZProject(TracePropsAttribute):
 		description=""" boolean<br>Determines whether or not these contour lines are projected on the z plane. If `highlight` is set to "true" (the default), the projected lines are shown on hover. If `show` is set to "true", the projected lines are shown in permanence. """
 	)
 
-class SurfaceColorbarTitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
 class SurfaceContoursYProject(TracePropsAttribute):
 	x: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -23726,96 +23713,18 @@ class SurfaceContoursXProject(TracePropsAttribute):
 		description=""" boolean<br>Determines whether or not these contour lines are projected on the z plane. If `highlight` is set to "true" (the default), the projected lines are shown on hover. If `show` is set to "true", the projected lines are shown in permanence. """
 	)
 
-class SurfaceContoursZ(TracePropsAttribute):
+class SurfaceColorbarTitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the color of the contour lines. """
+		description=""" color<br> """
 	)
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
-	)
-	highlight: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not contour lines about the z dimension are highlighted on hover. """
-	)
-	highlightcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the highlighted contour lines. """
-	)
-	highlightwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the highlighted contour lines. """
-	)
-	project: Optional[SurfaceContoursZProject]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not contour lines about the z dimension are drawn. """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 0<br>Sets the step between each contour level. Must be positive. """
-	)
-	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the starting contour level value. Must be less than `contours.end` """
-	)
-	usecolormap: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>An alternate to "color". Determines whether or not the contour lines are colored using the trace "colorscale". """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
-	)
-
-class SurfaceContoursY(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the contour lines. """
-	)
-	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
-	)
-	highlight: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not contour lines about the y dimension are highlighted on hover. """
-	)
-	highlightcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the highlighted contour lines. """
-	)
-	highlightwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the highlighted contour lines. """
-	)
-	project: Optional[SurfaceContoursYProject]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not contour lines about the y dimension are drawn. """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the step between each contour level. Must be positive. """
-	)
-	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the starting contour level value. Must be less than `contours.end` """
-	)
-	usecolormap: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>An alternate to "color". Determines whether or not the contour lines are colored using the trace "colorscale". """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class SurfaceColorbarTitle(TracePropsAttribute):
@@ -23832,7 +23741,7 @@ class SurfaceColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
-class SurfaceColorbarTickfont(TracePropsAttribute):
+class SurfaceLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -23846,18 +23755,18 @@ class SurfaceColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class SurfaceHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+class SurfaceColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" color<br> """
 	)
-	family: Optional[str | List[str]]= Field(
+	family: Optional[str]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" number greater than or equal to 1<br> """
 	)
 
 class SurfaceContoursX(TracePropsAttribute):
@@ -23906,18 +23815,110 @@ class SurfaceContoursX(TracePropsAttribute):
 		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
 	)
 
-class SurfaceLegendgrouptitleFont(TracePropsAttribute):
+class SurfaceContoursZ(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br> """
+		description=""" color<br>Sets the color of the contour lines. """
 	)
-	family: Optional[str]= Field(
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
+	)
+	highlight: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not contour lines about the z dimension are highlighted on hover. """
+	)
+	highlightcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the highlighted contour lines. """
+	)
+	highlightwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the highlighted contour lines. """
+	)
+	project: Optional[SurfaceContoursZProject]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not contour lines about the z dimension are drawn. """
 	)
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number greater than or equal to 0<br>Sets the step between each contour level. Must be positive. """
+	)
+	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the starting contour level value. Must be less than `contours.end` """
+	)
+	usecolormap: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>An alternate to "color". Determines whether or not the contour lines are colored using the trace "colorscale". """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
+	)
+
+class SurfaceHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class SurfaceContoursY(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour lines. """
+	)
+	end: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
+	)
+	highlight: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not contour lines about the y dimension are highlighted on hover. """
+	)
+	highlightcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the highlighted contour lines. """
+	)
+	highlightwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the highlighted contour lines. """
+	)
+	project: Optional[SurfaceContoursYProject]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not contour lines about the y dimension are drawn. """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the step between each contour level. Must be positive. """
+	)
+	start: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the starting contour level value. Must be less than `contours.end` """
+	)
+	usecolormap: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>An alternate to "color". Determines whether or not the contour lines are colored using the trace "colorscale". """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
 	)
 
 class SurfaceColorbarTickformatstops(TracePropsAttribute):
@@ -23940,20 +23941,6 @@ class SurfaceColorbarTickformatstops(TracePropsAttribute):
 	value: Optional[str]= Field(
 		None,
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
-class SurfaceContours(TracePropsAttribute):
-	x: Optional[SurfaceContoursX]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	y: Optional[SurfaceContoursY]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	z: Optional[SurfaceContoursZ]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class SurfaceColorbar(TracePropsAttribute):
@@ -24130,26 +24117,18 @@ class SurfaceColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class SurfaceLighting(TracePropsAttribute):
-	ambient: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class SurfaceLightposition(TracePropsAttribute):
+	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Ambient light increases overall color visibility but can wash out the image. """
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
 	)
-	diffuse: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Represents the extent that incident rays are reflected in a range of angles. """
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
 	)
-	fresnel: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 5<br>Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine. """
-	)
-	roughness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Alters specular reflection; the rougher the surface, the wider and less contrasty the shine. """
-	)
-	specular: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 2<br>Represents the level that incident rays are reflected in a single direction, causing shine. """
+		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
 	)
 
 class SurfaceHoverlabel(TracePropsAttribute):
@@ -24174,6 +24153,42 @@ class SurfaceHoverlabel(TracePropsAttribute):
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
 
+class SurfaceLighting(TracePropsAttribute):
+	ambient: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Ambient light increases overall color visibility but can wash out the image. """
+	)
+	diffuse: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Represents the extent that incident rays are reflected in a range of angles. """
+	)
+	fresnel: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 5<br>Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine. """
+	)
+	roughness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Alters specular reflection; the rougher the surface, the wider and less contrasty the shine. """
+	)
+	specular: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 2<br>Represents the level that incident rays are reflected in a single direction, causing shine. """
+	)
+
+class SurfaceContours(TracePropsAttribute):
+	x: Optional[SurfaceContoursX]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	y: Optional[SurfaceContoursY]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	z: Optional[SurfaceContoursZ]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
 class SurfaceLegendgrouptitle(TracePropsAttribute):
 	font: Optional[SurfaceLegendgrouptitleFont]= Field(
 		None,
@@ -24182,20 +24197,6 @@ class SurfaceLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class SurfaceLightposition(TracePropsAttribute):
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
-	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
-	)
-	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
 	)
 
 class Surface(TraceProps):
@@ -24283,11 +24284,11 @@ class Surface(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -24376,6 +24377,16 @@ class Surface(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
+class TableCellsLine(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers<br> """
+	)
+
 class TableHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -24390,30 +24401,6 @@ class TableHoverlabelFont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class TableCellsFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class TableHeaderLine(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers<br> """
-	)
-
 class TableLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -24426,16 +24413,6 @@ class TableLegendgrouptitleFont(TracePropsAttribute):
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class TableCellsLine(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers<br> """
 	)
 
 class TableCellsFill(TracePropsAttribute):
@@ -24464,6 +24441,30 @@ class TableHeaderFill(TracePropsAttribute):
 		description=""" color or array of colors<br>Sets the cell fill color. It accepts either a specific color or an array of colors or a 2D array of colors. """
 	)
 
+class TableHeaderLine(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers<br> """
+	)
+
+class TableCellsFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
 class TableLegendgrouptitle(TracePropsAttribute):
 	font: Optional[TableLegendgrouptitleFont]= Field(
 		None,
@@ -24472,24 +24473,6 @@ class TableLegendgrouptitle(TracePropsAttribute):
 	text: Optional[str]= Field(
 		None,
 		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class TableDomain(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this table trace . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this table trace . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this table trace (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this table trace (in plot fraction). """
 	)
 
 class TableCells(TracePropsAttribute):
@@ -24530,6 +24513,28 @@ class TableCells(TracePropsAttribute):
 		description=""" data array<br>Cell values. `values[m][n]` represents the value of the `n`th point in column `m`, therefore the `values[m]` vector length for all columns must be the same (longer vectors will be truncated). Each value must be a finite number or a string. """
 	)
 
+class TableHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[TableHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
 class TableHeader(TracePropsAttribute):
 	align: Optional[str | List[str] ]= Field(
 		None,
@@ -24568,26 +24573,22 @@ class TableHeader(TracePropsAttribute):
 		description=""" data array<br>Header cell values. `values[m][n]` represents the value of the `n`th point in column `m`, therefore the `values[m]` vector length for all columns must be the same (longer vectors will be truncated). Each value must be a finite number or a string. """
 	)
 
-class TableHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
+class TableDomain(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this table trace . """
 	)
-	bgcolor: Optional[str | List[str]]= Field(
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this table trace . """
 	)
-	bordercolor: Optional[str | List[str]]= Field(
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+		description=""" array<br>Sets the horizontal domain of this table trace (in plot fraction). """
 	)
-	font: Optional[TableHoverlabelFont]= Field(
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+		description=""" array<br>Sets the vertical domain of this table trace (in plot fraction). """
 	)
 
 class Table(TraceProps):
@@ -24692,20 +24693,6 @@ class TreemapMarkerColorbarTickformatstops(TracePropsAttribute):
 		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
 	)
 
-class TreemapMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[TreemapMarkerColorbarTitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
-	)
-	side: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
-	)
-
 class TreemapMarkerColorbarTickfont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -24720,14 +24707,32 @@ class TreemapMarkerColorbarTickfont(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br> """
 	)
 
-class TreemapMarkerLine(TracePropsAttribute):
+class TreemapMarkerColorbarTitle(TracePropsAttribute):
+	font: Optional[TreemapMarkerColorbarTitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
+	)
+	side: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "right" | "top" | "bottom" )<br>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when `orientation` if "v" and defaults to "right" when `orientation` if "h". Note that the title's location used to be set by the now deprecated `titleside` attribute. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
+	)
+
+class TreemapHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. Defaults to the `paper_bgcolor` value. """
+		description=""" color or array of colors<br> """
 	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
 class TreemapMarkerColorbar(TracePropsAttribute):
@@ -24904,38 +24909,6 @@ class TreemapMarkerColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class TreemapMarkerPad(TracePropsAttribute):
-	b: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the padding form the bottom (in px). """
-	)
-	l: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the padding form the left (in px). """
-	)
-	r: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the padding form the right (in px). """
-	)
-	t: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the padding form the top (in px). """
-	)
-
-class TreemapHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
 class TreemapLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -24964,36 +24937,64 @@ class TreemapPathbarTextfont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class TreemapInsidetextfont(TracePropsAttribute):
+class TreemapMarkerLine(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. Defaults to the `paper_bgcolor` value. """
 	)
-	family: Optional[str | List[str]]= Field(
+	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
 	)
 
-class TreemapDomain(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class TreemapMarkerPad(TracePropsAttribute):
+	b: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this treemap trace . """
+		description=""" number greater than or equal to 0<br>Sets the padding form the bottom (in px). """
 	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	l: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this treemap trace . """
+		description=""" number greater than or equal to 0<br>Sets the padding form the left (in px). """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	r: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" array<br>Sets the horizontal domain of this treemap trace (in plot fraction). """
+		description=""" number greater than or equal to 0<br>Sets the padding form the right (in px). """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	t: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" array<br>Sets the vertical domain of this treemap trace (in plot fraction). """
+		description=""" number greater than or equal to 0<br>Sets the padding form the top (in px). """
+	)
+
+class TreemapHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[TreemapHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class TreemapLegendgrouptitle(TracePropsAttribute):
+	font: Optional[TreemapLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class TreemapMarker(TracePropsAttribute):
@@ -25017,7 +25018,7 @@ class TreemapMarker(TracePropsAttribute):
 		None,
 		description=""" number<br>Sets the lower bound of the color domain. Has an effect only if colors is set to a numerical array. Value should have the same units as colors and if set, `marker.cmax` must be set as well. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -25054,39 +25055,21 @@ class TreemapMarker(TracePropsAttribute):
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. Has an effect only if colors is set to a numerical array. """
 	)
 
-class TreemapLegendgrouptitle(TracePropsAttribute):
-	font: Optional[TreemapLegendgrouptitleFont]= Field(
+class TreemapInsidetextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" color or array of colors<br> """
 	)
-	text: Optional[str]= Field(
+	family: Optional[str | List[str]]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-
-class TreemapHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[TreemapHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class TreemapOutsidetextfont(TracePropsAttribute):
+class TreemapTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -25122,6 +25105,26 @@ class TreemapPathbar(TracePropsAttribute):
 		description=""" boolean<br>Determines if the path bar is drawn i.e. outside the trace `domain` and with one pixel gap. """
 	)
 
+class TreemapOutsidetextfont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class TreemapRoot(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>sets the color of the root node for a sunburst/treemap/icicle trace. this has no effect when a colorscale is used to set the markers. """
+	)
+
 class TreemapTiling(TracePropsAttribute):
 	flip: Optional[str]= Field(
 		None,
@@ -25140,24 +25143,22 @@ class TreemapTiling(TracePropsAttribute):
 		description=""" number greater than or equal to 1<br>When using "squarify" `packing` algorithm, according to https://github.com/d3/d3-hierarchy/blob/v3.1.1/README.md#squarify_ratio this option specifies the desired aspect ratio of the generated rectangles. The ratio must be specified as a number greater than or equal to one. Note that the orientation of the generated rectangles (tall or wide) is not implied by the ratio; for example, a ratio of two will attempt to produce a mixture of rectangles whose width:height ratio is either 2:1 or 1:2. When using "squarify", unlike d3 which uses the Golden Ratio i.e. 1.618034, Plotly applies 1 to increase squares in treemap layouts. """
 	)
 
-class TreemapRoot(TracePropsAttribute):
-	color: Optional[str]= Field(
+class TreemapDomain(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color<br>sets the color of the root node for a sunburst/treemap/icicle trace. this has no effect when a colorscale is used to set the markers. """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this treemap trace . """
 	)
-
-class TreemapTextfont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" color or array of colors<br> """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this treemap trace . """
 	)
-	family: Optional[str | List[str]]= Field(
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+		description=""" array<br>Sets the horizontal domain of this treemap trace (in plot fraction). """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
+		description=""" array<br>Sets the vertical domain of this treemap trace (in plot fraction). """
 	)
 
 class Treemap(TraceProps):
@@ -25298,30 +25299,6 @@ class Treemap(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
-class ViolinHoverlabelFont(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br> """
-	)
-	family: Optional[str | List[str]]= Field(
-		None,
-		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
-		None,
-		description=""" number or array of numbers greater than or equal to 1<br> """
-	)
-
-class ViolinBoxLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the inner box plot bounding line color. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the inner box plot bounding line width. """
-	)
-
 class ViolinUnselectedMarker(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -25336,18 +25313,14 @@ class ViolinUnselectedMarker(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
 
-class ViolinLegendgrouptitleFont(TracePropsAttribute):
+class ViolinBoxLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br> """
+		description=""" color<br>Sets the inner box plot bounding line color. """
 	)
-	family: Optional[str]= Field(
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
+		description=""" number greater than or equal to 0<br>Sets the inner box plot bounding line width. """
 	)
 
 class ViolinSelectedMarker(TracePropsAttribute):
@@ -25382,6 +25355,86 @@ class ViolinMarkerLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 
+class ViolinLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class ViolinHoverlabelFont(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br> """
+	)
+	family: Optional[str | List[str]]= Field(
+		None,
+		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+		None,
+		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class ViolinSelected(TracePropsAttribute):
+	marker: Optional[ViolinSelectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ViolinHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[ViolinHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class ViolinUnselected(TracePropsAttribute):
+	marker: Optional[ViolinUnselectedMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class ViolinBox(TracePropsAttribute):
+	fillcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the inner box plot fill color. """
+	)
+	line: Optional[ViolinBoxLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines if an miniature box plot is drawn inside the violins.  """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the width of the inner box plots relative to the violins' width. For example, with 1, the inner box plots are as wide as the violins. """
+	)
+
 class ViolinMeanline(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -25394,6 +25447,16 @@ class ViolinMeanline(TracePropsAttribute):
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the mean line width. """
+	)
+
+class ViolinLegendgrouptitle(TracePropsAttribute):
+	font: Optional[ViolinLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class ViolinMarker(TracePropsAttribute):
@@ -25426,40 +25489,6 @@ class ViolinMarker(TracePropsAttribute):
 		description=""" enumerated , one of ( "0" | "0" | "circle" | "100" | "100" | "circle-open" | "200" | "200" | "circle-dot" | "300" | "300" | "circle-open-dot" | "1" | "1" | "square" | "101" | "101" | "square-open" | "201" | "201" | "square-dot" | "301" | "301" | "square-open-dot" | "2" | "2" | "diamond" | "102" | "102" | "diamond-open" | "202" | "202" | "diamond-dot" | "302" | "302" | "diamond-open-dot" | "3" | "3" | "cross" | "103" | "103" | "cross-open" | "203" | "203" | "cross-dot" | "303" | "303" | "cross-open-dot" | "4" | "4" | "x" | "104" | "104" | "x-open" | "204" | "204" | "x-dot" | "304" | "304" | "x-open-dot" | "5" | "5" | "triangle-up" | "105" | "105" | "triangle-up-open" | "205" | "205" | "triangle-up-dot" | "305" | "305" | "triangle-up-open-dot" | "6" | "6" | "triangle-down" | "106" | "106" | "triangle-down-open" | "206" | "206" | "triangle-down-dot" | "306" | "306" | "triangle-down-open-dot" | "7" | "7" | "triangle-left" | "107" | "107" | "triangle-left-open" | "207" | "207" | "triangle-left-dot" | "307" | "307" | "triangle-left-open-dot" | "8" | "8" | "triangle-right" | "108" | "108" | "triangle-right-open" | "208" | "208" | "triangle-right-dot" | "308" | "308" | "triangle-right-open-dot" | "9" | "9" | "triangle-ne" | "109" | "109" | "triangle-ne-open" | "209" | "209" | "triangle-ne-dot" | "309" | "309" | "triangle-ne-open-dot" | "10" | "10" | "triangle-se" | "110" | "110" | "triangle-se-open" | "210" | "210" | "triangle-se-dot" | "310" | "310" | "triangle-se-open-dot" | "11" | "11" | "triangle-sw" | "111" | "111" | "triangle-sw-open" | "211" | "211" | "triangle-sw-dot" | "311" | "311" | "triangle-sw-open-dot" | "12" | "12" | "triangle-nw" | "112" | "112" | "triangle-nw-open" | "212" | "212" | "triangle-nw-dot" | "312" | "312" | "triangle-nw-open-dot" | "13" | "13" | "pentagon" | "113" | "113" | "pentagon-open" | "213" | "213" | "pentagon-dot" | "313" | "313" | "pentagon-open-dot" | "14" | "14" | "hexagon" | "114" | "114" | "hexagon-open" | "214" | "214" | "hexagon-dot" | "314" | "314" | "hexagon-open-dot" | "15" | "15" | "hexagon2" | "115" | "115" | "hexagon2-open" | "215" | "215" | "hexagon2-dot" | "315" | "315" | "hexagon2-open-dot" | "16" | "16" | "octagon" | "116" | "116" | "octagon-open" | "216" | "216" | "octagon-dot" | "316" | "316" | "octagon-open-dot" | "17" | "17" | "star" | "117" | "117" | "star-open" | "217" | "217" | "star-dot" | "317" | "317" | "star-open-dot" | "18" | "18" | "hexagram" | "118" | "118" | "hexagram-open" | "218" | "218" | "hexagram-dot" | "318" | "318" | "hexagram-open-dot" | "19" | "19" | "star-triangle-up" | "119" | "119" | "star-triangle-up-open" | "219" | "219" | "star-triangle-up-dot" | "319" | "319" | "star-triangle-up-open-dot" | "20" | "20" | "star-triangle-down" | "120" | "120" | "star-triangle-down-open" | "220" | "220" | "star-triangle-down-dot" | "320" | "320" | "star-triangle-down-open-dot" | "21" | "21" | "star-square" | "121" | "121" | "star-square-open" | "221" | "221" | "star-square-dot" | "321" | "321" | "star-square-open-dot" | "22" | "22" | "star-diamond" | "122" | "122" | "star-diamond-open" | "222" | "222" | "star-diamond-dot" | "322" | "322" | "star-diamond-open-dot" | "23" | "23" | "diamond-tall" | "123" | "123" | "diamond-tall-open" | "223" | "223" | "diamond-tall-dot" | "323" | "323" | "diamond-tall-open-dot" | "24" | "24" | "diamond-wide" | "124" | "124" | "diamond-wide-open" | "224" | "224" | "diamond-wide-dot" | "324" | "324" | "diamond-wide-open-dot" | "25" | "25" | "hourglass" | "125" | "125" | "hourglass-open" | "26" | "26" | "bowtie" | "126" | "126" | "bowtie-open" | "27" | "27" | "circle-cross" | "127" | "127" | "circle-cross-open" | "28" | "28" | "circle-x" | "128" | "128" | "circle-x-open" | "29" | "29" | "square-cross" | "129" | "129" | "square-cross-open" | "30" | "30" | "square-x" | "130" | "130" | "square-x-open" | "31" | "31" | "diamond-cross" | "131" | "131" | "diamond-cross-open" | "32" | "32" | "diamond-x" | "132" | "132" | "diamond-x-open" | "33" | "33" | "cross-thin" | "133" | "133" | "cross-thin-open" | "34" | "34" | "x-thin" | "134" | "134" | "x-thin-open" | "35" | "35" | "asterisk" | "135" | "135" | "asterisk-open" | "36" | "36" | "hash" | "136" | "136" | "hash-open" | "236" | "236" | "hash-dot" | "336" | "336" | "hash-open-dot" | "37" | "37" | "y-up" | "137" | "137" | "y-up-open" | "38" | "38" | "y-down" | "138" | "138" | "y-down-open" | "39" | "39" | "y-left" | "139" | "139" | "y-left-open" | "40" | "40" | "y-right" | "140" | "140" | "y-right-open" | "41" | "41" | "line-ew" | "141" | "141" | "line-ew-open" | "42" | "42" | "line-ns" | "142" | "142" | "line-ns-open" | "43" | "43" | "line-ne" | "143" | "143" | "line-ne-open" | "44" | "44" | "line-nw" | "144" | "144" | "line-nw-open" | "45" | "45" | "arrow-up" | "145" | "145" | "arrow-up-open" | "46" | "46" | "arrow-down" | "146" | "146" | "arrow-down-open" | "47" | "47" | "arrow-left" | "147" | "147" | "arrow-left-open" | "48" | "48" | "arrow-right" | "148" | "148" | "arrow-right-open" | "49" | "49" | "arrow-bar-up" | "149" | "149" | "arrow-bar-up-open" | "50" | "50" | "arrow-bar-down" | "150" | "150" | "arrow-bar-down-open" | "51" | "51" | "arrow-bar-left" | "151" | "151" | "arrow-bar-left-open" | "52" | "52" | "arrow-bar-right" | "152" | "152" | "arrow-bar-right-open" | "53" | "53" | "arrow" | "153" | "153" | "arrow-open" | "54" | "54" | "arrow-wide" | "154" | "154" | "arrow-wide-open" )<br>Sets the marker symbol type. Adding 100 is equivalent to appending "-open" to a symbol name. Adding 200 is equivalent to appending "-dot" to a symbol name. Adding 300 is equivalent to appending "-open-dot" or "dot-open" to a symbol name. """
 	)
 
-class ViolinSelected(TracePropsAttribute):
-	marker: Optional[ViolinSelectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ViolinUnselected(TracePropsAttribute):
-	marker: Optional[ViolinUnselectedMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class ViolinHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[ViolinHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
 class ViolinLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -25468,34 +25497,6 @@ class ViolinLine(TracePropsAttribute):
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the violin(s). """
-	)
-
-class ViolinLegendgrouptitle(TracePropsAttribute):
-	font: Optional[ViolinLegendgrouptitleFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
-	)
-	text: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the title of the legend group. """
-	)
-
-class ViolinBox(TracePropsAttribute):
-	fillcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the inner box plot fill color. """
-	)
-	line: Optional[ViolinBoxLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines if an miniature box plot is drawn inside the violins.  """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the width of the inner box plots relative to the violins' width. For example, with 1, the inner box plots are as wide as the violins. """
 	)
 
 class Violin(TraceProps):
@@ -25587,11 +25588,11 @@ class Violin(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)
@@ -25720,114 +25721,6 @@ class VolumeColorbarTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the color bar. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 
-class VolumeLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class VolumeCapsY(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the y `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-
-class VolumeCapsX(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the x `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-
-class VolumeCapsZ(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the z `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-
-class VolumeColorbarTickfont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class VolumeSlicesZ(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis z except start and end. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not slice planes about the z dimension are drawn. """
-	)
-
-class VolumeSlicesY(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis y except start and end. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not slice planes about the y dimension are drawn. """
-	)
-
-class VolumeColorbarTickformatstops(TracePropsAttribute):
-	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
-	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
-	)
-	name: Optional[str]= Field(
-		None,
-		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
-	)
-	templateitemname: Optional[str]= Field(
-		None,
-		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
-	)
-	value: Optional[str]= Field(
-		None,
-		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
-	)
-
 class VolumeHoverlabelFont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -25856,14 +25749,166 @@ class VolumeSlicesX(TracePropsAttribute):
 		description=""" boolean<br>Determines whether or not slice planes about the x dimension are drawn. """
 	)
 
-class VolumeLegendgrouptitle(TracePropsAttribute):
-	font: Optional[VolumeLegendgrouptitleFont]= Field(
+class VolumeSlicesZ(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	text: Optional[str]= Field(
+	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis z except start and end. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not slice planes about the z dimension are drawn. """
+	)
+
+class VolumeLegendgrouptitleFont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class VolumeCapsY(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the y `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+
+class VolumeColorbarTickformatstops(TracePropsAttribute):
+	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
+	)
+	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
+	)
+	name: Optional[str]= Field(
+		None,
+		description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """
+	)
+	templateitemname: Optional[str]= Field(
+		None,
+		description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """
+	)
+	value: Optional[str]= Field(
+		None,
+		description=""" string<br>string - dtickformat for described zoom level, the same as "tickformat" """
+	)
+
+class VolumeColorbarTickfont(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br> """
+	)
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class VolumeCapsX(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the x `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+
+class VolumeCapsZ(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the z `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+
+class VolumeSlicesY(TracePropsAttribute):
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis y except start and end. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not slice planes about the y dimension are drawn. """
+	)
+
+class VolumeSurface(TracePropsAttribute):
+	count: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 1<br>Sets the number of iso-surfaces between minimum and maximum iso-values. By default this value is 2 meaning that only minimum and maximum surfaces would be drawn. """
+	)
+	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the iso-surface. The default fill value of the surface is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+	)
+	pattern: Optional[str]= Field(
+		None,
+		description=""" flaglist string. any combination of "a", "b", "c", "d", "e" joined with a "+" or "all" or "odd" or "even".<br>Sets the surface pattern of the iso-surface 3-D sections. The default pattern of the surface is `all` meaning that the rest of surface elements would be shaded. The check options (either 1 or 2) could be used to draw half of the squares on the surface. Using various combinations of capital `A`, `B`, `C`, `D` and `E` may also be used to reduce the number of triangles on the iso-surfaces and creating other patterns of interest. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Hides/displays surfaces between minimum and maximum iso-values. """
+	)
+
+class VolumeHoverlabel(TracePropsAttribute):
+	align: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
+	)
+	bgcolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
+	)
+	bordercolor: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
+	)
+	font: Optional[VolumeHoverlabelFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
+	)
+	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+		None,
+		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+	)
+
+class VolumeContour(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of the contour lines. """
+	)
+	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
 	)
 
 class VolumeCaps(TracePropsAttribute):
@@ -26054,50 +26099,14 @@ class VolumeColorbar(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
 
-class VolumeSpaceframe(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class VolumeLegendgrouptitle(TracePropsAttribute):
+	font: Optional[VolumeLegendgrouptitleFont]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 1 meaning that they are entirely shaded. Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	text: Optional[str]= Field(
 		None,
-		description=""" boolean<br>Displays/hides tetrahedron shapes between minimum and maximum iso-values. Often useful when either caps or surfaces are disabled or filled with values less than 1. """
-	)
-
-class VolumeSlices(TracePropsAttribute):
-	x: Optional[VolumeSlicesX]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	y: Optional[VolumeSlicesY]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	z: Optional[VolumeSlicesZ]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class VolumeHoverlabel(TracePropsAttribute):
-	align: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "left" | "right" | "auto" )<br>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines """
-	)
-	bgcolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the background color of the hover labels for this trace """
-	)
-	bordercolor: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the border color of the hover labels for this trace. """
-	)
-	font: Optional[VolumeHoverlabelFont]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
-	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
-		None,
-		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
+		description=""" string<br>Sets the title of the legend group. """
 	)
 
 class VolumeLighting(TracePropsAttribute):
@@ -26130,20 +26139,6 @@ class VolumeLighting(TracePropsAttribute):
 		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
 	)
 
-class VolumeContour(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of the contour lines. """
-	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
-	)
-
 class VolumeLightposition(TracePropsAttribute):
 	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -26158,22 +26153,28 @@ class VolumeLightposition(TracePropsAttribute):
 		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
 	)
 
-class VolumeSurface(TracePropsAttribute):
-	count: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+class VolumeSlices(TracePropsAttribute):
+	x: Optional[VolumeSlicesX]= Field(
 		None,
-		description=""" integer greater than or equal to 1<br>Sets the number of iso-surfaces between minimum and maximum iso-values. By default this value is 2 meaning that only minimum and maximum surfaces would be drawn. """
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
+	y: Optional[VolumeSlicesY]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	z: Optional[VolumeSlicesZ]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class VolumeSpaceframe(TracePropsAttribute):
 	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the iso-surface. The default fill value of the surface is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
-	)
-	pattern: Optional[str]= Field(
-		None,
-		description=""" flaglist string. any combination of "a", "b", "c", "d", "e" joined with a "+" or "all" or "odd" or "even".<br>Sets the surface pattern of the iso-surface 3-D sections. The default pattern of the surface is `all` meaning that the rest of surface elements would be shaded. The check options (either 1 or 2) could be used to draw half of the squares on the surface. Using various combinations of capital `A`, `B`, `C`, `D` and `E` may also be used to reduce the number of triangles on the iso-surfaces and creating other patterns of interest. """
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 1 meaning that they are entirely shaded. Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
 	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" boolean<br>Hides/displays surfaces between minimum and maximum iso-values. """
+		description=""" boolean<br>Displays/hides tetrahedron shapes between minimum and maximum iso-values. Often useful when either caps or surfaces are disabled or filled with values less than 1. """
 	)
 
 class Volume(TraceProps):
@@ -26265,11 +26266,11 @@ class Volume(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	scene: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	scene: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	coloraxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	coloraxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis. """
 	)
@@ -26366,16 +26367,6 @@ class Volume(TraceProps):
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
 
-class WaterfallDecreasingMarkerLine(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the line color of all decreasing values. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width of all decreasing values. """
-	)
-
 class WaterfallTotalsMarkerLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -26386,6 +26377,16 @@ class WaterfallTotalsMarkerLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width of all intermediate sums and total values. """
 	)
 
+class WaterfallDecreasingMarkerLine(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color of all decreasing values. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width of all decreasing values. """
+	)
+
 class WaterfallIncreasingMarkerLine(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
@@ -26394,6 +26395,16 @@ class WaterfallIncreasingMarkerLine(TracePropsAttribute):
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the line width of all increasing values. """
+	)
+
+class WaterfallTotalsMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of all intermediate sums and total values. """
+	)
+	line: Optional[WaterfallTotalsMarkerLine]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class WaterfallConnectorLine(TracePropsAttribute):
@@ -26410,12 +26421,26 @@ class WaterfallConnectorLine(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
-class WaterfallTotalsMarker(TracePropsAttribute):
+class WaterfallLegendgrouptitleFont(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the marker color of all intermediate sums and total values. """
+		description=""" color<br> """
 	)
-	line: Optional[WaterfallTotalsMarkerLine]= Field(
+	family: Optional[str]= Field(
+		None,
+		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
+	)
+	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 1<br> """
+	)
+
+class WaterfallIncreasingMarker(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of all increasing values. """
+	)
+	line: Optional[WaterfallIncreasingMarkerLine]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -26444,37 +26469,13 @@ class WaterfallDecreasingMarker(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class WaterfallIncreasingMarker(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the marker color of all increasing values. """
-	)
-	line: Optional[WaterfallIncreasingMarkerLine]= Field(
+class WaterfallDecreasing(TracePropsAttribute):
+	marker: Optional[WaterfallDecreasingMarker]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
-class WaterfallLegendgrouptitleFont(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br> """
-	)
-	family: Optional[str]= Field(
-		None,
-		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
-	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 1<br> """
-	)
-
-class WaterfallTotals(TracePropsAttribute):
-	marker: Optional[WaterfallTotalsMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class WaterfallInsidetextfont(TracePropsAttribute):
+class WaterfallTextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -26494,6 +26495,16 @@ class WaterfallIncreasing(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
+class WaterfallLegendgrouptitle(TracePropsAttribute):
+	font: Optional[WaterfallLegendgrouptitleFont]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+	)
+	text: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the title of the legend group. """
+	)
+
 class WaterfallOutsidetextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
@@ -26508,23 +26519,21 @@ class WaterfallOutsidetextfont(TracePropsAttribute):
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
 
-class WaterfallDecreasing(TracePropsAttribute):
-	marker: Optional[WaterfallDecreasingMarker]= Field(
+class WaterfallConnector(TracePropsAttribute):
+	line: Optional[WaterfallConnectorLine]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-
-class WaterfallLegendgrouptitle(TracePropsAttribute):
-	font: Optional[WaterfallLegendgrouptitleFont]= Field(
+	mode: Optional[str]= Field(
 		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
+		description=""" enumerated , one of ( "spanning" | "between" )<br>Sets the shape of connector lines. """
 	)
-	text: Optional[str]= Field(
+	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" string<br>Sets the title of the legend group. """
+		description=""" boolean<br>Determines if connector lines are drawn.  """
 	)
 
-class WaterfallTextfont(TracePropsAttribute):
+class WaterfallInsidetextfont(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
 		description=""" color or array of colors<br> """
@@ -26536,6 +26545,12 @@ class WaterfallTextfont(TracePropsAttribute):
 	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
+	)
+
+class WaterfallTotals(TracePropsAttribute):
+	marker: Optional[WaterfallTotalsMarker]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
 
 class WaterfallHoverlabel(TracePropsAttribute):
@@ -26558,20 +26573,6 @@ class WaterfallHoverlabel(TracePropsAttribute):
 	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
-	)
-
-class WaterfallConnector(TracePropsAttribute):
-	line: Optional[WaterfallConnectorLine]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	mode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "spanning" | "between" )<br>Sets the shape of connector lines. """
-	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines if connector lines are drawn.  """
 	)
 
 class Waterfall(TraceProps):
@@ -26691,11 +26692,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	xaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If "x" (the default value), the x coordinates refer to `layout.xaxis`. If "x2", the x coordinates refer to `layout.xaxis2`, and so on. """
 	)
-	yaxis: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yaxis: Optional[str]= Field(
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """
 	)

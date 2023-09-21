@@ -1,6 +1,8 @@
 import re
 from typing import List, Optional, Union
 
+from visivo.models.include import Include
+
 
 from .base.parent_model import ParentModel
 from .dashboard import Dashboard
@@ -24,6 +26,7 @@ Alert = Annotated[
 
 class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = None
+    includes: List[Include] = []
     alerts: List[Alert] = []
     targets: List[Target] = []
     models: List[Model] = []
