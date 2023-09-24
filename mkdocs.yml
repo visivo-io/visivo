@@ -68,9 +68,10 @@ extra_css:
 
 nav:
   - Getting Started: index.md
-  - Tooling:
-      - Linting: tooling/linting.md
-      - Deployment: tooling/deployments.md
+  - Topics:
+      - Linting: topics/linting.md
+      - Including: topics/including.md
+      - Deployment: topics/deployments.md
     # - Use Cases: use_cases.md
     # - Tutorials: how_tos.md
   - Reference:
