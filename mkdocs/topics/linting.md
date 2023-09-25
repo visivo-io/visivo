@@ -18,3 +18,7 @@ The YAML plugin by redhat-developer [here](https://github.com/redhat-developer/v
 },
 ```
 
+## Gotchas
+
+If you are using `env_var` substitution, surrounding the value with `"` will make the linter happy. For example: `password: "{{ env_var('SECRET_PASSWORD') }}"`
+
