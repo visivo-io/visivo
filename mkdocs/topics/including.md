@@ -17,7 +17,9 @@ includes:
   - path: operation_dashboard.yml
 ```
 
-Use whatever system best matches your use case.
+Use whatever system best matches your use case. 
+
+Your includes can include other includes, allowing for nesting.  Be wise!
 
 ## External Projects
 
