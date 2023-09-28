@@ -90,7 +90,7 @@ def init():
     fp.write(
         yaml.dump(
             json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False
-        ).replace("'**********'", "{{ env_var('DB_PASSWORD') }}")
+        ).replace("'**********'", "\"{{ env_var('DB_PASSWORD') }}\"")
     )
     fp.close()
 
