@@ -1,6 +1,6 @@
-# Linting `visivo_project.yml`
+# Linting `project.visivo.yml`
 
-We publish a json schema file for our `visivo_project.yml`.  This gives you realtime feedback when creating your project.  Currently is it available at https://docs.visivo.io/assets/visivo_schema.json.
+We publish a json schema file for our `project.visivo.yml`.  This gives you realtime feedback when creating your project.  Currently is it available at https://docs.visivo.io/assets/visivo_schema.json.
 
 ## VSCode Plugin
 
@@ -14,7 +14,7 @@ The YAML plugin by redhat-developer [here](https://github.com/redhat-developer/v
 3. Edit the "yaml.schemas" to include: 
 ```
 "yaml.schemas": {
-    "https://docs.visivo.io/assets/visivo_schema.json": "visivo_project.yml"
+    "https://docs.visivo.io/assets/visivo_schema.json": "project.visivo.yml"
 },
 ```
 

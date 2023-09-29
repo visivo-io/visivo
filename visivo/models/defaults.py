@@ -11,7 +11,7 @@ class Defaults(BaseModel):
     1. A target / alert is passed to a command. ex: `visivo serve -t target-name`
     2. A target is specified in the trace using the `target_name` attribute. when this attribute is set the trace will always run queries against that target.
 
-    Here's how defaults look in the `visivo_project.yml` file:
+    Here's how defaults look in the `project.visivo.yml` file:
     ``` yaml
     defaults:
       target_name: local-sqlite
