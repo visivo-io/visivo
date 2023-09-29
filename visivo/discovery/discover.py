@@ -16,7 +16,7 @@ class Discover:
 
     @property
     def project_file(self):
-        return Path(f"{self.working_directory}/{PROJECT_FILE_NAME}")
+        return Path(self._get_any_project_file(self.working_directory))
 
     @property
     def files(self):
@@ -52,6 +52,12 @@ class Discover:
                 files.append(Path(include_path))
                 self.__add_includes(files=files, file=include_path)
 
+    def _get_any_project_file(self, dir):
+        if os.path.exists(f"{dir}/visivo_project.yml"):
+            return f"{dir}/visivo_project.yml"
+
+        return f"{dir}/{PROJECT_FILE_NAME}"
+
     def __get_project_file_from_git(self, git_url):
         deps_folder = f"{self.working_directory}/.visivo_cache"
         if not os.path.exists(deps_folder):
@@ -74,4 +80,4 @@ class Discover:
             repo.close()
             raise click.ClickException(f'Error cloning "{git_url}": {e}')
 
-        return f"{local_folder}/{PROJECT_FILE_NAME}"
+        return self._get_any_project_file(local_folder)

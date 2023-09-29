@@ -9,7 +9,7 @@ import yaml
 
 
 def test_Discover_files_single_file():
-    project_file = temp_yml_file({}, "visivo_project.yml")
+    project_file = temp_yml_file({}, "project.visivo.yml")
     discover = Discover(
         working_directory=os.path.dirname(project_file), home_directory="tmp"
     )
@@ -17,7 +17,7 @@ def test_Discover_files_single_file():
 
 
 def test_Discover_files_with_home_directory():
-    project_file = temp_yml_file({}, "visivo_project.yml")
+    project_file = temp_yml_file({}, "project.visivo.yml")
     profile_file = temp_yml_file({}, ".visivo/profile.yml")
     discover = Discover(
         working_directory=os.path.dirname(project_file),
@@ -99,9 +99,16 @@ def test_Core_Parser_includes_git():
     git_models_file = Path(
         f"{output_dir}/.visivo_cache/visivo-io/example-include@main/models.yml"
     )
-    git_project_file = Path(
+    if os.path.exists(
         f"{output_dir}/.visivo_cache/visivo-io/example-include@main/{PROJECT_FILE_NAME}"
-    )
+    ):
+        git_project_file = Path(
+            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/{PROJECT_FILE_NAME}"
+        )
+    else:
+        git_project_file = Path(
+            f"{output_dir}/.visivo_cache/visivo-io/example-include@main/visivo_project.yml"
+        )
 
     assert discover.files == [
         project_file,

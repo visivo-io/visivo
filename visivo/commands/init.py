@@ -86,7 +86,7 @@ def init():
         name=project_name, defaults=defaults, targets=[target], dashboards=[dashboard]
     )
 
-    fp = open(f"{project_name}/visivo_project.yml", "w")
+    fp = open(f"{project_name}/project.visivo.yml", "w")
     fp.write(
         yaml.dump(
             json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False
