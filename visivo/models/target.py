@@ -64,6 +64,10 @@ class Target(NamedModel):
         None,
         description="**Snowflake Only** The compute warehouse that you want queries from your visivo project to leverage.",
     )
+    role: Optional[str] = Field(
+        None,
+        description="**Snowflake Only** The access role that you want to use when running queries.",
+    )
     db_schema: Optional[str] = Field(
         None, description="The schema that the Visivo project will use in queries."
     )
@@ -114,11 +118,6 @@ class Target(NamedModel):
                 engine = create_engine(self.url())
                 return engine.connect()
             case TypeEnum.snowflake:
-                password = (
-                    self.password.get_secret_value()
-                    if self.password is not None
-                    else None
-                )
                 return snowflake.connector.connect(
                     account=self.account,
                     user=self.username,
@@ -126,6 +125,7 @@ class Target(NamedModel):
                     warehouse=self.warehouse,
                     database=self.database,
                     schema=self.db_schema,
+                    role=self.role,
                 )
             case TypeEnum.mysql:
                 engine = create_engine(self.url())
