@@ -9,7 +9,7 @@ from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FI
 def test_Core_Parser_with_empty_project():
     tmp = temp_yml_file(
         {"name": "project"},
-        name="visivo_project.yml",
+        name="project.visivo.yml",
     )
 
     core_parser = CoreParser(project_file=tmp, files=[tmp])

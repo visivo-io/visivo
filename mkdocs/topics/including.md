@@ -2,7 +2,7 @@
 
 ## Local Files
 
-A good organizational tool is to break your `visivo_project.yml` into multiple local files based on organizational needs.  An example of this would be to put all your `models` in one file and reference that file like:
+A good organizational tool is to break your `project.visivo.yml` into multiple local files based on organizational needs.  An example of this would be to put all your `models` in one file and reference that file like:
 
 ```
 includes:

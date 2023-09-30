@@ -1,7 +1,7 @@
 name: project
 
 includes:
-  - path: models.yml
+  - path: models.visivo.yml
   - path: visivo-io/example-include.git@main
 
 defaults:

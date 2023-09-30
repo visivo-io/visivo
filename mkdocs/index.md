@@ -15,15 +15,15 @@ _Note: Visivo requires Python 10. You may need to create a virtual environment u
 
 ## Setup using `visivo init`
 
-To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `visivo_project.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
+To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `project.visivo.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
 
 ## Manual setup 
 
-### Create a `visivo_project.yml` file
-The `visivo_project.yml` is a special file that visivo uses for your project configurations. You will want to put the file at the root directory where you want your project to live. If you are using dbt, this will likely in the same folder as the `dbt_project.yml` file. 
+### Create a `project.visivo.yml` file
+The `project.visivo.yml` is a special file that visivo uses for your project configurations. You will want to put the file at the root directory where you want your project to live. If you are using dbt, this will likely in the same folder as the `dbt_project.yml` file. 
 
-The `visivo_project.yml` only requires that the name attribute is filled out however below is a taste of where we are heading to get a full project set up. Don't worry we will walk through all of these configurations one by one.
-``` yaml title="project_dir/visivo_project.yml"
+The `project.visivo.yml` only requires that the name attribute is filled out however below is a taste of where we are heading to get a full project set up. Don't worry we will walk through all of these configurations one by one.
+``` yaml title="project_dir/project.visivo.yml"
 name: awesome-project
 defaults:
   target_name: local-sqlite
@@ -107,8 +107,8 @@ dashboards:
         This approach is a little easier for those who are not sure how to configure environment variables. 
 
 ### Set up a Target & store secrets safely
-Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up targets by configuring them in your `visivo_project.yml`. 
-``` yaml title="project_dir/visivo_project.yml"
+Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up targets by configuring them in your `project.visivo.yml`. 
+``` yaml title="project_dir/project.visivo.yml"
 targets:
   - name: local-sqlite
     database: target/local.db
@@ -139,7 +139,7 @@ Defaults are also optional, but highly recommended configurations to run Visivo.
 Without defaults you would need to specify the target and / or alert whenever you needed to use them. For example to run the `test` command you would need to pass the target and alert flag: `visivo test -t remote-snowflake -a slack`
 
 However, if you have defaults set like this: 
-``` yaml title="project_dir/visivo_project.yml"
+``` yaml title="project_dir/project.visivo.yml"
 defaults:
   target_name: remote-snowflake
   alert_name: slack
@@ -150,7 +150,7 @@ Then you can just run `visivo test` and Visivo will default to remote-snowflake 
 You can think of traces like lines on a chart with specific configurations. With Visivo you can configure pretty much anything from the curve of a line, to if data should be represented as a bar, line or area. Additionally you can set these configurations based on attributes of your underlying data. 
 
 Here's a simple example of a trace:
-``` yaml title="project_dir/visivo_project.yml"
+``` yaml title="project_dir/project.visivo.yml"
 traces:
   - name: simple_trace
     model: "widget_sales"
@@ -177,7 +177,7 @@ Traces are able to be sourced from different targets. You can set the default ta
 Charts are objects that can contain one to many traces and traces can be present on many charts. This allows both modularity, the ability to connect traces of different grains on the same chart, and the ability to connect traces from different data sources on the same chart. 
 
 Here's a simple example of the chart configuration:
-``` yaml title="project_dir/visivo_project.yml"
+``` yaml title="project_dir/project.visivo.yml"
 charts:
   - name: simple_chart
     traces:
@@ -197,7 +197,7 @@ Dashboard --> row --> item --> chart/table/markdown
                   --> height 
 ```
 Here's how that looks in yaml:
-``` yaml title="project_dir/visivo_project.yml"
+``` yaml title="project_dir/project.visivo.yml"
 dashboards:
   - name: simple_dashboard
     rows:
@@ -218,7 +218,7 @@ When you run `visivo test` you are able to validate assumptions that you have ab
 To set up a slack alert destination you will first need to configure an incoming webhook in slack. You can follow [this guide](https://api.slack.com/messaging/webhooks) to get started there
 
 Once you have your webhook key you can set up the alert like this:
-```  yaml title="project_dir/visivo_project.yml"
+```  yaml title="project_dir/project.visivo.yml"
 alerts:
   - name: slack
     type: slack

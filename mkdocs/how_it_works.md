@@ -16,7 +16,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
 
 === "Relational Db"
 
-    ``` yaml title="project_dir/visivo_project.yml"
+    ``` yaml title="project_dir/project.visivo.yml"
     models:
       - name: widget_sales
         sql: select * from widget_sales

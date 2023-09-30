@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from visivo.utils import load_yaml_file
 from ..models.project import Project
 
-PROJECT_FILE_NAME = "visivo_project.yml"
+PROJECT_FILE_NAME = "project.visivo.yml"
 PROFILE_FILE_NAME = "profile.yml"
 
 
@@ -19,7 +19,7 @@ class CoreParser:
         return self.__build_project()
 
     def project_file_data(self):
-       return load_yaml_file(self.project_file) 
+        return load_yaml_file(self.project_file)
 
     def __build_project(self):
         data = self.__merged_project_data()
