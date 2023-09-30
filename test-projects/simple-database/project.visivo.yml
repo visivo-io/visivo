@@ -31,6 +31,7 @@ targets:
     username: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}"
     warehouse: DEV
     password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
+    role: PROD
 
 models:
   - name: test table local
