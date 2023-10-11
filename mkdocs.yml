@@ -24,9 +24,10 @@ plugins:
 markdown_extensions:
   - mkdocs-click
   - pymdownx.superfences
+  - attr_list
+  - md_in_html
   - pymdownx.tabbed:
       alternate_style: true
-  - attr_list
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
@@ -37,10 +38,15 @@ theme:
   name: material
   features:
     - content.tabs.link
+    #- navigation.tabs
+    - navigation.indexes
+    #- navigation.path
     - navigation.sections
     - content.tooltips
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
+  icon:
+    annotation: material/arrow-right-circle
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: visivo_light
@@ -77,54 +83,55 @@ nav:
   - Reference:
       - CLI: cli-reference.md
       - Configuration:
-          - model-docs/trace.md
-          - Trace Properties:
-              - model-docs/trace-props/mesh3d.md
-              - model-docs/trace-props/barpolar.md
-              - model-docs/trace-props/scattersmith.md
-              - model-docs/trace-props/streamtube.md
-              - model-docs/trace-props/cone.md
-              - model-docs/trace-props/scattermapbox.md
-              - model-docs/trace-props/scattergeo.md
-              - model-docs/trace-props/scatterpolar.md
-              - model-docs/trace-props/sunburst.md
-              - model-docs/trace-props/histogram2d.md
-              - model-docs/trace-props/isosurface.md
-              - model-docs/trace-props/violin.md
-              - model-docs/trace-props/scatter.md
-              - model-docs/trace-props/image.md
-              - model-docs/trace-props/ohlc.md
-              - model-docs/trace-props/heatmapgl.md
-              - model-docs/trace-props/indicator.md
-              - model-docs/trace-props/funnelarea.md
-              - model-docs/trace-props/carpet.md
-              - model-docs/trace-props/icicle.md
-              - model-docs/trace-props/surface.md
-              - model-docs/trace-props/parcats.md
-              - model-docs/trace-props/treemap.md
-              - model-docs/trace-props/funnel.md
-              - model-docs/trace-props/histogram2dcontour.md
-              - model-docs/trace-props/contourcarpet.md
-              - model-docs/trace-props/parcoords.md
-              - model-docs/trace-props/candlestick.md
-              - model-docs/trace-props/scatter3d.md
-              - model-docs/trace-props/waterfall.md
-              - model-docs/trace-props/choropleth.md
-              - model-docs/trace-props/heatmap.md
-              - model-docs/trace-props/histogram.md
-              - model-docs/trace-props/volume.md
-              - model-docs/trace-props/contour.md
-              - model-docs/trace-props/scatterternary.md
-              - model-docs/trace-props/sankey.md
-              - model-docs/trace-props/scattercarpet.md
-              - model-docs/trace-props/densitymapbox.md
-              - model-docs/trace-props/choroplethmapbox.md
-              - model-docs/trace-props/box.md
-              - model-docs/trace-props/pie.md
-              - model-docs/trace-props/bar.md
-              - model-docs/trace-props/scatterpolargl.md
-              - model-docs/trace-props/scattergl.md
-              - model-docs/trace-props/splom.md
+          - Traces: 
+            - model-docs/traces/index.md
+          #- Trace Properties:
+            - '<b>Bar</b>': model-docs/traces/bar.md
+            - BarPolar: model-docs/traces/barpolar.md
+            - '<b>Box</b>': model-docs/traces/box.md
+            - CandleStick: model-docs/traces/candlestick.md
+            - Carpet: model-docs/traces/carpet.md
+            - Choropleth: model-docs/traces/choropleth.md
+            - ChoroplethMapBox: model-docs/traces/choroplethmapbox.md
+            - Cone: model-docs/traces/cone.md
+            - Contour: model-docs/traces/contour.md
+            - ContourCarpet: model-docs/traces/contourcarpet.md
+            - DensityMapBox: model-docs/traces/densitymapbox.md
+            - '<b>Funnel</b>': model-docs/traces/funnel.md
+            - FunnelArea: model-docs/traces/funnelarea.md
+            - Heatmap: model-docs/traces/heatmap.md
+            - Heatmapgl: model-docs/traces/heatmapgl.md
+            - Histogram: model-docs/traces/histogram.md
+            - Histogram2d: model-docs/traces/histogram2d.md
+            - Histogram2dContour: model-docs/traces/histogram2dcontour.md
+            - Icicle: model-docs/traces/icicle.md
+            - Image: model-docs/traces/image.md
+            - Indicator: model-docs/traces/indicator.md
+            - IsoSurface: model-docs/traces/isosurface.md
+            - Mesh3d: model-docs/traces/mesh3d.md
+            - Ohlc: model-docs/traces/ohlc.md
+            - Parcats: model-docs/traces/parcats.md
+            - Parcoords: model-docs/traces/parcoords.md
+            - '<b>Pie</b>': model-docs/traces/pie.md
+            - Sankey: model-docs/traces/sankey.md
+            - '<b>Scatter</b>': model-docs/traces/scatter.md
+            - Scatter3d: model-docs/traces/scatter3d.md
+            - ScatterCarpet: model-docs/traces/scattercarpet.md
+            - ScatterGeo: model-docs/traces/scattergeo.md
+            - ScatterGL: model-docs/traces/scattergl.md
+            - ScatterMapBox: model-docs/traces/scattermapbox.md
+            - ScatterPolar: model-docs/traces/scatterpolar.md
+            - ScatterPolarGl: model-docs/traces/scatterpolargl.md
+            - ScatterSmith: model-docs/traces/scattersmith.md
+            - Scatterternary: model-docs/traces/scatterternary.md
+            - Splom: model-docs/traces/splom.md
+            - Streamtube: model-docs/traces/streamtube.md
+            - Sunburst: model-docs/traces/sunburst.md
+            - Surface: model-docs/traces/surface.md
+            - '<b>Treemap</b>': model-docs/traces/treemap.md
+            - Violin: model-docs/traces/violin.md
+            - Volume: model-docs/traces/volume.md
+            - '<b>Waterfall</b>': model-docs/traces/waterfall.md
           - model-docs/chart.md
           - model-docs/target.md
           - model-docs/dashboard.md
