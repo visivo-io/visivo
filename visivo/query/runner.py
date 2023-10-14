@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy import text
 import warnings
 
-from pandas import read_sql, read_json
+from pandas import read_json
 from visivo.models.project import Project
 from visivo.models.trace import Trace
 from visivo.commands.utils import find_or_create_target

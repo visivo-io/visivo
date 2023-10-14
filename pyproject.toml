@@ -28,6 +28,7 @@ networkx = "^3.1"
 matplotlib = "^3.7.1"
 deepmerge = "^1.1.0"
 gitpython = "^3.1.32"
+halo = "^0.0.31"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"

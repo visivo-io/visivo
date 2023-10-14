@@ -751,6 +751,27 @@ docs = ["Sphinx", "docutils (<0.18)"]
 test = ["objgraph", "psutil"]
 
 [[package]]
+name = "halo"
+version = "0.0.31"
+description = "Beautiful terminal spinners in Python"
+optional = false
+python-versions = ">=3.4"
+files = [
+    {file = "halo-0.0.31-py2-none-any.whl", hash = "sha256:5350488fb7d2aa7c31a1344120cee67a872901ce8858f60da7946cef96c208ab"},
+    {file = "halo-0.0.31.tar.gz", hash = "sha256:7b67a3521ee91d53b7152d4ee3452811e1d2a6321975137762eb3d70063cc9d6"},
+]
+
+[package.dependencies]
+colorama = ">=0.3.9"
+log-symbols = ">=0.0.14"
+six = ">=1.12.0"
+spinners = ">=0.0.24"
+termcolor = ">=1.1.0"
+
+[package.extras]
+ipython = ["IPython (==5.7.0)", "ipywidgets (==7.1.0)"]
+
+[[package]]
 name = "idna"
 version = "3.4"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -927,6 +948,20 @@ files = [
 [package.dependencies]
 six = "*"
 tornado = {version = "*", markers = "python_version > \"2.7\""}
+
+[[package]]
+name = "log-symbols"
+version = "0.0.14"
+description = "Colored symbols for various log levels for Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "log_symbols-0.0.14-py3-none-any.whl", hash = "sha256:4952106ff8b605ab7d5081dd2c7e6ca7374584eff7086f499c06edd1ce56dcca"},
+    {file = "log_symbols-0.0.14.tar.gz", hash = "sha256:cf0bbc6fe1a8e53f0d174a716bc625c4f87043cc21eb55dd8a740cfe22680556"},
+]
+
+[package.dependencies]
+colorama = ">=0.3.9"
 
 [[package]]
 name = "markdown"
@@ -2202,6 +2237,17 @@ files = [
 ]
 
 [[package]]
+name = "spinners"
+version = "0.0.24"
+description = "Spinners for terminals"
+optional = false
+python-versions = "*"
+files = [
+    {file = "spinners-0.0.24-py3-none-any.whl", hash = "sha256:2fa30d0b72c9650ad12bbe031c9943b8d441e41b4f5602b0ec977a19f3290e98"},
+    {file = "spinners-0.0.24.tar.gz", hash = "sha256:1eb6aeb4781d72ab42ed8a01dcf20f3002bf50740d7154d12fb8c9769bf9e27f"},
+]
+
+[[package]]
 name = "sql-formatter"
 version = "0.6.2"
 description = "A SQL formatter"
@@ -2446,4 +2492,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "13b74c7a0126db071f32dda67598a5460ced17ab19b3c4f454f0e97efae22f8a"
+content-hash = "f658e6098e5672ac64a0d8c096d72170c290e63bc4151ad9a3e1a130e7b53388"

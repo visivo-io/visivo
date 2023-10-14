@@ -30,6 +30,7 @@ visivo.add_command(archive)
 
 def load_env(env_file):
     if os.path.isfile(env_file):
+        click.echo(f"Loading env file: {env_file}")
         load_dotenv(env_file)
 
 
