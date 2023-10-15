@@ -1,7 +1,6 @@
 import click
 import os
 import yaml
-from halo import Halo
 from visivo.discovery.discover import Discover
 from visivo.models.trace import Trace
 from visivo.models.model import Model
@@ -12,10 +11,11 @@ from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
 from visivo.commands.utils import find_or_create_target
+from visivo.commands.logger import Logger
 
 
 def compile_phase(default_target: str, working_dir: str, output_dir: str):
-    click.echo("Compiling project")
+    Logger().info("Compiling project")
     discover = Discover(working_directory=working_dir)
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
@@ -51,5 +51,5 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
             trace=trace, query_string=query_string, output_dir=output_dir
         ).write()
 
-    click.echo("Project compiled")
+    Logger().info("Project compiled")
     return project

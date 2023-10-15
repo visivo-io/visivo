@@ -10,13 +10,15 @@ def archive(stage, host, user_dir):
     """
     Archives a stage.  You must specify a stage when deploying a project.
     """
-    from halo import Halo
+    from visivo.commands.logger import Logger
 
-    with Halo(text="Archive", spinner="dots"):
-        from visivo.commands.archive_phase import archive_phase
+    Logger().info("Archiving")
 
-        archive_phase(
-            user_dir=user_dir,
-            stage=stage,
-            host=host,
-        )
+    from visivo.commands.archive_phase import archive_phase
+
+    archive_phase(
+        user_dir=user_dir,
+        stage=stage,
+        host=host,
+    )
+    Logger().success("Done")

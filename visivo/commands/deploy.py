@@ -12,15 +12,17 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
     """
     Sends the current version of your project, traces & data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production enviornments.
     """
-    from halo import Halo
+    from visivo.commands.logger import Logger
 
-    with Halo(text="Deploying", spinner="dots"):
-        from visivo.commands.deploy_phase import deploy_phase
+    Logger().info("Deploying")
 
-        deploy_phase(
-            user_dir=user_dir,
-            working_dir=working_dir,
-            output_dir=output_dir,
-            stage=stage,
-            host=host,
-        )
+    from visivo.commands.deploy_phase import deploy_phase
+
+    deploy_phase(
+        user_dir=user_dir,
+        working_dir=working_dir,
+        output_dir=output_dir,
+        stage=stage,
+        host=host,
+    )
+    Logger().success("Done")

@@ -11,14 +11,17 @@ def run(output_dir, working_dir, target, trace_filter):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory.
     """
-    from halo import Halo
 
-    with Halo(text="Deploying", spinner="dots"):
-        from visivo.commands.run_phase import run_phase
+    from visivo.commands.logger import Logger
 
-        run_phase(
-            default_target=target,
-            output_dir=output_dir,
-            working_dir=working_dir,
-            trace_filter=trace_filter,
-        )
+    Logger().info("Running")
+
+    from visivo.commands.run_phase import run_phase
+
+    run_phase(
+        default_target=target,
+        output_dir=output_dir,
+        working_dir=working_dir,
+        trace_filter=trace_filter,
+    )
+    Logger().success("Done")

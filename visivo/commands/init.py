@@ -6,9 +6,11 @@ def init():
     """
     Enables a quick set up by writing your target & api credentials to an env file.
     """
-    from halo import Halo
+    from visivo.commands.logger import Logger
 
-    with Halo(text="Deploying", spinner="dots"):
-        from visivo.commands.init_phase import init_phase
+    Logger().info("Initializing")
 
-        init_phase()
+    from visivo.commands.init_phase import init_phase
+
+    init_phase()
+    Logger().success("Done")

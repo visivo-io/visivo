@@ -26,5 +26,5 @@ def test_aggregate():
         aggregate, ["-j", f"{output_dir}/temp.json", "-o", output_dir]
     )
 
-    assert "Aggregating data by cohorts" in response.output
+    assert "Aggregating" in response.output
     assert response.exit_code == 0

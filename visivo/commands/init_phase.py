@@ -3,6 +3,7 @@ import yaml
 import json
 import os
 from pathlib import Path
+from visivo.commands.logger import Logger
 from visivo.models.target import Target, TypeEnum
 from visivo.models.project import Project
 from visivo.models.dashboard import Dashboard
@@ -99,10 +100,10 @@ def init_phase():
 
     profile_path = f"{user_home}/.visivo/{PROFILE_FILE_NAME}"
     if not os.path.exists(profile_path):
-        click.echo(
+        Logger().info(
             f"> Visit 'https://app.visivo.io/profile' and create a new token if you don't already have one."
         )
-        click.echo(
+        Logger().info(
             f"> You may need to register or get added to an account before visiting your profile."
         )
         token = click.prompt("? Personal token", type=str)
@@ -110,5 +111,5 @@ def init_phase():
         fp = open(profile_path, "w")
         fp.write(f"token: {token}")
         fp.close()
-        click.echo(f"> Created profile in '~/.visivo/profile.yml'")
-    click.echo(f"> Created project in '{project_name}'")
+        Logger().info(f"> Created profile in '~/.visivo/profile.yml'")
+    Logger().info(f"> Created project in '{project_name}'")

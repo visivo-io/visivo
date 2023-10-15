@@ -42,6 +42,7 @@ symspellpy = "^6.7.7"
 codespell = "^2.2.4"
 mkdocs-macros-plugin = "^0.7.0"
 setuptools = "^67.7.2"
+pytest-env = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

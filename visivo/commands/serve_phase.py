@@ -77,11 +77,10 @@ def serve_phase(output_dir, working_dir, default_target):
                 default_target=default_target,
                 run_only_changed=True,
             )
-            click.echo("Files changed. Reloading . . .")
+            Logger().info("Files changed. Reloading . . .")
         except Exception as e:
-            click.echo(e)
+            Logger().info(e)
 
     server = Server(app.wsgi_app)
     server.watch(f"**/*.yml", cli_changed)
     return server
-
