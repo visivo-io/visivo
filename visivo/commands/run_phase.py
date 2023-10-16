@@ -1,4 +1,4 @@
-from visivo.commands.logger import Logger
+from visivo.logging.logger import Logger
 from visivo.query.runner import Runner
 from visivo.models.trace import Trace
 from visivo.commands.compile_phase import compile_phase
@@ -24,7 +24,7 @@ def run_phase(
 
     traces = list(filter(changed, traces))
 
-    Logger().info(f"Running project with {len(traces)} traces(s)")
+    Logger.instance().debug(f"Running project with {len(traces)} traces(s)")
     runner = Runner(
         traces=traces,
         project=project,

@@ -11,9 +11,9 @@ def test(output_dir, working_dir, target, alert):
     """
     Enables testing trace values to ensure that the charts that are being produced have the characteristics that you would expect.
     """
-    from visivo.commands.logger import Logger
+    from visivo.logging.logger import Logger
 
-    Logger().info("Testing")
+    Logger.instance().debug("Testing")
 
     from visivo.commands.test_phase import test_phase
 
@@ -23,4 +23,4 @@ def test(output_dir, working_dir, target, alert):
         working_dir=working_dir,
         alert_names=alert,
     )
-    Logger().success("Done")
+    Logger.instance().success("Done")

@@ -1,7 +1,7 @@
-from visivo.commands.logger import Logger
+from visivo.logging.logger import Logger, TypeEnum
 
 
 def test_logger_init():
-    logger = Logger(type=Logger.TypeEnum.console)
+    logger = Logger.instance()
     logger.info("Hello")
     assert logger.echo is not None

@@ -6,11 +6,11 @@ def init():
     """
     Enables a quick set up by writing your target & api credentials to an env file.
     """
-    from visivo.commands.logger import Logger
+    from visivo.logging.logger import Logger
 
-    Logger().info("Initializing")
+    Logger.instance().debug("Initializing")
 
     from visivo.commands.init_phase import init_phase
 
     init_phase()
-    Logger().success("Done")
+    Logger.instance().success("Done")

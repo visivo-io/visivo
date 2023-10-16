@@ -43,7 +43,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     if response.status_code == 404:
         raise click.ClickException(f"404 error raised. Does your user have an account?")
     if response.status_code == 201:
-        Logger().info("Project uploaded")
+        Logger.instance().debug("Project uploaded")
         project_data = response.json()
         project_id = project_data["id"]
 
@@ -55,7 +55,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             response = requests.post(url, files=files, data={}, headers=form_headers)
             if response.status_code != 201:
                 raise click.ClickException(f"Trace '{trace.name}' data not uploaded")
-            Logger().info(f"Trace '{trace.name}' data uploaded")
+            Logger.instance().debug(f"Trace '{trace.name}' data uploaded")
             url = f"{host}/api/traces/"
             body = {
                 "name": trace.name,
@@ -64,8 +64,8 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             }
             response = requests.post(url, data=json.dumps(body), headers=json_headers)
             if response.status_code != 201:
-                Logger().info(response.json())
+                Logger.instance().debug(response.json())
                 raise click.ClickException(f"Trace '{trace.name}' not created")
-            Logger().info(f"Trace '{trace.name}' created")
+            Logger.instance().debug(f"Trace '{trace.name}' created")
     else:
         raise click.ClickException(f"There was an unexpected error: {response.content}")

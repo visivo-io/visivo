@@ -11,11 +11,11 @@ from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
 from visivo.commands.utils import find_or_create_target
-from visivo.commands.logger import Logger
+from visivo.logging.logger import Logger
 
 
 def compile_phase(default_target: str, working_dir: str, output_dir: str):
-    Logger().info("Compiling project")
+    Logger.instance().debug("Compiling project")
     discover = Discover(working_directory=working_dir)
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
@@ -51,5 +51,5 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
             trace=trace, query_string=query_string, output_dir=output_dir
         ).write()
 
-    Logger().info("Project compiled")
+    Logger.instance().debug("Project compiled")
     return project

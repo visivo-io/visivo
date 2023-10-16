@@ -12,9 +12,9 @@ def run(output_dir, working_dir, target, trace_filter):
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory.
     """
 
-    from visivo.commands.logger import Logger
+    from visivo.logging.logger import Logger
 
-    Logger().info("Running")
+    Logger.instance().debug("Running")
 
     from visivo.commands.run_phase import run_phase
 
@@ -24,4 +24,4 @@ def run(output_dir, working_dir, target, trace_filter):
         working_dir=working_dir,
         trace_filter=trace_filter,
     )
-    Logger().success("Done")
+    Logger.instance().success("Done")

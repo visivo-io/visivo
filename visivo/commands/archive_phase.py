@@ -20,7 +20,7 @@ def archive_phase(stage, host, user_dir):
         raise click.ClickException(f"404 error raised. Does your user have an account?")
 
     if len(response.json()) == 0:
-        Logger().info(f"No stages with name {stage} found")
+        Logger.instance().debug(f"No stages with name {stage} found")
         return
 
     id = response.json()[0]["id"]
@@ -30,6 +30,6 @@ def archive_phase(stage, host, user_dir):
     url = f"{host}/api/stages/{id}/"
     response = requests.put(url, data=json.dumps(body), headers=json_headers)
     if response.status_code == 200:
-        Logger().info("Stage archived")
+        Logger.instance().debug("Stage archived")
     else:
         raise click.ClickException(f"There was an unexpected error: {response.content}")

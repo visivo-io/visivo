@@ -1,6 +1,6 @@
 import sys
 import click
-from visivo.commands.logger import Logger
+from visivo.logging.logger import Logger
 from visivo.commands.utils import find_or_create_target
 from visivo.testing.runner import Runner
 from visivo.commands.compile_phase import compile_phase
@@ -12,7 +12,7 @@ def test_phase(
     project = compile_phase(
         default_target=default_target, working_dir=working_dir, output_dir=output_dir
     )
-    Logger().info("Testing project")
+    Logger.instance().debug("Testing project")
     target = find_or_create_target(project=project, target_or_name=default_target)
     alerts = list(map(lambda an: project.find_alert(name=an), alert_names))
     alerts = list(filter(None, alerts))
