@@ -18,7 +18,7 @@ class Logger:
 
     def set_type(self, type: TypeEnum):
         self.type = type
-        if type == TypeEnum.console:
+        if type == TypeEnum.console or os.environ.get("CI") == "true":
             self.echo = click.echo
             self.spinner = None
         else:

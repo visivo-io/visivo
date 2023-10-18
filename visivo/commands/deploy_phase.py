@@ -3,6 +3,7 @@ import requests
 import json
 from visivo.commands.utils import get_profile_file, get_profile_token
 from visivo.discovery.discover import Discover
+from visivo.logging.logger import Logger
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 
