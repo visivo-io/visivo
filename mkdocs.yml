@@ -132,7 +132,10 @@ nav:
             - Violin: model-docs/traces/violin.md
             - Volume: model-docs/traces/volume.md
             - '<b>Waterfall</b>': model-docs/traces/waterfall.md
-          - model-docs/chart.md
+          - Charts: 
+              - model-docs/charts/index.md
+              - submodel:
+                  - model-docs/charts/submodel/index.md
           - model-docs/target.md
           - model-docs/dashboard.md
           - model-docs/default.md
