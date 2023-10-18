@@ -18,5 +18,5 @@ def test_Test_invalid_type():
 
     error = exc_info.value.errors()[0]
 
-    assert "Input should be 'coordinate_exists','not_null' or 'fail'" in error["msg"]
+    assert "Input should be 'coordinate_exists', 'not_null' or 'fail'" in error["msg"]
     assert error["type"] == "enum"

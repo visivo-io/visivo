@@ -4,9 +4,8 @@ import os
 from pathlib import Path
 from visivo.models.project import Project
 from visivo.models.target import Target
-from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert, String
+from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert 
 from visivo.parsers.core_parser import PROFILE_FILE_NAME
-
 from visivo.utils import load_yaml_file
 
 

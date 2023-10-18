@@ -1,6 +1,6 @@
 import os
 import json
-from visivo.commands.serve import app_phase
+from visivo.commands.serve_phase import app_phase
 from visivo.parsers.core_parser import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
 from click.testing import CliRunner

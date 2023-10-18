@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from visivo.commands.init import init
-from visivo.models.target import TypeEnum
 from tests.support.utils import temp_folder
 from click.testing import CliRunner
 

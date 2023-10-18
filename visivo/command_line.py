@@ -2,6 +2,8 @@ import click
 import os
 from dotenv import load_dotenv
 
+from visivo.logging.logger import Logger, TypeEnum
+
 from .commands.deploy import deploy
 from .commands.serve import serve
 from .commands.run import run
@@ -15,6 +17,7 @@ from .commands.archive import archive
 @click.group()
 @click.option("-e", "--env-file", default=".env")
 def visivo(env_file):
+    Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
 
@@ -30,17 +33,18 @@ visivo.add_command(archive)
 
 def load_env(env_file):
     if os.path.isfile(env_file):
+        Logger.instance().debug(f"Loading env file: {env_file}")
         load_dotenv(env_file)
 
 
 def safe_visivo():
     try:
-        visivo()
+        visivo(standalone_mode=False)
     except Exception as e:
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
-        click.echo("An unexpected error has occurred")
-        click.echo(e)
+        Logger.instance().error("An unexpected error has occurred")
+        Logger.instance().error(str(e))
         exit(1)
 
 
