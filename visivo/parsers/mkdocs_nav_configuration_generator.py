@@ -1,0 +1,150 @@
+from .schema_generator import generate_schema
+import json
+
+SCHEMA = json.loads(generate_schema())
+
+def _get_ref(field_data):
+    refs = []
+
+    # Check for ref inside 'items'
+    ref = field_data.get('items', {}).get('$ref')
+    if ref:
+        refs.append(ref)
+        return refs, 'item'
+    
+    # Check for refs inside 'anyOf'
+    any_of = field_data.get('anyOf', [])
+    if any_of:
+        for entry in any_of:
+            ref = entry.get('$ref')
+            if ref:
+                refs.append(ref)
+        return refs, 'anyOf'
+    
+    # Check for refs inside 'oneOf'
+    one_of = field_data.get('items', {}).get('oneOf', [])
+    if one_of:
+        for entry in one_of:
+            ref = entry.get('$ref')
+            if ref:
+                refs.append(ref)
+        return refs, 'oneOf'
+
+    # Check for refs inside 'discriminator' -> 'mapping'
+    mapping_refs = list(field_data.get('discriminator', {}).get('mapping', {}).values())
+    if mapping_refs:
+        refs.extend(filter(None, mapping_refs))
+        return refs, 'mapping'
+    
+    return refs, None
+
+def _process_model(schema, model_data, processed_models):
+
+    properties = model_data.get('properties', {})
+    nested_structure = {}
+    
+    for field, field_data in sorted(properties.items()):
+        refs, ref_type = _get_ref(field_data)
+        if refs and field != 'props' and ref_type != 'oneOf':
+            for ref in refs:
+                nested_model_name = ref.split('/')[-1]
+                nested_model_data = schema.get('$defs', {}).get(nested_model_name, {})
+                nested_structure[nested_model_name] = _process_model(schema, nested_model_data, processed_models)
+        elif refs and field == 'props':
+            for ref in refs:
+                nested_model_name = ref.split('/')[-1]
+                nested_model_data = schema.get('$defs', {}).get(nested_model_name, {})
+                nested_structure[nested_model_name] = {}
+
+        elif refs and ref_type == 'oneOf':
+            nested_structure[field.capitalize()] = {}
+            for ref in refs:
+                nested_model_name = ref.split('/')[-1]
+                nested_model_data = schema.get('$defs', {}).get(nested_model_name, {})
+                nested_structure[field.capitalize()][nested_model_name] = _process_model(schema, nested_model_data, processed_models)
+        else:
+            nested_structure[field] = field_data.get('type', 'unknown')
+
+    return nested_structure
+
+def _generate_structure(schema):
+    return _process_model(schema, schema, set())
+
+
+def _to_mkdocs_yaml(schema, structure, base_path="configuration"):
+    output = []
+    
+    for model, contents in structure.items():
+        if isinstance(contents, dict):
+            sub_path = f"{base_path}/{model.lower()}"
+            if schema.get('$defs', {}).get(model, {}):
+                model_content = {model: [f"{sub_path}/index.md"] + _to_mkdocs_yaml(schema, contents, sub_path)}
+            else: 
+                model_content = {model: _to_mkdocs_yaml(schema, contents, sub_path)}
+            output.append(model_content)
+        # Handle other cases if necessary (e.g., primitive types)
+    
+    return output
+
+
+def _pop_nested_path(dictionary: dict, path: list):
+    """Modifies dictionary removing key from a nested path, ignoring nested paths that may have already been removed"""
+    result = dictionary
+    for key in path[:-1]:
+        if isinstance(result, dict) and key in result.keys():
+            result = result[key]
+
+    if (path[-1] in result.keys()):
+        result.pop(path[-1])
+
+def _pop_list_of_nested_paths(dictionary: dict, paths: list):
+    for path in paths: 
+        _pop_nested_path(dictionary, path) 
+
+def _get_all_key_paths(dictionary, path = None) -> list:
+    items = []
+    path = path or []
+    for key, value in dictionary.items():
+        new_path = path + [key]
+        if isinstance(value, dict):
+            items.append({key: new_path})
+            items += _get_all_key_paths(value, new_path)
+            
+    return items
+
+def _consolidate_paths(paths: list) -> dict:
+    consolidated = {}
+    for dictionary in paths:
+        model = list(dictionary.keys())[0]
+        path = list(dictionary.values())[0]
+        if model not in consolidated.keys():
+            consolidated[model] = [path]
+        elif model in consolidated.keys():
+            consolidated[model].append(path)
+        else:
+            raise Exception("Shouldn't end up here")
+    return consolidated
+
+def _get_paths_to_remove(consolidated_paths: dict) -> list:
+    to_remove = []
+    for model, paths in consolidated_paths.items():
+        
+        top_path_length = 9999
+        #find the shortest path to model
+        for path in paths:
+            if len(path) < top_path_length:
+                top_path_length = len(path)
+        #add longer paths to to_remove_list        
+        for path in paths:
+            if len(path) != top_path_length:
+                to_remove.append(path)
+    return to_remove
+
+def mkdocs_pydantic_nav():
+    nested_structure = _generate_structure(SCHEMA)
+    all_key_paths = _get_all_key_paths(nested_structure)
+    consolidated_paths = _consolidate_paths(all_key_paths)
+    paths_to_remove = _get_paths_to_remove(consolidated_paths)
+    _pop_list_of_nested_paths(nested_structure, paths= paths_to_remove)
+    yaml_output = _to_mkdocs_yaml(SCHEMA, nested_structure)
+    return yaml_output
