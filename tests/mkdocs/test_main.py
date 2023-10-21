@@ -1,4 +1,4 @@
-from main import is_pydantic_model
+from mkdocs.src.macros.main import is_pydantic_model
 from visivo.models.trace import Trace
 
 

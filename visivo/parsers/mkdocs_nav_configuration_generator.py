@@ -76,7 +76,7 @@ def _to_mkdocs_yaml(schema, structure, base_path="configuration"):
     
     for model, contents in structure.items():
         if isinstance(contents, dict):
-            sub_path = f"{base_path}/{model.lower()}"
+            sub_path = f"{base_path}/{model}"
             if schema.get('$defs', {}).get(model, {}):
                 model_content = {model: [f"{sub_path}/index.md"] + _to_mkdocs_yaml(schema, contents, sub_path)}
             else: 

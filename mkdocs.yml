@@ -2,7 +2,8 @@ site_name: Visivo Docs
 
 plugins:
   - search: {}
-  - macros
+  - macros:
+      module_name: mkdocs/src/macros/main
   - spellcheck:
       backends: # the backends you want to use
         - symspellpy # as strings
@@ -81,65 +82,65 @@ nav:
     # - Use Cases: use_cases.md
     # - Tutorials: how_tos.md
   - Reference:
-      - CLI: cli-reference.md
+      - CLI: reference/cli.md
       - Configuration:
           - Traces: 
-            - model-docs/traces/index.md
+            - reference/configuration/traces/index.md
           #- Trace Properties:
-            - '<b>Bar</b>': model-docs/traces/bar.md
-            - BarPolar: model-docs/traces/barpolar.md
-            - '<b>Box</b>': model-docs/traces/box.md
-            - CandleStick: model-docs/traces/candlestick.md
-            - Carpet: model-docs/traces/carpet.md
-            - Choropleth: model-docs/traces/choropleth.md
-            - ChoroplethMapBox: model-docs/traces/choroplethmapbox.md
-            - Cone: model-docs/traces/cone.md
-            - Contour: model-docs/traces/contour.md
-            - ContourCarpet: model-docs/traces/contourcarpet.md
-            - DensityMapBox: model-docs/traces/densitymapbox.md
-            - '<b>Funnel</b>': model-docs/traces/funnel.md
-            - FunnelArea: model-docs/traces/funnelarea.md
-            - Heatmap: model-docs/traces/heatmap.md
-            - Heatmapgl: model-docs/traces/heatmapgl.md
-            - Histogram: model-docs/traces/histogram.md
-            - Histogram2d: model-docs/traces/histogram2d.md
-            - Histogram2dContour: model-docs/traces/histogram2dcontour.md
-            - Icicle: model-docs/traces/icicle.md
-            - Image: model-docs/traces/image.md
-            - Indicator: model-docs/traces/indicator.md
-            - IsoSurface: model-docs/traces/isosurface.md
-            - Mesh3d: model-docs/traces/mesh3d.md
-            - Ohlc: model-docs/traces/ohlc.md
-            - Parcats: model-docs/traces/parcats.md
-            - Parcoords: model-docs/traces/parcoords.md
-            - '<b>Pie</b>': model-docs/traces/pie.md
-            - Sankey: model-docs/traces/sankey.md
-            - '<b>Scatter</b>': model-docs/traces/scatter.md
-            - Scatter3d: model-docs/traces/scatter3d.md
-            - ScatterCarpet: model-docs/traces/scattercarpet.md
-            - ScatterGeo: model-docs/traces/scattergeo.md
-            - ScatterGL: model-docs/traces/scattergl.md
-            - ScatterMapBox: model-docs/traces/scattermapbox.md
-            - ScatterPolar: model-docs/traces/scatterpolar.md
-            - ScatterPolarGl: model-docs/traces/scatterpolargl.md
-            - ScatterSmith: model-docs/traces/scattersmith.md
-            - Scatterternary: model-docs/traces/scatterternary.md
-            - Splom: model-docs/traces/splom.md
-            - Streamtube: model-docs/traces/streamtube.md
-            - Sunburst: model-docs/traces/sunburst.md
-            - Surface: model-docs/traces/surface.md
-            - '<b>Treemap</b>': model-docs/traces/treemap.md
-            - Violin: model-docs/traces/violin.md
-            - Volume: model-docs/traces/volume.md
-            - '<b>Waterfall</b>': model-docs/traces/waterfall.md
+            - '<b>Bar</b>': reference/configuration/traces/bar.md
+            - BarPolar: reference/configuration/traces/barpolar.md
+            - '<b>Box</b>': reference/configuration/traces/box.md
+            - CandleStick: reference/configuration/traces/candlestick.md
+            - Carpet: reference/configuration/traces/carpet.md
+            - Choropleth: reference/configuration/traces/choropleth.md
+            - ChoroplethMapBox: reference/configuration/traces/choroplethmapbox.md
+            - Cone: reference/configuration/traces/cone.md
+            - Contour: reference/configuration/traces/contour.md
+            - ContourCarpet: reference/configuration/traces/contourcarpet.md
+            - DensityMapBox: reference/configuration/traces/densitymapbox.md
+            - '<b>Funnel</b>': reference/configuration/traces/funnel.md
+            - FunnelArea: reference/configuration/traces/funnelarea.md
+            - Heatmap: reference/configuration/traces/heatmap.md
+            - Heatmapgl: reference/configuration/traces/heatmapgl.md
+            - Histogram: reference/configuration/traces/histogram.md
+            - Histogram2d: reference/configuration/traces/histogram2d.md
+            - Histogram2dContour: reference/configuration/traces/histogram2dcontour.md
+            - Icicle: reference/configuration/traces/icicle.md
+            - Image: reference/configuration/traces/image.md
+            - Indicator: reference/configuration/traces/indicator.md
+            - IsoSurface: reference/configuration/traces/isosurface.md
+            - Mesh3d: reference/configuration/traces/mesh3d.md
+            - Ohlc: reference/configuration/traces/ohlc.md
+            - Parcats: reference/configuration/traces/parcats.md
+            - Parcoords: reference/configuration/traces/parcoords.md
+            - '<b>Pie</b>': reference/configuration/traces/pie.md
+            - Sankey: reference/configuration/traces/sankey.md
+            - '<b>Scatter</b>': reference/configuration/traces/scatter.md
+            - Scatter3d: reference/configuration/traces/scatter3d.md
+            - ScatterCarpet: reference/configuration/traces/scattercarpet.md
+            - ScatterGeo: reference/configuration/traces/scattergeo.md
+            - ScatterGL: reference/configuration/traces/scattergl.md
+            - ScatterMapBox: reference/configuration/traces/scattermapbox.md
+            - ScatterPolar: reference/configuration/traces/scatterpolar.md
+            - ScatterPolarGl: reference/configuration/traces/scatterpolargl.md
+            - ScatterSmith: reference/configuration/traces/scattersmith.md
+            - Scatterternary: reference/configuration/traces/scatterternary.md
+            - Splom: reference/configuration/traces/splom.md
+            - Streamtube: reference/configuration/traces/streamtube.md
+            - Sunburst: reference/configuration/traces/sunburst.md
+            - Surface: reference/configuration/traces/surface.md
+            - '<b>Treemap</b>': reference/configuration/traces/treemap.md
+            - Violin: reference/configuration/traces/violin.md
+            - Volume: reference/configuration/traces/volume.md
+            - '<b>Waterfall</b>': reference/configuration/traces/waterfall.md
           - Charts: 
-              - model-docs/charts/index.md
+              - reference/configuration/charts/index.md
               - submodel:
-                  - model-docs/charts/submodel/index.md
-          - model-docs/target.md
-          - model-docs/dashboard.md
-          - model-docs/default.md
-          - model-docs/alert.md
+                  - reference/configuration/charts/submodel/index.md
+          - reference/configuration/target.md
+          - reference/configuration/dashboard.md
+          - reference/configuration/default.md
+          - reference/configuration/alert.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md

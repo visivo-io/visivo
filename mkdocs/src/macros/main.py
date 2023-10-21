@@ -8,6 +8,7 @@ from visivo.models.defaults import Defaults
 from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.models.alert import Alert, SlackAlert, EmailAlert
+from visivo.parsers.defs_generator import generate_defs
 from visivo.models.trace_props import (
     TraceProps,
     Mesh3d,
