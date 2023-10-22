@@ -3,7 +3,7 @@ site_name: Visivo Docs
 plugins:
   - search: {}
   - macros:
-      module_name: mkdocs/src/macros/main
+      module_name: mkdocs/src/main
   - spellcheck:
       backends: # the backends you want to use
         - symspellpy # as strings

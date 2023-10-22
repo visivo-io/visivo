@@ -1,4 +1,4 @@
-from visivo.parsers.mkdocs_nav_configuration_generator import mkdocs_pydantic_nav
+from visivo.parsers.mkdocs.nav_configuration_generator import mkdocs_pydantic_nav
 import yaml
 
 

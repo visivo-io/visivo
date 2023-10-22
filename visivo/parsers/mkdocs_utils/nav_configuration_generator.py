@@ -1,8 +1,3 @@
-from .schema_generator import generate_schema
-import json
-
-SCHEMA = json.loads(generate_schema())
-
 def _get_ref(field_data):
     refs = []
 
@@ -121,8 +116,6 @@ def _consolidate_paths(paths: list) -> dict:
             consolidated[model] = [path]
         elif model in consolidated.keys():
             consolidated[model].append(path)
-        else:
-            raise Exception("Shouldn't end up here")
     return consolidated
 
 def _get_paths_to_remove(consolidated_paths: dict) -> list:
@@ -140,11 +133,11 @@ def _get_paths_to_remove(consolidated_paths: dict) -> list:
                 to_remove.append(path)
     return to_remove
 
-def mkdocs_pydantic_nav():
-    nested_structure = _generate_structure(SCHEMA)
+def mkdocs_pydantic_nav(schema: dict) -> str:
+    nested_structure = _generate_structure(schema)
     all_key_paths = _get_all_key_paths(nested_structure)
     consolidated_paths = _consolidate_paths(all_key_paths)
     paths_to_remove = _get_paths_to_remove(consolidated_paths)
     _pop_list_of_nested_paths(nested_structure, paths= paths_to_remove)
-    yaml_output = _to_mkdocs_yaml(SCHEMA, nested_structure)
+    yaml_output = _to_mkdocs_yaml(schema, nested_structure)
     return yaml_output
