@@ -133,7 +133,7 @@ def _get_paths_to_remove(consolidated_paths: dict) -> list:
                 to_remove.append(path)
     return to_remove
 
-def mkdocs_pydantic_nav(schema: dict) -> str:
+def mkdocs_pydantic_nav(schema: dict) -> list:
     nested_structure = _generate_structure(schema)
     all_key_paths = _get_all_key_paths(nested_structure)
     consolidated_paths = _consolidate_paths(all_key_paths)
@@ -141,3 +141,39 @@ def mkdocs_pydantic_nav(schema: dict) -> str:
     _pop_list_of_nested_paths(nested_structure, paths= paths_to_remove)
     yaml_output = _to_mkdocs_yaml(schema, nested_structure)
     return yaml_output
+
+def _extract_strings_from_yaml(yaml_obj):
+    result = []
+    
+    if isinstance(yaml_obj, str):
+        return [yaml_obj]
+
+    if isinstance(yaml_obj, list):
+        for item in yaml_obj:
+            result.extend(_extract_strings_from_yaml(item))
+    
+    if isinstance(yaml_obj, dict):
+        for key, value in yaml_obj.items():
+            result.extend(_extract_strings_from_yaml(value))
+    
+    return result
+
+def get_model_to_page_mapping(nav_configuration: list) -> dict:
+    file_paths = _extract_strings_from_yaml(nav_configuration)
+    mapping = {}
+    for path in file_paths:
+        model = path.split('/')[-2]
+        key = "#/$defs/" + model
+        markdown_link = f'[{model}]' + '(https://docs.visivo.io/reference/' + path.replace('index.md', ')') 
+        mapping[key] = markdown_link
+    return mapping
+
+
+def get_model_to_path_mapping(nav_configuration: list) -> dict:
+    file_paths = _extract_strings_from_yaml(nav_configuration)
+    mapping = {}
+    for path in file_paths:
+        model = path.split('/')[-2]
+        file_path = 'mkdocs/reference/' + path
+        mapping[model] = file_path
+    return mapping
