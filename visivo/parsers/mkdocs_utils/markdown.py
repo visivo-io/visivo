@@ -89,8 +89,6 @@ def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
     output = {}
 
     for field_name, field_info in model_properties.items():
-        if not isinstance(field_info, dict):
-            print(field_name, field_info)
         field_info_keys = '.'.join(list(field_info.keys()))
         
         if "anyOf" in field_info_keys:

@@ -26,6 +26,8 @@ markdown_extensions:
   - mkdocs-click
   - pymdownx.superfences
   - attr_list
+  - abbr
+  - pymdownx.snippets
   - md_in_html
   - pymdownx.tabbed:
       alternate_style: true
