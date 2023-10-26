@@ -89,4 +89,3 @@ def test_handle_attribute_properties_discriminator():
     assert type == "One of:<br>  •#/$defs/Bar<br>  •#/$defs/Barpolar<br>  •#/$defs/Scatter"
     assert description == ''
     assert default == '#/$defs/Scatter'
-    

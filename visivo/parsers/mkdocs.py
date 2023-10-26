@@ -17,18 +17,22 @@ class Mkdocs:
     def get_nav_configuration(self):
         return self.nav_configuration
 
-    def get_docs_content(self, model_name):
-        path = self.model_to_path_map.get('model_name', {})
+    def _replace_model_with_page(self, md:str) -> str:
+        sorted_map = dict(sorted(self.model_to_page_map.items(), key=lambda item: len(item[0]), reverse=True))
+        for def_string, page_string in sorted_map.items():
+            if def_string in md:
+                md = md.replace(def_string, page_string)
+        return md
+    
+    def get_md_content(self, model_name):
+        path = self.model_to_path_map.get(model_name, {})
         if not path:
             raise KeyError(f"model {model_name} not found in project")
         if path.split('/')[-3] == 'Trace':
-            md = from_traceprop_model(model_name)
+            md = from_traceprop_model(self.SCHEMA['$defs'], model_name)
         else:
             md = from_pydantic_model(self.SCHEMA['$defs'], model_name)
-        
-        for def_string, page_string in self.model_to_page_map.items():
-            md.replace(def_string, page_string)
-
+        md = self._replace_model_with_page(md=md)
         return md 
 
         

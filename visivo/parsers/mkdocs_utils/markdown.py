@@ -1,4 +1,5 @@
 from textwrap import dedent
+import yaml 
 
 def find_refs(obj):
     refs = []
@@ -12,7 +13,7 @@ def find_refs(obj):
         for item in obj:
             if isinstance(item, (dict, list)):
                 refs.extend(find_refs(item))
-    return refs
+    return sorted(refs)
 
 
 def handle_attribute_properties(model_defs: dict ,attribute_property_object: dict):
@@ -61,7 +62,7 @@ def handle_attribute_properties(model_defs: dict ,attribute_property_object: dic
     else:
         default = attribute_property_object.get('default', "None")
         type = attribute_property_object.get('type', "")
-    default = default if default else 'None'
+    default = default if default is not None else 'None'
 
     return type, description, default 
 
@@ -75,10 +76,49 @@ def from_pydantic_model(model_defs: dict, model_name: str) -> str:
     md_table = "| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n"
 
     for property_name, property_object in model_properties.items():
-        field_type, field_description, field_default = handle_attribute_properties(property_object)
+        field_type, field_description, field_default = handle_attribute_properties(model_defs, property_object)
         md_table += f"| {property_name} | {field_type} | {field_default} | {field_description} |\n"
 
     return model_md + '\n' + md_table
 
-def from_traceprop_model(model_def: dict) -> str:
-    return 'temp'
+def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
+    """Generates Trace Props reference dictionary that will later be converted into yaml for the md file"""
+    model_properties = model_defs.get(model_name, {}).get('properties', {})
+    if not model_properties:
+        raise KeyError(f"Model {model_name} not found in model_defs dictionary passed into the function.")
+    output = {}
+
+    for field_name, field_info in model_properties.items():
+        if not isinstance(field_info, dict):
+            print(field_name, field_info)
+        field_info_keys = '.'.join(list(field_info.keys()))
+        
+        if "anyOf" in field_info_keys:
+            refs = find_refs(field_info.get("anyOf", {}))
+            if refs and len(refs) == 1:
+                nested_model_name = refs[0].split('/')[-1]
+                output[field_name] = _get_traceprop_nested_structure(model_defs, nested_model_name)
+            elif refs and len(refs) > 1:
+                raise NotImplementedError("Have not handled Traceprop attributes with multiple models referenced.")
+            else:
+                field_description = field_info.get('description', {})
+                type = field_description.split('<br>')[0].strip(' ')
+                details = field_description.split('<br>')[-1]
+                output[field_name] = type
+        elif "const" in field_info_keys:
+            output[field_name] = field_info.get('const')
+        else:
+            raise NotImplementedError(f"Have not yet handled properties with attributes {field_info_keys}")
+
+    return output
+
+def from_traceprop_model(model_defs: dict, model_name: str) -> str:
+    model_def = model_defs.get(model_name, {})
+    if not model_def:
+        raise KeyError(f"Schema missing model: {model_name}")
+    model_md = '' if not model_def.get('description', {})  else dedent(model_def.get('description'))+ '\n' 
+
+    nested_structure = _get_traceprop_nested_structure(model_defs, model_name)
+    yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
+
+    return model_md + '```\n' + yaml_doc + '\n```'
