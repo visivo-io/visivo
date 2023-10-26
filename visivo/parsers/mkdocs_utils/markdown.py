@@ -79,7 +79,7 @@ def from_pydantic_model(model_defs: dict, model_name: str) -> str:
         field_type, field_description, field_default = handle_attribute_properties(model_defs, property_object)
         md_table += f"| {property_name} | {field_type} | {field_default} | {field_description} |\n"
 
-    return model_md + '\n' + md_table
+    return model_md + '\n## Attributes\n' + md_table
 
 def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
     """Generates Trace Props reference dictionary that will later be converted into yaml for the md file"""

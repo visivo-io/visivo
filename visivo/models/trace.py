@@ -167,8 +167,6 @@ class Trace(NamedModel, ParentModel):
         - query( "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') )
         - query( "Measure Name" = 'Price, USD' )
     ```
-
-    ## Configuration Attributes
     """
 
     target_name: Optional[str] = Field(
