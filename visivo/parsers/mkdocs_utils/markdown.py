@@ -97,7 +97,7 @@ def from_pydantic_model(model_defs: dict, model_name: str) -> str:
         )
         md_table += f"| {property_name} | {field_type} | {field_default} | {field_description} |\n"
 
-    return model_md + "\n## Attributes\n" + md_table
+    return f"# {model_name}"+"\n" + model_md + "\n## Attributes\n" + md_table
 
 
 def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
@@ -151,4 +151,4 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     nested_structure = _get_traceprop_nested_structure(model_defs, model_name)
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
 
-    return model_md + "``` yaml\n" + yaml_doc + "\n```"
+    return f"# {model_name}"+"\n" + model_md + "``` yaml\n" + yaml_doc + "\n```"

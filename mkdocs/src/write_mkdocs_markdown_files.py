@@ -31,7 +31,8 @@ def modify_mkdocs_yaml():
 
 def write_pydantic_md_files():
     configuration_path = 'mkdocs/reference/configuration'
-    shutil.rmtree(configuration_path)
+    if os.path.isdir(configuration_path):
+        shutil.rmtree(configuration_path)
     for model, path in mkdocs.model_to_path_map.items():
         content = mkdocs.get_md_content(model_name=model)
         write_file(path, content)
