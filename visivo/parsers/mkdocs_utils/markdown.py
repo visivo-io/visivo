@@ -1,11 +1,12 @@
 from textwrap import dedent
-import yaml 
+import yaml
+
 
 def find_refs(obj):
     refs = []
     if isinstance(obj, dict):
         for key, value in obj.items():
-            if key == '$ref':
+            if key == "$ref":
                 refs.append(value)
             elif isinstance(value, (dict, list)):
                 refs.extend(find_refs(value))
@@ -16,107 +17,138 @@ def find_refs(obj):
     return sorted(refs)
 
 
-def handle_attribute_properties(model_defs: dict ,attribute_property_object: dict):
+def handle_attribute_properties(model_defs: dict, attribute_property_object: dict):
     """Handle extracting type, description, default from different types of property objects that pydantic produces"""
-    type, description, default = '', attribute_property_object.get('description', ''), 'None'
-    
-    attribute_key_type = '.'.join(list(attribute_property_object.keys()))
-    if "allOf"  in attribute_key_type:
-        default = attribute_property_object.get('default', 'None')
-        enum_model_key = find_refs(attribute_property_object)[0].split('/')[-1]
+    type, description, default = (
+        "",
+        attribute_property_object.get("description", ""),
+        "None",
+    )
+
+    attribute_key_type = ".".join(list(attribute_property_object.keys()))
+    if "allOf" in attribute_key_type:
+        default = attribute_property_object.get("default", "None")
+        enum_model_key = find_refs(attribute_property_object)[0].split("/")[-1]
         enum_model = model_defs.get(enum_model_key, {})
         if not enum_model:
             raise KeyError(f"Key {enum_model_key} was not found in $defs dictionary.")
-        type = 'Enumerated - one of: ' + ', '.join(enum_model.get('enum'))
+        type = "Enumerated - one of: " + ", ".join(enum_model.get("enum"))
     elif "anyOf" in attribute_key_type:
-        default = attribute_property_object.get('default', 'None')
+        default = attribute_property_object.get("default", "None")
         anyOf = find_refs(attribute_property_object)
-        for option in attribute_property_object['anyOf']:
+        for option in attribute_property_object["anyOf"]:
             if "pattern" in option and find_refs(attribute_property_object) == []:
                 anyOf.append(f"Regex({option.get('pattern')})")
             elif "type" in option and "pattern" not in option:
                 if option.get("type") not in ["null", "None"]:
                     anyOf.append(option.get("type"))
-            else: 
+            else:
                 continue
         if len(anyOf) > 1:
-            type = 'Any of: ' + ', '.join(anyOf)
+            type = "Any of: " + ", ".join(anyOf)
         elif len(anyOf) == 1:
             type = anyOf[0]
     elif "const" in attribute_key_type:
-        default = attribute_property_object.get('default', 'None')
-        type = 'string'
+        default = attribute_property_object.get("default", "None")
+        type = "string"
     elif "items" in attribute_key_type:
-        default = attribute_property_object.get('default', 'None')
-        type = attribute_property_object.get('type')
-        refs = find_refs(attribute_property_object.get('items', {}))
-        if type == 'array' and refs:
-            type = 'Array of ' + ' or '.join(refs)
-    elif "discriminator" in attribute_key_type: 
-        default_key = attribute_property_object.get('discriminator', {}).get('propertyName', '')
-        default_value = attribute_property_object.get('default', {}).get(default_key)
-        default = attribute_property_object.get('discriminator', {}).get('mapping', {}).get(default_value)
-        refs = find_refs(attribute_property_object.get('oneOf', []))
+        default = attribute_property_object.get("default", "None")
+        type = attribute_property_object.get("type")
+        refs = find_refs(attribute_property_object.get("items", {}))
+        if type == "array" and refs:
+            type = "Array of " + " or ".join(refs)
+    elif "discriminator" in attribute_key_type:
+        default_key = attribute_property_object.get("discriminator", {}).get(
+            "propertyName", ""
+        )
+        default_value = attribute_property_object.get("default", {}).get(default_key)
+        default = (
+            attribute_property_object.get("discriminator", {})
+            .get("mapping", {})
+            .get(default_value)
+        )
+        refs = find_refs(attribute_property_object.get("oneOf", []))
         if refs:
-            type = 'One of:<br>  •' + '<br>  •'.join(refs)
+            type = "One of:<br>  •" + "<br>  •".join(refs)
     else:
-        default = attribute_property_object.get('default', "None")
-        type = attribute_property_object.get('type', "")
-    default = default if default is not None else 'None'
+        default = attribute_property_object.get("default", "None")
+        type = attribute_property_object.get("type", "")
+    default = default if default is not None else "None"
 
-    return type, description, default 
+    return type, description, default
+
 
 def from_pydantic_model(model_defs: dict, model_name: str) -> str:
     """Generates markdown from the model description and creates table of attributes from $defs in pydantic schema"""
     model_def = model_defs.get(model_name, {})
     if not model_def:
         raise KeyError(f"Schema missing model: {model_name}")
-    model_properties = model_def.get('properties', {})
-    model_md = '' if not model_def.get('description', {})  else dedent(model_def.get('description'))        
+    model_properties = model_def.get("properties", {})
+    model_md = (
+        ""
+        if not model_def.get("description", {})
+        else dedent(model_def.get("description"))
+    )
     md_table = "| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n"
 
     for property_name, property_object in model_properties.items():
-        field_type, field_description, field_default = handle_attribute_properties(model_defs, property_object)
+        field_type, field_description, field_default = handle_attribute_properties(
+            model_defs, property_object
+        )
         md_table += f"| {property_name} | {field_type} | {field_default} | {field_description} |\n"
 
-    return model_md + '\n## Attributes\n' + md_table
+    return model_md + "\n## Attributes\n" + md_table
+
 
 def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
     """Generates Trace Props reference dictionary that will later be converted into yaml for the md file"""
-    model_properties = model_defs.get(model_name, {}).get('properties', {})
+    model_properties = model_defs.get(model_name, {}).get("properties", {})
     if not model_properties:
-        raise KeyError(f"Model {model_name} not found in model_defs dictionary passed into the function.")
+        raise KeyError(
+            f"Model {model_name} not found in model_defs dictionary passed into the function."
+        )
     output = {}
 
     for field_name, field_info in model_properties.items():
-        field_info_keys = '.'.join(list(field_info.keys()))
-        
+        field_info_keys = ".".join(list(field_info.keys()))
+
         if "anyOf" in field_info_keys:
             refs = find_refs(field_info.get("anyOf", {}))
             if refs and len(refs) == 1:
-                nested_model_name = refs[0].split('/')[-1]
-                output[field_name] = _get_traceprop_nested_structure(model_defs, nested_model_name)
+                nested_model_name = refs[0].split("/")[-1]
+                output[field_name] = _get_traceprop_nested_structure(
+                    model_defs, nested_model_name
+                )
             elif refs and len(refs) > 1:
-                raise NotImplementedError("Have not handled Traceprop attributes with multiple models referenced.")
+                raise NotImplementedError(
+                    "Have not handled Traceprop attributes with multiple models referenced."
+                )
             else:
-                field_description = field_info.get('description', {})
-                type = field_description.split('<br>')[0].strip(' ')
-                details = field_description.split('<br>')[-1]
+                field_description = field_info.get("description", {})
+                type = field_description.split("<br>")[0].strip(" ")
+                details = field_description.split("<br>")[-1]
                 output[field_name] = type
         elif "const" in field_info_keys:
-            output[field_name] = field_info.get('const')
+            output[field_name] = field_info.get("const")
         else:
-            raise NotImplementedError(f"Have not yet handled properties with attributes {field_info_keys}")
+            raise NotImplementedError(
+                f"Have not yet handled properties with attributes {field_info_keys}"
+            )
 
     return output
+
 
 def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     model_def = model_defs.get(model_name, {})
     if not model_def:
         raise KeyError(f"Schema missing model: {model_name}")
-    model_md = '' if not model_def.get('description', {})  else dedent(model_def.get('description'))+ '\n' 
+    model_md = (
+        ""
+        if not model_def.get("description", {})
+        else dedent(model_def.get("description")) + "\n"
+    )
 
     nested_structure = _get_traceprop_nested_structure(model_defs, model_name)
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
 
-    return model_md + '```\n' + yaml_doc + '\n```'
+    return model_md + "``` yaml\n" + yaml_doc + "\n```"
