@@ -3,7 +3,7 @@ import json
 from visivo.commands.run import run
 from visivo.parsers.core_parser import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
-from visivo.commands.run import run_phase
+from visivo.commands.run_phase import run_phase
 from tests.support.utils import temp_yml_file
 from click.testing import CliRunner
 from tests.factories.model_factories import ProjectFactory

@@ -1,4 +1,3 @@
-import os
 from click.testing import CliRunner
 from tests.support.utils import temp_file, temp_folder
 from visivo.commands.archive import archive

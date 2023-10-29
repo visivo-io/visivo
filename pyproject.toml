@@ -28,6 +28,7 @@ networkx = "^3.1"
 matplotlib = "^3.7.1"
 deepmerge = "^1.1.0"
 gitpython = "^3.1.32"
+halo = "^0.0.31"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"
@@ -41,6 +42,7 @@ symspellpy = "^6.7.7"
 codespell = "^2.2.4"
 mkdocs-macros-plugin = "^0.7.0"
 setuptools = "^67.7.2"
+pytest-env = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

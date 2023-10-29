@@ -1,6 +1,4 @@
 import click
-import os
-from visivo.query.runner import Runner
 from .options import output_dir
 
 
@@ -10,5 +8,11 @@ from .options import output_dir
     "-j", "--json-file", help="The file with the raw json results from the query"
 )
 def aggregate(output_dir, json_file):
-    click.echo("Aggregating data by cohorts")
+    from visivo.logging.logger import Logger
+
+    Logger.instance().debug("Aggregating")
+
+    from visivo.query.runner import Runner
+
     Runner.aggregate(trace_dir=output_dir, json_file=json_file)
+    Logger.instance().success("Done")
