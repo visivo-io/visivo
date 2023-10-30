@@ -116,7 +116,6 @@ def test_handle_attribute_properties_discriminator():
     type, description, default = markdown.handle_attribute_properties(
         MODEL_DEFS, discriminator_property
     )
-    print(type)
     assert (
         type == "One of:<br>  •#/$defs/Bar<br>  •#/$defs/Barpolar<br>  •#/$defs/Scatter"
     )
