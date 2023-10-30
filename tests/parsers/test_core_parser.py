@@ -7,10 +7,7 @@ from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FI
 
 
 def test_Core_Parser_with_empty_project():
-    tmp = temp_yml_file(
-        {"name": "project"},
-        name="project.visivo.yml",
-    )
+    tmp = temp_yml_file({"name": "project"}, name="project.visivo.yml",)
 
     core_parser = CoreParser(project_file=tmp, files=[tmp])
     project = core_parser.parse()
@@ -44,10 +41,7 @@ def test_Core_Parser_with_one_of_each_project():
 def test_Core_Parser_with_env_var(monkeypatch):
     monkeypatch.setenv("NAME", "test_name")
 
-    tmp = temp_yml_file(
-        {"name": '{{ env_var("NAME") }}'},
-        name=PROJECT_FILE_NAME,
-    )
+    tmp = temp_yml_file({"name": '{{ env_var("NAME") }}'}, name=PROJECT_FILE_NAME,)
     core_parser = CoreParser(project_file=tmp, files=[tmp])
     project = core_parser.parse()
     assert project.name == "test_name"
@@ -62,10 +56,7 @@ def test_Core_Parser_combines_different_files():
         name=PROJECT_FILE_NAME,
     )
     other_file = temp_yml_file(
-        {
-            "name": "project",
-            "targets": [{"name": "local", "database": "other_url"}],
-        },
+        {"name": "project", "targets": [{"name": "local", "database": "other_url"}],},
         name="other.yml",
     )
 
