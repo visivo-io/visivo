@@ -181,9 +181,7 @@ def get_model_to_page_mapping(nav_configuration: list) -> dict:
         model = path.split("/")[-2]
         key = "#/$defs/" + model
         markdown_link = (
-            f"[{model}]"
-            + "(https://docs.visivo.io/"
-            + path.replace("index.md", ")")
+            f"[{model}]" + "(https://docs.visivo.io/" + path.replace("index.md", ")")
         )
         mapping[key] = markdown_link
     return mapping

@@ -53,7 +53,7 @@ class Mkdocs:
             if def_string in md:
                 md = md.replace(def_string, page_string)
         return md
-    
+
     def _get_trace_prop_models(self) -> list:
         trace_def = self.SCHEMA["$defs"].get("Trace")
         props = trace_def.get("properties").get("props")
