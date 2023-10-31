@@ -37,7 +37,7 @@ class EmailAlert(Alert):
         port: 2525 #is this port by default
         host: your_company_email_server.com
         username: someones_username
-        password: {{ env_var('EMAIL_PASSWORD')}} #We'd recommend using environment variables here for security
+        password: {% raw %}{{ env_var('EMAIL_PASSWORD')}}{% endraw %} #We'd recommend using environment variables here for security
 
     ```
     """
@@ -101,7 +101,7 @@ class SlackAlert(Alert):
     alerts:
       - name: slack-destination #any name you choose
         type: slack
-        webhook_url: {{ env_var("SLACK_WEBHOOK")}}
+        webhook_url: {% raw %}{{ env_var("SLACK_WEBHOOK")}}{% endraw %}
     ```
     """
 

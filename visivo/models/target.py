@@ -36,14 +36,14 @@ class Target(NamedModel):
         database: DEV
         account: ax28471.us-west-2.aws
         db_schema: DEFAULT
-        username: {{ env_var('SNOWFLAKE_USER') }}
+        username: {% raw %}{{ env_var('SNOWFLAKE_USER') }}{% endraw %}
         warehouse: DEV
-        password: {{ env_var('SNOWFLAKE_PASSWORD') }}
+        password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
     ```
 
     Different data stores, which you specify with the `type` attribute, require different configurations. For example the snowflake `type` require that you specify a `warehouse` while the sqlite `type` does not require that attribute.
 
-    It is best practice to leverage the `{{ env_var() }}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
+    It is best practice to leverage the `{% raw %}{{ env_var() }}{% endraw %}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
     """
 
     type: TypeEnum = TypeEnum.postgresql

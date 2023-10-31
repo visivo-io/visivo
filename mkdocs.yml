@@ -1,135 +1,191 @@
 site_name: Visivo Docs
-
 plugins:
   - search: {}
-  - macros
+  - macros:
+      module_name: mkdocs/src/main
   - spellcheck:
-      backends: # the backends you want to use
-        - symspellpy # as strings
-        - codespell: # or nested configs
-            dictionaries: [clear, rare]
-
-      # known_words can also be a list of words
+      backends:
+        - symspellpy
+        - codespell:
+            dictionaries:
+              - clear
+              - rare
       known_words: known_words.txt
-
-      # ignore words in <code> tags
-      ignore_code: yes
-
-      # minimum length of words to consider
+      ignore_code: true
       min_length: 2
-
-      # maximum number of capital letters in a word
       max_capital: 1
-
 markdown_extensions:
   - mkdocs-click
   - pymdownx.superfences
+  - attr_list
+  - abbr
+  - pymdownx.snippets
+  - md_in_html
   - pymdownx.tabbed:
       alternate_style: true
-  - attr_list
-  - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
-
+  - pymdownx.emoji
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
 theme:
   name: material
   features:
     - content.tabs.link
+    - navigation.indexes
     - navigation.sections
     - content.tooltips
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
+  icon:
+    annotation: material/arrow-right-circle
   palette:
-    - media: "(prefers-color-scheme: light)"
+    - media: '(prefers-color-scheme: light)'
       scheme: visivo_light
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
-
-    # Palette toggle for dark mode
-    - media: "(prefers-color-scheme: dark)"
+    - media: '(prefers-color-scheme: dark)'
       scheme: visivo_dark
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-
-docs_dir: "mkdocs"
-site_dir: "mkdocs_build"
-
+docs_dir: mkdocs
+site_dir: mkdocs_build
 extra:
   analytics:
     provider: google
     property: G-50DF3C95TL
-
 extra_css:
   - stylesheets/brand_colors.css
-
 nav:
   - Getting Started: index.md
   - Topics:
       - Linting: topics/linting.md
       - Including: topics/including.md
       - Deployment: topics/deployments.md
-    # - Use Cases: use_cases.md
-    # - Tutorials: how_tos.md
   - Reference:
-      - CLI: cli-reference.md
+      - CLI: reference/cli.md
       - Configuration:
-          - model-docs/trace.md
-          - Trace Properties:
-              - model-docs/trace-props/mesh3d.md
-              - model-docs/trace-props/barpolar.md
-              - model-docs/trace-props/scattersmith.md
-              - model-docs/trace-props/streamtube.md
-              - model-docs/trace-props/cone.md
-              - model-docs/trace-props/scattermapbox.md
-              - model-docs/trace-props/scattergeo.md
-              - model-docs/trace-props/scatterpolar.md
-              - model-docs/trace-props/sunburst.md
-              - model-docs/trace-props/histogram2d.md
-              - model-docs/trace-props/isosurface.md
-              - model-docs/trace-props/violin.md
-              - model-docs/trace-props/scatter.md
-              - model-docs/trace-props/image.md
-              - model-docs/trace-props/ohlc.md
-              - model-docs/trace-props/heatmapgl.md
-              - model-docs/trace-props/indicator.md
-              - model-docs/trace-props/funnelarea.md
-              - model-docs/trace-props/carpet.md
-              - model-docs/trace-props/icicle.md
-              - model-docs/trace-props/surface.md
-              - model-docs/trace-props/parcats.md
-              - model-docs/trace-props/treemap.md
-              - model-docs/trace-props/funnel.md
-              - model-docs/trace-props/histogram2dcontour.md
-              - model-docs/trace-props/contourcarpet.md
-              - model-docs/trace-props/parcoords.md
-              - model-docs/trace-props/candlestick.md
-              - model-docs/trace-props/scatter3d.md
-              - model-docs/trace-props/waterfall.md
-              - model-docs/trace-props/choropleth.md
-              - model-docs/trace-props/heatmap.md
-              - model-docs/trace-props/histogram.md
-              - model-docs/trace-props/volume.md
-              - model-docs/trace-props/contour.md
-              - model-docs/trace-props/scatterternary.md
-              - model-docs/trace-props/sankey.md
-              - model-docs/trace-props/scattercarpet.md
-              - model-docs/trace-props/densitymapbox.md
-              - model-docs/trace-props/choroplethmapbox.md
-              - model-docs/trace-props/box.md
-              - model-docs/trace-props/pie.md
-              - model-docs/trace-props/bar.md
-              - model-docs/trace-props/scatterpolargl.md
-              - model-docs/trace-props/scattergl.md
-              - model-docs/trace-props/splom.md
-          - model-docs/chart.md
-          - model-docs/target.md
-          - model-docs/dashboard.md
-          - model-docs/default.md
-          - model-docs/alert.md
+          - Alerts:
+              - SlackAlert:
+                  - reference/configuration/Alerts/SlackAlert/index.md
+              - EmailAlert:
+                  - reference/configuration/Alerts/EmailAlert/index.md
+              - ConsoleAlert:
+                  - reference/configuration/Alerts/ConsoleAlert/index.md
+          - Chart:
+              - reference/configuration/Chart/index.md
+          - Dashboard:
+              - reference/configuration/Dashboard/index.md
+              - Row:
+                  - reference/configuration/Dashboard/Row/index.md
+                  - Item:
+                      - reference/configuration/Dashboard/Row/Item/index.md
+          - Defaults:
+              - reference/configuration/Defaults/index.md
+          - Include:
+              - reference/configuration/Include/index.md
+          - Model:
+              - reference/configuration/Model/index.md
+          - Table:
+              - reference/configuration/Table/index.md
+          - Target:
+              - reference/configuration/Target/index.md
+          - Trace:
+              - reference/configuration/Trace/index.md
+              - TraceColumns:
+                  - reference/configuration/Trace/TraceColumns/index.md
+              - Bar:
+                  - reference/configuration/Trace/Bar/index.md
+              - Barpolar:
+                  - reference/configuration/Trace/Barpolar/index.md
+              - Box:
+                  - reference/configuration/Trace/Box/index.md
+              - Candlestick:
+                  - reference/configuration/Trace/Candlestick/index.md
+              - Carpet:
+                  - reference/configuration/Trace/Carpet/index.md
+              - Choropleth:
+                  - reference/configuration/Trace/Choropleth/index.md
+              - Choroplethmapbox:
+                  - reference/configuration/Trace/Choroplethmapbox/index.md
+              - Cone:
+                  - reference/configuration/Trace/Cone/index.md
+              - Contour:
+                  - reference/configuration/Trace/Contour/index.md
+              - Contourcarpet:
+                  - reference/configuration/Trace/Contourcarpet/index.md
+              - Densitymapbox:
+                  - reference/configuration/Trace/Densitymapbox/index.md
+              - Funnel:
+                  - reference/configuration/Trace/Funnel/index.md
+              - Funnelarea:
+                  - reference/configuration/Trace/Funnelarea/index.md
+              - Heatmap:
+                  - reference/configuration/Trace/Heatmap/index.md
+              - Heatmapgl:
+                  - reference/configuration/Trace/Heatmapgl/index.md
+              - Histogram:
+                  - reference/configuration/Trace/Histogram/index.md
+              - Histogram2d:
+                  - reference/configuration/Trace/Histogram2d/index.md
+              - Histogram2dcontour:
+                  - reference/configuration/Trace/Histogram2dcontour/index.md
+              - Icicle:
+                  - reference/configuration/Trace/Icicle/index.md
+              - Image:
+                  - reference/configuration/Trace/Image/index.md
+              - Indicator:
+                  - reference/configuration/Trace/Indicator/index.md
+              - Isosurface:
+                  - reference/configuration/Trace/Isosurface/index.md
+              - Mesh3d:
+                  - reference/configuration/Trace/Mesh3d/index.md
+              - Ohlc:
+                  - reference/configuration/Trace/Ohlc/index.md
+              - Parcats:
+                  - reference/configuration/Trace/Parcats/index.md
+              - Parcoords:
+                  - reference/configuration/Trace/Parcoords/index.md
+              - Pie:
+                  - reference/configuration/Trace/Pie/index.md
+              - Sankey:
+                  - reference/configuration/Trace/Sankey/index.md
+              - Scatter:
+                  - reference/configuration/Trace/Scatter/index.md
+              - Scatter3d:
+                  - reference/configuration/Trace/Scatter3d/index.md
+              - Scattercarpet:
+                  - reference/configuration/Trace/Scattercarpet/index.md
+              - Scattergeo:
+                  - reference/configuration/Trace/Scattergeo/index.md
+              - Scattergl:
+                  - reference/configuration/Trace/Scattergl/index.md
+              - Scattermapbox:
+                  - reference/configuration/Trace/Scattermapbox/index.md
+              - Scatterpolar:
+                  - reference/configuration/Trace/Scatterpolar/index.md
+              - Scatterpolargl:
+                  - reference/configuration/Trace/Scatterpolargl/index.md
+              - Scattersmith:
+                  - reference/configuration/Trace/Scattersmith/index.md
+              - Scatterternary:
+                  - reference/configuration/Trace/Scatterternary/index.md
+              - Splom:
+                  - reference/configuration/Trace/Splom/index.md
+              - Streamtube:
+                  - reference/configuration/Trace/Streamtube/index.md
+              - Sunburst:
+                  - reference/configuration/Trace/Sunburst/index.md
+              - Surface:
+                  - reference/configuration/Trace/Surface/index.md
+              - Treemap:
+                  - reference/configuration/Trace/Treemap/index.md
+              - Violin:
+                  - reference/configuration/Trace/Violin/index.md
+              - Volume:
+                  - reference/configuration/Trace/Volume/index.md
+              - Waterfall:
+                  - reference/configuration/Trace/Waterfall/index.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md

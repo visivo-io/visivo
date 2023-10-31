@@ -20,12 +20,12 @@ class Chart(NamedModel, ParentModel):
       traces:
         - ref(a-trace-name)
       layout:
-      title: 'Aggregated Fibonacci'
-      yaxis:
-        title: 'Widgets Sold' #Describe the data in your y axis
-      xaxis:
-        title: 'Week' #Describe the data in your x axis
-      stack: False
+        title: 'Aggregated Fibonacci'
+        yaxis:
+          title: 'Widgets Sold' #Describe the data in your y axis
+        xaxis:
+          title: 'Week' #Describe the data in your x axis
+        stack: False
     ```
     """
 

@@ -26,6 +26,9 @@ jobs:
           poetry run pytest tests/parsers/test_schema_generator.py 
           find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
       
+      - name: Generate Configuration Files
+        run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+
       - name: Deploy mkdocs to docs.visivo.io
         run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
       
