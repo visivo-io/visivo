@@ -194,21 +194,21 @@ class Buttons2(TracePropsAttribute):
 class Center1(TracePropsAttribute):
 	lat: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number<br>Sets the latitude of the center of the map (in degrees North). """
-	)
-	lon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number<br>Sets the longitude of the center of the map (in degrees East). """
-	)
-
-class Center2(TracePropsAttribute):
-	lat: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
 		description=""" number<br>Sets the latitude of the map's center. For all projection types, the map's latitude center lies at the middle of the latitude range by default. """
 	)
 	lon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number<br>Sets the longitude of the map's center. By default, the map's longitude center lies at the middle of the longitude range for scoped projection and above `projection.rotation.lon` otherwise. """
+	)
+
+class Center2(TracePropsAttribute):
+	lat: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the latitude of the center of the map (in degrees North). """
+	)
+	lon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number<br>Sets the longitude of the center of the map (in degrees East). """
 	)
 
 class CenterEyeUp1(TracePropsAttribute):
@@ -420,24 +420,6 @@ class Dimensions2(TracePropsAttribute):
 class Domain1(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this pie trace . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this pie trace . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this pie trace (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this pie trace (in plot fraction). """
-	)
-
-class Domain10(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
 		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this treemap trace . """
 	)
 	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
@@ -453,7 +435,43 @@ class Domain10(TracePropsAttribute):
 		description=""" array<br>Sets the vertical domain of this treemap trace (in plot fraction). """
 	)
 
+class Domain10(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this parcoords trace . """
+	)
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this parcoords trace . """
+	)
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the horizontal domain of this parcoords trace (in plot fraction). """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the vertical domain of this parcoords trace (in plot fraction). """
+	)
+
 class Domain11(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this scene subplot . """
+	)
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this scene subplot . """
+	)
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the horizontal domain of this scene subplot (in plot fraction). """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the vertical domain of this scene subplot (in plot fraction). """
+	)
+
+class Domain12(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this ternary subplot . """
@@ -471,7 +489,7 @@ class Domain11(TracePropsAttribute):
 		description=""" array<br>Sets the vertical domain of this ternary subplot (in plot fraction). """
 	)
 
-class Domain12(TracePropsAttribute):
+class Domain13(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this parcats trace . """
@@ -487,24 +505,6 @@ class Domain12(TracePropsAttribute):
 	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
 		description=""" array<br>Sets the vertical domain of this parcats trace (in plot fraction). """
-	)
-
-class Domain13(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this scene subplot . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this scene subplot . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this scene subplot (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this scene subplot (in plot fraction). """
 	)
 
 class Domain14(TracePropsAttribute):
@@ -528,24 +528,6 @@ class Domain14(TracePropsAttribute):
 class Domain15(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this sunburst trace . """
-	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this sunburst trace . """
-	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the horizontal domain of this sunburst trace (in plot fraction). """
-	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
-		None,
-		description=""" array<br>Sets the vertical domain of this sunburst trace (in plot fraction). """
-	)
-
-class Domain16(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
 		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this geo subplot . Note that geo subplots are constrained by domain. In general, when `projection.scale` is set to 1. a map will fit either its x or y domain, but not both. """
 	)
 	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
@@ -559,6 +541,24 @@ class Domain16(TracePropsAttribute):
 	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
 		description=""" array<br>Sets the vertical domain of this geo subplot (in plot fraction). Note that geo subplots are constrained by domain. In general, when `projection.scale` is set to 1. a map will fit either its x or y domain, but not both. """
+	)
+
+class Domain16(TracePropsAttribute):
+	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this sunburst trace . """
+	)
+	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this sunburst trace . """
+	)
+	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the horizontal domain of this sunburst trace (in plot fraction). """
+	)
+	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+		None,
+		description=""" array<br>Sets the vertical domain of this sunburst trace (in plot fraction). """
 	)
 
 class Domain17(TracePropsAttribute):
@@ -700,19 +700,19 @@ class Domain8(TracePropsAttribute):
 class Domain9(TracePropsAttribute):
 	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this parcoords trace . """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this pie trace . """
 	)
 	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this parcoords trace . """
+		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this pie trace . """
 	)
 	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" array<br>Sets the horizontal domain of this parcoords trace (in plot fraction). """
+		description=""" array<br>Sets the horizontal domain of this pie trace (in plot fraction). """
 	)
 	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
 		None,
-		description=""" array<br>Sets the vertical domain of this parcoords trace (in plot fraction). """
+		description=""" array<br>Sets the vertical domain of this pie trace (in plot fraction). """
 	)
 
 class Fill1(TracePropsAttribute):
@@ -757,7 +757,17 @@ class FillpatternPattern1(TracePropsAttribute):
 		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. """
 	)
 
-class FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1(TracePropsAttribute):
+class Gradient1(TracePropsAttribute):
+	color: Optional[str | List[str]]= Field(
+		None,
+		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
+	)
+	type: Optional[str | List[str] ]= Field(
+		None,
+		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
+	)
+
+class GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br> """
@@ -769,16 +779,6 @@ class FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontT
 	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
-	)
-
-class Gradient1(TracePropsAttribute):
-	color: Optional[str | List[str]]= Field(
-		None,
-		description=""" color or array of colors<br>Sets the final color of the gradient fill: the center color for radial, the right for horizontal, or the bottom for vertical. """
-	)
-	type: Optional[str | List[str] ]= Field(
-		None,
-		description=""" enumerated or array of enumerateds , one of ( "radial" | "horizontal" | "vertical" | "none" )<br>Sets the type of gradient used to fill the markers """
 	)
 
 class Images1(TracePropsAttribute):
@@ -1152,11 +1152,11 @@ class Line18(TracePropsAttribute):
 class Line19(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the color of the `line` around each `node`. """
+		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. """
 	)
 	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `node`. """
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
 	)
 
 class Line2(TracePropsAttribute):
@@ -1176,11 +1176,11 @@ class Line2(TracePropsAttribute):
 class Line20(TracePropsAttribute):
 	color: Optional[str | List[str]]= Field(
 		None,
-		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. """
+		description=""" color or array of colors<br>Sets the color of the `line` around each `node`. """
 	)
 	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
 		None,
-		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
+		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `node`. """
 	)
 
 class Line21(TracePropsAttribute):
@@ -1196,16 +1196,6 @@ class Line21(TracePropsAttribute):
 class Line22(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the line color of all increasing values. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the line width of all increasing values. """
-	)
-
-class Line23(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
 		description=""" color<br>Sets the line color of all decreasing values. """
 	)
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
@@ -1213,27 +1203,17 @@ class Line23(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width of all decreasing values. """
 	)
 
+class Line23(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the line color of all increasing values. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the line width of all increasing values. """
+	)
+
 class Line24(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the inner box plot bounding line color. """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the inner box plot bounding line width. """
-	)
-
-class Line25(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the color of line bounding the violin(s). """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the violin(s). """
-	)
-
-class Line26(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the color of the threshold line. """
@@ -1243,7 +1223,7 @@ class Line26(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the threshold line. """
 	)
 
-class Line27(TracePropsAttribute):
+class Line25(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the line color. """
@@ -1253,7 +1233,7 @@ class Line27(TracePropsAttribute):
 		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
 
-class Line28(TracePropsAttribute):
+class Line26(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
 		description=""" color<br>Sets the line color of all intermediate sums and total values. """
@@ -1261,6 +1241,26 @@ class Line28(TracePropsAttribute):
 	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the line width of all intermediate sums and total values. """
+	)
+
+class Line27(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the inner box plot bounding line color. """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the inner box plot bounding line width. """
+	)
+
+class Line28(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the color of line bounding the violin(s). """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the violin(s). """
 	)
 
 class Line29(TracePropsAttribute):
@@ -1456,21 +1456,21 @@ class Marker2(TracePropsAttribute):
 class Marker3(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the marker color of selected points. """
-	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
-	)
-
-class Marker4(TracePropsAttribute):
-	color: Optional[str]= Field(
-		None,
 		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
 	)
 	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
+	)
+
+class Marker4(TracePropsAttribute):
+	color: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the marker color of selected points. """
+	)
+	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
 
 class Marker5(TracePropsAttribute):
@@ -1712,7 +1712,7 @@ class Rotation1(TracePropsAttribute):
 class Spaceframe1(TracePropsAttribute):
 	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 0.15 meaning that only 15% of the area of every faces of tetras would be shaded. Applying a greater `fill` ratio would allow the creation of stronger elements or could be sued to have entirely closed areas (in case of using 1). """
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 1 meaning that they are entirely shaded. Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
 	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -1722,7 +1722,7 @@ class Spaceframe1(TracePropsAttribute):
 class Spaceframe2(TracePropsAttribute):
 	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
-		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 1 meaning that they are entirely shaded. Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
+		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 0.15 meaning that only 15% of the area of every faces of tetras would be shaded. Applying a greater `fill` ratio would allow the creation of stronger elements or could be sued to have entirely closed areas (in case of using 1). """
 	)
 	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -1798,13 +1798,13 @@ class Surface1(TracePropsAttribute):
 class Textfont1(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
+		description=""" color<br>Sets the text font color of selected points. """
 	)
 
 class Textfont2(TracePropsAttribute):
 	color: Optional[str]= Field(
 		None,
-		description=""" color<br>Sets the text font color of selected points. """
+		description=""" color<br>Sets the text font color of unselected points, applied only when a selection exists. """
 	)
 
 class Textfont3(TracePropsAttribute):
@@ -2090,7 +2090,7 @@ class Z3(TracePropsAttribute):
 	)
 
 class BarMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2104,7 +2104,7 @@ class BarMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class BarpolarMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2118,7 +2118,7 @@ class BarpolarMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class FunnelMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2132,7 +2132,7 @@ class FunnelMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class HistogramMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2146,7 +2146,7 @@ class HistogramMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class IcicleMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2160,7 +2160,7 @@ class IcicleMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class LayoutColoraxisColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2190,7 +2190,7 @@ class LayoutMapboxLayersSymbol(TracePropsAttribute):
 		None,
 		description=""" string<br>Sets the symbol text (mapbox.layer.layout.text-field). """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the icon text font (color=mapbox.layer.paint.text-color, size=mapbox.layer.layout.text-size). Has an effect only when `type` is set to "symbol". """
 	)
@@ -2200,7 +2200,7 @@ class LayoutMapboxLayersSymbol(TracePropsAttribute):
 	)
 
 class LayoutPolarRadialaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2218,13 +2218,13 @@ class LayoutSceneAnnotationsHoverlabel(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the border color of the hover label. By default uses either dark grey or white, for maximum contrast with `hoverlabel.bgcolor`. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the hover label text font. By default uses the global hover font and size, with color from `hoverlabel.bordercolor`. """
 	)
 
 class LayoutSceneXaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2234,7 +2234,7 @@ class LayoutSceneXaxisTitle(TracePropsAttribute):
 	)
 
 class LayoutSceneYaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2244,7 +2244,7 @@ class LayoutSceneYaxisTitle(TracePropsAttribute):
 	)
 
 class LayoutSceneZaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2254,7 +2254,7 @@ class LayoutSceneZaxisTitle(TracePropsAttribute):
 	)
 
 class LayoutTernaryAaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2264,7 +2264,7 @@ class LayoutTernaryAaxisTitle(TracePropsAttribute):
 	)
 
 class LayoutTernaryBaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2274,7 +2274,7 @@ class LayoutTernaryBaxisTitle(TracePropsAttribute):
 	)
 
 class LayoutTernaryCaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -2284,7 +2284,7 @@ class LayoutTernaryCaxisTitle(TracePropsAttribute):
 	)
 
 class ParcatsLineColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2298,7 +2298,7 @@ class ParcatsLineColorbarTitle(TracePropsAttribute):
 	)
 
 class ParcoordsLineColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2312,7 +2312,7 @@ class ParcoordsLineColorbarTitle(TracePropsAttribute):
 	)
 
 class Scatter3dLineColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2326,7 +2326,7 @@ class Scatter3dLineColorbarTitle(TracePropsAttribute):
 	)
 
 class Scatter3dMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2340,7 +2340,7 @@ class Scatter3dMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScatterMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2354,7 +2354,7 @@ class ScatterMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScattercarpetMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2368,7 +2368,7 @@ class ScattercarpetMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScattergeoMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2382,7 +2382,7 @@ class ScattergeoMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScatterglMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2396,7 +2396,7 @@ class ScatterglMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScattermapboxMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2410,7 +2410,7 @@ class ScattermapboxMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScatterpolarMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2424,7 +2424,7 @@ class ScatterpolarMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScatterpolarglMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2438,7 +2438,7 @@ class ScatterpolarglMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScattersmithMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2452,7 +2452,7 @@ class ScattersmithMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class ScatterternaryMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2466,7 +2466,7 @@ class ScatterternaryMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class SplomMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2480,7 +2480,7 @@ class SplomMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class SunburstMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2494,7 +2494,7 @@ class SunburstMarkerColorbarTitle(TracePropsAttribute):
 	)
 
 class TreemapMarkerColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2596,7 +2596,7 @@ class BarMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -2770,7 +2770,7 @@ class BarpolarMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -2856,7 +2856,7 @@ class BarpolarMarkerColorbar(TracePropsAttribute):
 	)
 
 class CarpetAaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2870,7 +2870,7 @@ class CarpetAaxisTitle(TracePropsAttribute):
 	)
 
 class CarpetBaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2884,7 +2884,7 @@ class CarpetBaxisTitle(TracePropsAttribute):
 	)
 
 class ChoroplethColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2898,7 +2898,7 @@ class ChoroplethColorbarTitle(TracePropsAttribute):
 	)
 
 class ChoroplethmapboxColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2912,7 +2912,7 @@ class ChoroplethmapboxColorbarTitle(TracePropsAttribute):
 	)
 
 class ConeColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2926,7 +2926,7 @@ class ConeColorbarTitle(TracePropsAttribute):
 	)
 
 class ContourColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2940,7 +2940,7 @@ class ContourColorbarTitle(TracePropsAttribute):
 	)
 
 class ContourcarpetColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -2954,7 +2954,7 @@ class ContourcarpetColorbarTitle(TracePropsAttribute):
 	)
 
 class DensitymapboxColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -3056,7 +3056,7 @@ class FunnelMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -3142,7 +3142,7 @@ class FunnelMarkerColorbar(TracePropsAttribute):
 	)
 
 class HeatmapColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -3156,7 +3156,7 @@ class HeatmapColorbarTitle(TracePropsAttribute):
 	)
 
 class HeatmapglColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -3170,7 +3170,7 @@ class HeatmapglColorbarTitle(TracePropsAttribute):
 	)
 
 class Histogram2dColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -3184,7 +3184,7 @@ class Histogram2dColorbarTitle(TracePropsAttribute):
 	)
 
 class Histogram2dcontourColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -3286,7 +3286,7 @@ class HistogramMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -3460,7 +3460,7 @@ class IcicleMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -3598,7 +3598,7 @@ class IndicatorGaugeAxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -3692,7 +3692,7 @@ class IndicatorGaugeSteps(TracePropsAttribute):
 	)
 
 class IndicatorGaugeThreshold(TracePropsAttribute):
-	line: Optional[Line26]= Field(
+	line: Optional[Line24]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -3706,7 +3706,7 @@ class IndicatorGaugeThreshold(TracePropsAttribute):
 	)
 
 class IsosurfaceColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -3728,7 +3728,7 @@ class LayoutAnnotationsHoverlabel(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the border color of the hover label. By default uses either dark grey or white, for maximum contrast with `hoverlabel.bgcolor`. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the hover label text font. By default uses the global hover font and size, with color from `hoverlabel.bordercolor`. """
 	)
@@ -3822,7 +3822,7 @@ class LayoutColoraxisColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -3934,7 +3934,7 @@ class LayoutGeoProjection(TracePropsAttribute):
 	)
 
 class LayoutLegendTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend's title font. Defaults to `legend.font` with its size increased about 20%. """
 	)
@@ -4138,7 +4138,7 @@ class LayoutPolarAngularaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -4324,7 +4324,7 @@ class LayoutPolarRadialaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -4442,7 +4442,7 @@ class LayoutSceneAnnotations(TracePropsAttribute):
 		None,
 		description=""" boolean<br>Determines whether the annotation text box captures mouse move and click events, or allows those events to pass through to data points in the plot that may be behind the annotation. By default `captureevents` is "false" unless `hovertext` is provided. If you use the event `plotly_clickannotation` without `hovertext` you must explicitly enable `captureevents`. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the annotation text font. """
 	)
@@ -4698,7 +4698,7 @@ class LayoutSceneXaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -4908,7 +4908,7 @@ class LayoutSceneYaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5118,7 +5118,7 @@ class LayoutSceneZaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5188,7 +5188,7 @@ class LayoutSceneZaxis(TracePropsAttribute):
 	)
 
 class LayoutSlidersCurrentvalue(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font of the current value label text. """
 	)
@@ -5270,7 +5270,7 @@ class LayoutSmithImaginaryaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5372,7 +5372,7 @@ class LayoutSmithRealaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5502,7 +5502,7 @@ class LayoutTernaryAaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5652,7 +5652,7 @@ class LayoutTernaryBaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5802,7 +5802,7 @@ class LayoutTernaryCaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -5880,7 +5880,7 @@ class LayoutXaxisRangeselector(TracePropsAttribute):
 		None,
 		description=""" array of object where each object has one or more of the keys listed below.<br> """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font of the range selector button text. """
 	)
@@ -5940,7 +5940,7 @@ class LayoutXaxisRangeslider(TracePropsAttribute):
 	)
 
 class LayoutXaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -5954,7 +5954,7 @@ class LayoutXaxisTitle(TracePropsAttribute):
 	)
 
 class LayoutYaxisTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this axis' title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -5968,7 +5968,7 @@ class LayoutYaxisTitle(TracePropsAttribute):
 	)
 
 class Mesh3dColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -6070,7 +6070,7 @@ class ParcatsLineColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -6244,7 +6244,7 @@ class ParcoordsLineColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -6462,7 +6462,7 @@ class Scatter3dLineColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -6636,7 +6636,7 @@ class Scatter3dMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -6810,7 +6810,7 @@ class ScatterMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -6984,7 +6984,7 @@ class ScattercarpetMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -7158,7 +7158,7 @@ class ScattergeoMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -7332,7 +7332,7 @@ class ScatterglMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -7506,7 +7506,7 @@ class ScattermapboxMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -7680,7 +7680,7 @@ class ScatterpolarMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -7854,7 +7854,7 @@ class ScatterpolarglMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -8028,7 +8028,7 @@ class ScattersmithMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -8202,7 +8202,7 @@ class ScatterternaryMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -8376,7 +8376,7 @@ class SplomMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -8462,7 +8462,7 @@ class SplomMarkerColorbar(TracePropsAttribute):
 	)
 
 class StreamtubeColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -8564,7 +8564,7 @@ class SunburstMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -8650,7 +8650,7 @@ class SunburstMarkerColorbar(TracePropsAttribute):
 	)
 
 class SurfaceColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -8890,7 +8890,7 @@ class TreemapMarkerColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -8976,7 +8976,7 @@ class TreemapMarkerColorbar(TracePropsAttribute):
 	)
 
 class VolumeColorbarTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this color bar's title font. Note that the title's font used to be set by the now deprecated `titlefont` attribute. """
 	)
@@ -8994,7 +8994,7 @@ class WaterfallDecreasingMarker(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of all decreasing values. """
 	)
-	line: Optional[Line23]= Field(
+	line: Optional[Line22]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -9004,7 +9004,7 @@ class WaterfallIncreasingMarker(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of all increasing values. """
 	)
-	line: Optional[Line22]= Field(
+	line: Optional[Line23]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -9014,7 +9014,7 @@ class WaterfallTotalsMarker(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of all intermediate sums and total values. """
 	)
-	line: Optional[Line28]= Field(
+	line: Optional[Line26]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -9146,7 +9146,7 @@ class BarHoverlabel(TracePropsAttribute):
 	)
 
 class BarLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -9214,21 +9214,21 @@ class BarMarker(TracePropsAttribute):
 	)
 
 class BarSelected(TracePropsAttribute):
-	marker: Optional[Marker3]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[Textfont2]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class BarUnselected(TracePropsAttribute):
 	marker: Optional[Marker4]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	textfont: Optional[Textfont1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class BarUnselected(TracePropsAttribute):
+	marker: Optional[Marker3]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -9256,7 +9256,7 @@ class BarpolarHoverlabel(TracePropsAttribute):
 	)
 
 class BarpolarLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -9324,21 +9324,21 @@ class BarpolarMarker(TracePropsAttribute):
 	)
 
 class BarpolarSelected(TracePropsAttribute):
-	marker: Optional[Marker3]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[Textfont2]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class BarpolarUnselected(TracePropsAttribute):
 	marker: Optional[Marker4]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	textfont: Optional[Textfont1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class BarpolarUnselected(TracePropsAttribute):
+	marker: Optional[Marker3]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -9366,7 +9366,7 @@ class BoxHoverlabel(TracePropsAttribute):
 	)
 
 class BoxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -9464,7 +9464,7 @@ class CandlestickIncreasing(TracePropsAttribute):
 	)
 
 class CandlestickLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -9646,7 +9646,7 @@ class CarpetAaxis(TracePropsAttribute):
 		None,
 		description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -9860,7 +9860,7 @@ class CarpetBaxis(TracePropsAttribute):
 		None,
 		description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -9902,7 +9902,7 @@ class CarpetBaxis(TracePropsAttribute):
 	)
 
 class CarpetLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -10000,7 +10000,7 @@ class ChoroplethColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -10108,7 +10108,7 @@ class ChoroplethHoverlabel(TracePropsAttribute):
 	)
 
 class ChoroplethLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -10228,7 +10228,7 @@ class ChoroplethmapboxColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -10336,7 +10336,7 @@ class ChoroplethmapboxHoverlabel(TracePropsAttribute):
 	)
 
 class ChoroplethmapboxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -10456,7 +10456,7 @@ class ConeColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -10564,7 +10564,7 @@ class ConeHoverlabel(TracePropsAttribute):
 	)
 
 class ConeLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -10662,7 +10662,7 @@ class ContourColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -10756,7 +10756,7 @@ class ContourContours(TracePropsAttribute):
 		None,
 		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
 	)
-	labelfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	labelfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for labeling the contour levels. The default color comes from the lines, if shown. The default family and size come from `layout.font`. """
 	)
@@ -10816,7 +10816,7 @@ class ContourHoverlabel(TracePropsAttribute):
 	)
 
 class ContourLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -10914,7 +10914,7 @@ class ContourcarpetColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -11008,7 +11008,7 @@ class ContourcarpetContours(TracePropsAttribute):
 		None,
 		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
 	)
-	labelfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	labelfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for labeling the contour levels. The default color comes from the lines, if shown. The default family and size come from `layout.font`. """
 	)
@@ -11046,7 +11046,7 @@ class ContourcarpetContours(TracePropsAttribute):
 	)
 
 class ContourcarpetLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -11144,7 +11144,7 @@ class DensitymapboxColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -11252,7 +11252,7 @@ class DensitymapboxHoverlabel(TracePropsAttribute):
 	)
 
 class DensitymapboxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -11298,7 +11298,7 @@ class FunnelHoverlabel(TracePropsAttribute):
 	)
 
 class FunnelLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -11384,7 +11384,7 @@ class FunnelareaHoverlabel(TracePropsAttribute):
 	)
 
 class FunnelareaLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -11506,7 +11506,7 @@ class HeatmapColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -11614,7 +11614,7 @@ class HeatmapHoverlabel(TracePropsAttribute):
 	)
 
 class HeatmapLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -11712,7 +11712,7 @@ class HeatmapglColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -11820,7 +11820,7 @@ class HeatmapglHoverlabel(TracePropsAttribute):
 	)
 
 class HeatmapglLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -11918,7 +11918,7 @@ class Histogram2dColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -12026,7 +12026,7 @@ class Histogram2dHoverlabel(TracePropsAttribute):
 	)
 
 class Histogram2dLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -12124,7 +12124,7 @@ class Histogram2dcontourColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -12218,7 +12218,7 @@ class Histogram2dcontourContours(TracePropsAttribute):
 		None,
 		description=""" number<br>Sets the end contour level value. Must be more than `contours.start` """
 	)
-	labelfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	labelfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for labeling the contour levels. The default color comes from the lines, if shown. The default family and size come from `layout.font`. """
 	)
@@ -12278,7 +12278,7 @@ class Histogram2dcontourHoverlabel(TracePropsAttribute):
 	)
 
 class Histogram2dcontourLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -12414,7 +12414,7 @@ class HistogramHoverlabel(TracePropsAttribute):
 	)
 
 class HistogramLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -12482,21 +12482,21 @@ class HistogramMarker(TracePropsAttribute):
 	)
 
 class HistogramSelected(TracePropsAttribute):
-	marker: Optional[Marker3]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	textfont: Optional[Textfont2]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class HistogramUnselected(TracePropsAttribute):
 	marker: Optional[Marker4]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	textfont: Optional[Textfont1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+
+class HistogramUnselected(TracePropsAttribute):
+	marker: Optional[Marker3]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -12524,7 +12524,7 @@ class IcicleHoverlabel(TracePropsAttribute):
 	)
 
 class IcicleLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -12628,7 +12628,7 @@ class ImageHoverlabel(TracePropsAttribute):
 	)
 
 class ImageLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -12642,7 +12642,7 @@ class IndicatorDelta(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Set the font used to display the delta """
 	)
@@ -12710,7 +12710,7 @@ class IndicatorGauge(TracePropsAttribute):
 	)
 
 class IndicatorLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -12720,7 +12720,7 @@ class IndicatorLegendgrouptitle(TracePropsAttribute):
 	)
 
 class IndicatorNumber(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Set the font used to display main number """
 	)
@@ -12742,7 +12742,7 @@ class IndicatorTitle(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets the horizontal alignment of the title. It defaults to `center` except for bullet charts for which it defaults to right. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Set the font used to display the title """
 	)
@@ -12854,7 +12854,7 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -12962,7 +12962,7 @@ class IsosurfaceHoverlabel(TracePropsAttribute):
 	)
 
 class IsosurfaceLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -13050,7 +13050,7 @@ class LayoutAnnotations(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( false | "onoff" | "onout" )<br>Makes this annotation respond to clicks on the plot. If you click a data point that exactly matches the `x` and `y` values of this annotation, and it is hidden (visible: false), it will appear. In "onoff" mode, you must click the same point again to make it disappear, so if you click multiple points, you can show multiple annotations. In "onout" mode, a click anywhere else in the plot (on another data point or not) will hide this annotation. If you need to show/hide this annotation in response to different `x` or `y` values, you can set `xclick` and/or `yclick`. This is useful for example to label the side of a bar. To label markers though, `standoff` is preferred over `xclick` and `yclick`. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the annotation text font. """
 	)
@@ -13202,7 +13202,7 @@ class LayoutGeo(TracePropsAttribute):
 		None,
 		description=""" color<br>Set the background color of the map """
 	)
-	center: Optional[Center2]= Field(
+	center: Optional[Center1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -13222,7 +13222,7 @@ class LayoutGeo(TracePropsAttribute):
 		None,
 		description=""" number greater than or equal to 0<br>Sets line width (in px) of the country boundaries. """
 	)
-	domain: Optional[Domain16]= Field(
+	domain: Optional[Domain15]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -13390,11 +13390,11 @@ class LayoutHoverlabel(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the border color of all hover labels on graph. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the default hover label font used by all traces on the graph. """
 	)
-	grouptitlefont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	grouptitlefont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for group titles in hover (unified modes). Defaults to `hoverlabel.font`. """
 	)
@@ -13424,7 +13424,7 @@ class LayoutLegend(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines what entrywidth means. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used to text the legend items. """
 	)
@@ -13432,7 +13432,7 @@ class LayoutLegend(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "toggleitem" | "togglegroup" )<br>Determines the behavior on legend group item click. "toggleitem" toggles the visibility of the individual item clicked on the graph. "togglegroup" toggles the visibility of all items in the same legendgroup as the item clicked on the graph. """
 	)
-	grouptitlefont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	grouptitlefont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for group titles in legend. Defaults to `legend.font` with its size increased about 10%. """
 	)
@@ -13506,7 +13506,7 @@ class LayoutMapbox(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	center: Optional[Center1]= Field(
+	center: Optional[Center2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -13626,7 +13626,7 @@ class LayoutScene(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	domain: Optional[Domain13]= Field(
+	domain: Optional[Domain11]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -13816,7 +13816,7 @@ class LayoutSliders(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font of the slider step labels. """
 	)
@@ -13920,7 +13920,7 @@ class LayoutTernary(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	domain: Optional[Domain11]= Field(
+	domain: Optional[Domain12]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -13934,7 +13934,7 @@ class LayoutTernary(TracePropsAttribute):
 	)
 
 class LayoutTitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the title font. Note that the title's font used to be customized by the now deprecated `titlefont` attribute. """
 	)
@@ -13996,7 +13996,7 @@ class LayoutUpdatemenus(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "left" | "right" | "up" | "down" )<br>Determines the direction in which the buttons are laid out, whether in a dropdown menu or a row/column of buttons. For `left` and `up`, the buttons will still appear in left-to-right or top-to-bottom order respectively. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font of the update menu button text. """
 	)
@@ -14262,7 +14262,7 @@ class LayoutXaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -14568,7 +14568,7 @@ class LayoutYaxis(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the tick font. """
 	)
@@ -14750,7 +14750,7 @@ class Mesh3dColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -14858,7 +14858,7 @@ class Mesh3dHoverlabel(TracePropsAttribute):
 	)
 
 class Mesh3dLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -14906,7 +14906,7 @@ class OhlcIncreasing(TracePropsAttribute):
 	)
 
 class OhlcLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -14916,7 +14916,7 @@ class OhlcLegendgrouptitle(TracePropsAttribute):
 	)
 
 class ParcatsLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -14980,7 +14980,7 @@ class ParcatsLine(TracePropsAttribute):
 	)
 
 class ParcoordsLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -15064,7 +15064,7 @@ class PieHoverlabel(TracePropsAttribute):
 	)
 
 class PieLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -15078,7 +15078,7 @@ class PieMarker(TracePropsAttribute):
 		None,
 		description=""" data array<br>Sets the color of each sector. If not specified, the default trace color set is used to pick the sector colors. """
 	)
-	line: Optional[Line20]= Field(
+	line: Optional[Line19]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -15120,7 +15120,7 @@ class SankeyHoverlabel(TracePropsAttribute):
 	)
 
 class SankeyLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -15208,7 +15208,7 @@ class SankeyNode(TracePropsAttribute):
 		None,
 		description=""" data array<br>The shown name of the node. """
 	)
-	line: Optional[Line19]= Field(
+	line: Optional[Line20]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -15410,7 +15410,7 @@ class Scatter3dHoverlabel(TracePropsAttribute):
 	)
 
 class Scatter3dLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -15688,7 +15688,7 @@ class ScatterHoverlabel(TracePropsAttribute):
 	)
 
 class ScatterLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -15796,7 +15796,7 @@ class ScatterSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -15806,7 +15806,7 @@ class ScatterUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -15834,7 +15834,7 @@ class ScattercarpetHoverlabel(TracePropsAttribute):
 	)
 
 class ScattercarpetLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -15942,7 +15942,7 @@ class ScattercarpetSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -15952,7 +15952,7 @@ class ScattercarpetUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -15980,7 +15980,7 @@ class ScattergeoHoverlabel(TracePropsAttribute):
 	)
 
 class ScattergeoLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -16084,7 +16084,7 @@ class ScattergeoSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16094,7 +16094,7 @@ class ScattergeoUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16226,7 +16226,7 @@ class ScatterglHoverlabel(TracePropsAttribute):
 	)
 
 class ScatterglLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -16318,7 +16318,7 @@ class ScatterglSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16328,7 +16328,7 @@ class ScatterglUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16356,7 +16356,7 @@ class ScattermapboxHoverlabel(TracePropsAttribute):
 	)
 
 class ScattermapboxLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -16478,7 +16478,7 @@ class ScatterpolarHoverlabel(TracePropsAttribute):
 	)
 
 class ScatterpolarLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -16586,7 +16586,7 @@ class ScatterpolarSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16596,7 +16596,7 @@ class ScatterpolarUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16624,7 +16624,7 @@ class ScatterpolarglHoverlabel(TracePropsAttribute):
 	)
 
 class ScatterpolarglLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -16716,7 +16716,7 @@ class ScatterpolarglSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16726,7 +16726,7 @@ class ScatterpolarglUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16754,7 +16754,7 @@ class ScattersmithHoverlabel(TracePropsAttribute):
 	)
 
 class ScattersmithLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -16862,7 +16862,7 @@ class ScattersmithSelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16872,7 +16872,7 @@ class ScattersmithUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -16900,7 +16900,7 @@ class ScatterternaryHoverlabel(TracePropsAttribute):
 	)
 
 class ScatterternaryLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17008,7 +17008,7 @@ class ScatterternarySelected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont2]= Field(
+	textfont: Optional[Textfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -17018,7 +17018,7 @@ class ScatterternaryUnselected(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	textfont: Optional[Textfont1]= Field(
+	textfont: Optional[Textfont2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -17072,7 +17072,7 @@ class SplomHoverlabel(TracePropsAttribute):
 	)
 
 class SplomLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17260,7 +17260,7 @@ class StreamtubeColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -17368,7 +17368,7 @@ class StreamtubeHoverlabel(TracePropsAttribute):
 	)
 
 class StreamtubeLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17400,7 +17400,7 @@ class SunburstHoverlabel(TracePropsAttribute):
 	)
 
 class SunburstLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17548,7 +17548,7 @@ class SurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -17670,7 +17670,7 @@ class SurfaceHoverlabel(TracePropsAttribute):
 	)
 
 class SurfaceLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17778,7 +17778,7 @@ class TableHoverlabel(TracePropsAttribute):
 	)
 
 class TableLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17810,7 +17810,7 @@ class TreemapHoverlabel(TracePropsAttribute):
 	)
 
 class TreemapLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -17904,7 +17904,7 @@ class ViolinBox(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the inner box plot fill color. """
 	)
-	line: Optional[Line24]= Field(
+	line: Optional[Line27]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -17940,7 +17940,7 @@ class ViolinHoverlabel(TracePropsAttribute):
 	)
 
 class ViolinLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -18094,7 +18094,7 @@ class VolumeColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the tick color. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the color bar's tick label font """
 	)
@@ -18202,7 +18202,7 @@ class VolumeHoverlabel(TracePropsAttribute):
 	)
 
 class VolumeLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -18274,7 +18274,7 @@ class WaterfallIncreasing(TracePropsAttribute):
 	)
 
 class WaterfallLegendgrouptitle(TracePropsAttribute):
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets this legend group's title font. """
 	)
@@ -18285,228 +18285,6 @@ class WaterfallLegendgrouptitle(TracePropsAttribute):
 
 class WaterfallTotals(TracePropsAttribute):
 	marker: Optional[WaterfallTotalsMarker]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-
-class Layout(BaseModel):
-	activeselection: Optional[Activeselection1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	activeshape: Optional[Activeshape1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	annotations: Optional[List[LayoutAnnotations]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below. an annotation is a text element that can be placed anywhere in the plot. it can be positioned with respect to relative coordinates in the plot or with respect to the actual data coordinates of the graph. annotations can be shown with or without an arrow.<br> """
-	)
-	autosize: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a layout width or height that has been left undefined by the user is initialized on each relayout. Note that, regardless of this attribute, an undefined layout width or height is always initialized on the first call to plot. """
-	)
-	autotypenumbers: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "convert types" | "strict" )<br>Using "strict" a numeric string in trace data is not converted to a number. Using "convert types" a numeric string in trace data may be treated as a number during automatic axis `type` detection. This is the default value; however it could be overridden for individual axes. """
-	)
-	calendar: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the default calendar system to use for interpreting and displaying dates throughout the plot. """
-	)
-	clickmode: Optional[str]= Field(
-		None,
-		description=""" flaglist string. any combination of "event", "select" joined with a "+" or "none".<br>Determines the mode of single click interactions. "event" is the default value and emits the `plotly_click` event. In addition this mode emits the `plotly_selected` event in drag modes "lasso" and "select", but with no event data attached (kept for compatibility reasons). The "select" flag enables selecting single data points via click. This mode also supports persistent selections, meaning that pressing Shift while clicking, adds to / subtracts from an existing selection. "select" with `hovermode`: "x" can be confusing, consider explicitly setting `hovermode`: "closest" when using this feature. Selection events are sent accordingly as long as "event" flag is set as well. When the "event" flag is missing, `plotly_click` and `plotly_selected` events are not fired. """
-	)
-	coloraxis: Optional[LayoutColoraxis]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	colorscale: Optional[Colorscale1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	colorway: Optional[str]= Field(
-		None,
-		description=""" colorlist<br>Sets the default trace colors. """
-	)
-	computed: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Placeholder for exporting automargin-impacting values namely `margin.t`, `margin.b`, `margin.l` and `margin.r` in "full-json" mode. """
-	)
-	datarevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>If provided, a changed value tells `Plotly.react` that one or more data arrays has changed. This way you can modify arrays in-place rather than making a complete new copy for an incremental change. If NOT provided, `Plotly.react` assumes that data arrays are being treated as immutable, thus any data array with a different identity from its predecessor contains new data. """
-	)
-	dragmode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "zoom" | "pan" | "select" | "lasso" | "drawclosedpath" | "drawopenpath" | "drawline" | "drawrect" | "drawcircle" | "orbit" | "turntable" | false )<br>Determines the mode of drag interactions. "select" and "lasso" apply only to scatter traces with markers or text. "orbit" and "turntable" apply only to 3D scenes. """
-	)
-	editrevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Controls persistence of user-driven changes in `editable: true` configuration, other than trace names and axis titles. Defaults to `layout.uirevision`. """
-	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets the global font. Note that fonts used in traces and other layout components inherit from the global font. """
-	)
-	geo: Optional[LayoutGeo]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	grid: Optional[LayoutGrid]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	height: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 10<br>Sets the plot's height (in px). """
-	)
-	hidesources: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a text link citing the data source is placed at the bottom-right cored of the figure. Has only an effect only on graphs that have been generated via forked graphs from the Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise). """
-	)
-	hoverdistance: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to -1<br>Sets the default distance (in pixels) to look for data to add hover labels (-1 means no cutoff, 0 means no looking for data). This is only a real distance for hovering on point-like objects, like scatter points. For area-like objects (bars, scatter fills, etc) hovering is on inside the area and off outside, but these objects will not supersede hover on point-like objects in case of conflict. """
-	)
-	hoverlabel: Optional[LayoutHoverlabel]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	hovermode: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "x" | "y" | "closest" | false | "x unified" | "y unified" )<br>Determines the mode of hover interactions. If "closest", a single hoverlabel will appear for the "closest" point within the `hoverdistance`. If "x" (or "y"), multiple hoverlabels will appear for multiple points at the "closest" x- (or y-) coordinate within the `hoverdistance`, with the caveat that no more than one hoverlabel will appear per trace. If "x unified" (or "y unified"), a single hoverlabel will appear multiple points at the closest x- (or y-) coordinate within the `hoverdistance` with the caveat that no more than one hoverlabel will appear per trace. In this mode, spikelines are enabled by default perpendicular to the specified axis. If false, hover interactions are disabled. """
-	)
-	images: Optional[List[Images1]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	legend: Optional[LayoutLegend]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	mapbox: Optional[LayoutMapbox]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	margin: Optional[Margin1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Assigns extra meta information that can be used in various `text` attributes. Attributes such as the graph, axis and colorbar `title.text`, annotation `text` `trace.name` in legend items, `rangeselector`, `updatemenus` and `sliders` `label` text all support `meta`. One can access `meta` fields using template strings: `%{meta[i]}` where `i` is the index of the `meta` item in question. `meta` can also be an object for example `{key: value}` which can be accessed %{meta[key]}. """
-	)
-	minreducedheight: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 2<br>Minimum height of the plot with margin.automargin applied (in px) """
-	)
-	minreducedwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 2<br>Minimum width of the plot with margin.automargin applied (in px) """
-	)
-	modebar: Optional[Modebar1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	newselection: Optional[LayoutNewselection]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	newshape: Optional[LayoutNewshape]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	paper_bgcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the background color of the paper where the graph is drawn. """
-	)
-	plot_bgcolor: Optional[str]= Field(
-		None,
-		description=""" color<br>Sets the background color of the plotting area in-between x and y axes. """
-	)
-	polar: Optional[LayoutPolar]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	scene: Optional[LayoutScene]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	selectdirection: Optional[str]= Field(
-		None,
-		description=""" enumerated , one of ( "h" | "v" | "d" | "any" )<br>When `dragmode` is set to "select", this limits the selection of the drag to horizontal, vertical or diagonal. "h" only allows horizontal selection, "v" only vertical, "d" only diagonal and "any" sets no limit. """
-	)
-	selectionrevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Controls persistence of user-driven changes in selected points from all traces. """
-	)
-	selections: Optional[List[LayoutSelections]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	separators: Optional[str]= Field(
-		None,
-		description=""" string<br>Sets the decimal and thousand separators. For example, ". " puts a '.' before decimals and a space between thousands. In English locales, dflt is ".," but other locales may alter this default. """
-	)
-	shapes: Optional[List[LayoutShapes]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" boolean<br>Determines whether or not a legend is drawn. Default is `true` if there is a trace to show and any of these: a) Two or more traces would by default be shown in the legend. b) One pie trace is shown in the legend. c) One trace is explicitly given with `showlegend: true`. """
-	)
-	sliders: Optional[List[LayoutSliders]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	smith: Optional[LayoutSmith]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	spikedistance: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" integer greater than or equal to -1<br>Sets the default distance (in pixels) to look for data to draw spikelines to (-1 means no cutoff, 0 means no looking for data). As with hoverdistance, distance does not apply to area-like objects. In addition, some objects can be hovered on but will not generate spikelines, such as scatter fills. """
-	)
-	template: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Default attributes to be applied to the plot. Templates can be created from existing plots using `Plotly.makeTemplate`, or created manually. They should be objects with format: `{layout: layoutTemplate, data: {[type]: [traceTemplate, ...]}, ...}` `layoutTemplate` and `traceTemplate` are objects matching the attribute structure of `layout` and a data trace. Trace templates are applied cyclically to traces of each type. Container arrays (eg `annotations`) have special handling: An object ending in `defaults` (eg `annotationdefaults`) is applied to each array item. But if an item has a `templateitemname` key we look in the template array for an item with matching `name` and apply that instead. If no matching `name` is found we mark the item invisible. Any named template item not referenced is appended to the end of the array, so you can use this for a watermark annotation or a logo image, for example. To omit one of these items on the plot, make an item with matching `templateitemname` and `visible: false`. """
-	)
-	ternary: Optional[LayoutTernary]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	title: Optional[LayoutTitle]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	transition: Optional[Transition2]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br>Sets transition options used during Plotly.react updates. """
-	)
-	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number or categorical coordinate string<br>Used to allow user interactions with the plot to persist after `Plotly.react` calls that are unaware of these interactions. If `uirevision` is omitted, or if it is given and it changed from the previous `Plotly.react` call, the exact new figure is used. If `uirevision` is truthy and did NOT change, any attribute that has been affected by user interactions and did not receive a different value in the new figure will keep the interaction value. `layout.uirevision` attribute serves as the default for `uirevision` attributes in various sub-containers. For finer control you can set these sub-attributes directly. For example, if your app separately controls the data on the x and y axes you might set `xaxis.uirevision="time"` and `yaxis.uirevision="cost"`. Then if only the y data is changed, you can update `yaxis.uirevision="quantity"` and the y axis range will reset but the x axis range will retain any user-driven zoom. """
-	)
-	uniformtext: Optional[Uniformtext1]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	updatemenus: Optional[List[LayoutUpdatemenus]]= Field(
-		None,
-		description=""" array of object where each object has one or more of the keys listed below.<br> """
-	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
-		None,
-		description=""" number greater than or equal to 10<br>Sets the plot's width (in px). """
-	)
-	xaxis: Optional[LayoutXaxis]= Field(
-		None,
-		description=""" object containing one or more of the keys listed below.<br> """
-	)
-	yaxis: Optional[LayoutYaxis]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -19304,7 +19082,7 @@ class Carpet(TraceProps):
 		None,
 		description=""" number<br>Sets the b coordinate step. See `b0` for more info. """
 	)
-	font: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>The default font used for axis & tick labels on this carpet """
 	)
@@ -19952,7 +19730,7 @@ class Contour(TraceProps):
 		None,
 		description=""" data array<br>Sets the text elements associated with each z value. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>For this trace it only has an effect if `coloring` is set to "heatmap". Sets the text font. """
 	)
@@ -20810,7 +20588,7 @@ class Heatmap(TraceProps):
 		None,
 		description=""" data array<br>Sets the text elements associated with each z value. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the text font. """
 	)
@@ -21162,7 +20940,7 @@ class Histogram(TraceProps):
 		None,
 		description=""" enumerated , one of ( "end" | "middle" | "start" )<br>Determines if texts are kept at center or start/end points in `textposition` "inside" mode. """
 	)
-	insidetextfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	insidetextfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for `text` lying inside the bar. """
 	)
@@ -21210,7 +20988,7 @@ class Histogram(TraceProps):
 		None,
 		description=""" enumerated , one of ( "v" | "h" )<br>Sets the orientation of the bars. With "v" ("h"), the value of the each bar spans along the vertical (horizontal). """
 	)
-	outsidetextfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	outsidetextfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for `text` lying outside the bar. """
 	)
@@ -21234,7 +21012,7 @@ class Histogram(TraceProps):
 		None,
 		description=""" angle<br>Sets the angle of the tick labels with respect to the bar. For example, a `tickangle` of -90 draws the tick labels vertically. With "auto" the texts may automatically be rotated to fit with the maximum size in bars. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the text font. """
 	)
@@ -21408,7 +21186,7 @@ class Histogram2d(TraceProps):
 		None,
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the text font. """
 	)
@@ -21634,7 +21412,7 @@ class Histogram2dcontour(TraceProps):
 		None,
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>For this trace it only has an effect if `coloring` is set to "heatmap". Sets the text font. """
 	)
@@ -22178,7 +21956,7 @@ class Isosurface(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	spaceframe: Optional[Spaceframe1]= Field(
+	spaceframe: Optional[Spaceframe2]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -22596,7 +22374,7 @@ class Parcats(TraceProps):
 		None,
 		description=""" array of object where each object has one or more of the keys listed below.<br> """
 	)
-	domain: Optional[Domain12]= Field(
+	domain: Optional[Domain13]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -22612,7 +22390,7 @@ class Parcats(TraceProps):
 		None,
 		description=""" string<br>Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. variables `count`, `probability`, `category`, `categorycount`, `colorcount` and `bandcolorcount`. Anything contained in tag `<extra>` is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag `<extra></extra>`. """
 	)
-	labelfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	labelfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for the `dimension` labels. """
 	)
@@ -22636,7 +22414,7 @@ class Parcats(TraceProps):
 		None,
 		description=""" enumerated , one of ( "forward" | "backward" )<br>Sets the path sorting algorithm. If `forward`, sort paths based on dimension categories from left to right. If `backward`, sort paths based on dimensions categories from right to left. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for the `category` labels. """
 	)
@@ -22662,7 +22440,7 @@ class Parcoords(TraceProps):
 		None,
 		description=""" array of object where each object has one or more of the keys listed below.<br> """
 	)
-	domain: Optional[Domain9]= Field(
+	domain: Optional[Domain10]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -22674,7 +22452,7 @@ class Parcoords(TraceProps):
 		None,
 		description=""" angle<br>Sets the angle of the labels with respect to the horizontal. For example, a `tickangle` of -90 draws the labels vertically. Tilted labels with "labelangle" may be positioned better inside margins when `labelposition` is set to "bottom". """
 	)
-	labelfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	labelfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for the `dimension` labels. """
 	)
@@ -22702,11 +22480,11 @@ class Parcoords(TraceProps):
 		None,
 		description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """
 	)
-	rangefont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	rangefont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for the `dimension` range values. """
 	)
-	tickfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	tickfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for the `dimension` tick values. """
 	)
@@ -22744,7 +22522,7 @@ class Pie(TraceProps):
 		None,
 		description=""" number<br>Sets the label step. See `label0` for more info. """
 	)
-	domain: Optional[Domain1]= Field(
+	domain: Optional[Domain9]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -22938,7 +22716,7 @@ class Sankey(TraceProps):
 		None,
 		description=""" number or categorical coordinate string<br>Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font for node labels """
 	)
@@ -23902,7 +23680,7 @@ class Scattermapbox(TraceProps):
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
-	line: Optional[Line27]= Field(
+	line: Optional[Line25]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -23946,7 +23724,7 @@ class Scattermapbox(TraceProps):
 		None,
 		description=""" string or array of strings<br>Sets text elements associated with each (lon,lat) pair If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (lon,lat) coordinates. If trace `hoverinfo` contains a "text" flag and "hovertext" is not set, these elements will be seen in the hover labels. """
 	)
-	textfont: Optional[FontLabelfontGrouptitlefontOutsidetextfontTextfontRangefontInsidetextfontTickfont1]= Field(
+	textfont: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the icon text font (color=mapbox.layer.paint.text-color, size=mapbox.layer.layout.text-size). Has an effect only when `type` is set to "symbol". """
 	)
@@ -24880,7 +24658,7 @@ class Sunburst(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	domain: Optional[Domain15]= Field(
+	domain: Optional[Domain16]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -25262,7 +25040,7 @@ class Treemap(TraceProps):
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	domain: Optional[Domain10]= Field(
+	domain: Optional[Domain1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -25452,7 +25230,7 @@ class Violin(TraceProps):
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
-	line: Optional[Line25]= Field(
+	line: Optional[Line28]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -25714,7 +25492,7 @@ class Volume(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	spaceframe: Optional[Spaceframe2]= Field(
+	spaceframe: Optional[Spaceframe1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
@@ -25991,4 +25769,226 @@ class Waterfall(TraceProps):
 	yperiodalignment: Optional[str]= Field(
 		None,
 		description=""" enumerated , one of ( "start" | "middle" | "end" )<br>Only relevant when the axis `type` is "date". Sets the alignment of data points on the y axis. """
+	)
+
+class Layout(TracePropsAttribute):
+	activeselection: Optional[Activeselection1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	activeshape: Optional[Activeshape1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	annotations: Optional[List[LayoutAnnotations]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below. an annotation is a text element that can be placed anywhere in the plot. it can be positioned with respect to relative coordinates in the plot or with respect to the actual data coordinates of the graph. annotations can be shown with or without an arrow.<br> """
+	)
+	autosize: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a layout width or height that has been left undefined by the user is initialized on each relayout. Note that, regardless of this attribute, an undefined layout width or height is always initialized on the first call to plot. """
+	)
+	autotypenumbers: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "convert types" | "strict" )<br>Using "strict" a numeric string in trace data is not converted to a number. Using "convert types" a numeric string in trace data may be treated as a number during automatic axis `type` detection. This is the default value; however it could be overridden for individual axes. """
+	)
+	calendar: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the default calendar system to use for interpreting and displaying dates throughout the plot. """
+	)
+	clickmode: Optional[str]= Field(
+		None,
+		description=""" flaglist string. any combination of "event", "select" joined with a "+" or "none".<br>Determines the mode of single click interactions. "event" is the default value and emits the `plotly_click` event. In addition this mode emits the `plotly_selected` event in drag modes "lasso" and "select", but with no event data attached (kept for compatibility reasons). The "select" flag enables selecting single data points via click. This mode also supports persistent selections, meaning that pressing Shift while clicking, adds to / subtracts from an existing selection. "select" with `hovermode`: "x" can be confusing, consider explicitly setting `hovermode`: "closest" when using this feature. Selection events are sent accordingly as long as "event" flag is set as well. When the "event" flag is missing, `plotly_click` and `plotly_selected` events are not fired. """
+	)
+	coloraxis: Optional[LayoutColoraxis]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorscale: Optional[Colorscale1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	colorway: Optional[str]= Field(
+		None,
+		description=""" colorlist<br>Sets the default trace colors. """
+	)
+	computed: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Placeholder for exporting automargin-impacting values namely `margin.t`, `margin.b`, `margin.l` and `margin.r` in "full-json" mode. """
+	)
+	datarevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>If provided, a changed value tells `Plotly.react` that one or more data arrays has changed. This way you can modify arrays in-place rather than making a complete new copy for an incremental change. If NOT provided, `Plotly.react` assumes that data arrays are being treated as immutable, thus any data array with a different identity from its predecessor contains new data. """
+	)
+	dragmode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "zoom" | "pan" | "select" | "lasso" | "drawclosedpath" | "drawopenpath" | "drawline" | "drawrect" | "drawcircle" | "orbit" | "turntable" | false )<br>Determines the mode of drag interactions. "select" and "lasso" apply only to scatter traces with markers or text. "orbit" and "turntable" apply only to 3D scenes. """
+	)
+	editrevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Controls persistence of user-driven changes in `editable: true` configuration, other than trace names and axis titles. Defaults to `layout.uirevision`. """
+	)
+	font: Optional[GrouptitlefontOutsidetextfontTextfontInsidetextfontRangefontFontLabelfontTickfont1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets the global font. Note that fonts used in traces and other layout components inherit from the global font. """
+	)
+	geo: Optional[LayoutGeo]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	grid: Optional[LayoutGrid]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	height: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 10<br>Sets the plot's height (in px). """
+	)
+	hidesources: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a text link citing the data source is placed at the bottom-right cored of the figure. Has only an effect only on graphs that have been generated via forked graphs from the Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise). """
+	)
+	hoverdistance: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to -1<br>Sets the default distance (in pixels) to look for data to add hover labels (-1 means no cutoff, 0 means no looking for data). This is only a real distance for hovering on point-like objects, like scatter points. For area-like objects (bars, scatter fills, etc) hovering is on inside the area and off outside, but these objects will not supersede hover on point-like objects in case of conflict. """
+	)
+	hoverlabel: Optional[LayoutHoverlabel]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	hovermode: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "x" | "y" | "closest" | false | "x unified" | "y unified" )<br>Determines the mode of hover interactions. If "closest", a single hoverlabel will appear for the "closest" point within the `hoverdistance`. If "x" (or "y"), multiple hoverlabels will appear for multiple points at the "closest" x- (or y-) coordinate within the `hoverdistance`, with the caveat that no more than one hoverlabel will appear per trace. If "x unified" (or "y unified"), a single hoverlabel will appear multiple points at the closest x- (or y-) coordinate within the `hoverdistance` with the caveat that no more than one hoverlabel will appear per trace. In this mode, spikelines are enabled by default perpendicular to the specified axis. If false, hover interactions are disabled. """
+	)
+	images: Optional[List[Images1]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	legend: Optional[LayoutLegend]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	mapbox: Optional[LayoutMapbox]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	margin: Optional[Margin1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Assigns extra meta information that can be used in various `text` attributes. Attributes such as the graph, axis and colorbar `title.text`, annotation `text` `trace.name` in legend items, `rangeselector`, `updatemenus` and `sliders` `label` text all support `meta`. One can access `meta` fields using template strings: `%{meta[i]}` where `i` is the index of the `meta` item in question. `meta` can also be an object for example `{key: value}` which can be accessed %{meta[key]}. """
+	)
+	minreducedheight: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 2<br>Minimum height of the plot with margin.automargin applied (in px) """
+	)
+	minreducedwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 2<br>Minimum width of the plot with margin.automargin applied (in px) """
+	)
+	modebar: Optional[Modebar1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	newselection: Optional[LayoutNewselection]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	newshape: Optional[LayoutNewshape]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	paper_bgcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the background color of the paper where the graph is drawn. """
+	)
+	plot_bgcolor: Optional[str]= Field(
+		None,
+		description=""" color<br>Sets the background color of the plotting area in-between x and y axes. """
+	)
+	polar: Optional[LayoutPolar]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	scene: Optional[LayoutScene]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	selectdirection: Optional[str]= Field(
+		None,
+		description=""" enumerated , one of ( "h" | "v" | "d" | "any" )<br>When `dragmode` is set to "select", this limits the selection of the drag to horizontal, vertical or diagonal. "h" only allows horizontal selection, "v" only vertical, "d" only diagonal and "any" sets no limit. """
+	)
+	selectionrevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Controls persistence of user-driven changes in selected points from all traces. """
+	)
+	selections: Optional[List[LayoutSelections]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	separators: Optional[str]= Field(
+		None,
+		description=""" string<br>Sets the decimal and thousand separators. For example, ". " puts a '.' before decimals and a space between thousands. In English locales, dflt is ".," but other locales may alter this default. """
+	)
+	shapes: Optional[List[LayoutShapes]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" boolean<br>Determines whether or not a legend is drawn. Default is `true` if there is a trace to show and any of these: a) Two or more traces would by default be shown in the legend. b) One pie trace is shown in the legend. c) One trace is explicitly given with `showlegend: true`. """
+	)
+	sliders: Optional[List[LayoutSliders]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	smith: Optional[LayoutSmith]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	spikedistance: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" integer greater than or equal to -1<br>Sets the default distance (in pixels) to look for data to draw spikelines to (-1 means no cutoff, 0 means no looking for data). As with hoverdistance, distance does not apply to area-like objects. In addition, some objects can be hovered on but will not generate spikelines, such as scatter fills. """
+	)
+	template: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Default attributes to be applied to the plot. Templates can be created from existing plots using `Plotly.makeTemplate`, or created manually. They should be objects with format: `{layout: layoutTemplate, data: {[type]: [traceTemplate, ...]}, ...}` `layoutTemplate` and `traceTemplate` are objects matching the attribute structure of `layout` and a data trace. Trace templates are applied cyclically to traces of each type. Container arrays (eg `annotations`) have special handling: An object ending in `defaults` (eg `annotationdefaults`) is applied to each array item. But if an item has a `templateitemname` key we look in the template array for an item with matching `name` and apply that instead. If no matching `name` is found we mark the item invisible. Any named template item not referenced is appended to the end of the array, so you can use this for a watermark annotation or a logo image, for example. To omit one of these items on the plot, make an item with matching `templateitemname` and `visible: false`. """
+	)
+	ternary: Optional[LayoutTernary]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	title: Optional[LayoutTitle]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	transition: Optional[Transition2]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br>Sets transition options used during Plotly.react updates. """
+	)
+	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number or categorical coordinate string<br>Used to allow user interactions with the plot to persist after `Plotly.react` calls that are unaware of these interactions. If `uirevision` is omitted, or if it is given and it changed from the previous `Plotly.react` call, the exact new figure is used. If `uirevision` is truthy and did NOT change, any attribute that has been affected by user interactions and did not receive a different value in the new figure will keep the interaction value. `layout.uirevision` attribute serves as the default for `uirevision` attributes in various sub-containers. For finer control you can set these sub-attributes directly. For example, if your app separately controls the data on the x and y axes you might set `xaxis.uirevision="time"` and `yaxis.uirevision="cost"`. Then if only the y data is changed, you can update `yaxis.uirevision="quantity"` and the y axis range will reset but the x axis range will retain any user-driven zoom. """
+	)
+	uniformtext: Optional[Uniformtext1]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	updatemenus: Optional[List[LayoutUpdatemenus]]= Field(
+		None,
+		description=""" array of object where each object has one or more of the keys listed below.<br> """
+	)
+	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+		None,
+		description=""" number greater than or equal to 10<br>Sets the plot's width (in px). """
+	)
+	xaxis: Optional[LayoutXaxis]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
+	)
+	yaxis: Optional[LayoutYaxis]= Field(
+		None,
+		description=""" object containing one or more of the keys listed below.<br> """
 	)
