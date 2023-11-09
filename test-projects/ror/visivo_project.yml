@@ -31,10 +31,13 @@ dashboards:
                   order_by:
                     - query(week desc)
               layout:
-                title: 'Weekly Account Counts'
+                title: 
+                  text: 'Weekly Account Counts'
                 yaxis: 
-                  title: 'Count'
+                  title: 
+                    text: 'Count'
                 xaxis:
-                  title: 'Week'
+                  title: 
+                    text: 'Week'
                 stack: False
 
