@@ -5,24 +5,30 @@ charts:
     traces:
       - ref(percent_imports)
     layout:
-      title: "Imports by Country"
+      title: 
+        text: "Imports by Country"
   - name: export_percentages
     traces:
       - ref(percent_exports)
     layout:
-      title: "Exports by Country"
+      title: 
+        text: "Exports by Country"
   - name: importers
     traces:
       - ref(top_importers)
       - ref(total_import_production)
     layout:
-      title: "Imports"
+      title: 
+        text: "Imports"
       xaxis:
-        title: "Year"
+        title:
+          text: "Year"
       yaxis:
-        title: "Kilograms"
+        title: 
+          text: "Kilograms"
       yaxis2:
-        title: 'Total'
+        title: 
+          text: 'Total'
         tickfont:
           color: 'rgb(148, 103, 189)'
         overlaying: 'y'
@@ -39,13 +45,17 @@ charts:
       - ref(top_exporters)
       - ref(total_export_production)
     layout:
-      title: "Exports"
+      title: 
+        text: "Exports"
       xaxis:
-        title: "Year"
+        title: 
+          text: "Year"
       yaxis:
-        title: "Kilograms"
+        title: 
+          text: "Kilograms"
       yaxis2:
-        title: 'Total'
+        title: 
+          text: 'Total'
         tickfont:
           color: 'rgb(148, 103, 189)'
         overlaying: 'y'

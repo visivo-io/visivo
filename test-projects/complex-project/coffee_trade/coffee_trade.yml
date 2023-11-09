@@ -1,5 +1,0 @@
-includes:
-  - path: models.yml
-  - path: traces.yml
-  - path: charts.yml
-  - path: dashboards.yml
