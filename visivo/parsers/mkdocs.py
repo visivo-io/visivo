@@ -68,6 +68,8 @@ class Mkdocs:
             raise KeyError(f"model {model_name} not found in project")
         if model_name in trace_prop_models:
             md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
+        elif model_name == "Layout":
+            md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
         else:
             md = from_pydantic_model(self.SCHEMA["$defs"], model_name)
         md = self._replace_model_with_page(md=md)

@@ -41,14 +41,14 @@ def _process_model(schema, model_data, processed_models):
 
     for field, field_data in sorted(properties.items()):
         refs, ref_type = _get_ref(field_data)
-        if refs and field != "props" and ref_type != "oneOf":
+        if refs and field not in ["props", "layout"] and ref_type != "oneOf":
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
                 nested_structure[nested_model_name] = _process_model(
                     schema, nested_model_data, processed_models
                 )
-        elif refs and field == "props":
+        elif refs and field in ["props", "layout"]:
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
