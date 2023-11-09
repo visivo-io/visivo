@@ -53,12 +53,15 @@ class TypeEnum(str, Enum):
     scattercarpet = "scattercarpet"
     waterfall = "waterfall"
 
-
-class TracePropsAttribute(BaseModel):
+class LayoutBase(BaseModel):
 
 	def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
 		kwargs.setdefault('exclude_none', True)
 		return super().model_dump(*args, **kwargs)
+	model_config = ConfigDict(extra='allow')
+
+class TracePropsAttribute(LayoutBase):
+
 	model_config = ConfigDict(extra="forbid")
 
 class TraceProps(TracePropsAttribute):
@@ -25771,7 +25774,7 @@ class Waterfall(TraceProps):
 		description=""" enumerated , one of ( "start" | "middle" | "end" )<br>Only relevant when the axis `type` is "date". Sets the alignment of data points on the y axis. """
 	)
 
-class Layout(TracePropsAttribute):
+class Layout(LayoutBase):
 	activeselection: Optional[Activeselection1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
