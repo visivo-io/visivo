@@ -1,9 +1,10 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import StringConstraints, Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import REF_REGEX
 from .trace import Trace
+from .trace_props import Layout
 from typing_extensions import Annotated
 
 
@@ -36,8 +37,8 @@ class Chart(NamedModel, ParentModel):
         [],
         description="A list of trace either written in line in the chart called using the ref() function.",
     )
-    layout: dict = Field(
-        {},
+    layout: Optional[Layout] = Field(
+        None,
         description="The layout attribute of the chart accepts any valid plotly layout configurations. You can read more about those here: [plotly layout docs](https://plotly.com/javascript/reference/layout/).",
     )
 

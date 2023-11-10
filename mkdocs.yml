@@ -74,6 +74,8 @@ nav:
                   - reference/configuration/Alerts/ConsoleAlert/index.md
           - Chart:
               - reference/configuration/Chart/index.md
+              - Layout:
+                  - reference/configuration/Chart/Layout/index.md
           - Dashboard:
               - reference/configuration/Dashboard/index.md
               - Row:

@@ -230,19 +230,22 @@ dashboards:
                 - "ref(Fibonacci Waterfall)"
                 - ref(example_indicator)
               layout:
-                title: "A Great Fibonacci Waterfall"
+                title:
+                  text: "A Great Fibonacci Waterfall"
           - width: 2
             chart:
               name: Aggregated Fib
               traces:
                 - "ref(Aggregated Line)"
               layout:
-                title: "Aggregated Fibonacci"
+                title: 
+                  text: "Aggregated Fibonacci"
                 yaxis:
-                  title: "output"
+                  title: 
+                    text: "output"
                 xaxis:
-                  title: "More if x>3 Less if x<=3"
-                stack: False
+                  title: 
+                    text: "More if x>3 Less if x<=3"
       - height: medium
         items:
           - width: 3
@@ -252,7 +255,8 @@ dashboards:
                 - ref(3d Line One)
                 - ref(3d Line Two)
               layout:
-                title: "The Greatest 3d Lines"
+                title: 
+                  text: "The Greatest 3d Lines"
                 legend:
                   orientation: "h"
                   yanchor: "bottom"
@@ -265,12 +269,14 @@ dashboards:
               traces:
                 - "ref(Simple Line)"
               layout:
-                title: "A great fibonacci series"
+                title: 
+                  text: "A great fibonacci series"
                 yaxis:
-                  title: "Output"
+                  title: 
+                    text: "Output"
                 xaxis:
-                  title: "Input"
-                stack: False
+                  title: 
+                    text: "Input"
 
           - width: 3
             chart:
@@ -296,12 +302,14 @@ dashboards:
                           props.y: 1
                 - "ref(Simple Line)"
               layout:
-                title: "A not great fibonacci series"
+                title: 
+                  text: "A not great fibonacci series"
                 yaxis:
-                  title: "Output"
+                  title: 
+                    text: "Output"
                 xaxis:
-                  title: "Input"
-                stack: False
+                  title: 
+                    text: "Input"
       - height: medium
         items:
           - width: 2
@@ -315,4 +323,5 @@ dashboards:
               traces:
                 - "ref(funnel trace)"
               layout:
-                title: "Funnel Chart"
+                title: 
+                  text: "Funnel Chart"

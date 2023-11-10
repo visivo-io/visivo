@@ -4,7 +4,7 @@ defaults:
   target_name: snowflake
 
 includes:
-  - path: coffee_trade/coffee_trade.yml
+  - path: coffee_trade/coffee_trade.visivo.yml
 
 targets:
   - name: snowflake
