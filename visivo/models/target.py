@@ -6,6 +6,7 @@ from sqlalchemy.engine import URL
 from sqlalchemy import create_engine, text
 import snowflake.connector
 from pandas import DataFrame, read_sql
+import click
 
 
 class TypeEnum(str, Enum):
@@ -110,30 +111,33 @@ class Target(NamedModel):
         return self.password.get_secret_value() if self.password is not None else None
 
     def _get_connection(self):
-        match self.type:
-            case TypeEnum.postgresql:
-                engine = create_engine(self.url())
-                return engine.connect()
-            case TypeEnum.sqlite:
-                engine = create_engine(self.url())
-                return engine.connect()
-            case TypeEnum.snowflake:
-                return snowflake.connector.connect(
-                    account=self.account,
-                    user=self.username,
-                    password=self._get_password(),
-                    warehouse=self.warehouse,
-                    database=self.database,
-                    schema=self.db_schema,
-                    role=self.role,
-                )
-            case TypeEnum.mysql:
-                engine = create_engine(self.url())
-                return engine.connect()
-            case _:
-                raise NotImplementedError(
-                    f"No connection method implemented for {self.type}"
-                )
+        try:
+            match self.type:
+                case TypeEnum.postgresql:
+                    engine = create_engine(self.url())
+                    return engine.connect()
+                case TypeEnum.sqlite:
+                    engine = create_engine(self.url())
+                    return engine.connect()
+                case TypeEnum.snowflake:
+                    return snowflake.connector.connect(
+                        account=self.account,
+                        user=self.username,
+                        password=self._get_password(),
+                        warehouse=self.warehouse,
+                        database=self.database,
+                        schema=self.db_schema,
+                        role=self.role,
+                    )
+                case TypeEnum.mysql:
+                    engine = create_engine(self.url())
+                    return engine.connect()
+        except:
+            raise click.ClickException(
+                f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
+            )
+
+        raise NotImplementedError(f"No connection method implemented for {self.type}")
 
     def connect(self):
         return Connection(target=self)
