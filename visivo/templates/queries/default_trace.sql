@@ -23,7 +23,7 @@ FROM base_query
     {%- for statement in groupby_statements %}
         {{statement}} {% if not loop.last %} , {% endif %}
     {%- endfor %}
-    {%- if cohort_on is defined %}
+    {%- if cohort_on != "'values'" %}
         {% if groupby_statements is defined%},{% endif %}{{cohort_on}}
     {%- endif %}
 {%- endif %}

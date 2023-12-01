@@ -1,6 +1,7 @@
 import click
 import os
 import re
+from visivo.logging.logger import Logger
 import json
 import pkg_resources
 from flask import Flask, current_app, send_from_directory
