@@ -85,7 +85,7 @@ traces:
 charts:
   - name: simple_chart
     traces:
-      - ref('simple_trace')
+      - ref(simple_trace)
     layout:
       - title: Widget Sales by Week
 
@@ -95,7 +95,7 @@ dashboards:
       - height: medium
         items:
           - width: 5
-            chart: ref('simple_chart')
+            chart: ref(simple_chart)
           - width: 2
             markdown: |
               # Here is the first
