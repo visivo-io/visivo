@@ -17,6 +17,23 @@ _Note: Visivo requires Python 10. You may need to create a virtual environment u
 
 To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `project.visivo.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
 
+{% raw %}
+??? tip
+
+    Want to get started quickly with dummy data? 
+    
+    Run `visivo init` and choose `sqlite` when prompted:
+
+    >? Database type (postgresql, sqlite, snowflake, mysql): sqlite
+    
+    Then you're good to go! 
+    
+    Run `visivo serve`, checkout your dashboard and start playing around with it. 
+    
+    You can always add another target with a connection to your ~real~ database later.
+
+{% endraw %}
+
 ## Manual setup 
 
 ### Create a `project.visivo.yml` file
@@ -53,10 +70,12 @@ targets:
     warehouse: DEV
     password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
 
-
+models:
+  - name: widget_sales
+    sql: select * from widget_fact_table
 traces:
   - name: simple_trace
-    model: "widget_sales"
+    model: ref(widget_sales)
     cohort_on: query( widget )
     props:
       x: query( date_trunc('week', completed_at) )
@@ -68,7 +87,7 @@ traces:
 charts:
   - name: simple_chart
     traces:
-      - ref('simple_trace')
+      - ref(simple_trace)
     layout:
       - title: Widget Sales by Week
 
@@ -78,7 +97,7 @@ dashboards:
       - height: medium
         items:
           - width: 5
-            chart: ref('simple_chart')
+            chart: ref(simple_chart)
           - width: 2
             markdown: |
               # Here is the first
@@ -153,7 +172,7 @@ Here's a simple example of a trace:
 ``` yaml title="project_dir/project.visivo.yml"
 traces:
   - name: simple_trace
-    model: "widget_sales"
+    model: ref(widget_sales)
     cohort_on: query( widget )
     props:
       type: scatter
@@ -181,7 +200,7 @@ Here's a simple example of the chart configuration:
 charts:
   - name: simple_chart
     traces:
-      - ref('simple_trace')
+      - ref(simple_trace)
     layout:
       - title: Widget Sales by Week
 ```
@@ -204,7 +223,7 @@ dashboards:
       - height: medium
         items:
           - width: 5
-            chart: ref('simple_chart')
+            chart: ref(simple_chart)
           - width: 2
             markdown: |
               # Here is the first

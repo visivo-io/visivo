@@ -17,11 +17,10 @@ from visivo.models.trace_props import Scatter
 from visivo.commands.utils import create_file_database
 from visivo.parsers.core_parser import PROFILE_FILE_NAME
 
-
 def init_phase():
     """Enables a quick set up by writing your target & api credentials to an env file."""
     user_home = os.path.expanduser("~")
-
+    Logger.instance().success("Initialized")
     project_name = click.prompt("? Project name", type=str)
     if Path(project_name).exists():
         raise click.ClickException(f"'{project_name}' directory already exists")
@@ -54,6 +53,7 @@ def init_phase():
         account = click.prompt("? Snowflake account", type=str)
         warehouse = click.prompt("? Snowflake warehouse", type=str)
 
+    Logger.instance().debug("Generating project, gitignore & env files")
     target = Target(
         name="Example Target",
         host=host,
@@ -72,9 +72,9 @@ def init_phase():
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
 
-    model = Model(name="Example Model", sql="select * from table_in_database")
+    model = Model(name="Example Model", sql="select * from test_table")
     props = Scatter(
-        type="scatter", x="query(x_value_from_model)", y="query(y_value_from_model)"
+        type="scatter", x="query(x)", y="query(y)"
     )
     trace = Trace(name="Example Trace", model=model, props=props, changed=None)
     chart = Chart(name="Example Chart", traces=[trace])
@@ -98,12 +98,14 @@ def init_phase():
     fp.write(".env\ntarget\n.visivo_cache")
     fp.close()
 
+    Logger.instance().success("Generated project, gitignore & env files")
+
     profile_path = f"{user_home}/.visivo/{PROFILE_FILE_NAME}"
     if not os.path.exists(profile_path):
-        Logger.instance().debug(
+        Logger.instance().info_with_symbol(
             f"> Visit 'https://app.visivo.io/profile' and create a new token if you don't already have one."
         )
-        Logger.instance().debug(
+        Logger.instance().info_with_symbol(
             f"> You may need to register or get added to an account before visiting your profile."
         )
         token = click.prompt("? Personal token", type=str)
@@ -112,4 +114,7 @@ def init_phase():
         fp.write(f"token: {token}")
         fp.close()
         Logger.instance().debug(f"> Created profile in '~/.visivo/profile.yml'")
+    else: 
+        message = "Found profile at location: " + profile_path
+        Logger.instance().info_with_symbol(message)
     Logger.instance().debug(f"> Created project in '{project_name}'")

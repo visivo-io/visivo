@@ -16,6 +16,8 @@ plugins:
           max_capital: 1
 markdown_extensions:
     - mkdocs-click
+    - admonition
+    - pymdownx.details
     - pymdownx.superfences
     - attr_list
     - abbr
