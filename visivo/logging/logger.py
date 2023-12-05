@@ -50,3 +50,10 @@ class Logger:
             self.echo(message)
         elif self.spinner:
             self.spinner.stop_and_persist(text=message)
+    def info_with_symbol(self, message):
+        if self.echo:
+            self.echo(message)
+        elif self.spinner:
+            self.spinner.info(text=message)
+
+
