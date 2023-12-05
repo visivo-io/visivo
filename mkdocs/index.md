@@ -17,6 +17,23 @@ _Note: Visivo requires Python 10. You may need to create a virtual environment u
 
 To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `project.visivo.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
 
+{% raw %}
+??? tip
+
+    Want to get started quickly with dummy data? 
+    
+    Run `visivo init` and choose `sqlite` when prompted:
+
+    >? Database type (postgresql, sqlite, snowflake, mysql): sqlite
+    
+    Then you're good to go! 
+    
+    Run `visivo serve`, checkout your dashboard and start playing around with it. 
+    
+    You can always add another target with a connection to your ~real~ database later.
+
+{% endraw %}
+
 ## Manual setup 
 
 ### Create a `project.visivo.yml` file
