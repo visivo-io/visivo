@@ -5,5 +5,5 @@ This repo is currently copied over during deployment, please refer to https://do
 # Install
 
 ```
-python -m pip install git+ssh://git@github.com/visivo-io/visivo.git --force-reinstall
+python -m pip install git+https://github.com/visivo-io/visivo.git --force-reinstall
 ```
