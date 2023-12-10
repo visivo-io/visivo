@@ -42,7 +42,10 @@ class TraceTokenizer:
 
     def _get_cohort_on(self):
         """Enables passing query tag to cohort on or just passing the column name as is"""
-        cohort_on = self.trace.cohort_on if self.trace.cohort_on else DEFAULT_COHORT_ON
+        cohort_on = self.trace.cohort_on
+        cohort_on = cohort_on or self.trace.name
+        cohort_on = cohort_on or DEFAULT_COHORT_ON
+
         de_query = extract_value_from_function(cohort_on, "query")
         return de_query if de_query else cohort_on
 
