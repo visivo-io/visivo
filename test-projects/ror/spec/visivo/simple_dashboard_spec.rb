@@ -18,11 +18,11 @@ RSpec.describe 'Simple Line', :type => :trace do
         }
 
         it 'should have correct count values' do
-            expect(trace_data["values"]['props.y']).to eq([1, 1, 2])  
+            expect(trace_data["Accounts per Week"]['props.y']).to eq([1, 1, 2])  
         end
 
         it 'should have correct week values' do
-            expect(trace_data["values"]['props.x']).to eq(["2023-02-12", "2023-02-05", "2023-01-29"])  
+            expect(trace_data["Accounts per Week"]['props.x']).to eq(["2023-02-12", "2023-02-05", "2023-01-29"])  
         end
     end
 end
