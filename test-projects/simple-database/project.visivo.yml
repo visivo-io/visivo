@@ -139,7 +139,7 @@ traces:
             props.y: 1
   - name: 3d Line One
     model: ref(test table)
-    cohort_on: "'Line 1'"
+    #cohort_on: "'Line 1'"
     order_by:
       - query(x asc)
     props:
@@ -158,7 +158,7 @@ traces:
             - props.y
   - name: 3d Line Two
     model: ref(test table)
-    cohort_on: "'Line Two'"
+    #cohort_on: "'Line Two'"
     order_by:
       - query(x asc)
     filters:
@@ -283,7 +283,7 @@ dashboards:
               name: fibonacci times 2
               traces:
                 - name: Double Simple Line
-                  cohort_on: "query('Fibonacci times 2')"
+                  #cohort_on: "query('Fibonacci times 2')"
                   model:
                     sql: "SELECT x, y*2 as y FROM test_table"
                   props:
