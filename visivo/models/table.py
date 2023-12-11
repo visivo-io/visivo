@@ -1,6 +1,6 @@
 from typing import List, Union
 from .trace import Trace
-from pydantic import StringConstraints
+from pydantic import StringConstraints, Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import REF_REGEX
@@ -8,8 +8,18 @@ from typing_extensions import Annotated
 
 
 class Table(NamedModel, ParentModel):
-    trace: Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Trace]
-    columns: List[dict]
+    """
+    Tables enable you to represent the data aggregated in your trace in a tabular format. 
+    
+    """
+    trace: Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Trace] = Field(
+        ...,
+        description="",
+    )
+    columns: List[dict] = Field(
+        ...,
+        description="",
+    )
 
     def child_items(self):
         return [self.trace]
