@@ -1,6 +1,12 @@
 WITH 
 base_query as (
     {{sql}}
+),
+columnize_cohort_on as (
+    SELECT 
+        *,
+        {{cohort_on}} as "cohort_on"
+    FROM base_query
 )
 SELECT 
     {%- if select_items is defined and (select_items) %}
@@ -10,8 +16,8 @@ SELECT
     {%- else %}
         *,
     {%- endif %}
-    {{cohort_on}} as "cohort_on"
-FROM base_query
+    "cohort_on"
+FROM columnize_cohort_on
 {%- if filter_by is defined and filter_by.vanilla|length > 0 %}
     WHERE
     {%- for filter in filter_by.vanilla %}
@@ -22,10 +28,8 @@ FROM base_query
     GROUP BY 
     {%- for statement in groupby_statements %}
         {{statement}} {% if not loop.last %} , {% endif %}
-    {%- endfor %}
-    {%- if cohort_on != "'values'" %}
-        {% if groupby_statements is defined%},{% endif %}{{cohort_on}}
-    {%- endif %}
+    {%- endfor %}{% if groupby_statements is defined%},{% endif %}
+    "cohort_on"
 {%- endif %}
 {%- if filter_by is defined %}
     {%- if filter_by.aggregate|length > 0 %}
