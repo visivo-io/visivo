@@ -7,19 +7,19 @@ import 'jest-canvas-mock';
 import { ResizeObserver, ResizeObserverEntry } from "@juggle/resize-observer";
 
 if (!("ResizeObserver" in window)) {
-  window.ResizeObserver = ResizeObserver;
-  // Only use it when you have this trouble: https://github.com/wellyshen/react-cool-dimensions/issues/45
-  // window.ResizeObserverEntry = ResizeObserverEntry;
+    window.ResizeObserver = ResizeObserver;
+    // Only use it when you have this trouble: https://github.com/wellyshen/react-cool-dimensions/issues/45
+    // window.ResizeObserverEntry = ResizeObserverEntry;
 }
 
-window.URL.createObjectURL = function() {};
+window.URL.createObjectURL = function () { };
 
 jest.mock("react-plotly.js", () => (props) => {
-    return <>Mock Plot</>
+    return <div>Mock Plot</div>
 })
 
 jest.mock("react-markdown", () => (props) => {
-    return <>{props.children}</>
+    return <div>{props.children}</div>
 })
 
 beforeAll(() => {

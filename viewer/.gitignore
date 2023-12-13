@@ -10,10 +10,6 @@
 
 # production
 /build
-/build-viewer
-/build-app
-
-/src/Entry.js
 
 # misc
 .DS_Store

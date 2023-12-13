@@ -1,4 +1,4 @@
-import MaterialReactTable from 'material-react-table';
+import { MaterialReactTable } from 'material-react-table';
 import { cleanedTableData } from '../../models/Trace'
 import { createTheme, ThemeProvider } from '@mui/material';
 
