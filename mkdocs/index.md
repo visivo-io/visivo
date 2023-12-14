@@ -7,10 +7,17 @@ _Still have questions after reading? Reach out to [join@visivo.io](mailto:join@v
 ### Install Visivo Python Package
 We will be publishing a pypi version of visivo soon! 
 
-However, the command line _is_ open source and you can still install it via git:
+However, the command line _is_ open source and you can install the latest release via git:
 ```
 pip install git+https://github.com/visivo-io/visivo@latest
 ```
+
+or a specific version:
+
+```
+pip install git+https://github.com/visivo-io/visivo@v1.0.0
+```
+
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
 ## Setup using `visivo init`
