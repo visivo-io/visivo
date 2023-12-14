@@ -9,7 +9,7 @@ We will be publishing a pypi version of visivo soon!
 
 However, the command line _is_ open source and you can still install it via git:
 ```
-pip install git+https://github.com/visivo-io/visivo
+pip install git+https://github.com/visivo-io/visivo@latest
 ```
 _Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
 
