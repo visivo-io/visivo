@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Chart from './items/Chart.js'
 import Table from './items/Table.js'
-import ReactMarkdown from 'react-markdown'
+import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
 import Loading from "./Loading.js";
 import { throwError } from "../api/utils.js";
@@ -87,11 +87,11 @@ const Dashboard = (props) => {
                 className={`grow-${item.width} m-auto text-center`}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`}><Loading /></div>
         } else if (item.markdown) {
-            return <ReactMarkdown
+            return <Markdown
                 className={`grow-${item.width} p-2 m-auto prose`}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} >
                 {item.markdown}
-            </ReactMarkdown>
+            </Markdown>
         }
         return null
     }
