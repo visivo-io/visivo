@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.btn {
+  @apply font-bold py-1 px-2 rounded;
+}
+
+.btn-primary {
+  @apply bg-primary text-white;
+}
+
+.btn-primary:hover {
+  @apply bg-primary text-slate-300;
+}
+
+.btn-destroy {
+  @apply bg-highlight text-white;
+}
+
+.btn-destroy:hover {
+  @apply bg-highlight text-slate-300;
+}
+
+.grow-1 {
+  flex-grow: 1;
+}
+
+.grow-2 {
+  flex-grow: 2;
+}
+
+.grow-3 {
+  flex-grow: 3;
+}
+
+.grow-4 {
+  flex-grow: 4;
+}
+
+.grow-5 {
+  flex-grow: 5;
+}
+
+.grow-6 {
+  flex-grow: 6;
+}
+
+.grow-7 {
+  flex-grow: 7;
+}
+
+.grow-8 {
+  flex-grow: 8;
+}
+
+.grow-9 {
+  flex-grow: 9;
+}
+
+.MuiPaper-root {
+  @apply overflow-auto m-1
+}
