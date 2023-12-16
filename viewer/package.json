@@ -63,6 +63,7 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@testing-library/dom": "^9.3.0",
     "babel-core": "^6.26.3",
     "postcss": "^8.4.32"

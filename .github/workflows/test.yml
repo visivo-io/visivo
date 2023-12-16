@@ -27,7 +27,20 @@ jobs:
         run: poetry run pytest 
         env:
           STACKTRACE: true
-  
+  test-viewer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Test Viewer 
+        run: cd viewer && yarn install && yarn test && cd ..
+      
   test-rails:
     runs-on: ubuntu-latest
 
