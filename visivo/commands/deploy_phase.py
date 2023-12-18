@@ -69,6 +69,6 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
                 Logger.instance().debug(response.json())
                 raise click.ClickException(f"Trace '{trace.name}' not created")
             Logger.instance().debug(f"Trace '{trace.name}' created")
-        Logger.instance().debug(f"Deployed to: '{host}{project_url}'")
+        return project_url
     else:
         raise click.ClickException(f"There was an unexpected error: {response.content}")

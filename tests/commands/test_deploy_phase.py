@@ -21,12 +21,11 @@ def test_deploy_success(requests_mock, capsys):
         json={"name": "name", "id": "id", "url": "/url"},
         status_code=201,
     )
-    deploy_phase(
+    url = deploy_phase(
         stage="stage",
         working_dir=working_dir,
         user_dir=working_dir,
         output_dir=output_dir,
         host="http://host",
     )
-    captured = capsys.readouterr()
-    assert "Deployed to: 'http://host/url'" in captured.out
+    assert "/url" == url
