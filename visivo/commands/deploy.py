@@ -18,11 +18,11 @@ def deploy(working_dir, user_dir, output_dir, stage, host):
 
     from visivo.commands.deploy_phase import deploy_phase
 
-    deploy_phase(
+    url = deploy_phase(
         user_dir=user_dir,
         working_dir=working_dir,
         output_dir=output_dir,
         stage=stage,
         host=host,
     )
-    Logger.instance().success("Done")
+    Logger.instance().success(f"Deployed to: '{host}{url}'")

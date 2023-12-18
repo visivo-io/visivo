@@ -47,6 +47,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         Logger.instance().debug("Project uploaded")
         project_data = response.json()
         project_id = project_data["id"]
+        project_url = project_data["url"]
 
         for trace in project.trace_objs:
             url = f"{host}/api/files/"
@@ -68,5 +69,6 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
                 Logger.instance().debug(response.json())
                 raise click.ClickException(f"Trace '{trace.name}' not created")
             Logger.instance().debug(f"Trace '{trace.name}' created")
+        return project_url
     else:
         raise click.ClickException(f"There was an unexpected error: {response.content}")
