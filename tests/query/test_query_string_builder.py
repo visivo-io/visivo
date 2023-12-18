@@ -9,11 +9,27 @@ from tests.factories.model_factories import TargetFactory
 
 def test_QueryStringBuilder_with_only_base_query():
     tokenized_trace = TokenizedTrace(
-        sql="select * from table", cohort_on='"value"', target="name"
+        sql="select * from table", cohort_on="'value'", target="name"
     )
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert format_sql(query_string) == format_sql(
-        """WITH base_query as ( select * from table ) SELECT *, "value" as "cohort_on" FROM base_query GROUP BY "value" \n-- target: name"""
+        """WITH 
+        base_query as (
+            select * from table
+        ),
+        columnize_cohort_on as (
+            SELECT 
+                *,
+                'value' as "cohort_on"
+            FROM base_query
+        )
+        SELECT
+                *,
+            "cohort_on"
+        FROM columnize_cohort_on
+            GROUP BY
+            "cohort_on" 
+        -- target: name"""
     )
 
 
@@ -27,10 +43,7 @@ def test_tokenization_query_string_order_by():
             "x": "query( date_trunc('week', completed_at) )",
             "y": "query( sum(amount) )",
         },
-        "order_by": [
-            "query( a_different_column desc)",
-            "query( count(amount) desc )",
-        ],
+        "order_by": ["query( a_different_column desc)", "query( count(amount) desc )",],
     }
     trace = Trace(**data)
     target = TargetFactory(type="snowflake")
