@@ -1,196 +1,196 @@
 site_name: Visivo Docs
 plugins:
-    - search: {}
-    - macros:
-          module_name: mkdocs/src/main
-    - spellcheck:
-          backends:
-              - symspellpy
-              - codespell:
-                    dictionaries:
-                        - clear
-                        - rare
-          known_words: known_words.txt
-          ignore_code: true
-          min_length: 2
-          max_capital: 1
+  - search: {}
+  - macros:
+      module_name: mkdocs/src/main
+  - spellcheck:
+      backends:
+        - symspellpy
+        - codespell:
+            dictionaries:
+              - clear
+              - rare
+      known_words: known_words.txt
+      ignore_code: true
+      min_length: 2
+      max_capital: 1
 markdown_extensions:
-    - mkdocs-click
-    - admonition
-    - pymdownx.details
-    - pymdownx.superfences
-    - attr_list
-    - abbr
-    - pymdownx.snippets
-    - md_in_html
-    - pymdownx.tabbed:
-          alternate_style: true
-    - pymdownx.emoji
+  - mkdocs-click
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - abbr
+  - pymdownx.snippets
+  - md_in_html
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
 theme:
-    name: material
-    custom_dir: mkdocs/overrides
-    features:
-        - content.tabs.link
-        - navigation.indexes
-        - navigation.sections
-        - content.tooltips
-    logo: assets/favicon_io/android-chrome-192x192.png
-    favicon: assets/favicon_io/favicon-32x32.png
-    icon:
-        annotation: material/arrow-right-circle
-    palette:
-        - media: "(prefers-color-scheme: light)"
-          scheme: visivo_light
-          toggle:
-              icon: material/brightness-7
-              name: Switch to dark mode
-        - media: "(prefers-color-scheme: dark)"
-          scheme: visivo_dark
-          toggle:
-              icon: material/brightness-4
-              name: Switch to light mode
+  name: material
+  custom_dir: mkdocs/overrides
+  features:
+    - content.tabs.link
+    - navigation.indexes
+    - navigation.sections
+    - content.tooltips
+  logo: assets/favicon_io/android-chrome-192x192.png
+  favicon: assets/favicon_io/favicon-32x32.png
+  icon:
+    annotation: material/arrow-right-circle
+  palette:
+    - media: '(prefers-color-scheme: light)'
+      scheme: visivo_light
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: visivo_dark
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 docs_dir: mkdocs
 site_dir: mkdocs_build
 extra:
-    analytics:
-        provider: combined
-        property: G-50DF3C95TL
+  analytics:
+    provider: combined
+    property: G-50DF3C95TL
 extra_css:
-    - stylesheets/brand_colors.css
+  - stylesheets/brand_colors.css
 nav:
-    - Getting Started: index.md
-    - Topics:
-          - Linting: topics/linting.md
-          - Including: topics/including.md
-          - Deployment: topics/deployments.md
-    - Reference:
-          - CLI: reference/cli.md
-          - Configuration:
-                - Alerts:
-                      - SlackAlert:
-                            - reference/configuration/Alerts/SlackAlert/index.md
-                      - EmailAlert:
-                            - reference/configuration/Alerts/EmailAlert/index.md
-                      - ConsoleAlert:
-                            - reference/configuration/Alerts/ConsoleAlert/index.md
-                - Chart:
-                      - reference/configuration/Chart/index.md
-                      - Layout:
-                            - reference/configuration/Chart/Layout/index.md
-                - Dashboard:
-                      - reference/configuration/Dashboard/index.md
-                      - Row:
-                            - reference/configuration/Dashboard/Row/index.md
-                            - Item:
-                                  - reference/configuration/Dashboard/Row/Item/index.md
-                - Defaults:
-                      - reference/configuration/Defaults/index.md
-                - Include:
-                      - reference/configuration/Include/index.md
-                - Model:
-                      - reference/configuration/Model/index.md
-                - Table:
-                      - reference/configuration/Table/index.md
-                - Target:
-                      - reference/configuration/Target/index.md
-                - Trace:
-                      - reference/configuration/Trace/index.md
-                      - TraceColumns:
-                            - reference/configuration/Trace/TraceColumns/index.md
-                      - Bar:
-                            - reference/configuration/Trace/Bar/index.md
-                      - Barpolar:
-                            - reference/configuration/Trace/Barpolar/index.md
-                      - Box:
-                            - reference/configuration/Trace/Box/index.md
-                      - Candlestick:
-                            - reference/configuration/Trace/Candlestick/index.md
-                      - Carpet:
-                            - reference/configuration/Trace/Carpet/index.md
-                      - Choropleth:
-                            - reference/configuration/Trace/Choropleth/index.md
-                      - Choroplethmapbox:
-                            - reference/configuration/Trace/Choroplethmapbox/index.md
-                      - Cone:
-                            - reference/configuration/Trace/Cone/index.md
-                      - Contour:
-                            - reference/configuration/Trace/Contour/index.md
-                      - Contourcarpet:
-                            - reference/configuration/Trace/Contourcarpet/index.md
-                      - Densitymapbox:
-                            - reference/configuration/Trace/Densitymapbox/index.md
-                      - Funnel:
-                            - reference/configuration/Trace/Funnel/index.md
-                      - Funnelarea:
-                            - reference/configuration/Trace/Funnelarea/index.md
-                      - Heatmap:
-                            - reference/configuration/Trace/Heatmap/index.md
-                      - Heatmapgl:
-                            - reference/configuration/Trace/Heatmapgl/index.md
-                      - Histogram:
-                            - reference/configuration/Trace/Histogram/index.md
-                      - Histogram2d:
-                            - reference/configuration/Trace/Histogram2d/index.md
-                      - Histogram2dcontour:
-                            - reference/configuration/Trace/Histogram2dcontour/index.md
-                      - Icicle:
-                            - reference/configuration/Trace/Icicle/index.md
-                      - Image:
-                            - reference/configuration/Trace/Image/index.md
-                      - Indicator:
-                            - reference/configuration/Trace/Indicator/index.md
-                      - Isosurface:
-                            - reference/configuration/Trace/Isosurface/index.md
-                      - Mesh3d:
-                            - reference/configuration/Trace/Mesh3d/index.md
-                      - Ohlc:
-                            - reference/configuration/Trace/Ohlc/index.md
-                      - Parcats:
-                            - reference/configuration/Trace/Parcats/index.md
-                      - Parcoords:
-                            - reference/configuration/Trace/Parcoords/index.md
-                      - Pie:
-                            - reference/configuration/Trace/Pie/index.md
-                      - Sankey:
-                            - reference/configuration/Trace/Sankey/index.md
-                      - Scatter:
-                            - reference/configuration/Trace/Scatter/index.md
-                      - Scatter3d:
-                            - reference/configuration/Trace/Scatter3d/index.md
-                      - Scattercarpet:
-                            - reference/configuration/Trace/Scattercarpet/index.md
-                      - Scattergeo:
-                            - reference/configuration/Trace/Scattergeo/index.md
-                      - Scattergl:
-                            - reference/configuration/Trace/Scattergl/index.md
-                      - Scattermapbox:
-                            - reference/configuration/Trace/Scattermapbox/index.md
-                      - Scatterpolar:
-                            - reference/configuration/Trace/Scatterpolar/index.md
-                      - Scatterpolargl:
-                            - reference/configuration/Trace/Scatterpolargl/index.md
-                      - Scattersmith:
-                            - reference/configuration/Trace/Scattersmith/index.md
-                      - Scatterternary:
-                            - reference/configuration/Trace/Scatterternary/index.md
-                      - Splom:
-                            - reference/configuration/Trace/Splom/index.md
-                      - Streamtube:
-                            - reference/configuration/Trace/Streamtube/index.md
-                      - Sunburst:
-                            - reference/configuration/Trace/Sunburst/index.md
-                      - Surface:
-                            - reference/configuration/Trace/Surface/index.md
-                      - Treemap:
-                            - reference/configuration/Trace/Treemap/index.md
-                      - Violin:
-                            - reference/configuration/Trace/Violin/index.md
-                      - Volume:
-                            - reference/configuration/Trace/Volume/index.md
-                      - Waterfall:
-                            - reference/configuration/Trace/Waterfall/index.md
-    - Background:
-          - Viewpoint: viewpoint.md
-          - How It Works: how_it_works.md
+  - Getting Started: index.md
+  - Topics:
+      - Linting: topics/linting.md
+      - Including: topics/including.md
+      - Deployment: topics/deployments.md
+  - Reference:
+      - CLI: reference/cli.md
+      - Configuration:
+          - Alerts:
+              - SlackAlert:
+                  - reference/configuration/Alerts/SlackAlert/index.md
+              - EmailAlert:
+                  - reference/configuration/Alerts/EmailAlert/index.md
+              - ConsoleAlert:
+                  - reference/configuration/Alerts/ConsoleAlert/index.md
+          - Chart:
+              - reference/configuration/Chart/index.md
+              - Layout:
+                  - reference/configuration/Chart/Layout/index.md
+          - Dashboard:
+              - reference/configuration/Dashboard/index.md
+              - Row:
+                  - reference/configuration/Dashboard/Row/index.md
+                  - Item:
+                      - reference/configuration/Dashboard/Row/Item/index.md
+          - Defaults:
+              - reference/configuration/Defaults/index.md
+          - Include:
+              - reference/configuration/Include/index.md
+          - Model:
+              - reference/configuration/Model/index.md
+          - Table:
+              - reference/configuration/Table/index.md
+          - Target:
+              - reference/configuration/Target/index.md
+          - Trace:
+              - reference/configuration/Trace/index.md
+              - TraceColumns:
+                  - reference/configuration/Trace/TraceColumns/index.md
+              - Bar:
+                  - reference/configuration/Trace/Bar/index.md
+              - Barpolar:
+                  - reference/configuration/Trace/Barpolar/index.md
+              - Box:
+                  - reference/configuration/Trace/Box/index.md
+              - Candlestick:
+                  - reference/configuration/Trace/Candlestick/index.md
+              - Carpet:
+                  - reference/configuration/Trace/Carpet/index.md
+              - Choropleth:
+                  - reference/configuration/Trace/Choropleth/index.md
+              - Choroplethmapbox:
+                  - reference/configuration/Trace/Choroplethmapbox/index.md
+              - Cone:
+                  - reference/configuration/Trace/Cone/index.md
+              - Contour:
+                  - reference/configuration/Trace/Contour/index.md
+              - Contourcarpet:
+                  - reference/configuration/Trace/Contourcarpet/index.md
+              - Densitymapbox:
+                  - reference/configuration/Trace/Densitymapbox/index.md
+              - Funnel:
+                  - reference/configuration/Trace/Funnel/index.md
+              - Funnelarea:
+                  - reference/configuration/Trace/Funnelarea/index.md
+              - Heatmap:
+                  - reference/configuration/Trace/Heatmap/index.md
+              - Heatmapgl:
+                  - reference/configuration/Trace/Heatmapgl/index.md
+              - Histogram:
+                  - reference/configuration/Trace/Histogram/index.md
+              - Histogram2d:
+                  - reference/configuration/Trace/Histogram2d/index.md
+              - Histogram2dcontour:
+                  - reference/configuration/Trace/Histogram2dcontour/index.md
+              - Icicle:
+                  - reference/configuration/Trace/Icicle/index.md
+              - Image:
+                  - reference/configuration/Trace/Image/index.md
+              - Indicator:
+                  - reference/configuration/Trace/Indicator/index.md
+              - Isosurface:
+                  - reference/configuration/Trace/Isosurface/index.md
+              - Mesh3d:
+                  - reference/configuration/Trace/Mesh3d/index.md
+              - Ohlc:
+                  - reference/configuration/Trace/Ohlc/index.md
+              - Parcats:
+                  - reference/configuration/Trace/Parcats/index.md
+              - Parcoords:
+                  - reference/configuration/Trace/Parcoords/index.md
+              - Pie:
+                  - reference/configuration/Trace/Pie/index.md
+              - Sankey:
+                  - reference/configuration/Trace/Sankey/index.md
+              - Scatter:
+                  - reference/configuration/Trace/Scatter/index.md
+              - Scatter3d:
+                  - reference/configuration/Trace/Scatter3d/index.md
+              - Scattercarpet:
+                  - reference/configuration/Trace/Scattercarpet/index.md
+              - Scattergeo:
+                  - reference/configuration/Trace/Scattergeo/index.md
+              - Scattergl:
+                  - reference/configuration/Trace/Scattergl/index.md
+              - Scattermapbox:
+                  - reference/configuration/Trace/Scattermapbox/index.md
+              - Scatterpolar:
+                  - reference/configuration/Trace/Scatterpolar/index.md
+              - Scatterpolargl:
+                  - reference/configuration/Trace/Scatterpolargl/index.md
+              - Scattersmith:
+                  - reference/configuration/Trace/Scattersmith/index.md
+              - Scatterternary:
+                  - reference/configuration/Trace/Scatterternary/index.md
+              - Splom:
+                  - reference/configuration/Trace/Splom/index.md
+              - Streamtube:
+                  - reference/configuration/Trace/Streamtube/index.md
+              - Sunburst:
+                  - reference/configuration/Trace/Sunburst/index.md
+              - Surface:
+                  - reference/configuration/Trace/Surface/index.md
+              - Treemap:
+                  - reference/configuration/Trace/Treemap/index.md
+              - Violin:
+                  - reference/configuration/Trace/Violin/index.md
+              - Volume:
+                  - reference/configuration/Trace/Volume/index.md
+              - Waterfall:
+                  - reference/configuration/Trace/Waterfall/index.md
+  - Background:
+      - Viewpoint: viewpoint.md
+      - How It Works: how_it_works.md

@@ -39,7 +39,7 @@ class Chart(NamedModel, ParentModel):
     )
     layout: Optional[Layout] = Field(
         None,
-        description="The layout attribute of the chart accepts any valid plotly layout configurations. You can read more about those here: [plotly layout docs](https://plotly.com/javascript/reference/layout/).",
+        description="The layout attribute of the chart accepts any valid plotly layout configurations.",
     )
 
     @property
