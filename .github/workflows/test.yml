@@ -99,6 +99,52 @@ jobs:
           CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
           CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
   
+  test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5434:5434
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Install pg JS Library
+        run: npm install pg
+
+      - uses: Gr1N/setup-poetry@v8 
+
+      - name: Install CLI Dependencies
+        run: poetry install
+      
+      - name: Install CLI Visivo Package
+        run: poetry build && pip install dist/visivo-0.2.0-py3-none-any.whl
+      
+      - name: Populate Postgres DB Table
+        run: node populate_ci_postgres_db.js
+
+      - name: Test Simple Project Run
+        run: |
+          cd test-projects/simple-database && visivo run -t local-postgres && cd ../..
+
+  
   test-complex-project:
     runs-on: ubuntu-latest
 
