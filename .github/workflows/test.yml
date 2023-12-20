@@ -112,7 +112,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5434:5434
+          - 5434:5432
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -127,15 +127,15 @@ jobs:
           node-version: '18'
       
       - name: Install pg JS Library
-        run: npm install pg
-
-      - uses: Gr1N/setup-poetry@v8 
+        run: npm install pg 
 
       - name: Populate Postgres DB Table
         run: node populate_ci_postgres_db.js
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5434
+      
+      - uses: Gr1N/setup-poetry@v8
 
       - name: Install CLI Dependencies
         run: poetry install
