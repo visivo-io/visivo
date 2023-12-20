@@ -17,13 +17,12 @@ const records = [
     [1, 1], [2, 1], [3, 2], [4, 3], [5, 5], [6, 8]
 ];
 
-pgclient.query(table, (err, res) => {
-    if (err) throw err;
-
-    records.forEach(record => {
-        pgclient.query(text, record, (err, res) => {
-            if (err) throw err;
-            console.log('Inserted:', res.rows[0]);
-        });
+records.forEach(record => {
+    pgclient.query(text, record, (err, res) => {
+        if (err) throw err;
+        console.log('Inserted:', res.rows[0]);
     });
 });
+
+
+pgclient.end();
