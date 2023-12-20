@@ -133,6 +133,9 @@ jobs:
 
       - name: Populate Postgres DB Table
         run: node populate_ci_postgres_db.js
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5434
 
       - name: Install CLI Dependencies
         run: poetry install
