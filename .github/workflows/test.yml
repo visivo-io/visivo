@@ -131,14 +131,14 @@ jobs:
 
       - uses: Gr1N/setup-poetry@v8 
 
+      - name: Populate Postgres DB Table
+        run: node populate_ci_postgres_db.js
+
       - name: Install CLI Dependencies
         run: poetry install
       
       - name: Install CLI Visivo Package
         run: poetry build && pip install dist/visivo-0.2.0-py3-none-any.whl
-      
-      - name: Populate Postgres DB Table
-        run: node populate_ci_postgres_db.js
 
       - name: Test Simple Project Run
         run: |
