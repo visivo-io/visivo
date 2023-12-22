@@ -20,6 +20,7 @@ targets:
   - name: local-postgres
     database: postgres
     type: postgresql
+    host: localhost
     username: postgres
     password: postgres
     port: 5434
