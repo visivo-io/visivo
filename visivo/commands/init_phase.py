@@ -17,6 +17,7 @@ from visivo.models.trace_props import Scatter
 from visivo.commands.utils import create_file_database
 from visivo.parsers.core_parser import PROFILE_FILE_NAME
 
+
 def init_phase():
     """Enables a quick set up by writing your target & api credentials to an env file."""
     user_home = os.path.expanduser("~")
@@ -73,9 +74,7 @@ def init_phase():
         fp.close()
 
     model = Model(name="Example Model", sql="select * from test_table")
-    props = Scatter(
-        type="scatter", x="query(x)", y="query(y)"
-    )
+    props = Scatter(type="scatter", x="query(x)", y="query(y)")
     trace = Trace(name="Example Trace", model=model, props=props, changed=None)
     chart = Chart(name="Example Chart", traces=[trace])
     item = Item(chart=chart)
@@ -102,10 +101,10 @@ def init_phase():
 
     profile_path = f"{user_home}/.visivo/{PROFILE_FILE_NAME}"
     if not os.path.exists(profile_path):
-        Logger.instance().info_with_symbol(
+        Logger.instance().info(
             f"> Visit 'https://app.visivo.io/profile' and create a new token if you don't already have one."
         )
-        Logger.instance().info_with_symbol(
+        Logger.instance().info(
             f"> You may need to register or get added to an account before visiting your profile."
         )
         token = click.prompt("? Personal token", type=str)
@@ -114,7 +113,7 @@ def init_phase():
         fp.write(f"token: {token}")
         fp.close()
         Logger.instance().debug(f"> Created profile in '~/.visivo/profile.yml'")
-    else: 
+    else:
         message = "Found profile at location: " + profile_path
-        Logger.instance().info_with_symbol(message)
+        Logger.instance().info(message)
     Logger.instance().debug(f"> Created project in '{project_name}'")

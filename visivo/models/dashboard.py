@@ -1,5 +1,4 @@
 from .base.named_model import NamedModel
-from .base.base_model import REF_REGEX
 from .base.parent_model import ParentModel
 from pydantic import Field
 from .row import Row

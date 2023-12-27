@@ -1,0 +1,29 @@
+name: project
+
+defaults:
+  target_name: local-sqlite
+
+targets:
+  - name: local-sqlite
+    database: local.db
+    type: sqlite
+
+dashboards:
+  - name: Simple Dashboard
+    rows:
+      - height: medium
+        items:
+          - width: 9
+            chart:
+              name: A very Fibonacci Waterfall
+              traces:
+                - name: Trace name
+                  model:
+                    sql: select * from test_table
+                  props:
+                    type: scatter
+                    x: query(x)
+                    y: query(y)
+              layout:
+                title:
+                  text: "A Great Fibonacci Waterfall"

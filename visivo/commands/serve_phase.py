@@ -78,7 +78,7 @@ def serve_phase(output_dir, working_dir, default_target):
                 default_target=default_target,
                 run_only_changed=True,
             )
-            Logger.instance().debug("Files changed. Reloading . . .")
+            Logger.instance().info("Files changed. Reloading . . .")
         except Exception as e:
             Logger.instance().debug(e)
 

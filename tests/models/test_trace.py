@@ -6,7 +6,6 @@ import pytest
 
 def test_Trace_simple_data():
     data = {
-        "name": "development",
         "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
         "model": {"sql": "select * from table"},
     }

@@ -42,23 +42,24 @@ class Item(BaseModel, ParentModel):
     chart: Optional[
         Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Chart]
     ] = Field(None, description="A chart object defined inline or a ref() to a chart.")
+
     table: Optional[
         Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Table]
     ] = Field(None, description="A Table object defined inline or a ref() to a table")
 
-    @model_validator(mode="after")
-    def check_only_one(self):
+    @model_validator(mode="before")
+    @classmethod
+    def validate_column_refs(cls, data: any):
         markdown, chart, table = (
-            self.markdown,
-            self.chart,
-            self.table,
+            data.get("markdown"),
+            data.get("chart"),
+            data.get("table"),
         )
-        # Fix and test this method
-        if markdown is not None and chart is not None:
+        if markdown is not None and chart is not None and table is not None:
             raise ValueError(
                 'only one of the "markdown", "chart", or "table" properties should be set on an item'
             )
-        return self
+        return data
 
     def child_items(self):
         return [self.__get_child()]

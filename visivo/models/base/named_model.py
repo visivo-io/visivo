@@ -10,7 +10,9 @@ class NamedModel(BaseModel):
         return self.__class__.__name__ + " - " + str(self.name)
 
     name: str = pydantic.Field(
-        None, description="The unique name of the object across the entire project."
+        None,
+        alias="name",
+        description="The unique name of the object across the entire project.",
     )
 
     @classmethod
@@ -19,3 +21,6 @@ class NamedModel(BaseModel):
             return obj.name
         else:
             return re.match(REF_REGEX, obj).groupdict()["ref_name"]
+
+
+    
