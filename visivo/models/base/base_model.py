@@ -1,23 +1,49 @@
-import pydantic
-from typing import Any
+from pydantic import StringConstraints, Discriminator, Tag, BaseModel, ConfigDict
+from typing_extensions import Annotated
+from typing import Any, Union, NewType
 import re
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
 STATEMENT_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$|^\s*column\(\s*(?P<column_name>.+)\)\s*$"
 INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[[0-9]+\]\s*$"
 
-
-def model_str_discriminator(v: Any) -> str:
-    if isinstance(v, str):
-        return "<ref>"
-    if isinstance(v, (dict, BaseModel)):
-        return "<inline>"
-    else:
-        return None
+RefString = NewType(
+    "RefString",
+    Annotated[Annotated[str, StringConstraints(pattern=REF_REGEX)], Tag("Ref")],
+)
 
 
-class BaseModel(pydantic.BaseModel):
-    model_config = pydantic.ConfigDict(extra="forbid")
+def generate_ref_field(class_to_discriminate):
+    return NewType(
+        class_to_discriminate.__name__,
+        Annotated[
+            Union[
+                RefString,
+                Annotated[class_to_discriminate, Tag(class_to_discriminate.__name__)],
+            ],
+            Discriminator(ModelStrDiscriminator(class_to_discriminate)),
+        ],
+    )
+
+
+class ModelStrDiscriminator:
+    def __init__(self, class_to_discriminate):
+        self.class_name = class_to_discriminate.__name__
+
+    def __name__(self):
+        return self.class_name
+
+    def __call__(self, value):
+        if isinstance(value, str):
+            return "Ref"
+        if isinstance(value, (dict, BaseModel)):
+            return self.class_name
+        else:
+            return None
+
+
+class BaseModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
     def id(self):
         return (
@@ -26,17 +52,6 @@ class BaseModel(pydantic.BaseModel):
             + str(hash((type(self),) + tuple(self.__dict__.values())))
         )
 
-    @classmethod
-    def generate_ref_field(cls):
-        Annotated[
-            Union[
-                Annotated[
-                    Annotated[str, StringConstraints(pattern=REF_REGEX)], Tag("<ref>")
-                ],
-                Annotated[Trace, Tag("<inline>")],
-            ],
-            Discriminator(model_str_discriminator),
-        ]
     @classmethod
     def is_obj(cls, obj) -> bool:
         return not cls.is_ref(obj)

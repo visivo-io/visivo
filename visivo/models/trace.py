@@ -1,6 +1,6 @@
 import re
 from typing import Any
-from pydantic import StringConstraints, model_validator, Field
+from pydantic import model_validator, Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 
@@ -57,7 +57,7 @@ from .trace_props import (
 from .trace_columns import TraceColumns
 from typing import Optional, List, Union
 from collections import Counter
-from .base.base_model import REF_REGEX
+from .base.base_model import REF_REGEX, generate_ref_field
 from .model import Model
 from typing_extensions import Annotated
 
@@ -182,7 +182,7 @@ class Trace(NamedModel, ParentModel):
         True,
         description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
     )
-    model: Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Model] = Field(
+    model: generate_ref_field(Model) = Field(
         ...,
         description="The model or model ref that visivo should use to build the trace.",
     )

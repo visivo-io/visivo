@@ -37,13 +37,13 @@ class Logger:
         if self.echo:
             self.echo(message)
         elif self.spinner:
-            self.spinner.info(message)
+            self.spinner.info(text=message)
 
     def success(self, message: str):
         if self.echo:
             self.echo(message)
         elif self.spinner:
-            self.spinner.succeed(message)
+            self.spinner.succeed(text=message)
 
     def error(self, message: str):
         if self.echo:

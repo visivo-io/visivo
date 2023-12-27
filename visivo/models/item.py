@@ -1,6 +1,6 @@
-from .base.base_model import BaseModel, REF_REGEX
+from .base.base_model import BaseModel, REF_REGEX, generate_ref_field
 from .base.parent_model import ParentModel
-from pydantic import StringConstraints, Field
+from pydantic import Field
 from typing import Optional, Union
 from .chart import Chart
 from .table import Table
@@ -39,13 +39,12 @@ class Item(BaseModel, ParentModel):
     markdown: Optional[str] = Field(
         None, description="Markdown text to include in the dashboard."
     )
-    chart: Optional[
-        Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Chart]
-    ] = Field(None, description="A chart object defined inline or a ref() to a chart.")
-
-    table: Optional[
-        Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Table]
-    ] = Field(None, description="A Table object defined inline or a ref() to a table")
+    chart: Optional[generate_ref_field(Chart)] = Field(
+        None, description="A chart object defined inline or a ref() to a chart."
+    )
+    table: Optional[generate_ref_field(Table)] = Field(
+        None, description="A Table object defined inline or a ref() to a table"
+    )
 
     @model_validator(mode="before")
     @classmethod
