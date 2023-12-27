@@ -87,18 +87,30 @@ class Project(NamedModel, ParentModel):
     @model_validator(mode="before")
     @classmethod
     def validate_default_names(cls, data: Any):
-        targets, alerts = (data.get("targets"), data.get("alerts"))
-        target_names = [target.name for target in targets]
-        alert_names = [alert.name for alert in alerts]
         defaults = data.get("defaults")
         if not defaults:
             return data
 
-        if defaults.target_name and defaults.target_name not in target_names:
-            raise ValueError(f"default target '{defaults.target_name}' does not exist")
+        targets, alerts = (data.get("targets"), data.get("alerts"))
+        if not targets:
+            targets = []
+        if not alerts:
+            alerts = []
+        target_names = [target.get("name") for target in targets]
+        alert_names = [alert.get("name") for alert in alerts]
 
-        if defaults.alert_name and defaults.alert_name not in alert_names:
-            raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
+        if (
+            defaults.get("target_name")
+            and defaults.get("target_name") not in target_names
+        ):
+            raise ValueError(
+                f"default target '{defaults.get('target_name')}' does not exist"
+            )
+
+        if defaults.get("alert_name") and defaults.get("alert_name") not in alert_names:
+            raise ValueError(
+                f"default alert '{defaults.get('alert_name')}' does not exist"
+            )
 
         return data
 

@@ -17,7 +17,7 @@ dashboards:
             chart:
               name: A very Fibonacci Waterfall
               traces:
-                - name: Trace name
+                - name: "234"
                   model:
                     sql: select * from test_table
                   props:
