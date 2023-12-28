@@ -1,5 +1,5 @@
 import re
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 
 from visivo.models.include import Include
 
@@ -84,35 +84,22 @@ class Project(NamedModel, ParentModel):
     def find_alert(self, name: str) -> Alert:
         return next((a for a in self.alerts if a.name == name), None)
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_default_names(cls, data: Any):
-        defaults = data.get("defaults")
+    @model_validator(mode="after")
+    def validate_default_names(self):
+        targets, alerts = (self.targets, self.alerts)
+        target_names = [target.name for target in targets]
+        alert_names = [alert.name for alert in alerts]
+        defaults = self.defaults
         if not defaults:
-            return data
+            return self
 
-        targets, alerts = (data.get("targets"), data.get("alerts"))
-        if not targets:
-            targets = []
-        if not alerts:
-            alerts = []
-        target_names = [target.get("name") for target in targets]
-        alert_names = [alert.get("name") for alert in alerts]
+        if defaults.target_name and defaults.target_name not in target_names:
+            raise ValueError(f"default target '{defaults.target_name}' does not exist")
 
-        if (
-            defaults.get("target_name")
-            and defaults.get("target_name") not in target_names
-        ):
-            raise ValueError(
-                f"default target '{defaults.get('target_name')}' does not exist"
-            )
+        if defaults.alert_name and defaults.alert_name not in alert_names:
+            raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
 
-        if defaults.get("alert_name") and defaults.get("alert_name") not in alert_names:
-            raise ValueError(
-                f"default alert '{defaults.get('alert_name')}' does not exist"
-            )
-
-        return data
+        return self
 
     @model_validator(mode="after")
     def validate_dag(self):

@@ -236,9 +236,9 @@ class Trace(NamedModel, ParentModel):
         if columns is None:
             return data
 
-        columnKeys = list(columns.model_dump().keys())
+        columnKeys = list(columns.keys())
         pattern = r"column\((.+)\)"
-        for value in props.model_dump().values():
+        for value in props.values():
             match = re.search(pattern, str(value))
             if match:
                 value = match.group(1)

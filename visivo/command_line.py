@@ -1,7 +1,8 @@
 import click
 import os
 from dotenv import load_dotenv
-
+from pydantic import ValidationError
+from visivo.logging.error_formatter import format_validation_error
 from visivo.logging.logger import Logger, TypeEnum
 
 from .commands.deploy import deploy
@@ -40,6 +41,8 @@ def load_env(env_file):
 def safe_visivo():
     try:
         visivo(standalone_mode=False)
+    except ValidationError as e:
+        Logger.instance().error(format_validation_error(e))
     except Exception as e:
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
