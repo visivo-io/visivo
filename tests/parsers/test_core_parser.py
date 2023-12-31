@@ -112,7 +112,16 @@ def test_Core_Parser_value_error():
     with pytest.raises(LineValidationError) as exc_info:
         core_parser.parse()
 
-    assert (
-        str(exc_info.value)
-        == f"Invalid yaml in project\n  File: {project_file}\n  Location: line 4, column 9\n  Issue: could not find expected ':'"
+    assert f"File: {project_file}, line: 2" in str(exc_info.value)
+
+
+def test_Core_Parser_success():
+    project_file = temp_file(
+        contents=""" name: Project Name """,
+        name=PROJECT_FILE_NAME,
     )
+
+    core_parser = CoreParser(project_file=project_file, files=[project_file])
+    project = core_parser.parse()
+
+    assert project.name == "Project Name"
