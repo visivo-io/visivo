@@ -44,7 +44,8 @@ class LineValidationError(Exception):
             input_dict = error["input"]
             for file in self.files:
                 line = find_multi_line_string_start(file, input_dict)
-                return f"    File: {file}, line: {line}\n"
+                if line >= 0:
+                    return f"    File: {file}, line: {line}\n"
         return None
 
     def __str__(self):

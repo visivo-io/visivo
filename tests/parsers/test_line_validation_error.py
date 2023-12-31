@@ -1,5 +1,4 @@
 from tests.support.utils import temp_file, temp_folder
-from visivo.logging.error_formatter import format_validation_error
 from pydantic import ValidationError, BaseModel, ConfigDict
 import pytest
 import os
@@ -14,10 +13,10 @@ class TestMissing(BaseModel):
     other_required: str
 
 
-def test_format_value_error():
+def test_found_line_number():
     output_dir = temp_folder()
     file = temp_file(
-        contents=yaml.dump({"required_but": "value", "extra": "not_permitted"}),
+        contents=yaml.dump({"required": "value"}),
         output_dir=output_dir,
         name="model.yml",
     )
@@ -28,4 +27,4 @@ def test_format_value_error():
         validation_error=exc_info.value, files=[file]
     )
 
-    assert "" == str(line_validation_error)
+    assert ", line: 1" in str(line_validation_error)
