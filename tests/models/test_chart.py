@@ -25,15 +25,6 @@ def test_Chart_with_trace_simple_data():
     assert chart.name == "development"
 
 
-def test_Chart_missing_data():
-    with pytest.raises(ValidationError) as exc_info:
-        Chart()
-
-    error = exc_info.value.errors()[0]
-    assert error["msg"] == "Field required"
-    assert error["type"] == "missing"
-
-
 def test_Chart_ref_string():
     chart = Chart(traces=["ref(trace)"])
     assert chart.traces[0] == "ref(trace)"

@@ -3,6 +3,7 @@ from deepmerge import always_merger
 from typing import List
 from pathlib import Path
 from pydantic import ValidationError
+from visivo.parsers.line_validation_error import LineValidationError
 from visivo.utils import load_yaml_file
 from ..models.project import Project
 
@@ -23,7 +24,10 @@ class CoreParser:
 
     def __build_project(self):
         data = self.__merged_project_data()
-        project = Project(**data)
+        try:
+            project = Project(**data)
+        except ValidationError as validation_error:
+            raise LineValidationError(validation_error=validation_error, files=self.files)
         return project
 
     def __merged_project_data(self):

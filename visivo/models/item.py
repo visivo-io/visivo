@@ -54,7 +54,8 @@ class Item(BaseModel, ParentModel):
             data.get("chart"),
             data.get("table"),
         )
-        if markdown is not None and chart is not None and table is not None:
+        items_set = [i for i in [markdown, chart, table] if i is not None]
+        if len(items_set) > 1:
             raise ValueError(
                 'only one of the "markdown", "chart", or "table" properties should be set on an item'
             )

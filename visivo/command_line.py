@@ -42,6 +42,7 @@ def safe_visivo():
     try:
         visivo(standalone_mode=False)
     except ValidationError as e:
+        breakpoint()
         Logger.instance().error(format_validation_error(e))
     except Exception as e:
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
