@@ -29,16 +29,19 @@ class LineValidationError(Exception):
         self.files = files
 
     def get_line_message(self, error):
-        if (
-            "input" in error
-            and isinstance(error["input"], dict)
-            and len(error["input"]) > 0
-        ):
-            input_dict = error["input"]
-            for file in self.files:
-                line = find_multi_line_string_start(file, input_dict)
-                if line >= 0:
-                    return f"    File: {file}, line: {line}\n"
+        if "input" in error:
+            input_dict = None
+            if isinstance(error["input"], dict) and len(error["input"]) > 0:
+                input_dict = error["input"]
+            if isinstance(error["input"], int) or isinstance(error["input"], str):
+                input_dict = {}
+                input_dict[error["loc"][-1]] = error["input"]
+
+            if input_dict:
+                for file in self.files:
+                    line = find_multi_line_string_start(file, input_dict)
+                    if line >= 0:
+                        return f"    File: {file}, line: {line}\n"
         return None
 
     def __str__(self):
@@ -50,7 +53,9 @@ class LineValidationError(Exception):
             line_message = self.get_line_message(error)
             if line_message:
                 file_found = True
-                message = message + f"  The input used ({error['input']}) was found: \n"
+                message = (
+                    message + f"  The input used: ({error['input']}) was found: \n"
+                )
                 message = message + line_message
             else:
                 message = message + f"  The input used: ({error['input']})\n"
