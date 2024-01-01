@@ -9,9 +9,9 @@ def find_multi_line_string_start(file_path, input_dict):
     with open(file_path, "r") as file:
         file_content = file.read()
 
-    file_lines = re.sub(r"^[\s-]+", "", file_content, flags=re.MULTILINE).split("\n")
+    file_lines = re.sub(r"^[ \t-]+", "", file_content, flags=re.MULTILINE).split("\n")
     input_lines = re.sub(
-        r"^[\s-]+", "", yaml.dump(input_dict), flags=re.MULTILINE
+        r"^[ \t-]+", "", yaml.dump(input_dict), flags=re.MULTILINE
     ).split("\n")
     if input_lines[-1] == "":
         input_lines.pop()

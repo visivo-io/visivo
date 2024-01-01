@@ -18,7 +18,7 @@ class TestMissing(BaseModel):
 def test_found_line_number():
     output_dir = temp_folder()
     file = temp_file(
-        contents=yaml.dump({"model": {"required": "value"}}),
+        contents="\n" + yaml.dump({"model": {"required": "value"}}),
         output_dir=output_dir,
         name="model.yml",
     )
@@ -30,7 +30,7 @@ def test_found_line_number():
         validation_error=exc_info.value, files=[file]
     )
 
-    assert ", line: 2" in str(line_validation_error)
+    assert ", line: 3" in str(line_validation_error)
 
 
 def test_extra_input_no_found_line_number():
