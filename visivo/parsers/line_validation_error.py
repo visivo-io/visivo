@@ -16,17 +16,10 @@ def find_multi_line_string_start(file_path, input_dict):
     if input_lines[-1] == "":
         input_lines.pop()
 
-    for i, line in enumerate(file_lines, start=1):
-        if line == input_lines[0]:
-            match = True
-            for j in range(1, len(input_lines)):
-                if i + j >= len(file_lines) or file_lines[i + j] != input_lines[j]:
-                    match = False
-                    break
-
-            if match:
-                return i
-
+    input_lines_length = len(input_lines)
+    for ind in (i for i, e in enumerate(file_lines) if e == input_lines[0]):
+        if file_lines[ind : ind + input_lines_length] == input_lines:
+            return ind + 1
     return -1
 
 
@@ -35,7 +28,7 @@ class LineValidationError(Exception):
         self.validation_error = validation_error
         self.files = files
 
-    def get_location(self, error):
+    def get_line_message(self, error):
         if (
             "input" in error
             and isinstance(error["input"], dict)
@@ -53,8 +46,8 @@ class LineValidationError(Exception):
         file_found = False
         for error in self.validation_error.errors():
             message = message + f"{'.'.join(map(lambda l: str(l), error['loc']))}\n"
-            message = message + f"  {error['msg']}'\n"
-            line_message = self.get_location(error)
+            message = message + f"  {error['msg']}\n"
+            line_message = self.get_line_message(error)
             if line_message:
                 file_found = True
                 message = message + f"  The input used ({error['input']}) was found: \n"
