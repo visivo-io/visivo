@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import jinja2
 import click
+from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
 
 def yml_to_dict(relative_path):
@@ -76,18 +77,19 @@ def extract_value_from_function(function_text, function_name):
 
 
 def set_location_recursive_items(dictionary, file):
-    for key, value in dictionary._key_locs.items():
-        dictionary._key_locs[key] = value.replace("<unicode string>", file)
+    if isinstance(dictionary, YamlOrderedDict):
+        for key, value in dictionary._key_locs.items():
+            dictionary._key_locs[key] = value.replace("<unicode string>", file)
 
-    for key, value in dictionary._value_locs.items():
-        dictionary._value_locs[key] = value.replace("<unicode string>", file)
+        for key, value in dictionary._value_locs.items():
+            dictionary._value_locs[key] = value.replace("<unicode string>", file)
 
-    for key, value in dictionary.items():
-        if isinstance(value, dict):
-            set_location_recursive_items(value, file)
-        if isinstance(value, list):
-            for item in value:
-                set_location_recursive_items(item, file)
+        for key, value in dictionary.items():
+            if isinstance(value, dict):
+                set_location_recursive_items(value, file)
+            if isinstance(value, list):
+                for item in value:
+                    set_location_recursive_items(item, file)
 
 
 def load_yaml_file(file):

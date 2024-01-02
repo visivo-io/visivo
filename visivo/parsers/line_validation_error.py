@@ -12,7 +12,9 @@ def find_line_string_start(file_path, input_dict):
         file_content = file.read()
 
     file_lines = re.sub(r"^[ \t-]+", "", file_content, flags=re.MULTILINE).split("\n")
-    input_line = re.sub(r"^[\s-]+", "", yaml.dump(input_dict), flags=re.MULTILINE)
+    input_line = re.sub(
+        r"^[\s-]+", "", yaml.dump(input_dict), flags=re.MULTILINE
+    ).split("\n")[0]
     for line_number, file_line in enumerate(file_lines):
         if input_line in file_line:
             return line_number + 1

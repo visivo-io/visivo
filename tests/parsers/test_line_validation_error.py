@@ -7,6 +7,7 @@ import yaml
 from visivo.models.project import Project
 
 from visivo.parsers.line_validation_error import LineValidationError
+from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 
 
 class TestMissing(BaseModel):
@@ -16,6 +17,7 @@ class TestMissing(BaseModel):
 
 
 def test_found_line_number():
+    setup_yaml_ordered_dict()
     output_dir = temp_folder()
     file = temp_file(
         contents="\n" + yaml.dump({"model": {"required": "value"}}),
@@ -24,16 +26,17 @@ def test_found_line_number():
     )
     with pytest.raises(ValidationError) as exc_info:
         with open(file, "r") as stream:
-            TestMissing(required="value")
+            TestMissing(**yaml.safe_load(stream))
 
     line_validation_error = LineValidationError(
         validation_error=exc_info.value, files=[file]
     )
 
-    assert ", line: 3" in str(line_validation_error)
+    assert ":3" in str(line_validation_error)
 
 
 def test_found_int_line_number():
+    setup_yaml_ordered_dict()
     output_dir = temp_folder()
     file = temp_file(
         contents=yaml.dump({"required": 1, "other_required": "value"}),
@@ -42,16 +45,17 @@ def test_found_int_line_number():
     )
     with pytest.raises(ValidationError) as exc_info:
         with open(file, "r") as stream:
-            TestMissing(**dict(yaml.safe_load(stream)))
+            TestMissing(**yaml.safe_load(stream))
 
     line_validation_error = LineValidationError(
         validation_error=exc_info.value, files=[file]
     )
 
-    assert ", line: 2" in str(line_validation_error)
+    assert ":2" in str(line_validation_error)
 
 
 def test_extra_input_no_found_line_number():
+    setup_yaml_ordered_dict()
     output_dir = temp_folder()
     file = temp_file(
         contents=yaml.dump(
@@ -62,10 +66,10 @@ def test_extra_input_no_found_line_number():
     )
     with pytest.raises(ValidationError) as exc_info:
         with open(file, "r") as stream:
-            TestMissing(**dict(yaml.safe_load(stream)))
+            TestMissing(**yaml.safe_load(stream))
 
     line_validation_error = LineValidationError(
         validation_error=exc_info.value, files=[file]
     )
 
-    assert ", line: 3" in str(line_validation_error)
+    assert ":3" in str(line_validation_error)
