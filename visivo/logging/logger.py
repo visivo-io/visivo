@@ -31,22 +31,22 @@ class Logger:
         if self.echo:
             self.echo(message)
         elif self.spinner:
-            self.spinner.text = message
+            self.spinner.text = str(message)
 
     def info(self, message: str):
         if self.echo:
             self.echo(message)
         elif self.spinner:
-            self.spinner.info(text=message)
+            self.spinner.info(text=str(message))
 
     def success(self, message: str):
         if self.echo:
             self.echo(message)
         elif self.spinner:
-            self.spinner.succeed(text=message)
+            self.spinner.succeed(text=str(message))
 
     def error(self, message: str):
         if self.echo:
             self.echo(message)
         elif self.spinner:
-            self.spinner.stop_and_persist(text=message)
+            self.spinner.fail(text=str(message))

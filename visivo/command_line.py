@@ -41,6 +41,7 @@ def load_env(env_file):
 def safe_visivo():
     try:
         visivo(standalone_mode=False)
+        raise Exception
     except (ValidationError, LineValidationError) as e:
         Logger.instance().error(str(e))
         exit(1)
@@ -49,6 +50,9 @@ def safe_visivo():
             raise e
         Logger.instance().error("An unexpected error has occurred")
         Logger.instance().error(str(e))
+        Logger.instance().error(
+            "To print more error information add the 'STACKTRACE=true' environment variable."
+        )
         exit(1)
 
 

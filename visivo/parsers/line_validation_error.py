@@ -4,22 +4,18 @@ from pathlib import Path
 import yaml
 import re
 
+from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
-def find_multi_line_string_start(file_path, input_dict):
+
+def find_line_string_start(file_path, input_dict):
     with open(file_path, "r") as file:
         file_content = file.read()
 
     file_lines = re.sub(r"^[ \t-]+", "", file_content, flags=re.MULTILINE).split("\n")
-    input_lines = re.sub(
-        r"^[ \t-]+", "", yaml.dump(input_dict), flags=re.MULTILINE
-    ).split("\n")
-    if input_lines[-1] == "":
-        input_lines.pop()
-
-    input_lines_length = len(input_lines)
-    for ind in (i for i, e in enumerate(file_lines) if e == input_lines[0]):
-        if file_lines[ind : ind + input_lines_length] == input_lines:
-            return ind + 1
+    input_line = re.sub(r"^[\s-]+", "", yaml.dump(input_dict), flags=re.MULTILINE)
+    for line_number, file_line in enumerate(file_lines):
+        if input_line in file_line:
+            return line_number + 1
     return -1
 
 
@@ -30,18 +26,16 @@ class LineValidationError(Exception):
 
     def get_line_message(self, error):
         if "input" in error:
-            input_dict = None
-            if isinstance(error["input"], dict) and len(error["input"]) > 0:
-                input_dict = error["input"]
+            if isinstance(error["input"], YamlOrderedDict) and len(error["input"]) > 0:
+                return f"  File: {list(error['input']._key_locs.values())[0]}\n"
             if isinstance(error["input"], int) or isinstance(error["input"], str):
                 input_dict = {}
                 input_dict[error["loc"][-1]] = error["input"]
 
-            if input_dict:
                 for file in self.files:
-                    line = find_multi_line_string_start(file, input_dict)
+                    line = find_line_string_start(file, input_dict)
                     if line >= 0:
-                        return f"    File: {file}, line: {line}\n"
+                        return f"  File: {file}:{line}\n"
         return None
 
     def __str__(self):

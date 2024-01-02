@@ -4,6 +4,7 @@ from typing import List
 from pathlib import Path
 from pydantic import ValidationError
 from visivo.parsers.line_validation_error import LineValidationError
+from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 from visivo.utils import load_yaml_file
 from ..models.project import Project
 
@@ -15,6 +16,7 @@ class CoreParser:
     def __init__(self, project_file: Path, files: List[Path]):
         self.files = files
         self.project_file = project_file
+        setup_yaml_ordered_dict()
 
     def parse(self) -> Project:
         return self.__build_project()
@@ -27,7 +29,9 @@ class CoreParser:
         try:
             project = Project(**data)
         except ValidationError as validation_error:
-            raise LineValidationError(validation_error=validation_error, files=self.files)
+            raise LineValidationError(
+                validation_error=validation_error, files=self.files
+            )
         return project
 
     def __merged_project_data(self):

@@ -5,6 +5,7 @@ from tests.support.utils import temp_yml_file, temp_file, temp_folder
 from pathlib import Path
 from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FILE_NAME
 from visivo.parsers.line_validation_error import LineValidationError
+from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 
 
 def test_Core_Parser_with_empty_project():
@@ -104,7 +105,6 @@ def test_Core_Parser_value_error():
         traces: 
             - name: Trace Name
         """,
-        # traces: [{}]
         name=PROJECT_FILE_NAME,
     )
 
@@ -112,7 +112,7 @@ def test_Core_Parser_value_error():
     with pytest.raises(LineValidationError) as exc_info:
         core_parser.parse()
 
-    assert f"File: {project_file}, line: 2" in str(exc_info.value)
+    assert f"File: {project_file}:3" in str(exc_info.value)
 
 
 def test_Core_Parser_success():
