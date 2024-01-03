@@ -89,6 +89,5 @@ def test_Trace_column_root_validation_with_reference_extra_paren():
         },
         "model": {"sql": "select * from table"},
     }
-    breakpoint()
     trace = Trace(**data)
     assert trace.name == "development"

@@ -1,4 +1,5 @@
 import yaml
+import json
 from collections import OrderedDict
 
 
@@ -32,6 +33,9 @@ class YamlOrderedDict(OrderedDict):
             return self._value_locs[key]
         except (AttributeError, KeyError):
             return ""
+
+    def __str__(self):
+        return json.dumps(self)
 
 
 def setup_yaml_ordered_dict():
