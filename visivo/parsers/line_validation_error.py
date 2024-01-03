@@ -47,14 +47,10 @@ class LineValidationError(Exception):
             message = message + f"{'.'.join(map(lambda l: str(l), error['loc']))}\n"
             message = message + f"  {error['msg']}\n"
             line_message = self.get_line_message(error)
+            message = message + f"  The input used: ({error['input']})\n"
             if line_message:
                 file_found = True
-                message = (
-                    message + f"  The input used: ({error['input']}) was found: \n"
-                )
                 message = message + line_message
-            else:
-                message = message + f"  The input used: ({error['input']})\n"
 
         if file_found:
             return message
