@@ -1,13 +1,3 @@
 models:
   - name: second test table
     sql: "SELECT * FROM test_table"
-
-traces:
-  - model: ref(test table)
-    columns:
-      x_data: x
-    props:
-      type: indicator
-      value: column(x_data)[0]
-      delta:
-        reference: column(x_data)[1]
