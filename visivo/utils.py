@@ -106,7 +106,7 @@ def load_yaml_file(file):
         except yaml.YAMLError as exc:
             if hasattr(exc, "problem_mark"):
                 mark = exc.problem_mark
-                error_location = f"Invalid yaml in project\n  File: {str(file)}\n  Location: line {mark.line + 1}, column {mark.column + 1}\n  Issue: {exc.problem}"
+                error_location = f"Invalid yaml in project\n  Location: {str(file)}:{mark.line + 1}[{mark.column + 1}]\n  Issue: {exc.problem}"
                 raise click.ClickException(error_location)
             else:
                 raise click.ClickException(exc)

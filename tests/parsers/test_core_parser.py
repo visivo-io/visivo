@@ -95,7 +95,7 @@ def test_Core_Parser_invalid_yaml():
 
     assert (
         exc_info.value.message
-        == f"Invalid yaml in project\n  File: {project_file}\n  Location: line 4, column 9\n  Issue: could not find expected ':'"
+        == f"Invalid yaml in project\n  Location: {project_file}:4[9]\n  Issue: could not find expected ':'"
     )
 
 
@@ -112,7 +112,7 @@ def test_Core_Parser_value_error():
     with pytest.raises(LineValidationError) as exc_info:
         core_parser.parse()
 
-    assert f"File: {project_file}:3" in str(exc_info.value)
+    assert f"Location: {project_file}:3" in str(exc_info.value)
 
 
 def test_Core_Parser_success():

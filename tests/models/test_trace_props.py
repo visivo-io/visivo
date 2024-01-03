@@ -37,8 +37,6 @@ def test_invalid_trace_prop_mesh3d():
         trace = Trace(**data)
     message = str(e.value)
     errors = e._excinfo[1].errors()
-    print(errors)
-    print(message)
     assert e.type == ValidationError
     assert "2 validation errors" in message
     assert errors[0]["type"] == "string_type"

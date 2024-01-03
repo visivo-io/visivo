@@ -29,7 +29,7 @@ class LineValidationError(Exception):
     def get_line_message(self, error):
         if "input" in error:
             if isinstance(error["input"], YamlOrderedDict) and len(error["input"]) > 0:
-                return f"  File: {list(error['input']._key_locs.values())[0]}\n"
+                return f"  Location: {list(error['input']._key_locs.values())[0]}\n"
             if isinstance(error["input"], int) or isinstance(error["input"], str):
                 input_dict = {}
                 input_dict[error["loc"][-1]] = error["input"]
@@ -37,7 +37,7 @@ class LineValidationError(Exception):
                 for file in self.files:
                     line = find_line_string_start(file, input_dict)
                     if line >= 0:
-                        return f"  File: {file}:{line}\n"
+                        return f"  Location: {file}:{line}\n"
         return None
 
     def __str__(self):

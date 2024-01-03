@@ -240,7 +240,6 @@ class Trace(NamedModel, ParentModel):
         pattern = r"column\(([^\)]+)\)"
         for value in props.values():
             match = re.search(pattern, str(value))
-            print(str(value))
             if match:
                 value = match.group(1)
                 if value not in columnKeys:
