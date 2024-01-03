@@ -41,7 +41,6 @@ def load_env(env_file):
 def safe_visivo():
     try:
         visivo(standalone_mode=False)
-        raise Exception
     except (ValidationError, LineValidationError) as e:
         Logger.instance().error(str(e))
         exit(1)
