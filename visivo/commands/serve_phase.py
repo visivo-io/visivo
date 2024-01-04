@@ -80,7 +80,7 @@ def serve_phase(output_dir, working_dir, default_target):
             )
             Logger.instance().info("Files changed. Reloading . . .")
         except Exception as e:
-            Logger.instance().debug(e)
+            Logger.instance().error(e)
 
     server = Server(app.wsgi_app)
     server.watch(f"**/*.yml", cli_changed)
