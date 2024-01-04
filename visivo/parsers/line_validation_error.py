@@ -37,17 +37,20 @@ class LineValidationError(Exception):
                 for file in self.files:
                     line = find_line_string_start(file, input_dict)
                     if line >= 0:
-                        return f"  Location: {file}:{line}\n"
+                        return f"     Location: {file}:{line}\n\n"
         return None
 
     def __str__(self):
-        message = f"{self.validation_error.error_count()} validation errors in {self.validation_error.title}\n"
+        message = f"{self.validation_error.error_count()} validation errors in {self.validation_error.title}\n\n"
         file_found = False
-        for error in self.validation_error.errors():
-            message = message + f"{'.'.join(map(lambda l: str(l), error['loc']))}\n"
-            message = message + f"  {error['msg']}\n"
+        for i, error in enumerate(self.validation_error.errors(), start=1):
+            message = (
+                message
+                + f"  {i}. Object: {'.'.join(map(lambda l: str(l), error['loc']))}\n"
+            )
+            message = message + f"     Message: {error['msg']}\n"
             line_message = self.get_line_message(error)
-            message = message + f"  The input used: ({error['input']})\n"
+            message = message + f"     The input used: ({error['input']})\n"
             if line_message:
                 file_found = True
                 message = message + line_message
