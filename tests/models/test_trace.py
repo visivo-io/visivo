@@ -2,6 +2,7 @@ from visivo.models.trace import Trace
 from tests.factories.model_factories import TraceFactory
 from pydantic import ValidationError
 import pytest
+from visivo.parsers.yaml_ordered_dict import YamlOrderedDict, setup_yaml_ordered_dict
 
 
 def test_Trace_simple_data():
@@ -41,7 +42,7 @@ def test_Trace_get_trace_name():
     assert Trace.get_name(obj=TraceFactory()) == "trace"
 
 
-def test_Trace_get_trace_name():
+def test_Trace_column_root_validation_with_reference_missing():
     data = {
         "name": "development",
         "columns": {"x": "query"},
@@ -60,7 +61,7 @@ def test_Trace_get_trace_name():
     assert error["type"] == "value_error"
 
 
-def test_Trace_column_root_validation():
+def test_Trace_column_root_validation_with_reference():
     data = {
         "name": "development",
         "columns": {"x_data": "x"},
@@ -68,6 +69,23 @@ def test_Trace_column_root_validation():
             "type": "indicator",
             "value": "column(x_data)[0]",
             "delta": {"reference": "column(x_data)[1]"},
+        },
+        "model": {"sql": "select * from table"},
+    }
+    trace = Trace(**data)
+    assert trace.name == "development"
+
+
+def test_Trace_column_root_validation_with_reference_extra_paren():
+    reference = YamlOrderedDict()
+    reference["reference"] = "column(x_data)[1]"
+    data = {
+        "name": "development",
+        "columns": {"x_data": "x"},
+        "props": {
+            "type": "indicator",
+            "value": "column(x_data)[0]",
+            "delta": reference,
         },
         "model": {"sql": "select * from table"},
     }

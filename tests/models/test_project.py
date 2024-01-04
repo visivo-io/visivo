@@ -63,9 +63,9 @@ def test_Project_validate_project_trace_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'Value error, The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+        == f'The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
     )
-    assert error["type"] == "value_error"
+    assert error["type"] == "bad_reference"
 
     trace = TraceFactory(name="trace_name")
     data = {"name": "development", "traces": [trace], "dashboards": [dashboard]}
@@ -85,9 +85,9 @@ def test_Project_validate_chart_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'Value error, The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+        == f'The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
     )
-    assert error["type"] == "value_error"
+    assert error["type"] == "bad_reference"
 
     trace = TraceFactory(name="trace_name")
     data = {

@@ -7,6 +7,7 @@ from visivo.models.base.named_model import NamedModel
 import networkx as nx
 import networkx.algorithms.traversal.depth_first_search as dfs
 import matplotlib.pyplot as pyplot
+from pydantic_core import PydanticCustomError
 
 
 class ParentModel(ABC):
@@ -31,8 +32,10 @@ class ParentModel(ABC):
                 if len(dereferenced_items) == 1:
                     dereferenced_item = dereferenced_items[0]
                 else:
-                    raise ValueError(
-                        f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.'
+                    raise PydanticCustomError(
+                        "bad_reference",
+                        f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.',
+                        parent_item.model_dump(),
                     )
 
             dag.add_edge(parent_item, dereferenced_item)

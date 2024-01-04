@@ -1,8 +1,9 @@
 import click
 import os
 from dotenv import load_dotenv
-
+from pydantic import ValidationError
 from visivo.logging.logger import Logger, TypeEnum
+from visivo.parsers.line_validation_error import LineValidationError
 
 from .commands.deploy import deploy
 from .commands.serve import serve
@@ -40,11 +41,17 @@ def load_env(env_file):
 def safe_visivo():
     try:
         visivo(standalone_mode=False)
+    except (ValidationError, LineValidationError) as e:
+        Logger.instance().error(str(e))
+        exit(1)
     except Exception as e:
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
         Logger.instance().error("An unexpected error has occurred")
         Logger.instance().error(str(e))
+        Logger.instance().error(
+            "To print more error information add the 'STACKTRACE=true' environment variable."
+        )
         exit(1)
 
 

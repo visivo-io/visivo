@@ -1,3 +1,4 @@
+from visivo.logging.logger import Logger
 import click
 import requests
 import json

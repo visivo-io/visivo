@@ -1,5 +1,6 @@
 import re
-from pydantic import StringConstraints, model_validator, Field
+from typing import Any
+from pydantic import model_validator, Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 
@@ -56,7 +57,7 @@ from .trace_props import (
 from .trace_columns import TraceColumns
 from typing import Optional, List, Union
 from collections import Counter
-from .base.base_model import REF_REGEX
+from .base.base_model import REF_REGEX, generate_ref_field
 from .model import Model
 from typing_extensions import Annotated
 
@@ -169,6 +170,10 @@ class Trace(NamedModel, ParentModel):
     ```
     """
 
+    name: str = Field(
+        alias="name",
+        description="The unique name of the object across the entire project.",
+    )
     target_name: Optional[str] = Field(
         None,
         description="Enables setting a target that this trace will always point to. If this value is set, it overrides targets passed to the CLI or set in the default block.",
@@ -177,7 +182,7 @@ class Trace(NamedModel, ParentModel):
         True,
         description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
     )
-    model: Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Model] = Field(
+    model: generate_ref_field(Model) = Field(
         ...,
         description="The model or model ref that visivo should use to build the trace.",
     )
@@ -222,15 +227,18 @@ class Trace(NamedModel, ParentModel):
             tests.append(Test(name=name, type=type, kwargs=kwargs))
         return tests
 
-    @model_validator(mode="after")
-    def validate_column_refs(self):
-        columns, props = (self.columns, self.props)
+    @model_validator(mode="before")
+    @classmethod
+    def validate_column_refs(cls, data: Any):
+        if isinstance(data, str):
+            return data
+        columns, props = (data.get("columns"), data.get("props"))
         if columns is None:
-            return self
+            return data
 
-        columnKeys = list(columns.model_dump().keys())
-        pattern = r"column\((.+)\)"
-        for value in props.model_dump().values():
+        columnKeys = list(columns.keys())
+        pattern = r"column\(([^\)]+)\)"
+        for value in props.values():
             match = re.search(pattern, str(value))
             if match:
                 value = match.group(1)
@@ -239,4 +247,4 @@ class Trace(NamedModel, ParentModel):
                         f"referenced column name '{value}' is not in columns definition"
                     )
 
-        return self
+        return data

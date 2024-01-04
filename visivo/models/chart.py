@@ -1,8 +1,8 @@
-from typing import List, Union, Optional
-from pydantic import StringConstraints, Field
+from typing import List, Optional
+from pydantic import Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
-from .base.base_model import REF_REGEX
+from .base.base_model import generate_ref_field
 from .trace import Trace
 from .trace_props import Layout
 from typing_extensions import Annotated
@@ -33,10 +33,11 @@ class Chart(NamedModel, ParentModel):
     def child_items(self):
         return self.traces
 
-    traces: List[Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Trace]] = Field(
+    traces: List[generate_ref_field(Trace)] = Field(
         [],
         description="A list of trace either written in line in the chart called using the ref() function.",
     )
+
     layout: Optional[Layout] = Field(
         None,
         description="The layout attribute of the chart accepts any valid plotly layout configurations.",

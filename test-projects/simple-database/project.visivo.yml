@@ -140,7 +140,6 @@ traces:
             props.y: 1
   - name: 3d Line One
     model: ref(test table)
-    #cohort_on: "'Line 1'"
     order_by:
       - query(x asc)
     props:
@@ -159,7 +158,6 @@ traces:
             - props.y
   - name: 3d Line Two
     model: ref(test table)
-    #cohort_on: "'Line Two'"
     order_by:
       - query(x asc)
     filters:
@@ -239,13 +237,13 @@ dashboards:
               traces:
                 - "ref(Aggregated Line)"
               layout:
-                title: 
+                title:
                   text: "Aggregated Fibonacci"
                 yaxis:
-                  title: 
+                  title:
                     text: "output"
                 xaxis:
-                  title: 
+                  title:
                     text: "More if x>3 Less if x<=3"
       - height: medium
         items:
@@ -256,7 +254,7 @@ dashboards:
                 - ref(3d Line One)
                 - ref(3d Line Two)
               layout:
-                title: 
+                title:
                   text: "The Greatest 3d Lines"
                 legend:
                   orientation: "h"
@@ -270,13 +268,13 @@ dashboards:
               traces:
                 - "ref(Simple Line)"
               layout:
-                title: 
+                title:
                   text: "A great fibonacci series"
                 yaxis:
-                  title: 
+                  title:
                     text: "Output"
                 xaxis:
-                  title: 
+                  title:
                     text: "Input"
 
           - width: 3
@@ -303,13 +301,13 @@ dashboards:
                           props.y: 1
                 - "ref(Simple Line)"
               layout:
-                title: 
+                title:
                   text: "A not great fibonacci series"
                 yaxis:
-                  title: 
+                  title:
                     text: "Output"
                 xaxis:
-                  title: 
+                  title:
                     text: "Input"
       - height: medium
         items:
@@ -324,5 +322,5 @@ dashboards:
               traces:
                 - "ref(funnel trace)"
               layout:
-                title: 
+                title:
                   text: "Funnel Chart"

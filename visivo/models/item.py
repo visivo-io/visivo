@@ -1,6 +1,6 @@
-from .base.base_model import BaseModel, REF_REGEX
+from .base.base_model import BaseModel, REF_REGEX, generate_ref_field
 from .base.parent_model import ParentModel
-from pydantic import StringConstraints, Field
+from pydantic import Field
 from typing import Optional, Union
 from .chart import Chart
 from .table import Table
@@ -39,26 +39,27 @@ class Item(BaseModel, ParentModel):
     markdown: Optional[str] = Field(
         None, description="Markdown text to include in the dashboard."
     )
-    chart: Optional[
-        Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Chart]
-    ] = Field(None, description="A chart object defined inline or a ref() to a chart.")
-    table: Optional[
-        Union[Annotated[str, StringConstraints(pattern=REF_REGEX)], Table]
-    ] = Field(None, description="A Table object defined inline or a ref() to a table")
+    chart: Optional[generate_ref_field(Chart)] = Field(
+        None, description="A chart object defined inline or a ref() to a chart."
+    )
+    table: Optional[generate_ref_field(Table)] = Field(
+        None, description="A Table object defined inline or a ref() to a table"
+    )
 
-    @model_validator(mode="after")
-    def check_only_one(self):
+    @model_validator(mode="before")
+    @classmethod
+    def validate_column_refs(cls, data: any):
         markdown, chart, table = (
-            self.markdown,
-            self.chart,
-            self.table,
+            data.get("markdown"),
+            data.get("chart"),
+            data.get("table"),
         )
-        # Fix and test this method
-        if markdown is not None and chart is not None:
+        items_set = [i for i in [markdown, chart, table] if i is not None]
+        if len(items_set) > 1:
             raise ValueError(
                 'only one of the "markdown", "chart", or "table" properties should be set on an item'
             )
-        return self
+        return data
 
     def child_items(self):
         return [self.__get_child()]

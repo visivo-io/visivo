@@ -5,15 +5,13 @@ from pathlib import Path
 import re
 import jinja2
 import click
+from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
 
 def yml_to_dict(relative_path):
     with open(relative_path, "r") as file:
-        # try:
         yaml_dict = yaml.safe_load(Path(relative_path).read_text())
         return dict(yaml_dict)
-    # except yaml.YAMLError as exc:
-    #     print(exc)
 
 
 def list_all_ymls_in_dir(path):
@@ -77,19 +75,38 @@ def extract_value_from_function(function_text, function_name):
     value = match.group(1)
     return value.strip()
 
+
+def set_location_recursive_items(dictionary, file):
+    if isinstance(dictionary, YamlOrderedDict):
+        for key, value in dictionary._key_locs.items():
+            dictionary._key_locs[key] = value.replace("<unicode string>", file)
+
+        for key, value in dictionary._value_locs.items():
+            dictionary._value_locs[key] = value.replace("<unicode string>", file)
+
+        for key, value in dictionary.items():
+            if isinstance(value, dict):
+                set_location_recursive_items(value, file)
+            if isinstance(value, list):
+                for item in value:
+                    set_location_recursive_items(item, file)
+
+
 def load_yaml_file(file):
     def env_var(key):
         return os.getenv(key, "NOT-SET")
 
     with open(file, "r") as stream:
-            template_string = stream.read()
-            template = jinja2.Template(template_string)
-            try:
-                return yaml.safe_load(template.render({"env_var": env_var}))
-            except yaml.YAMLError as exc:
-                if hasattr(exc, "problem_mark"):
-                    mark = exc.problem_mark
-                    error_location = f"Invalid yaml in project\n  File: {str(file)}\n  Location: line {mark.line + 1}, column {mark.column + 1}\n  Issue: {exc.problem}"
-                    raise click.ClickException(error_location)
-                else:
-                    raise click.ClickException(exc)
+        template_string = stream.read()
+        template = jinja2.Template(template_string)
+        try:
+            loaded = yaml.safe_load(template.render({"env_var": env_var}))
+            set_location_recursive_items(loaded, str(file))
+            return loaded
+        except yaml.YAMLError as exc:
+            if hasattr(exc, "problem_mark"):
+                mark = exc.problem_mark
+                error_location = f"Invalid yaml in project\n  Location: {str(file)}:{mark.line + 1}[{mark.column + 1}]\n  Issue: {exc.problem}"
+                raise click.ClickException(error_location)
+            else:
+                raise click.ClickException(exc)
