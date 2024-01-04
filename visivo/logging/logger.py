@@ -1,7 +1,8 @@
 import os
+import sys
+import time
 import click
 from enum import Enum
-import time
 from halo import Halo
 from visivo.logging.singleton import Singleton
 
@@ -18,7 +19,11 @@ class Logger:
 
     def set_type(self, type: TypeEnum):
         self.type = type
-        if type == TypeEnum.console or os.environ.get("CI") == "true":
+        if (
+            type == TypeEnum.console
+            or os.environ.get("CI") == "true"
+            or not sys.stdout.isatty()
+        ):
             self.echo = click.echo
             self.spinner = None
         else:
