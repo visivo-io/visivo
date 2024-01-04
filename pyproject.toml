@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visivo"
-version = "0.2.0"
+version = "1.0.5"
 description = ""
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
