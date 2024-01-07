@@ -66,11 +66,12 @@ class Project(NamedModel, ParentModel):
     def table_objs(self) -> List[Chart]:
         return list(filter(Table.is_obj, self.__all_tables()))
 
-    def filter_traces(self, pattern) -> List[Trace]:
-        def name_match(trace):
-            return re.search(pattern, trace.name)
-
-        return list(filter(name_match, self.trace_objs))
+    def filter_traces(self, name_filter) -> List[Trace]:
+        if name_filter:
+            included_nodes = self.nodes_including_named_node_in_graph(name=name_filter)
+        else:
+            included_nodes = self.descendants()
+        return set(self.descendants_of_type(Trace)).intersection(included_nodes)
 
     def find_target(self, name: str) -> Target:
         return next((t for t in self.targets if t.name == name), None)

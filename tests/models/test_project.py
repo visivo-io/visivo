@@ -15,32 +15,12 @@ from ..factories.model_factories import (
 from pydantic import ValidationError
 import pytest
 import networkx
-import click
 
 
 def test_Project_simple_data():
     data = {"name": "development"}
     project = Project(**data)
     assert project.name == "development"
-
-
-def test_Project_filter_trace():
-    project = Project(traces=[])
-    assert project.filter_traces(pattern="trace") == []
-
-    cat_trace = TraceFactory(name="cat")
-    cat_trace.model.name = "cat_model"
-    bobcat_trace = TraceFactory(name="bobcat")
-    bobcat_trace.model.name = "bobcat_trace"
-    project = Project(traces=[cat_trace, bobcat_trace])
-    assert project.filter_traces(pattern="cat") == [cat_trace, bobcat_trace]
-
-    cat_trace = TraceFactory(name="cat")
-    cat_trace.model.name = "cat_model"
-    bobcat_trace = TraceFactory(name="bobcat")
-    bobcat_trace.model.name = "bobcat_trace"
-    project = Project(traces=[cat_trace, bobcat_trace])
-    assert project.filter_traces(pattern="^cat") == [cat_trace]
 
 
 def test_Project_find_target():
@@ -271,3 +251,14 @@ def test_invalid_ref_Project_dag():
         project.dashboards[0].descendants()
 
     assert 'The reference "ref(table_name)" on item "Item -' in str(exc_info.value)
+
+def test_sub_dag_including_dashboard_name_Project_dag():
+    project = ProjectFactory()
+    dashboard = project.dashboards[0]
+    additional_dashboard = DashboardFactory(name="Other Dashboard", rows=[])
+    project.dashboards.append(additional_dashboard)
+    
+    included_nodes = project.nodes_including_named_node_in_graph(name=dashboard.name)
+
+    assert dashboard in included_nodes
+    assert additional_dashboard not in included_nodes

@@ -8,20 +8,19 @@ def run_phase(
     default_target: str,
     output_dir: str,
     working_dir: str,
-    trace_filter: str = ".*",
+    name_filter: str = None,
     run_only_changed: bool = False,
 ):
     project = compile_phase(
-        default_target, working_dir=working_dir, output_dir=output_dir
+        default_target, working_dir=working_dir, output_dir=output_dir, name_filter=name_filter
     )
-
-    traces = Trace.filtered(trace_filter, project.descendants_of_type(Trace))
 
     def changed(trace):
         if not run_only_changed:
             return True
         return trace.changed
 
+    traces = project.filter_traces(name_filter=name_filter)
     traces = list(filter(changed, traces))
 
     Logger.instance().debug(f"Running project with {len(traces)} traces(s)")

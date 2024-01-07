@@ -12,14 +12,19 @@ from glob import glob
 VIEWER_PATH = pkg_resources.resource_filename("visivo", "viewer/")
 
 
-def get_project_json(output_dir):
+def get_project_json(output_dir, name_filter=None):
     project_json = ""
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
+    
+    if name_filter:
+        if project_json.dashboards[0]:
+            breakpoint()
+
     return project_json
 
 
-def app_phase(output_dir, working_dir, default_target):
+def app_phase(output_dir, working_dir, default_target, name_filter):
     app = Flask(
         __name__,
         static_folder=output_dir,
@@ -28,12 +33,12 @@ def app_phase(output_dir, working_dir, default_target):
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
     run_phase(
-        output_dir=output_dir, working_dir=working_dir, default_target=default_target
+        output_dir=output_dir, working_dir=working_dir, default_target=default_target, name_filter=name_filter
     )
 
     @app.route("/api/projects/")
     def projects():
-        project_json = get_project_json(output_dir)
+        project_json = get_project_json(output_dir, name_filter)
         return {"project_json": project_json}
 
     @app.route("/api/traces/")
@@ -63,11 +68,12 @@ def app_phase(output_dir, working_dir, default_target):
     return app
 
 
-def serve_phase(output_dir, working_dir, default_target):
+def serve_phase(output_dir, working_dir, default_target, name_filter):
     app = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_target=default_target,
+        name_filter=name_filter,
     )
 
     def cli_changed():
@@ -76,6 +82,7 @@ def serve_phase(output_dir, working_dir, default_target):
                 output_dir=output_dir,
                 working_dir=working_dir,
                 default_target=default_target,
+                name_filter=name_filter,
                 run_only_changed=True,
             )
             Logger.instance().info("Files changed. Reloading . . .")
