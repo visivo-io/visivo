@@ -1,6 +1,5 @@
 from visivo.logging.logger import Logger
 from visivo.query.runner import Runner
-from visivo.models.trace import Trace
 from visivo.commands.compile_phase import compile_phase
 
 

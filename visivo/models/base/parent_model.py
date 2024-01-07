@@ -86,7 +86,7 @@ class ParentModel(ABC):
         if len(item) == 1:
             item = item[0]
         else:
-            raise click.Exception(f"No item found with name: '{name}'.")
+            raise click.ClickException(f"No item found with name: '{name}'.")
 
         decendants = nx.descendants(dag, item)
         ancestors = nx.ancestors(dag, item)
