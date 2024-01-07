@@ -30,3 +30,4 @@ def run_phase(
         output_dir=output_dir,
     )
     runner.run()
+    return runner

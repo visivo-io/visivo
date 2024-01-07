@@ -10,8 +10,7 @@ from visivo.query.runner import Runner
 from unittest.mock import ANY
 
 
-@patch.object(Runner, '__new__')
-def test_filtered_dashboard(mock_method):
+def test_filtered_dashboard():
     output_dir = temp_folder()
     project = ProjectFactory()
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
@@ -25,11 +24,11 @@ def test_filtered_dashboard(mock_method):
     tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
-    run_phase(
+    runner = run_phase(
         default_target="target",
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter="dashboard",
     )
-    mock_method.assert_called_with(Runner, **{'traces': [trace], "project":ANY, "default_target":ANY, "output_dir":ANY})
- 
+    assert runner.traces == [trace]
+    
