@@ -18,8 +18,11 @@ def get_project_json(output_dir, name_filter=None):
         project_json = json.load(f)
     
     if name_filter:
-        if project_json.dashboards[0]:
-            breakpoint()
+        dashboards = [d for d in project_json['dashboards'] if d["name"] == name_filter]
+        if len(dashboards) == 1:
+            project_json["dashboards"] = dashboards
+        else:
+            raise click.ClickException(f"Currently the serve command name filtering only supports filtering at the dashbaord level.  No dashboard with {name_filter} found.")
 
     return project_json
 
