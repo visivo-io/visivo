@@ -24,6 +24,7 @@ def test_serve():
         working_dir=working_dir,
         output_dir=output_dir,
         default_target="target",
+        threads=2,
     )
 
     client = app.test_client()
