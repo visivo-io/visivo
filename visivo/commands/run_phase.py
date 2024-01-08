@@ -11,6 +11,7 @@ def run_phase(
     trace_filter: str = ".*",
     run_only_changed: bool = False,
     threads: int = 8,
+    soft_failure=False,
 ):
     project = compile_phase(
         default_target, working_dir=working_dir, output_dir=output_dir
@@ -34,5 +35,6 @@ def run_phase(
         default_target=default_target,
         output_dir=output_dir,
         threads=threads,
+        soft_failure=soft_failure,
     )
     runner.run()

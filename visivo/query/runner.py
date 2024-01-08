@@ -37,12 +37,14 @@ class Runner:
         output_dir: str,
         threads: int = 8,
         default_target: str = None,
+        soft_failure=False,
     ):
         self.traces = traces
         self.default_target = default_target
         self.project = project
         self.output_dir = output_dir
         self.threads = threads
+        self.soft_failure = soft_failure
         self.errors = []
 
     def run(self):
@@ -65,7 +67,11 @@ class Runner:
         for thread in threads:
             thread.join()
 
-        if len(self.errors) > 0:
+        if len(self.errors) > 0 and self.soft_failure:
+            Logger.instance().error(
+                f"\nRefresh failed in {round(time()-start_time, 2)}s with {len(self.errors)} query error(s)."
+            )
+        elif len(self.errors) > 0 and not self.soft_failure:
             Logger.instance().error(
                 f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.errors)} query error(s)"
             )
