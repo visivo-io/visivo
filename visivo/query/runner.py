@@ -26,7 +26,7 @@ def format_message(details, status, full_path):
     dots = "." * num_dots
     current_directory = os.getcwd()
     relative_path = os.path.relpath(full_path, current_directory)
-    return f"{details}{dots}[{status}]\n\tquery: {relative_path}"
+    return f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m"
 
 
 class Runner:
@@ -43,8 +43,11 @@ class Runner:
         self.project = project
         self.output_dir = output_dir
         self.threads = threads
+        self.errors = []
 
     def run(self):
+        start_time = time()
+        self.errors = []
         queue = Queue()
         for trace in self.traces:
             queue.put(trace)
@@ -53,6 +56,7 @@ class Runner:
         concurrency = min(len(self.traces), self.threads)
         for i in range(concurrency):
             thread = Thread(target=self._run_trace_query, args=(queue,))
+            thread.daemon = True
             thread.start()
             threads.append(thread)
 
@@ -60,6 +64,14 @@ class Runner:
 
         for thread in threads:
             thread.join()
+
+        if len(self.errors) > 0:
+            Logger.instance().error(
+                f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.errors)} query error(s)"
+            )
+            exit(1)
+        else:
+            Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
     def _run_trace_query(self, queue: Queue):
         while not queue.empty():
@@ -89,11 +101,18 @@ class Runner:
                         status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
                         full_path=trace_query_file,
                     )
+                    self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
                     Logger.instance().success(success_message)
                 except Exception as e:
-                    Logger.instance().error(str(e))
-                self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
-                queue.task_done()
+                    failure_message = format_message(
+                        details=f"Failed query for trace \033[4m{trace.name}\033[0m",
+                        status=f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",
+                        full_path=trace_query_file,
+                    )
+                    Logger.instance().error(str(failure_message))
+                    self.errors.append(failure_message)
+                finally:
+                    queue.task_done()
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
