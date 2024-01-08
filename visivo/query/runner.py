@@ -35,7 +35,7 @@ class Runner:
         traces: List[Trace],
         project: Project,
         output_dir: str,
-        threads: int,
+        threads: int = 8,
         default_target: str = None,
     ):
         self.traces = traces
