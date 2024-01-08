@@ -26,4 +26,5 @@ def test_get_project_json():
     working_dir = os.path.dirname(tmp)
 
     project_json = get_project_json(output_dir=working_dir, name_filter="dashboard")
+    assert len(project_json["dashboards"]) == 1
  
