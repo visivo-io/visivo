@@ -99,3 +99,13 @@ def port(function):
         default=8000,
     )(function)
     return function
+
+
+def threads(function):
+    click.option(
+        "-th",
+        "--threads",
+        help="The max number of threads to use when running trace queries",
+        default=8,
+    )(function)
+    return function

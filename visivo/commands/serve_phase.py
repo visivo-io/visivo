@@ -19,7 +19,7 @@ def get_project_json(output_dir):
     return project_json
 
 
-def app_phase(output_dir, working_dir, default_target):
+def app_phase(output_dir, working_dir, default_target, threads):
     app = Flask(
         __name__,
         static_folder=output_dir,
@@ -28,7 +28,10 @@ def app_phase(output_dir, working_dir, default_target):
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
     run_phase(
-        output_dir=output_dir, working_dir=working_dir, default_target=default_target
+        output_dir=output_dir,
+        working_dir=working_dir,
+        default_target=default_target,
+        threads=threads,
     )
 
     @app.route("/api/projects/")
@@ -63,11 +66,12 @@ def app_phase(output_dir, working_dir, default_target):
     return app
 
 
-def serve_phase(output_dir, working_dir, default_target):
+def serve_phase(output_dir, working_dir, default_target, threads):
     app = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_target=default_target,
+        threads=threads,
     )
 
     def cli_changed():
@@ -77,6 +81,8 @@ def serve_phase(output_dir, working_dir, default_target):
                 working_dir=working_dir,
                 default_target=default_target,
                 run_only_changed=True,
+                threads=threads,
+                soft_failure=True,
             )
             Logger.instance().info("Files changed. Reloading . . .")
         except Exception as e:
