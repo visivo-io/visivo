@@ -4,6 +4,7 @@ from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.models.chart import Chart
 from ..factories.model_factories import (
+    ItemFactory,
     TraceFactory,
     TargetFactory,
     ChartFactory,
@@ -212,6 +213,16 @@ def test_ref_trace_Project_dag():
     assert len(project.descendants()) == 8
     assert project.descendants_of_type(type=Trace) == [project.traces[0]]
 
+
+def test_multiple_ref_chart_Project_dag():
+    project = ProjectFactory(chart_ref=True)
+    project.dashboards[0].rows[0].items.append(ItemFactory(chart_ref=True))
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 9
+    assert project.descendants_of_type(type=Chart) == [project.charts[0]]
+    
 
 def test_ref_chart_Project_dag():
     project = ProjectFactory(chart_ref=True)
