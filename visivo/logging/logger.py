@@ -29,7 +29,6 @@ class Logger:
         else:
             self.spinner = Halo(text="Loading", spinner="dots")
             self.spinner.start()
-            time.sleep(0.1)  # do we still need this?
             self.echo = None
 
     def debug(self, message: str):
