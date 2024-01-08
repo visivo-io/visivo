@@ -2,25 +2,31 @@ from typing import List, Optional
 from sqlalchemy import text
 import warnings
 from threading import Thread
+from queue import Queue
+import os
 
 from pandas import read_json
 from visivo.models.project import Project
 from visivo.models.trace import Trace
 from visivo.commands.utils import find_or_create_target
 from visivo.logging.logger import Logger
-from time import time
+from time import time, sleep
 import textwrap
 
 warnings.filterwarnings("ignore")
 
+MAX_CONCURRENCY = 2
 
-def format_message(details, status):
+
+def format_message(details, status, full_path):
     total_width = 90
 
     details = textwrap.shorten(details, width=80, placeholder="(trucated)") + " "
-    num_dots = total_width - len(details) - len(status)
+    num_dots = total_width - len(details)
     dots = "." * num_dots
-    return f"{details}{dots}[{status}]"
+    current_directory = os.getcwd()
+    relative_path = os.path.relpath(full_path, current_directory)
+    return f"{details}{dots}[{status}]\n\tquery: {relative_path}"
 
 
 class Runner:
@@ -29,53 +35,65 @@ class Runner:
         traces: List[Trace],
         project: Project,
         output_dir: str,
+        threads: int,
         default_target: str = None,
     ):
         self.traces = traces
         self.default_target = default_target
         self.project = project
         self.output_dir = output_dir
+        self.threads = threads
 
     def run(self):
-        threads = []
+        queue = Queue()
         for trace in self.traces:
-            thread = Thread(target=self._run_trace_query, args=(trace,))
+            queue.put(trace)
+
+        threads = []
+        concurrency = min(len(self.traces), self.threads)
+        for i in range(concurrency):
+            thread = Thread(target=self._run_trace_query, args=(queue,))
+            thread.start()
             threads.append(thread)
 
-        for thread in threads:
-            thread.start()
+        queue.join()
 
         for thread in threads:
             thread.join()
 
-    def _run_trace_query(self, trace: Trace):
-        target_or_name = trace.target_name
-        if not target_or_name:
-            target_or_name = self.default_target
+    def _run_trace_query(self, queue: Queue):
+        while not queue.empty():
+            trace = queue.get()
+            target_or_name = trace.target_name
+            if not target_or_name:
+                target_or_name = self.default_target
 
-        target = find_or_create_target(
-            project=self.project, target_or_name=target_or_name
-        )
-        trace_directory = f"{self.output_dir}/{trace.name}"
-        with open(f"{trace_directory}/query.sql", "r") as file:
-            query_string = file.read()
-            try:
-                logger = Logger.instance()
-                start_message = format_message(
-                    details=f"Started query run for trace {trace.name}",
-                    status="RUNNING",
-                )
-                logger.debug(start_message)
-                start_time = time()
-                data_frame = target.read_sql(query_string)
-                success_message = format_message(
-                    details=f"Updated data for trace {trace.name}",
-                    status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
-                )
-                logger.success(success_message)
-            except Exception as e:
-                logger.error(str(e))
-            self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
+            target = find_or_create_target(
+                project=self.project, target_or_name=target_or_name
+            )
+            trace_directory = f"{self.output_dir}/{trace.name}"
+            trace_query_file = f"{trace_directory}/query.sql"
+            with open(trace_query_file, "r") as file:
+                query_string = file.read()
+                try:
+                    start_message = format_message(
+                        details=f"Running trace \033[4m{trace.name}\033[0m",
+                        status="RUNNING",
+                        full_path=trace_query_file,
+                    )
+                    Logger.instance().info(start_message)
+                    start_time = time()
+                    data_frame = target.read_sql(query_string)
+                    success_message = format_message(
+                        details=f"Updated data for trace \033[4m{trace.name}\033[0m",
+                        status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
+                        full_path=trace_query_file,
+                    )
+                    Logger.instance().success(success_message)
+                except Exception as e:
+                    Logger.instance().error(str(e))
+                self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
+                queue.task_done()
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):

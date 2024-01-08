@@ -10,6 +10,7 @@ def run_phase(
     working_dir: str,
     trace_filter: str = ".*",
     run_only_changed: bool = False,
+    threads: int = 8,
 ):
     project = compile_phase(
         default_target, working_dir=working_dir, output_dir=output_dir
@@ -24,11 +25,14 @@ def run_phase(
 
     traces = list(filter(changed, traces))
 
-    Logger.instance().debug(f"Running project with {len(traces)} traces(s)")
+    Logger.instance().info(
+        f"Running project with {len(traces)} traces(s) across {threads} threads.\n"
+    )
     runner = Runner(
         traces=traces,
         project=project,
         default_target=default_target,
         output_dir=output_dir,
+        threads=threads,
     )
     runner.run()
