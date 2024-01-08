@@ -63,7 +63,7 @@ jobs:
         run: poetry install
       
       - name: Install CLI Visivo Package
-        run: poetry build && pip install dist/visivo-0.2.0-py3-none-any.whl 
+        run: poetry build && pip install dist/visivo-1.0.5-py3-none-any.whl 
       
       - name: Install Dependencies
         run: cd test-projects/ror && bundle install && cd ../..
@@ -88,7 +88,7 @@ jobs:
         run: poetry install
       
       - name: Install CLI Visivo Package
-        run: poetry build && pip install dist/visivo-0.2.0-py3-none-any.whl
+        run: poetry build && pip install dist/visivo-1.0.5-py3-none-any.whl
       
       - name: Test App
         run: |
@@ -141,7 +141,7 @@ jobs:
         run: poetry install
       
       - name: Install CLI Visivo Package
-        run: poetry build && pip install dist/visivo-0.2.0-py3-none-any.whl
+        run: poetry build && pip install dist/visivo-1.0.5-py3-none-any.whl
 
       - name: Test Simple Project Run
         run: |
@@ -165,7 +165,7 @@ jobs:
         run: poetry install
       
       - name: Install CLI Visivo Package
-        run: poetry build && pip install dist/visivo-0.2.0-py3-none-any.whl
+        run: poetry build && pip install dist/visivo-1.0.5-py3-none-any.whl
       
       - name: Test App
         run: |
