@@ -9,7 +9,7 @@ from .options import name_filter, output_dir, working_dir, target, port, threads
 @output_dir
 @name_filter
 @port
-@thrkjeads
+@threads
 def serve(output_dir, working_dir, target, port, name_filter, threads):
     """
     Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.
