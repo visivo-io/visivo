@@ -24,7 +24,15 @@ def output_dir(function):
     )(function)
     return function
 
-
+def name_filter(function):
+    click.option(
+        "-nf",
+        "--name-filter",
+        help="Run the command to only include the dag that includes the node with the given name",
+        default=None,
+    )(function)
+    return function
+    
 def target(function):
     click.option(
         "-t",
@@ -80,13 +88,6 @@ def host(function):
         "--host",
         help="Host to deploy to",
         default=f"https://app.visivo.io",
-    )(function)
-    return function
-
-
-def trace_filter(function):
-    click.option(
-        "-tf", "--trace-filter", help="Run traces that match this filter", default=".*"
     )(function)
     return function
 

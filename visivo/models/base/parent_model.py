@@ -15,36 +15,38 @@ class ParentModel(ABC):
     def child_items(self):
         return []
 
-    def dag(self):
+    def dag(self, node_permit_list=None):
         dag = nx.DiGraph()
         dag.add_node(self)
-        self.traverse_fields(items=self.child_items(), parent_item=self, dag=dag)
+        self.traverse_fields(items=self.child_items(), parent_item=self, dag=dag, node_permit_list=node_permit_list)
         return dag
 
-    def traverse_fields(self, items: List, parent_item, dag):
+    def traverse_fields(self, items: List, parent_item, dag, node_permit_list):
         for item in items:
-            dereferenced_item = item
-            if BaseModel.is_ref(item):
-                name = NamedModel.get_name(obj=item)
-                dereferenced_items = ParentModel.all_descendants_with_name(
-                    name=name, dag=dag
-                )
-                if len(dereferenced_items) == 1:
-                    dereferenced_item = dereferenced_items[0]
-                else:
-                    raise PydanticCustomError(
-                        "bad_reference",
-                        f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.',
-                        parent_item.model_dump(),
+            if node_permit_list is None or item in node_permit_list: 
+                dereferenced_item = item
+                if BaseModel.is_ref(item):
+                    name = NamedModel.get_name(obj=item)
+                    dereferenced_items = ParentModel.all_descendants_with_name(
+                        name=name, dag=dag
                     )
+                    if len(dereferenced_items) == 1:
+                        dereferenced_item = dereferenced_items[0]
+                    else:
+                        raise PydanticCustomError(
+                            "bad_reference",
+                            f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.',
+                            parent_item.model_dump(),
+                        )
 
-            dag.add_edge(parent_item, dereferenced_item)
-            if isinstance(dereferenced_item, ParentModel):
-                self.traverse_fields(
-                    items=dereferenced_item.child_items(),
-                    parent_item=dereferenced_item,
-                    dag=dag,
-                )
+                dag.add_edge(parent_item, dereferenced_item)
+                if isinstance(dereferenced_item, ParentModel):
+                    self.traverse_fields(
+                        items=dereferenced_item.child_items(),
+                        parent_item=dereferenced_item,
+                        dag=dag,
+                        node_permit_list=node_permit_list
+                    )
 
     @staticmethod
     def all_descendants(dag, from_node=None):
@@ -76,6 +78,25 @@ class ParentModel(ABC):
 
     def descendants_with_name(self, name: str):
         ParentModel.all_descendants_with_name(name=name, dag=self.dag())
+
+    @staticmethod
+    def all_nodes_including_named_node_in_graph(name: str, dag):
+        item = ParentModel.all_descendants_with_name(name=name, dag=dag)
+
+        if len(item) == 1:
+            item = item[0]
+        else:
+            raise click.ClickException(f"No item found with name: '{name}'.")
+
+        decendants = nx.descendants(dag, item)
+        ancestors = nx.ancestors(dag, item)
+        items = decendants.union(ancestors)
+        items.add(item)
+        return items
+
+
+    def nodes_including_named_node_in_graph(self, name):
+        return ParentModel.all_nodes_including_named_node_in_graph(name=name, dag=self.dag())
 
     @staticmethod
     def filtered(pattern, objects) -> List:

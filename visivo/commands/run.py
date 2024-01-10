@@ -3,18 +3,18 @@ from visivo.commands.options import (
     output_dir,
     working_dir,
     target,
-    trace_filter,
+    name_filter,
     threads,
 )
 
 
 @click.command()
-@trace_filter
 @target
 @working_dir
 @output_dir
+@name_filter
 @threads
-def run(output_dir, working_dir, target, trace_filter, threads):
+def run(output_dir, working_dir, target, name_filter, threads):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory.
     """
@@ -29,7 +29,7 @@ def run(output_dir, working_dir, target, trace_filter, threads):
         default_target=target,
         output_dir=output_dir,
         working_dir=working_dir,
-        trace_filter=trace_filter,
+        name_filter=name_filter,
         threads=threads,
     )
     Logger.instance().success("Done")

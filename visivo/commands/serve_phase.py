@@ -12,14 +12,22 @@ from glob import glob
 VIEWER_PATH = pkg_resources.resource_filename("visivo", "viewer/")
 
 
-def get_project_json(output_dir):
+def get_project_json(output_dir, name_filter=None):
     project_json = ""
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
+    
+    if name_filter:
+        dashboards = [d for d in project_json['dashboards'] if d["name"] == name_filter]
+        if len(dashboards) == 1:
+            project_json["dashboards"] = dashboards
+        else:
+            raise click.ClickException(f"Currently the serve command name filtering only supports filtering at the dashbaord level.  No dashboard with {name_filter} found.")
+
     return project_json
 
 
-def app_phase(output_dir, working_dir, default_target, threads):
+def app_phase(output_dir, working_dir, default_target, name_filter, threads):
     app = Flask(
         __name__,
         static_folder=output_dir,
@@ -31,12 +39,13 @@ def app_phase(output_dir, working_dir, default_target, threads):
         output_dir=output_dir,
         working_dir=working_dir,
         default_target=default_target,
+        name_filter=name_filter,
         threads=threads,
     )
 
     @app.route("/api/projects/")
     def projects():
-        project_json = get_project_json(output_dir)
+        project_json = get_project_json(output_dir, name_filter)
         return {"project_json": project_json}
 
     @app.route("/api/traces/")
@@ -66,11 +75,13 @@ def app_phase(output_dir, working_dir, default_target, threads):
     return app
 
 
-def serve_phase(output_dir, working_dir, default_target, threads):
+
+def serve_phase(output_dir, working_dir, default_target, name_filter, threads):
     app = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_target=default_target,
+        name_filter=name_filter,
         threads=threads,
     )
 
@@ -80,6 +91,7 @@ def serve_phase(output_dir, working_dir, default_target, threads):
                 output_dir=output_dir,
                 working_dir=working_dir,
                 default_target=default_target,
+                name_filter=name_filter,
                 run_only_changed=True,
                 threads=threads,
                 soft_failure=True,

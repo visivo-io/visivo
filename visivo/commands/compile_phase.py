@@ -14,7 +14,7 @@ from visivo.commands.utils import find_or_create_target
 from visivo.logging.logger import Logger
 
 
-def compile_phase(default_target: str, working_dir: str, output_dir: str):
+def compile_phase(default_target: str, working_dir: str, output_dir: str, name_filter: str = None):
     Logger.instance().debug("Compiling project")
     discover = Discover(working_directory=working_dir)
     parser = ParserFactory().build(
@@ -39,7 +39,7 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str):
         fp.write(serializer.dereference().model_dump_json(exclude_none=True))
 
     dag = project.dag()
-    for trace in ParentModel.all_descendants_of_type(type=Trace, dag=dag):
+    for trace in project.filter_traces(name_filter=name_filter):
         model = ParentModel.all_descendants_of_type(
             type=Model, dag=dag, from_node=trace
         )[0]
