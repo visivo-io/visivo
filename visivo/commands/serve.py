@@ -1,6 +1,6 @@
 import click
 
-from .options import name_filter, output_dir, working_dir, target, port
+from .options import name_filter, output_dir, working_dir, target, port, threads
 
 
 @click.command()
@@ -9,7 +9,8 @@ from .options import name_filter, output_dir, working_dir, target, port
 @output_dir
 @name_filter
 @port
-def serve(output_dir, working_dir, target, port, name_filter):
+@theads
+def serve(output_dir, working_dir, target, port, name_filter, threads):
     """
     Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.
     """
@@ -21,6 +22,7 @@ def serve(output_dir, working_dir, target, port, name_filter):
         working_dir=working_dir,
         default_target=target,
         name_filter=name_filter,
+        threads=threads,
     )
     Logger.instance().debug(f"Serving project at http://localhost:{port}")
     server.serve(host="0.0.0.0", port=port)
