@@ -18,7 +18,7 @@ or a specific version:
 pip install git+https://github.com/visivo-io/visivo@v1.0.0
 ```
 
-_Note: Visivo requires Python 10. You may need to create a virtual environment using python 10 to run visivo_
+_Note: Visivo requires Python 3.10. You may need to create a virtual environment using python 3.10 to run visivo_
 
 ## Setup using `visivo init`
 
