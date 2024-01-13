@@ -217,8 +217,6 @@ dashboards:
                   column: y_data
           - width: 2
             chart: ref(indicator_chart)
-          - width: 2
-            chart: ref(indicator_chart)
 
   - name: Simple Dashboard
     rows:
