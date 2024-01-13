@@ -5,7 +5,7 @@ from typing import Optional, Union
 from .chart import Chart
 from .table import Table
 from pydantic import model_validator
-from typing_extensions import Annotated
+import uuid
 
 
 class Item(BaseModel, ParentModel):
@@ -24,13 +24,12 @@ class Item(BaseModel, ParentModel):
         chart: ref(chart-name)
     ```
     """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._id = kwargs["id"] if "id" in kwargs else uuid.uuid4().hex 
 
     def id(self):
-        child = self.__get_child()
-        if isinstance(child, str):
-            return f"Item - {hash(child)}"
-        if isinstance(self.chart, Chart) or isinstance(self.table, Table):
-            return f"Item - {child.id()}"
+        return f"Item - {self._id}"
 
     width: int = Field(
         1,

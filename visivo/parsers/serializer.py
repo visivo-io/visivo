@@ -1,3 +1,4 @@
+from visivo.models.base.named_model import NamedModel
 from ..models.project import Project
 from ..models.base.base_model import BaseModel
 from ..models.base.parent_model import ParentModel
@@ -45,4 +46,5 @@ class Serializer:
         project.charts = []
         project.traces = []
         project.tables = []
+        project.models = []
         return project
