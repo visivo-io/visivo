@@ -12,7 +12,7 @@ def test_Runner_given_target():
     target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
     trace = TraceFactory(name="trace1")
     trace.model.name = "second_model"
-    project = ProjectFactory(targets=[target], traces=[trace])
+    project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
 
     create_file_database(url=target.url(), output_dir=output_dir)
 
@@ -36,7 +36,7 @@ def test_Runner_trace_with_default():
     target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
     trace = TraceFactory(name="trace1", target_name=target.name)
     trace.model.name = "second_model"
-    project = ProjectFactory(targets=[target], traces=[trace])
+    project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
 
     create_file_database(url=target.url(), output_dir=output_dir)
 

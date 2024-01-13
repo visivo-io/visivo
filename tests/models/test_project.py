@@ -123,8 +123,11 @@ def test_Project_validate_chart_names():
 def test_Project_validate_trace_names():
     trace_orig = TraceFactory()
     trace_dup = TraceFactory(name=trace_orig.name)
+    target = TargetFactory(name="target")
     data = {
         "name": "development",
+        "defaults": {"target_name":"target"},
+        "targets": [target],
         "traces": [trace_orig, trace_dup],
         "charts": [],
         "dashboards": [],
@@ -189,25 +192,6 @@ def test_Project_validate_default_target_does_not_exists():
 
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"Value error, default alert '{alert.name}' does not exist"
-    assert error["type"] == "value_error"
-
-
-def test_Project_validate_default_target_missing():
-    data = {
-        "name": "development",
-        "traces": [{"name":"trace"}],
-        "charts": [],
-        "dashboards": [],
-    }
-
-    with pytest.raises(ValidationError) as exc_info:
-        Project(**data)
-
-    error = exc_info.value.errors()[0]
-    assert (
-        error["msg"]
-        == f"Value error, Dashboard name 'dashboard' is not unique in the project"
-    )
     assert error["type"] == "value_error"
 
 

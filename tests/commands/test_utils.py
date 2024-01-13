@@ -14,7 +14,7 @@ def test_find_default_target_no_targets():
     message = exc_info.value.message
     assert (
         message
-        == "The project must contain a target or a target must be passed as an object on the command line."
+        == "The project must contain a target."
     )
 
 
@@ -37,7 +37,7 @@ def test_find_default_target_two_target():
     message = exc_info.value.message
     assert (
         message
-        == "When the project has multiple targets a target must be defined with a default or on the command line."
+        == "Multiple targets available and neither default target or trace target were provided."
     )
 
 

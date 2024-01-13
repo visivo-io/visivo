@@ -192,7 +192,6 @@ class ProjectFactory(factory.Factory):
         model = Project
 
     name = "project"
-    # defaults = factory.SubFactory(DefaultsFactory)
     targets = factory.List([factory.SubFactory(TargetFactory) for _ in range(1)])
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])
     traces = []

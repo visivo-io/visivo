@@ -1,5 +1,6 @@
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
+    DashboardFactory,
     ProjectFactory,
     TraceFactory,
     ChartFactory,
@@ -43,8 +44,9 @@ def test_Serializer_with_table_ref():
 def test_Serializer_with_table_trace_ref():
     trace = TraceFactory(name="trace_name")
     trace.model.name = "second_model"
-    project = ProjectFactory(table_item=True, traces=[trace])
-    project.dashboards[0].rows[0].items[0].table.trace = "ref(trace_name)"
+    dashboard = DashboardFactory(table_item=True)
+    dashboard.rows[0].items[0].table.trace = "ref(trace_name)"
+    project = ProjectFactory(dashboards=[dashboard], traces=[trace])
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.traces == []

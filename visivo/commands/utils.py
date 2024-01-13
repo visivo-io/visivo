@@ -15,14 +15,19 @@ def find_default_target(project: Project, target_name: str) -> Target:
             f"The project must contain a target."
         )
 
-    if not target_name and len(project.targets) == 1:
-        return project.targets[0]
-
     if not target_name and project.defaults and project.defaults.target_name:
         target_name = project.defaults.target_name
 
+    if not target_name and len(project.targets) == 1:
+        return project.targets[0]
+
+    if not target_name:
+        raise click.ClickException(
+            f"Multiple targets available and neither default target or trace target were provided."
+        )
     target = project.find_target(name=target_name)
 
+   
     if not target:
         raise click.ClickException(
             f"Target with name: '{target_name}' was not found in the project."
