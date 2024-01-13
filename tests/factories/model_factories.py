@@ -1,4 +1,5 @@
 import factory
+from visivo.models.defaults import Defaults
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
@@ -180,12 +181,18 @@ class DashboardFactory(factory.Factory):
             )
         )
 
+class DefaultsFactory(factory.Factory):
+    target_name = "target"
+
+    class Meta:
+        model = Defaults
 
 class ProjectFactory(factory.Factory):
     class Meta:
         model = Project
 
     name = "project"
+    # defaults = factory.SubFactory(DefaultsFactory)
     targets = factory.List([factory.SubFactory(TargetFactory) for _ in range(1)])
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])
     traces = []

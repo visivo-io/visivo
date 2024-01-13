@@ -192,6 +192,25 @@ def test_Project_validate_default_target_does_not_exists():
     assert error["type"] == "value_error"
 
 
+def test_Project_validate_default_target_missing():
+    data = {
+        "name": "development",
+        "traces": [{"name":"trace"}],
+        "charts": [],
+        "dashboards": [],
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == f"Value error, Dashboard name 'dashboard' is not unique in the project"
+    )
+    assert error["type"] == "value_error"
+
+
 def test_simple_Project_dag():
     project = ProjectFactory()
     dag = project.dag()

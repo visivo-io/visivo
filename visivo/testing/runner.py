@@ -1,5 +1,6 @@
 # supports more generic connections than the snowflake specific connector
 from sqlalchemy import text
+from visivo.commands.utils import find_default_target
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.testing.test_query_string_factory import TestQueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
@@ -25,14 +26,14 @@ class Runner:
     def __init__(
         self,
         traces: List[Trace],
-        target: Target,
         project: Project,
         output_dir: str,
+        default_target: str = None,        
         alerts: List[Alert] = [],
     ):
         self.project = project
         self.traces = traces
-        self.target = target
+        self.default_target = default_target
         self.output_dir = output_dir
         self.alerts = alerts
 
@@ -44,7 +45,7 @@ class Runner:
                 type=Model, dag=dag, from_node=trace
             )[0]
             tokenized_trace = TraceTokenizer(
-                trace=trace, model=model, target=self.target
+                trace=trace, model=model, target=find_default_target(project=self.project, target_name=trace.get_target_name(default_name=self.default_target))
             ).tokenize()
             query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
             if not trace.tests:

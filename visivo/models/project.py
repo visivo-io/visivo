@@ -101,6 +101,21 @@ class Project(NamedModel, ParentModel):
             raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
 
         return self
+    
+    @model_validator(mode="after")
+    def validate_traces_have_targets(self):
+        defaults = self.defaults
+        if defaults and defaults.target_name:
+            return self
+
+        if len(self.trace_objs) == 1:
+            return self
+
+        for trace in self.trace_objs:
+            if not trace.target_name:
+                raise ValueError(f"'{trace.name}' does not specify a target and project does not specify default target")
+
+        return self
 
     @model_validator(mode="after")
     def validate_dag(self):
