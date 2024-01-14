@@ -21,9 +21,8 @@ def test_TestQueryStringFactory_errors(capsys):
         ],
     }
     trace = Trace(**data)
-    trace2 = TraceFactory()
 
-    project = ProjectFactory(traces=[trace, trace2], dashboards=[])
+    project = ProjectFactory(traces=[trace], dashboards=[])
     output_dir = temp_folder()
     alert = AlertFactory()
     target = Target(
@@ -34,9 +33,8 @@ def test_TestQueryStringFactory_errors(capsys):
 
     create_file_database(url=target.url(), output_dir=output_dir)
     Runner(
-        traces=[trace, trace2],
+        traces=[trace],
         project=project,
-        target=target,
         output_dir=output_dir,
         alerts=[alert],
     ).run()

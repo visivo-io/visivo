@@ -123,8 +123,11 @@ def test_Project_validate_chart_names():
 def test_Project_validate_trace_names():
     trace_orig = TraceFactory()
     trace_dup = TraceFactory(name=trace_orig.name)
+    target = TargetFactory(name="target")
     data = {
         "name": "development",
+        "defaults": {"target_name":"target"},
+        "targets": [target],
         "traces": [trace_orig, trace_dup],
         "charts": [],
         "dashboards": [],

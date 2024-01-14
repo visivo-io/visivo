@@ -37,7 +37,7 @@ def target(function):
     click.option(
         "-t",
         "--target",
-        help="Name of the target connection to use. This overrides the default target in the project.",
+        help="Name of the default target connection to use. This overrides the default target in the project.",
     )(function)
     return function
 
