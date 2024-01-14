@@ -18,17 +18,21 @@ class ParentModel(ABC):
     def dag(self, node_permit_list=None):
         dag = nx.DiGraph()
         dag.add_node(self)
-        self.traverse_fields(items=self.child_items(), parent_item=self, dag=dag, node_permit_list=node_permit_list)
+        self.traverse_fields(items=self.child_items(), 
+                             parent_item=self, 
+                             dag=dag, 
+                             node_permit_list=node_permit_list, 
+                             root=self)
         return dag
 
-    def traverse_fields(self, items: List, parent_item, dag, node_permit_list):
+    def traverse_fields(self, items: List, parent_item, dag, node_permit_list, root):
         for item in items:
             if node_permit_list is None or item in node_permit_list: 
                 dereferenced_item = item
                 if BaseModel.is_ref(item):
                     name = NamedModel.get_name(obj=item)
                     dereferenced_items = ParentModel.all_descendants_with_name(
-                        name=name, dag=dag
+                        name=name, dag=dag, from_node=root
                     )
                     if len(dereferenced_items) == 1:
                         dereferenced_item = dereferenced_items[0]
@@ -45,7 +49,8 @@ class ParentModel(ABC):
                         items=dereferenced_item.child_items(),
                         parent_item=dereferenced_item,
                         dag=dag,
-                        node_permit_list=node_permit_list
+                        node_permit_list=node_permit_list,
+                        root=root
                     )
 
     @staticmethod
@@ -64,20 +69,20 @@ class ParentModel(ABC):
             filter(find_type, ParentModel.all_descendants(dag=dag, from_node=from_node))
         )
 
-    def descendants_of_type(self, type, from_node=None):
+    def descendants_of_type(self, type):
         return ParentModel.all_descendants_of_type(
-            type=type, dag=self.dag(), from_node=from_node
+            type=type, dag=self.dag(), from_node=self
         )
 
     @staticmethod
-    def all_descendants_with_name(name: str, dag):
+    def all_descendants_with_name(name: str, dag, from_node=None):
         def find_name(item):
             return hasattr(item, "name") and item.name == name
 
-        return list(filter(find_name, ParentModel.all_descendants(dag=dag)))
+        return list(filter(find_name, ParentModel.all_descendants(dag=dag, from_node=from_node)))
 
     def descendants_with_name(self, name: str):
-        ParentModel.all_descendants_with_name(name=name, dag=self.dag())
+        ParentModel.all_descendants_with_name(name=name, dag=self.dag(), from_node=self)
 
     @staticmethod
     def all_nodes_including_named_node_in_graph(name: str, dag):

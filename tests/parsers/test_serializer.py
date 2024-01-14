@@ -1,7 +1,10 @@
+from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
     DashboardFactory,
+    ItemFactory,
     ProjectFactory,
+    RowFactory,
     TraceFactory,
     ChartFactory,
     ModelFactory,
@@ -83,3 +86,25 @@ def test_Serializer_with_refs_does_not_change_original():
     Serializer(project=project).dereference()
     assert len(project.chart_objs) == 1
     assert len(project.trace_objs) == 1
+
+
+def test_Serializer_with_multiple_use_of_same_ref():
+    model = ModelFactory(name="model_name")
+    trace = TraceFactory(name="trace_name", model="ref(model_name)")
+    chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])
+    item_1 = ItemFactory(chart="ref(chart_name)")
+    item_2 = ItemFactory(chart="ref(chart_name)")
+    row = RowFactory(items=[item_1, item_2])
+    dashboard = DashboardFactory(rows=[row])
+    project = ProjectFactory(dashboards=[dashboard], models=[model], traces=[trace], charts=[chart])
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.traces == []
+    assert project.charts == []
+    assert project.models == []
+    assert project.dashboards[0].rows[0].items[0].chart.name == "chart_name"
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].name == "trace_name"
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].model.name == "model_name"
+    assert project.dashboards[0].rows[0].items[1].chart.name == "chart_name"
+    assert project.dashboards[0].rows[0].items[1].chart.traces[0].name == "trace_name"
+    assert project.dashboards[0].rows[0].items[1].chart.traces[0].model.name == "model_name"
