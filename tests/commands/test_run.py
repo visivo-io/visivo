@@ -28,32 +28,6 @@ def test_run():
     assert response.exit_code == 0
 
 
-def test_run_with_passed_target():
-    output_dir = temp_folder()
-    project = ProjectFactory()
-
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
-    working_dir = os.path.dirname(tmp)
-
-    response = runner.invoke(
-        run,
-        [
-            "-w",
-            working_dir,
-            "-o",
-            output_dir,
-            "-t",
-            project.targets[0].model_dump_json(),
-        ],
-    )
-
-    assert "Running project" in response.output
-    assert response.exit_code == 0
-
-
 def test_run_with_model_ref():
     output_dir = temp_folder()
     project = ProjectFactory(model_ref=True)

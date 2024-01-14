@@ -22,7 +22,6 @@ class TestFailure(TestResult):
 
 
 class TestRun(pydantic.BaseModel):
-    target_name: str
     started_at: datetime = datetime.now()
     finished_at: Optional[datetime] = None
     failures: List[TestFailure] = []

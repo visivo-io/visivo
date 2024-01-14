@@ -10,7 +10,7 @@ from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
-from visivo.commands.utils import find_or_create_target
+from visivo.commands.utils import find_default_target
 from visivo.logging.logger import Logger
 
 
@@ -31,7 +31,6 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str, name_f
         raise click.ClickException(
             f"There was an error parsing the yml file(s):{message} {e}"
         )
-    target = find_or_create_target(project=project, target_or_name=default_target)
 
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
@@ -43,6 +42,7 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str, name_f
         model = ParentModel.all_descendants_of_type(
             type=Model, dag=dag, from_node=trace
         )[0]
+        target = find_default_target(project=project, target_name=trace.get_target_name(default_name=default_target))
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, target=target
         ).tokenize()

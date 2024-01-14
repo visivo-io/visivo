@@ -248,3 +248,9 @@ class Trace(NamedModel, ParentModel):
                     )
 
         return data
+    
+
+    def get_target_name(self, default_name: str):
+        if self.target_name:
+            return self.target_name
+        return default_name

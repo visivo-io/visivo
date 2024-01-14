@@ -1,4 +1,5 @@
 import factory
+from visivo.models.defaults import Defaults
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
@@ -180,6 +181,11 @@ class DashboardFactory(factory.Factory):
             )
         )
 
+class DefaultsFactory(factory.Factory):
+    target_name = "target"
+
+    class Meta:
+        model = Defaults
 
 class ProjectFactory(factory.Factory):
     class Meta:

@@ -8,7 +8,7 @@ import os
 from pandas import read_json
 from visivo.models.project import Project
 from visivo.models.trace import Trace
-from visivo.commands.utils import find_or_create_target
+from visivo.commands.utils import find_default_target
 from visivo.logging.logger import Logger
 from time import time, sleep
 import textwrap
@@ -82,12 +82,8 @@ class Runner:
     def _run_trace_query(self, queue: Queue):
         while not queue.empty():
             trace = queue.get()
-            target_or_name = trace.target_name
-            if not target_or_name:
-                target_or_name = self.default_target
-
-            target = find_or_create_target(
-                project=self.project, target_or_name=target_or_name
+            target = find_default_target(
+                project=self.project, target_name=trace.get_target_name(self.default_target)
             )
             trace_directory = f"{self.output_dir}/{trace.name}"
             trace_query_file = f"{trace_directory}/query.sql"

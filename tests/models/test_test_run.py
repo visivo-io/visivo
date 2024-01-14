@@ -2,12 +2,6 @@ from datetime import datetime
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
 
 
-def test_Test_Run_simple_data():
-    data = {"target_name": "name"}
-    test_run = TestRun(**data)
-    assert test_run.target_name == "name"
-
-
 def test_Test_Run_count():
     data = {"target_name": "name"}
     test_run = TestRun(**data)

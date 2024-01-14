@@ -4,12 +4,13 @@ from tests.factories.model_factories import DashboardFactory, ProjectFactory
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.compile_phase import compile_phase
 from visivo.commands.utils import create_file_database
+from visivo.models.defaults import Defaults
 from visivo.parsers.core_parser import PROFILE_FILE_NAME, PROJECT_FILE_NAME
 
 
 def test_filtered_dashboard():
     output_dir = temp_folder()
-    project = ProjectFactory()
+    project = ProjectFactory(defaults=Defaults(target_name="target"))
     additional_dashboard = DashboardFactory(name="Other Dashboard")
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
     additional_dashboard.rows[0].items[0].chart.traces[0].name = "Additional Trace"

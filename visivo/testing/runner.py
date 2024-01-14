@@ -1,5 +1,6 @@
 # supports more generic connections than the snowflake specific connector
 from sqlalchemy import text
+from visivo.commands.utils import find_default_target
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.testing.test_query_string_factory import TestQueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
@@ -25,27 +26,26 @@ class Runner:
     def __init__(
         self,
         traces: List[Trace],
-        target: Target,
         project: Project,
         output_dir: str,
+        default_target: str = None,        
         alerts: List[Alert] = [],
     ):
         self.project = project
         self.traces = traces
-        self.target = target
+        self.default_target = default_target
         self.output_dir = output_dir
         self.alerts = alerts
 
     def run(self):
-        test_run = TestRun(target_name=self.target.name)
+        test_run = TestRun()
         dag = self.project.dag()
         for trace in self.traces:
             model = ParentModel.all_descendants_of_type(
                 type=Model, dag=dag, from_node=trace
             )[0]
-            tokenized_trace = TraceTokenizer(
-                trace=trace, model=model, target=self.target
-            ).tokenize()
+            target=find_default_target(project=self.project, target_name=trace.get_target_name(default_name=self.default_target))
+            tokenized_trace = TraceTokenizer(trace=trace, model=model, target=target).tokenize()
             query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
             if not trace.tests:
                 continue
@@ -58,7 +58,7 @@ class Runner:
                 with open(f"{trace_directory}/{test.name}.sql", "w") as fp:
                     fp.write(test_query_string)
 
-                data_frame = data_frame = self.target.read_sql(test_query_string)
+                data_frame = data_frame = target.read_sql(test_query_string)
 
                 if len(data_frame) > 0:
                     failure = TestFailure(
