@@ -22,4 +22,4 @@ jobs:
             SNOWFLAKE_ACCOUNT="${{ secrets.SNOWFLAKE_ACCOUNT }}" \
             VISIVO_TOKEN="${{ secrets.VISIVO_TOKEN }}"
         env:
-          RWX_ACCESS_TOKEN: '...'
+          RWX_ACCESS_TOKEN: ${{ secrets.RWX_ACCESS_TOKEN }}
