@@ -7,4 +7,4 @@ runner = CliRunner()
 def test_version():
     response = runner.invoke(visivo, ["--version"])
     assert "visivo, version" in response.output
-    assert response.exit_code == 1
+    assert response.exit_code == 0
