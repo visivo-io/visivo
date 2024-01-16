@@ -1,9 +1,0 @@
-on:
-  github:
-    push:
-      init:
-        commit-sha: ${{ event.github.push.head_commit.id }}
-
-tasks:
-  - key: echo-commit-sha
-    run: echo ${{ init.commit-sha }}

@@ -1,0 +1,38 @@
+name: Deploy Docs 
+
+on:
+  push:
+    init:
+      commit-sha: ${{ event.github.push.head_commit.id }}
+    branches: [ "main" ]
+
+  #workflow_dispatch:
+
+
+tasks:
+  - key: code
+    call: mint/git-clone 1.1.0
+    with:
+      repository: git@github.com:visivo-io/visivo.git
+      ref: ${{ init.commit-sha }}
+      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
+  
+  - key: python
+    call: mint/install-python 1.0.0
+    with:
+      python-version: 3.10
+  
+  - key: Install CLI Dependencies
+    run: pip install poetry && poetry install --with dev && poetry run visivo
+
+  - key: Generate Schema
+    run: |
+      poetry run pytest tests/parsers/test_schema_generator.py 
+      find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
+  
+  - key: Generate Configuration Files
+    run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+  
+  - key: Deploy mkdocs to docs.visivo.io
+    run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
+
