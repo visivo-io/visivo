@@ -21,7 +21,7 @@ tasks:
   - key: python
     call: mint/install-python 1.0.0
     with:
-      python-version: 3.10
+      python-version: 3.10.0
   
   - key: Install-CLI-Dependencies
     use: [code, python]
