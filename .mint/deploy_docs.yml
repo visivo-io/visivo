@@ -22,17 +22,17 @@ tasks:
     with:
       python-version: 3.10
   
-  - key: Install CLI Dependencies
+  - key: Install-CLI-Dependencies
     run: pip install poetry && poetry install --with dev && poetry run visivo
 
-  - key: Generate Schema
+  - key: Generate-Schema
     run: |
       poetry run pytest tests/parsers/test_schema_generator.py 
       find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
   
-  - key: Generate Configuration Files
+  - key: Generate-Configuration-Files
     run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
   
-  - key: Deploy mkdocs to docs.visivo.io
+  - key: Deploy-mkdocs-to-docs.visivo.io
     run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
 
