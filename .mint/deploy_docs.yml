@@ -36,6 +36,6 @@ tasks:
   - key: Generate-Configuration-Files
     run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
   
-  - key: Deploy-mkdocs-to-docs.visivo.io
+  - key: Deploy-mkdocs-to-docs-site
     run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
 
