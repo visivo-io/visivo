@@ -4,7 +4,10 @@ on:
   push:
     init:
       commit-sha: ${{ event.github.push.head_commit.id }}
-    branches: [ "main" ]
+    branches: 
+      - "main"
+    tags:
+      - "v*"
 
   #workflow_dispatch:
 
