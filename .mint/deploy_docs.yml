@@ -1,13 +1,11 @@
-name: Deploy Docs 
-
 on:
   push:
     init:
       commit-sha: ${{ event.github.push.head_commit.id }}
-    branches: 
-      - "main"
-    tags:
-      - "v*"
+    # branches: 
+    #   - "main"
+    # tags:
+    #   - "v*"
 
   #workflow_dispatch:
 
@@ -26,16 +24,20 @@ tasks:
       python-version: 3.10
   
   - key: Install-CLI-Dependencies
+    use: [code, python]
     run: pip install poetry && poetry install --with dev && poetry run visivo
 
   - key: Generate-Schema
+    use: [Install-CLI-Dependencies]
     run: |
       poetry run pytest tests/parsers/test_schema_generator.py 
       find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
   
   - key: Generate-Configuration-Files
+    use: [Generate-Schema]
     run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
   
   - key: Deploy-mkdocs-to-docs-site
+    use: [Generate-Configuration-Files]
     run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
 
