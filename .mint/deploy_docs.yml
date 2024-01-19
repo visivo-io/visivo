@@ -12,9 +12,10 @@ on:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.1.0
+    call: mint/git-clone 1.1.5
     with:
-      repository: git@github.com:visivo-io/visivo.git
+      repository: https://github.com/visivo-io/visivo.git
+      preserve-git-dir: true
       ref: ${{ init.commit-sha }}
       github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
   
@@ -40,4 +41,6 @@ tasks:
   - key: Deploy-mkdocs-to-docs-site
     use: [Generate-Configuration-Files]
     run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
+    env:
+      GITHUB_ACCESS_TOKEN: ${{ secrets.VISIVO_GITHUB_GENERAL_TOKEN }}
 
