@@ -62,11 +62,12 @@ def test_extract_value_from_function():
 
 
 def test_load_yaml_file_with_backslash(monkeypatch):
-    monkeypatch.setenv("PASSWORD", "test\\4'a\"me")
+    password = "^%$#@!~&\\4'a\"}{|+_}"
+    monkeypatch.setenv("PASSWORD", password)
     project_file = temp_file(
         "project.visivo.yml",
         "name: \"{{ env_var('PASSWORD') }}\"",
     )
 
     loaded = load_yaml_file(project_file)
-    assert loaded["name"] == "test\\4'a\"me"
+    assert loaded["name"] == password
