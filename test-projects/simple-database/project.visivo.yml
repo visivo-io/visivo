@@ -5,7 +5,7 @@ includes:
   - path: visivo-io/example-include.git@main
 
 defaults:
-  target_name: local-sqlite
+  target_name: local-postgres
   alert_name: slack
 
 alerts:
@@ -22,7 +22,7 @@ targets:
     type: postgresql
     host: localhost
     username: postgres
-    password: postgres
+    password: "{{ env_var('PASSWORD') }}"
     port: 5434
   - name: remote-snowflake
     type: snowflake

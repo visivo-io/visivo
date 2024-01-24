@@ -1,3 +1,4 @@
+from tests.support.utils import temp_file
 from visivo.utils import *
 
 
@@ -51,7 +52,6 @@ def test_list_all_ymls_in_dir():
 
 
 def test_extract_value_from_function():
-
     function_string = "test(args)"
     argument = extract_value_from_function(function_string, "test")
     assert argument == "args"
@@ -59,3 +59,14 @@ def test_extract_value_from_function():
     function_string = "test( args )"
     argument = extract_value_from_function(function_string, "test")
     assert argument == "args"
+
+
+def test_load_yaml_file_with_backslash(monkeypatch):
+    monkeypatch.setenv("PASSWORD", "test\\4'a\"me")
+    project_file = temp_file(
+        "project.visivo.yml",
+        "name: \"{{ env_var('PASSWORD') }}\"",
+    )
+
+    loaded = load_yaml_file(project_file)
+    assert loaded["name"] == "test\\4'a\"me"
