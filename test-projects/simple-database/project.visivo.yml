@@ -22,7 +22,7 @@ targets:
     type: postgresql
     host: localhost
     username: postgres
-    password: postgres
+    password: "{{ env_var('PG_PASSWORD') }}"
     port: 5434
   - name: remote-snowflake
     type: snowflake

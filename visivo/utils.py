@@ -94,7 +94,7 @@ def set_location_recursive_items(dictionary, file):
 
 def load_yaml_file(file):
     def env_var(key):
-        return os.getenv(key, "NOT-SET")
+        return os.getenv(key, "NOT-SET").replace("\\", "\\\\").replace('"', '\\"')
 
     with open(file, "r") as stream:
         template_string = stream.read()
