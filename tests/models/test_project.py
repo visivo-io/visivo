@@ -1,9 +1,13 @@
+from visivo.models.model import Model
 from visivo.models.project import Project
 from visivo.models.item import Item
+from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.models.chart import Chart
 from ..factories.model_factories import (
+    DefaultsFactory,
+    ModelFactory,
     TraceFactory,
     TargetFactory,
     ChartFactory,
@@ -126,7 +130,7 @@ def test_Project_validate_trace_names():
     target = TargetFactory(name="target")
     data = {
         "name": "development",
-        "defaults": {"target_name":"target"},
+        "defaults": {"target_name": "target"},
         "targets": [target],
         "traces": [trace_orig, trace_dup],
         "charts": [],
@@ -255,13 +259,29 @@ def test_invalid_ref_Project_dag():
 
     assert 'The reference "ref(table_name)" on item "Item -' in str(exc_info.value)
 
+
 def test_sub_dag_including_dashboard_name_Project_dag():
     project = ProjectFactory()
     dashboard = project.dashboards[0]
     additional_dashboard = DashboardFactory(name="Other Dashboard", rows=[])
     project.dashboards.append(additional_dashboard)
-    
+
     included_nodes = project.nodes_including_named_node_in_graph(name=dashboard.name)
 
     assert dashboard in included_nodes
     assert additional_dashboard not in included_nodes
+
+
+def test_trace_with_default_target_Project_dag():
+    model = ModelFactory()
+    project = ProjectFactory(
+        dashboards=[],
+        models=[model],
+        defaults=DefaultsFactory(target_name=model.target.name),
+    )
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 8
+    assert project.descendants_of_type(type=Model) == [project.models[0]]
+    assert project.descendants_of_type(type=Target) == [project.models[0].target]

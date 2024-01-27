@@ -9,6 +9,10 @@ from pandas import DataFrame, read_sql
 import click
 
 
+class DefaultTarget:
+    pass
+
+
 class TypeEnum(str, Enum):
     postgresql = "postgresql"
     sqlite = "sqlite"

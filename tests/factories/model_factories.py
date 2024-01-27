@@ -201,6 +201,7 @@ class ProjectFactory(factory.Factory):
     alerts = []
     tables = []
     charts = []
+    models = []
 
     class Params:
         trace_ref = factory.Trait(

@@ -10,11 +10,13 @@ from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
-from visivo.commands.utils import find_default_target
+from visivo.commands.utils import find_named_or_default_target
 from visivo.logging.logger import Logger
 
 
-def compile_phase(default_target: str, working_dir: str, output_dir: str, name_filter: str = None):
+def compile_phase(
+    default_target: str, working_dir: str, output_dir: str, name_filter: str = None
+):
     Logger.instance().debug("Compiling project")
     discover = Discover(working_directory=working_dir)
     parser = ParserFactory().build(
@@ -42,7 +44,10 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str, name_f
         model = ParentModel.all_descendants_of_type(
             type=Model, dag=dag, from_node=trace
         )[0]
-        target = find_default_target(project=project, target_name=trace.get_target_name(default_name=default_target))
+        target = find_named_or_default_target(
+            project=project,
+            target_name=trace.get_target_name(default_name=default_target),
+        )
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, target=target
         ).tokenize()

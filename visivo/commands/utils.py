@@ -4,16 +4,14 @@ import os
 from pathlib import Path
 from visivo.models.project import Project
 from visivo.models.target import Target
-from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert 
+from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert
 from visivo.parsers.core_parser import PROFILE_FILE_NAME
 from visivo.utils import load_yaml_file
 
 
-def find_default_target(project: Project, target_name: str) -> Target:
+def find_named_or_default_target(project: Project, target_name: str) -> Target:
     if len(project.target_objs) == 0 and not target_name:
-        raise click.ClickException(
-            f"The project must contain a target."
-        )
+        raise click.ClickException(f"The project must contain a target.")
 
     if not target_name and project.defaults and project.defaults.target_name:
         target_name = project.defaults.target_name
@@ -27,7 +25,6 @@ def find_default_target(project: Project, target_name: str) -> Target:
         )
     target = project.find_target(name=target_name)
 
-   
     if not target:
         raise click.ClickException(
             f"Target with name: '{target_name}' was not found in the project."

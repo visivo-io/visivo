@@ -8,6 +8,7 @@ import networkx as nx
 import networkx.algorithms.traversal.depth_first_search as dfs
 import matplotlib.pyplot as pyplot
 from pydantic_core import PydanticCustomError
+from visivo.models.target import DefaultTarget
 
 
 class ParentModel(ABC):
@@ -18,31 +19,29 @@ class ParentModel(ABC):
     def dag(self, node_permit_list=None):
         dag = nx.DiGraph()
         dag.add_node(self)
-        self.traverse_fields(items=self.child_items(), 
-                             parent_item=self, 
-                             dag=dag, 
-                             node_permit_list=node_permit_list, 
-                             root=self)
+        self.traverse_fields(
+            items=self.child_items(),
+            parent_item=self,
+            dag=dag,
+            node_permit_list=node_permit_list,
+            root=self,
+        )
         return dag
 
     def traverse_fields(self, items: List, parent_item, dag, node_permit_list, root):
         for item in items:
-            if node_permit_list is None or item in node_permit_list: 
+            if node_permit_list is None or item in node_permit_list:
                 dereferenced_item = item
                 if BaseModel.is_ref(item):
                     name = NamedModel.get_name(obj=item)
-                    dereferenced_items = ParentModel.all_descendants_with_name(
-                        name=name, dag=dag, from_node=root
+                    dereferenced_item = self._get_dereferenced_item(
+                        name, dag, root, item, parent_item
                     )
-                    if len(dereferenced_items) == 1:
-                        dereferenced_item = dereferenced_items[0]
-                    else:
-                        raise PydanticCustomError(
-                            "bad_reference",
-                            f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.',
-                            parent_item.model_dump(),
-                        )
-
+                elif isinstance(item, DefaultTarget):
+                    name = root.defaults.default_target
+                    dereferenced_item = self._get_dereferenced_item(
+                        name, dag, root, item, parent_item
+                    )
                 dag.add_edge(parent_item, dereferenced_item)
                 if isinstance(dereferenced_item, ParentModel):
                     self.traverse_fields(
@@ -50,7 +49,7 @@ class ParentModel(ABC):
                         parent_item=dereferenced_item,
                         dag=dag,
                         node_permit_list=node_permit_list,
-                        root=root
+                        root=root,
                     )
 
     @staticmethod
@@ -79,7 +78,9 @@ class ParentModel(ABC):
         def find_name(item):
             return hasattr(item, "name") and item.name == name
 
-        return list(filter(find_name, ParentModel.all_descendants(dag=dag, from_node=from_node)))
+        return list(
+            filter(find_name, ParentModel.all_descendants(dag=dag, from_node=from_node))
+        )
 
     def descendants_with_name(self, name: str):
         ParentModel.all_descendants_with_name(name=name, dag=self.dag(), from_node=self)
@@ -99,9 +100,10 @@ class ParentModel(ABC):
         items.add(item)
         return items
 
-
     def nodes_including_named_node_in_graph(self, name):
-        return ParentModel.all_nodes_including_named_node_in_graph(name=name, dag=self.dag())
+        return ParentModel.all_nodes_including_named_node_in_graph(
+            name=name, dag=self.dag()
+        )
 
     @staticmethod
     def filtered(pattern, objects) -> List:
@@ -120,3 +122,16 @@ class ParentModel(ABC):
         ax.margins(0.20)
         pyplot.axis("off")
         pyplot.show()
+
+    def _get_dereferenced_item(self, name, dag, root, item, parent_item):
+        dereferenced_items = ParentModel.all_descendants_with_name(
+            name=name, dag=dag, from_node=root
+        )
+        if len(dereferenced_items) == 1:
+            return dereferenced_items[0]
+        else:
+            raise PydanticCustomError(
+                "bad_reference",
+                f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.',
+                parent_item.model_dump(),
+            )
