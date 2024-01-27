@@ -10,7 +10,7 @@ from visivo.utils import load_yaml_file
 
 
 def find_default_target(project: Project, target_name: str) -> Target:
-    if len(project.targets) == 0 and not target_name:
+    if len(project.target_objs) == 0 and not target_name:
         raise click.ClickException(
             f"The project must contain a target."
         )
@@ -18,7 +18,7 @@ def find_default_target(project: Project, target_name: str) -> Target:
     if not target_name and project.defaults and project.defaults.target_name:
         target_name = project.defaults.target_name
 
-    if not target_name and len(project.targets) == 1:
+    if not target_name and len(project.target_objs) == 1:
         return project.targets[0]
 
     if not target_name:

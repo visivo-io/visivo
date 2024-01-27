@@ -174,17 +174,13 @@ class Trace(NamedModel, ParentModel):
         alias="name",
         description="The unique name of the object across the entire project.",
     )
-    target_name: Optional[str] = Field(
-        None,
-        description="Enables setting a target that this trace will always point to. If this value is set, it overrides targets passed to the CLI or set in the default block.",
-    )
     changed: Optional[bool] = Field(
         True,
         description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
     )
     model: generate_ref_field(Model) = Field(
         ...,
-        description="The model or model ref that visivo should use to build the trace.",
+        description="The model or model ref that Visivo should use to build the trace.",
     )
     cohort_on: Optional[str] = Field(
         None,
@@ -248,7 +244,6 @@ class Trace(NamedModel, ParentModel):
                     )
 
         return data
-    
 
     def get_target_name(self, default_name: str):
         if self.target_name:

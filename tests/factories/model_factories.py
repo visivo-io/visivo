@@ -45,6 +45,7 @@ class ModelFactory(factory.Factory):
 
     name = "model"
     sql = "select * from test_table"
+    target = factory.SubFactory(TargetFactory)
 
 
 class TraceFactory(factory.Factory):
@@ -181,11 +182,13 @@ class DashboardFactory(factory.Factory):
             )
         )
 
+
 class DefaultsFactory(factory.Factory):
     target_name = "target"
 
     class Meta:
         model = Defaults
+
 
 class ProjectFactory(factory.Factory):
     class Meta:

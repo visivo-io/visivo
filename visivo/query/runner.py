@@ -84,7 +84,7 @@ class Runner:
             trace = queue.get()
             target = find_default_target(
                 project=self.project,
-                target_name=trace.get_target_name(self.default_target),
+                target_name=trace.model.get_target_name(self.default_target),
             )
             trace_directory = f"{self.output_dir}/{trace.name}"
             trace_query_file = f"{trace_directory}/query.sql"

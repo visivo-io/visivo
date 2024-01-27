@@ -66,6 +66,10 @@ class Project(NamedModel, ParentModel):
     def table_objs(self) -> List[Chart]:
         return list(filter(Table.is_obj, self.__all_tables()))
 
+    @property
+    def target_objs(self) -> List[Chart]:
+        return list(filter(Target.is_obj, self.__all_targets()))
+
     def filter_traces(self, name_filter) -> List[Trace]:
         if name_filter:
             included_nodes = self.nodes_including_named_node_in_graph(name=name_filter)
@@ -74,7 +78,7 @@ class Project(NamedModel, ParentModel):
         return set(self.descendants_of_type(Trace)).intersection(included_nodes)
 
     def find_target(self, name: str) -> Target:
-        return next((t for t in self.targets if t.name == name), None)
+        return next((t for t in self.target_objs if t.name == name), None)
 
     def find_chart(self, name: str) -> Chart:
         return next((c for c in self.chart_objs if c.name == name), None)
@@ -101,7 +105,7 @@ class Project(NamedModel, ParentModel):
             raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
 
         return self
-    
+
     @model_validator(mode="after")
     def validate_traces_have_targets(self):
         defaults = self.defaults
@@ -113,7 +117,9 @@ class Project(NamedModel, ParentModel):
 
         for trace in self.trace_objs:
             if not trace.target_name:
-                raise ValueError(f"'{trace.name}' does not specify a target and project does not specify default target")
+                raise ValueError(
+                    f"'{trace.name}' does not specify a target and project does not specify default target"
+                )
 
         return self
 
@@ -165,3 +171,11 @@ class Project(NamedModel, ParentModel):
         for dashboard in self.dashboards:
             tables += dashboard.all_tables
         return tables
+
+    def __all_targets(self):
+        targets = []
+        targets += self.targets
+        for trace in self.trace_objs:
+            if trace.model.target:
+                targets += trace.model.target
+        return targets
