@@ -1,8 +1,9 @@
 on:
-  push:
-    if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
-    init:
-      commit-sha: ${{ event.github.push.head_commit.id }}
+  github:
+    push:
+      if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
+      init:
+        commit-sha: ${{ event.github.push.head_commit.id }}
 
 tasks:
   - key: code
