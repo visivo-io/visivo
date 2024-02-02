@@ -47,4 +47,5 @@ class Serializer:
         project.traces = []
         project.tables = []
         project.models = []
+        project.targets = []
         return project

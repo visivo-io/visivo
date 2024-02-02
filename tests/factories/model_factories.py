@@ -45,7 +45,11 @@ class ModelFactory(factory.Factory):
 
     name = "model"
     sql = "select * from test_table"
-    target = factory.SubFactory(TargetFactory)
+    target = "ref(target)"
+
+    class Params:
+        target_include = factory.Trait(target=factory.SubFactory(TargetFactory))
+        target_default = factory.Trait(target=None)
 
 
 class TraceFactory(factory.Factory):

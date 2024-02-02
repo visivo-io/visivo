@@ -1,15 +1,15 @@
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, validator
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.target import DefaultTarget, Target
 from .base.base_model import BaseModel, generate_ref_field
+from typing_extensions import Annotated
 
 
 class Model(BaseModel, ParentModel):
     """
     Models are queries that return base data that is used in Traces
     """
-
 
     name: Optional[str] = Field(
         None,
@@ -27,7 +27,7 @@ class Model(BaseModel, ParentModel):
     )
 
     def child_items(self):
-        if Target:
+        if self.target:
             return [self.target]
         else:
             return [DefaultTarget()]

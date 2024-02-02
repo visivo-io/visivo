@@ -1,3 +1,4 @@
+from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import Model
 from visivo.models.project import Project
 from visivo.models.item import Item
@@ -52,7 +53,13 @@ def test_Project_validate_project_trace_refs():
     assert error["type"] == "bad_reference"
 
     trace = TraceFactory(name="trace_name")
-    data = {"name": "development", "traces": [trace], "dashboards": [dashboard]}
+    target = TargetFactory()
+    data = {
+        "name": "development",
+        "traces": [trace],
+        "dashboards": [dashboard],
+        "targets": [target],
+    }
     project = Project(**data)
     assert project.traces[0].name == "trace_name"
     assert project.dashboards[0].all_traces[0] == "ref(trace_name)"
@@ -74,10 +81,12 @@ def test_Project_validate_chart_refs():
     assert error["type"] == "bad_reference"
 
     trace = TraceFactory(name="trace_name")
+    target = TargetFactory()
     data = {
         "name": "development",
         "traces": [trace],
         "charts": [chart],
+        "targets": [target],
         "dashboards": [],
     }
     project = Project(**data)
@@ -205,7 +214,6 @@ def test_simple_Project_dag():
 
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 8
-    assert len(project.dashboards[0].descendants()) == 6
     assert project.descendants_of_type(type=Trace) == [
         project.dashboards[0].rows[0].items[0].chart.traces[0]
     ]
@@ -273,15 +281,17 @@ def test_sub_dag_including_dashboard_name_Project_dag():
 
 
 def test_trace_with_default_target_Project_dag():
-    model = ModelFactory()
+    model = ModelFactory(target=None)
+    target = TargetFactory()
     project = ProjectFactory(
         dashboards=[],
+        targets=[target],
         models=[model],
-        defaults=DefaultsFactory(target_name=model.target.name),
+        defaults=DefaultsFactory(target_name=target.name),
     )
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 3
     assert project.descendants_of_type(type=Model) == [project.models[0]]
-    assert project.descendants_of_type(type=Target) == [project.models[0].target]
+    assert project.descendants_of_type(type=Target) == [project.targets[0]]

@@ -35,12 +35,20 @@ class ParentModel(ABC):
                 if BaseModel.is_ref(item):
                     name = NamedModel.get_name(obj=item)
                     dereferenced_item = self._get_dereferenced_item(
-                        name, dag, root, item, parent_item
+                        name=name,
+                        dag=dag,
+                        root=root,
+                        item=item,
+                        parent_item=parent_item,
                     )
                 elif isinstance(item, DefaultTarget):
-                    name = root.defaults.default_target
+                    name = root.defaults.target_name
                     dereferenced_item = self._get_dereferenced_item(
-                        name, dag, root, item, parent_item
+                        name=name,
+                        dag=dag,
+                        root=root,
+                        item=item,
+                        parent_item=parent_item,
                     )
                 dag.add_edge(parent_item, dereferenced_item)
                 if isinstance(dereferenced_item, ParentModel):

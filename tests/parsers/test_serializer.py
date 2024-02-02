@@ -1,7 +1,7 @@
-from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
     DashboardFactory,
+    DefaultsFactory,
     ItemFactory,
     ProjectFactory,
     RowFactory,
@@ -24,6 +24,31 @@ def test_Serializer_with_trace_ref():
     assert project.name == "project"
     assert project.traces == []
     assert project.dashboards[0].rows[0].items[0].chart.traces[0].name == "trace_name"
+
+
+def test_Serializer_with_target_ref():
+    project = ProjectFactory()
+    assert (
+        project.dashboards[0].rows[0].items[0].chart.traces[0].target == "ref(target)"
+    )
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.targets == []
+    assert (
+        project.dashboards[0].rows[0].items[0].chart.traces[0].target.name == "target"
+    )
+
+
+def test_Serializer_with_default_target():
+    project = ProjectFactory()
+    project.defaults = DefaultsFactory(target_name="target")
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].target == None
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.targets == []
+    assert (
+        project.dashboards[0].rows[0].items[0].chart.traces[0].target.name == "target"
+    )
 
 
 def test_Serializer_with_chart_ref():
@@ -96,7 +121,9 @@ def test_Serializer_with_multiple_use_of_same_ref():
     item_2 = ItemFactory(chart="ref(chart_name)")
     row = RowFactory(items=[item_1, item_2])
     dashboard = DashboardFactory(rows=[row])
-    project = ProjectFactory(dashboards=[dashboard], models=[model], traces=[trace], charts=[chart])
+    project = ProjectFactory(
+        dashboards=[dashboard], models=[model], traces=[trace], charts=[chart]
+    )
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.traces == []
@@ -104,7 +131,13 @@ def test_Serializer_with_multiple_use_of_same_ref():
     assert project.models == []
     assert project.dashboards[0].rows[0].items[0].chart.name == "chart_name"
     assert project.dashboards[0].rows[0].items[0].chart.traces[0].name == "trace_name"
-    assert project.dashboards[0].rows[0].items[0].chart.traces[0].model.name == "model_name"
+    assert (
+        project.dashboards[0].rows[0].items[0].chart.traces[0].model.name
+        == "model_name"
+    )
     assert project.dashboards[0].rows[0].items[1].chart.name == "chart_name"
     assert project.dashboards[0].rows[0].items[1].chart.traces[0].name == "trace_name"
-    assert project.dashboards[0].rows[0].items[1].chart.traces[0].model.name == "model_name"
+    assert (
+        project.dashboards[0].rows[0].items[1].chart.traces[0].model.name
+        == "model_name"
+    )

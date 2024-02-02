@@ -6,9 +6,10 @@ from queue import Queue
 import os
 
 from pandas import read_json
+from visivo.models.base.parent_model import ParentModel
 from visivo.models.project import Project
+from visivo.models.target import Target
 from visivo.models.trace import Trace
-from visivo.commands.utils import find_named_or_default_target
 from visivo.logging.logger import Logger
 from time import time, sleep
 import textwrap
@@ -36,15 +37,14 @@ class Runner:
         project: Project,
         output_dir: str,
         threads: int = 8,
-        default_target: str = None,
         soft_failure=False,
     ):
         self.traces = traces
-        self.default_target = default_target
         self.project = project
         self.output_dir = output_dir
         self.threads = threads
         self.soft_failure = soft_failure
+        self.dag = project.dag()
         self.errors = []
 
     def run(self):
@@ -82,7 +82,9 @@ class Runner:
     def _run_trace_query(self, queue: Queue):
         while not queue.empty():
             trace = queue.get()
-            target = trace.model.target
+            target = ParentModel.all_descendants_of_type(
+                type=Target, dag=self.dag, from_node=trace
+            )[0]
             trace_directory = f"{self.output_dir}/{trace.name}"
             trace_query_file = f"{trace_directory}/query.sql"
             with open(trace_query_file, "r") as file:
