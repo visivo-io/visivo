@@ -1,17 +1,17 @@
 from typing import Optional
 from pydantic import Field, validator
+from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.target import DefaultTarget, Target
-from .base.base_model import BaseModel, generate_ref_field
-from typing_extensions import Annotated
+from .base.base_model import generate_ref_field
 
 
-class Model(BaseModel, ParentModel):
+class Model(NamedModel, ParentModel):
     """
     Models are queries that return base data that is used in Traces
     """
 
-    name: Optional[str] = Field(
+    name: str = Field(
         None,
         description="Name of the model",
     )

@@ -28,26 +28,26 @@ def test_Serializer_with_trace_ref():
 
 def test_Serializer_with_target_ref():
     project = ProjectFactory()
-    assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].target == "ref(target)"
-    )
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model.target = "ref(target)"
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.targets == []
     assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].target.name == "target"
+        project.dashboards[0].rows[0].items[0].chart.traces[0].model.target.name
+        == "target"
     )
 
 
 def test_Serializer_with_default_target():
     project = ProjectFactory()
     project.defaults = DefaultsFactory(target_name="target")
-    assert project.dashboards[0].rows[0].items[0].chart.traces[0].target == None
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model.target = None
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.targets == []
     assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].target.name == "target"
+        project.dashboards[0].rows[0].items[0].chart.traces[0].model.target.name
+        == "target"
     )
 
 
@@ -126,6 +126,7 @@ def test_Serializer_with_multiple_use_of_same_ref():
     )
     project = Serializer(project=project).dereference()
     assert project.name == "project"
+    assert project.targets == []
     assert project.traces == []
     assert project.charts == []
     assert project.models == []
