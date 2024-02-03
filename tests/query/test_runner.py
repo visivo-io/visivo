@@ -13,7 +13,9 @@ import os
 
 def test_Runner_trace_with_default():
     output_dir = temp_folder()
-    target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
+    target = Target(
+        name="target", database=f"{output_dir}/test.db", type=TypeEnum.sqlite
+    )
     model = ModelFactory(name="model1", target=None)
     trace = TraceFactory(name="trace1", model=model)
     defaults = DefaultsFactory(target_name=target.name)

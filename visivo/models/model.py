@@ -11,11 +11,6 @@ class Model(NamedModel, ParentModel):
     Models are queries that return base data that is used in Traces
     """
 
-    name: str = Field(
-        None,
-        description="Name of the model",
-    )
-
     sql: str = Field(
         None,
         description="The sql used to generate your base data",
