@@ -6,6 +6,7 @@ targets:
 
 models:
   - name: accounts_per_week
+    target: ref(development)
     sql: |
                     SELECT 
                       count(*) as account_count, 
