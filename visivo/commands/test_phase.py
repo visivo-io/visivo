@@ -1,7 +1,6 @@
 import sys
 import click
 from visivo.logging.logger import Logger
-from visivo.commands.utils import find_default_target
 from visivo.testing.runner import Runner
 from visivo.commands.compile_phase import compile_phase
 

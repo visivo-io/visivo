@@ -1,4 +1,9 @@
-from ..factories.model_factories import AlertFactory, TraceFactory, ProjectFactory
+from ..factories.model_factories import (
+    AlertFactory,
+    DefaultsFactory,
+    TraceFactory,
+    ProjectFactory,
+)
 from visivo.models.trace import Trace
 from visivo.testing.runner import Runner
 from tests.support.utils import temp_folder
@@ -14,7 +19,7 @@ def test_TestQueryStringFactory_errors(capsys):
             "x": "query(x)",
             "y": "query(y)",
         },
-        "model": {"sql": "select * from test_table"},
+        "model": {"sql": "select * from test_table", "target": "ref(target)"},
         "tests": [
             {"coordinate_exists": {"coordinates": {"x": 3, "y": 2}}},
             {"coordinate_exists": {"coordinates": {"x": 19, "y": 26}}},
@@ -22,7 +27,6 @@ def test_TestQueryStringFactory_errors(capsys):
     }
     trace = Trace(**data)
 
-    project = ProjectFactory(traces=[trace], dashboards=[])
     output_dir = temp_folder()
     alert = AlertFactory()
     target = Target(
@@ -30,6 +34,7 @@ def test_TestQueryStringFactory_errors(capsys):
         database=f"{output_dir}/test.db",
         type=TargetTypeEnum.sqlite,
     )
+    project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
 
     create_file_database(url=target.url(), output_dir=output_dir)
     Runner(

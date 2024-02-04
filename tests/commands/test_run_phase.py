@@ -11,7 +11,7 @@ from visivo.query.runner import Runner
 from unittest.mock import ANY
 
 
-def test_filtered_dashboard():
+def test_run_phase():
     output_dir = temp_folder()
     project = ProjectFactory(defaults=Defaults(target_name="target"))
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]

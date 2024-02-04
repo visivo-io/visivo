@@ -1,4 +1,8 @@
-from tests.factories.model_factories import ProjectFactory
+from tests.factories.model_factories import (
+    DefaultsFactory,
+    ModelFactory,
+    ProjectFactory,
+)
 from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
 from visivo.models.target import Target, TypeEnum
@@ -7,12 +11,18 @@ from visivo.commands.utils import create_file_database
 import os
 
 
-def test_Runner_given_target():
+def test_Runner_trace_with_default():
     output_dir = temp_folder()
-    target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
-    trace = TraceFactory(name="trace1")
+    target = Target(
+        name="target", database=f"{output_dir}/test.db", type=TypeEnum.sqlite
+    )
+    model = ModelFactory(name="model1", target=None)
+    trace = TraceFactory(name="trace1", model=model)
+    defaults = DefaultsFactory(target_name=target.name)
     trace.model.name = "second_model"
-    project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
+    project = ProjectFactory(
+        defaults=defaults, targets=[target], traces=[trace], dashboards=[]
+    )
 
     create_file_database(url=target.url(), output_dir=output_dir)
 
@@ -22,7 +32,6 @@ def test_Runner_given_target():
 
     runner = Runner(
         traces=[trace],
-        default_target=target.name,
         project=project,
         output_dir=output_dir,
     )
@@ -31,12 +40,13 @@ def test_Runner_given_target():
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
 
 
-def test_Runner_trace_with_default():
+def test_Runner_trace_given_target():
     output_dir = temp_folder()
     target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
-    trace = TraceFactory(name="trace1", target_name=target.name)
+    model = ModelFactory(name="model1", target=target)
+    trace = TraceFactory(name="trace1", model=model)
     trace.model.name = "second_model"
-    project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
+    project = ProjectFactory(targets=[], traces=[trace], dashboards=[])
 
     create_file_database(url=target.url(), output_dir=output_dir)
 

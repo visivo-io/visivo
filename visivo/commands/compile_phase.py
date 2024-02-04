@@ -2,6 +2,8 @@ import click
 import os
 import yaml
 from visivo.discovery.discover import Discover
+from visivo.models.defaults import Defaults
+from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.models.model import Model
 from visivo.models.base.parent_model import ParentModel
@@ -10,11 +12,12 @@ from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
-from visivo.commands.utils import find_default_target
 from visivo.logging.logger import Logger
 
 
-def compile_phase(default_target: str, working_dir: str, output_dir: str, name_filter: str = None):
+def compile_phase(
+    default_target: str, working_dir: str, output_dir: str, name_filter: str = None
+):
     Logger.instance().debug("Compiling project")
     discover = Discover(working_directory=working_dir)
     parser = ParserFactory().build(
@@ -23,6 +26,10 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str, name_f
     project = None
     try:
         project = parser.parse()
+        if not project.defaults:
+            project.defaults = Defaults()
+        if not project.defaults.target_name:
+            project.defaults.target_name = default_target 
     except yaml.YAMLError as e:
         message = "\n"
         if hasattr(e, "problem_mark"):
@@ -42,7 +49,9 @@ def compile_phase(default_target: str, working_dir: str, output_dir: str, name_f
         model = ParentModel.all_descendants_of_type(
             type=Model, dag=dag, from_node=trace
         )[0]
-        target = find_default_target(project=project, target_name=trace.get_target_name(default_name=default_target))
+        target = ParentModel.all_descendants_of_type(
+            type=Target, dag=dag, from_node=model
+        )[0]
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, target=target
         ).tokenize()

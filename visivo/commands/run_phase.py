@@ -30,7 +30,6 @@ def run_phase(
     runner = Runner(
         traces=traces,
         project=project,
-        default_target=default_target,
         output_dir=output_dir,
         threads=threads,
         soft_failure=soft_failure,

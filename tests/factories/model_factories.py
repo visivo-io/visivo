@@ -45,6 +45,11 @@ class ModelFactory(factory.Factory):
 
     name = "model"
     sql = "select * from test_table"
+    target = "ref(target)"
+
+    class Params:
+        target_include = factory.Trait(target=factory.SubFactory(TargetFactory))
+        target_default = factory.Trait(target=None)
 
 
 class TraceFactory(factory.Factory):
@@ -181,11 +186,13 @@ class DashboardFactory(factory.Factory):
             )
         )
 
+
 class DefaultsFactory(factory.Factory):
     target_name = "target"
 
     class Meta:
         model = Defaults
+
 
 class ProjectFactory(factory.Factory):
     class Meta:
@@ -198,6 +205,7 @@ class ProjectFactory(factory.Factory):
     alerts = []
     tables = []
     charts = []
+    models = []
 
     class Params:
         trace_ref = factory.Trait(

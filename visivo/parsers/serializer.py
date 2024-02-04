@@ -1,4 +1,5 @@
 from visivo.models.base.named_model import NamedModel
+from visivo.models.target import Target
 from ..models.project import Project
 from ..models.base.base_model import BaseModel
 from ..models.base.parent_model import ParentModel
@@ -29,6 +30,9 @@ class Serializer:
                         trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
                         )[0]
+                        trace.model.target = ParentModel.all_descendants_of_type(
+                            type=Target, dag=dag, from_node=trace.model
+                        )[0]
 
                 if item.table:
                     item.table = ParentModel.all_descendants_of_type(
@@ -40,6 +44,9 @@ class Serializer:
                     item.table.trace.model = ParentModel.all_descendants_of_type(
                         type=Model, dag=dag, from_node=item.table.trace
                     )[0]
+                    item.table.trace.model.target = ParentModel.all_descendants_of_type(
+                        type=Target, dag=dag, from_node=item.table.trace.model
+                    )[0]
 
             dashboard.for_each_item(replace_item_ref)
 
@@ -47,4 +54,5 @@ class Serializer:
         project.traces = []
         project.tables = []
         project.models = []
+        project.targets = []
         return project
