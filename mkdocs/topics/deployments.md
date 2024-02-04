@@ -9,7 +9,9 @@ We have an [example action](https://github.com/visivo-io/visivo/blob/main/.githu
 ### Configuration
 
 1. Add your deployment token to github action secrets as `VISIVO_TOKEN`
-2. Add a workflow similar to the following yml.  This assumes your Visivo project is at the root directory.
+2. Add a workflow similar to the following yml.  
+
+This following can be adapted easily with the `env` variables.
 
 ```
 name: Deploy Dashboard
@@ -22,31 +24,44 @@ on:
       - closed
       - synchronize
 
+env:
+  yml_location: .
+  visivo_version: latest
+  stage_name: ${{ github.head_ref }} 
+
 jobs:
   deploy-dashboard:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Python 
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10' 
 
-      - name: Install CLI
-        run: python -m pip install git+https://github.com/visivo-io/visivo.git@main 
-
       - name: Deploy
+        id: deploy
         if: github.event.pull_request.merged == false && github.event.pull_request.closed_at == null
         run: |
+          python -m pip install git+https://github.com/visivo-io/visivo.git@${{ env.visivo_version }}  
+          cd ${{ env.yml_location}} 
           visivo run 
-          VISIVO_TOKEN={% raw %}${{ secrets.VISIVO_TOKEN }}{% endraw %} visivo deploy -s {% raw %}${{ github.head_ref }}{% endraw %}
-
+          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo deploy -s ${{ env.stage_name }} | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
+          deployed=`cat deployed.txt`
+          echo "deployed=$deployed" >> "$GITHUB_OUTPUT"
+      - name: Comment
+        if: github.event.pull_request.merged == false && github.event.pull_request.closed_at == null
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            Visivo Dashboard:
+             ${{ steps.deploy.outputs.deployed}}
       - name: Archive 
         if: github.event.pull_request.merged == true || github.event.pull_request.closed_at != null
-        run: VISIVO_TOKEN={% raw %}${{ secrets.VISIVO_TOKEN }}{% endraw %} visivo archive -s {% raw %}${{ github.head_ref }}{% endraw %}
-      
+        run: |
+          python -m pip install git+https://github.com/visivo-io/visivo.git@${{ github.base_ref }} 
+          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo archive -s ${{ github.head_ref }}
 ```
 
