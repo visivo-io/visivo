@@ -7,6 +7,7 @@ from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.models.model import Model
+from importlib.metadata import version
 
 
 class Serializer:
@@ -15,6 +16,7 @@ class Serializer:
 
     def dereference(self) -> Project:
         project = self.project.model_copy(deep=True)
+        project.cli_version = version("visivo")
         dag = project.dag()
         for dashboard in project.dashboards:
 

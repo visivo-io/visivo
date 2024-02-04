@@ -15,6 +15,7 @@ def test_Serializer_with_basic_project():
     project = ProjectFactory()
     project = Serializer(project=project).dereference()
     assert project.name == "project"
+    assert project.cli_version
 
 
 def test_Serializer_with_trace_ref():
