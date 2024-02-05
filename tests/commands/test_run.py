@@ -6,7 +6,7 @@ from visivo.commands.utils import create_file_database
 from visivo.commands.run_phase import run_phase
 from tests.support.utils import temp_yml_file
 from click.testing import CliRunner
-from tests.factories.model_factories import ProjectFactory, TargetFactory
+from tests.factories.model_factories import ProjectFactory, TargetFactory, TraceFactory
 from tests.support.utils import temp_folder
 
 runner = CliRunner()
@@ -59,7 +59,11 @@ def test_run_with_non_default_target():
     response = runner.invoke(
         run, ["-w", working_dir, "-o", output_dir, "-t", "alternate-target"]
     )
+    trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
 
     assert "alternate-target" in response.output
-    print(response.output)
     assert response.exit_code == 0
+    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
+    with open(f"{output_dir}/{trace.name}/query.sql") as f:
+        trace_sql = f.read()
+    assert "-- target: alternate-target" == trace_sql.split(f"\n")[-1]
