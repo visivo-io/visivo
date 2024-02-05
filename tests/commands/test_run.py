@@ -6,7 +6,7 @@ from visivo.commands.utils import create_file_database
 from visivo.commands.run_phase import run_phase
 from tests.support.utils import temp_yml_file
 from click.testing import CliRunner
-from tests.factories.model_factories import ProjectFactory
+from tests.factories.model_factories import ProjectFactory, TargetFactory
 from tests.support.utils import temp_folder
 
 runner = CliRunner()
@@ -41,4 +41,25 @@ def test_run_with_model_ref():
     response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-t", "target"])
 
     assert "Running project" in response.output
+    assert response.exit_code == 0
+
+
+def test_run_with_non_default_target():
+    output_dir = temp_folder()
+    project = ProjectFactory(model_ref=True)
+    alternate_target = TargetFactory()
+    alternate_target.name = "alternate-target"
+    project.targets.append(alternate_target)
+    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
+    working_dir = os.path.dirname(tmp)
+
+    response = runner.invoke(
+        run, ["-w", working_dir, "-o", output_dir, "-t", "alternate-target"]
+    )
+
+    assert "alternate-target" in response.output
+    print(response.output)
     assert response.exit_code == 0

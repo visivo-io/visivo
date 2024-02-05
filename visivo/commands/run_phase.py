@@ -13,7 +13,10 @@ def run_phase(
     soft_failure=False,
 ):
     project = compile_phase(
-        default_target, working_dir=working_dir, output_dir=output_dir, name_filter=name_filter
+        default_target,
+        working_dir=working_dir,
+        output_dir=output_dir,
+        name_filter=name_filter,
     )
 
     def changed(trace):
@@ -25,7 +28,7 @@ def run_phase(
     traces = list(filter(changed, traces))
 
     Logger.instance().info(
-        f"Running project with {len(traces)} traces(s) across {threads} threads.\n"
+        f"Running project with {len(traces)} traces(s) across {threads} threads and default target {default_target}\n"
     )
     runner = Runner(
         traces=traces,
