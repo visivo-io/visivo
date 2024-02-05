@@ -28,8 +28,8 @@ def compile_phase(
         project = parser.parse()
         if not project.defaults:
             project.defaults = Defaults()
-        if not project.defaults.target_name:
-            project.defaults.target_name = default_target 
+        if default_target:
+            project.defaults.target_name = default_target
     except yaml.YAMLError as e:
         message = "\n"
         if hasattr(e, "problem_mark"):
