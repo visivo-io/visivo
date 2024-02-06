@@ -27,6 +27,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     body = {
         "project_json": project_json,
         "name": project_json["name"],
+        "cli_version": project_json["cli_version"],
         "stage": stage,
     }
     json_headers = {
