@@ -26,6 +26,7 @@ Alert = Annotated[
 
 class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = None
+    cli_version: Optional[str] = None
     includes: List[Include] = []
     alerts: List[Alert] = []
     targets: List[Target] = []

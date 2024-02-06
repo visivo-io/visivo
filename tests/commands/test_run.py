@@ -6,7 +6,12 @@ from visivo.commands.utils import create_file_database
 from visivo.commands.run_phase import run_phase
 from tests.support.utils import temp_yml_file
 from click.testing import CliRunner
-from tests.factories.model_factories import ProjectFactory
+from tests.factories.model_factories import (
+    DefaultsFactory,
+    ProjectFactory,
+    TargetFactory,
+    TraceFactory,
+)
 from tests.support.utils import temp_folder
 
 runner = CliRunner()
@@ -42,3 +47,33 @@ def test_run_with_model_ref():
 
     assert "Running project" in response.output
     assert response.exit_code == 0
+
+
+def test_run_by_with_passing_new_default_target():
+    output_dir = temp_folder()
+
+    project = ProjectFactory(model_ref=True)
+    project.defaults = DefaultsFactory(target_name=project.targets[0].name)
+
+    project.models[0].target = None
+    alternate_target = TargetFactory()
+    alternate_target.name = "alternate-target"
+    project.targets.append(alternate_target)
+
+    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
+    )
+    working_dir = os.path.dirname(tmp)
+
+    response = runner.invoke(
+        run, ["-w", working_dir, "-o", output_dir, "-t", "alternate-target"]
+    )
+    trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
+
+    assert "alternate-target" in response.output
+    assert response.exit_code == 0
+    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
+    with open(f"{output_dir}/{trace.name}/query.sql") as f:
+        trace_sql = f.read()
+    assert "-- target: alternate-target" == trace_sql.split(f"\n")[-1]
