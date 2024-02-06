@@ -11,15 +11,13 @@ from visivo.models.project import Project
 from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
-from time import time, sleep
+from time import time
 import textwrap
 
 warnings.filterwarnings("ignore")
 
-MAX_CONCURRENCY = 2
 
-
-def format_message(details, status, full_path):
+def format_message(details, status, full_path, error_msg=None):
     total_width = 90
 
     details = textwrap.shorten(details, width=80, placeholder="(trucated)") + " "
@@ -27,7 +25,10 @@ def format_message(details, status, full_path):
     dots = "." * num_dots
     current_directory = os.getcwd()
     relative_path = os.path.relpath(full_path, current_directory)
-    return f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m"
+    error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
+    return (
+        f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m" + error_str
+    )
 
 
 class Runner:
@@ -110,9 +111,10 @@ class Runner:
                         details=f"Failed query for trace \033[4m{trace.name}\033[0m",
                         status=f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",
                         full_path=trace_query_file,
+                        error_msg=str(repr(e)),
                     )
                     Logger.instance().error(str(failure_message))
-                    self.errors.append(failure_message)
+                    self.errors.append(f"\033[4m{trace.name}\033[0m: {str(repr(e))}")
                 finally:
                     queue.task_done()
 
