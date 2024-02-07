@@ -40,3 +40,4 @@ tasks:
   - key: check-for-spelling-errors
     use: [build-mkdocs]
     run: sh validate_mkdocs_build.sh
+    
