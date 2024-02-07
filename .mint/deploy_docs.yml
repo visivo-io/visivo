@@ -15,7 +15,7 @@ tasks:
       github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
   
   - key: python
-    call: mint/install-python 1.0.0
+    call: mint/install-python 1.0.2
     with:
       python-version: 3.10.0
   
