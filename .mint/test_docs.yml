@@ -1,0 +1,42 @@
+on:
+  github:
+    pull_request:
+      actions: [opened, reopened, synchronize]
+      init:
+        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+
+tasks:
+  - key: code
+    call: mint/git-clone 1.1.5
+    with:
+      repository: https://github.com/visivo-io/visivo.git
+      preserve-git-dir: true
+      ref: ${{ init.commit-sha }}
+      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
+  
+  - key: python
+    call: mint/install-python 1.0.2
+    with:
+      python-version: 3.10.0
+  
+  - key: Install-CLI-Dependencies
+    use: [code, python]
+    run: pip install poetry && poetry install --with dev && poetry run visivo
+
+  - key: Generate-Schema
+    use: [Install-CLI-Dependencies]
+    run: |
+      poetry run pytest tests/parsers/test_schema_generator.py 
+      find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
+  
+  - key: Generate-Configuration-Files
+    use: [Generate-Schema]
+    run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+  
+  - key: build-mkdocs
+    use: [Generate-Configuration-Files]
+    run: PYTHONPATH=$PWD poetry run mkdocs build
+  
+  - key: check-if-build-worked
+    use: [build-mkdocs]
+    run: sh validate_mkdocs_build.sh
