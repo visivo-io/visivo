@@ -16,6 +16,7 @@ plugins:
       ignore_code: true
       min_length: 2
       max_capital: 1
+      strict_only: yes
 markdown_extensions:
   - mkdocs-click
   - admonition
