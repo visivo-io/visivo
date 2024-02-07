@@ -1,8 +1,7 @@
 #!/bin/bash
 
-if [ ! -d "./mkdocs_build" ]; then
-  echo "Mkdocs build did not execute correctly because the mkdocs_build directory does not exist. Try running poetry run mkdocs serve locally to debug."
+if grep -q "string_to_search" build_stdout.txt; then
+  echo "Spelling errors were found in the docs. Please fix the error or add the words to the mkdocs/known_words.txt"
   exit 1
-else
-  echo "Mkdocs build succeeded as ./mkdocs_build directory was found."
 fi
+

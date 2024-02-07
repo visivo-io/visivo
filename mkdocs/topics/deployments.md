@@ -13,6 +13,7 @@ We have an [example action](https://github.com/visivo-io/visivo/blob/main/.githu
 
 This following can be adapted easily with the `env` variables.
 
+{% raw %}
 ```
 name: Deploy Dashboard
 
@@ -64,4 +65,4 @@ jobs:
           python -m pip install git+https://github.com/visivo-io/visivo.git@${{ github.base_ref }} 
           VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo archive -s ${{ github.head_ref }}
 ```
-
+{% endraw %}

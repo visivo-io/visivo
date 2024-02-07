@@ -5,7 +5,6 @@ plugins:
       module_name: mkdocs/src/main
       on_error_fail: true
       on_undefined: strict
-      verbose: true
   - spellcheck:
       backends:
         - codespell:
@@ -16,7 +15,6 @@ plugins:
       ignore_code: true
       min_length: 2
       max_capital: 1
-      strict_only: yes
 markdown_extensions:
   - mkdocs-click
   - admonition
