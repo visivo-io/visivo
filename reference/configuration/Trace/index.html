@@ -4424,19 +4424,7 @@
 <li><strong>Testable</strong>: Attributes of Traces are testable with simple configurations to make assertions about relationships that you expect to see in your data (ie. revenue = 300,000 on the week of 2022-09-19)</li>
 </ul>
 <p>Sometimes you might want to create a number of different series within a trace. For example you might want to know <code>Revenue Per Week by Account Executive</code>. You can use the <code>cohort_on</code> attribute to split out data into different series within a single trace.</p>
-<p>Traces are also where you define how you want to represent your data visually. Since Visivo leverages plotly for charting, you can set up a number of unique and useful trace types that are also highly customizable. This includes</p>
-<ul>
-<li>Bar</li>
-<li>Scatter</li>
-<li>Line</li>
-<li>Surface</li>
-<li>Area</li>
-<li>Pie</li>
-<li>OHLC (Candle Sticks)</li>
-<li>Funnel</li>
-<li>...and many more</li>
-<li>Full List here: <a href="https://plotly.com/javascript/reference/index/">Plotly Docs</a></li>
-</ul>
+<p>Traces are also where you define how you want to represent your data visually. Since Visivo leverages plotly for charting, you can set up a number of unique and useful trace types that are also highly customizable. See types below.</p>
 <h2 id="example">Example</h2>
 <div class="highlight"><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crypto ohlc</span>

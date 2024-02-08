@@ -193,7 +193,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#macro-rendering-error" class="md-skip">
+        <a href="#cicd" class="md-skip">
           Skip to content
         </a>
       
@@ -491,6 +491,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -500,6 +511,49 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Github Actions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Github Actions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -4379,6 +4433,38 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Github Actions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Github Actions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -4395,19 +4481,65 @@
   
 
 
-<h1 id="macro-rendering-error"><em>Macro Rendering Error</em></h1>
-<p><strong>UndefinedError</strong>: 'github' is undefined</p>
-<div class="highlight"><pre><span></span><code>Traceback (most recent call last):
-  File &quot;/home/ubuntu/.cache/pypoetry/virtualenvs/visivo-BvYFX2uZ-py3.10/lib/python3.10/site-packages/mkdocs_macros/plugin.py&quot;, line 480, in render
-    return md_template.render(**page_variables)
-  File &quot;/home/ubuntu/.cache/pypoetry/virtualenvs/visivo-BvYFX2uZ-py3.10/lib/python3.10/site-packages/jinja2/environment.py&quot;, line 1301, in render
-    self.environment.handle_exception()
-  File &quot;/home/ubuntu/.cache/pypoetry/virtualenvs/visivo-BvYFX2uZ-py3.10/lib/python3.10/site-packages/jinja2/environment.py&quot;, line 936, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File &quot;&lt;template&gt;&quot;, line 30, in top-level template code
-  File &quot;/home/ubuntu/.cache/pypoetry/virtualenvs/visivo-BvYFX2uZ-py3.10/lib/python3.10/site-packages/jinja2/environment.py&quot;, line 485, in getattr
-    return getattr(obj, attribute)
-jinja2.exceptions.UndefinedError: &#39;github&#39; is undefined
+<h1 id="cicd">CI/CD</h1>
+<p>Automatically deploying dashboards as part of a CI/CD pipeline is key.</p>
+<h2 id="github-actions">Github Actions</h2>
+<p>We have an <a href="https://github.com/visivo-io/visivo/blob/main/.github/workflows/deploy_dashoard.yml">example action</a> that is used on the CLI repo.  This action deploys each pull request to a stage, and then archives that stage when the pull request is closed.</p>
+<h3 id="configuration">Configuration</h3>
+<ol>
+<li>Add your deployment token to github action secrets as <code>VISIVO_TOKEN</code></li>
+<li>Add a workflow similar to the following yml.  </li>
+</ol>
+<p>This following can be adapted easily with the <code>env</code> variables.</p>
+<div class="highlight"><pre><span></span><code>name: Deploy Dashboard
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - closed
+      - synchronize
+
+env:
+  yml_location: .
+  visivo_version: latest
+  stage_name: ${{ github.head_ref }} 
+
+jobs:
+  deploy-dashboard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: &#39;3.10&#39; 
+
+      - name: Deploy
+        id: deploy
+        if: github.event.pull_request.merged == false &amp;&amp; github.event.pull_request.closed_at == null
+        run: |
+          python -m pip install git+https://github.com/visivo-io/visivo.git@${{ env.visivo_version }}  
+          cd ${{ env.yml_location}} 
+          visivo run 
+          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo deploy -s ${{ env.stage_name }} | tee /dev/stderr | grep &#39;Deployed to: &#39; &gt; deployed.txt
+          deployed=`cat deployed.txt`
+          echo &quot;deployed=$deployed&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;
+      - name: Comment
+        if: github.event.pull_request.merged == false &amp;&amp; github.event.pull_request.closed_at == null
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            Visivo Dashboard:
+             ${{ steps.deploy.outputs.deployed}}
+      - name: Archive 
+        if: github.event.pull_request.merged == true || github.event.pull_request.closed_at != null
+        run: |
+          python -m pip install git+https://github.com/visivo-io/visivo.git@${{ github.base_ref }} 
+          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo archive -s ${{ github.head_ref }}
 </code></pre></div>
 
 
