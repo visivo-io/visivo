@@ -10,7 +10,7 @@ from visivo.parsers.parser_factory import ParserFactory
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     """
-    Sends the current version of your project, traces & data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production enviornments.
+    Sends the current version of your project, traces & data to app.visivo.io where it can be viewed by other users on your account. You must specify a stage when deploying a project. The stage allows multiple versions of your project to exist remotely. This is very useful for setting up different dev, CI and production environments.
     """
     profile_token = get_profile_token(get_profile_file(home_directory=user_dir))
 

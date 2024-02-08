@@ -127,18 +127,7 @@ class Trace(NamedModel, ParentModel):
 
     Sometimes you might want to create a number of different series within a trace. For example you might want to know `Revenue Per Week by Account Executive`. You can use the `cohort_on` attribute to split out data into different series within a single trace.
 
-    Traces are also where you define how you want to represent your data visually. Since Visivo leverages plotly for charting, you can set up a number of unique and useful trace types that are also highly customizable. This includes
-
-    * Bar
-    * Scatter
-    * Line
-    * Surface
-    * Area
-    * Pie
-    * OHLC (Candle Sticks)
-    * Funnel
-    * ...and many more
-    * Full List here: [Plotly Docs](https://plotly.com/javascript/reference/index/)
+    Traces are also where you define how you want to represent your data visually. Since Visivo leverages plotly for charting, you can set up a number of unique and useful trace types that are also highly customizable. See types below.
 
     ## Example
     ```  yaml

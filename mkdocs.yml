@@ -3,9 +3,10 @@ plugins:
   - search: {}
   - macros:
       module_name: mkdocs/src/main
+      on_error_fail: true
+      on_undefined: strict
   - spellcheck:
       backends:
-        - symspellpy
         - codespell:
             dictionaries:
               - clear

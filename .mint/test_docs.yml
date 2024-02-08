@@ -1,9 +1,9 @@
 on:
   github:
-    push:
-      if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
+    pull_request:
+      actions: [opened, reopened, synchronize]
       init:
-        commit-sha: ${{ event.github.push.head_commit.id }}
+        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
 
 tasks:
   - key: code
@@ -33,9 +33,11 @@ tasks:
     use: [Generate-Schema]
     run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
   
-  - key: Deploy-mkdocs-to-docs-site
+  - key: build-mkdocs
     use: [Generate-Configuration-Files]
-    run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
-    env:
-      GITHUB_ACCESS_TOKEN: ${{ secrets.VISIVO_GITHUB_GENERAL_TOKEN }}
-
+    run: PYTHONPATH=$PWD poetry run mkdocs build 2>&1 | tee build_stdout.txt
+  
+  - key: check-for-spelling-errors
+    use: [build-mkdocs]
+    run: sh validate_mkdocs_build.sh
+    
