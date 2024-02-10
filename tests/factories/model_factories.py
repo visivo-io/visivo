@@ -4,7 +4,7 @@ from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
-from visivo.models.model import Model, SqlModel
+from visivo.models.model import Model, RunModel, SqlModel
 from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
@@ -39,7 +39,7 @@ class TracePropsFactory(factory.Factory):
     y = "query(y)"
 
 
-class ModelFactory(factory.Factory):
+class SqlModelFactory(factory.Factory):
     class Meta:
         model = SqlModel
 
@@ -52,12 +52,20 @@ class ModelFactory(factory.Factory):
         target_default = factory.Trait(target=None)
 
 
+class RunModelFactory(factory.Factory):
+    class Meta:
+        model = RunModel
+
+    name = "model"
+    run = "echo 'row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8'"
+
+
 class TraceFactory(factory.Factory):
     class Meta:
         model = Trace
 
     name = "trace"
-    model = factory.SubFactory(ModelFactory)
+    model = factory.SubFactory(SqlModelFactory)
     tests = None
     props = factory.SubFactory(TracePropsFactory)
 
@@ -234,7 +242,10 @@ class ProjectFactory(factory.Factory):
         )
         model_ref = factory.Trait(
             models=factory.List(
-                [factory.SubFactory(ModelFactory, name="model_name") for _ in range(1)]
+                [
+                    factory.SubFactory(SqlModelFactory, name="model_name")
+                    for _ in range(1)
+                ]
             ),
             dashboards=factory.List(
                 [factory.SubFactory(DashboardFactory, model_ref=True) for _ in range(1)]

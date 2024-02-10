@@ -1,6 +1,6 @@
 from tests.factories.model_factories import (
     DefaultsFactory,
-    ModelFactory,
+    SqlModelFactory,
     ProjectFactory,
 )
 from visivo.query.runner import Runner, format_message
@@ -16,7 +16,7 @@ def test_Runner_trace_with_default():
     target = Target(
         name="target", database=f"{output_dir}/test.db", type=TypeEnum.sqlite
     )
-    model = ModelFactory(name="model1", target=None)
+    model = SqlModelFactory(name="model1", target=None)
     trace = TraceFactory(name="trace1", model=model)
     defaults = DefaultsFactory(target_name=target.name)
     trace.model.name = "second_model"
@@ -43,7 +43,7 @@ def test_Runner_trace_with_default():
 def test_Runner_trace_given_target():
     output_dir = temp_folder()
     target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
-    model = ModelFactory(name="model1", target=target)
+    model = SqlModelFactory(name="model1", target=target)
     trace = TraceFactory(name="trace1", model=model)
     trace.model.name = "second_model"
     project = ProjectFactory(targets=[], traces=[trace], dashboards=[])

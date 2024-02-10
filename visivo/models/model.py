@@ -1,3 +1,4 @@
+import csv
 from typing import Any, Optional, Union
 from typing_extensions import Annotated
 from pydantic import Field, Discriminator, Tag
@@ -13,6 +14,34 @@ class Model(NamedModel):
 
 class RunModel(Model):
     run: str = Field(description="The sql used to generate your base data")
+
+    def insert_csv_to_sqlite(self, output_dir):
+        from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
+        import subprocess
+
+        csv_file = f"{output_dir}/{self.name}.csv"
+        with open(csv_file, "w+") as file:
+            subprocess.run(
+                self.run.split(" "), stdout=file, stderr=subprocess.STDOUT, text=True
+            )
+
+        engine = create_engine(f"sqlite:///{output_dir}/{self.name}.db")
+        metadata = MetaData()
+        table = Table(
+            self.name,
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("column1", String),
+            Column("column2", String),
+        )
+        metadata.create_all(engine)
+
+        with open(csv_file, "r") as file:
+            csv_reader = csv.reader(file)
+            next(csv_reader)  # Skip header row if it exists
+            conn = engine.connect()
+            for row in csv_reader:
+                conn.execute(table.insert().values(column1=row[0], column2=row[1]))
 
 
 class SqlModel(Model, ParentModel):
