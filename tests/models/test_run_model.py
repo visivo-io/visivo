@@ -5,7 +5,7 @@ from tests.factories.model_factories import RunModelFactory
 
 
 def test_RunModel_simple_data():
-    data = {"name": "model", "run": "echo 'hello'"}
+    data = {"name": "model", "cmds": ["echo", "hello"]}
     model = RunModel(**data)
     assert model.name == "model"
 
