@@ -57,7 +57,7 @@ class RunModelFactory(factory.Factory):
         model = RunModel
 
     name = "model"
-    run = "echo 'row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8'"
+    cmds = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
 
 
 class TraceFactory(factory.Factory):

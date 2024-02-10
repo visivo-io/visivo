@@ -1,11 +1,12 @@
 import csv
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 from typing_extensions import Annotated
 from pydantic import Field, Discriminator, Tag
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.target import DefaultTarget, Target
 from .base.base_model import RefString, generate_ref_field
+import pandas
 
 
 class Model(NamedModel):
@@ -13,35 +14,19 @@ class Model(NamedModel):
 
 
 class RunModel(Model):
-    run: str = Field(description="The sql used to generate your base data")
+    cmds: List[str] = Field(description="The sql used to generate your base data")
 
     def insert_csv_to_sqlite(self, output_dir):
-        from sqlalchemy import create_engine, Table, Column, Integer, String, MetaData
+        from sqlalchemy import create_engine
         import subprocess
 
         csv_file = f"{output_dir}/{self.name}.csv"
         with open(csv_file, "w+") as file:
-            subprocess.run(
-                self.run.split(" "), stdout=file, stderr=subprocess.STDOUT, text=True
-            )
+            subprocess.run(self.cmds, stdout=file, stderr=subprocess.STDOUT, text=True)
 
-        engine = create_engine(f"sqlite:///{output_dir}/{self.name}.db")
-        metadata = MetaData()
-        table = Table(
-            self.name,
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("column1", String),
-            Column("column2", String),
-        )
-        metadata.create_all(engine)
-
-        with open(csv_file, "r") as file:
-            csv_reader = csv.reader(file)
-            next(csv_reader)  # Skip header row if it exists
-            conn = engine.connect()
-            for row in csv_reader:
-                conn.execute(table.insert().values(column1=row[0], column2=row[1]))
+        engine = create_engine(f"sqlite:///{output_dir}/{self.name}.sqlite")
+        data_frame = pandas.read_csv(csv_file)
+        data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
 
 
 class SqlModel(Model, ParentModel):
