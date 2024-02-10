@@ -6,7 +6,15 @@ from visivo.models.target import DefaultTarget, Target
 from .base.base_model import generate_ref_field
 
 
-class Model(NamedModel, ParentModel):
+class Model(NamedModel):
+    pass
+
+
+class RunModel(Model):
+    run: str = Field(description="The sql used to generate your base data")
+
+
+class SqlModel(Model, ParentModel):
     """
     Models are queries that return base data that is used in Traces
     """

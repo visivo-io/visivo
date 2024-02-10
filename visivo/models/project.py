@@ -10,7 +10,7 @@ from .chart import Chart
 from .trace import Trace
 from .target import Target
 from .table import Table
-from .model import Model
+from .model import RunModel, SqlModel
 from .alert import EmailAlert, SlackAlert, ConsoleAlert
 from .defaults import Defaults
 from typing import List
@@ -22,6 +22,8 @@ from typing_extensions import Annotated
 Alert = Annotated[
     Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")
 ]
+
+Model = Annotated[Union[RunModel, SqlModel], Field(discriminator="type")]
 
 
 class Project(NamedModel, ParentModel):
