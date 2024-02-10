@@ -1,9 +1,10 @@
-from typing import Optional
-from pydantic import Field, validator
+from typing import Any, Optional, Union
+from typing_extensions import Annotated
+from pydantic import Field, Discriminator, Tag
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.target import DefaultTarget, Target
-from .base.base_model import generate_ref_field
+from .base.base_model import RefString, generate_ref_field
 
 
 class Model(NamedModel):
@@ -34,3 +35,37 @@ class SqlModel(Model, ParentModel):
             return [self.target]
         else:
             return [DefaultTarget()]
+
+
+def get_model_discriminator_value(value: Any) -> str:
+    if isinstance(value, str):
+        return "Ref"
+    if isinstance(value, dict):
+        if "sql" in value:
+            return "Sql"
+        if "run" in value:
+            return "Run"
+    if hasattr(value, "sql"):
+        return "Sql"
+    if hasattr(value, "run"):
+        return "Run"
+
+    return None
+
+
+ModelField = Annotated[
+    Union[
+        Annotated[SqlModel, Tag("Sql")],
+        Annotated[RunModel, Tag("Run")],
+    ],
+    Discriminator(get_model_discriminator_value),
+]
+
+ModelRefField = Annotated[
+    Union[
+        RefString,
+        Annotated[SqlModel, Tag("Sql")],
+        Annotated[RunModel, Tag("Run")],
+    ],
+    Discriminator(get_model_discriminator_value),
+]

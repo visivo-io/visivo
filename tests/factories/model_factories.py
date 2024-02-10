@@ -4,7 +4,7 @@ from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
-from visivo.models.model import Model
+from visivo.models.model import Model, SqlModel
 from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
@@ -41,7 +41,7 @@ class TracePropsFactory(factory.Factory):
 
 class ModelFactory(factory.Factory):
     class Meta:
-        model = Model
+        model = SqlModel
 
     name = "model"
     sql = "select * from test_table"

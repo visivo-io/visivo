@@ -1,5 +1,6 @@
 import re
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
+from visivo.models.alert import AlertField, Alert
 
 from visivo.models.include import Include
 
@@ -10,29 +11,22 @@ from .chart import Chart
 from .trace import Trace
 from .target import Target
 from .table import Table
-from .model import RunModel, SqlModel
-from .alert import EmailAlert, SlackAlert, ConsoleAlert
+from .model import ModelField, Model
 from .defaults import Defaults
 from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
-from pydantic import model_validator, Field
+from pydantic import model_validator
 from typing_extensions import Annotated
-
-Alert = Annotated[
-    Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")
-]
-
-Model = Annotated[Union[RunModel, SqlModel], Field(discriminator="type")]
 
 
 class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = None
     cli_version: Optional[str] = None
     includes: List[Include] = []
-    alerts: List[Alert] = []
+    alerts: List[AlertField] = []
     targets: List[Target] = []
-    models: List[Model] = []
+    models: List[ModelField] = []
     traces: List[Trace] = []
     tables: List[Table] = []
     charts: List[Chart] = []
