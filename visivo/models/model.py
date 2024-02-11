@@ -22,13 +22,17 @@ class RunModel(Model):
 
     @property
     def table_name(self):
-        re.sub(r"[^a-zA-Z0-9_]", "_", self.name)
+        return re.sub(r"[^a-zA-Z0-9_]", "_", self.name)
 
-    def target(self, output_dir):
-        return Target(type=TypeEnum.sqlite, database=self.database(output_dir))
+    def get_target(self, output_dir):
+        return Target(
+            name=f"model_{self.name}_generated_target",
+            type=TypeEnum.sqlite,
+            database=self.get_database(output_dir),
+        )
 
-    def database(self, output_dir):
-        return f"{output_dir}/{self.table_name}"
+    def get_database(self, output_dir):
+        return f"{output_dir}/{self.table_name}.sqlite"
 
     def insert_csv_to_sqlite(self, output_dir):
         from sqlalchemy import create_engine
@@ -38,7 +42,7 @@ class RunModel(Model):
         with open(csv_file, "w+") as file:
             subprocess.run(self.cmds, stdout=file, stderr=subprocess.STDOUT, text=True)
 
-        engine = create_engine(f"sqlite:///{self.database(output_dir)}.sqlite")
+        engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
         data_frame = pandas.read_csv(csv_file)
         data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
 

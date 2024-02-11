@@ -45,7 +45,7 @@ def test_run_script_target():
     project.targets = []
     model = RunModelFactory()
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = model
-    create_file_database(url=model.target(output_dir).url(), output_dir=output_dir)
+    create_file_database(url=model.get_target(output_dir).url(), output_dir=output_dir)
 
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
@@ -58,5 +58,6 @@ def test_run_script_target():
         output_dir=output_dir,
         name_filter="dashboard",
     )
+    # TODO Make these assertions better
     assert "Additional Trace" not in os.listdir(output_dir)
     assert "trace" in os.listdir(output_dir)

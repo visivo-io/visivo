@@ -11,7 +11,7 @@ from .chart import Chart
 from .trace import Trace
 from .target import Target
 from .table import Table
-from .model import ModelField, Model
+from .model import ModelField, Model, SqlModel
 from .defaults import Defaults
 from typing import List
 from .base.named_model import NamedModel
@@ -114,7 +114,7 @@ class Project(NamedModel, ParentModel):
             return self
 
         for model in self.model_objs:
-            if not model.target:
+            if isinstance(model, SqlModel) and not model.target:
                 raise ValueError(
                     f"'{model.name}' does not specify a target and project does not specify default target"
                 )
