@@ -4,7 +4,7 @@ from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
-from visivo.models.model import Model, RunModel, SqlModel
+from visivo.models.model import Model, CsvScriptModel, SqlModel
 from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
@@ -52,12 +52,12 @@ class SqlModelFactory(factory.Factory):
         target_default = factory.Trait(target=None)
 
 
-class RunModelFactory(factory.Factory):
+class CsvScriptModelFactory(factory.Factory):
     class Meta:
-        model = RunModel
+        model = CsvScriptModel
 
     name = "model"
-    cmds = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
+    args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
 
 
 class TraceFactory(factory.Factory):

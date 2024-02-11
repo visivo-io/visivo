@@ -3,7 +3,7 @@ import json
 from tests.factories.model_factories import (
     DashboardFactory,
     ProjectFactory,
-    RunModelFactory,
+    CsvScriptModelFactory,
 )
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.compile_phase import compile_phase
@@ -39,11 +39,11 @@ def test_filtered_dashboard():
     assert "trace" in os.listdir(output_dir)
 
 
-def test_run_script_target():
+def test_compile_csv_script_model():
     output_dir = temp_folder()
     project = ProjectFactory()
     project.targets = []
-    model = RunModelFactory()
+    model = CsvScriptModelFactory(name="csv_script_model")
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = model
     create_file_database(url=model.get_target(output_dir).url(), output_dir=output_dir)
 
@@ -58,6 +58,6 @@ def test_run_script_target():
         output_dir=output_dir,
         name_filter="dashboard",
     )
-    # TODO Make these assertions better
-    assert "Additional Trace" not in os.listdir(output_dir)
     assert "trace" in os.listdir(output_dir)
+    with open(f"{output_dir}/trace/query.sql") as f:
+        assert model.name in f.read()

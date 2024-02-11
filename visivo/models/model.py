@@ -13,8 +13,16 @@ class Model(NamedModel):
     pass
 
 
-class RunModel(Model):
-    cmds: List[str] = Field(description="The sql used to generate your base data")
+class CsvScriptModel(Model):
+    """
+    CSV Script Model is a model that executes a command with a given set of args.
+     This command needs to return a well formatted csv with a header row.  The args are
+     python subprocess list args documented here: https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args
+    """
+
+    args: List[str] = Field(
+        description="An array of the variables that build your command to run.  i.e. "
+    )
 
     @property
     def sql(self):
@@ -40,7 +48,7 @@ class RunModel(Model):
 
         csv_file = f"{output_dir}/{self.name}.csv"
         with open(csv_file, "w+") as file:
-            subprocess.run(self.cmds, stdout=file, stderr=subprocess.STDOUT, text=True)
+            subprocess.run(self.args, stdout=file, stderr=subprocess.STDOUT, text=True)
 
         engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
         data_frame = pandas.read_csv(csv_file)
@@ -49,7 +57,8 @@ class RunModel(Model):
 
 class SqlModel(Model, ParentModel):
     """
-    Models are queries that return base data that is used in Traces
+    SQL Models are queries that return base data from a SQL target. These data are then
+     used in Traces
     """
 
     sql: str = Field(
@@ -73,11 +82,11 @@ def get_model_discriminator_value(value: Any) -> str:
     if isinstance(value, str):
         return "Ref"
     if isinstance(value, dict):
-        if "cmds" in value:
+        if "args" in value:
             return "Run"
         if "sql" in value:
             return "Sql"
-    if hasattr(value, "cmds"):
+    if hasattr(value, "args"):
         return "Run"
     if hasattr(value, "sql"):
         return "Sql"
@@ -88,7 +97,7 @@ def get_model_discriminator_value(value: Any) -> str:
 ModelField = Annotated[
     Union[
         Annotated[SqlModel, Tag("Sql")],
-        Annotated[RunModel, Tag("Run")],
+        Annotated[CsvScriptModel, Tag("Run")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
@@ -97,7 +106,7 @@ ModelRefField = Annotated[
     Union[
         RefString,
         Annotated[SqlModel, Tag("Sql")],
-        Annotated[RunModel, Tag("Run")],
+        Annotated[CsvScriptModel, Tag("Run")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
