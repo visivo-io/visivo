@@ -84,11 +84,11 @@ def get_model_discriminator_value(value: Any) -> str:
         return "Ref"
     if isinstance(value, dict):
         if "args" in value:
-            return "Run"
+            return "CsvScript"
         if "sql" in value:
             return "Sql"
     if hasattr(value, "args"):
-        return "Run"
+        return "CsvScript"
     if hasattr(value, "sql"):
         return "Sql"
 
@@ -98,7 +98,7 @@ def get_model_discriminator_value(value: Any) -> str:
 ModelField = Annotated[
     Union[
         Annotated[SqlModel, Tag("Sql")],
-        Annotated[CsvScriptModel, Tag("Run")],
+        Annotated[CsvScriptModel, Tag("CsvScript")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
@@ -107,7 +107,7 @@ ModelRefField = Annotated[
     Union[
         RefString,
         Annotated[SqlModel, Tag("Sql")],
-        Annotated[CsvScriptModel, Tag("Run")],
+        Annotated[CsvScriptModel, Tag("CsvScript")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
