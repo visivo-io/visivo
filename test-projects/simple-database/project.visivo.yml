@@ -42,7 +42,7 @@ models:
       - echo
       - |
         x,y
-        1,1
+        1,9
         2,1
         3,2
         4,3
@@ -76,14 +76,14 @@ traces:
       delta:
         reference: column(x_data)[1]
   - name: Indicator Trace
-    model: ref(test table)
+    model: ref(csv)
     columns:
       x_data: x
       y_data: y
     props:
       type: "indicator"
       mode: "number+delta"
-      value: column(x_data)[0]
+      value: column(y_data)[0]
       number:
         prefix: "$"
       delta:
