@@ -50,6 +50,7 @@ class CsvScriptModel(Model):
         with open(csv_file, "w+") as file:
             subprocess.run(self.args, stdout=file, stderr=subprocess.STDOUT, text=True)
 
+        # TODO warn about table name and catch error about malformed CSV
         engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
         data_frame = pandas.read_csv(csv_file)
         data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
