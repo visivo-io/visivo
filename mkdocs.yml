@@ -1,5 +1,6 @@
 site_name: Visivo Docs
 plugins:
+  - autolinks
   - search: {}
   - macros:
       module_name: mkdocs/src/main
@@ -80,6 +81,7 @@ nav:
               - reference/configuration/Chart/index.md
               - Layout:
                   - reference/configuration/Chart/Layout/index.md
+              - Traces: []
           - Dashboard:
               - reference/configuration/Dashboard/index.md
               - Row:
