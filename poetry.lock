@@ -1083,6 +1083,20 @@ i18n = ["babel (>=2.9.0)"]
 min-versions = ["babel (==2.9.0)", "click (==7.0)", "colorama (==0.4)", "ghp-import (==1.0)", "importlib-metadata (==4.3)", "jinja2 (==2.11.1)", "markdown (==3.2.1)", "markupsafe (==2.0.1)", "mergedeep (==1.3.4)", "packaging (==20.5)", "pathspec (==0.11.1)", "platformdirs (==2.2.0)", "pyyaml (==5.1)", "pyyaml-env-tag (==0.1)", "typing-extensions (==3.10)", "watchdog (==2.0)"]
 
 [[package]]
+name = "mkdocs-autolinks-plugin"
+version = "0.7.1"
+description = "An MkDocs plugin"
+optional = false
+python-versions = ">=3.4"
+files = [
+    {file = "mkdocs-autolinks-plugin-0.7.1.tar.gz", hash = "sha256:445ddb9b417b7795856c30801bb430773186c1daf210bdeecf8305f55a47d151"},
+    {file = "mkdocs_autolinks_plugin-0.7.1-py3-none-any.whl", hash = "sha256:5c6c17f6649b68e79a9ef0b2648d59f3072e18002b90ee1586a64c505f11ab12"},
+]
+
+[package.dependencies]
+mkdocs = ">=1.2.3"
+
+[[package]]
 name = "mkdocs-click"
 version = "0.8.1"
 description = "An MkDocs extension to generate documentation for Click command line applications"
@@ -2523,4 +2537,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "c4effb18fa8bbb95e1a456e212b8711c7e38f5c74c09c6f52abb8f3daf6e5bd2"
+content-hash = "18ae0d60b96254f85c68463c1034a970ad01e96aafbae9818fbb6a67d2987ac0"

@@ -9,11 +9,65 @@ from typing_extensions import Annotated
 
 class Table(NamedModel, ParentModel):
     """
-    Tables enable you to represent the data aggregated in your trace in a tabular format. Tables are built on the [material react table framework](https://www.material-react-table.com/).
+    Tables enable you to quickly represent trace data in a tabular format.
+
+    Since tables sit on top of trace data, the steps to create a table from scratch are as follows:
+
+    1. Create a model.
+    1. Create a trace with columns that references your model.
+    1. Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.
 
     ??? note
 
-        We're actively working on improving the table interface and incorporating more features from material react table such as [aggregation & grouping](https://www.material-react-table.com/docs/guides/aggregation-and-grouping).
+        We're actively working on improving the table interface by making it possible to define tables directly from models and incorporating more features from material react table such as [aggregation & grouping](https://www.material-react-table.com/docs/guides/aggregation-and-grouping).
+
+    ### Example
+    ``` yaml
+    models:
+      - name: table-model
+        sql: |
+            select
+                project_name,
+                project_created_at,
+                cli_version,
+                stage_name,
+                account_name,
+                stage_archived
+            FROM visivo_project
+    traces:
+      - name: pre-table-trace
+        model: ref(table-model)
+        columns:
+            project_name: project_name
+            project_created_at: project_created_at::varchar
+            cli_version: cli_version
+            stage_name: stage_name
+            account_name: account_name
+            stage_archived: stage_archived::varchar
+        props:
+            type: scatter
+            x: column(project_created_at)
+            y: column(project_name)
+    tables:
+      - name: latest-projects-table
+        trace: ref(pre-table-trace)
+        columns:
+          - header: "Project Name"
+            column: project_name
+          - header: "Project Created At"
+            column: project_created_at
+          - header: "Project Json"
+            column: project_json
+          - header: "CLI Version"
+            column: cli_version
+          - header: "Stage Name"
+            column: stage_name
+          - header: "Account Name"
+            column: account_name
+          - header: "Account Name"
+            column: stage_archived
+    ```
+    Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
     trace: generate_ref_field(Trace) = Field(
