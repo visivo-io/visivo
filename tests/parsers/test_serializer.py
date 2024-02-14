@@ -7,7 +7,7 @@ from tests.factories.model_factories import (
     RowFactory,
     TraceFactory,
     ChartFactory,
-    ModelFactory,
+    SqlModelFactory,
 )
 
 
@@ -95,7 +95,7 @@ def test_Serializer_with_model_ref():
 
 
 def test_Serializer_with_table_model_ref():
-    model = ModelFactory(name="model_name")
+    model = SqlModelFactory(name="model_name")
     project = ProjectFactory(table_item=True, models=[model])
     project.dashboards[0].rows[0].items[0].table.trace.model = "ref(model_name)"
     project = Serializer(project=project).dereference()
@@ -115,7 +115,7 @@ def test_Serializer_with_refs_does_not_change_original():
 
 
 def test_Serializer_with_multiple_use_of_same_ref():
-    model = ModelFactory(name="model_name")
+    model = SqlModelFactory(name="model_name")
     trace = TraceFactory(name="trace_name", model="ref(model_name)")
     chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])
     item_1 = ItemFactory(chart="ref(chart_name)")

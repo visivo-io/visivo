@@ -8,7 +8,7 @@ from visivo.models.table import Table
 from visivo.models.chart import Chart
 from ..factories.model_factories import (
     DefaultsFactory,
-    ModelFactory,
+    SqlModelFactory,
     TraceFactory,
     TargetFactory,
     ChartFactory,
@@ -281,7 +281,7 @@ def test_sub_dag_including_dashboard_name_Project_dag():
 
 
 def test_trace_with_default_target_Project_dag():
-    model = ModelFactory(target=None)
+    model = SqlModelFactory(target=None)
     target = TargetFactory()
     project = ProjectFactory(
         dashboards=[],

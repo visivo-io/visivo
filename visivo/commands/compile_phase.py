@@ -5,7 +5,7 @@ from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
 from visivo.models.target import Target
 from visivo.models.trace import Trace
-from visivo.models.model import Model
+from visivo.models.model import Model, CsvScriptModel, SqlModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
@@ -49,9 +49,12 @@ def compile_phase(
         model = ParentModel.all_descendants_of_type(
             type=Model, dag=dag, from_node=trace
         )[0]
-        target = ParentModel.all_descendants_of_type(
-            type=Target, dag=dag, from_node=model
-        )[0]
+        if isinstance(model, CsvScriptModel):
+            target = model.get_target(output_dir=output_dir)
+        else:
+            target = ParentModel.all_descendants_of_type(
+                type=Target, dag=dag, from_node=model
+            )[0]
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, target=target
         ).tokenize()

@@ -58,7 +58,7 @@ from .trace_columns import TraceColumns
 from typing import Optional, List, Union
 from collections import Counter
 from .base.base_model import REF_REGEX, generate_ref_field
-from .model import Model
+from .model import Model, ModelRefField
 from typing_extensions import Annotated
 
 Props = Union[
@@ -167,7 +167,7 @@ class Trace(NamedModel, ParentModel):
         True,
         description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
     )
-    model: generate_ref_field(Model) = Field(
+    model: ModelRefField = Field(
         ...,
         description="The model or model ref that Visivo should use to build the trace.",
     )

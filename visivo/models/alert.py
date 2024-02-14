@@ -1,4 +1,5 @@
-from typing import Literal
+from typing import Literal, Union
+from typing_extensions import Annotated
 from pydantic import Field
 import smtplib
 import click
@@ -147,3 +148,8 @@ class SlackAlert(Alert):
         )
 
         requests.post(self.webhook_url, data=json.dumps(body), headers=json_headers)
+
+
+AlertField = Annotated[
+    Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")
+]
