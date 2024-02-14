@@ -7,11 +7,14 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.target import DefaultTarget, Target, TypeEnum
 from .base.base_model import RefString, generate_ref_field
 import pandas
-import re
+import click
 
 
 class Model(NamedModel):
     pass
+
+
+CsvScriptModelName = Annotated[str, Field(pattern="[a-zA-Z0-9_]")]
 
 
 class CsvScriptModel(Model):
@@ -21,17 +24,17 @@ class CsvScriptModel(Model):
      python subprocess list args documented here: https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args
     """
 
+    name: CsvScriptModelName = Field(
+        None, description="The unique name of the object across the entire project."
+    )
+
     args: List[str] = Field(
         description="An array of the variables that build your command to run.  i.e. "
     )
 
     @property
     def sql(self):
-        return f"select * from {self.table_name}"
-
-    @property
-    def table_name(self):
-        return re.sub(r"[^a-zA-Z0-9_]", "_", self.name)
+        return f"select * from {self.name}"
 
     def get_target(self, output_dir):
         return Target(
@@ -41,7 +44,7 @@ class CsvScriptModel(Model):
         )
 
     def get_database(self, output_dir):
-        return f"{output_dir}/{self.table_name}.sqlite"
+        return f"{output_dir}/{self.name}.sqlite"
 
     def insert_csv_to_sqlite(self, output_dir):
         from sqlalchemy import create_engine
@@ -53,9 +56,14 @@ class CsvScriptModel(Model):
 
         # TODO warn about table name and catch error about malformed CSV
         engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
-        data_frame = pandas.read_csv(csv_file)
+        try:
+            data_frame = pandas.read_csv(csv_file)
+        except:
+            raise click.ClickException(
+                f"Error parsing csv output of {self.name} model's command. Output stored in {csv_file}. Verify contents and try again."
+            )
         Logger.instance().info(self.get_database(output_dir))
-        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=True)
+        data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
 
 
 class SqlModel(Model, ParentModel):
