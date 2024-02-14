@@ -16,13 +16,15 @@ def get_project_json(output_dir, name_filter=None):
     project_json = ""
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
-    
+
     if name_filter:
-        dashboards = [d for d in project_json['dashboards'] if d["name"] == name_filter]
+        dashboards = [d for d in project_json["dashboards"] if d["name"] == name_filter]
         if len(dashboards) == 1:
             project_json["dashboards"] = dashboards
         else:
-            raise click.ClickException(f"Currently the serve command name filtering only supports filtering at the dashbaord level.  No dashboard with {name_filter} found.")
+            raise click.ClickException(
+                f"Currently the serve command name filtering only supports filtering at the dashbaord level.  No dashboard with {name_filter} found."
+            )
 
     return project_json
 
@@ -75,7 +77,6 @@ def app_phase(output_dir, working_dir, default_target, name_filter, threads):
     return app
 
 
-
 def serve_phase(output_dir, working_dir, default_target, name_filter, threads):
     app = app_phase(
         output_dir=output_dir,
@@ -85,7 +86,7 @@ def serve_phase(output_dir, working_dir, default_target, name_filter, threads):
         threads=threads,
     )
 
-    def cli_changed():
+    def cli_changed():  # TODO: Include changes to cmd models
         try:
             run_phase(
                 output_dir=output_dir,
