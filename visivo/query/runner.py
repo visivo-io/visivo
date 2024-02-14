@@ -56,6 +56,12 @@ class Runner:
         for trace in self.traces:
             queue.put(trace)
 
+        csv_script_models = ParentModel.all_descendants_of_type(
+            type=CsvScriptModel, dag=self.dag, from_node=self.project
+        )
+        for csv_script_model in csv_script_models:
+            csv_script_model.insert_csv_to_sqlite(output_dir=self.output_dir)
+
         threads = []
         concurrency = min(len(self.traces), self.threads)
         for i in range(concurrency):
@@ -88,7 +94,6 @@ class Runner:
                 type=Model, dag=self.dag, from_node=trace
             )[0]
             if isinstance(model, CsvScriptModel):
-                model.insert_csv_to_sqlite(output_dir=self.output_dir)
                 target = model.get_target(output_dir=self.output_dir)
             else:
                 target = ParentModel.all_descendants_of_type(

@@ -1,6 +1,7 @@
 from typing import Any, List, Optional, Union
 from typing_extensions import Annotated
 from pydantic import Field, Discriminator, Tag
+from visivo.logging.logger import Logger
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.target import DefaultTarget, Target, TypeEnum
@@ -53,7 +54,8 @@ class CsvScriptModel(Model):
         # TODO warn about table name and catch error about malformed CSV
         engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
         data_frame = pandas.read_csv(csv_file)
-        data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
+        Logger.instance().info(self.get_database(output_dir))
+        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=True)
 
 
 class SqlModel(Model, ParentModel):
