@@ -4380,6 +4380,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -4407,11 +4416,63 @@
 
 
 <h1 id="table">Table</h1>
-<p>Tables enable you to represent the data aggregated in your trace in a tabular format. Tables are built on the <a href="https://www.material-react-table.com/">material react table framework</a>.</p>
+<p>Tables enable you to quickly represent trace data in a tabular format.</p>
+<p>Since tables sit on top of trace data, the steps to create a table from scratch are as follows:</p>
+<ol>
+<li>Create a model.</li>
+<li>Create a trace with columns that references your model.</li>
+<li>Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.</li>
+</ol>
 <details class="note">
 <summary>Note</summary>
-<p>We're actively working on improving the table interface and incorporating more features from material react table such as <a href="https://www.material-react-table.com/docs/guides/aggregation-and-grouping">aggregation &amp; grouping</a>.</p>
+<p>We're actively working on improving the table interface by making it possible to define tables directly from models and incorporating more features from material react table such as <a href="https://www.material-react-table.com/docs/guides/aggregation-and-grouping">aggregation &amp; grouping</a>.</p>
 </details>
+<h3 id="example">Example</h3>
+<p><div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">table-model</span>
+<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">select</span>
+<span class="w">            </span><span class="no">project_name,</span>
+<span class="w">            </span><span class="no">project_created_at,</span>
+<span class="w">            </span><span class="no">cli_version,</span>
+<span class="w">            </span><span class="no">stage_name,</span>
+<span class="w">            </span><span class="no">account_name,</span>
+<span class="w">            </span><span class="no">stage_archived</span>
+<span class="w">        </span><span class="no">FROM visivo_project</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pre-table-trace</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(table-model)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">project_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_name</span>
+<span class="w">        </span><span class="nt">project_created_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_created_at::varchar</span>
+<span class="w">        </span><span class="nt">cli_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cli_version</span>
+<span class="w">        </span><span class="nt">stage_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stage_name</span>
+<span class="w">        </span><span class="nt">account_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">account_name</span>
+<span class="w">        </span><span class="nt">stage_archived</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stage_archived::varchar</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
+<span class="w">        </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(project_created_at)</span>
+<span class="w">        </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(project_name)</span>
+<span class="nt">tables</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest-projects-table</span>
+<span class="w">    </span><span class="nt">trace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(pre-table-trace)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_name</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Created</span><span class="nv"> </span><span class="s">At&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_created_at</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Json&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_json</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CLI</span><span class="nv"> </span><span class="s">Version&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cli_version</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Stage</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stage_name</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Account</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">account_name</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Account</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stage_archived</span>
+</code></pre></div>
+Tables are built on the <a href="https://www.material-react-table.com/">material react table framework</a>.</p>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
