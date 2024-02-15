@@ -20,6 +20,15 @@ const Table = (props) => {
             <MaterialReactTable
                 columns={columns}
                 data={tableData}
+                initialState={{
+                    density: 'compact'
+                }}
+                enableStickyHeader
+                muiTableContainerProps={{
+                    sx: {
+                        maxHeight: `${props.height - 120}px`
+                    },
+                }}
                 muiTablePaperProps={{
                     sx: {
                         flexGrow: props.width,
