@@ -79,6 +79,7 @@ const Dashboard = (props) => {
         } else if (item.table && traceData) {
             return <Table
                 width={item.width}
+                height={getHeight(row.height)}
                 table={item.table}
                 traceData={traceData}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
