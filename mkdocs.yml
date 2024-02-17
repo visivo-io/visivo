@@ -63,6 +63,7 @@ extra_css:
   - stylesheets/brand_colors.css
 nav:
   - Getting Started: index.md
+  - Change Log: https://github.com/visivo-io/visivo/releases
   - Topics:
       - Linting: topics/linting.md
       - Including: topics/including.md
