@@ -1,12 +1,23 @@
-# CI/CD
+# Deployment
 
-Automatically deploying dashboards as part of a CI/CD pipeline is key.
+Continuous testing in production and deploying dashboards as part of a CI/CD pipeline is critical for delivering high quality data visualizations and insights to stakeholders. It creates opportunities to prevent, discover and fix bugs proactively.
 
-## Github Actions
+## Production
+
+## CI/CD
+It's highly recommended that you create a PR version of your project anytime that changes are being worked. This is beneficial for a few reasons.
+<div class="grid cards" markdown> 
+
+- :handshake: Collaborators and stake holders are able to review work in flight and compare the changes to prod.
+- :test_tube: The full project is run ensuring that changes to downstream models, traces, charts and tests didn't cause failures
+
+</div>
+
+### :simple-githubactions: Github Actions
 
 We have an [example action](https://github.com/visivo-io/visivo/blob/main/.github/workflows/deploy_dashoard.yml) that is used on the CLI repo.  This action deploys each pull request to a stage, and then archives that stage when the pull request is closed.
 
-### Configuration
+#### Configuration
 
 1. Add your deployment token to github action secrets as `VISIVO_TOKEN`
 2. Add a workflow similar to the following yml.  
@@ -66,3 +77,5 @@ jobs:
           VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo archive -s ${{ github.head_ref }}
 ```
 {% endraw %}
+
+### Mint

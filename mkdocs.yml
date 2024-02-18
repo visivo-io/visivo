@@ -27,7 +27,9 @@ markdown_extensions:
   - md_in_html
   - pymdownx.tabbed:
       alternate_style: true
-  - pymdownx.emoji
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
 theme:
@@ -93,8 +95,11 @@ nav:
               - reference/configuration/Defaults/index.md
           - Include:
               - reference/configuration/Include/index.md
-          - Model:
-              - reference/configuration/Model/index.md
+          - Models:
+              - SqlModel:
+                  - reference/configuration/Models/SqlModel/index.md
+              - CsvScriptModel:
+                  - reference/configuration/Models/CsvScriptModel/index.md
           - Table:
               - reference/configuration/Table/index.md
           - Target:
