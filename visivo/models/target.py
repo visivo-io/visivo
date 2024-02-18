@@ -132,7 +132,7 @@ class Target(NamedModel):
                 case TypeEnum.mysql:
                     engine = create_engine(self.url())
                     return engine.connect()
-        except:
+        except Exception as e:
             raise click.ClickException(
                 f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
             )
@@ -146,8 +146,19 @@ class Target(NamedModel):
         with self.connect() as connection:
             if self.get_connection_type() == "sqlalchemy":
                 query = text(query)
-            data_frame = read_sql(query, connection)
-        return data_frame
+                results = connection.execute(query)
+                columns = results.keys()
+                data = results.fetchall()
+                results.close()
+
+            if self.get_connection_type() == "snowflake":
+                cursor = connection.cursor()
+                cursor.execute(query)
+                columns = [col[0] for col in cursor.description]
+                data = cursor.fetchall()
+                cursor.close()
+
+        return DataFrame(data, columns=columns)
 
 
 class Connection:
