@@ -145,7 +145,7 @@ jobs:
 
       - name: Test Simple Project Run
         run: |
-          cd test-projects/simple-database && visivo run -t local-postgres && cd ../..
+          cd test-projects/simple-database && visivo run -t local-postgres --threads 1 && cd ../..
         env:
           PG_PASSWORD: postgres
 
