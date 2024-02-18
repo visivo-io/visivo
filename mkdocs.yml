@@ -70,6 +70,7 @@ nav:
       - Linting: topics/linting.md
       - Including: topics/including.md
       - Deployment: topics/deployments.md
+      - Test: topics/test.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
