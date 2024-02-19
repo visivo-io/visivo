@@ -19,18 +19,71 @@ CsvScriptModelName = Annotated[str, Field(pattern="[a-zA-Z0-9_]")]
 
 class CsvScriptModel(Model):
     """
-    # CSV Script Models
     CSV Script Models are a type of model that executes a command with a given set of args.
-    This command needs to return a well formatted csv :fontawesome-solid-file-csv: with a header row.
+    This command needs to return a well formatted :fontawesome-solid-file-csv: with a header row.
 
-    The header row will be used to create a table in a sqlite file that traces are able to reference.
+    Visivo will be able to access the generate file as a model by storing a sqlite file in the target directory.
 
-    The args are python subprocess list args. You can read their source
-    [documented here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
+    The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
 
-    ``` yaml
-    something: somethingelse
-    ```
+    !!! example {% raw %}
+
+        === "Echo"
+
+            Echoing all of your data is probably not a very practical example, but it does nicely demonstrate how the feature works!
+            ``` yaml
+            models:
+              - name: csv
+                args:
+                    - echo
+                    - |
+                      x,y
+                      1,9
+                      2,1
+                      3,2
+                      4,3
+                      5,5
+                      6,8
+            ```
+
+        === "Python Script"
+
+            In this example we'll use python to generate a csv of processes running on your machine and make that csv available to Visivo as
+            a model for analysis.
+            ``` python title="created_processes_csv.py"
+            import subprocess
+            import csv
+
+            # Define the CSV file to write
+            csv_file = "target/processes.csv"
+
+            # Execute the 'ps aux' command
+            result = subprocess.run(["ps", "aux"], stdout=subprocess.PIPE, text=True)
+
+            # Split the output into lines
+            lines = result.stdout.strip().split("/n")
+
+            # Write to CSV
+            with open(csv_file, mode="w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(
+                    ["USER","PID","%CPU","%MEM","VSZ","RSS","TTY","STAT","START","TIME","COMMAND"]
+                )  # Header
+
+                for line in lines[1:]:  # Skip the header line from the ps output
+                    row = line.split(None, 10)  # Split on whitespace, but only for the first 10 columns
+                    writer.writerow(row)
+            ```
+            With your script ready to go, all you have to do is convert `python create_processes_csv.py && cat target/processes.csv` into the args list format in a model.
+            ``` yaml
+            models:
+              - name: processes
+                args:
+                  - python
+                  - create_processes_csv.py
+                  - '&&'
+                  - cat target/processes.csv
+            ```{% endraw %}
 
     """
 
