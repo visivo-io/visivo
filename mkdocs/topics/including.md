@@ -4,14 +4,14 @@
 
 A good organizational tool is to break your `project.visivo.yml` into multiple local files based on organizational needs.  An example of this would be to put all your `models` in one file and reference that file like:
 
-```
+``` yaml
 includes:
   - path: models.yml
 ```
 
 You may wish to organization it along a different axis, for example one file per dashboard like:
 
-```
+``` yaml
 includes:
   - path: finance_dashboard.yml
   - path: operation_dashboard.yml

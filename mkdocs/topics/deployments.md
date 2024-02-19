@@ -1,15 +1,36 @@
 # Deployment
 
-Continuous testing in production and deploying dashboards as part of a CI/CD pipeline is critical for delivering high quality data visualizations and insights to stakeholders. It creates opportunities to prevent, discover and fix bugs proactively.
+Continuous visualization testing in production and deploying dashboards as part of a CI/CD pipeline are critical components of a high quality data stack that stakeholders can depends on. These deployments create opportunities to prevent, discover and fix bugs proactively. 
 
 ## Production
 
 ## CI/CD
-It's highly recommended that you create a PR version of your project anytime that changes are being worked. This is beneficial for a few reasons.
+It's highly recommended that you create a staging version of your project anytime that someone on your team creates a pull request. This is beneficial for a few reasons.
 <div class="grid cards" markdown> 
 
-- :handshake: Collaborators and stake holders are able to review work in flight and compare the changes to prod.
-- :test_tube: The full project is run ensuring that changes to downstream models, traces, charts and tests didn't cause failures
+-   :popcorn: __Preview your Project__ 
+
+    ---
+  
+    View how changes impact your project visually _before_ production.
+
+-   :test_tube: __Test Changes__ 
+
+    ---
+
+    Understand how changes to downstream nodes impact upstream nodes.
+
+-   :handshake: __Streamline Collaboration__
+
+    ---
+
+    Improve your peer reviews by relating code changes to visual changes.
+
+-   :man_running: __Increase Development Speed__
+
+    ---
+
+    Gone are the days of data visualizations being built and deployed in production. 
 
 </div>
 
@@ -25,7 +46,7 @@ We have an [example action](https://github.com/visivo-io/visivo/blob/main/.githu
 This following can be adapted easily with the `env` variables.
 
 {% raw %}
-```
+``` yaml title=".github/workflows/visivo_deploy_archive.yml"
 name: Deploy Dashboard
 
 on:
