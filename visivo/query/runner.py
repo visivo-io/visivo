@@ -13,7 +13,9 @@ from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
 from time import time
-import textwrap
+import concurrent.futures
+import queue
+import time
 
 warnings.filterwarnings("ignore")
 
@@ -30,6 +32,20 @@ def format_message(details, status, full_path, error_msg=None):
     return (
         f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m" + error_str
     )
+
+
+class AvailableThreads:
+    def __init__(self):
+        self.target_limits = {}
+
+    def add_target(self, target):
+        self.target_limits[target.name] = {"limit": 2, "running": 0}
+
+    def accepting(self, target):
+        return (
+            self.target_limits[target.name]["limit"]
+            - self.target_limits[target.name]["running"]
+        ) > 0
 
 
 class Runner:
@@ -87,50 +103,26 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def _run_trace_query(self, queue: Queue):
-        while not queue.empty():
-            trace = queue.get()
-            model = ParentModel.all_descendants_of_type(
-                type=Model, dag=self.dag, from_node=trace
-            )[0]
-            if isinstance(model, CsvScriptModel):
-                target = model.get_target(output_dir=self.output_dir)
-            else:
-                target = ParentModel.all_descendants_of_type(
-                    type=Target, dag=self.dag, from_node=model
-                )[0]
-
-            trace_directory = f"{self.output_dir}/{trace.name}"
-            trace_query_file = f"{trace_directory}/query.sql"
-            with open(trace_query_file, "r") as file:
-                query_string = file.read()
+    def task_scheduler():
+        running_tasks = {}
+        not_complete = True
+        target_limits = AvailableThreads()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            while not_complete:
+                tasks_queue = update_task_queue(tasks_queue)
                 try:
-                    start_message = format_message(
-                        details=f"Running trace \033[4m{trace.name}\033[0m",
-                        status="RUNNING",
-                        full_path=trace_query_file,
-                    )
-                    Logger.instance().info(start_message)
-                    start_time = time()
-                    data_frame = target.read_sql(query_string)
-                    success_message = format_message(
-                        details=f"Updated data for trace \033[4m{trace.name}\033[0m",
-                        status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
-                        full_path=trace_query_file,
-                    )
-                    self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
-                    Logger.instance().success(success_message)
-                except Exception as e:
-                    failure_message = format_message(
-                        details=f"Failed query for trace \033[4m{trace.name}\033[0m",
-                        status=f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",
-                        full_path=trace_query_file,
-                        error_msg=str(repr(e)),
-                    )
-                    Logger.instance().error(str(failure_message))
-                    self.errors.append(f"\033[4m{trace.name}\033[0m: {str(repr(e))}")
-                finally:
-                    queue.task_done()
+                    task = tasks_queue.get(
+                        timeout=1
+                    )  # Get the next task from the queue
+                except queue.Empty:
+                    time.sleep(1)
+                    continue
+
+                if target_limits.accepting(task.target.name):
+                    executor.submit(task_worker, task)
+                    running_tasks.setdefault(task.task_type, []).append(task)
+                else:
+                    tasks_queue.put(task)
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
