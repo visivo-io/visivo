@@ -20,11 +20,9 @@ CsvScriptModelName = Annotated[str, Field(pattern="[a-zA-Z0-9_]")]
 class CsvScriptModel(Model):
     """
     CSV Script Models are a type of model that executes a command with a given set of args.
-    This command needs to return a well formatted :fontawesome-solid-file-csv: with a header row.
+    This command needs to return a well formatted :fontawesome-solid-file-csv: with a header row to stdout.
 
     Visivo will be able to access the generate file as a model by storing a sqlite file in the target directory.
-
-    The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
 
     !!! example {% raw %}
 
@@ -53,6 +51,7 @@ class CsvScriptModel(Model):
             ``` python title="created_processes_csv.py"
             import subprocess
             import csv
+            import sys
 
             # Define the CSV file to write
             csv_file = "target/processes.csv"
@@ -63,28 +62,44 @@ class CsvScriptModel(Model):
             # Split the output into lines
             lines = result.stdout.strip().split("/n")
 
-            # Write to CSV
-            with open(csv_file, mode="w", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow(
-                    ["USER","PID","%CPU","%MEM","VSZ","RSS","TTY","STAT","START","TIME","COMMAND"]
-                )  # Header
+            # Write CSV to stdout
+            writer = csv.writer(sys.stdout)
+            writer.writerow(
+                ["USER","PID","%CPU","%MEM","VSZ","RSS","TTY","STAT","START","TIME","COMMAND"]
+            )  # Header
 
-                for line in lines[1:]:  # Skip the header line from the ps output
-                    row = line.split(None, 10)  # Split on whitespace, but only for the first 10 columns
-                    writer.writerow(row)
+            for line in lines[1:]:  # Skip the header line from the ps output
+                row = line.split(None, 10)  # Split on whitespace, but only for the first 10 columns
+                writer.writerow(row)
             ```
-            With your script ready to go, all you have to do is convert `python create_processes_csv.py && cat target/processes.csv` into the args list format in a model.
+            With your script ready to go, all you have to do is convert `python create_processes_csv.py` into the args list format in a model.
             ``` yaml
             models:
               - name: processes
                 args:
                   - python
                   - create_processes_csv.py
-                  - '&&'
-                  - cat target/processes.csv
             ```{% endraw %}
 
+        === "CSV File"
+
+            One of the best use cases for this type of model is to store a static csv in your project and cat it into a model.
+            This great because it's simple and allows you to version control your csv data.
+            ``` csv title="file.csv"
+            columns,go,up,here
+            1,text,more text,6
+            2,stuff,more stuff,7
+            ```
+            Then just `cat` the csv file in a model.
+            ``` yaml
+            models:
+              - name: file_model
+                args:
+                  - cat
+                  - file.csv
+            ```
+
+    The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
     """
 
     name: CsvScriptModelName = Field(
