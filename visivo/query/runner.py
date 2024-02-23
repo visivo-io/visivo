@@ -17,6 +17,9 @@ import concurrent.futures
 import queue
 import time
 
+from visivo.query.jobs.run_csv_script_job import action as run_csv_script_job_action
+from visivo.query.jobs.run_trace_job import action as run_trace_job_action
+
 warnings.filterwarnings("ignore")
 
 
@@ -48,6 +51,13 @@ class AvailableThreads:
         ) > 0
 
 
+class Job:
+    def __init__(self, name, action, **kwargs):
+        self.name = name
+        self.action = action
+        self.kwargs = kwargs
+
+
 class Runner:
     def __init__(
         self,
@@ -66,30 +76,29 @@ class Runner:
         self.errors = []
 
     def run(self):
+        complete = False
+        target_limits = AvailableThreads()
+        job_queue = Queue()
+        completed_jobs = []
         start_time = time()
-        self.errors = []
-        queue = Queue()
-        for trace in self.traces:
-            queue.put(trace)
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.threads
+        ) as executor:
+            while True:
+                complete = self.update_job_queue(job_queue, completed_jobs)
+                if complete:
+                    break
 
-        csv_script_models = ParentModel.all_descendants_of_type(
-            type=CsvScriptModel, dag=self.dag, from_node=self.project
-        )
-        for csv_script_model in csv_script_models:
-            csv_script_model.insert_csv_to_sqlite(output_dir=self.output_dir)
+                try:
+                    job = job_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
 
-        threads = []
-        concurrency = min(len(self.traces), self.threads)
-        for i in range(concurrency):
-            thread = Thread(target=self._run_trace_query, args=(queue,))
-            thread.daemon = True
-            thread.start()
-            threads.append(thread)
-
-        queue.join()
-
-        for thread in threads:
-            thread.join()
+                if target_limits.accepting(job.target):
+                    executor.submit(job.action, job.args)
+                    completed_jobs.append(job)
+                else:
+                    job_queue.put(job)
 
         if len(self.errors) > 0 and self.soft_failure:
             Logger.instance().error(
@@ -103,34 +112,54 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def task_scheduler():
-        running_tasks = {}
-        not_complete = True
-        target_limits = AvailableThreads()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            while not_complete:
-                tasks_queue = update_task_queue(tasks_queue)
-                try:
-                    task = tasks_queue.get(
-                        timeout=1
-                    )  # Get the next task from the queue
-                except queue.Empty:
-                    time.sleep(1)
-                    continue
+    def update_job_queue(self, job_queue: Queue, completed_queue: List) -> bool:
+        csv_script_models = ParentModel.all_descendants_of_type(
+            type=CsvScriptModel, dag=self.dag, from_node=self.project
+        )
+        for csv_script_model in csv_script_models:
+            if csv_script_model.name not in completed_queue:
+                job_queue.put(
+                    Job(
+                        name=csv_script_model.name,
+                        action=run_csv_script_job_action,
+                        csv_script_model=csv_script_model,
+                        output_dir=self.output_dir,
+                    )
+                )
 
-                if target_limits.accepting(task.target.name):
-                    executor.submit(task_worker, task)
-                    running_tasks.setdefault(task.task_type, []).append(task)
-                else:
-                    tasks_queue.put(task)
+        traces = ParentModel.all_descendants_of_type(
+            type=Trace, dag=self.dag, from_node=self.project
+        )
+        for trace in traces:
+            children_csv_script_models = ParentModel.all_descendants_of_type(
+                type=CsvScriptModel, dag=self.dag, from_node=self.trace
+            )
+            dependencies_completed = all(
+                csv_script_model.name in completed_queue
+                for csv_script_model in children_csv_script_models
+            )
+            not_completed = trace.name not in completed_queue
+            if dependencies_completed and not_completed:
+                job_queue.put(
+                    Job(
+                        name=trace.name,
+                        action=run_trace_job_action,
+                        trace=trace,
+                        dag=self.dag,
+                        errors=self.errors,
+                        output_dir=self.output_dir,
+                    )
+                )
+
+        return False
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
         data_frame = read_json(json_file)
-        cls.__aggregate(data_frame=data_frame, trace_dir=trace_dir)
+        cls.aggregate_data_frame(data_frame=data_frame, trace_dir=trace_dir)
 
     @classmethod
-    def __aggregate(cls, data_frame, trace_dir):
+    def aggregate_data_frame(cls, data_frame, trace_dir):
         aggregated = data_frame.groupby("cohort_on").aggregate(list).transpose()
         with open(f"{trace_dir}/data.json", "w") as fp:
             fp.write(aggregated.to_json(default_handler=str))
