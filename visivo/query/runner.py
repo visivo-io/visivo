@@ -1,7 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import text
 import warnings
-from threading import Thread
 from queue import Queue
 import os
 
@@ -113,6 +111,7 @@ class Runner:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
     def update_job_queue(self, job_queue: Queue, completed_queue: List) -> bool:
+        all_dependencies_completed = True
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
         )
@@ -138,6 +137,8 @@ class Runner:
                 csv_script_model.name in completed_queue
                 for csv_script_model in children_csv_script_models
             )
+            if not dependencies_completed:
+                all_dependencies_completed = False
             not_completed = trace.name not in completed_queue
             if dependencies_completed and not_completed:
                 job_queue.put(
@@ -151,7 +152,7 @@ class Runner:
                     )
                 )
 
-        return False
+        return all_dependencies_completed and job_queue.empty()
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
