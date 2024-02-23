@@ -76,6 +76,9 @@ class Target(NamedModel):
     db_schema: Optional[str] = Field(
         None, description="The schema that the Visivo project will use in queries."
     )
+    connection_pool_size: Optional[int] = Field(
+        1, description="The pool size that is used for this connection."
+    )
 
     def get_connection_type(self):
         match self.type:
@@ -118,7 +121,9 @@ class Target(NamedModel):
         try:
             match self.type:
                 case TypeEnum.postgresql:
-                    engine = create_engine(self.url())
+                    engine = create_engine(
+                        self.url(), pool_size=self.connection_pool_size
+                    )
                     return engine.connect()
                 case TypeEnum.sqlite:
                     engine = create_engine(self.url())
@@ -134,7 +139,9 @@ class Target(NamedModel):
                         role=self.role,
                     )
                 case TypeEnum.mysql:
-                    engine = create_engine(self.url())
+                    engine = create_engine(
+                        self.url(), pool_size=self.connection_pool_size
+                    )
                     return engine.connect()
         except:
             raise click.ClickException(

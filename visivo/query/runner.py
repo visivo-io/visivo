@@ -1,13 +1,12 @@
-from typing import List, Optional
+from typing import List
 import warnings
 from queue import Queue
 import os
 
 from pandas import read_json
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import CsvScriptModel, Model
+from visivo.models.model import CsvScriptModel
 from visivo.models.project import Project
-from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
 from time import time
@@ -40,9 +39,14 @@ class AvailableThreads:
         self.target_limits = {}
 
     def add_target(self, target):
-        self.target_limits[target.name] = {"limit": 2, "running": 0}
+        limit = 1
+        if target.connection_pool_size:
+            limit = target.connection_pool_size
+        self.target_limits[target.name] = {"limit": limit, "running": 0}
 
     def accepting(self, target):
+        if target.name not in self.target_limits:
+            self.add_target(target)
         return (
             self.target_limits[target.name]["limit"]
             - self.target_limits[target.name]["running"]
@@ -77,13 +81,13 @@ class Runner:
         complete = False
         target_limits = AvailableThreads()
         job_queue = Queue()
-        completed_jobs = []
+        run_jobs = []
         start_time = time()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.threads
         ) as executor:
             while True:
-                complete = self.update_job_queue(job_queue, completed_jobs)
+                complete = self.update_job_queue(job_queue, run_jobs)
                 if complete:
                     break
 
@@ -93,8 +97,8 @@ class Runner:
                     continue
 
                 if target_limits.accepting(job.target):
-                    executor.submit(job.action, job.args)
-                    completed_jobs.append(job)
+                    future = executor.submit(job.action, job.args)
+                    run_jobs.append(job)
                 else:
                     job_queue.put(job)
 
@@ -110,13 +114,13 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(self, job_queue: Queue, completed_queue: List) -> bool:
+    def update_job_queue(self, job_queue: Queue, run_jobs: List) -> bool:
         all_dependencies_completed = True
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
         )
         for csv_script_model in csv_script_models:
-            if csv_script_model.name not in completed_queue:
+            if csv_script_model.name not in run_jobs:
                 job_queue.put(
                     Job(
                         name=csv_script_model.name,
@@ -134,12 +138,12 @@ class Runner:
                 type=CsvScriptModel, dag=self.dag, from_node=self.trace
             )
             dependencies_completed = all(
-                csv_script_model.name in completed_queue
+                csv_script_model.name in run_jobs
                 for csv_script_model in children_csv_script_models
             )
             if not dependencies_completed:
                 all_dependencies_completed = False
-            not_completed = trace.name not in completed_queue
+            not_completed = trace.name not in run_jobs
             if dependencies_completed and not_completed:
                 job_queue.put(
                     Job(
