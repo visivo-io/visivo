@@ -13,9 +13,11 @@ from time import time
 import concurrent.futures
 import queue
 import time
+from visivo.query.jobs.job import Job
 
 from visivo.query.jobs.run_csv_script_job import action as run_csv_script_job_action
 from visivo.query.jobs.run_trace_job import action as run_trace_job_action
+from visivo.query.target_job_limits import TargetJobLimits
 
 warnings.filterwarnings("ignore")
 
@@ -32,32 +34,6 @@ def format_message(details, status, full_path, error_msg=None):
     return (
         f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m" + error_str
     )
-
-
-class AvailableThreads:
-    def __init__(self):
-        self.target_limits = {}
-
-    def add_target(self, target):
-        limit = 1
-        if target.connection_pool_size:
-            limit = target.connection_pool_size
-        self.target_limits[target.name] = {"limit": limit, "running": 0}
-
-    def accepting(self, target):
-        if target.name not in self.target_limits:
-            self.add_target(target)
-        return (
-            self.target_limits[target.name]["limit"]
-            - self.target_limits[target.name]["running"]
-        ) > 0
-
-
-class Job:
-    def __init__(self, name, action, **kwargs):
-        self.name = name
-        self.action = action
-        self.kwargs = kwargs
 
 
 class Runner:
@@ -79,15 +55,15 @@ class Runner:
 
     def run(self):
         complete = False
-        target_limits = AvailableThreads()
+        target_job_limits = TargetJobLimits()
         job_queue = Queue()
-        run_jobs = []
+        triggered_jobs = []
         start_time = time()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.threads
         ) as executor:
             while True:
-                complete = self.update_job_queue(job_queue, run_jobs)
+                complete = self.update_job_queue(job_queue, triggered_jobs)
                 if complete:
                     break
 
@@ -96,9 +72,10 @@ class Runner:
                 except queue.Empty:
                     continue
 
-                if target_limits.accepting(job.target):
+                if target_job_limits.accepting_job(job.target):
                     future = executor.submit(job.action, job.args)
-                    run_jobs.append(job)
+                    target_job_limits.track_job(job.target, future)
+                    triggered_jobs.append(job)
                 else:
                     job_queue.put(job)
 
@@ -114,13 +91,15 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(self, job_queue: Queue, run_jobs: List) -> bool:
+    def update_job_queue(self, job_queue: Queue, triggered_jobs: List) -> bool:
         all_dependencies_completed = True
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
         )
+        # TODO Maybe there is another class in the dag "queueable", and if other
+        # queueable items are downstream, then those need to be run first.
         for csv_script_model in csv_script_models:
-            if csv_script_model.name not in run_jobs:
+            if csv_script_model.name not in triggered_jobs:
                 job_queue.put(
                     Job(
                         name=csv_script_model.name,
@@ -138,12 +117,12 @@ class Runner:
                 type=CsvScriptModel, dag=self.dag, from_node=self.trace
             )
             dependencies_completed = all(
-                csv_script_model.name in run_jobs
+                csv_script_model.name in triggered_jobs
                 for csv_script_model in children_csv_script_models
             )
             if not dependencies_completed:
                 all_dependencies_completed = False
-            not_completed = trace.name not in run_jobs
+            not_completed = trace.name not in triggered_jobs
             if dependencies_completed and not_completed:
                 job_queue.put(
                     Job(
