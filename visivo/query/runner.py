@@ -1,9 +1,7 @@
 from typing import List
 import warnings
 from queue import Queue
-import os
 
-from pandas import read_json
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import CsvScriptModel
 from visivo.models.project import Project
@@ -21,19 +19,6 @@ from visivo.query.target_job_limits import TargetJobLimits
 
 warnings.filterwarnings("ignore")
 
-
-def format_message(details, status, full_path, error_msg=None):
-    total_width = 90
-
-    details = textwrap.shorten(details, width=80, placeholder="(trucated)") + " "
-    num_dots = total_width - len(details)
-    dots = "." * num_dots
-    current_directory = os.getcwd()
-    relative_path = os.path.relpath(full_path, current_directory)
-    error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
-    return (
-        f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m" + error_str
-    )
 
 
 class Runner:
@@ -139,13 +124,4 @@ class Runner:
 
         return all_dependencies_completed and job_queue.empty()
 
-    @classmethod
-    def aggregate(cls, json_file: str, trace_dir: str):
-        data_frame = read_json(json_file)
-        cls.aggregate_data_frame(data_frame=data_frame, trace_dir=trace_dir)
-
-    @classmethod
-    def aggregate_data_frame(cls, data_frame, trace_dir):
-        aggregated = data_frame.groupby("cohort_on").aggregate(list).transpose()
-        with open(f"{trace_dir}/data.json", "w") as fp:
-            fp.write(aggregated.to_json(default_handler=str))
+    

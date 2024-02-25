@@ -4,7 +4,8 @@ from tests.factories.model_factories import (
     SqlModelFactory,
     ProjectFactory,
 )
-from visivo.query.runner import Runner, format_message
+from visivo.query.runner import Runner
+from visivo.query.jobs.job import format_message
 from tests.factories.model_factories import TraceFactory
 from visivo.models.target import Target, TypeEnum
 from tests.support.utils import temp_folder
