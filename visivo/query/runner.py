@@ -5,12 +5,12 @@ from queue import Queue
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import CsvScriptModel
 from visivo.models.project import Project
+from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
 from time import time
 import concurrent.futures
 import queue
-import time
 from visivo.query.jobs.job import Job
 
 from visivo.query.jobs.run_csv_script_job import action as run_csv_script_job_action
@@ -18,7 +18,6 @@ from visivo.query.jobs.run_trace_job import action as run_trace_job_action
 from visivo.query.target_job_limits import TargetJobLimits
 
 warnings.filterwarnings("ignore")
-
 
 
 class Runner:
@@ -58,7 +57,7 @@ class Runner:
                     continue
 
                 if target_job_limits.accepting_job(job):
-                    job.future = executor.submit(job.action, job.args)
+                    job.set_future(executor.submit(job.action, **job.kwargs))
                     target_job_limits.track_job(job)
                     triggered_jobs.append(job)
                 else:
@@ -100,7 +99,7 @@ class Runner:
         )
         for trace in traces:
             children_csv_script_models = ParentModel.all_descendants_of_type(
-                type=CsvScriptModel, dag=self.dag, from_node=self.trace
+                type=CsvScriptModel, dag=self.dag, from_node=trace
             )
             dependencies_completed = all(
                 csv_script_model.name in triggered_jobs
@@ -110,10 +109,13 @@ class Runner:
                 all_dependencies_completed = False
             not_completed = trace.name not in triggered_jobs
             if dependencies_completed and not_completed:
+                target = ParentModel.all_descendants_of_type(
+                    type=Target, dag=self.dag, from_node=trace
+                )[0]
                 job_queue.put(
                     Job(
                         name=trace.name,
-                        target=trace.target,
+                        target=target,
                         action=run_trace_job_action,
                         trace=trace,
                         dag=self.dag,
@@ -123,5 +125,3 @@ class Runner:
                 )
 
         return all_dependencies_completed and job_queue.empty()
-
-    

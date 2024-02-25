@@ -2,6 +2,7 @@ from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import CsvScriptModel, Model
 from visivo.models.target import Target
+from visivo.query.aggregator import Aggregator
 from visivo.query.jobs.job import format_message
 from time import time
 
@@ -33,7 +34,7 @@ def action(trace, dag, output_dir, errors):
                 status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
                 full_path=trace_query_file,
             )
-            Runner.aggregate_data_frame(
+            Aggregator.aggregate_data_frame(
                 data_frame=data_frame, trace_dir=trace_directory
             )
             Logger.instance().success(success_message)

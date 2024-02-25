@@ -11,8 +11,7 @@ class Job:
         self.kwargs = kwargs
         self.future = None
 
-    @property
-    def future(self, future):
+    def set_future(self, future):
         self.future = future
 
 

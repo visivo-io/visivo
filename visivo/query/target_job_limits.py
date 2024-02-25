@@ -12,9 +12,11 @@ class TargetLimit:
         self.running = []
         self.done = []
 
-    @property
     def running(self):
         return len(self.running) > 0
+    
+    def accepting_job(self):
+        return self.limit - len(self.running) > 0
 
     def update_done(self):
         self.done.append(list(filter(lambda future: future.done(), self.running)))
@@ -27,20 +29,24 @@ class TargetJobLimits:
 
     @property
     def target_names(self):
-        list(map(lambda target_name: target_name, self.target_limits.target_name))
+        return list(
+            map(lambda target_limit: target_limit.target_name, self.target_limits)
+        )
 
     def accepting_job(self, job: Job):
         self.__add_target(job.target)
         self.__update_done()
-        return (
-            self.target_limits[job.target.name]["limit"]
-            - len(self.target_limits[job.target.name]["running"])
-        ) > 0
+        target_limit = next(
+            target_limit
+            for target_limit in self.target_limits
+            if target_limit.target_name == job.target.name
+        )
+        return target_limit.accepting_job()
 
     def track_job(self, job: Job):
         self.__update_done()
         for target_limit in self.target_limits:
-            if target_limit.target_name == job.target.name: 
+            if target_limit.target_name == job.target.name:
                 target_limit.running.append(job.future)
 
     def done(self) -> bool:
