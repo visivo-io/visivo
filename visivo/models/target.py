@@ -1,6 +1,6 @@
 from .base.named_model import NamedModel
 from pydantic import Field, SecretStr
-from typing import Optional
+from typing import Any, Optional
 from enum import Enum
 from sqlalchemy.engine import URL
 from sqlalchemy import create_engine, text
@@ -79,6 +79,11 @@ class Target(NamedModel):
     connection_pool_size: Optional[int] = Field(
         1, description="The pool size that is used for this connection."
     )
+    _engine: Any
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._engine = None
 
     def get_connection_type(self):
         match self.type:
@@ -117,17 +122,17 @@ class Target(NamedModel):
     def _get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
 
-    def _create_engine(self):
-        if not self.engine:
+    def initialize(self):
+        if not self._engine:
             match self.type:
                 case TypeEnum.postgresql:
-                    self.engine = create_engine(
+                    self._engine = create_engine(
                         self.url(), pool_size=self.connection_pool_size
                     )
                 case TypeEnum.sqlite:
-                    self.engine = create_engine(self.url())
+                    self._engine = create_engine(self.url())
                 case TypeEnum.mysql:
-                    self.engine = create_engine(
+                    self._engine = create_engine(
                         self.url(), pool_size=self.connection_pool_size
                     )
 
@@ -135,9 +140,9 @@ class Target(NamedModel):
         try:
             match self.type:
                 case TypeEnum.postgresql:
-                    return self.engine.connect()
+                    return self._engine.connect()
                 case TypeEnum.sqlite:
-                    return self.engine.connect()
+                    return self._engine.connect()
                 case TypeEnum.snowflake:
                     return snowflake.connector.connect(
                         account=self.account,
@@ -149,7 +154,7 @@ class Target(NamedModel):
                         role=self.role,
                     )
                 case TypeEnum.mysql:
-                    return self.engine.connect()
+                    return self._engine.connect()
         except:
             raise click.ClickException(
                 f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."

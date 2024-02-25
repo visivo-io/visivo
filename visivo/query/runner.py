@@ -41,7 +41,7 @@ class Runner:
         complete = False
         target_job_limits = TargetJobLimits()
         job_queue = Queue()
-        triggered_jobs = []
+        triggered_jobs = []  # REPLACE THIS WITH TARGET_JOB_LIMITS
         start_time = time()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.threads
@@ -80,8 +80,6 @@ class Runner:
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
         )
-        # TODO Maybe there is another class in the dag "queueable", and if other
-        # queueable items are downstream, then those need to be run first.
         for csv_script_model in csv_script_models:
             if csv_script_model.name not in triggered_jobs:
                 job_queue.put(
