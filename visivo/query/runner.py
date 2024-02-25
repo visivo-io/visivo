@@ -72,9 +72,9 @@ class Runner:
                 except queue.Empty:
                     continue
 
-                if target_job_limits.accepting_job(job.target):
-                    future = executor.submit(job.action, job.args)
-                    target_job_limits.track_job(job.target, future)
+                if target_job_limits.accepting_job(job):
+                    job.future = executor.submit(job.action, job.args)
+                    target_job_limits.track_job(job)
                     triggered_jobs.append(job)
                 else:
                     job_queue.put(job)
@@ -103,6 +103,7 @@ class Runner:
                 job_queue.put(
                     Job(
                         name=csv_script_model.name,
+                        target=csv_script_model.target,
                         action=run_csv_script_job_action,
                         csv_script_model=csv_script_model,
                         output_dir=self.output_dir,
@@ -127,6 +128,7 @@ class Runner:
                 job_queue.put(
                     Job(
                         name=trace.name,
+                        target=trace.target,
                         action=run_trace_job_action,
                         trace=trace,
                         dag=self.dag,
