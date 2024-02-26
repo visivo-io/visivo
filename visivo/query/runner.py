@@ -15,7 +15,7 @@ from visivo.query.jobs.job import Job
 
 from visivo.query.jobs.run_csv_script_job import action as run_csv_script_job_action
 from visivo.query.jobs.run_trace_job import action as run_trace_job_action
-from visivo.query.target_job_limits import TargetJobLimits
+from visivo.query.target_job_tracker import TargetJobTracker
 
 warnings.filterwarnings("ignore")
 
@@ -39,15 +39,14 @@ class Runner:
 
     def run(self):
         complete = False
-        target_job_limits = TargetJobLimits()
+        target_job_tracker = TargetJobTracker()
         job_queue = Queue()
-        triggered_jobs = []  # REPLACE THIS WITH TARGET_JOB_LIMITS
         start_time = time()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.threads
         ) as executor:
             while True:
-                complete = self.update_job_queue(job_queue, triggered_jobs)
+                complete = self.update_job_queue(job_queue, target_job_tracker)
                 if complete:
                     break
 
@@ -56,10 +55,9 @@ class Runner:
                 except queue.Empty:
                     continue
 
-                if target_job_limits.accepting_job(job):
+                if target_job_tracker.is_accepting_job(job):
                     job.set_future(executor.submit(job.action, **job.kwargs))
-                    target_job_limits.track_job(job)
-                    triggered_jobs.append(job)
+                    target_job_tracker.track_job(job)
                 else:
                     job_queue.put(job)
 
@@ -75,13 +73,13 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(self, job_queue: Queue, triggered_jobs: List) -> bool:
+    def update_job_queue(self, job_queue: Queue, target_job_tracker: TargetJobTracker) -> bool:
         all_dependencies_completed = True
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
         )
         for csv_script_model in csv_script_models:
-            if csv_script_model.name not in triggered_jobs:
+            if not target_job_tracker.is_job_name_enqueued(csv_script_model.name):
                 job_queue.put(
                     Job(
                         name=csv_script_model.name,
@@ -100,13 +98,14 @@ class Runner:
                 type=CsvScriptModel, dag=self.dag, from_node=trace
             )
             dependencies_completed = all(
-                csv_script_model.name in triggered_jobs
+                target_job_tracker.is_job_name_done(csv_script_model.name)
                 for csv_script_model in children_csv_script_models
             )
             if not dependencies_completed:
                 all_dependencies_completed = False
-            not_completed = trace.name not in triggered_jobs
-            if dependencies_completed and not_completed:
+
+            trace_not_enqueued = not target_job_tracker.is_job_name_enqueued(trace.name)
+            if dependencies_completed and trace_not_enqueued:
                 target = ParentModel.all_descendants_of_type(
                     type=Target, dag=self.dag, from_node=trace
                 )[0]

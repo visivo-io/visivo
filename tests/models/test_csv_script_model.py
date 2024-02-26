@@ -31,7 +31,7 @@ def test_CsvScriptModel_insert_data_bad_csv():
 
     assert (
         exc_info.value.message
-        == f"Error parsing csv output of model model's command. Output stored in {output_dir}/model.csv. Verify contents and try again."
+        == f"Error parsing csv output of model model's command. Output stored in {output_dir}/model.sqlite. Verify contents and try again."
     )
 
 

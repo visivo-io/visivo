@@ -57,6 +57,7 @@ class CsvScriptModelFactory(factory.Factory):
         model = CsvScriptModel
 
     name = "model"
+    table_name = "model"
     args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
 
 

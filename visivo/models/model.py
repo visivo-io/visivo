@@ -60,7 +60,7 @@ class CsvScriptModel(Model):
             data_frame = pandas.read_csv(io.StringIO(output_str))
         except:
             raise click.ClickException(
-                f"Error parsing csv output of {self.name} model's command. Output stored in {csv_file}. Verify contents and try again."
+                f"Error parsing csv output of {self.name} model's command. Output stored in {self.get_database(output_dir=output_dir)}. Verify contents and try again."
             )
         Logger.instance().info(self.get_database(output_dir))
         data_frame.to_sql(self.name, engine, if_exists="replace", index=True)

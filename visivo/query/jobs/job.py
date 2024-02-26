@@ -1,3 +1,4 @@
+from concurrent.futures import Future
 from visivo.models.target import Target
 import os
 import textwrap
@@ -10,7 +11,7 @@ class Job:
         self.target.initialize()
         self.action = action
         self.kwargs = kwargs
-        self.future = None
+        self.future: Future = None
 
     def set_future(self, future):
         self.future = future
