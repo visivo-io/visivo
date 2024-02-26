@@ -37,7 +37,7 @@ def test_CsvScriptModel_insert_data_bad_csv():
 
 def test_CsvScriptModel_bad_name():
     with pytest.raises(ValidationError) as exc_info:
-        CsvScriptModelFactory(name="+++")
+        CsvScriptModelFactory(table_name="+++")
 
     error = exc_info.value.errors()[0]
 

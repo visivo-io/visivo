@@ -3,7 +3,7 @@ import warnings
 from queue import Queue
 
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import CsvScriptModel
+from visivo.models.model import CsvScriptModel, Model
 from visivo.models.project import Project
 from visivo.models.target import Target
 from visivo.models.trace import Trace
@@ -73,7 +73,9 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(self, job_queue: Queue, target_job_tracker: TargetJobTracker) -> bool:
+    def update_job_queue(
+        self, job_queue: Queue, target_job_tracker: TargetJobTracker
+    ) -> bool:
         all_dependencies_completed = True
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
@@ -83,7 +85,7 @@ class Runner:
                 job_queue.put(
                     Job(
                         name=csv_script_model.name,
-                        target=csv_script_model.target,
+                        target=csv_script_model.get_target(self.output_dir),
                         action=run_csv_script_job_action,
                         csv_script_model=csv_script_model,
                         output_dir=self.output_dir,
@@ -106,9 +108,7 @@ class Runner:
 
             trace_not_enqueued = not target_job_tracker.is_job_name_enqueued(trace.name)
             if dependencies_completed and trace_not_enqueued:
-                target = ParentModel.all_descendants_of_type(
-                    type=Target, dag=self.dag, from_node=trace
-                )[0]
+                target = self._get_target(trace)
                 job_queue.put(
                     Job(
                         name=trace.name,
@@ -122,3 +122,18 @@ class Runner:
                 )
 
         return all_dependencies_completed and job_queue.empty()
+
+    def _get_target(self, trace):
+        targets = ParentModel.all_descendants_of_type(
+            type=Target, dag=self.dag, from_node=trace
+        )
+        if len(targets) == 1:
+            return targets[0]
+
+        model = ParentModel.all_descendants_of_type(
+            type=Model, dag=self.dag, from_node=trace
+        )[0]
+        if isinstance(model, CsvScriptModel):
+            return model.get_target(self.output_dir)
+        else:
+            return model.target
