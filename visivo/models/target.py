@@ -3,6 +3,7 @@ from pydantic import Field, SecretStr
 from typing import Optional
 from enum import Enum
 from sqlalchemy.engine import URL
+from sqlalchemy.pool import NullPool
 from sqlalchemy import create_engine, text
 import snowflake.connector
 from pandas import DataFrame, read_sql
@@ -118,7 +119,7 @@ class Target(NamedModel):
         try:
             match self.type:
                 case TypeEnum.postgresql:
-                    engine = create_engine(self.url())
+                    engine = create_engine(self.url(), poolclass=NullPool)
                     return engine.connect()
                 case TypeEnum.sqlite:
                     engine = create_engine(self.url())
@@ -134,7 +135,7 @@ class Target(NamedModel):
                         role=self.role,
                     )
                 case TypeEnum.mysql:
-                    engine = create_engine(self.url())
+                    engine = create_engine(self.url(), poolclass=NullPool)
                     return engine.connect()
         except Exception as e:
             raise click.ClickException(
