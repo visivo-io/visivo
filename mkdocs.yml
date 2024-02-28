@@ -40,6 +40,8 @@ theme:
     - navigation.indexes
     - navigation.sections
     - content.tooltips
+    - content.code.annotate
+    - content.code.copy
   logo: assets/favicon_io/android-chrome-192x192.png
   favicon: assets/favicon_io/favicon-32x32.png
   icon:
