@@ -51,16 +51,14 @@ class CsvScriptModel(Model):
         from sqlalchemy import create_engine
         import subprocess
 
-        process = subprocess.Popen(self.args, stdout=subprocess.PIPE, shell=True)
-        output, _ = process.communicate()
-        output_str = output.decode("utf-8")
-
+        process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
         engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
         try:
-            data_frame = pandas.read_csv(io.StringIO(output_str))
+            csv = io.StringIO(process.stdout.read().decode())
+            data_frame = pandas.read_csv(csv)
         except:
             raise click.ClickException(
-                f"Error parsing csv output of {self.name} model's command. Output stored in {self.get_database(output_dir=output_dir)}. Verify contents and try again."
+                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
         Logger.instance().info(self.get_database(output_dir))
         data_frame.to_sql(self.name, engine, if_exists="replace", index=True)

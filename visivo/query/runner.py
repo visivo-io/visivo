@@ -40,26 +40,24 @@ class Runner:
     def run(self):
         complete = False
         target_job_tracker = TargetJobTracker()
-        job_queue = Queue()
         start_time = time()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=self.threads
         ) as executor:
             while True:
-                complete = self.update_job_queue(job_queue, target_job_tracker)
+                complete = self.update_job_queue(target_job_tracker)
                 if complete:
                     break
 
                 try:
-                    job = job_queue.get(timeout=1)
+                    job = target_job_tracker.get_next_job()
                 except queue.Empty:
                     continue
 
                 if target_job_tracker.is_accepting_job(job):
                     job.set_future(executor.submit(job.action, **job.kwargs))
-                    target_job_tracker.track_job(job)
                 else:
-                    job_queue.put(job)
+                    target_job_tracker.return_to_queue(job)
 
         if len(self.errors) > 0 and self.soft_failure:
             Logger.instance().error(
@@ -73,16 +71,14 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(
-        self, job_queue: Queue, target_job_tracker: TargetJobTracker
-    ) -> bool:
+    def update_job_queue(self, target_job_tracker: TargetJobTracker) -> bool:
         all_dependencies_completed = True
         csv_script_models = ParentModel.all_descendants_of_type(
             type=CsvScriptModel, dag=self.dag, from_node=self.project
         )
         for csv_script_model in csv_script_models:
             if not target_job_tracker.is_job_name_enqueued(csv_script_model.name):
-                job_queue.put(
+                target_job_tracker.track_job(
                     Job(
                         name=csv_script_model.name,
                         target=csv_script_model.get_target(self.output_dir),
@@ -109,7 +105,7 @@ class Runner:
             trace_not_enqueued = not target_job_tracker.is_job_name_enqueued(trace.name)
             if dependencies_completed and trace_not_enqueued:
                 target = self._get_target(trace)
-                job_queue.put(
+                target_job_tracker.track_job(
                     Job(
                         name=trace.name,
                         target=target,
@@ -121,7 +117,7 @@ class Runner:
                     )
                 )
 
-        return all_dependencies_completed and job_queue.empty()
+        return all_dependencies_completed and target_job_tracker.empty()
 
     def _get_target(self, trace):
         targets = ParentModel.all_descendants_of_type(

@@ -1,3 +1,4 @@
+from queue import Queue
 from typing import List
 from visivo.models.target import Target
 from visivo.query.jobs.job import Job
@@ -32,11 +33,13 @@ class TargetLimit:
         return self.limit - len(self.running) > 0
 
     def update(self):
-        self.done = self.done + list(
-            filter(lambda job: job.future.done(), self.running)
+        self.done = (
+            self.done
+            + list(filter(lambda job: job.future and job.future.done(), self.running))
+            + list(filter(lambda job: job.future and job.future.done(), self.enqueued))
         )
         self.running = list(
-            filter(lambda job: not job.future.done(), self.running)
+            filter(lambda job: job.future and not job.future.done(), self.running)
         ) + list(filter(lambda job: job.future, self.enqueued))
 
         self.enqueued = list(filter(lambda job: not job.future, self.enqueued))
@@ -45,6 +48,7 @@ class TargetLimit:
 class TargetJobTracker:
     def __init__(self):
         self.target_limits: List[TargetLimit] = []
+        self.job_queue = Queue()
 
     @property
     def target_names(self):
@@ -61,6 +65,15 @@ class TargetJobTracker:
             )
         return all_tracked_job_names
 
+    @property
+    def all_done_job_names(self):
+        all_done_job_names = set()
+        for target_limit in self.target_limits:
+            all_done_job_names = all_done_job_names.union(
+                target_limit.all_done_job_names
+            )
+        return all_done_job_names
+
     def is_accepting_job(self, job: Job):
         self.__add_target(job.target)
         self.__update()
@@ -72,18 +85,20 @@ class TargetJobTracker:
         return target_limit.is_accepting_job()
 
     def track_job(self, job: Job):
+        self.__add_target(job.target)
         self.__update()
         for target_limit in self.target_limits:
             if target_limit.target_name == job.target.name:
-                target_limit.running.append(job)
+                target_limit.enqueued.append(job)
+                self.job_queue.put(job)
 
-    def is_job_name_enqueued(self, job_name: str):
+    def is_job_name_enqueued(self, job_name: str) -> bool:
         self.__update()
         return job_name in self.all_tracked_job_names
 
-    def is_job_name_done(self, job_name: str):
+    def is_job_name_done(self, job_name: str) -> bool:
         self.__update()
-        return job_name in self.all_tracked_job_names
+        return job_name in self.all_done_job_names
 
     def is_done(self) -> bool:
         self.__update()
@@ -91,6 +106,15 @@ class TargetJobTracker:
             if target_limit.is_processing:
                 return False
         return True
+
+    def return_to_queue(self, job: Job):
+        self.job_queue.put(job)
+
+    def get_next_job(self) -> Job:
+        return self.job_queue.get(timeout=1)
+
+    def empty(self) -> bool:
+        return self.job_queue.empty()
 
     def __update(self):
         for target_job_limit in self.target_limits:
