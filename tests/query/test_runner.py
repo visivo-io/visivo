@@ -91,7 +91,7 @@ def test_runner_with_csv_script_model():
 
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
-        fp.write(f"select *, 'values' as 'cohort_on' from {model.name}")
+        fp.write(f"select *, 'value' as 'cohort_on' from {model.table_name}")
 
     runner = Runner(
         traces=[trace],

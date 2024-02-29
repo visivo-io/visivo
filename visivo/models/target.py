@@ -122,7 +122,7 @@ class Target(NamedModel):
     def _get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
 
-    def initialize(self):
+    def _get_engine(self):
         if not self._engine:
             match self.type:
                 case TypeEnum.postgresql:
@@ -135,14 +135,15 @@ class Target(NamedModel):
                     self._engine = create_engine(
                         self.url(), pool_size=self.connection_pool_size
                     )
+        return self._engine
 
     def _get_connection(self):
         try:
             match self.type:
                 case TypeEnum.postgresql:
-                    return self._engine.connect()
+                    return self._get_engine().connect()
                 case TypeEnum.sqlite:
-                    return self._engine.connect()
+                    return self._get_engine().connect()
                 case TypeEnum.snowflake:
                     return snowflake.connector.connect(
                         account=self.account,
@@ -154,8 +155,8 @@ class Target(NamedModel):
                         role=self.role,
                     )
                 case TypeEnum.mysql:
-                    return self._engine.connect()
-        except:
+                    return self._get_engine().connect()
+        except Exception as err:
             raise click.ClickException(
                 f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
             )

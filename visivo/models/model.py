@@ -61,7 +61,7 @@ class CsvScriptModel(Model):
                 f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
         Logger.instance().info(self.get_database(output_dir))
-        data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
+        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=True)
 
 
 class SqlModel(Model, ParentModel):

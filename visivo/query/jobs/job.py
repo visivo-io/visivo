@@ -8,7 +8,6 @@ class Job:
     def __init__(self, name: str, target: Target, action, **kwargs):
         self.name = name
         self.target = target
-        self.target.initialize()
         self.action = action
         self.kwargs = kwargs
         self.future: Future = None
