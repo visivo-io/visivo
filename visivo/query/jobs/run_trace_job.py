@@ -2,8 +2,10 @@ from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import CsvScriptModel, Model
 from visivo.models.target import Target
+from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
 from visivo.query.jobs.job import (
+    Job,
     JobResult,
     format_message_failure,
     format_message_success,
@@ -44,3 +46,38 @@ def action(trace, dag, output_dir):
                 error_msg=str(repr(e)),
             )
             return JobResult(success=False, message=failure_message)
+
+
+def _get_target(trace, dag, output_dir):
+    targets = ParentModel.all_descendants_of_type(type=Target, dag=dag, from_node=trace)
+    if len(targets) == 1:
+        return targets[0]
+
+    model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
+    if isinstance(model, CsvScriptModel):
+        return model.get_target(output_dir)
+    else:
+        return model.target
+
+
+def jobs(dag, output_dir, project):
+    traces = ParentModel.all_descendants_of_type(type=Trace, dag=dag, from_node=project)
+    jobs = []
+    for trace in traces:
+        children_csv_script_models = ParentModel.all_descendants_of_type(
+            type=CsvScriptModel, dag=dag, from_node=trace
+        )
+        dependencies = list(map(lambda m: m.name, children_csv_script_models))
+        target = _get_target(trace, dag, output_dir)
+        jobs.append(
+            Job(
+                name=trace.name,
+                target=target,
+                action=action,
+                dependencies=dependencies,
+                trace=trace,
+                dag=dag,
+                output_dir=output_dir,
+            )
+        )
+    return jobs

@@ -5,7 +5,6 @@ from tests.factories.model_factories import (
     ProjectFactory,
 )
 from visivo.query.runner import Runner
-from visivo.query.jobs.job import format_message
 from tests.factories.model_factories import TraceFactory
 from visivo.models.target import Target, TypeEnum
 from tests.support.utils import temp_folder
@@ -64,23 +63,6 @@ def test_Runner_trace_given_target():
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
-
-
-def test_runner_message():
-    details = "Testing Details"
-    status = "Failure"
-    full_path = os.getcwd()
-    error_msg = "You did something wrong."
-
-    message = format_message(
-        details=details, status=status, full_path=full_path, error_msg=error_msg
-    )
-    assert "query: ." in message
-    assert (
-        "Testing Details ..........................................................................[Failure]"
-        in message
-    )
-    assert "error: You did something wrong." in message
 
 
 def test_runner_with_csv_script_model():

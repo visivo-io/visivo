@@ -1,4 +1,5 @@
 from concurrent.futures import Future
+from typing import List
 from visivo.models.target import Target
 import os
 import textwrap
@@ -12,23 +13,26 @@ class JobResult:
 
 
 class Job:
-    def __init__(self, name: str, target: Target, action, **kwargs):
+    def __init__(
+        self, name: str, target: Target, action, dependencies: List[str], **kwargs
+    ):
         self.name = name
         self.target = target
         self.action = action
         self.kwargs = kwargs
+        self.dependencies = dependencies
         self.future: Future = None
 
     def set_future(self, future):
         self.future = future
 
     def start_message(self):
-        return format_message(
+        return _format_message(
             details=f"Running job for item \033[4m{self.name}\033[0m", status="RUNNING"
         )
 
 
-def format_message(details, status, full_path=None, error_msg=None):
+def _format_message(details, status, full_path=None, error_msg=None):
     total_width = 90
 
     details = textwrap.shorten(details, width=80, placeholder="(truncated)") + " "
@@ -46,11 +50,11 @@ def format_message(details, status, full_path=None, error_msg=None):
 
 def format_message_success(details, start_time, full_path):
     status = (f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",)
-    format_message(details=details, status=status, full_path=full_path)
+    return _format_message(details=details, status=status, full_path=full_path)
 
 
 def format_message_failure(details, start_time, full_path, error_msg):
     status = (f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",)
-    format_message(
+    return _format_message(
         details=details, status=status, full_path=full_path, error_msg=error_msg
     )

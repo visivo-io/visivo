@@ -1,20 +1,16 @@
 from typing import List
 import warnings
-from queue import Queue
 
-from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import CsvScriptModel, Model
 from visivo.models.project import Project
-from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
 from time import time
-import concurrent.futures
+from concurrent.futures import Future, ThreadPoolExecutor
 import queue
-from visivo.query.jobs.job import Job, JobResult, format_message
+from visivo.query.jobs.job import Job, JobResult
 
-from visivo.query.jobs.run_csv_script_job import action as run_csv_script_job_action
-from visivo.query.jobs.run_trace_job import action as run_trace_job_action
+from visivo.query.jobs.run_csv_script_job import jobs as csv_script_jobs
+from visivo.query.jobs.run_trace_job import jobs as run_trace_jobs
 from visivo.query.target_job_tracker import TargetJobTracker
 
 warnings.filterwarnings("ignore")
@@ -36,14 +32,14 @@ class Runner:
         self.soft_failure = soft_failure
         self.dag = project.dag()
         self.errors = []
+        self.jobs: List[Job] = []
 
     def run(self):
         complete = False
         target_job_tracker = TargetJobTracker()
         start_time = time()
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.threads
-        ) as executor:
+        self.jobs = self._all_jobs()
+        with ThreadPoolExecutor(max_workers=self.threads) as executor:
             while True:
                 complete = self.update_job_queue(target_job_tracker)
                 if complete:
@@ -55,7 +51,7 @@ class Runner:
                     continue
 
                 if target_job_tracker.is_accepting_job(job):
-                    Logger.instance().info(job.start_message)
+                    Logger.instance().info(job.start_message())
                     job.set_future(executor.submit(job.action, **job.kwargs))
                     job.future.add_done_callback(self.job_callback)
                 else:
@@ -75,52 +71,25 @@ class Runner:
 
     def update_job_queue(self, target_job_tracker: TargetJobTracker) -> bool:
         all_dependencies_completed = True
-        csv_script_models = ParentModel.all_descendants_of_type(
-            type=CsvScriptModel, dag=self.dag, from_node=self.project
-        )
-        for csv_script_model in csv_script_models:
-            if not target_job_tracker.is_job_name_enqueued(csv_script_model.name):
-                target_job_tracker.track_job(
-                    Job(
-                        name=csv_script_model.name,
-                        target=csv_script_model.get_target(self.output_dir),
-                        action=run_csv_script_job_action,
-                        csv_script_model=csv_script_model,
-                        output_dir=self.output_dir,
-                    )
+        for job in self.jobs:
+            incomplete_dependencies = list(
+                filter(
+                    lambda d: not target_job_tracker.is_job_name_done(d),
+                    job.dependencies,
                 )
-
-        traces = ParentModel.all_descendants_of_type(
-            type=Trace, dag=self.dag, from_node=self.project
-        )
-        for trace in traces:
-            children_csv_script_models = ParentModel.all_descendants_of_type(
-                type=CsvScriptModel, dag=self.dag, from_node=trace
             )
-            dependencies_completed = all(
-                target_job_tracker.is_job_name_done(csv_script_model.name)
-                for csv_script_model in children_csv_script_models
-            )
+            dependencies_completed = len(incomplete_dependencies) == 0
             if not dependencies_completed:
                 all_dependencies_completed = False
 
-            trace_not_enqueued = not target_job_tracker.is_job_name_enqueued(trace.name)
-            if dependencies_completed and trace_not_enqueued:
-                target = self._get_target(trace)
-                target_job_tracker.track_job(
-                    Job(
-                        name=trace.name,
-                        target=target,
-                        action=run_trace_job_action,
-                        trace=trace,
-                        dag=self.dag,
-                        output_dir=self.output_dir,
-                    )
-                )
+            if dependencies_completed and not target_job_tracker.is_job_name_enqueued(
+                job.name
+            ):
+                target_job_tracker.track_job(job)
 
         return all_dependencies_completed and target_job_tracker.empty()
 
-    def job_callback(self, future: concurrent.futures.Future):
+    def job_callback(self, future: Future):
         job_result: JobResult = future.result(timeout=1)
         if job_result.success:
             Logger.instance().success(str(job_result.message))
@@ -128,17 +97,12 @@ class Runner:
             Logger.instance().error(str(job_result.message))
             self.errors.append(str(job_result.message))
 
-    def _get_target(self, trace):
-        targets = ParentModel.all_descendants_of_type(
-            type=Target, dag=self.dag, from_node=trace
+    def _all_jobs(self) -> List[Job]:
+        jobs = []
+        jobs = jobs + run_trace_jobs(
+            dag=self.dag, output_dir=self.output_dir, project=self.project
         )
-        if len(targets) == 1:
-            return targets[0]
-
-        model = ParentModel.all_descendants_of_type(
-            type=Model, dag=self.dag, from_node=trace
-        )[0]
-        if isinstance(model, CsvScriptModel):
-            return model.get_target(self.output_dir)
-        else:
-            return model.target
+        jobs = jobs + csv_script_jobs(
+            dag=self.dag, output_dir=self.output_dir, project=self.project
+        )
+        return jobs

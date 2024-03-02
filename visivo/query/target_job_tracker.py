@@ -111,6 +111,7 @@ class TargetJobTracker:
         self.job_queue.put(job)
 
     def get_next_job(self) -> Job:
+        self.__update()
         return self.job_queue.get(timeout=1)
 
     def empty(self) -> bool:

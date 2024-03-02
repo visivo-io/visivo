@@ -14,7 +14,7 @@ class MockFuture:
 def test_TargetJobTracker_accepting_job():
     target_job_limits = TargetJobTracker()
     target = TargetFactory()
-    job = Job(name="name", target=target, action=None)
+    job = Job(name="name", target=target, action=None, dependencies=[])
 
     target_job_limits.track_job(job)
 
@@ -32,7 +32,7 @@ def test_TargetJobTracker_accepting_job():
 def test_TargetJobTracker_done():
     target_job_limits = TargetJobTracker()
     target = TargetFactory()
-    job = Job(name="name", target=target, action=None)
+    job = Job(name="name", target=target, action=None, dependencies=[])
     target_job_limits.track_job(job)
 
     assert not target_job_limits.is_job_name_done(job_name=job.name)
@@ -45,7 +45,7 @@ def test_TargetJobTracker_done():
 def test_TargetJobTracker_enqueued():
     target_job_limits = TargetJobTracker()
     target = TargetFactory()
-    job = Job(name="name", target=target, action=None)
+    job = Job(name="name", target=target, action=None, dependencies=[])
     target_job_limits.track_job(job)
 
     assert target_job_limits.is_job_name_enqueued(job_name=job.name)
