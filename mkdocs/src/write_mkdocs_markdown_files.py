@@ -22,24 +22,32 @@ def write_file(file_path, content):
 
 
 def modify_mkdocs_yaml():
-    """Read mkdocs yaml, get nav.reference.configuration """
+    """Read mkdocs yaml, get nav.reference.configuration"""
     if not os.path.isfile("mkdocs.yml"):
         raise FileNotFoundError(
             f"Script expects mkdocs.yml to be present in the working directory {os.getcwd()}"
         )
     with open("mkdocs.yml", "r") as file:
-        mkdocs_yaml_object = yaml.safe_load(file)
+        mkdocs_yml_content = file.read()
+    cleaned_mkdocs_yml_content = mkdocs_yml_content.replace(
+        "!!python/name:", "placeholder_for_python_name"
+    )
+    mkdocs_yaml_object = yaml.safe_load(cleaned_mkdocs_yml_content)
     updated_mkdocs_yaml_object = mkdocs.update_mkdocs_yaml_configuration(
         mkdocs_yaml_object
     )
+    unprocessed_final_mkdocs_yml = yaml.dump(
+        updated_mkdocs_yaml_object,
+        default_flow_style=False,
+        sort_keys=False,
+        Dumper=CustomDumper,
+    )
+    processed_final_mkdocs_yml = unprocessed_final_mkdocs_yml.replace(
+        "placeholder_for_python_name", "!!python/name:"
+    )
+
     with open("mkdocs.yml", "w") as file:
-        yaml.dump(
-            updated_mkdocs_yaml_object,
-            file,
-            default_flow_style=False,
-            sort_keys=False,
-            Dumper=CustomDumper,
-        )
+        file.write(processed_final_mkdocs_yml)
 
 
 def write_pydantic_md_files():

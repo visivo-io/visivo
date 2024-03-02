@@ -6,7 +6,9 @@ from visivo.models.base.base_model import BaseModel
 
 class Include(BaseModel):
     """
-    Include's can be used to break apart a project file with references to other files.
+    Include's can be used to break apart a project file with references to other files. This includes files from remote github repositories.
+
+    [Read more about includes here ](including.md)
     """
 
     path: str = Field(

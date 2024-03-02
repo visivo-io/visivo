@@ -1,11 +1,10 @@
 # Linting `project.visivo.yml`
 
-We publish a json schema file for our `project.visivo.yml`.  This gives you realtime feedback when creating your project.  Currently is it available at https://docs.visivo.io/assets/visivo_schema.json and is published SchemaStore.
+We publish a json schema file for our [`project.visivo.yml`](https://docs.visivo.io/assets/visivo_schema.json). With this file you can get realtime linting & feedback while developing your project.
 
-## VSCode Plugin
+## :material-microsoft-visual-studio-code: VSCode Plugin
 
-The YAML plugin by redhat-developer [here](https://github.com/redhat-developer/vscode-yaml)
- can lint yaml with a json schema.
+Install the [YAML plugin](https://github.com/redhat-developer/vscode-yaml) from the good people of redhat-developer. The plugin enables you to lint any yaml file that you associate a schema to.  
 
 ### Configuration (Optional)
 
