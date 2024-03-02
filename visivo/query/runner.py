@@ -11,7 +11,7 @@ from visivo.logging.logger import Logger
 from time import time
 import concurrent.futures
 import queue
-from visivo.query.jobs.job import Job
+from visivo.query.jobs.job import Job, JobResult, format_message
 
 from visivo.query.jobs.run_csv_script_job import action as run_csv_script_job_action
 from visivo.query.jobs.run_trace_job import action as run_trace_job_action
@@ -55,7 +55,9 @@ class Runner:
                     continue
 
                 if target_job_tracker.is_accepting_job(job):
+                    Logger.instance().info(job.start_message)
                     job.set_future(executor.submit(job.action, **job.kwargs))
+                    job.future.add_done_callback(self.job_callback)
                 else:
                     target_job_tracker.return_to_queue(job)
 
@@ -112,12 +114,19 @@ class Runner:
                         action=run_trace_job_action,
                         trace=trace,
                         dag=self.dag,
-                        errors=self.errors,
                         output_dir=self.output_dir,
                     )
                 )
 
         return all_dependencies_completed and target_job_tracker.empty()
+
+    def job_callback(self, future: concurrent.futures.Future):
+        job_result: JobResult = future.result(timeout=1)
+        if job_result.success:
+            Logger.instance().success(str(job_result.message))
+        else:
+            Logger.instance().error(str(job_result.message))
+            self.errors.append(str(job_result.message))
 
     def _get_target(self, trace):
         targets = ParentModel.all_descendants_of_type(

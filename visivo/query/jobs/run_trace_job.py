@@ -3,11 +3,15 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import CsvScriptModel, Model
 from visivo.models.target import Target
 from visivo.query.aggregator import Aggregator
-from visivo.query.jobs.job import format_message
+from visivo.query.jobs.job import (
+    JobResult,
+    format_message_failure,
+    format_message_success,
+)
 from time import time
 
 
-def action(trace, dag, output_dir, errors):
+def action(trace, dag, output_dir):
     model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     if isinstance(model, CsvScriptModel):
         target = model.get_target(output_dir=output_dir)
@@ -21,29 +25,22 @@ def action(trace, dag, output_dir, errors):
     with open(trace_query_file, "r") as file:
         query_string = file.read()
         try:
-            start_message = format_message(
-                details=f"Running trace \033[4m{trace.name}\033[0m",
-                status="RUNNING",
-                full_path=trace_query_file,
-            )
-            Logger.instance().info(start_message)
             start_time = time()
             data_frame = target.read_sql(query_string)
-            success_message = format_message(
+            success_message = format_message_success(
                 details=f"Updated data for trace \033[4m{trace.name}\033[0m",
-                status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
+                start_time=start_time,
                 full_path=trace_query_file,
             )
             Aggregator.aggregate_data_frame(
                 data_frame=data_frame, trace_dir=trace_directory
             )
-            Logger.instance().success(success_message)
+            return JobResult(success=True, message=success_message)
         except Exception as e:
-            failure_message = format_message(
+            failure_message = format_message_failure(
                 details=f"Failed query for trace \033[4m{trace.name}\033[0m",
-                status=f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",
+                start_time=start_time,
                 full_path=trace_query_file,
                 error_msg=str(repr(e)),
             )
-            Logger.instance().error(str(failure_message))
-            errors.append(f"\033[4m{trace.name}\033[0m: {str(repr(e))}")
+            return JobResult(success=False, message=failure_message)
