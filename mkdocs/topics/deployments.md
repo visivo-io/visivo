@@ -135,63 +135,118 @@ We have an [example action](https://github.com/visivo-io/visivo/blob/main/.githu
 This following can be adapted easily with the `env` variables.
 
 {% raw %}
-``` yaml title=".github/workflows/visivo_deploy_archive.yml"
-name: Deploy & Archive CI Dashboard
+=== "Deploy & Archive"
 
-on:
-  pull_request:
-    types: [opened, reopened, closed, synchronize]
+    ``` yaml title=".github/workflows/visivo_deploy_archive.yml"
+    name: Deploy & Archive CI Dashboard
 
-env:
-  yml_location: . #(1)!
-  stage_name: ${{ github.head_ref }}
-  deploy: github.event.pull_request.merged == false && github.event.pull_request.closed_at == null
-  archive: github.event.pull_request.merged == true || github.event.pull_request.closed_at != null
+    on:
+      pull_request:
+        types: [opened, reopened, closed, synchronize]
 
-jobs:
-  deploy-archive-dashboard:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    env:
+      yml_location: . #(1)!
+      stage_name: ${{ github.head_ref }}
+      deploy: github.event.pull_request.merged == false && github.event.pull_request.closed_at == null
+      archive: github.event.pull_request.merged == true || github.event.pull_request.closed_at != null
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10' 
-      
-      - name: Install Visivo
-        run: pip install git+https://github.com/visivo-io/visivo.git@latest #(2)!
-      
-      - name: Run Visivo 
-        if: ${{ env.deploy }}
-        run: cd ${{ env.yml_location}} && visivo run 
+    jobs:
+      deploy-archive-dashboard:
+        runs-on: ubuntu-latest
+        
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
 
-      - name: Deploy
-        id: deploy
-        if: ${{ env.deploy }}
-        run: |
-          visivo deploy -s ${{ env.stage_name }} | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
-          deployed=`cat deployed.txt`
-          echo "deployed=$deployed" >> "$GITHUB_OUTPUT"
-        env: 
-          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+          - uses: actions/setup-python@v5
+            with:
+              python-version: '3.10' 
+          
+          - name: Install Visivo
+            run: pip install git+https://github.com/visivo-io/visivo.git@latest #(2)!
+          
+          - name: Run Visivo 
+            if: ${{ env.deploy }}
+            run: cd ${{ env.yml_location}} && visivo run 
 
-      - name: Comment
-        if: ${{ env.deploy }}
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          message: |
-            Visivo Dashboard:
-             ${{ steps.deploy.outputs.deployed}}
+          - name: Deploy
+            id: deploy
+            if: ${{ env.deploy }} 
+            run: visivo deploy -s ${{ env.stage_name }}
+            env: 
+              VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
 
-      - name: Archive 
-        if: ${{ env.archive }}
-        run: visivo archive -s ${{ env.stage_name }}
-        env: 
-          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
-```
+          - name: Archive 
+            if: ${{ env.archive }}
+            run: visivo archive -s ${{ env.stage_name }}
+            env: 
+              VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+    ```
 
-1. The relative location of your `project.visivo.yml` file. 
-2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    1. The relative location of your `project.visivo.yml` file. 
+    2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    3. This step captures the stdout print of the url of the deployment that was created so that it can later be referenced to generate a github comment on the PR. Both of these steps are totally optional!
+
+=== "Deploy + Comment on PR & Archive"
+
+    ``` yaml title=".github/workflows/visivo_deploy_archive.yml"
+    name: Deploy & Archive CI Dashboard
+
+    on:
+      pull_request:
+        types: [opened, reopened, closed, synchronize]
+
+    env:
+      yml_location: . #(1)!
+      stage_name: ${{ github.head_ref }}
+      deploy: github.event.pull_request.merged == false && github.event.pull_request.closed_at == null
+      archive: github.event.pull_request.merged == true || github.event.pull_request.closed_at != null
+
+    jobs:
+      deploy-archive-dashboard:
+        runs-on: ubuntu-latest
+        
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+
+          - uses: actions/setup-python@v5
+            with:
+              python-version: '3.10' 
+          
+          - name: Install Visivo
+            run: pip install git+https://github.com/visivo-io/visivo.git@latest #(2)!
+          
+          - name: Run Visivo 
+            if: ${{ env.deploy }}
+            run: cd ${{ env.yml_location}} && visivo run 
+
+          - name: Deploy
+            id: deploy
+            if: ${{ env.deploy }}
+            run: | #(3)!
+              visivo deploy -s ${{ env.stage_name }} | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
+              deployed=`cat deployed.txt`
+              echo "deployed=$deployed" >> "$GITHUB_OUTPUT"
+            env: 
+              VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+
+          - name: Comment
+            if: ${{ env.deploy }}
+            uses: marocchino/sticky-pull-request-comment@v2
+            with:
+              message: |
+                Visivo Dashboard:
+                ${{ steps.deploy.outputs.deployed}}
+
+          - name: Archive 
+            if: ${{ env.archive }}
+            run: visivo archive -s ${{ env.stage_name }}
+            env: 
+              VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+    ```
+
+    1. The relative location of your `project.visivo.yml` file. 
+    2. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    3. This step captures the stdout print of the url of the deployment that was created so that it can later be referenced to generate a github comment on the PR. Both of these steps are totally optional!
 {% endraw %}
