@@ -65,6 +65,7 @@ extra:
     property: G-50DF3C95TL
 extra_css:
   - stylesheets/brand_colors.css
+  - stylesheets/icon-colors.css
 nav:
   - Getting Started: index.md
   - Change Log: https://github.com/visivo-io/visivo/releases
