@@ -12,10 +12,10 @@ def test_runner_message_success():
     )
     assert "query: ." in message
     assert (
-        "Testing Details ..........................................................................[Failure]"
+        "Testing Details .........................................................................."
         in message
     )
-    assert "error: You did something wrong." in message
+    assert "SUCCESS" in message
 
 
 def test_runner_message_failure():
@@ -28,7 +28,8 @@ def test_runner_message_failure():
     )
     assert "query: ." in message
     assert (
-        "Testing Details ..........................................................................[Failure]"
+        "Testing Details .........................................................................."
         in message
     )
+    assert "FAILURE" in message
     assert "error: You did something wrong." in message
