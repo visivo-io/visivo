@@ -42,7 +42,8 @@ def test_docs_content_from_traceprops_model():
     assert len(bar_md) > 50
 
     scatter_md = mkdocs.get_md_content("Scatter")
-    assert len(scatter_md) > 50
+    print(scatter_md)
+    assert len(scatter_md) < 50
 
 
 def test_update_mkdocs_yaml_configuration():

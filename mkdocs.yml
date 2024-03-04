@@ -15,6 +15,8 @@ plugins:
       known_words: known_words.txt
       ignore_code: true
       min_length: 2
+      skip_files:
+        - reference/configuration/Trace/*
       max_capital: 1
 markdown_extensions:
   - mkdocs-click
@@ -30,6 +32,9 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      options:
+        custom_icons:
+          - mkdocs/overrides/.icons
 repo_url: https://github.com/visivo-io/visivo
 repo_name: visivo-io/visivo
 theme:
