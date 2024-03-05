@@ -1,5 +1,6 @@
 from textwrap import dedent
 import yaml
+import re
 
 
 def find_refs(obj):
@@ -178,17 +179,21 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
         else dedent(model_def.get("description")) + "\n"
     )
 
-    nested_structure, details = _get_traceprop_nested_structure(model_defs, model_name)
+    nested_structure, details = _get_traceprop_nested_structure(
+        model_defs, model_name, details=[]
+    )
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
-
-    return (
+    pattern = r"'([^'#]+) (\#\(.*?\)!)'"
+    processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
+    full_doc = (
         f"# {model_name}"
         + "\n"
         + model_md
         + "{% raw %}\n"
         + "``` yaml\n"
-        + yaml_doc
+        + processed_yaml_doc
         + "\n```\n\n"
         + "\n".join(details)
         + "\n{% endraw %}\n"
     )
+    return full_doc
