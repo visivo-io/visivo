@@ -4,6 +4,7 @@ from visivo.models.target import Target
 import os
 import textwrap
 from time import time
+from termcolor import colored
 
 
 class JobResult:
@@ -49,12 +50,12 @@ def _format_message(details, status, full_path=None, error_msg=None):
 
 
 def format_message_success(details, start_time, full_path):
-    status = (f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",)
+    status = colored(f"SUCCESS {round(time()-start_time,2)}s", "green")
     return _format_message(details=details, status=status, full_path=full_path)
 
 
 def format_message_failure(details, start_time, full_path, error_msg):
-    status = (f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",)
+    status = colored(f"FAILURE {round(time()-start_time,2)}s", "red")
     return _format_message(
         details=details, status=status, full_path=full_path, error_msg=error_msg
     )

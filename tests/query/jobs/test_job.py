@@ -12,7 +12,7 @@ def test_runner_message_success():
     )
     assert "query: ." in message
     assert (
-        "Testing Details .........................................................................."
+        "Testing Details ..........................................................................[SUCCESS"
         in message
     )
     assert "SUCCESS" in message
@@ -28,7 +28,7 @@ def test_runner_message_failure():
     )
     assert "query: ." in message
     assert (
-        "Testing Details .........................................................................."
+        "Testing Details ..........................................................................[FAILURE"
         in message
     )
     assert "FAILURE" in message
