@@ -27,9 +27,11 @@ class TargetLimit:
         return set(map(lambda job: job.name, self.done))
 
     def is_processing(self):
+        self.update()
         return (len(self.running) + len(self.enqueued)) > 0
 
     def is_accepting_job(self):
+        self.update()
         return self.limit - len(self.running) > 0
 
     def update(self):
@@ -103,7 +105,7 @@ class TargetJobTracker:
     def is_done(self) -> bool:
         self.__update()
         for target_limit in self.target_limits:
-            if target_limit.is_processing:
+            if target_limit.is_processing():
                 return False
         return True
 
