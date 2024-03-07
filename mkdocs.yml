@@ -15,8 +15,6 @@ plugins:
       known_words: known_words.txt
       ignore_code: true
       min_length: 2
-      skip_files:
-        - reference/configuration/Trace/*
       max_capital: 1
 markdown_extensions:
   - mkdocs-click
