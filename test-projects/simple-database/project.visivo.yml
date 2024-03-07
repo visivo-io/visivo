@@ -38,6 +38,7 @@ models:
   - name: test table local
     sql: "SELECT * FROM test_table"
   - name: csv
+    table_name: csv
     args:
       - echo
       - |
@@ -49,6 +50,7 @@ models:
         5,5
         6,8
   - name: processes
+    table_name: processes
     args:
       - python
       - create_processes_csv.py
