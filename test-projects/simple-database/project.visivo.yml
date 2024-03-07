@@ -49,10 +49,10 @@ models:
         5,5
         6,8
   - name: processes
-    args: 
+    args:
       - python
       - create_processes_csv.py
-      - '&&'
+      - "&&"
       - cat target/processes.csv
 
   - name: waterfall_model

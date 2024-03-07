@@ -104,7 +104,7 @@ class CsvScriptModel(Model):
     """
 
     table_name: CsvScriptModelName = Field(
-        None, description="The name to give the resulting models table"
+        "model", description="The name to give the resulting models table"
     )
 
     args: List[str] = Field(
@@ -138,8 +138,7 @@ class CsvScriptModel(Model):
             raise click.ClickException(
                 f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
-        Logger.instance().info(self.get_database(output_dir))
-        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=True)
+        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
 
 
 class SqlModel(Model, ParentModel):
