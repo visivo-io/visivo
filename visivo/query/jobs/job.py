@@ -1,5 +1,6 @@
 from concurrent.futures import Future
 from typing import List
+from visivo.models.base.named_model import NamedModel
 from visivo.models.target import Target
 import os
 import textwrap
@@ -13,23 +14,46 @@ class JobResult:
         self.message = message
 
 
+class CachedFuture:
+    def done(self):
+        return True
+
+
 class Job:
     def __init__(
-        self, name: str, target: Target, action, dependencies: List[str], **kwargs
+        self,
+        item: NamedModel,
+        target: Target,
+        action,
+        dependencies: List[str],
+        output_changed: bool = True,
+        **kwargs,
     ):
-        self.name = name
+        self.item = item
         self.target = target
         self.action = action
+        self.output_changed = output_changed
         self.kwargs = kwargs
         self.dependencies = dependencies
         self.future: Future = None
+
+    @property
+    def name(self):
+        return self.item.name
+
+    def done(self):
+        return self.future and self.future.done()
+
+    def running(self):
+        return self.future and not self.future.done()
 
     def set_future(self, future):
         self.future = future
 
     def start_message(self):
         return _format_message(
-            details=f"Running job for item \033[4m{self.name}\033[0m", status="RUNNING"
+            details=f"Running job for {self.__class__.__name__} \033[4m{self.item.name}\033[0m",
+            status="RUNNING",
         )
 
 
@@ -44,8 +68,15 @@ def _format_message(details, status, full_path=None, error_msg=None):
     current_directory = os.getcwd()
     relative_path = os.path.relpath(full_path, current_directory)
     error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
+    action = ""
+    if relative_path.endswith(".sql"):
+        action = "query: "
+    elif relative_path.endswith(".sqlite"):
+        action = "database file: "
+
     return (
-        f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m" + error_str
+        f"{details}{dots}[{status}]\n\t\033[2m{action}{relative_path}\033[0m"
+        + error_str
     )
 
 

@@ -1,4 +1,4 @@
-from tests.factories.model_factories import TargetFactory
+from tests.factories.model_factories import JobFactory, TargetFactory
 from visivo.query.jobs.job import Job
 from visivo.query.target_job_tracker import TargetJobTracker
 
@@ -13,8 +13,7 @@ class MockFuture:
 
 def test_TargetJobTracker_is_accepting_job():
     target_job_limits = TargetJobTracker()
-    target = TargetFactory()
-    job = Job(name="name", target=target, action=None, dependencies=[])
+    job = JobFactory()
 
     target_job_limits.track_job(job)
 
@@ -31,8 +30,7 @@ def test_TargetJobTracker_is_accepting_job():
 
 def test_TargetJobTracker_is_job_name_done():
     target_job_limits = TargetJobTracker()
-    target = TargetFactory()
-    job = Job(name="name", target=target, action=None, dependencies=[])
+    job = JobFactory()
     target_job_limits.track_job(job)
 
     assert not target_job_limits.is_job_name_done(job_name=job.name)
@@ -44,8 +42,7 @@ def test_TargetJobTracker_is_job_name_done():
 
 def test_TargetJobTracker_enqueued():
     target_job_limits = TargetJobTracker()
-    target = TargetFactory()
-    job = Job(name="name", target=target, action=None, dependencies=[])
+    job = JobFactory()
     target_job_limits.track_job(job)
 
     assert target_job_limits.is_job_name_enqueued(job_name=job.name)
@@ -61,29 +58,26 @@ def test_TargetJobTracker_enqueued():
 
 def test_TargetJobTracker_all_tracked_job_names():
     target_job_limits = TargetJobTracker()
-    target = TargetFactory()
-    job = Job(name="name", target=target, action=None, dependencies=[])
+    job = JobFactory()
     target_job_limits.track_job(job=job)
 
-    assert target_job_limits.all_tracked_job_names == {"name"}
+    assert target_job_limits.all_tracked_job_names == {"trace"}
 
 
 def test_TargetJobTracker_all_done_job_names():
     target_job_limits = TargetJobTracker()
-    target = TargetFactory()
-    job = Job(name="name", target=target, action=None, dependencies=[])
+    job = JobFactory()
     job.set_future(MockFuture(True))
 
     target_job_limits.track_job(job=job)
     target_job_limits.is_done()
 
-    assert target_job_limits.all_done_job_names == {"name"}
+    assert target_job_limits.all_done_job_names == {"trace"}
 
 
 def test_TargetJobTracker_is_done():
     target_job_limits = TargetJobTracker()
-    target = TargetFactory()
-    job = Job(name="name", target=target, action=None, dependencies=[])
+    job = JobFactory()
     target_job_limits.track_job(job=job)
 
     assert not target_job_limits.is_done()

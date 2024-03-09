@@ -1,5 +1,6 @@
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.model import CsvScriptModel
+from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,
     JobResult,
@@ -29,16 +30,22 @@ def action(csv_script_model: CsvScriptModel, output_dir):
         return JobResult(success=False, message=failure_message)
 
 
-def jobs(dag, project, output_dir):
+def jobs(dag, output_dir: str, project: Project, name_filter: str):
     csv_script_models = ParentModel.all_descendants_of_type(
         type=CsvScriptModel, dag=dag, from_node=project
     )
+
+    if name_filter:
+        included_nodes = project.nodes_including_named_node_in_graph(name=name_filter)
+    else:
+        included_nodes = project.descendants()
+    csv_script_models = set(csv_script_models).intersection(included_nodes)
 
     jobs = []
     for csv_script_model in csv_script_models:
         jobs.append(
             Job(
-                name=csv_script_model.name,
+                item=csv_script_model,
                 target=csv_script_model.get_target(output_dir),
                 action=action,
                 dependencies=[],

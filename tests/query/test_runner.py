@@ -32,7 +32,6 @@ def test_Runner_trace_with_default():
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
     runner = Runner(
-        traces=[trace],
         project=project,
         output_dir=output_dir,
     )
@@ -56,7 +55,6 @@ def test_Runner_trace_given_target():
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
     runner = Runner(
-        traces=[trace],
         project=project,
         output_dir=output_dir,
     )
@@ -76,7 +74,6 @@ def test_runner_with_csv_script_model():
         fp.write(f"select *, 'value' as 'cohort_on' from {model.table_name}")
 
     runner = Runner(
-        traces=[trace],
         project=project,
         output_dir=output_dir,
     )

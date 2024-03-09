@@ -7,7 +7,7 @@ from visivo.logging.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor
 import queue
-from visivo.query.jobs.job import Job, JobResult
+from visivo.query.jobs.job import CachedFuture, Job, JobResult
 
 from visivo.query.jobs.run_csv_script_job import jobs as csv_script_jobs
 from visivo.query.jobs.run_trace_job import jobs as run_trace_jobs
@@ -19,17 +19,19 @@ warnings.filterwarnings("ignore")
 class Runner:
     def __init__(
         self,
-        traces: List[Trace],
         project: Project,
         output_dir: str,
         threads: int = 8,
         soft_failure=False,
+        run_only_changed=False,
+        name_filter: str = None,
     ):
-        self.traces = traces
         self.project = project
         self.output_dir = output_dir
+        self.run_only_changed = run_only_changed
         self.threads = threads
         self.soft_failure = soft_failure
+        self.name_filter = name_filter
         self.dag = project.dag()
         self.errors = []
         self.jobs: List[Job] = []
@@ -50,7 +52,9 @@ class Runner:
                 except queue.Empty:
                     continue
 
-                if target_job_tracker.is_accepting_job(job):
+                if job.done():
+                    pass
+                elif target_job_tracker.is_accepting_job(job):
                     Logger.instance().info(job.start_message())
                     job.set_future(executor.submit(job.action, **job.kwargs))
                     job.future.add_done_callback(self.job_callback)
@@ -85,6 +89,8 @@ class Runner:
             if dependencies_completed and not target_job_tracker.is_job_name_enqueued(
                 job.name
             ):
+                if not job.output_changed and self.run_only_changed:
+                    job.future = CachedFuture()
                 target_job_tracker.track_job(job)
 
         return all_dependencies_completed and target_job_tracker.empty()
@@ -100,9 +106,15 @@ class Runner:
     def _all_jobs(self) -> List[Job]:
         jobs = []
         jobs = jobs + run_trace_jobs(
-            dag=self.dag, output_dir=self.output_dir, project=self.project
+            dag=self.dag,
+            output_dir=self.output_dir,
+            project=self.project,
+            name_filter=self.name_filter,
         )
         jobs = jobs + csv_script_jobs(
-            dag=self.dag, output_dir=self.output_dir, project=self.project
+            dag=self.dag,
+            output_dir=self.output_dir,
+            project=self.project,
+            name_filter=self.name_filter,
         )
         return jobs

@@ -8,5 +8,7 @@ def test_jobs():
     project = ProjectFactory()
     csv_model = CsvScriptModelFactory()
     project.models.append(csv_model)
-    csv_jobs = jobs(dag=project.dag(), project=project, output_dir=output_dir)
+    csv_jobs = jobs(
+        dag=project.dag(), project=project, output_dir=output_dir, name_filter=None
+    )
     assert len(csv_jobs) == 1

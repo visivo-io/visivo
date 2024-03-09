@@ -37,12 +37,12 @@ class TargetLimit:
     def update(self):
         self.done = (
             self.done
-            + list(filter(lambda job: job.future and job.future.done(), self.running))
-            + list(filter(lambda job: job.future and job.future.done(), self.enqueued))
+            + list(filter(lambda job: job.done(), self.running))
+            + list(filter(lambda job: job.done(), self.enqueued))
         )
-        self.running = list(
-            filter(lambda job: job.future and not job.future.done(), self.running)
-        ) + list(filter(lambda job: job.future, self.enqueued))
+        self.running = list(filter(lambda job: job.running(), self.running)) + list(
+            filter(lambda job: job.running(), self.enqueued)
+        )
 
         self.enqueued = list(filter(lambda job: not job.future, self.enqueued))
 
