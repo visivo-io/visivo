@@ -61,9 +61,7 @@ def _get_target(trace, dag, output_dir):
         return model.target
 
 
-def jobs(
-    dag, output_dir: str, project: Project, name_filter: str
-):
+def jobs(dag, output_dir: str, project: Project, name_filter: str):
     jobs = []
 
     traces = project.filter_traces(name_filter=name_filter)
@@ -76,6 +74,7 @@ def jobs(
         jobs.append(
             Job(
                 item=trace,
+                output_changed=trace.changed,
                 target=target,
                 action=action,
                 dependencies=dependencies,
