@@ -97,7 +97,7 @@ class Dialect(BaseModel, use_enum_values=True):
 
     @property
     def aggregates_regex_pattern(self):
-        aggregates_with_regex = [f"{agg}\s*\(.*\)\s*" for agg in self.aggregates]
+        aggregates_with_regex = [rf"{agg}\s*\(.*\)\s*" for agg in self.aggregates]
         return "|".join(aggregates_with_regex)
         
 

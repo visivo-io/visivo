@@ -83,7 +83,7 @@ class TraceTokenizer:
         )
         groupby = []
         for statement in query_statements:
-            if re.findall("^\s*'.*'\s*$", statement):
+            if re.findall(r"^\s*'.*'\s*$", statement):
                 continue
             classification = self.statement_classifier.classify(statement)
             match classification:

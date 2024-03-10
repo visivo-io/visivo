@@ -1,4 +1,5 @@
 import click
+from visivo.query.aggregator import Aggregator
 from .options import output_dir
 
 
@@ -14,5 +15,5 @@ def aggregate(output_dir, json_file):
 
     from visivo.query.runner import Runner
 
-    Runner.aggregate(trace_dir=output_dir, json_file=json_file)
+    Aggregator.aggregate(trace_dir=output_dir, json_file=json_file)
     Logger.instance().success("Done")

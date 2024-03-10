@@ -11,6 +11,7 @@ from visivo.models.trace_props import Scatter
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
 from visivo.models.target import Target, TypeEnum
+from visivo.query.jobs.job import Job
 
 
 class AlertFactory(factory.Factory):
@@ -57,6 +58,7 @@ class CsvScriptModelFactory(factory.Factory):
         model = CsvScriptModel
 
     name = "model"
+    table_name = "model"
     args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
 
 
@@ -77,6 +79,16 @@ class TraceFactory(factory.Factory):
                 {"not_null": {"attributes": ["y", "x"]}},
             ]
         )
+
+
+class JobFactory(factory.Factory):
+    class Meta:
+        model = Job
+
+    item = factory.SubFactory(TraceFactory)
+    target = factory.SubFactory(TargetFactory)
+    action = None
+    dependencies = []
 
 
 class ChartFactory(factory.Factory):
