@@ -15,7 +15,7 @@ class Model(NamedModel):
     pass
 
 
-CsvScriptModelName = Annotated[str, Field(pattern="[a-zA-Z0-9_]")]
+TableModelName = Annotated[str, Field(pattern="[a-zA-Z0-9_]")]
 
 
 class CsvScriptModel(Model):
@@ -103,7 +103,7 @@ class CsvScriptModel(Model):
     The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
     """
 
-    table_name: CsvScriptModelName = Field(
+    table_name: TableModelName = Field(
         "model", description="The name to give the resulting models table"
     )
 
@@ -141,6 +141,40 @@ class CsvScriptModel(Model):
         data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
 
 
+class LocalMergeModel(Model, ParentModel):
+    """
+    Local Merge Models are models that allow you to merge data from multiple other models locally.
+
+    """
+
+    sql: str = Field(
+        None,
+        description="The sql used to generate your base data",
+    )
+    models: List[generate_ref_field(Model)] = Field(
+        description="A model object defined inline or a ref() to a model."
+    )
+
+    def get_database(self, output_dir):
+        return f"{output_dir}/{self.name}.sqlite"
+
+    def get_target(self):
+        # https://stackoverflow.com/questions/23036751/can-sqlalchemy-work-well-with-multiple-attached-sqlite-database-files
+        # Need to have a new option for sqlite targets which is a list of join databases
+        # attach 'database1.db' as db1;
+        # attach 'database2.db' as db2;
+        pass
+
+    def insert_model_data(self):
+        for model in self.models:
+            model.target()
+            # If database exists, then continue
+            # else run model query against target
+
+    def child_items(self):
+        return self.models
+
+
 class SqlModel(Model, ParentModel):
     """
     SQL Models are queries that return base data from a SQL target. These data are then
@@ -170,10 +204,14 @@ def get_model_discriminator_value(value: Any) -> str:
     if isinstance(value, dict):
         if "args" in value:
             return "CsvScript"
+        if "models" in value:
+            return "LocalMerge"
         if "sql" in value:
             return "Sql"
     if hasattr(value, "args"):
         return "CsvScript"
+    if hasattr(value, "models"):
+        return "LocalMerge"
     if hasattr(value, "sql"):
         return "Sql"
 
@@ -184,6 +222,7 @@ ModelField = Annotated[
     Union[
         Annotated[SqlModel, Tag("Sql")],
         Annotated[CsvScriptModel, Tag("CsvScript")],
+        Annotated[LocalMergeModel, Tag("LocalMerge")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
@@ -193,6 +232,7 @@ ModelRefField = Annotated[
         RefString,
         Annotated[SqlModel, Tag("Sql")],
         Annotated[CsvScriptModel, Tag("CsvScript")],
+        Annotated[LocalMergeModel, Tag("LocalMerge")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
