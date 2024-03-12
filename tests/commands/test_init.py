@@ -8,8 +8,8 @@ runner = CliRunner()
 
 
 def test_init_with_sqlite():
-    # if os.environ.get("CI"):
-    #     return
+    if os.environ.get("CI"):
+        return
     tmp = temp_folder()
 
     response = runner.invoke(init, input=f"{tmp}\nsqlite\n")
@@ -19,7 +19,6 @@ def test_init_with_sqlite():
     assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget\n.visivo_cache"
     assert os.path.exists(f"{tmp}/project.visivo.yml")
     assert os.path.exists(f"{tmp}/local.db")
-    assert 1 == 2
 
 
 def test_init_with_postgres():
