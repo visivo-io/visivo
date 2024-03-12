@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visivo"
-version = "1.0.7"
+version = "1.0.9"
 description = ""
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
@@ -30,6 +30,7 @@ deepmerge = "^1.1.0"
 gitpython = "^3.1.32"
 halo = "^0.0.31"
 mkdocs-autolinks-plugin = "^0.7.1"
+termcolor = "^2.4.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"

@@ -1,79 +1,65 @@
-from typing import List, Optional
-from sqlalchemy import text
+from typing import List
 import warnings
-from threading import Thread
-from queue import Queue
-import os
 
-from pandas import read_json
-from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import CsvScriptModel, Model
 from visivo.models.project import Project
-from visivo.models.target import Target
 from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
 from time import time
-import textwrap
+from concurrent.futures import Future, ThreadPoolExecutor
+import queue
+from visivo.query.jobs.job import CachedFuture, Job, JobResult
+
+from visivo.query.jobs.run_csv_script_job import jobs as csv_script_jobs
+from visivo.query.jobs.run_trace_job import jobs as run_trace_jobs
+from visivo.query.target_job_tracker import TargetJobTracker
 
 warnings.filterwarnings("ignore")
-
-
-def format_message(details, status, full_path, error_msg=None):
-    total_width = 90
-
-    details = textwrap.shorten(details, width=80, placeholder="(trucated)") + " "
-    num_dots = total_width - len(details)
-    dots = "." * num_dots
-    current_directory = os.getcwd()
-    relative_path = os.path.relpath(full_path, current_directory)
-    error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
-    return (
-        f"{details}{dots}[{status}]\n\t\033[2mquery: {relative_path}\033[0m" + error_str
-    )
 
 
 class Runner:
     def __init__(
         self,
-        traces: List[Trace],
         project: Project,
         output_dir: str,
         threads: int = 8,
         soft_failure=False,
+        run_only_changed=False,
+        name_filter: str = None,
     ):
-        self.traces = traces
         self.project = project
         self.output_dir = output_dir
+        self.run_only_changed = run_only_changed
         self.threads = threads
         self.soft_failure = soft_failure
+        self.name_filter = name_filter
         self.dag = project.dag()
         self.errors = []
+        self.jobs: List[Job] = []
 
     def run(self):
+        complete = False
+        target_job_tracker = TargetJobTracker()
         start_time = time()
-        self.errors = []
-        queue = Queue()
-        for trace in self.traces:
-            queue.put(trace)
+        self.jobs = self._all_jobs()
+        with ThreadPoolExecutor(max_workers=self.threads) as executor:
+            while True:
+                complete = self.update_job_queue(target_job_tracker)
+                if complete:
+                    break
 
-        csv_script_models = ParentModel.all_descendants_of_type(
-            type=CsvScriptModel, dag=self.dag, from_node=self.project
-        )
-        for csv_script_model in csv_script_models:
-            csv_script_model.insert_csv_to_sqlite(output_dir=self.output_dir)
+                try:
+                    job = target_job_tracker.get_next_job()
+                except queue.Empty:
+                    continue
 
-        threads = []
-        concurrency = min(len(self.traces), self.threads)
-        for i in range(concurrency):
-            thread = Thread(target=self._run_trace_query, args=(queue,))
-            thread.daemon = True
-            thread.start()
-            threads.append(thread)
-
-        queue.join()
-
-        for thread in threads:
-            thread.join()
+                if job.done():
+                    pass
+                elif target_job_tracker.is_accepting_job(job):
+                    Logger.instance().info(job.start_message())
+                    job.set_future(executor.submit(job.action, **job.kwargs))
+                    job.future.add_done_callback(self.job_callback)
+                else:
+                    target_job_tracker.return_to_queue(job)
 
         if len(self.errors) > 0 and self.soft_failure:
             Logger.instance().error(
@@ -87,58 +73,48 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def _run_trace_query(self, queue: Queue):
-        while not queue.empty():
-            trace = queue.get()
-            model = ParentModel.all_descendants_of_type(
-                type=Model, dag=self.dag, from_node=trace
-            )[0]
-            if isinstance(model, CsvScriptModel):
-                target = model.get_target(output_dir=self.output_dir)
-            else:
-                target = ParentModel.all_descendants_of_type(
-                    type=Target, dag=self.dag, from_node=model
-                )[0]
+    def update_job_queue(self, target_job_tracker: TargetJobTracker) -> bool:
+        all_dependencies_completed = True
+        for job in self.jobs:
+            incomplete_dependencies = list(
+                filter(
+                    lambda d: not target_job_tracker.is_job_name_done(d),
+                    job.dependencies,
+                )
+            )
+            dependencies_completed = len(incomplete_dependencies) == 0
+            if not dependencies_completed:
+                all_dependencies_completed = False
 
-            trace_directory = f"{self.output_dir}/{trace.name}"
-            trace_query_file = f"{trace_directory}/query.sql"
-            with open(trace_query_file, "r") as file:
-                query_string = file.read()
-                try:
-                    start_message = format_message(
-                        details=f"Running trace \033[4m{trace.name}\033[0m",
-                        status="RUNNING",
-                        full_path=trace_query_file,
-                    )
-                    Logger.instance().info(start_message)
-                    start_time = time()
-                    data_frame = target.read_sql(query_string)
-                    success_message = format_message(
-                        details=f"Updated data for trace \033[4m{trace.name}\033[0m",
-                        status=f"\033[32mSUCCESS\033[0m {round(time()-start_time,2)}s",
-                        full_path=trace_query_file,
-                    )
-                    self.__aggregate(data_frame=data_frame, trace_dir=trace_directory)
-                    Logger.instance().success(success_message)
-                except Exception as e:
-                    failure_message = format_message(
-                        details=f"Failed query for trace \033[4m{trace.name}\033[0m",
-                        status=f"\033[31mFAILURE\033[0m {round(time()-start_time,2)}s",
-                        full_path=trace_query_file,
-                        error_msg=str(repr(e)),
-                    )
-                    Logger.instance().error(str(failure_message))
-                    self.errors.append(f"\033[4m{trace.name}\033[0m: {str(repr(e))}")
-                finally:
-                    queue.task_done()
+            if dependencies_completed and not target_job_tracker.is_job_name_enqueued(
+                job.name
+            ):
+                if not job.output_changed and self.run_only_changed:
+                    job.future = CachedFuture()
+                target_job_tracker.track_job(job)
 
-    @classmethod
-    def aggregate(cls, json_file: str, trace_dir: str):
-        data_frame = read_json(json_file)
-        cls.__aggregate(data_frame=data_frame, trace_dir=trace_dir)
+        return all_dependencies_completed and target_job_tracker.empty()
 
-    @classmethod
-    def __aggregate(cls, data_frame, trace_dir):
-        aggregated = data_frame.groupby("cohort_on").aggregate(list).transpose()
-        with open(f"{trace_dir}/data.json", "w") as fp:
-            fp.write(aggregated.to_json(default_handler=str))
+    def job_callback(self, future: Future):
+        job_result: JobResult = future.result(timeout=1)
+        if job_result.success:
+            Logger.instance().success(str(job_result.message))
+        else:
+            Logger.instance().error(str(job_result.message))
+            self.errors.append(str(job_result.message))
+
+    def _all_jobs(self) -> List[Job]:
+        jobs = []
+        jobs = jobs + run_trace_jobs(
+            dag=self.dag,
+            output_dir=self.output_dir,
+            project=self.project,
+            name_filter=self.name_filter,
+        )
+        jobs = jobs + csv_script_jobs(
+            dag=self.dag,
+            output_dir=self.output_dir,
+            project=self.project,
+            name_filter=self.name_filter,
+        )
+        return jobs
