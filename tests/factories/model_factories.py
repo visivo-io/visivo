@@ -88,7 +88,6 @@ class JobFactory(factory.Factory):
     item = factory.SubFactory(TraceFactory)
     target = factory.SubFactory(TargetFactory)
     action = None
-    dependencies = []
 
 
 class ChartFactory(factory.Factory):

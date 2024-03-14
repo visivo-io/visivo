@@ -66,10 +66,6 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
 
     traces = project.filter_traces(name_filter=name_filter)
     for trace in traces:
-        children_csv_script_models = ParentModel.all_descendants_of_type(
-            type=CsvScriptModel, dag=dag, from_node=trace
-        )
-        dependencies = list(map(lambda m: m.name, children_csv_script_models))
         target = _get_target(trace, dag, output_dir)
         jobs.append(
             Job(
@@ -77,7 +73,6 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
                 output_changed=trace.changed,
                 target=target,
                 action=action,
-                dependencies=dependencies,
                 trace=trace,
                 dag=dag,
                 output_dir=output_dir,
