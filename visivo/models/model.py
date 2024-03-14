@@ -33,6 +33,7 @@ class CsvScriptModel(Model):
             ``` yaml
             models:
               - name: csv
+                table_name: csv
                 args:
                     - echo
                     - |
@@ -77,6 +78,7 @@ class CsvScriptModel(Model):
             ``` yaml
             models:
               - name: processes
+                table_name: processes
                 args:
                   - python
                   - create_processes_csv.py
@@ -95,6 +97,7 @@ class CsvScriptModel(Model):
             ``` yaml
             models:
               - name: file_model
+                table_name: file_model
                 args:
                   - cat
                   - file.csv
