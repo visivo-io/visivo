@@ -1,9 +1,8 @@
-from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import CsvScriptModel, Model
+from visivo.models.model import Model
+from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.project import Project
 from visivo.models.target import Target
-from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
 from visivo.query.jobs.job import (
     Job,
@@ -66,10 +65,6 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
 
     traces = project.filter_traces(name_filter=name_filter)
     for trace in traces:
-        children_csv_script_models = ParentModel.all_descendants_of_type(
-            type=CsvScriptModel, dag=dag, from_node=trace
-        )
-        dependencies = list(map(lambda m: m.name, children_csv_script_models))
         target = _get_target(trace, dag, output_dir)
         jobs.append(
             Job(
@@ -77,7 +72,6 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
                 output_changed=trace.changed,
                 target=target,
                 action=action,
-                dependencies=dependencies,
                 trace=trace,
                 dag=dag,
                 output_dir=output_dir,

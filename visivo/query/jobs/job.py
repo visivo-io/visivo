@@ -25,7 +25,6 @@ class Job:
         item: NamedModel,
         target: Target,
         action,
-        dependencies: List[str],
         output_changed: bool = True,
         **kwargs,
     ):
@@ -34,7 +33,6 @@ class Job:
         self.action = action
         self.output_changed = output_changed
         self.kwargs = kwargs
-        self.dependencies = dependencies
         self.future: Future = None
 
     @property

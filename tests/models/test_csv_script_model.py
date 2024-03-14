@@ -2,9 +2,9 @@ import os
 import click
 import pytest
 from tests.support.utils import temp_folder
-from visivo.models.model import CsvScriptModel
 from tests.factories.model_factories import CsvScriptModelFactory
 from pydantic import ValidationError
+from visivo.models.models.csv_script_model import CsvScriptModel
 
 
 def test_CsvScriptModel_simple_data():

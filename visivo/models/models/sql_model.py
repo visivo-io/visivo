@@ -1,0 +1,30 @@
+from typing import Optional
+
+from visivo.models.base.base_model import generate_ref_field
+from pydantic import Field
+from visivo.models.base.parent_model import ParentModel
+from visivo.models.model import Model
+from visivo.models.target import DefaultTarget, Target
+
+
+class SqlModel(Model, ParentModel):
+    """
+    SQL Models are queries that return base data from a SQL target. These data are then
+     used in Traces
+    """
+
+    sql: str = Field(
+        None,
+        description="The sql used to generate your base data",
+    )
+
+    target: Optional[generate_ref_field(Target)] = Field(
+        None,
+        description="A target object defined inline or a ref() to a chart. Override the defaults.target_name",
+    )
+
+    def child_items(self):
+        if self.target:
+            return [self.target]
+        else:
+            return [DefaultTarget()]
