@@ -54,6 +54,8 @@
     
       <link rel="stylesheet" href="../../stylesheets/brand_colors.css">
     
+      <link rel="stylesheet" href="../../stylesheets/icon-colors.css">
+    
     <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -4615,22 +4617,22 @@
 <p>Those are tagged in GitHub <a href="https://github.com/topics/visivo-dashboard">here</a>.
 You can also build and share your own under the same <code>visivo-dashboard</code> topic in GitHub.</p>
 <p>Here is an example on how to include our dashboard that provides insights into your repositories' pull requests:</p>
-<div class="highlight"><pre><span></span><code>includes:
-  - path: visivo-io/github-dashboard.git@main
+<div class="highlight"><pre><span></span><code><span class="nt">includes</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">visivo-io/github-dashboard.git@main</span>
 </code></pre></div>
 <p>Once it is included then you can reference the <code>traces</code> and <code>charts</code> like you would if they were in your project like:</p>
-<div class="highlight"><pre><span></span><code>dashboards:
-  - name: Github Metrics
-    rows:
-      - height: medium
-        items:
-          - width: 1
-            chart:
-              name: Pull Requests by Repository
-              traces:
-                - ref(Pull Request by Repository)
-              layout:
-                title: &quot;Pull Request by Repository&quot;
+<div class="highlight"><pre><span></span><code><span class="nt">dashboards</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Github Metrics</span>
+<span class="w">    </span><span class="nt">rows</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
+<span class="w">        </span><span class="nt">items</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">            </span><span class="nt">chart</span><span class="p">:</span>
+<span class="w">              </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Pull Requests by Repository</span>
+<span class="w">              </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">                </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Pull Request by Repository)</span>
+<span class="w">              </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">                </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Pull</span><span class="nv"> </span><span class="s">Request</span><span class="nv"> </span><span class="s">by</span><span class="nv"> </span><span class="s">Repository&quot;</span>
 </code></pre></div>
 
 
@@ -4682,7 +4684,7 @@ You can also build and share your own under the same <code>visivo-dashboard</cod
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../..", "features": ["content.tabs.link", "navigation.indexes", "navigation.sections", "content.tooltips"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["content.tabs.link", "navigation.indexes", "navigation.sections", "content.tooltips", "content.code.annotate", "content.code.copy"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.c8d2eff1.min.js"></script>
