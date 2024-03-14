@@ -1,0 +1,39 @@
+from typing import List
+from pydantic import Field
+from visivo.models.base.base_model import generate_ref_field
+from visivo.models.base.parent_model import ParentModel
+from visivo.models.model import Model
+
+
+class LocalMergeModel(Model, ParentModel):
+    """
+    Local Merge Models are models that allow you to merge data from multiple other models locally.
+
+    """
+
+    sql: str = Field(
+        None,
+        description="The sql used to generate your base data",
+    )
+    models: List[generate_ref_field(Model)] = Field(
+        description="A model object defined inline or a ref() to a model."
+    )
+
+    def get_database(self, output_dir):
+        return f"{output_dir}/{self.name}.sqlite"
+
+    def get_target(self):
+        # https://stackoverflow.com/questions/23036751/can-sqlalchemy-work-well-with-multiple-attached-sqlite-database-files
+        # Need to have a new option for sqlite targets which is a list of join databases
+        # attach 'database1.db' as db1;
+        # attach 'database2.db' as db2;
+        pass
+
+    def insert_dependent_models_to_sqlite(self):
+        for model in self.models:
+            model.target()
+            # If database exists, then continue
+            # else run model query against target
+
+    def child_items(self):
+        return self.models

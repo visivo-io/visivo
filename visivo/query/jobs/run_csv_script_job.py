@@ -1,5 +1,5 @@
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import CsvScriptModel
+from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,

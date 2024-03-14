@@ -1,10 +1,11 @@
 import factory
 from visivo.models.defaults import Defaults
+from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
-from visivo.models.model import Model, CsvScriptModel, SqlModel
 from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
