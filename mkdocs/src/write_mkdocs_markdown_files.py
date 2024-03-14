@@ -2,6 +2,8 @@ from visivo.parsers.mkdocs import Mkdocs
 import os
 import shutil
 import yaml
+from visivo.logging.logger import Logger
+from time import time
 
 """Iterate through mkdocs_pydantic_nav creating files at the specified paths. Write files with the correct model macro """
 
@@ -60,5 +62,16 @@ def write_pydantic_md_files():
 
 
 if __name__ == "__main__":
+    start_job = time()
+    Logger.instance().debug(
+        "Parsing & Processing Pydantic Doc Strings for mkdocs Configuration..."
+    )
     modify_mkdocs_yaml()
+    run_seconds = round(time() - start_job, 2)
+    Logger.instance().info(f"Parsed & Processed Pydantic Doc Strings in {run_seconds}s")
+    Logger.instance().debug("Writing mkdocs Configuration Files...")
     write_pydantic_md_files()
+    run_seconds = round(time() - start_job, 2)
+    Logger.instance().success(
+        f"Parsed, Processed & Wrote New Configuration files in {run_seconds}s"
+    )

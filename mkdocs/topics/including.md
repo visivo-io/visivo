@@ -32,14 +32,14 @@ You can also build and share your own under the same `visivo-dashboard` topic in
 
 Here is an example on how to include our dashboard that provides insights into your repositories' pull requests:
 
-```
+``` yaml
 includes:
   - path: visivo-io/github-dashboard.git@main
 ```
 
 Once it is included then you can reference the `traces` and `charts` like you would if they were in your project like:
 
-```
+``` yaml
 dashboards:
   - name: Github Metrics
     rows:

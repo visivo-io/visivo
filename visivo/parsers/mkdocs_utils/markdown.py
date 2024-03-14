@@ -1,5 +1,6 @@
 from textwrap import dedent
 import yaml
+import re
 
 
 def find_refs(obj):
@@ -123,7 +124,9 @@ def from_pydantic_model(model_defs: dict, model_name: str) -> str:
     return f"# {model_name}" + "\n" + model_md + "\n## Attributes\n" + md_table
 
 
-def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
+def _get_traceprop_nested_structure(
+    model_defs: dict, model_name: str, details: list = []
+) -> str:
     """Generates Trace Props reference dictionary that will later be converted into yaml for the md file"""
     model_properties = model_defs.get(model_name, {}).get("properties", {})
     if not model_properties:
@@ -139,8 +142,8 @@ def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
             refs = find_refs(field_info.get("anyOf", {}))
             if refs and len(refs) == 1:
                 nested_model_name = refs[0].split("/")[-1]
-                output[field_name] = _get_traceprop_nested_structure(
-                    model_defs, nested_model_name
+                output[field_name], details = _get_traceprop_nested_structure(
+                    model_defs, nested_model_name, details
                 )
             elif refs and len(refs) > 1:
                 raise NotImplementedError(
@@ -148,8 +151,13 @@ def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
                 )
             else:
                 field_description = field_info.get("description", {})
+                position = len(details) + 1
                 type = field_description.split("<br>")[0].strip(" ")
-                details = field_description.split("<br>")[-1]
+                detail = field_description.split("<br>")[-1]
+                if len(detail.strip()) > 0:
+                    type = type + f" #({position})!"
+                    detail_line = f"{position}. " + detail
+                    details.append(detail_line)
                 output[field_name] = type
         elif "const" in field_info_keys:
             output[field_name] = field_info.get("const")
@@ -158,7 +166,7 @@ def _get_traceprop_nested_structure(model_defs: dict, model_name: str) -> str:
                 f"Have not yet handled properties with attributes {field_info_keys}"
             )
 
-    return output
+    return output, details
 
 
 def from_traceprop_model(model_defs: dict, model_name: str) -> str:
@@ -171,7 +179,21 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
         else dedent(model_def.get("description")) + "\n"
     )
 
-    nested_structure = _get_traceprop_nested_structure(model_defs, model_name)
+    nested_structure, details = _get_traceprop_nested_structure(
+        model_defs, model_name, details=[]
+    )
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
-
-    return f"# {model_name}" + "\n" + model_md + "``` yaml\n" + yaml_doc + "\n```"
+    pattern = r"'([^'#]+) (\#\(.*?\)!)'"
+    processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
+    full_doc = (
+        f"# {model_name}"
+        + "\n"
+        + model_md
+        + "{% raw %}\n"
+        + "``` yaml\n"
+        + processed_yaml_doc
+        + "\n```\n\n"
+        + "\n".join(details)
+        + "\n{% endraw %}\n"
+    )
+    return full_doc
