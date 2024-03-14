@@ -1,6 +1,6 @@
 from .base.named_model import NamedModel
 from pydantic import Field, SecretStr
-from typing import Optional
+from typing import Any, Optional
 from enum import Enum
 from sqlalchemy.engine import URL
 from sqlalchemy.pool import NullPool
@@ -77,6 +77,14 @@ class Target(NamedModel):
     db_schema: Optional[str] = Field(
         None, description="The schema that the Visivo project will use in queries."
     )
+    connection_pool_size: Optional[int] = Field(
+        1, description="The pool size that is used for this connection."
+    )
+    _engine: Any
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._engine = None
 
     def get_connection_type(self):
         match self.type:
@@ -115,15 +123,28 @@ class Target(NamedModel):
     def _get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
 
+    def _get_engine(self):
+        if not self._engine:
+            match self.type:
+                case TypeEnum.postgresql:
+                    self._engine = create_engine(
+                        self.url(), pool_size=self.connection_pool_size
+                    )
+                case TypeEnum.sqlite:
+                    self._engine = create_engine(self.url())
+                case TypeEnum.mysql:
+                    self._engine = create_engine(
+                        self.url(), pool_size=self.connection_pool_size
+                    )
+        return self._engine
+
     def _get_connection(self):
         try:
             match self.type:
                 case TypeEnum.postgresql:
-                    engine = create_engine(self.url(), poolclass=NullPool)
-                    return engine.connect()
+                    return self._get_engine().connect()
                 case TypeEnum.sqlite:
-                    engine = create_engine(self.url())
-                    return engine.connect()
+                    return self._get_engine().connect()
                 case TypeEnum.snowflake:
                     return snowflake.connector.connect(
                         account=self.account,
@@ -135,9 +156,8 @@ class Target(NamedModel):
                         role=self.role,
                     )
                 case TypeEnum.mysql:
-                    engine = create_engine(self.url(), poolclass=NullPool)
-                    return engine.connect()
-        except Exception as e:
+                    return self._get_engine().connect()
+        except Exception as err:
             raise click.ClickException(
                 f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
             )

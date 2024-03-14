@@ -19,27 +19,18 @@ def run_phase(
         name_filter=name_filter,
     )
 
-    def changed(trace):
-        if not run_only_changed:
-            return True
-        return trace.changed
-
-    traces = project.filter_traces(name_filter=name_filter)
-    traces = list(filter(changed, traces))
     target_details = (
         "\n" if default_target == None else f"and default target {default_target}\n"
     )
-    Logger.instance().info(
-        f"Running project with {len(traces)} traces(s) across {threads} threads"
-        + target_details
-    )
+    Logger.instance().info(f"Running project across {threads} threads" + target_details)
 
     runner = Runner(
-        traces=traces,
         project=project,
         output_dir=output_dir,
         threads=threads,
         soft_failure=soft_failure,
+        run_only_changed=run_only_changed,
+        name_filter=name_filter,
     )
     runner.run()
     return runner

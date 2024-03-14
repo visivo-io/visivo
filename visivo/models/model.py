@@ -8,6 +8,7 @@ from visivo.models.target import DefaultTarget, Target, TypeEnum
 from .base.base_model import RefString, generate_ref_field
 import pandas
 import click
+import io
 
 
 class Model(NamedModel):
@@ -102,8 +103,8 @@ class CsvScriptModel(Model):
     The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
     """
 
-    name: CsvScriptModelName = Field(
-        None, description="The unique name of the object across the entire project."
+    table_name: CsvScriptModelName = Field(
+        "model", description="The name to give the resulting models table"
     )
 
     args: List[str] = Field(
@@ -128,20 +129,16 @@ class CsvScriptModel(Model):
         from sqlalchemy import create_engine
         import subprocess
 
-        csv_file = f"{output_dir}/{self.name}.csv"
-        with open(csv_file, "w+") as file:
-            subprocess.run(self.args, stdout=file, stderr=subprocess.STDOUT, text=True)
-
-        # TODO warn about table name and catch error about malformed CSV
+        process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
         engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
         try:
-            data_frame = pandas.read_csv(csv_file)
+            csv = io.StringIO(process.stdout.read().decode())
+            data_frame = pandas.read_csv(csv)
         except:
             raise click.ClickException(
-                f"Error parsing csv output of {self.name} model's command. Output stored in {csv_file}. Verify contents and try again."
+                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
-        Logger.instance().info(self.get_database(output_dir))
-        data_frame.to_sql(self.name, engine, if_exists="replace", index=True)
+        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
 
 
 class SqlModel(Model, ParentModel):

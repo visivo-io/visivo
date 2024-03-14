@@ -11,7 +11,7 @@ from visivo.models.chart import Chart
 from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.models.trace import Trace
-from visivo.models.model import Model
+from visivo.models.model import SqlModel
 from visivo.models.defaults import Defaults
 from visivo.models.trace_props import Scatter
 from visivo.commands.utils import create_file_database
@@ -73,7 +73,7 @@ def init_phase():
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
 
-    model = Model(name="Example Model", sql="select * from test_table")
+    model = SqlModel(name="Example Model", sql="select * from test_table")
     props = Scatter(type="scatter", x="query(x)", y="query(y)")
     trace = Trace(name="Example Trace", model=model, props=props, changed=None)
     chart = Chart(name="Example Chart", traces=[trace])

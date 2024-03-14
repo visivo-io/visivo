@@ -31,13 +31,13 @@ def test_CsvScriptModel_insert_data_bad_csv():
 
     assert (
         exc_info.value.message
-        == f"Error parsing csv output of model model's command. Output stored in {output_dir}/model.csv. Verify contents and try again."
+        == f"Error parsing csv output of model model's command. Verify command's output and try again."
     )
 
 
 def test_CsvScriptModel_bad_name():
     with pytest.raises(ValidationError) as exc_info:
-        CsvScriptModelFactory(name="+++")
+        CsvScriptModelFactory(table_name="+++")
 
     error = exc_info.value.errors()[0]
 
