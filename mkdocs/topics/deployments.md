@@ -36,88 +36,150 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
 
 #### Configuration 
 
-1. Add your deployment token as `VISIVO_TOKEN` to your [Mint vault](https://www.rwx.com/docs/mint/vaults#vaults).
+1. Add your deployment token as `VISIVO_TOKEN`, database credentials and other env variables to your [Mint vault](https://www.rwx.com/docs/mint/vaults#vaults).
 2. Add a workflow similar to the following yml. 
 
-!!! note 
-
-    The example below is for a project that runs Visivo against google cloud SQL. You will likely need to pass additional secrets and alter authentication steps to connect to your targets.
-
 {% raw %}
-``` yaml title=".mint/manage_ci_gcp_cloud_sql_target.yml"
-on:
-  github:
-    pull_request:
-      actions: [opened, reopened, synchronize, closed]
-      init:
-        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
-        head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
-        deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
-        archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
+=== "Direct Target Connection"
 
-tasks:
-  - key: code
-    call: mint/git-clone 1.1.6
-    with:
-      repository: https://github.com/visivo-io/analytics.git
-      ref: ${{ init.commit-sha }}
-      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
-  
-  - key: python
-    call: mint/install-python 1.0.2
-    with:
-      python-version: 3.10.0
-  
-  - key: install-visivo
-    use: [python]
-    run: pip install git+https://github.com/visivo-io/visivo.git@latest #(4)!
-  
-  - key: gcloud-cli # (1)!
-    call: google-cloud/install-cli 1.0.1
-  
-  - key: gcloud-login # (2)!
-    if: ${{ init.deploy }}
-    use: [gcloud-cli]
-    call: google-cloud/auth-credentials 1.0.1
-    with:
-      credentials-json: ${{ secrets.GCLOUD_SA_PRODUCTION_KEY }}
-  
-  - key: cloud-sql-proxy-connect-and-run-visivo
-    if: ${{ init.deploy }}
-    use: [gcloud-login, install-visivo, code]
-    run: |
-      cd bin
-      ./cloud_sql_proxy "acme-co-production:us-west1:company-database-replica" --port 5432 &>/dev/null & 
-      cd ../visivo
-      visivo run
-    env: 
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_USERNAME: ${{ secrets.DB_USERNAME }} 
-      DB_HOST: localhost 
-    
-  - key: deploy-ci-stage
-    if: ${{ init.deploy }}
-    use: [cloud-sql-proxy-connect-and-run-visivo]
-    run: |
-      cd visivo
-      visivo deploy -s ${{ init.head-ref }}
-    env: 
-      VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }} 
-  
-  - key: archive-ci-stage
-    if: ${{ init.archive }}
-    use: [install-visivo, code]
-    run: | 
-      cd visivo 
-      visivo archive -s ${{ init.head-ref }}
-    env:
-      VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
-```
+    ``` yaml title=".mint/manage_ci.yml"
+    on:
+      github:
+        pull_request:
+          actions: [opened, reopened, synchronize, closed]
+          init:
+            commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+            head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
+            deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
+            archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
 
-1. If connecting with a publicly accessible database you may not need to authentic with your cloud provider credentials.
-2. If connecting with a publicly accessible database you may not need to authentic with your cloud provider credentials. 
-3. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
-4. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    tasks:
+      - key: code
+        call: mint/git-clone 1.1.6
+        with:
+          repository: https://github.com/visivo-io/analytics.git
+          ref: ${{ init.commit-sha }}
+          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+      
+      - key: python
+        call: mint/install-python 1.0.2
+        with:
+          python-version: 3.10.0
+      
+      - key: install-visivo
+        use: [python]
+        run: pip install git+https://github.com/visivo-io/visivo.git@latest #(4)!
+      
+      - key: run-visivo
+        if: ${{ init.deploy }}
+        use: [install-visivo, code]
+        run: visivo run
+        env: 
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }} #(6)!
+          DB_USERNAME: ${{ secrets.DB_USERNAME }} 
+          DB_HOST: localhost 
+        
+      - key: deploy-ci-stage
+        if: ${{ init.deploy }}
+        use: [run-visivo]
+        run: visivo deploy -s ${{ init.head-ref }}
+        env: 
+          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }} 
+      
+      - key: archive-ci-stage
+        if: ${{ init.archive }}
+        use: [install-visivo, code]
+        run: visivo archive -s ${{ init.head-ref }}
+        env:
+          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }} #(5)!
+    ```
+
+    1. If connecting with a publicly accessible database you may not need to authentic with your cloud provider credentials.
+    2. If connecting with a publicly accessible database you may not need to authentic with your cloud provider credentials. 
+    3. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
+    4. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    5. You can get your visivo token from [app.visivo.io](app.visivo.io). 
+    6. This assumes that you have a target set up in your project that depends on these env variables for connection. 
+
+=== "Google Cloud SQL"
+    !!! note 
+
+        The example below is for a project that runs Visivo against google cloud SQL. You will likely need to pass additional secrets and alter authentication steps to connect to your targets.
+
+    ``` yaml title=".mint/manage_ci_gcp_cloud_sql_target.yml"
+    on:
+      github:
+        pull_request:
+          actions: [opened, reopened, synchronize, closed]
+          init:
+            commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+            head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
+            deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
+            archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
+
+    tasks:
+      - key: code
+        call: mint/git-clone 1.1.6
+        with:
+          repository: https://github.com/visivo-io/analytics.git
+          ref: ${{ init.commit-sha }}
+          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+      
+      - key: python
+        call: mint/install-python 1.0.2
+        with:
+          python-version: 3.10.0
+      
+      - key: install-visivo
+        use: [python]
+        run: pip install git+https://github.com/visivo-io/visivo.git@latest #(4)!
+      
+      - key: gcloud-cli # (1)!
+        call: google-cloud/install-cli 1.0.1
+      
+      - key: gcloud-login # (2)!
+        if: ${{ init.deploy }}
+        use: [gcloud-cli]
+        call: google-cloud/auth-credentials 1.0.1
+        with:
+          credentials-json: ${{ secrets.GCLOUD_SA_PRODUCTION_KEY }}
+      
+      - key: cloud-sql-proxy-connect-and-run-visivo
+        if: ${{ init.deploy }}
+        use: [gcloud-login, install-visivo, code]
+        run: |
+          cd bin
+          ./cloud_sql_proxy "acme-co-production:us-west1:company-database-replica" --port 5432 &>/dev/null & 
+          cd ../visivo
+          visivo run
+        env: 
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }} 
+          DB_HOST: localhost 
+        
+      - key: deploy-ci-stage
+        if: ${{ init.deploy }}
+        use: [cloud-sql-proxy-connect-and-run-visivo]
+        run: |
+          cd visivo
+          visivo deploy -s ${{ init.head-ref }}
+        env: 
+          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }} 
+      
+      - key: archive-ci-stage
+        if: ${{ init.archive }}
+        use: [install-visivo, code]
+        run: | 
+          cd visivo 
+          visivo archive -s ${{ init.head-ref }}
+        env:
+          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+    ```
+
+    1. If connecting with a publicly accessible database you may not need to authentic with your cloud provider credentials.
+    2. If connecting with a publicly accessible database you may not need to authentic with your cloud provider credentials. 
+    3. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
+    4. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
 {% endraw %}
 ### :simple-githubactions: Github Actions
 
@@ -257,60 +319,114 @@ To keep your production data fresh you will likely want to push deployments into
 With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can configure jobs to run on whatever cadence you need.
 #### Configuration 
 {% raw %}
-``` yaml title=".mint/production_refresh.yml"
-on:
-  cron:
-    - key: refresh-production-every-30-minutes
-      schedule: "*/30 * * * *"
-      init:
-        commit-sha: ${{ event.cron.git.sha }}
+=== "Direct Target Connection"
 
-tasks:
-  - key: code
-    call: mint/git-clone 1.1.6
-    with:
-      repository: https://github.com/visivo-io/analytics.git
-      ref: ${{ init.commit-sha }}
-      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
-  
-  - key: python
-    call: mint/install-python 1.0.2
-    with:
-      python-version: 3.10.0
-  
-  - key: install-visivo
-    use: [python]
-    run: pip install git+https://github.com/visivo-io/visivo.git@latest
-  
-  - key: gcloud-cli
-    call: google-cloud/install-cli 1.0.1
-  
-  - key: gcloud-login
-    use: [gcloud-cli]
-    call: google-cloud/auth-credentials 1.0.1
-    with:
-      credentials-json: ${{ secrets.GCLOUD_SA_PRODUCTION_KEY }}
-  
-  - key: cloud-sql-proxy-connect-and-run-visivo
-    use: [gcloud-login, install-visivo, code]
-    run: |
-      cd bin
-      ./cloud_sql_proxy "acme-co-production:us-west4:acme-production-replica" --port 5432 &>/dev/null & 
-      cd ../visivo
-      visivo run
-    env: 
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_USERNAME: ${{ secrets.DB_USERNAME }} 
-      DB_HOST: localhost 
-    
-  - key: deploy-production
-    use: [cloud-sql-proxy-connect-and-run-visivo]
-    run: |
-      cd visivo
-      visivo deploy -s Production
-    env: 
-      VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
-```
+    ``` yaml title=".mint/production_refresh.yml"
+    on:
+      cron:
+        - key: refresh-production-every-30-minutes
+          schedule: "*/30 * * * *"
+          init:
+            commit-sha: ${{ event.cron.git.sha }}
+
+    tasks:
+      - key: code
+        call: mint/git-clone 1.1.6
+        with:
+          repository: https://github.com/visivo-io/analytics.git
+          ref: ${{ init.commit-sha }}
+          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+      
+      - key: python
+        call: mint/install-python 1.0.2
+        with:
+          python-version: 3.10.0
+      
+      - key: install-visivo
+        use: [python]
+        run: pip install git+https://github.com/visivo-io/visivo.git@latest #(4)!
+      
+      - key: run-visivo
+        use: [install-visivo, code]
+        run: visivo run
+        env: 
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }} #(6)!
+          DB_USERNAME: ${{ secrets.DB_USERNAME }} 
+          DB_HOST: localhost 
+        
+      - key: deploy-production
+        use: [run-visivo]
+        run: visivo deploy -s Production
+        env: 
+          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }} #(5)!
+    ```
+
+    3. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
+    4. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    5. You can get your visivo token from [app.visivo.io](app.visivo.io). 
+    6. This assumes that you have a target set up in your project that depends on these env variables for connection. 
+
+=== "Google Cloud SQL"
+
+    ``` yaml title=".mint/gcp_production_refresh.yml"
+    on:
+      cron:
+        - key: refresh-production-every-30-minutes
+          schedule: "*/30 * * * *"
+          init:
+            commit-sha: ${{ event.cron.git.sha }}
+
+    tasks:
+      - key: code
+        call: mint/git-clone 1.1.6
+        with:
+          repository: https://github.com/visivo-io/analytics.git
+          ref: ${{ init.commit-sha }}
+          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+      
+      - key: python
+        call: mint/install-python 1.0.2
+        with:
+          python-version: 3.10.0
+      
+      - key: install-visivo
+        use: [python]
+        run: pip install git+https://github.com/visivo-io/visivo.git@latest #(4)!
+      
+      - key: gcloud-cli
+        call: google-cloud/install-cli 1.0.1
+      
+      - key: gcloud-login
+        use: [gcloud-cli]
+        call: google-cloud/auth-credentials 1.0.1
+        with:
+          credentials-json: ${{ secrets.GCLOUD_SA_PRODUCTION_KEY }}
+      
+      - key: cloud-sql-proxy-connect-and-run-visivo
+        use: [gcloud-login, install-visivo, code]
+        run: |
+          cd bin
+          ./cloud_sql_proxy "acme-co-production:us-west4:acme-production-replica" --port 5432 &>/dev/null & 
+          cd ../visivo
+          visivo run
+        env: 
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }} #(6)!
+          DB_USERNAME: ${{ secrets.DB_USERNAME }} 
+          DB_HOST: localhost 
+        
+      - key: deploy-production
+        use: [cloud-sql-proxy-connect-and-run-visivo]
+        run: |
+          cd visivo
+          visivo deploy -s Production
+        env: 
+          VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }} #(5)!
+    ```
+
+    3. Mint [automatically configures a clone token](https://www.rwx.com/docs/mint/getting-started/github#cloning-repositories) when you connect it to github. You should be able to find it in your mint vault.
+    4. Specifying a [version of visivo](https://github.com/visivo-io/visivo/releases) can be a good idea. For example- `pip install git+https://github.com/visivo-io/visivo.git@v1.0.9`
+    5. You can get your visivo token from [app.visivo.io](app.visivo.io). 
+    6. This assumes that you have a target set up in your project that depends on these env variables for connection. 
 {% endraw %}
 ### :simple-githubactions: Github Actions
 #### Configuration
