@@ -14549,7 +14549,7 @@ class LayoutYaxis(TracePropsAttribute):
 	)
 	spikemode: Optional[str]= Field(
 		None,
-		description=""" flaglist string. any combination of "toaxis", "across", "marker" joined with a "+"<br>Determines the drawing mode for the spike line If "toaxis", the line is drawn from the data point to the axis the series is plotted on. If "across", the line is drawn across the entire plot area, and supercedes "toaxis". If "marker", then a marker dot is drawn on the axis the series is plotted on """
+		description=""" flaglist string. any combination of "toaxis", "across", "marker" joined with a "+"<br>Determines the drawing mode for the spike line If "toaxis", the line is drawn from the data point to the axis the series is plotted on. If "across", the line is drawn across the entire plot area, and supersedes "toaxis". If "marker", then a marker dot is drawn on the axis the series is plotted on """
 	)
 	spikesnap: Optional[str]= Field(
 		None,
