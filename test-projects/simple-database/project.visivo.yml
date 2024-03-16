@@ -57,6 +57,15 @@ models:
       - "&&"
       - cat target/processes.csv
 
+  - name: apple_stock
+    table_name: apple_stock
+    args:
+      - curl
+      - "-s"
+      - "https://raw.githubusercontent.com/plotly/datasets/master/finance-charts-apple.csv"
+      - "|"
+      - cat
+
   - name: waterfall_model
     sql: |
       SELECT * FROM (
@@ -74,6 +83,16 @@ models:
         ORDER BY week_day asc , grouping
 
 traces:
+  - name: apple_stock_candle
+    model: ref(apple_stock)
+    props:
+      type: candlestick
+      x: query(date)
+      high: query( "aapl.High" )
+      low: query( "AAPL.Low" )
+      open: query( "AAPL.Open" )
+      close: query( "AAPL.Close" )
+
   - name: example_indicator
     model: ref(csv)
     columns:
@@ -212,6 +231,12 @@ charts:
   - name: indicator_chart
     traces:
       - ref(Indicator Trace)
+  - name: apple-stock-price-chart
+    traces:
+      - ref(apple_stock_candle)
+    layout:
+      title: 
+        text: Apple Stock Price
 
 dashboards:
   - name: Table
@@ -343,3 +368,6 @@ dashboards:
               layout:
                 title:
                   text: "Funnel Chart"
+      - height: large 
+        items: 
+          - chart: ref(apple-stock-price-chart)
