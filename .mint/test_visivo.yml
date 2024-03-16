@@ -54,7 +54,7 @@ tasks:
     use: [code, node]
     run: | 
       cd viewer
-      npm install yarn
+      npm install --global yarn
       yarn install 
       yarn test
 
