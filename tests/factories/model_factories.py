@@ -1,6 +1,7 @@
 import factory
 from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
@@ -61,6 +62,15 @@ class CsvScriptModelFactory(factory.Factory):
     name = "model"
     table_name = "model"
     args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
+
+
+class LocalMergeModelFactory(factory.Factory):
+    class Meta:
+        model = LocalMergeModel
+
+    name = "model"
+    table_name = "model"
+    models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
 
 
 class TraceFactory(factory.Factory):
