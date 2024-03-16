@@ -52,7 +52,11 @@ tasks:
   
   - key: test-viewer
     use: [code, node]
-    run: cd viewer && yarn install && yarn test && cd ..
+    run: | 
+      cd viewer
+      npm install yarn
+      yarn install 
+      yarn test
 
   - key: test-rails
     use: [ruby, visivo-install]
