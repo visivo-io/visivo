@@ -1,0 +1,81 @@
+on:
+  github:
+    pull_request:
+      actions: [opened, reopened, synchronize]
+      init:
+        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+    push:
+      if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
+      init:
+        commit-sha: ${{ event.github.push.head_commit.id }}
+
+tasks:
+  - key: code
+    call: mint/git-clone 1.1.5
+    with:
+      repository: https://github.com/visivo-io/visivo.git
+      ref: ${{ init.commit-sha }}
+      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
+  
+  - key: python
+    call: mint/install-python 1.0.2
+    with:
+      python-version: 3.10.0
+  
+  - key: node
+    call: mint/install-node 1.0.5
+    with:
+      node-version: 18.0.0
+  
+  - key: ruby
+    call: mint/install-ruby 1.0.6
+    with:
+      ruby-version: 3.0.3
+  
+  - key: pip-install-poetry
+    use: [python]
+    run: pip install poetry 
+  
+  - key: poetry-install
+    use: [code, pip-install-poetry]
+    run: poetry install --with dev
+  
+  - key: visivo-install
+    use: [poetry-install]
+    run: poetry build && pip install dist/visivo-*-py3-none-any.whl 
+  
+  - key: test-cli
+    use: [poetry-install]
+    run: poetry run pytest 
+    env: 
+      STACKTRACE: true
+  
+  - key: test-viewer
+    use: [code, node]
+    run: cd viewer && yarn install && yarn test && cd ..
+
+  - key: test-rails
+    use: [ruby, visivo-install]
+    run: cd test-projects/ror && bundle install && bundle exec rspec
+  
+  - key: test-snowflake
+    use: [visivo-install]
+    run: | 
+      cd test-projects/simple-database
+      visivo run -t remote-snowflake
+    env:
+      STACKTRACE: true
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+  
+  - key: test-complex-project
+    use: [visivo-install]
+    run: | 
+      cd test-projects/complex-project
+      visivo run
+    env:
+      STACKTRACE: true
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
