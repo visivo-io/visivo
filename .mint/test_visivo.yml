@@ -95,6 +95,6 @@ tasks:
     background-processes:
       - key: postgres
         run: docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres index.docker.io/library/postgres:latest
-        ready-check: nc -z localhost 5432
+        ready-check: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SELECT 1'
     run: |
       PGPASSWORD=postgres psql -h localhost -U postgres -c 'SELECT 1'
