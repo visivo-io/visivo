@@ -3,8 +3,8 @@ from sqlalchemy import text
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.testing.test_query_string_factory import TestQueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
-from visivo.models.target import Target
-from visivo.models.model import Model
+from visivo.models.targets.target import Target
+from visivo.models.models.model import Model
 from visivo.models.project import Project
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.trace import Trace

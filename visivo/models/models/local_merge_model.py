@@ -2,7 +2,7 @@ from typing import List
 from pydantic import Field
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import Model
+from visivo.models.models.model import Model
 
 
 class LocalMergeModel(Model, ParentModel):

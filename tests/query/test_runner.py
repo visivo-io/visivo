@@ -8,7 +8,7 @@ from tests.factories.model_factories import (
 from visivo.models.base.parent_model import ParentModel
 from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
-from visivo.models.target import Target, TypeEnum
+from visivo.models.targets.target import Target, TypeEnum
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
 import os

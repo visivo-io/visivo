@@ -1,4 +1,4 @@
-from visivo.models.target import Target, TypeEnum
+from visivo.models.targets.target import Target, TypeEnum
 from pydantic import ValidationError
 from tests.factories.model_factories import TargetFactory
 import pytest

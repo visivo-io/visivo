@@ -8,7 +8,7 @@ from visivo.models.trace import Trace
 from visivo.testing.runner import Runner
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
-from visivo.models.target import Target, TypeEnum as TargetTypeEnum
+from visivo.models.targets.target import Target, TypeEnum as TargetTypeEnum
 
 
 def test_TestQueryStringFactory_errors(capsys):

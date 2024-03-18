@@ -3,6 +3,7 @@ from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
@@ -12,7 +13,7 @@ from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
-from visivo.models.target import Target, TypeEnum
+from visivo.models.targets.target import Target, TypeEnum
 from visivo.query.jobs.job import Job
 
 
@@ -26,11 +27,10 @@ class AlertFactory(factory.Factory):
 
 class TargetFactory(factory.Factory):
     class Meta:
-        model = Target
+        model = SqliteTarget
 
     name = "target"
     database = "tmp/test.db"
-    type = TypeEnum.sqlite
 
 
 class TracePropsFactory(factory.Factory):
@@ -69,7 +69,7 @@ class LocalMergeModelFactory(factory.Factory):
         model = LocalMergeModel
 
     name = "model"
-    table_name = "model"
+    sql = "select * from test_table"
     models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
 
 

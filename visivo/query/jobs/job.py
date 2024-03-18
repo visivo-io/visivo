@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 from typing import List
 from visivo.models.base.named_model import NamedModel
-from visivo.models.target import Target
+from visivo.models.targets.target import Target
 import os
 import textwrap
 from time import time

@@ -3,8 +3,8 @@ from typing import Optional
 from visivo.models.base.base_model import generate_ref_field
 from pydantic import Field
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.model import Model
-from visivo.models.target import DefaultTarget, Target
+from visivo.models.models.model import Model
+from visivo.models.targets.target import DefaultTarget, Target
 
 
 class SqlModel(Model, ParentModel):

@@ -1,7 +1,7 @@
 from typing import List
-from visivo.models.model import Model, TableModelName
+from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
-from visivo.models.target import Target, TypeEnum
+from visivo.models.targets.target import Target, TypeEnum
 import io
 import click
 

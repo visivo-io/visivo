@@ -1,6 +1,6 @@
 from queue import Queue
 from typing import List
-from visivo.models.target import Target
+from visivo.models.targets.target import Target
 from visivo.query.jobs.job import Job
 
 

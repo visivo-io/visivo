@@ -1,6 +1,6 @@
 from visivo.models.trace import Trace
-from visivo.models.target import Target
-from visivo.models.model import Model
+from visivo.models.targets.target import Target
+from visivo.models.models.model import Model
 from visivo.models.tokenized_trace import TokenizedTrace
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum

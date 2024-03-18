@@ -1,4 +1,4 @@
-from ..models.target import TypeEnum
+from ..models.targets.target import TypeEnum
 from pydantic import BaseModel
 from copy import deepcopy
 

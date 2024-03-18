@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Union
 from visivo.models.alert import AlertField, Alert
 
 from visivo.models.include import Include
-from visivo.models.model import Model
+from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
 
@@ -12,7 +12,7 @@ from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
-from .target import Target
+from .targets.target import Target
 from .table import Table
 from .defaults import Defaults
 from typing import List

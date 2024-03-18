@@ -4,8 +4,8 @@ import yaml
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.target import Target
-from visivo.models.model import Model
+from visivo.models.targets.target import Target
+from visivo.models.models.model import Model
 from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
