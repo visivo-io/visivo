@@ -90,11 +90,20 @@ tasks:
       sudo apt-get install netcat postgresql-client
       sudo apt-get clean
 
-  - key: ping-postgres
-    use: [postgres-packages]
+  - key: test-postgres
+    use: [postgres-packages, node, visivo-install]
     background-processes:
       - key: postgres
         run: docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres index.docker.io/library/postgres:latest
         ready-check: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SELECT 1'
     run: |
-      PGPASSWORD=postgres psql -h localhost -U postgres -c 'SELECT 1'
+      psql -h localhost -U postgres -c 'SELECT 1'
+      npm install pg
+      node tests/setup/populate_ci_postgres_db.js
+      cd test-projects/simple-database
+      visivo run -t local-postgres --threads 1
+    env:
+      PGPASSWORD: postgres
+      PG_PASSWORD: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5434
