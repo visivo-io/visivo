@@ -97,7 +97,7 @@ tasks:
         run: docker run -p 5434:5432 -e POSTGRES_PASSWORD=postgres index.docker.io/library/postgres:latest
         ready-check: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SELECT 1'
     run: |
-      psql -h localhost -U postgres -c 'SELECT 1'
+      psql -h localhost -p 5434 -U postgres -c 'SELECT 1'
       npm install pg
       node tests/setup/populate_ci_postgres_db.js
       cd test-projects/simple-database
