@@ -83,3 +83,18 @@ tasks:
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+
+  - key: postgres-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install netcat postgresql-client
+      sudo apt-get clean
+
+  - key: ping-postgres
+    use: [postgres-packages]
+    background-processes:
+      - key: postgres
+        run: docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres index.docker.io/library/postgres:latest
+        ready-check: nc -z localhost 5432
+    run: |
+      PGPASSWORD=postgres psql -h localhost -U postgres -c 'SELECT 1'
