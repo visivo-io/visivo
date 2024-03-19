@@ -1,7 +1,7 @@
 from typing import List
 from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
-from visivo.models.targets.target import Target, TypeEnum
+from visivo.models.targets.sqlite_target import SqliteTarget
 import io
 import click
 
@@ -104,9 +104,8 @@ class CsvScriptModel(Model):
         return f"select * from {self.name}"
 
     def get_target(self, output_dir):
-        return Target(
+        return SqliteTarget(
             name=f"model_{self.name}_generated_target",
-            type=TypeEnum.sqlite,
             database=self.get_database(output_dir),
         )
 

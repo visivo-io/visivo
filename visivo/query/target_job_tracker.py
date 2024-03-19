@@ -8,7 +8,7 @@ class TargetLimit:
     def __init__(self, target: Target):
         self.target_name = target.name
         self.limit = 1
-        if target.connection_pool_size:
+        if hasattr(target, "connection_pool_size"):
             self.limit = target.connection_pool_size
         self.enqueued: List[Job] = []
         self.running: List[Job] = []

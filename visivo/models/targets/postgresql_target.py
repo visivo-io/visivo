@@ -1,5 +1,5 @@
+from typing import Literal
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
-from visivo.models.targets.target import Target, TypeEnum
 
 
 class PostgresqlTarget(SqlalchemyTarget):
@@ -17,7 +17,7 @@ class PostgresqlTarget(SqlalchemyTarget):
     It is best practice to leverage the `{% raw %}{{ env_var() }}{% endraw %}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
     """
 
-    type: TypeEnum.postgresql
+    type: Literal["postgresql"]
 
     def get_dialect(self):
         return "postgresql+psycopg2"

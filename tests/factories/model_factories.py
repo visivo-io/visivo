@@ -13,7 +13,6 @@ from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
-from visivo.models.targets.target import Target, TypeEnum
 from visivo.query.jobs.job import Job
 
 
@@ -31,6 +30,7 @@ class TargetFactory(factory.Factory):
 
     name = "target"
     database = "tmp/test.db"
+    type = "sqlite"
 
 
 class TracePropsFactory(factory.Factory):

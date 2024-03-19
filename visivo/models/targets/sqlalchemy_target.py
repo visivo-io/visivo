@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Any
 from pandas import DataFrame
 from sqlalchemy import create_engine, text
@@ -6,8 +6,13 @@ import click
 from visivo.models.targets.target import Target
 
 
-class SqlalchemyTarget(Target):
+class SqlalchemyTarget(Target, ABC):
 
+    _engine: Any = None
+
+    @abstractmethod
+    def get_dialect(self):
+        raise NotImplementedError(f"No dialect method implemented for {self.type}")
 
     def read_sql(self, query: str) -> DataFrame:
         with self.connect() as connection:

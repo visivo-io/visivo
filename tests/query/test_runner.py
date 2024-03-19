@@ -4,11 +4,11 @@ from tests.factories.model_factories import (
     DefaultsFactory,
     SqlModelFactory,
     ProjectFactory,
+    TargetFactory,
 )
-from visivo.models.base.parent_model import ParentModel
+from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
-from visivo.models.targets.target import Target, TypeEnum
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
 import os
@@ -16,9 +16,7 @@ import os
 
 def test_Runner_trace_with_default():
     output_dir = temp_folder()
-    target = Target(
-        name="target", database=f"{output_dir}/test.db", type=TypeEnum.sqlite
-    )
+    target = TargetFactory(name="target", database=f"{output_dir}/test.db")
     model = SqlModelFactory(name="model1", target=None)
     trace = TraceFactory(name="trace1", model=model)
     defaults = DefaultsFactory(target_name=target.name)
@@ -40,7 +38,7 @@ def test_Runner_trace_with_default():
 
 def test_Runner_trace_given_target():
     output_dir = temp_folder()
-    target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
+    target = TargetFactory(database=f"{output_dir}/test.db")
     model = SqlModelFactory(name="model1", target=target)
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(targets=[], traces=[trace], dashboards=[])
@@ -77,7 +75,7 @@ def test_runner_with_csv_script_model():
 def test_runner_name_filter():
     output_dir = temp_folder()
     project = ProjectFactory()
-    target = Target(database=f"{output_dir}/test.db", type=TypeEnum.sqlite)
+    target = TargetFactory(database=f"{output_dir}/test.db")
     model = SqlModelFactory(name="model1", target=target)
     trace = TraceFactory(name="trace1", model=model)
     project.dashboards[0].rows[0].items[0].chart.traces[0] = trace

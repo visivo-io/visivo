@@ -1,6 +1,5 @@
-from typing import Optional
-from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
-from visivo.models.targets.target import Target, TypeEnum
+from typing import Literal, Optional
+from visivo.models.targets.target import Target
 from pandas import DataFrame
 import click
 from pydantic import Field
@@ -34,7 +33,7 @@ class SnowflakeTarget(Target):
         description="The access role that you want to use when running queries.",
     )
 
-    type: TypeEnum.snowflake
+    type: Literal["snowflake"]
 
     def read_sql(self, query: str) -> DataFrame:
         with self.connect() as connection:
