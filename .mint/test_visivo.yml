@@ -1,0 +1,99 @@
+on:
+  github:
+    pull_request:
+      actions: [opened, reopened, synchronize]
+      init:
+        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+    push:
+      if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
+      init:
+        commit-sha: ${{ event.github.push.head_commit.id }}
+
+tasks:
+  - key: code
+    call: mint/git-clone 1.1.5
+    with:
+      repository: https://github.com/visivo-io/visivo.git
+      ref: ${{ init.commit-sha }}
+      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
+  
+  - key: python
+    call: mint/install-python 1.0.2
+    with:
+      python-version: 3.10.0
+  
+  - key: node
+    call: mint/install-node 1.0.5
+    with:
+      node-version: 18.0.0
+  
+  - key: pip-install-poetry
+    use: [python]
+    run: pip install poetry 
+  
+  - key: poetry-install
+    use: [code, pip-install-poetry]
+    run: poetry install --with dev
+  
+  - key: visivo-install
+    use: [poetry-install]
+    run: poetry build && pip install dist/visivo-*-py3-none-any.whl 
+  
+  - key: test-cli
+    use: [poetry-install]
+    run: poetry run pytest 
+    env: 
+      STACKTRACE: true
+  
+  - key: test-viewer
+    use: [code, node]
+    run: | 
+      cd viewer
+      npm install --global yarn
+      yarn install 
+      yarn test
+  
+  - key: test-snowflake
+    use: [visivo-install]
+    run: | 
+      cd test-projects/simple-database
+      visivo run -t remote-snowflake
+    env:
+      STACKTRACE: true
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+  
+  - key: test-complex-project
+    use: [visivo-install]
+    run: | 
+      cd test-projects/complex-project
+      visivo run
+    env:
+      STACKTRACE: true
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+      CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+
+  - key: postgres-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install netcat postgresql-client
+      sudo apt-get clean
+
+  - key: test-postgres
+    use: [postgres-packages, node, visivo-install]
+    background-processes:
+      - key: postgres
+        run: docker run -p 5434:5432 -e POSTGRES_PASSWORD=postgres index.docker.io/library/postgres:latest
+        ready-check: PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -c 'SELECT 1'
+    run: |
+      npm install pg
+      node tests/setup/populate_ci_postgres_db.js
+      cd test-projects/simple-database
+      visivo run -t local-postgres --threads 1
+    env:
+      PGPASSWORD: postgres
+      PG_PASSWORD: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5434
