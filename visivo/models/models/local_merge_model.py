@@ -29,9 +29,9 @@ class LocalMergeModel(Model, ParentModel):
         # attach 'database2.db' as db2;
         pass
 
-    def insert_dependent_models_to_sqlite(self):
+    def insert_dependent_models_to_sqlite(self, output_dir):
         for model in self.models:
-            model.target()
+            pass
             # If database exists, then continue
             # else run model query against target
 

@@ -4,6 +4,7 @@ from visivo.models.base.base_model import generate_ref_field
 from pydantic import Field
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
+from visivo.models.targets.fields import TargetRefField
 from visivo.models.targets.target import DefaultTarget, Target
 
 
@@ -18,7 +19,7 @@ class SqlModel(Model, ParentModel):
         description="The sql used to generate your base data",
     )
 
-    target: Optional[generate_ref_field(Target)] = Field(
+    target: Optional[TargetRefField] = Field(
         None,
         description="A target object defined inline or a ref() to a chart. Override the defaults.target_name",
     )

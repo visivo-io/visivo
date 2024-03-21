@@ -1,5 +1,6 @@
-from typing import Literal
+from typing import Literal, Optional
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
+from pydantic import Field
 
 
 class MysqlTarget(SqlalchemyTarget):
@@ -18,6 +19,9 @@ class MysqlTarget(SqlalchemyTarget):
     """
 
     type: Literal["mysql"]
+    connection_pool_size: Optional[int] = Field(
+        1, description="The pool size that is used for this connection."
+    )
 
     def get_dialect(self):
         return "mysql"

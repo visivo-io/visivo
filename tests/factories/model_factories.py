@@ -3,6 +3,7 @@ from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.targets.snowflake_target import SnowflakeTarget
 from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
@@ -22,6 +23,15 @@ class AlertFactory(factory.Factory):
 
     name = "alert"
     type = "console"
+
+
+class SnowflakeTargetFactory(factory.Factory):
+    class Meta:
+        model = SnowflakeTarget 
+
+    name = "target"
+    database = "tmp/test.db"
+    type = "snowflake"
 
 
 class TargetFactory(factory.Factory):

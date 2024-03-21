@@ -4,7 +4,7 @@ from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.trace import Trace
 from visivo.models.tokenized_trace import TokenizedTrace
 from sql_formatter.core import format_sql
-from tests.factories.model_factories import TargetFactory
+from tests.factories.model_factories import SnowflakeTargetFactory, TargetFactory
 
 
 def test_QueryStringBuilder_with_only_base_query():
@@ -43,10 +43,13 @@ def test_tokenization_query_string_order_by():
             "x": "query( date_trunc('week', completed_at) )",
             "y": "query( sum(amount) )",
         },
-        "order_by": ["query( a_different_column desc)", "query( count(amount) desc )",],
+        "order_by": [
+            "query( a_different_column desc)",
+            "query( count(amount) desc )",
+        ],
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()

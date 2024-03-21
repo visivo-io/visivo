@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
 
 

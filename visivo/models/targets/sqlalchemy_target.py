@@ -34,7 +34,7 @@ class SqlalchemyTarget(Target, ABC):
 
     def get_engine(self):
         if not self._engine:
-            if self.hasattr("connection_pool_size"):
+            if hasattr(self, "connection_pool_size"):
                 self._engine = create_engine(
                     self.url(), pool_size=self.connection_pool_size
                 )

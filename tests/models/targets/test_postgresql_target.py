@@ -13,6 +13,7 @@ def test_PostgresqlTarget_bad_connection():
     data = {
         "name": "development",
         "database": "database",
+        "type": "postgresql",
         "port": 5434,
     }
     target = PostgresqlTarget(**data)

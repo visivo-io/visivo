@@ -30,7 +30,11 @@ def test_Core_Parser_with_one_of_each_project():
                     "name": "trace",
                     "model": {
                         "sql": "select * from table",
-                        "target": {"name": "target", "database": "postgresql"},
+                        "target": {
+                            "name": "target",
+                            "database": "postgresql",
+                            "type": "postgresql",
+                        },
                     },
                     "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
                 }
@@ -62,14 +66,16 @@ def test_Core_Parser_combines_different_files():
     project_file = temp_yml_file(
         {
             "name": "project",
-            "targets": [{"name": "target", "database": "project_url"}],
+            "targets": [
+                {"name": "target", "database": "project_url", "type": "sqlite"}
+            ],
         },
         name=PROJECT_FILE_NAME,
     )
     other_file = temp_yml_file(
         {
             "name": "project",
-            "targets": [{"name": "local", "database": "other_url"}],
+            "targets": [{"name": "local", "database": "other_url", "type": "sqlite"}],
         },
         name="other.yml",
     )

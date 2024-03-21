@@ -107,6 +107,7 @@ class CsvScriptModel(Model):
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
             database=self.get_database(output_dir),
+            type="sqlite",
         )
 
     def get_database(self, output_dir):

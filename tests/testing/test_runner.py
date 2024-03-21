@@ -28,8 +28,7 @@ def test_TestQueryStringFactory_errors(capsys):
     output_dir = temp_folder()
     alert = AlertFactory()
     target = SqliteTarget(
-        name="target",
-        database=f"{output_dir}/test.db",
+        name="target", database=f"{output_dir}/test.db", type="sqlite"
     )
     project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
 
