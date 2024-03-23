@@ -2,9 +2,10 @@ from typing import Literal, Optional
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
 from pydantic import Field
 
+
 class PostgresqlTarget(SqlalchemyTarget):
     """
-    SqliteTargets hold the connection information to SQLite data sources.
+    PostgresqlTarget hold the connection information to SQLite data sources.
 
     A single project can have many targets. You can even set up Visivo so that a single chart contains traces that pull data from completely different targets. ex.)
     ``` yaml
