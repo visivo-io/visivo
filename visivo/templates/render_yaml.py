@@ -26,6 +26,12 @@ def to_unix(date_str: str) -> float:
         on a 12-hour clock (``0 <= hour <= 12``) *must* be specified if AM or PM is
         specified.
     - If a time zone is omitted UTC is assumed.
+
+    Args:
+        date_str (str): The string representing the date or date & time.
+
+    Returns:
+        float: The UTC unix timestamp.
     """
     date_obj = parser.parse(date_str)
 
@@ -36,17 +42,41 @@ def to_unix(date_str: str) -> float:
 
 
 def to_iso(unix_timestamp: float):
+    """
+    Converts a UTC unix timestamp to an ISO 8601 formatted string.
 
-    date_obj = datetime.utcfromtimestamp(unix_timestamp)
+    If the timestamp represents a date only (with no time component), the resulting
+    string will be in the format 'YYYY-MM-DD'. Otherwise, the resulting string will
+    be in the format 'YYYY-MM-DDTHH:MM:SSZ', where 'T' separates the date and time,
+    and 'Z' indicates UTC time.
 
+    Args:
+        unix_timestamp (float): The UTC unix timestamp.
+
+    Returns:
+        str: The ISO 8601 formatted string.
+    """
+    date_obj = datetime.datetime.fromtimestamp(unix_timestamp, datetime.timezone.utc)
     if date_obj.hour == 0 and date_obj.minute == 0 and date_obj.second == 0:
         return date_obj.date().isoformat()
     else:
-        return date_obj.isoformat() + "Z"
+        return date_obj.isoformat()
 
 
 def to_str_format(unix_timestamp: float, str_format: str):
-    date_obj = datetime.utcfromtimestamp(unix_timestamp)
+    """
+    Converts a UTC unix timestamp to a string using the specified format.
+
+    The format string should follow the directives of the Python `strftime` function.
+
+    Args:
+        unix_timestamp (float): The UTC unix timestamp.
+        str_format (str): The format string.
+
+    Returns:
+        str: The formatted string.
+    """
+    date_obj = datetime.datetime.fromtimestamp(unix_timestamp, datetime.timezone.utc)
     return date_obj.strftime(str_format)
 
 
@@ -61,5 +91,14 @@ FUNCTIONS = {
 
 
 def render_yaml(template_string: str):
+    """
+    Renders a YAML template string using Jinja2 and a set of predefined functions.
+
+    Args:
+        template_string (str): The YAML template string to render.
+
+    Returns:
+        str: The rendered YAML string.
+    """
     template = jinja2.Template(template_string)
     return template.render(FUNCTIONS)
