@@ -206,6 +206,10 @@ nav:
                   - reference/configuration/Trace/Volume/index.md
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
+      - Tools:
+         - Jinja:
+           - reference/tools/jinja/macros.md
+           - reference/tools/jinja/loops.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md
