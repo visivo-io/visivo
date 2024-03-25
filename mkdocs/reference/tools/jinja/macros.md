@@ -1,11 +1,13 @@
 {%- raw %}
-# Macros
+# Macros 
 
-This documentation provides a comprehensive guide to the Jinja macros designed for use within YAML files. These macros facilitate the manipulation of dates, times, and environment variables directly within your YAML configurations, ensuring dynamic and flexible setups.
+Macros are a powerful feature that allow for dynamic content generation within your Visivo configuration files. By using macros, you can easily manage and update your configurations without manual edits.
+
+Macros enable you to inject variables into your Visivo configuration yaml files on compile. 
 
 ## Table of Contents
 
-- [Environment Variable Fetcher (`env_var`)](#environment-variable-fetcher-env_var)
+- [Environment Variables (`env_var`)](#environment-variables-env_var)
 - [Current Time (`now`)](#current-time-now)
 - [Unix Timestamp Converter (`to_unix`)](#unix-timestamp-converter-to_unix)
 - [ISO 8601 Formatter (`to_iso`)](#iso-8601-formatter-to_iso)
@@ -14,28 +16,54 @@ This documentation provides a comprehensive guide to the Jinja macros designed f
 
 ---
 
-### Environment Variable Fetcher (`env_var`)
+### Environment Variables (`env_var`)
 
-Fetches the value of an environment variable for use in YAML configurations. If the variable is not set, "NOT-SET" is returned, with special characters escaped.
+Fetches the value of an environment variable for use in YAML configurations. If the variable is not found then `NOT-SET` is returned. 
 
-=== "Example 1"
-    ```yaml
-    database_url: "{{ env_var('DATABASE_URL') }}"
-    ```
-=== "Example 2"
-    ```yaml
-    api_key: "{{ env_var('API_KEY') }}"
-    ```
-=== "Example 3"
-    ```yaml
-    service_endpoint: "{{ env_var('SERVICE_ENDPOINT') }}"
-    ```
+`env_var` is very useful for storing secrets & configuring environment specific components of your project. 
+!!! example "Examples"
+    It's very common to use the macros in your targets to ensure connection details are kept secret.
+    === "Raw"
+        ```yaml title="Raw"
+        database_url: "{{ env_var('DATABASE_URL') }}"
+        ```
+    === "Rendered"
+        ```yaml title="Rendered"
+        database_url: "postgresql://myuser:mypass@localhost:5432/mydatabase"
+        ```
+    Another way you can use the macro is to configure visivo to compile differently in different environments. If for example you have `DEV`, `PROD` and `STAGING` environments where each injects their name into an env var called `LOCALITY` and you wanted to conditionally change the trace used depending on the locality you could do something like this: 
+    === "Raw"
+        ```yaml
+        charts:
+            - name: dynamic-chart
+              traces:
+              {%- if env_var('LOCALITY') == 'DEV' %}
+                - ref(dev-trace)
+              {%- elif  env_var('LOCALITY') == 'STAGING' %}
+                - ref(staging-trace)
+              {% else %}
+                - ref(prod-trace)
+              {% endif %}
+              layout:
+                title:
+                  text: "Dynamic Chart With Trace {{ env_var("LOCALITY") }}"
+        ```
+    === "Rendered `LOCALITY = 'DEV'`"
+        ```yaml
+        charts:
+            - name: dynamic-chart
+              traces:
+                - ref(dev-trace)
+              layout:
+                title:
+                  text: "Dyanmic Chart With Trace DEV"
+        ```
 
 ---
 
 ### Current Time (`now`)
 
-Generates the current Unix timestamp for dynamic date and time values in configurations.
+Generates the current Unix timestamp in seconds. Enables setting dynamic date and time values in configurations. This is particularly useful for controlling default chart ranges. 
 
 === "Example 1"
     ```yaml

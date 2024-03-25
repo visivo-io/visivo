@@ -1,5 +1,5 @@
 {%- raw %}
-# Looping
+# Looping :loop:
 
 Learn how to dynamically generate YAML configurations using Jinja2 for and while loops. This guide will walk you through using loops to create repetitive and conditional structures efficiently, saving time and maintaining consistency across your configurations.
 
@@ -60,37 +60,39 @@ Only include debug configuration if the `debug` variable is set to true.
 
 Create a nested structure of departments and employees.
 
-=== "YAML with Jinja2"
-    ```yaml
-    departments:
-      {% for department, employees in {'Sales': ['Alice', 'Bob'], 'Engineering': ['Charlie', 'Dave']}.items() %}
-      - department: "{{ department }}"
-        employees:
-          {% for employee in employees %}
-          - name: "{{ employee }}"
-          {% endfor %}
-      {% endfor %}
-    ```
-=== "Rendered YAML"
-    ```yaml
-    departments:
-      - department: "Sales"
-        employees:
-          - name: "Alice"
-          - name: "Bob"
-      - department: "Engineering"
-        employees:
-          - name: "Charlie"
-          - name: "Dave"
-    ```
+!!! example 
 
-## Tips for Using Jinja2 Loops
+    === "YAML with Jinja2"
+        ```yaml
+        departments:
+          {% for department, employees in {'Sales': ['Alice', 'Bob'], 'Engineering': ['Charlie', 'Dave']}.items() %}
+          - department: "{{ department }}"
+            employees:
+              {% for employee in employees %}
+              - name: "{{ employee }}"
+              {% endfor %}
+          {% endfor %}
+        ```
+    === "Rendered YAML"
+        ```yaml
+        departments:
+          - department: "Sales"
+            employees:
+              - name: "Alice"
+              - name: "Bob"
+          - department: "Engineering"
+            employees:
+              - name: "Charlie"
+              - name: "Dave"
+        ```
+
+## Tips & Tricks
 
 - **Maintain Readability:** Use whitespace control (`{%-` and `-%}`) to manage the output of rendered files.
 - **Leverage Filters and Tests:** Jinja2 offers a wide range of filters and tests that can be used within loops to filter, sort, or test conditions.
 - **Debugging:** Use the `debug` template tag to print variables and structures during template rendering.
 
-## Conclusion
+## Further Reading
 
 Jinja2 loops in YAML files offer a powerful tool for generating dynamic configurations. By mastering loops, you can create flexible and maintainable configurations that adapt to different environments, data sets, and conditions. Explore further to unlock the full potential of Jinja2 in your projects.
 

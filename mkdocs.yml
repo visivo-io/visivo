@@ -207,9 +207,13 @@ nav:
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
       - Tools:
-         - Jinja:
-           - reference/tools/jinja/macros.md
-           - reference/tools/jinja/loops.md
+          - Jinja:
+              - reference/tools/jinja/macros.md
+              - reference/tools/jinja/loops.md
+              - reference/tools/jinja/including.md
+              - reference/tools/jinja/variables.md
+          - "Run Time Functions":
+            - reference/tools/runtime_functions/index.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md
