@@ -57,7 +57,12 @@ def to_iso(unix_timestamp: float):
         str: The ISO 8601 formatted string.
     """
     date_obj = datetime.datetime.fromtimestamp(unix_timestamp, datetime.timezone.utc)
-    if date_obj.hour == 0 and date_obj.minute == 0 and date_obj.second == 0:
+    if (
+        date_obj.hour == 0
+        and date_obj.minute == 0
+        and date_obj.second == 0
+        and date_obj.microsecond == 0
+    ):
         return date_obj.date().isoformat()
     else:
         return date_obj.isoformat()

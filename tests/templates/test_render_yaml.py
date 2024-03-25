@@ -27,6 +27,44 @@ def test_env_var():
     assert env_var("NON_EXISTING_VAR") == "NOT-SET"
 
 
+class TestToIso:
+    # Converts a UNIX timestamp to an ISO 8601 formatted string with a time component.
+    def test_with_time_component(self):
+        unix_timestamp = 1640995202.0
+        iso_format = to_iso(unix_timestamp)
+        assert iso_format == "2022-01-01T00:00:02+00:00"
+
+    # Converts a UNIX timestamp to an ISO 8601 formatted string without a time component.
+    def test_without_time_component(self):
+        unix_timestamp = 1640995200.0
+        iso_format = to_iso(unix_timestamp)
+        assert iso_format == "2022-01-01"
+
+    # Converts a UNIX timestamp with a fractional component to an ISO 8601 formatted string with a time component.
+    def test_with_fractional_component(self):
+        unix_timestamp = 1640995200.5
+        iso_format = to_iso(unix_timestamp)
+        assert iso_format == "2022-01-01T00:00:00.500000+00:00"
+
+    # Converts a UNIX timestamp representing the earliest possible date to an ISO 8601 formatted string.
+    def test_earliest_date(self):
+        unix_timestamp = -86400.0
+        iso_format = to_iso(unix_timestamp)
+        assert iso_format == "1969-12-31"
+
+    # Converts a UNIX timestamp representing the latest possible date to an ISO 8601 formatted string.
+    def test_latest_date(self):
+        unix_timestamp = 253402300799.0
+        iso_format = to_iso(unix_timestamp)
+        assert iso_format == "9999-12-31T23:59:59+00:00"
+
+    # Converts a UNIX timestamp with a fractional component to an ISO 8601 formatted string without a time component.
+    def test_fractional_without_time_component(self):
+        unix_timestamp = 1640995200.5
+        iso_format = to_iso(unix_timestamp)
+        assert iso_format == "2022-01-01T00:00:00.500000+00:00"
+
+
 def test_now():
     current_time = now()
     assert current_time <= time.time()
