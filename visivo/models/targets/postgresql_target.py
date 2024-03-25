@@ -5,17 +5,23 @@ from pydantic import Field
 
 class PostgresqlTarget(SqlalchemyTarget):
     """
-    PostgresqlTarget hold the connection information to SQLite data sources.
+    PostgresqlTargets hold the connection information to PostgreSQL data sources.
 
-    A single project can have many targets. You can even set up Visivo so that a single chart contains traces that pull data from completely different targets. ex.)
-    ``` yaml
-    targets:
-      - name: local-sqlite
-        database: target/local.db
-        type: sqlite
-    ```
+    !!! example
 
-    It is best practice to leverage the `{% raw %}{{ env_var() }}{% endraw %}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
+        === "Simple"
+
+            ``` yaml
+                targets:
+                  - name: postgresql_target
+                    type: postgresql
+                    database: database
+                    username: {% raw %}{{ env_var('PG_USER') }}{% endraw %}
+                    password: {% raw %}{{ env_var('PG_PASSWORD') }}{% endraw %}
+                    connection_pool_size: 2
+            ```
+
+    Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
     type: Literal["postgresql"]

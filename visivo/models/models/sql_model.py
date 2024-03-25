@@ -10,8 +10,19 @@ from visivo.models.targets.target import DefaultTarget, Target
 
 class SqlModel(Model, ParentModel):
     """
-    SQL Models are queries that return base data from a SQL target. These data are then
-     used in Traces
+    SQL Models are queries that return base data from a SQL target. These data are then used in Traces
+
+    !!! example {% raw %}
+
+        === "Select All"
+
+            ``` yaml
+            models:
+              - name: sql_model
+                target: ref(sql_target)
+                sql: select * from table_in_target
+            ```
+    {% endraw %}
     """
 
     sql: str = Field(

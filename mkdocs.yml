@@ -69,6 +69,7 @@ nav:
   - Topics:
       - Linting: topics/linting.md
       - Including: topics/including.md
+      - Targets: topics/targets.md
       - Deployment: topics/deployments.md
   - Reference:
       - CLI: reference/cli.md
@@ -100,10 +101,19 @@ nav:
                   - reference/configuration/Models/SqlModel/index.md
               - CsvScriptModel:
                   - reference/configuration/Models/CsvScriptModel/index.md
+              - LocalMergeModel:
+                  - reference/configuration/Models/LocalMergeModel/index.md
           - Table:
               - reference/configuration/Table/index.md
-          - Target:
-              - reference/configuration/Target/index.md
+          - Targets:
+              - SqliteTarget:
+                  - reference/configuration/Targets/SqliteTarget/index.md
+              - PostgresqlTarget:
+                  - reference/configuration/Targets/PostgresqlTarget/index.md
+              - MysqlTarget:
+                  - reference/configuration/Targets/MysqlTarget/index.md
+              - SnowflakeTarget:
+                  - reference/configuration/Targets/SnowflakeTarget/index.md
           - Trace:
               - reference/configuration/Trace/index.md
               - TraceColumns:

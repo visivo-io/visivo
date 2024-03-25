@@ -9,6 +9,23 @@ class LocalMergeModel(Model, ParentModel):
     """
     Local Merge Models are models that allow you to merge data from multiple other models locally.
 
+    Note: Any joining is done in a local SQLite database. It is not designed for large datasets.
+
+    !!! example {% raw %}
+
+        === "Internal join External"
+
+            Here is an example of merging two models that are defined in your project. One that is external and one that is internal.
+            ``` yaml
+            models:
+              - name: local_merge
+                models:
+                    - ref(first_domain_model)
+                    - ref(external_data_model)
+                sql: select * from first_domain_model fdm join external_data_model edm on fdm.external_id = edm.id
+            ```
+
+    {% endraw %}
     """
 
     sql: str = Field(

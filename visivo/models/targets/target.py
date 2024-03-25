@@ -13,32 +13,6 @@ class DefaultTarget:
 class Target(ABC, NamedModel):
     """
     Targets hold the connection information to your data sources.
-
-    A single project can have many targets. You can even set up Visivo so that a single chart contains traces that pull data from completely different targets. ex.)
-    ``` yaml
-    targets:
-      - name: local-sqlite
-        database: target/local.db
-        type: sqlite
-      - name: local-postgres
-        database: postgres
-        type: postgresql
-        username: postgres
-        password: postgres
-        port: 5434
-      - name: remote-snowflake
-        type: snowflake
-        database: DEV
-        account: ax28471.us-west-2.aws
-        db_schema: DEFAULT
-        username: {% raw %}{{ env_var('SNOWFLAKE_USER') }}{% endraw %}
-        warehouse: DEV
-        password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
-    ```
-
-    Different data stores, which you specify with the `type` attribute, require different configurations. For example the snowflake `type` require that you specify a `warehouse` while the sqlite `type` does not require that attribute.
-
-    It is best practice to leverage the `{% raw %}{{ env_var() }}{% endraw %}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
     """
 
     host: Optional[str] = Field(None, description="The host url of the database.")
@@ -93,4 +67,3 @@ class Connection:
         self.conn.close()
         self.conn = None
         self.conn_type = None
-

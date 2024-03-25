@@ -6,15 +6,33 @@ class SqliteTarget(SqlalchemyTarget):
     """
     SqliteTargets hold the connection information to SQLite data sources.
 
-    A single project can have many targets. You can even set up Visivo so that a single chart contains traces that pull data from completely different targets. ex.)
-    ``` yaml
-    targets:
-      - name: sqlite
-        database: target/local.db
-        type: sqlite
-    ```
+    !!! example {% raw %}
 
-    It is best practice to leverage the `{% raw %}{{ env_var() }}{% endraw %}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
+        === "Simple"
+
+            ``` yaml
+            targets:
+              - name: sqlite_target
+                database: local/file/local.db
+                type: sqlite
+            ```
+
+        === "Additional Attached"
+            Attaching other SQLite databases allows you to join models between databases.
+
+            ``` yaml
+            targets:
+              - name: sqlite_target
+                database: local/file/local.db
+                type: sqlite
+                attach:
+                  - local/other/file/local.db
+            ```
+
+            The above target can be then used in a model and the sql for that model might look similar to: `select * from local l join other_local ol on l.other_id=ol.id`
+    {% endraw %}
+
+    Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
     type: Literal["sqlite"]

@@ -7,17 +7,25 @@ from pydantic import Field
 
 class SnowflakeTarget(Target):
     """
-    SqliteTargets hold the connection information to SQLite data sources.
+    SnowflakeTargets hold the connection information to Snowflake data sources.
 
-    A single project can have many targets. You can even set up Visivo so that a single chart contains traces that pull data from completely different targets. ex.)
-    ``` yaml
-    targets:
-      - name: local-sqlite
-        database: target/local.db
-        type: sqlite
-    ```
+    !!! example
 
-    It is best practice to leverage the `{% raw %}{{ env_var() }}{% endraw %}` jinja function for storing secrets and enabling different permissions in production, staging and dev.
+        === "Simple"
+
+            ``` yaml
+                targets:
+                  - name: snowflake_target
+                    type: snowflake
+                    database: DEV
+                    warehouse: DEV
+                    account: ab12345.us-west-1.aws
+                    db_schema: DEFAULT
+                    username: {% raw %}{{ env_var('SNOWFLAKE_USER') }}{% endraw %}
+                    password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
+            ```
+
+    Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
     account: Optional[str] = Field(
