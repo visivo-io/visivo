@@ -50,7 +50,7 @@ def compile_phase(
             type=Model, dag=dag, from_node=trace
         )[0]
         if isinstance(model, CsvScriptModel):
-            target = model.get_target(output_dir=output_dir)
+            target = model.get_sqlite_target(output_dir=output_dir)
         else:
             target = ParentModel.all_descendants_of_type(
                 type=Target, dag=dag, from_node=model

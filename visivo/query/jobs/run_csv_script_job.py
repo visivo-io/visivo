@@ -46,7 +46,7 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
         jobs.append(
             Job(
                 item=csv_script_model,
-                target=csv_script_model.get_target(output_dir),
+                target=csv_script_model.get_sqlite_target(output_dir),
                 action=action,
                 csv_script_model=csv_script_model,
                 output_dir=output_dir,

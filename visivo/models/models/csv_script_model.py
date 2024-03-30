@@ -103,23 +103,19 @@ class CsvScriptModel(Model):
     def sql(self):
         return f"select * from {self.name}"
 
-    def get_target(self, output_dir):
+    def get_sqlite_target(self, output_dir) -> SqliteTarget:
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
-            database=self.get_database(output_dir),
+            database=f"{output_dir}/{self.name}.sqlite",
             type="sqlite",
         )
 
-    def get_database(self, output_dir):
-        return f"{output_dir}/{self.name}.sqlite"
-
     def insert_csv_to_sqlite(self, output_dir):
-        from sqlalchemy import create_engine
         import pandas
         import subprocess
 
         process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
-        engine = create_engine(f"sqlite:///{self.get_database(output_dir)}")
+        engine = self.get_sqlite_target(output_dir).get_engine()
         try:
             csv = io.StringIO(process.stdout.read().decode())
             data_frame = pandas.read_csv(csv)

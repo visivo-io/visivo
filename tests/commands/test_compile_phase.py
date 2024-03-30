@@ -45,7 +45,9 @@ def test_compile_csv_script_model():
     project.targets = []
     model = CsvScriptModelFactory(name="csv_script_model")
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = model
-    create_file_database(url=model.get_target(output_dir).url(), output_dir=output_dir)
+    create_file_database(
+        url=model.get_sqlite_target(output_dir).url(), output_dir=output_dir
+    )
 
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME

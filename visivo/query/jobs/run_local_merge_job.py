@@ -1,5 +1,5 @@
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.models.model import CsvScriptModel, LocalMergeModel
+from visivo.models.models.model import LocalMergeModel
 from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,
@@ -46,7 +46,7 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
         jobs.append(
             Job(
                 item=local_merge_model,
-                target=local_merge_model.get_target(output_dir),
+                target=local_merge_model.get_sqlite_target(output_dir),
                 action=action,
                 local_merge_model=local_merge_model,
                 output_dir=output_dir,

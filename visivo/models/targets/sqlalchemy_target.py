@@ -40,5 +40,10 @@ class SqlalchemyTarget(Target, ABC):
                 )
             else:
                 self._engine = create_engine(self.url())
+            if hasattr(self, "attach"):
+                for attach_db in self.attach:
+                    self._engine(
+                        f"attach database '{attach_db.database}' as {attach_db.name};"
+                    )
 
         return self._engine

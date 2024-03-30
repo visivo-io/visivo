@@ -2,7 +2,11 @@ from typing import List
 from pydantic import Field
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.model import Model
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.targets.sqlite_target import SqliteTarget
+import os
 
 
 class LocalMergeModel(Model, ParentModel):
@@ -36,21 +40,44 @@ class LocalMergeModel(Model, ParentModel):
         description="A model object defined inline or a ref() to a model."
     )
 
-    def get_database(self, output_dir):
-        return f"{output_dir}/{self.name}.sqlite"
-
-    def get_target(self):
-        # https://stackoverflow.com/questions/23036751/can-sqlalchemy-work-well-with-multiple-attached-sqlite-database-files
-        # Need to have a new option for sqlite targets which is a list of join databases
-        # attach 'database1.db' as db1;
-        # attach 'database2.db' as db2;
-        pass
+    def get_sqlite_target(self, output_dir) -> SqliteTarget:
+        return SqliteTarget(
+            name=f"model_{self.name}_generated_target",
+            database="",
+            type="sqlite",
+            attach=[],
+        )
 
     def insert_dependent_models_to_sqlite(self, output_dir):
-        for model in self.models:
-            pass
-            # If database exists, then continue
-            # else run model query against target
+        import pandas
+        import subprocess
+
+        models_to_insert = filter(
+            lambda m: not isinstance(m, SqliteTarget)
+            and not isinstance(m, CsvScriptModel),
+            self.attach,
+        )
+
+        for model in models_to_insert:
+            sqlite_target = self._get_sqlite_from_model(model, output_dir)
+            if sqlite_target.database:
+                data_frame = model.target.read_sql(model.sql)
+                engine = sqlite_target.get_engine()
+                data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
+
+    def _get_sqlite_from_model(self, model, output_dir) -> SqliteTarget:
+        if isinstance(model, SqliteTarget):
+            return model.target
+        elif isinstance(model, CsvScriptModel):
+            return model.get_sqlite_target(output_dir=output_dir)
+        elif isinstance(model, LocalMergeModel):
+            return model.get_sqlite_target(output_dir=output_dir)
+        else:
+            return SqliteTarget(
+                name=f"model_{model.name}_generated_target",
+                database=f"{output_dir}/{model.name}.sqlite",
+                type="sqlite",
+            )
 
     def child_items(self):
         return self.models

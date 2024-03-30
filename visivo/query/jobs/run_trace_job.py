@@ -16,7 +16,7 @@ from time import time
 def action(trace, dag, output_dir):
     model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     if isinstance(model, CsvScriptModel):
-        target = model.get_target(output_dir=output_dir)
+        target = model.get_sqlite_target(output_dir=output_dir)
     else:
         target = ParentModel.all_descendants_of_type(
             type=Target, dag=dag, from_node=model
@@ -48,14 +48,14 @@ def action(trace, dag, output_dir):
             return JobResult(success=False, message=failure_message)
 
 
-def _get_target(trace, dag, output_dir):
+def _get_sqlite_target(trace, dag, output_dir):
     targets = ParentModel.all_descendants_of_type(type=Target, dag=dag, from_node=trace)
     if len(targets) == 1:
         return targets[0]
 
     model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     if isinstance(model, CsvScriptModel):
-        return model.get_target(output_dir)
+        return model.get_sqlite_target(output_dir)
     else:
         return model.target
 
@@ -65,7 +65,7 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
 
     traces = project.filter_traces(name_filter=name_filter)
     for trace in traces:
-        target = _get_target(trace, dag, output_dir)
+        target = _get_sqlite_target(trace, dag, output_dir)
         jobs.append(
             Job(
                 item=trace,
