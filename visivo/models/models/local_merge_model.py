@@ -41,16 +41,16 @@ class LocalMergeModel(Model, ParentModel):
     )
 
     def get_sqlite_target(self, output_dir) -> SqliteTarget:
+        attach = list(map(lambda a: self._get_sqlite_from_model(a), self.attach))
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
             database="",
             type="sqlite",
-            attach=[],
+            attach=attach,
         )
 
     def insert_dependent_models_to_sqlite(self, output_dir):
         import pandas
-        import subprocess
 
         models_to_insert = filter(
             lambda m: not isinstance(m, SqliteTarget)
@@ -60,7 +60,7 @@ class LocalMergeModel(Model, ParentModel):
 
         for model in models_to_insert:
             sqlite_target = self._get_sqlite_from_model(model, output_dir)
-            if sqlite_target.database:
+            if not os.path.exists(sqlite_target.database):
                 data_frame = model.target.read_sql(model.sql)
                 engine = sqlite_target.get_engine()
                 data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
