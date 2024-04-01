@@ -73,7 +73,7 @@ def init_phase():
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
 
-    model = Model(name="Example Model", sql="select * from test_table")
+    model = SqlModel(name="Example Model", sql="select * from test_table")
     props = Scatter(type="scatter", x="query(x)", y="query(y)")
     trace = Trace(name="Example Trace", model=model, props=props, changed=None)
     chart = Chart(name="Example Chart", traces=[trace])
