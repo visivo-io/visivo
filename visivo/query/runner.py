@@ -1,6 +1,7 @@
 from typing import List
 import warnings
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.models import local_merge_model
 
 from visivo.models.project import Project
 from visivo.models.trace import Trace
@@ -12,6 +13,7 @@ from visivo.query.jobs.job import CachedFuture, Job, JobResult
 
 from visivo.query.jobs.run_csv_script_job import jobs as csv_script_jobs
 from visivo.query.jobs.run_trace_job import jobs as run_trace_jobs
+from visivo.query.jobs.run_local_merge_job import jobs as run_local_merge_jobs
 from visivo.query.target_job_tracker import TargetJobTracker
 
 warnings.filterwarnings("ignore")
@@ -122,6 +124,12 @@ class Runner:
             name_filter=self.name_filter,
         )
         jobs = jobs + csv_script_jobs(
+            dag=self.dag,
+            output_dir=self.output_dir,
+            project=self.project,
+            name_filter=self.name_filter,
+        )
+        jobs = jobs + run_local_merge_jobs(
             dag=self.dag,
             output_dir=self.output_dir,
             project=self.project,
