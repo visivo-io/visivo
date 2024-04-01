@@ -41,7 +41,12 @@ class LocalMergeModel(Model, ParentModel):
     )
 
     def get_sqlite_target(self, output_dir) -> SqliteTarget:
-        attach = list(map(lambda a: self._get_sqlite_from_model(a), self.attach))
+        attach = list(
+            map(
+                lambda a: self._get_sqlite_from_model(a, output_dir).database,
+                self.models,
+            )
+        )
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
             database="",
@@ -55,7 +60,7 @@ class LocalMergeModel(Model, ParentModel):
         models_to_insert = filter(
             lambda m: not isinstance(m, SqliteTarget)
             and not isinstance(m, CsvScriptModel),
-            self.attach,
+            self.models,
         )
 
         for model in models_to_insert:
