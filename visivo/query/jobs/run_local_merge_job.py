@@ -1,5 +1,5 @@
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.models.model import LocalMergeModel
+from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,

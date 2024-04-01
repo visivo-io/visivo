@@ -27,7 +27,7 @@ class AlertFactory(factory.Factory):
 
 class SnowflakeTargetFactory(factory.Factory):
     class Meta:
-        model = SnowflakeTarget 
+        model = SnowflakeTarget
 
     name = "target"
     database = "tmp/test.db"
