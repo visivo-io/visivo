@@ -206,14 +206,16 @@ nav:
                   - reference/configuration/Trace/Volume/index.md
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
-      - Tools:
-          - Jinja:
-              - reference/tools/jinja/macros.md
-              - reference/tools/jinja/loops.md
-              - reference/tools/jinja/including.md
-              - reference/tools/jinja/variables.md
-          - "Run Time Functions":
-            - reference/tools/runtime_functions/index.md
+      - Functions:
+          - reference/functions/index.md
+          - "On Compile":
+              - reference/functions/jinja/index.md
+              - reference/functions/jinja/macros.md
+              - reference/functions/jinja/loops.md
+              - reference/functions/jinja/includes.md
+              - reference/functions/jinja/variables.md
+          - "Run Time":
+            - reference/functions/runtime_functions/index.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md

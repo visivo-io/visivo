@@ -75,6 +75,16 @@ def test_to_unix():
     unix_timestamp = to_unix("2022-01-01T00:00:00Z")
     assert unix_timestamp == 1640995200.0
 
+    # Test examples in docs
+    unix_timestamp = to_unix("Dec 31, 2024")
+    assert unix_timestamp == 1735603200.0
+
+    unix_timestamp = to_unix("2024-01-01")
+    assert unix_timestamp == 1704067200.0
+
+    unix_timestamp = to_unix("2024/12/24 18:00")
+    assert unix_timestamp == 1735063200.0
+
     # Test conversion from invalid date string
     with pytest.raises(ValueError):
         to_unix("invalid_date_string")
