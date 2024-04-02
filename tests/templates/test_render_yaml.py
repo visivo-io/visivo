@@ -130,6 +130,22 @@ def test_read_json_file_valid_filepath():
     assert obj == {"key": "value"}
 
 
+def test_example_in_docs_read_json_file():
+    contents = '{"accounts":["Acme Co","Knights of Ni LTD"]}'
+    output_dir = os.path.join(os.path.dirname(__file__), temp_folder())
+    filepath = "iterables.json"
+    path = temp_file(contents=contents, name=filepath, output_dir=output_dir)
+    template = (
+        "{% set accounts = read_json_file("
+        + f"'{path}'"
+        + ")['accounts'] %}{{ accounts }}"
+    )
+    print(path)
+    rendered = render_yaml(template)
+
+    assert rendered == "['Acme Co', 'Knights of Ni LTD']"
+
+
 def test_timedelta_interactions():
     template_string = "{% set datetime = to_unix('2022-01-01 00:00:00') %}{{ datetime - timedelta(days=1) }}"
     rendered_template = render_yaml(template_string)
@@ -157,7 +173,7 @@ def test_timedelta_docs_example_two():
               - "{{ to_iso(current_time) }}"
     """
     )
-    print(rendered)
+    rendered = render_yaml(yaml)
     assert '+00:00"' in rendered
 
 

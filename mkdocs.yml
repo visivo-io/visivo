@@ -207,7 +207,6 @@ nav:
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
       - Functions:
-          - reference/functions/index.md
           - "On Compile":
               - reference/functions/jinja/index.md
               - reference/functions/jinja/macros.md

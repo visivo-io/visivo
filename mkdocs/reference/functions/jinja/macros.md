@@ -12,6 +12,7 @@ Macros are a powerful feature that enable dynamic content generation within your
 - [Custom Format Time (`to_str_format`)](#custom-format-time-to_str_format)
 - [YAML Renderer (`render_yaml`)](#yaml-renderer-render_yaml)
 - [Timedelta Macro (`timedelta`)](#timedelta)
+- [Read Json File (`read_json_file`)](#read-json-file-read_json_file)
 ---
 
 ### Environment Variables (`env_var`)
@@ -249,4 +250,64 @@ Returns:
                 - "2024-04-02T14:02:40.101522+00:00"
         ```
 ### Read Json File (`read_json_file`)
+
+Enables you to read a `.json` file into a jinja object from a file.
+```
+Args:
+    filepath (str): The relative or absolute file path to the .json
+
+Returns:
+    obj: The json represented as a jinja object.
+```
+!!! tip
+
+    Passing an invalid file path will lead to a compile error, so ensure your file exists! 
+
+This function is very useful to passing in configurations to Visivo for jinja loops or conditional statements. 
+!!! example 
+
+    Rather than creating a long list in the jinja `{% set %}` you may want to store that information in a json file and just read it into the template using the macro.
+    ```json title="dir/iterables.json"
+    {"accounts":["Acme Co","Knights of Ni LTD"]}
+    ```
+    
+    Then in your yaml file you can read in the configuration. 
+
+    === "Raw"
+        ```yaml title="dir/project.visivo.yml"
+        {%- set accounts = read_json_file(iterables.json)['accounts'] %}
+        {%- for account in accounts %}
+        traces:
+          - name: {{ account }}-orders-per-week
+            model: ref(orders)
+            props:
+              type: bar 
+              x: query( date_trunc('week', created_at) )
+              y: query( count(distinct id) )
+            filters:
+              - query( account_name = '{{ account }}')
+        {%- endfor %}
+        ```
+    === "Rendered"
+        ```yaml title="dir/project.visivo.yml"
+        traces:
+          - name: Acme Co-orders-per-week
+            model: ref(orders)
+            props:
+              type: bar 
+              x: query( date_trunc('week', created_at) )
+              y: query( count(distinct id) )
+            filters:
+              - query( account_name = 'Acme Co')
+          - name: Knights of Ni LTD-orders-per-week
+            model: ref(orders)
+            props:
+              type: bar 
+              x: query( date_trunc('week', created_at) )
+              y: query( count(distinct id) )
+            filters:
+              - query( account_name = 'Knights of Ni LTD')
+        ```
+
+
 {%- endraw %}
