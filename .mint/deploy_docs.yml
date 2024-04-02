@@ -1,7 +1,7 @@
 on:
   github:
     push:
-      if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
+      if: ${{ mint.run.git.branch == 'main' }}
       init:
         commit-sha: ${{ event.github.push.head_commit.id }}
 
