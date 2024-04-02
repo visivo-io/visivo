@@ -209,30 +209,44 @@ Returns:
 ```
 
 !!! example "Examples"
-
-    === "Example 1"
+    You can render the raw timedelta in seconds all on its own.
+    === "Raw"
         ```yaml
-        future_date: "{{ timedelta(days=7) }}"
+        interval: {{ timedelta(days=7) }}
         ```
-        This will add 7 days to the current date.
-
-    === "Example 2"
+    === "Rendered"
         ```yaml
-        past_date: "{{ timedelta(hours=12) }}"
+        interval: 604800.0
         ```
-        This will subtract 12 hours from the current date.
 
-    === "Example 3"
+    A more common use of timedelta is to set relative dates. 
+    === "Raw"
         ```yaml
-        future_time: "{{ timedelta(minutes=30) }}"
-        ```
-        This will add 30 minutes to the current time.
+        charts:
+          - name: ranged-chart
+            traces: 
+              - ref(trace1)
+              - ref(trace2)
+            layout 
+              xaxis:
+                range: 
+                  {%- set current_time = now() %}
+                  - "{{ to_iso(current_time - timedelta(days=7)) }}"
+                  - "{{ to_iso(current_time) }}"
 
-    === "Example 4"
+        ```
+    === "Rendered"
         ```yaml
-        past_time: "{{ timedelta(seconds=60) }}"
+        charts:
+          - name: ranged-chart
+            traces:
+              - ref(trace1)
+              - ref(trace2)
+            layout
+            xaxis:
+              range:
+                - "2024-03-26T14:02:40.101522+00:00"
+                - "2024-04-02T14:02:40.101522+00:00"
         ```
-        This will subtract 60 seconds from the current time.
-
-
+### Read Json File (`read_json_file`)
 {%- endraw %}

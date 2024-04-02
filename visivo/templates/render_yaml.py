@@ -3,6 +3,7 @@ import datetime
 from dateutil import parser
 import jinja2
 import os
+import json
 
 
 def env_var(key):
@@ -85,13 +86,38 @@ def to_str_format(unix_timestamp: float, str_format: str):
     return date_obj.strftime(str_format)
 
 
+def read_json_file(filepath):
+    """Read and parse a JSON file, returning a Python object.
+
+    The filepath can be either relative to the script or module this function
+    is defined in, or an absolute path.
+    """
+    # Check if the filepath is absolute. If not, treat it as relative to BASE_DIR.
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    if not os.path.isabs(filepath):
+        filepath = os.path.join(BASE_DIR, filepath)
+
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"File not found at: {filepath}")
+
+    with open(filepath, "r") as file:
+        data = json.load(file)
+    return data
+
+
+def timedelta(**kwargs):
+    td = datetime.timedelta(**kwargs)
+    return td.total_seconds()
+
+
 FUNCTIONS = {
     "env_var": env_var,
     "now": now,
-    "timedelta": datetime.timedelta,
+    "timedelta": timedelta,
     "to_unix": to_unix,
     "to_iso": to_iso,
     "to_str_format": to_str_format,
+    "read_json_file": read_json_file,
 }
 
 

@@ -212,7 +212,6 @@ nav:
               - reference/functions/jinja/index.md
               - reference/functions/jinja/macros.md
               - reference/functions/jinja/loops.md
-              - reference/functions/jinja/includes.md
               - reference/functions/jinja/variables.md
           - "Run Time":
             - reference/functions/runtime_functions/index.md

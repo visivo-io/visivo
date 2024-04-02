@@ -7,6 +7,7 @@ import pytest
 import datetime
 import time
 from textwrap import dedent
+from tests.support.utils import temp_file, temp_folder
 from visivo.templates.render_yaml import (
     env_var,
     now,
@@ -14,6 +15,8 @@ from visivo.templates.render_yaml import (
     to_iso,
     to_str_format,
     render_yaml,
+    read_json_file,
+    timedelta,
 )
 
 
@@ -103,6 +106,59 @@ def test_to_str_format():
     # Test conversion from UNIX timestamp to custom string format
     str_format = to_str_format(1640995200.0, "%Y-%m-%d %H:%M:%S")
     assert str_format == "2022-01-01 00:00:00"
+
+
+# Raises a FileNotFoundError when given an invalid filepath
+def test_read_json_file_invalid_filepath():
+    # Arrange
+    filepath = "invalid.json"
+
+    # Act and Assert
+    with pytest.raises(FileNotFoundError):
+        read_json_file(filepath)
+
+
+def test_read_json_file_valid_filepath():
+    # Arrange
+
+    output_dir = os.path.join(os.path.dirname(__file__), temp_folder())
+    filepath = "valid.json"
+    path = temp_file(contents='{"key": "value"}', name=filepath, output_dir=output_dir)
+
+    # Act and Assert
+    obj = read_json_file(path)
+    assert obj == {"key": "value"}
+
+
+def test_timedelta_interactions():
+    template_string = "{% set datetime = to_unix('2022-01-01 00:00:00') %}{{ datetime - timedelta(days=1) }}"
+    rendered_template = render_yaml(template_string)
+    assert rendered_template == "1640908800.0"
+
+
+def test_timedelta():
+    td = timedelta(days=7)
+    assert td == 604800.0
+
+
+def test_timedelta_docs_example_two():
+    yaml = dedent(
+        """
+    charts:
+      - name: ranged-chart
+        traces:
+          - ref(trace1)
+          - ref(trace2)
+        layout
+          xaxis:
+            range:
+              {%- set current_time = now() %}
+              - "{{ to_iso(current_time - timedelta(days=7)) }}"
+              - "{{ to_iso(current_time) }}"
+    """
+    )
+    print(rendered)
+    assert '+00:00"' in rendered
 
 
 def test_render_yaml():

@@ -1,6 +1,6 @@
 
 # Jinja2
-Visivo collects all [included](../../../topics/including.md) yaml files and runs them through a Jinja2 templating engine on 
+Visivo collects all [included](../../../topics/including.md) yaml files and runs them through a Jinja2 templating engine on compile.
 
 Jinja2 YAML files offer a powerful tool for generating dynamic configurations. By mastering loops, you can create flexible and maintainable configurations that adapt to different environments, data sets, and conditions. Explore further to unlock the full potential of Jinja2 in your projects.
 
