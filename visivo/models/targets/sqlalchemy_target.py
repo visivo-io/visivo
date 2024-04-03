@@ -28,10 +28,10 @@ class SqlalchemyTarget(Target, ABC):
         try:
             connection = self.get_engine().connect()
             if hasattr(self, "attach") and self.attach:
-                for attach_db in self.attach:
+                for attachment in self.attach:
                     connection.execute(
                         text(
-                            f"attach database '{attach_db.database}' as {attach_db.name};"
+                            f"attach database '{attachment.target.database}' as {attachment.schema_name};"
                         )
                     )
             return connection

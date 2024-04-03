@@ -92,7 +92,7 @@ def test_runner_with_local_merge_model():
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
         fp.write(
-            "select t1.x as x, t2.y as y, 'values' as 'cohort_on' from target1.test_table t1 JOIN target2.test_table t2 on t1.x=t2.x"
+            "select t1.x as x, t2.y as y, 'values' as 'cohort_on' from model1.test_table t1 JOIN model2.test_table t2 on t1.x=t2.x"
         )
 
     runner = Runner(project=project, output_dir=output_dir)

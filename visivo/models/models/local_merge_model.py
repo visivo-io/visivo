@@ -5,7 +5,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.targets.sqlite_target import SqliteTarget
+from visivo.models.targets.sqlite_target import Attachment, SqliteTarget
 import os
 
 
@@ -43,7 +43,10 @@ class LocalMergeModel(Model, ParentModel):
     def get_sqlite_target(self, output_dir) -> SqliteTarget:
         attach = list(
             map(
-                lambda a: self._get_sqlite_from_model(a, output_dir),
+                lambda model: Attachment(
+                    schema_name=model.name,
+                    target=self._get_sqlite_from_model(model, output_dir),
+                ),
                 self.models,
             )
         )

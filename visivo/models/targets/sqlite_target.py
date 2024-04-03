@@ -1,6 +1,15 @@
 from typing import List, Literal, Optional
+from visivo.models.base.base_model import BaseModel
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
 from pydantic import Field
+
+
+class Attachment(BaseModel):
+    schema_name: str = Field("Name of the schema to attach the target under.")
+    target: "SqliteTarget" = Field(
+        None,
+        description="Local SQLite database target to attach in the connection that will be available in the base SQL query.",
+    )
 
 
 class SqliteTarget(SqlalchemyTarget):
@@ -37,7 +46,7 @@ class SqliteTarget(SqlalchemyTarget):
     """
 
     type: Literal["sqlite"]
-    attach: Optional[List["SqliteTarget"]] = Field(
+    attach: Optional[List[Attachment]] = Field(
         None,
         description="List of other local SQLite database targets to attach in the connection that will be available in the base SQL query.",
     )

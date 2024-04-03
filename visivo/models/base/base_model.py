@@ -1,4 +1,10 @@
-from pydantic import StringConstraints, Discriminator, Tag, BaseModel, ConfigDict
+from pydantic import (
+    StringConstraints,
+    Discriminator,
+    Tag,
+    BaseModel as PydanticBaseModel,
+    ConfigDict,
+)
 from typing_extensions import Annotated
 from typing import Any, Union, NewType
 import re
@@ -42,7 +48,7 @@ class ModelStrDiscriminator:
             return None
 
 
-class BaseModel(BaseModel):
+class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
     def id(self):
