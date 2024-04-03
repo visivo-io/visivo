@@ -3,8 +3,8 @@ import json
 import os
 from pathlib import Path
 import re
-import jinja2
 import click
+from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
 
@@ -93,14 +93,10 @@ def set_location_recursive_items(dictionary, file):
 
 
 def load_yaml_file(file):
-    def env_var(key):
-        return os.getenv(key, "NOT-SET").replace("\\", "\\\\").replace('"', '\\"')
-
     with open(file, "r") as stream:
         template_string = stream.read()
-        template = jinja2.Template(template_string)
         try:
-            loaded = yaml.safe_load(template.render({"env_var": env_var}))
+            loaded = yaml.safe_load(render_yaml(template_string))
             set_location_recursive_items(loaded, str(file))
             return loaded
         except yaml.YAMLError as exc:
