@@ -26,7 +26,15 @@ class SqlalchemyTarget(Target, ABC):
 
     def get_connection(self):
         try:
-            return self.get_engine().connect()
+            connection = self.get_engine().connect()
+            if hasattr(self, "attach") and self.attach:
+                for attach_db in self.attach:
+                    connection.execute(
+                        text(
+                            f"attach database '{attach_db.database}' as {attach_db.name};"
+                        )
+                    )
+            return connection
         except Exception as err:
             raise click.ClickException(
                 f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
@@ -40,10 +48,5 @@ class SqlalchemyTarget(Target, ABC):
                 )
             else:
                 self._engine = create_engine(self.url())
-            if hasattr(self, "attach") and self.attach:
-                for attach_db in self.attach:
-                    self._engine(
-                        f"attach database '{attach_db.database}' as {attach_db.name};"
-                    )
 
         return self._engine

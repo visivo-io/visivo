@@ -60,5 +60,5 @@ def test_local_merge_model_get_sqlite_target():
     local_merge_model_target = local_merge_model.get_sqlite_target(
         output_dir=output_dir
     )
-    assert local_merge_model_target.attach[0] == f"{output_dir}/model1.sqlite"
-    assert local_merge_model_target.attach[1] == f"{output_dir}/model2.sqlite"
+    assert local_merge_model_target.attach[0].database == f"{output_dir}/model1.sqlite"
+    assert local_merge_model_target.attach[1].database == f"{output_dir}/model2.sqlite"

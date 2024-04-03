@@ -39,7 +39,7 @@ class TargetFactory(factory.Factory):
         model = SqliteTarget
 
     name = "target"
-    database = "tmp/test.db"
+    database = "tmp/test.sqlite"
     type = "sqlite"
 
 

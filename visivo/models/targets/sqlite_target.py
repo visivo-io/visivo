@@ -2,6 +2,7 @@ from typing import List, Literal, Optional
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
 from pydantic import Field
 
+
 class SqliteTarget(SqlalchemyTarget):
     """
     SqliteTargets hold the connection information to SQLite data sources.
@@ -36,9 +37,9 @@ class SqliteTarget(SqlalchemyTarget):
     """
 
     type: Literal["sqlite"]
-    attach: Optional[List[str]] = Field(
+    attach: Optional[List["SqliteTarget"]] = Field(
         None,
-        description="List of other local SQLite database files to attach in the connection that will be available in the base SQL query.",
+        description="List of other local SQLite database targets to attach in the connection that will be available in the base SQL query.",
     )
 
     def get_dialect(self):

@@ -17,14 +17,18 @@ def action(local_merge_model: LocalMergeModel, output_dir):
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_database(output_dir=output_dir),
+            full_path=local_merge_model.get_sqlite_target(
+                output_dir=output_dir
+            ).database,
         )
         return JobResult(success=True, message=success_message)
     except Exception as e:
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_database(output_dir=output_dir),
+            full_path=local_merge_model.get_sqlite_target(
+                output_dir=output_dir
+            ).database,
             error_msg=str(repr(e)),
         )
         return JobResult(success=False, message=failure_message)
