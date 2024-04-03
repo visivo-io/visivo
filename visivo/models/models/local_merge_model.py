@@ -26,7 +26,7 @@ class LocalMergeModel(Model, ParentModel):
                 models:
                     - ref(first_domain_model)
                     - ref(external_data_model)
-                sql: select * from first_domain_model fdm join external_data_model edm on fdm.external_id = edm.id
+                sql: SELECT * FROM first_domain_model.table AS fdm JOIN external_data_model.table AS edm ON fdm.external_id = edm.id
             ```
 
     {% endraw %}

@@ -36,10 +36,13 @@ class SqliteTarget(SqlalchemyTarget):
                 database: local/file/local.db
                 type: sqlite
                 attach:
-                  - local/other/file/local.db
+                  - schema_name: static
+                    name: static_target
+                    database: local/static/file/local.db
+                    type: sqlite
             ```
 
-            The above target can be then used in a model and the sql for that model might look similar to: `select * from local l join other_local ol on l.other_id=ol.id`
+            The above target can be then used in a model and the sql for that model might look similar to: `SELECT * FROM local AS l JOIN static.data AS sd ON l.static_id=sd.id`
     {% endraw %}
 
     Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
