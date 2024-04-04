@@ -60,7 +60,7 @@ class SnowflakeTarget(Target):
             return snowflake.connector.connect(
                 account=self.account,
                 user=self.username,
-                password=self._get_password(),
+                password=self.get_password(),
                 warehouse=self.warehouse,
                 database=self.database,
                 schema=self.db_schema,
