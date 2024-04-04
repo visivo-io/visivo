@@ -68,5 +68,5 @@ class SnowflakeTarget(Target):
             )
         except Exception as err:
             raise click.ClickException(
-                f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct. {err}"
+                f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
             )
