@@ -1,6 +1,7 @@
 import re
 from typing import Any
 from pydantic import model_validator, Field
+from visivo.models.models.fields import ModelRefField
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 
@@ -58,7 +59,6 @@ from .trace_columns import TraceColumns
 from typing import Optional, List, Union
 from collections import Counter
 from .base.base_model import REF_REGEX, generate_ref_field
-from .model import Model, ModelRefField
 from typing_extensions import Annotated
 
 Props = Union[

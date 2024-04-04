@@ -1,14 +1,12 @@
+from visivo.models.targets.sqlite_target import SqliteTarget
 from ..factories.model_factories import (
     AlertFactory,
-    DefaultsFactory,
-    TraceFactory,
     ProjectFactory,
 )
 from visivo.models.trace import Trace
 from visivo.testing.runner import Runner
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
-from visivo.models.target import Target, TypeEnum as TargetTypeEnum
 
 
 def test_TestQueryStringFactory_errors(capsys):
@@ -29,10 +27,8 @@ def test_TestQueryStringFactory_errors(capsys):
 
     output_dir = temp_folder()
     alert = AlertFactory()
-    target = Target(
-        name="target",
-        database=f"{output_dir}/test.db",
-        type=TargetTypeEnum.sqlite,
+    target = SqliteTarget(
+        name="target", database=f"{output_dir}/test.sqlite", type="sqlite"
     )
     project = ProjectFactory(targets=[target], traces=[trace], dashboards=[])
 

@@ -1,4 +1,3 @@
-from ..models.target import TypeEnum
 from pydantic import BaseModel
 from copy import deepcopy
 
@@ -69,7 +68,7 @@ KEYWORDS = {
 
 
 class Dialect(BaseModel, use_enum_values=True):
-    type: str | TypeEnum
+    type: str
 
     def _get_keyword_store(self, keyword_type: str):
         try:
@@ -99,5 +98,3 @@ class Dialect(BaseModel, use_enum_values=True):
     def aggregates_regex_pattern(self):
         aggregates_with_regex = [rf"{agg}\s*\(.*\)\s*" for agg in self.aggregates]
         return "|".join(aggregates_with_regex)
-        
-

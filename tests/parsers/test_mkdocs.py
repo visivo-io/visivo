@@ -33,7 +33,16 @@ def test_docs_content_from_pydantic_model():
     dashboard_md = mkdocs.get_md_content("Dashboard")
     assert len(dashboard_md) > 50
 
-    target_md = mkdocs.get_md_content("Target")
+    target_md = mkdocs.get_md_content("SqliteTarget")
+    assert len(target_md) > 50
+
+    target_md = mkdocs.get_md_content("PostgresqlTarget")
+    assert len(target_md) > 50
+
+    target_md = mkdocs.get_md_content("MysqlTarget")
+    assert len(target_md) > 50
+
+    target_md = mkdocs.get_md_content("SnowflakeTarget")
     assert len(target_md) > 50
 
 

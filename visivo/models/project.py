@@ -1,23 +1,25 @@
 import re
-from typing import Any, List, Optional, Union
+from typing import List, Optional
 from visivo.models.alert import AlertField, Alert
 
 from visivo.models.include import Include
+from visivo.models.models.model import Model
+from visivo.models.models.fields import ModelField
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.targets.fields import TargetField
 
 
 from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
-from .target import Target
+from .targets.target import Target
 from .table import Table
-from .model import ModelField, Model, SqlModel
 from .defaults import Defaults
 from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
 from pydantic import model_validator
-from typing_extensions import Annotated
 
 
 class Project(NamedModel, ParentModel):
@@ -25,7 +27,7 @@ class Project(NamedModel, ParentModel):
     cli_version: Optional[str] = None
     includes: List[Include] = []
     alerts: List[AlertField] = []
-    targets: List[Target] = []
+    targets: List[TargetField] = []
     models: List[ModelField] = []
     traces: List[Trace] = []
     tables: List[Table] = []

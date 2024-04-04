@@ -3,8 +3,9 @@ import os
 import yaml
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
-from visivo.models.target import Target
-from visivo.models.model import Model, CsvScriptModel
+from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.targets.target import Target
+from visivo.models.models.model import Model
 from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
@@ -49,7 +50,7 @@ def compile_phase(
             type=Model, dag=dag, from_node=trace
         )[0]
         if isinstance(model, CsvScriptModel):
-            target = model.get_target(output_dir=output_dir)
+            target = model.get_sqlite_target(output_dir=output_dir)
         else:
             target = ParentModel.all_descendants_of_type(
                 type=Target, dag=dag, from_node=model

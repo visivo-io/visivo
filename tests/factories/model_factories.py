@@ -1,16 +1,19 @@
 import factory
 from visivo.models.defaults import Defaults
+from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.targets.snowflake_target import SnowflakeTarget
+from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
-from visivo.models.model import Model, CsvScriptModel, SqlModel
 from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props import Scatter
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
-from visivo.models.target import Target, TypeEnum
 from visivo.query.jobs.job import Job
 
 
@@ -22,13 +25,22 @@ class AlertFactory(factory.Factory):
     type = "console"
 
 
-class TargetFactory(factory.Factory):
+class SnowflakeTargetFactory(factory.Factory):
     class Meta:
-        model = Target
+        model = SnowflakeTarget
 
     name = "target"
     database = "tmp/test.db"
-    type = TypeEnum.sqlite
+    type = "snowflake"
+
+
+class TargetFactory(factory.Factory):
+    class Meta:
+        model = SqliteTarget
+
+    name = "target"
+    database = "tmp/test.sqlite"
+    type = "sqlite"
 
 
 class TracePropsFactory(factory.Factory):
@@ -62,6 +74,15 @@ class CsvScriptModelFactory(factory.Factory):
     args = ["echo", "row_number,value\n1,1\n2,1\n3,2\n4,3\n5,5\n6,8"]
 
 
+class LocalMergeModelFactory(factory.Factory):
+    class Meta:
+        model = LocalMergeModel
+
+    name = "model"
+    sql = "select * from test_table"
+    models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
+
+
 class TraceFactory(factory.Factory):
     class Meta:
         model = Trace
@@ -88,7 +109,6 @@ class JobFactory(factory.Factory):
     item = factory.SubFactory(TraceFactory)
     target = factory.SubFactory(TargetFactory)
     action = None
-    dependencies = []
 
 
 class ChartFactory(factory.Factory):

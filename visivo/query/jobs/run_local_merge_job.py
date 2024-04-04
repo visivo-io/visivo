@@ -1,5 +1,5 @@
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,
@@ -10,23 +10,23 @@ from visivo.query.jobs.job import (
 from time import time
 
 
-def action(csv_script_model: CsvScriptModel, output_dir):
+def action(local_merge_model: LocalMergeModel, output_dir):
     try:
         start_time = time()
-        csv_script_model.insert_csv_to_sqlite(output_dir=output_dir)
+        local_merge_model.insert_dependent_models_to_sqlite(output_dir=output_dir)
         success_message = format_message_success(
-            details=f"Updated data for model \033[4m{csv_script_model.name}\033[0m",
+            details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=csv_script_model.get_sqlite_target(
+            full_path=local_merge_model.get_sqlite_target(
                 output_dir=output_dir
             ).database,
         )
         return JobResult(success=True, message=success_message)
     except Exception as e:
         failure_message = format_message_failure(
-            details=f"Failed query for model \033[4m{csv_script_model.name}\033[0m",
+            details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=csv_script_model.get_sqlite_target(
+            full_path=local_merge_model.get_sqlite_target(
                 output_dir=output_dir
             ).database,
             error_msg=str(repr(e)),
@@ -35,24 +35,24 @@ def action(csv_script_model: CsvScriptModel, output_dir):
 
 
 def jobs(dag, output_dir: str, project: Project, name_filter: str):
-    csv_script_models = ParentModel.all_descendants_of_type(
-        type=CsvScriptModel, dag=dag, from_node=project
+    local_merge_models = ParentModel.all_descendants_of_type(
+        type=LocalMergeModel, dag=dag, from_node=project
     )
 
     if name_filter:
         included_nodes = project.nodes_including_named_node_in_graph(name=name_filter)
     else:
         included_nodes = project.descendants()
-    csv_script_models = set(csv_script_models).intersection(included_nodes)
+    local_merge_models = set(local_merge_models).intersection(included_nodes)
 
     jobs = []
-    for csv_script_model in csv_script_models:
+    for local_merge_model in local_merge_models:
         jobs.append(
             Job(
-                item=csv_script_model,
-                target=csv_script_model.get_sqlite_target(output_dir),
+                item=local_merge_model,
+                target=local_merge_model.get_sqlite_target(output_dir),
                 action=action,
-                csv_script_model=csv_script_model,
+                local_merge_model=local_merge_model,
                 output_dir=output_dir,
             )
         )

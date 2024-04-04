@@ -1,6 +1,6 @@
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.dialect import Dialect
-from ..factories.model_factories import TraceFactory
+from ..factories.model_factories import SnowflakeTargetFactory, TraceFactory
 from ..factories.model_factories import TargetFactory
 from visivo.models.trace import Trace
 import pytest
@@ -14,8 +14,9 @@ def test_TraceTonkenizer():
     trace_dict = tokenized_trace.model_dump(exclude_none=True)
     assert trace_dict["sql"] == "select * from test_table"
     assert trace_dict["cohort_on"] == f"'{trace.name}'"
-    assert trace_dict["select_items"] == {'props.x': 'x', 'props.y': 'y'}
+    assert trace_dict["select_items"] == {"props.x": "x", "props.y": "y"}
     assert trace_dict["target"] == "target"
+
 
 def test_TraceTonkenizer_without_name():
     trace = TraceFactory()
@@ -26,8 +27,9 @@ def test_TraceTonkenizer_without_name():
     trace_dict = tokenized_trace.model_dump(exclude_none=True)
     assert trace_dict["sql"] == "select * from test_table"
     assert trace_dict["cohort_on"] == "'values'"
-    assert trace_dict["select_items"] == {'props.x': 'x', 'props.y': 'y'}
+    assert trace_dict["select_items"] == {"props.x": "x", "props.y": "y"}
     assert trace_dict["target"] == "target"
+
 
 def test_tokenization_with_query_functions():
     data = {
@@ -41,7 +43,7 @@ def test_tokenization_with_query_functions():
         },
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
@@ -65,7 +67,7 @@ def test_tokenization_with_column_functions():
     }
     trace = Trace(**data)
     target = TargetFactory()
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
@@ -89,7 +91,7 @@ def test_tokenization_cohort_on():
         },
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
@@ -106,7 +108,7 @@ def test_tokenization_cohort_on():
         },
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
@@ -128,7 +130,7 @@ def test_tokenization_order_by():
         ],
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert len(tokenized_trace.order_by) == 2
@@ -149,7 +151,7 @@ def test_tokenization_order_by_window():
         ],
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert "count(completed_at)OVER(PARTITION BY widget)" in tokenized_trace.order_by
@@ -171,7 +173,7 @@ def test_tokenization_filter_window_agg_vanilla():
         ],
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert (
@@ -219,7 +221,7 @@ def test_tokenization_of_nested_inputs():
         },
     }
     trace = Trace(**data)
-    target = TargetFactory(type="snowflake")
+    target = SnowflakeTargetFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
     tokenized_trace = trace_tokenizer.tokenize()
     assert (

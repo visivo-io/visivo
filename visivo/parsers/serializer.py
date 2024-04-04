@@ -1,12 +1,12 @@
 from visivo.models.base.named_model import NamedModel
-from visivo.models.target import Target
+from visivo.models.targets.target import Target
 from ..models.project import Project
 from ..models.base.base_model import BaseModel
 from ..models.base.parent_model import ParentModel
 from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.trace import Trace
-from visivo.models.model import Model
+from visivo.models.models.model import Model
 from importlib.metadata import version
 
 

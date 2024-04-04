@@ -8,7 +8,7 @@ import networkx as nx
 import networkx.algorithms.traversal.depth_first_search as dfs
 import matplotlib.pyplot as pyplot
 from pydantic_core import PydanticCustomError
-from visivo.models.target import DefaultTarget
+from visivo.models.targets.target import DefaultTarget
 
 
 class ParentModel(ABC):

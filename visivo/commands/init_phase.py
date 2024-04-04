@@ -4,14 +4,14 @@ import json
 import os
 from pathlib import Path
 from visivo.logging.logger import Logger
-from visivo.models.target import Target, TypeEnum
+from visivo.models.models.sql_model import SqlModel
+from visivo.models.targets.target import Target, TypeEnum
 from visivo.models.project import Project
 from visivo.models.dashboard import Dashboard
 from visivo.models.chart import Chart
 from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.models.trace import Trace
-from visivo.models.model import SqlModel
 from visivo.models.defaults import Defaults
 from visivo.models.trace_props import Scatter
 from visivo.commands.utils import create_file_database

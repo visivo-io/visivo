@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 from typing import List
 from visivo.models.base.named_model import NamedModel
-from visivo.models.target import Target
+from visivo.models.targets.target import Target
 import os
 import textwrap
 from time import time
@@ -25,7 +25,6 @@ class Job:
         item: NamedModel,
         target: Target,
         action,
-        dependencies: List[str],
         output_changed: bool = True,
         **kwargs,
     ):
@@ -34,7 +33,6 @@ class Job:
         self.action = action
         self.output_changed = output_changed
         self.kwargs = kwargs
-        self.dependencies = dependencies
         self.future: Future = None
 
     @property
