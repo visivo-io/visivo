@@ -21,7 +21,7 @@ class MysqlTarget(SqlalchemyTarget):
                     connection_pool_size: 2
             ```
 
-    Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
+    !!! Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
     type: Literal["mysql"]

@@ -45,7 +45,7 @@ class SqliteTarget(SqlalchemyTarget):
             The above target can be then used in a model and the sql for that model might look similar to: `SELECT * FROM local AS l JOIN static.data AS sd ON l.static_id=sd.id`
     {% endraw %}
 
-    Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
+    !!! Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
     type: Literal["sqlite"]

@@ -1,6 +1,6 @@
 # Target Overview
 
-Targets are data sources. They are databases that contain your data. There is specific documentation on how to connect to a variety of databases in the Configuration documentation, this page describes some best practices how how to set them up. 
+Targets are data sources. They are databases that contain your data. There is specific documentation on how to connect to a variety of databases in the [Configuration documentation](../reference/configuration/targets/sqlitetarget.md), this page describes some best practices how how to set them up. 
 
 # Environments 
 
