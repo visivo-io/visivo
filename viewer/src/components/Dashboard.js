@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Chart from './items/Chart.js'
 import Table from './items/Table.js'
 import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
-import Loading from "./Loading.js";
 import { throwError } from "../api/utils.js";
 
 const Dashboard = (props) => {
@@ -37,56 +36,21 @@ const Dashboard = (props) => {
     if (!dashboard) {
         throwError(`Dashboard with name ${props.dashboardName} not found.`, 404);
     }
-    const charts = dashboard.rows.map(r => r.items.map(i => i.chart)).flat(2).filter(n => n)
-    const tables = dashboard.rows.map(r => r.items.map(i => i.table)).flat(2).filter(n => n)
-    const chartTraceNames = charts.map(c => c.traces.map(t => t.name)).flat()
-    const tableTraceNames = tables.map(t => t.trace.name).flat()
-    const traceNames = chartTraceNames.concat(tableTraceNames);
-    const [traceData, setTraceData] = useState(null)
-
-    useEffect(() => {
-        const fetchData = async () => {
-            if (traceNames.length === 0) {
-                setTraceData({})
-                return
-            }
-            const traces = await props.fetchTraces(props.project.id, traceNames);
-            const returnJson = {};
-            Promise.all(
-                traces.map(async (trace) => {
-                    const traceResponse = await fetch(trace.signed_data_file_url);
-                    const traceJson = await traceResponse.json();
-                    returnJson[trace.name] = traceJson;
-                })
-            ).then(() => {
-                setTraceData(returnJson)
-            })
-        }
-        fetchData();
-        // eslint-disable-next-line
-    }, []);
-
 
     const renderComponent = (item, row, itemIndex, rowIndex) => {
-        if (item.chart && traceData) {
+        if (item.chart) {
             return <Chart
                 chart={item.chart}
-                traceData={traceData}
                 project={props.project}
                 height={getHeight(row.height)}
                 width={getWidth(row, item)}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
-        } else if (item.table && traceData) {
+        } else if (item.table) {
             return <Table
                 width={item.width}
                 height={getHeight(row.height)}
                 table={item.table}
-                traceData={traceData}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
-        } else if (item.chart || item.table) {
-            return <div
-                className={`grow-${item.width} m-auto text-center`}
-                key={`dashboardRow${rowIndex}Item${itemIndex}`}><Loading /></div>
         } else if (item.markdown) {
             return <Markdown
                 className={`grow-${item.width} p-2 m-auto prose`}

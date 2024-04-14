@@ -11,7 +11,7 @@ import ProjectContainer from './components/ProjectContainer'
 import BreadcrumbLink from './components/styled/BreadcrumbLink'
 import ErrorPage from './components/ErrorPage'
 
-const App = createBrowserRouter(
+const Viewer = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/"
       element={<Home />}
@@ -36,4 +36,4 @@ const App = createBrowserRouter(
   )
 );
 
-export default App;
+export default Viewer;
