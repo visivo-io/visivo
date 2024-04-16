@@ -25,24 +25,6 @@ const convertDotKeysToNestedObject = (flatObject) => {
     }
     return nestedObject;
 };
-
-// export const replaceColumnRefWithData = (obj, data) => {
-//     if (typeof obj === "object") {
-//         for (const key in obj) {
-//             replaceColumnRefWithData(obj[key], data);
-//         }
-//     } else if (Array.isArray(obj)) {
-//         console.log(obj);
-//         obj.forEach(member => replaceColumnRefWithData(member, data));
-//     } else if (typeof obj === 'string' && obj.match(COLUMN_REGEX)) {
-//         const match = obj.match(COLUMN_REGEX)
-//         if (match[3] !== undefined) {
-//             obj[key] = data.columns[match[1]][match[3]];
-//         } else {
-//             obj[key] = data.columns[match[1]];
-//         }
-//     }
-// };
 export const replaceColumnRefWithData = (obj, data, parent = null, key = null) => {
     if (Array.isArray(obj)) {
         obj.forEach((item, index) => replaceColumnRefWithData(item, data, obj, index));
