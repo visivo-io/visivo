@@ -50,7 +50,7 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
         for (const prop in obj) {
             replaceColumnRefWithData(obj[prop], data, obj, prop);
         }
-    } else if (typeof obj === 'string') {
+    } else if (typeof obj === 'string' && obj.match(COLUMN_REGEX)) {
         const match = obj.match(COLUMN_REGEX);
         if (match[3] !== undefined) {
             parent[key] = data.columns[match[1]][match[3]];
