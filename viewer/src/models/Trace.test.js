@@ -41,14 +41,26 @@ test('merge the column data into the referenced property', async () => {
 })
 
 test('merge the column data into the referenced property within an array of arrays', async () => {
-  const traceData = { columns: { x: [0, 1, 2], y: [2, 5, 9], z: [1, 2] } }
-  const traceObj = { x: ["column(x)", "column(y)"], y: null, z: "column(z)[1]", a: "column(z)[-1]"}
+  const traceData = { columns: { x: [0, 1, 2], y: [2, 5, 9], z: [1, 2, 3, 4, 5] } }
+  const traceObj = { 
+    x: ["column(x)", "column(y)"], 
+    y: null, 
+    z: "column(z)[1]", 
+    a: "column(z)[:-2]",
+    b: "column(z)[1:-1]",
+    c: "column(z)[2:]",
+    d: "column(z)[-3]",
+    e: ["column(z)[1:3]", "column(z)[2:4]"]
+  }
 
   replaceColumnRefWithData(traceObj, traceData)
 
   expect(traceObj.x).toEqual([[0, 1, 2], [2, 5, 9]])
   expect(traceObj.z).toEqual(2)
-  expect(traceObj.a).toEqual(2)
+  expect(traceObj.a).toEqual([1,2,3])
+  expect(traceObj.b).toEqual([2,3,4])
+  expect(traceObj.d).toEqual(3)
+  expect(traceObj.e).toEqual([[2,3], [3,4]])
 })
 
 
