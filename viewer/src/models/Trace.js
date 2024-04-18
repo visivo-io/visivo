@@ -38,14 +38,12 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
         if (match[3] !== undefined && match[4] !== undefined) {
             const start = match[3] ? parseInt(match[3], 10) : 0;
             const end = match[4] ? parseInt(match[4], 10) : null;
-            //console.log({start, end});
-            //console.log({'match 0': match[0], 'match 1':match[1], 'match 2':match[2], 'match 3':match[3], 'match 4': match[4]});
             if (end !== null){
                 parent[key] = data.columns[columnName].slice(start, end);
             } else if (match[2].includes(":") && end === null) {
                 parent[key] = data.columns[columnName].slice(start);
             } else {
-                parent[key] = data.columns[columnName].slice(start, start+1)[0];
+                parent[key] = data.columns[columnName].slice(start)[0];
             }
         } else {
             parent[key] = data.columns[columnName];

@@ -50,7 +50,8 @@ test('merge the column data into the referenced property within an array of arra
     b: "column(z)[1:-1]",
     c: "column(z)[2:]",
     d: "column(z)[-3]",
-    e: ["column(z)[1:3]", "column(z)[2:4]"]
+    e: ["column(z)[1:3]", "column(z)[2:4]"],
+    f: "column(z)[-1]"
   }
 
   replaceColumnRefWithData(traceObj, traceData)
@@ -61,6 +62,7 @@ test('merge the column data into the referenced property within an array of arra
   expect(traceObj.b).toEqual([2,3,4])
   expect(traceObj.d).toEqual(3)
   expect(traceObj.e).toEqual([[2,3], [3,4]])
+  expect(traceObj.f).toEqual(5)
 })
 
 

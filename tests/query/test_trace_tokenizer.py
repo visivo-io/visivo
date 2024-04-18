@@ -26,7 +26,7 @@ def test_TraceTonkenizer_surface():
     trace_dict = tokenized_trace.model_dump(exclude_none=True)
     assert trace_dict["sql"] == "select * from test_table"
     assert trace_dict["cohort_on"] == f"'{trace.name}'"
-    assert trace_dict["select_items"] == {"props.x": "x", "props.y": "y"}
+    assert trace_dict["select_items"] == {"props.z.0": "x+10", "props.z.1": "y+15"}
     assert trace_dict["target"] == "target"
 
 

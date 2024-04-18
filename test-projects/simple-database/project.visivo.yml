@@ -80,31 +80,21 @@ traces:
       x_data: x
     props:
       type: indicator
-      value: column(x_data)[0]
+      value: column(x_data)[-1]
       delta:
         reference: column(x_data)[1]
   - name: surface-trace
     model: ref(test table local)
-    columns: 
-      x_data: x*x+30
-      y_data: y*y+30
-      z_data: x*y+40
+    # columns: 
+    #   x_data: x*x+30
+    #   y_data: y*y+30
+    #   z_data: x*y+40
     props:
       type: surface
-      #x: [1,2,3,4,5,6]
-      #y: [1,1,2,3,5,8]
       z: 
-        - column(x_data)
-        - column(y_data)
-        - column(z_data)
-        # - [8.83,8.89,8.81,8.87,8.9,8.87]
-        # - [8.89,8.94,8.85,8.94,8.96,8.92]
-        # - [8.84,8.9,8.82,8.92,8.93,8.91]
-        # - [8.79,8.85,8.79,8.9,8.94,8.92] 
-        # - [8.79,8.88,8.81,8.9,8.95,8.92]
-        # - [8.8,8.82,8.78,8.91,8.94,8.92]
-        # - [8.75,8.78,8.77,8.91,8.95,8.92]
-        # - [8.8,8.8,8.77,8.91,8.95,8.94] #,[8.74,8.81,8.76,8.93,8.98,8.99],[8.89,8.99,8.92,9.1,9.13,9.11],[8.97,8.97,8.91,9.09,9.11,9.11],[9.04,9.08,9.05,9.25,9.28,9.27],[9,9.01,9,9.2,9.23,9.2],[8.99,8.99,8.98,9.18,9.2,9.19],[8.93,8.97,8.97,9.18,9.2,9.18]]
+        - query(x*x+30)
+        - query(y*y+30)
+        - query(x*y*y+40)
   - name: Indicator Trace
     model: ref(csv)
     columns:
@@ -218,8 +208,8 @@ traces:
     props:
       type: waterfall
       measure: query('relative')
-      x: column(x_data)
-      y: column(y_data)
+      x: column(x_data)[:3]
+      y: column(y_data)[:3]
       text: query(cast(y as text))
       increasing:
         marker:
