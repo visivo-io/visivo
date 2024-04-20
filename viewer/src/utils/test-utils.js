@@ -8,7 +8,7 @@ export const TestComponent = () => {
     return <div>TEST COMPONENT</div>
 }
 
-export const renderWithProviders = (children) => {
+export const withProviders = ({ children }) => {
     const fetchTraceQuery = (projectId, name) => ({
         queryKey: ['trace', projectId, name],
         queryFn: async () => [],
@@ -22,11 +22,11 @@ export const renderWithProviders = (children) => {
         },
     })
 
-    return render(
+    return (
         <FetchTracesQueryProvider value={fetchTraceQuery}>
             <QueryClientProvider client={queryClient}>
                 {children}
             </QueryClientProvider>
         </FetchTracesQueryProvider>
-    );
+    )
 }

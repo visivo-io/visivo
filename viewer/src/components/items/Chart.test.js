@@ -1,6 +1,6 @@
-import { screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import Chart from './Chart';
-import { renderWithProviders } from '../../utils/test-utils';
+import { withProviders } from '../../utils/test-utils';
 let chart;
 
 beforeEach(() => {
@@ -9,7 +9,7 @@ beforeEach(() => {
 
 
 test('renders chart', async () => {
-  renderWithProviders(<Chart chart={chart} project={{ id: 1 }} />);
+  render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
 
   await waitFor(() => {
     expect(screen.getByText('Mock Plot')).toBeInTheDocument();

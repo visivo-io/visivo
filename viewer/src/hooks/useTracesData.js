@@ -15,6 +15,9 @@ export const useTracesData = (projectId, traceNames) => {
         }
     }, [traces]);
 
+    if (!traceData) {
+        return null
+    }
     return [
         traceData
     ];
