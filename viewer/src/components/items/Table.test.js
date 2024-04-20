@@ -1,17 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Table from './Table';
-import { FetchTraceQueryProvider } from '../../contexts/FetchTraceQueryContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import * as useTracesData from '../../hooks/useTracesData';
 
 let table;
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-})
 
 beforeEach(() => {
   table = {
@@ -39,20 +30,9 @@ test('renders table', async () => {
       }
     }
   };
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
 
-  const fetchTraceQuery = (projectId, name) => ({
-    queryKey: ['trace', projectId, name],
-    queryFn: async () => [],
-  })
-
-  render(
-    <FetchTraceQueryProvider value={fetchTraceQuery}>
-      <QueryClientProvider client={queryClient}>
-        <Table table={table} project={{ id: 1 }} />
-      </QueryClientProvider>
-    </FetchTraceQueryProvider>
-  );
-  render(<Table table={table} traceData={traceData} />);
+  render(<Table table={table} project={{ id: 1 }} />);
 
   await waitFor(() => {
     expect(screen.getByText('Widget Type')).toBeInTheDocument();

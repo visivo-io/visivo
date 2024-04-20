@@ -3,8 +3,8 @@
 import React from "react";
 import Viewer from './Viewer'
 import { RouterProvider } from "react-router-dom";
-import { FetchTraceQueryProvider } from './contexts/FetchTraceQueryContext'
-import { fetchTraceQuery } from "./queries/traces"
+import { FetchTracesQueryProvider } from './contexts/FetchTracesQueryContext'
+import { fetchTracesQuery } from "./queries/traces"
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const queryClient = new QueryClient()
@@ -12,9 +12,9 @@ const queryClient = new QueryClient()
 function Providers() {
     return (
         <QueryClientProvider client={queryClient}>
-            <FetchTraceQueryProvider value={fetchTraceQuery}>
+            <FetchTracesQueryProvider value={fetchTracesQuery}>
                 <RouterProvider router={Viewer} />
-            </FetchTraceQueryProvider>
+            </FetchTracesQueryProvider>
         </QueryClientProvider>
     );
 }
