@@ -1,40 +1,20 @@
-import React, { useState, useEffect, useContext } from "react";
+import React from "react";
 import Plot from 'react-plotly.js';
 import { cleanedPlotData } from '../../models/Trace'
-import FetchTraceQueryContext from "../../contexts/FetchTraceQueryContext";
-import { useQuery } from '@tanstack/react-query'
+import Loading from "../Loading";
+import { useTracesData } from "../../hooks/useTracesData";
 
 const Chart = (props) => {
-    const fetchTraceQuery = useContext(FetchTraceQueryContext)
-    const [traceData, setTraceData] = useState(null)
+    const traceNames = props.chart.traces.map((trace) => trace.name)
+    const tracesData = useTracesData(props.project.id, traceNames)
 
-    const { data: traces } = useQuery(fetchTraceQuery(props.project.id, props.traceNames))
-    useEffect(() => {
-        const fetchData = async () => {
-            if (traceNames.length === 0) {
-                setTraceData({})
-                return
-            }
-            const returnJson = {};
-            Promise.all(
-                traces.map(async (trace) => {
-                    const traceResponse = await fetch(trace.signed_data_file_url);
-                    const traceJson = await traceResponse.json();
-                    returnJson[trace.name] = traceJson;
-                })
-            ).then(() => {
-                setTraceData(returnJson)
-            })
-        }
-        const traceNames = [] //Pull from traces
-        fetchData();
-    }, [traces]);
-
-    //SHOW LOADING
+    if (!tracesData) {
+        return <Loading></Loading>
+    }
 
     const plotData = () => {
         return props.chart.traces.map((trace) => {
-            return cleanedPlotData(traceData, trace)
+            return cleanedPlotData(tracesData, trace)
         }).flat();
     }
 
