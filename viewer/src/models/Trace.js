@@ -35,9 +35,11 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
     } else if (typeof obj === 'string' && obj.match(COLUMN_REGEX)) {
         const match = obj.match(COLUMN_REGEX);
         const columnName = match[1];
-        if (match[3] !== undefined && match[4] !== undefined) {
-            const start = match[3] ? parseInt(match[3], 10) : 0;
-            const end = match[4] ? parseInt(match[4], 10) : null;
+        const unparsedStart = match[3];
+        const unparsedEnd = match[4];
+        if (unparsedStart !== undefined && unparsedEnd !== undefined) {
+            const start = unparsedStart ? parseInt(unparsedStart, 10) : 0;
+            const end = unparsedEnd ? parseInt(unparsedEnd, 10) : null;
             if (end !== null){
                 parent[key] = data.columns[columnName].slice(start, end);
             } else if (match[2].includes(":") && end === null) {
