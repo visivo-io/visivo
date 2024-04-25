@@ -217,13 +217,13 @@ nav:
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
       - Functions:
-          - "On Compile":
+          - On Compile:
               - reference/functions/jinja/index.md
               - reference/functions/jinja/macros.md
               - reference/functions/jinja/loops.md
               - reference/functions/jinja/variables.md
-          - "Run Time":
-            - reference/functions/runtime_functions/index.md
+          - Run Time:
+              - reference/functions/runtime_functions/index.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md
