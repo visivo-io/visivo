@@ -18,6 +18,18 @@ def test_TraceTonkenizer():
     assert trace_dict["target"] == "target"
 
 
+def test_TraceTonkenizer_surface():
+    trace = TraceFactory(surface_props=True)
+    target = TargetFactory()
+    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
+    tokenized_trace = trace_tokenizer.tokenize()
+    trace_dict = tokenized_trace.model_dump(exclude_none=True)
+    assert trace_dict["sql"] == "select * from test_table"
+    assert trace_dict["cohort_on"] == f"'{trace.name}'"
+    assert trace_dict["select_items"] == {"props.z.0": "x+10", "props.z.1": "y+15"}
+    assert trace_dict["target"] == "target"
+
+
 def test_TraceTonkenizer_without_name():
     trace = TraceFactory()
     trace.name = None

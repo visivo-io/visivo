@@ -1,6 +1,6 @@
 import { merge } from 'lodash';
 
-const COLUMN_REGEX = /column\((.+)\)(\[(\d+)\]|)/
+const COLUMN_REGEX = /column\((.+)\)(\[(-?\d*)\:?(-?\d*)\]|)/
 
 const convertDotKeysToNestedObject = (flatObject) => {
     const nestedObject = {};
@@ -25,25 +25,34 @@ const convertDotKeysToNestedObject = (flatObject) => {
     }
     return nestedObject;
 };
-
-export const replaceColumnRefWithData = (obj, data) => {
-    for (const key in obj) {
-        const value = obj[key];
-        if (typeof value === 'string' && value.match(COLUMN_REGEX)) {
-            const match = value.match(COLUMN_REGEX)
-            if (match[3] !== undefined) {
-                obj[key] = data.columns[match[1]][match[3]];
-            } else {
-                obj[key] = data.columns[match[1]];
-            }
-        } else if (Array.isArray(value)) {
-            value.forEach(member => replaceColumnRefWithData(member, data));
-        } else if (typeof obj[key] === "object") {
-            replaceColumnRefWithData(value, data);
+export const replaceColumnRefWithData = (obj, data, parent = null, key = null) => {
+    if (Array.isArray(obj)) {
+        obj.forEach((item, index) => replaceColumnRefWithData(item, data, obj, index));
+    } else if (typeof obj === "object" && obj !== null) {
+        for (const prop in obj) {
+            replaceColumnRefWithData(obj[prop], data, obj, prop);
         }
+    } else if (typeof obj === 'string' && obj.match(COLUMN_REGEX)) {
+        const match = obj.match(COLUMN_REGEX);
+        const columnName = match[1];
+        const unparsedStart = match[3];
+        const unparsedEnd = match[4];
+        if (unparsedStart !== undefined && unparsedEnd !== undefined) {
+            const start = unparsedStart ? parseInt(unparsedStart, 10) : 0;
+            const end = unparsedEnd ? parseInt(unparsedEnd, 10) : null;
+            if (end !== null){
+                parent[key] = data.columns[columnName].slice(start, end);
+            } else if (match[2].includes(":") && end === null) {
+                parent[key] = data.columns[columnName].slice(start);
+            } else {
+                parent[key] = data.columns[columnName].slice(start)[0];
+            }
+        } else {
+            parent[key] = data.columns[columnName];
+        }
+            
     }
 };
-
 export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) => {
     replaceColumnRefWithData(traceProps, traceData)
     const mergedTraceAndNestedData = merge({}, traceProps, traceData.props, { name: cohortOn })

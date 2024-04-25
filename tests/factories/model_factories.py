@@ -11,7 +11,7 @@ from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
 from visivo.models.table import Table
-from visivo.models.trace_props import Scatter
+from visivo.models.trace_props import Scatter, Surface
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
 from visivo.query.jobs.job import Job
@@ -43,7 +43,7 @@ class TargetFactory(factory.Factory):
     type = "sqlite"
 
 
-class TracePropsFactory(factory.Factory):
+class ScatterTracePropsFactory(factory.Factory):
     class Meta:
         model = Scatter
 
@@ -51,6 +51,12 @@ class TracePropsFactory(factory.Factory):
     x = "query(x)"
     y = "query(y)"
 
+class SurfaceTracePropsFactory(factory.Factory):
+    class Meta:
+        model = Surface
+    
+    type = "surface" 
+    z = ["query(x+10)", "query(y+15)"]
 
 class SqlModelFactory(factory.Factory):
     class Meta:
@@ -90,7 +96,7 @@ class TraceFactory(factory.Factory):
     name = "trace"
     model = factory.SubFactory(SqlModelFactory)
     tests = None
-    props = factory.SubFactory(TracePropsFactory)
+    props = factory.SubFactory(ScatterTracePropsFactory)
 
     class Params:
         model_ref = factory.Trait(model="ref(model_name)")
@@ -100,7 +106,9 @@ class TraceFactory(factory.Factory):
                 {"not_null": {"attributes": ["y", "x"]}},
             ]
         )
-
+        surface_props = factory.Trait(
+            props = factory.SubFactory(SurfaceTracePropsFactory)
+        )
 
 class JobFactory(factory.Factory):
     class Meta:

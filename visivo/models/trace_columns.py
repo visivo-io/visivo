@@ -1,5 +1,4 @@
 import pydantic
-from pydantic import Extra
 
 
 class TraceColumns(pydantic.BaseModel):
@@ -58,10 +57,20 @@ class TraceColumns(pydantic.BaseModel):
             ```
     {% endraw %}
 
-    ## Indexing Arrays
-    Another reason to use trace Columns is because they allow you to grab a value from the column array by the columns index.
-    Since `query()` and `column()` always return arrays, being able to slice the column enables setting string and numeric
-    trace prop attributes dynamically as well.
+    ## Slicing & Indexing Column Arrays
+    Trace Columns support slicing and indexing, enabling you to pull out sub-arrays or specific values from a given column array.
+
+    ### Indexing
+    Some trace configurations require numbers or strings as inputs. For example indicator traces require a single number to represent as the
+    big value in the card. Since the `query()` and `column()` functions always return arrays, indexing allows you to grab a single value
+    from the array to use in configurations that require a single value.
+
+    You can index columns by using the following syntax:
+    ``` yaml
+    column(column_name)[index]
+    ```
+    The `index` is a zero-based index that represents the position in the array you want to pull out. Negative indexes are also supported,
+    allowing you to count from the end of the array. The last value in the array is represented by -1, the second to last by -2, and so on.
 
     !!! example
 
@@ -84,6 +93,42 @@ class TraceColumns(pydantic.BaseModel):
         ```
         In the trace above `column(y_data)[0]` is pulling the first item in the array as the value and comparing its delta to the second item in the column y_data array.
 
+    ### Slicing
+    Slicing allows you to pull out a sub-array from a given column array. This is useful when you only want to use a portion of the array in
+    a given configuration, but don't want to filter the whole trace.
+
+    You can slice columns by using the following syntax:
+    ``` yaml
+    column(column_name)[start:stop]
+    ```
+    The `start` and `stop` values are zero-based indexes that represent the start and end of the slice you want to pull out.
+    Negative indexes are also supported, allowing you to count from the end of the array. The last value in the array is represented
+    by -1, the second to last by -2, and so on.
+
+    If you omit the stop value, the slice will continue to the end of the array. If you omit the start value, the slice will start at
+    the beginning of the array.
+
+    !!! example
+
+        Surface plots can be a really useful place to utilize slicing.
+        ``` yaml
+        - name: Surface Trace
+          model: ref(csv)
+          columns:
+          x_data: x
+          y_data: y
+          props:
+            type: surface
+            z:
+              - column(x_data)
+              - column(x_data)[0:5]
+              - column(x_data)[5:10]
+              - column(y_data)
+              - column(y_data)[0:5]
+              - column(x_data)[5:10]
+        ```
+        The trace above is creating a surface plot with lines on the plane of different lengths that represent different portions
+        of the x_data and y_data arrays.
 
     """
 

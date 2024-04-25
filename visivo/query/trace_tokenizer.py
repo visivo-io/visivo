@@ -56,6 +56,10 @@ class TraceTokenizer:
             for key, value in obj.items():
                 if value != None:
                     self._set_select_items(value, path + [key])
+        # TODO: Add support for lists of query statements.
+        elif isinstance(obj, list):
+            for i, value in enumerate(obj):
+                self._set_select_items(value, path + [i])
         else:
             query_id = ".".join([str(i) for i in path])
             query_statement = False
