@@ -9,16 +9,18 @@ export const useTracesData = (projectId, traceNames) => {
 
     const { data: traces } = useQuery(fetchTraceQuery(projectId, traceNames))
 
+
     useEffect(() => {
+        const waitForData = async () => {
+            setTraceData(await fetchTracesData(traces));
+        }
         if (traces) {
-            setTraceData(fetchTracesData(traces));
+            waitForData()
         }
     }, [traces]);
 
     if (!traceData) {
         return null
     }
-    return [
-        traceData
-    ];
+    return traceData;
 };

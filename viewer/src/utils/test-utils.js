@@ -1,4 +1,3 @@
-import { render } from '@testing-library/react';
 import { FetchTracesQueryProvider } from '../contexts/FetchTracesQueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -8,10 +7,10 @@ export const TestComponent = () => {
     return <div>TEST COMPONENT</div>
 }
 
-export const withProviders = ({ children }) => {
+export const withProviders = ({ children, traces = [] }) => {
     const fetchTraceQuery = (projectId, name) => ({
         queryKey: ['trace', projectId, name],
-        queryFn: async () => [],
+        queryFn: () => traces,
     })
 
     const queryClient = new QueryClient({
