@@ -19,14 +19,16 @@ const Chart = (props) => {
     }
 
     return (
-        <Plot
-            key={`chart_${props.chart.name}`}
-            data-testid={`chart_${props.chart.name}`}
-            data={plotData()}
-            layout={{ ...props.chart.layout, height: props.height, width: props.width }}
-            useResizeHandler={true}
-            config={{ displayModeBar: false }}
-        />
+        <>
+            <Plot
+                key={`chart_${props.chart.name}`}
+                data-testid={`chart_${props.chart.name}`}
+                data={plotData()}
+                layout={{ ...props.chart.layout, height: props.height, width: props.width }}
+                useResizeHandler={true}
+                config={{ displayModeBar: false }}
+            />
+        </>
     );
 }
 
