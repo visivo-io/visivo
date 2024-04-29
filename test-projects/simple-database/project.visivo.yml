@@ -80,9 +80,21 @@ traces:
       x_data: x
     props:
       type: indicator
-      value: column(x_data)[0]
+      value: column(x_data)[-1]
       delta:
         reference: column(x_data)[1]
+  - name: surface-trace
+    model: ref(test table local)
+    # columns: 
+    #   x_data: x*x+30
+    #   y_data: y*y+30
+    #   z_data: x*y+40
+    props:
+      type: surface
+      z: 
+        - query(x*x+30)
+        - query(y*y+30)
+        - query(x*y*y+40)
   - name: Indicator Trace
     model: ref(csv)
     columns:
@@ -196,8 +208,8 @@ traces:
     props:
       type: waterfall
       measure: query('relative')
-      x: column(x_data)
-      y: column(y_data)
+      x: column(x_data)[:3]
+      y: column(y_data)[:3]
       text: query(cast(y as text))
       increasing:
         marker:
@@ -212,7 +224,15 @@ charts:
   - name: indicator_chart
     traces:
       - ref(Indicator Trace)
-
+  - name: surface-chart
+    traces:
+      - ref(surface-trace)
+    layout:
+      title:
+        text: Plot 
+      autosize: false 
+      width: 500
+      height: 500
 dashboards:
   - name: Table
     rows:
@@ -343,3 +363,6 @@ dashboards:
               layout:
                 title:
                   text: "Funnel Chart"
+      - height: large
+        items:
+          - chart: ref(surface-chart)

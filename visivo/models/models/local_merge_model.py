@@ -13,7 +13,9 @@ class LocalMergeModel(Model, ParentModel):
     """
     Local Merge Models are models that allow you to merge data from multiple other models locally.
 
-    !!! Note: Any joining is done in a local SQLite database. It is not designed for large datasets.
+    !!! note
+
+        Any joining is done in a local SQLite database. It is not designed for large datasets.
 
     !!! example {% raw %}
 
