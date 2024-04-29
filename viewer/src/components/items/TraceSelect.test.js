@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import TraceSelect from './TraceSelect'
 import selectEvent from 'react-select-event'
 
@@ -51,5 +51,8 @@ test('renders multiselect select', async () => {
   const selectWrapper = screen.getByLabelText('Traces')
   await selectEvent.select(selectWrapper, ['cohortName1', 'cohortName2'])
 
+  await waitFor(() => {
+    expect(selectedTraceData).toEqual(traceData)
+  })
   expect(screen.getByText('cohortName2')).toBeInTheDocument();
 });

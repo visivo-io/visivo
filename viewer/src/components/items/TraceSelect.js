@@ -1,35 +1,36 @@
+import { useEffect } from 'react'
 import Select from 'react-select'
 
-const TraceSelect = (props) => {
+const TraceSelect = ({ onChange, traceData, isMulti, showLabel }) => {
     const id = (traceName, cohortName) => {
         return `${traceName}.${cohortName}`
     }
     const generateNewTraceData = (selectedCohorts) => {
-        const traceData = {};
+        const newTraceData = {};
         if (!selectedCohorts) {
-            return traceData;
+            return newTraceData;
         }
         if (!Array.isArray(selectedCohorts)) {
             selectedCohorts = [selectedCohorts];
         }
         const selectedCohortNames = selectedCohorts.map((selectedCohort) => selectedCohort.value)
-        Object.keys(props.traceData).forEach((traceName) => {
-            Object.keys(props.traceData[traceName]).forEach((cohortName) => {
+        Object.keys(traceData).forEach((traceName) => {
+            Object.keys(traceData[traceName]).forEach((cohortName) => {
                 if (selectedCohortNames.includes(id(traceName, cohortName))) {
-                    if (!traceData.hasOwnProperty(traceName)) {
-                        traceData[traceName] = {}
+                    if (!newTraceData.hasOwnProperty(traceName)) {
+                        newTraceData[traceName] = {}
                     }
-                    traceData[traceName][cohortName] = props.traceData[traceName][cohortName]
+                    newTraceData[traceName][cohortName] = traceData[traceName][cohortName]
                 }
             })
         })
-        return traceData;
+        return newTraceData;
     }
 
     const getOptions = () => {
         const options = [];
-        Object.keys(props.traceData).forEach((traceName) => {
-            Object.keys(props.traceData[traceName]).forEach((cohortName) => {
+        Object.keys(traceData).forEach((traceName) => {
+            Object.keys(traceData[traceName]).forEach((cohortName) => {
                 options.push({ value: `${traceName}.${cohortName}`, label: cohortName })
             })
         })
@@ -37,12 +38,21 @@ const TraceSelect = (props) => {
     }
 
     const onSelectChange = (values) => {
-        props.onChange(generateNewTraceData(values))
+        onChange(generateNewTraceData(values))
     }
+    const getDefaultValue = () => {
+        return isMulti ? getOptions() : getOptions[0];
+    }
+
+    useEffect(() => {
+        onChange(generateNewTraceData(getDefaultValue()))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     return (
         <>
-            {props.showLabel && <label htmlFor='traceSelect'>Traces</label>}
-            <Select inputId="traceSelect" options={getOptions()} isMulti={props.isMulti} onChange={onSelectChange} />
+            {showLabel && <label htmlFor='traceSelect'>Traces</label>}
+            <Select inputId="traceSelect" options={getOptions()} defaultValue={getDefaultValue()} isMulti={isMulti} onChange={onSelectChange} />
         </>
     )
 }
