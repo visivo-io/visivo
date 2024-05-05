@@ -33,7 +33,7 @@ const Chart = (props) => {
 
     return (
         <ChartContainer>
-            <TraceSelect traceData={plotData()} onChange={onSelectedCohortChange} isMulti={true} />
+            <TraceSelect plotData={plotData()} onChange={onSelectedCohortChange} isMulti={true} />
             <Plot
                 key={`chart_${props.chart.name}`}
                 data-testid={`chart_${props.chart.name}`}

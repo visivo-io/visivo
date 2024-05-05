@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import Select from 'react-select'
 
-const TraceSelect = ({ onChange, traceData, isMulti, showLabel }) => {
+const TraceSelect = ({ onChange, plotData, isMulti, showLabel }) => {
     const generateNewTraceData = (selectedCohorts) => {
         const newTraceData = [];
         if (!selectedCohorts) {
@@ -11,7 +11,7 @@ const TraceSelect = ({ onChange, traceData, isMulti, showLabel }) => {
             selectedCohorts = [selectedCohorts];
         }
         const selectedCohortNames = selectedCohorts.map((selectedCohort) => selectedCohort.value)
-        traceData.forEach((traceDatum) => {
+        plotData.forEach((traceDatum) => {
             if (selectedCohortNames.includes(traceDatum.name)) {
                 newTraceData.push(traceDatum)
             }
@@ -21,13 +21,9 @@ const TraceSelect = ({ onChange, traceData, isMulti, showLabel }) => {
 
     const getOptions = () => {
         const options = [];
-        traceData.forEach((traceDatum) => {
+        plotData.forEach((traceDatum) => {
             options.push({ value: traceDatum.name, label: traceDatum.name })
         })
-        console.log("traceData")
-        console.log(traceData)
-        console.log("options")
-        console.log(options)
         return options;
     }
 
