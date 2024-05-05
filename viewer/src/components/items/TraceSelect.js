@@ -2,11 +2,8 @@ import { useEffect } from 'react'
 import Select from 'react-select'
 
 const TraceSelect = ({ onChange, traceData, isMulti, showLabel }) => {
-    const id = (traceName, cohortName) => {
-        return `${traceName}.${cohortName}`
-    }
     const generateNewTraceData = (selectedCohorts) => {
-        const newTraceData = {};
+        const newTraceData = [];
         if (!selectedCohorts) {
             return newTraceData;
         }
@@ -14,26 +11,23 @@ const TraceSelect = ({ onChange, traceData, isMulti, showLabel }) => {
             selectedCohorts = [selectedCohorts];
         }
         const selectedCohortNames = selectedCohorts.map((selectedCohort) => selectedCohort.value)
-        Object.keys(traceData).forEach((traceName) => {
-            Object.keys(traceData[traceName]).forEach((cohortName) => {
-                if (selectedCohortNames.includes(id(traceName, cohortName))) {
-                    if (!newTraceData.hasOwnProperty(traceName)) {
-                        newTraceData[traceName] = {}
-                    }
-                    newTraceData[traceName][cohortName] = traceData[traceName][cohortName]
-                }
-            })
+        traceData.forEach((traceDatum) => {
+            if (selectedCohortNames.includes(traceDatum.name)) {
+                newTraceData.push(traceDatum)
+            }
         })
         return newTraceData;
     }
 
     const getOptions = () => {
         const options = [];
-        Object.keys(traceData).forEach((traceName) => {
-            Object.keys(traceData[traceName]).forEach((cohortName) => {
-                options.push({ value: `${traceName}.${cohortName}`, label: cohortName })
-            })
+        traceData.forEach((traceDatum) => {
+            options.push({ value: traceDatum.name, label: traceDatum.name })
         })
+        console.log("traceData")
+        console.log(traceData)
+        console.log("options")
+        console.log(options)
         return options;
     }
 

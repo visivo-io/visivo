@@ -4,6 +4,13 @@ import { cleanedPlotData } from '../../models/Trace'
 import Loading from "../Loading";
 import { useTracesData } from "../../hooks/useTracesData";
 import TraceSelect from "./TraceSelect";
+import tw from "tailwind-styled-components"
+
+export const ChartContainer = tw.aside`
+   flex
+   flex-col
+   m-auto
+`;
 
 const Chart = (props) => {
     const traceNames = props.chart.traces.map((trace) => trace.name)
@@ -25,8 +32,8 @@ const Chart = (props) => {
     }
 
     return (
-        <>
-            <TraceSelect traceData={plotData()} onChange={onSelectedCohortChange} />
+        <ChartContainer>
+            <TraceSelect traceData={plotData()} onChange={onSelectedCohortChange} isMulti={true} />
             <Plot
                 key={`chart_${props.chart.name}`}
                 data-testid={`chart_${props.chart.name}`}
@@ -35,7 +42,7 @@ const Chart = (props) => {
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
             />
-        </>
+        </ChartContainer>
     );
 }
 

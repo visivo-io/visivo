@@ -3,14 +3,14 @@ export const fetchTracesData = async (traces) => {
         return {}
     }
     const returnJson = {};
-    Promise.all(
+    await Promise.all(
         traces.map(async (trace) => {
             //This should use react query to reduce calls
             const traceResponse = await fetch(trace.signed_data_file_url);
             const traceJson = await traceResponse.json();
             returnJson[trace.name] = traceJson;
         })
-    ).then(() => {
-        return returnJson
-    })
+    )
+
+    return returnJson
 }
