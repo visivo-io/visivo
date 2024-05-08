@@ -1,25 +1,24 @@
-import React, { useState } from "react";
-import Plot from 'react-plotly.js';
-import { cleanedPlotData } from '../../models/Trace'
 import Loading from "../Loading";
-import { useTracesData } from "../../hooks/useTracesData";
+import Menu from "./Menu"
+import Plot from 'react-plotly.js';
+import React, { useState } from "react";
 import TraceSelect from "./TraceSelect";
 import tw from "tailwind-styled-components"
+import { cleanedPlotData } from '../../models/Trace'
+import { useTracesData } from "../../hooks/useTracesData";
 
-export const ChartContainer = tw.aside`
-   flex
-   flex-col
-   m-auto
+import MenuItem from "../styled/MenuItem";
+
+export const ChartContainer = tw.div`
+    relative
 `;
 
 const Chart = (props) => {
     const traceNames = props.chart.traces.map((trace) => trace.name)
     const tracesData = useTracesData(props.project.id, traceNames)
-    const [selectedTracesData, setSelectedTracesData] = useState({})
+    const [hovering, setHovering] = useState(false)
 
-    if (!tracesData) {
-        return <Loading></Loading>
-    }
+    const [selectedPlotData, setSelectedPlotData] = useState([])
 
     const plotData = () => {
         return props.chart.traces.map((trace) => {
@@ -27,17 +26,27 @@ const Chart = (props) => {
         }).flat();
     }
 
+    if (!tracesData) {
+        return <Loading></Loading>
+    }
+
+    const initialPlotData = plotData()
+
     const onSelectedCohortChange = (changedSelectedTracesData) => {
-        setSelectedTracesData(changedSelectedTracesData)
+        setSelectedPlotData(changedSelectedTracesData)
     }
 
     return (
-        <ChartContainer>
-            <TraceSelect plotData={plotData()} onChange={onSelectedCohortChange} isMulti={true} />
+        <ChartContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
+            <Menu hovering={hovering}>
+                <MenuItem>
+                    <TraceSelect plotData={initialPlotData} onChange={onSelectedCohortChange} isMulti={true} />
+                </MenuItem>
+            </Menu>
             <Plot
                 key={`chart_${props.chart.name}`}
                 data-testid={`chart_${props.chart.name}`}
-                data={selectedTracesData}
+                data={selectedPlotData}
                 layout={{ ...props.chart.layout, height: props.height, width: props.width }}
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
