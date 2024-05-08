@@ -72,10 +72,10 @@ class CsvScriptModel(Model):
                   - create_processes_csv.py
             ```{% endraw %}
 
-        === "CSV File"
+        === "Local CSV File"
 
             One of the best use cases for this type of model is to store a static csv in your project and cat it into a model.
-            This great because it's simple and allows you to version control your csv data.
+            This is great because it's simple and allows you to version control your csv data.
             ``` csv title="file.csv"
             columns,go,up,here
             1,text,more text,6
@@ -90,6 +90,20 @@ class CsvScriptModel(Model):
                   - cat
                   - file.csv
             ```
+        === "Remote CSV File"
+
+            You can also access a remote csv file. This enables you to pull information from a remote source and use it in your analysis.
+            ``` yaml
+            models:
+              - name: remote_csv
+                table_name: remote_csv
+                args:
+                  - curl
+                  - '-s'
+                  -  https://raw.githubusercontent.com/plotly/datasets/master/volcano.csv
+                  - '| cat'
+            ```
+
 
     The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
     """

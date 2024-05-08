@@ -84,17 +84,13 @@ traces:
       delta:
         reference: column(x_data)[1]
   - name: surface-trace
-    model: ref(test table local)
-    # columns: 
-    #   x_data: x*x+30
-    #   y_data: y*y+30
-    #   z_data: x*y+40
+    model: ref(volcano)
     props:
       type: surface
       z: 
-        - query(x*x+30)
-        - query(y*y+30)
-        - query(x*y*y+40)
+        {% for i in range(1, 62) %}
+        - query("V{{i}}")
+        {% endfor %}
   - name: Indicator Trace
     model: ref(csv)
     columns:
@@ -230,9 +226,26 @@ charts:
     layout:
       title:
         text: Plot 
-      autosize: false 
-      width: 500
-      height: 500
+      # autosize: false 
+      # width: 500
+      # height: 500
+      updatemenus: 
+        - buttons:
+            - args: ["type", "surface"]
+              label: "Surface"
+              method: "restyle"
+            - args: ["type", "heatmap"]
+              label: "Heatmap"
+              method: "restyle"
+            - args: ["type", "contour"]
+              label: "Contour"
+              method: "restyle"
+          direction: "right"
+          # showactive: true
+          # x: 0.1
+          # xanchor: "left"
+          # y: 1.1
+          # yanchor: "top"
 dashboards:
   - name: Table
     rows:
