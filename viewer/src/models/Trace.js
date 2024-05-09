@@ -1,6 +1,6 @@
 import { merge } from 'lodash';
 
-const COLUMN_REGEX = /column\((.+)\)(\[(-?\d*)\:?(-?\d*)\]|)/
+const COLUMN_REGEX = /column\((.+)\)(\[(-?\d*):?(-?\d*)\]|)/
 
 const convertDotKeysToNestedObject = (flatObject) => {
     const nestedObject = {};
@@ -40,7 +40,7 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
         if (unparsedStart !== undefined && unparsedEnd !== undefined) {
             const start = unparsedStart ? parseInt(unparsedStart, 10) : 0;
             const end = unparsedEnd ? parseInt(unparsedEnd, 10) : null;
-            if (end !== null){
+            if (end !== null) {
                 parent[key] = data.columns[columnName].slice(start, end);
             } else if (match[2].includes(":") && end === null) {
                 parent[key] = data.columns[columnName].slice(start);
@@ -50,7 +50,7 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
         } else {
             parent[key] = data.columns[columnName];
         }
-            
+
     }
 };
 export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) => {
