@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Table from './Table';
+import * as useTracesData from '../../hooks/useTracesData';
 
 let table;
 
@@ -29,7 +30,9 @@ test('renders table', async () => {
       }
     }
   };
-  render(<Table table={table} traceData={traceData} />);
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+
+  render(<Table table={table} project={{ id: 1 }} />);
 
   await waitFor(() => {
     expect(screen.getByText('Widget Type')).toBeInTheDocument();

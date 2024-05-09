@@ -31,7 +31,7 @@ function Project(props) {
   }
   const renderDashboard = (project) => {
     return (
-      <Dashboard project={project} fetchTraces={props.fetchTraces} dashboardName={props.dashboardName} />
+      <Dashboard project={project} dashboardName={props.dashboardName} />
     )
   }
 

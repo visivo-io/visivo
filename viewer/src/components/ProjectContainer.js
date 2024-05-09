@@ -5,7 +5,7 @@ import Project from "./Project";
 
 function ProjectContainer() {
   const { dashboardName } = useParams();
-  const { project, fetchTraces } = useLoaderData();
+  const project = useLoaderData();
 
   const dashboards = (project) => {
     if (!project) {
@@ -18,7 +18,6 @@ function ProjectContainer() {
 
   return (
     <Project project={project}
-      fetchTraces={fetchTraces}
       dashboards={dashboards(project)}
       dashboardName={dashboardName} />)
 
