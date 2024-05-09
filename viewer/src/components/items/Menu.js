@@ -15,7 +15,7 @@ const Menu = ({ children, hovering }) => {
 
     return (
         <div className="absolute mt-3 top-0 right-0 z-20">
-            <button style={{ visibility: hovering ? "visible" : "hidden" }} onClick={onMenuClick} className="text-white bg-secondary-700 hover:bg-secondary-800 focus:ring-4 focus:outline-none focus:ring-secondary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center" type="button">
+            <button style={{ visibility: hovering ? "visible" : "hidden" }} onClick={onMenuClick} className="text-white bg-secondary-400 hover:bg-secondary-600 focus:ring-4 focus:outline-none focus:ring-secondary-300 font-medium rounded-lg text-sm px-3 py-2.5 text-center inline-flex items-center" type="button">
                 <FontAwesomeIcon icon={showMenu ? faCircleChevronUp : faCircleChevronDown} />
             </button>
             <div style={{ visibility: showMenu && hovering ? "visible" : "hidden" }} className="absolute top-10 right-0 z-20 bg-white w-80 divide-y divide-gray-100 rounded-lg shadow">
