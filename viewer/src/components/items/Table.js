@@ -10,7 +10,7 @@ const Table = (props) => {
     const tracesData = useTracesData(props.project.id, traceNames)
 
     if (!tracesData) {
-        return <Loading text={props.chart.name} width={props.itemWidth} />
+        return <Loading text={props.table.name} width={props.itemWidth} />
     }
 
     const tableTheme = createTheme({
