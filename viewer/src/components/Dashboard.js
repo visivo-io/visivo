@@ -44,10 +44,11 @@ const Dashboard = (props) => {
                 project={props.project}
                 height={getHeight(row.height)}
                 width={getWidth(row, item)}
+                itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.table) {
             return <Table
-                width={item.width}
+                itemWidth={item.width}
                 height={getHeight(row.height)}
                 table={item.table}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />

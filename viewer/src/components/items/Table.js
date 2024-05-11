@@ -1,3 +1,4 @@
+import Loading from "../Loading";
 import React from "react";
 import { MaterialReactTable } from 'material-react-table';
 import { cleanedTableData } from '../../models/Trace'
@@ -7,6 +8,11 @@ import { useTracesData } from "../../hooks/useTracesData";
 const Table = (props) => {
     const traceNames = [props.table.trace.name]
     const tracesData = useTracesData(props.project.id, traceNames)
+
+    if (!tracesData) {
+        return <Loading text={props.chart.name} width={props.itemWidth} />
+    }
+
     const tableTheme = createTheme({
         palette: {
             primary: { main: 'rgb(210, 89, 70)' },
@@ -34,7 +40,7 @@ const Table = (props) => {
                 }}
                 muiTablePaperProps={{
                     sx: {
-                        flexGrow: props.width,
+                        flexGrow: props.itemWidth,
                     },
                 }}
                 {...props.table.props}
