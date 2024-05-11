@@ -13,6 +13,7 @@ const Dashboard = (props) => {
     });
 
     const widthBreakpoint = 1024;
+    const isColumn = width < widthBreakpoint;
 
     const getHeight = (height) => {
         if (height === 'small') {
@@ -66,25 +67,13 @@ const Dashboard = (props) => {
         }
         return null
     }
-    const renderRow = (row, rowIndex) => {
-        if (width < widthBreakpoint) {
-            return (
-                row.items.map((item, itemIndex) => {
-                    return (
-                        <div className="flex" style={{ height: getHeight(row.height) }} key={`dashboardRow${rowIndex}-${itemIndex}`}>
-                            {renderComponent(item, row, itemIndex, rowIndex)}
-                        </div>
-                    )
-                })
-            )
 
-        } else {
-            return (
-                <div className="flex" style={{ height: getHeight(row.height) }} key={`dashboardRow${rowIndex}`}>
-                    {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
-                </div>
-            )
-        }
+    const renderRow = (row, rowIndex) => {
+        return (
+            <div className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} style={isColumn ? {} : { height: getHeight(row.height) }} key={`dashboardRow${rowIndex}`}>
+                {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
+            </div>
+        )
     }
     return (
         <div ref={observe} data-testid={`dashboard_${props.dashboardName}`} className='flex grow flex-col justify-items-stretch'>
