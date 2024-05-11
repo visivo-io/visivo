@@ -12,6 +12,9 @@ const Dashboard = (props) => {
         },
     });
 
+    const widthBreakpoint = 1024;
+    const isColumn = width < widthBreakpoint;
+
     const getHeight = (height) => {
         if (height === 'small') {
             return 256
@@ -23,6 +26,9 @@ const Dashboard = (props) => {
     }
 
     const getWidth = (row, item) => {
+        if (width < widthBreakpoint) {
+            return width;
+        }
         const totalWidth = row.items.reduce((partialSum, i) => {
             const itemWidth = i.width ? i.width : 1
             return partialSum + itemWidth;
@@ -44,12 +50,14 @@ const Dashboard = (props) => {
                 project={props.project}
                 height={getHeight(row.height)}
                 width={getWidth(row, item)}
+                itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.table) {
             return <Table
-                width={item.width}
-                height={getHeight(row.height)}
                 table={item.table}
+                project={props.project}
+                itemWidth={item.width}
+                height={getHeight(row.height)}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.markdown) {
             return <Markdown
@@ -60,13 +68,17 @@ const Dashboard = (props) => {
         }
         return null
     }
+
+    const renderRow = (row, rowIndex) => {
+        return (
+            <div className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} style={isColumn ? {} : { height: getHeight(row.height) }} key={`dashboardRow${rowIndex}`}>
+                {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
+            </div>
+        )
+    }
     return (
-        <div ref={observe} data-testid={`dashboard_${props.dashboardName}`} className='overflow-auto flex grow flex-col justify-items-stretch'>
-            {dashboard.rows.map((row, rowIndex) =>
-                <div className="flex" style={{ height: getHeight(row.height) }} key={`dashboardRow${rowIndex}`}>
-                    {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
-                </div>
-            )}
+        <div ref={observe} data-testid={`dashboard_${props.dashboardName}`} className='flex grow flex-col justify-items-stretch'>
+            {dashboard.rows.map(renderRow)}
         </div >
     );
 }

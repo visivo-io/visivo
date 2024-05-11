@@ -27,7 +27,7 @@ const Chart = (props) => {
     }
 
     if (!tracesData) {
-        return <Loading></Loading>
+        return <Loading text={props.chart.name} width={props.itemWidth} />
     }
 
     const initialPlotData = plotData()
