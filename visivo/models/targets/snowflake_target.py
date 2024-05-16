@@ -4,6 +4,8 @@ from pandas import DataFrame
 import click
 from pydantic import Field
 
+SnowflakeType = Literal["snowflake"]
+
 
 class SnowflakeTarget(Target):
     """
@@ -41,7 +43,7 @@ class SnowflakeTarget(Target):
         description="The access role that you want to use when running queries.",
     )
 
-    type: Literal["snowflake"]
+    type: SnowflakeType
 
     def read_sql(self, query: str) -> DataFrame:
         with self.connect() as connection:

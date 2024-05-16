@@ -1,3 +1,4 @@
+from typing import get_args
 import click
 import yaml
 import json
@@ -5,7 +6,10 @@ import os
 from pathlib import Path
 from visivo.logging.logger import Logger
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.targets.target import Target, TypeEnum
+from visivo.models.targets.target import Target
+from visivo.models.targets.postgresql_target import PostgresqlTarget, PostgresqlType
+from visivo.models.targets.snowflake_target import SnowflakeTarget, SnowflakeType
+from visivo.models.targets.sqlite_target import SqliteTarget, SqliteType
 from visivo.models.project import Project
 from visivo.models.dashboard import Dashboard
 from visivo.models.chart import Chart
@@ -27,51 +31,66 @@ def init_phase():
         raise click.ClickException(f"'{project_name}' directory already exists")
 
     os.makedirs(project_name, exist_ok=True)
+    sqlite_type = get_args(SqliteType)[0]
+    postgresql_type = get_args(PostgresqlType)[0]
+    snowflake_type = get_args(SnowflakeType)[0]
+    types = [postgresql_type, sqlite_type, snowflake_type]
 
-    types = [t.value for t in TypeEnum]
     target_type = click.prompt("? Database type", type=click.Choice(types))
-    password = None
-    username = None
-    database = None
-    warehouse = None
-    account = None
-    host = None
-    if target_type != TypeEnum.sqlite:
-        if target_type == TypeEnum.postgresql:
-            host = click.prompt("? Database host", type=str)
+    if target_type == sqlite_type:
+        target = SqliteTarget(
+            name="Example Target",
+            database=f"{project_name}/local.db",
+            type=target_type,
+        )
+        create_file_database(target.url(), project_name)
+        target.database = "local.db"
+        fp = open(f"{project_name}/.env", "w+")
+        fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
+        fp.close()
+
+    if target_type == postgresql_type:
+        host = click.prompt("? Database host", type=str)
         database = click.prompt("? Database name", type=str)
         username = click.prompt("? Database username", type=str)
         password = click.prompt(
             "? Database password", type=str, hide_input=True, confirmation_prompt=True
         )
-        fp = open(f"{project_name}/.env", "w")
+        fp = open(f"{project_name}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
-    else:
-        database = f"{project_name}/local.db"
-
-    if target_type == TypeEnum.snowflake:
+        target = PostgresqlTarget(
+            name="Example Target",
+            host=host,
+            database=database,
+            type=target_type,
+            password=password,
+            username=username,
+        )
+    if target_type == snowflake_type:
+        host = click.prompt("? Database host", type=str)
+        database = click.prompt("? Database name", type=str)
         account = click.prompt("? Snowflake account", type=str)
         warehouse = click.prompt("? Snowflake warehouse", type=str)
+        username = click.prompt("? Database username", type=str)
+        password = click.prompt(
+            "? Database password", type=str, hide_input=True, confirmation_prompt=True
+        )
+        fp = open(f"{project_name}/.env", "w+")
+        fp.write(f"DB_PASSWORD={password}")
+        fp.close()
+        target = SnowflakeTarget(
+            name="Example Target",
+            host=host,
+            database=database,
+            type=target_type,
+            password=password,
+            username=username,
+            account=account,
+            warehouse=warehouse,
+        )
 
     Logger.instance().debug("Generating project, gitignore & env files")
-    target = Target(
-        name="Example Target",
-        host=host,
-        database=database,
-        type=target_type,
-        password=password,
-        username=username,
-        account=account,
-        warehouse=warehouse,
-    )
-
-    if target_type == TypeEnum.sqlite:
-        create_file_database(target.url(), project_name)
-        target.database = "local.db"
-        fp = open(f"{project_name}/.env", "w")
-        fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
-        fp.close()
 
     model = SqlModel(name="Example Model", sql="select * from test_table")
     props = Scatter(type="scatter", x="query(x)", y="query(y)")

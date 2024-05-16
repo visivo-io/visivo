@@ -2,6 +2,8 @@ from typing import Literal, Optional
 from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
 from pydantic import Field
 
+PostgresqlType = Literal["postgresql"]
+
 
 class PostgresqlTarget(SqlalchemyTarget):
     """
@@ -26,7 +28,7 @@ class PostgresqlTarget(SqlalchemyTarget):
         Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
-    type: Literal["postgresql"]
+    type: PostgresqlType
     connection_pool_size: Optional[int] = Field(
         1, description="The pool size that is used for this connection."
     )
