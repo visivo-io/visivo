@@ -131,8 +131,8 @@ def init_phase():
         fp = open(profile_path, "w")
         fp.write(f"token: {token}")
         fp.close()
-        Logger.instance().debug(f"> Created profile in '~/.visivo/profile.yml'")
+        Logger.instance().info(f"> Created profile in '~/.visivo/profile.yml'")
     else:
         message = "Found profile at location: " + profile_path
         Logger.instance().info(message)
-    Logger.instance().debug(f"> Created project in '{project_name}'")
+    Logger.instance().info(f"> Created project in '{project_name}'")
