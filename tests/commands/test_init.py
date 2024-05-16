@@ -3,16 +3,14 @@ from pathlib import Path
 from visivo.commands.init import init
 from tests.support.utils import temp_folder
 from click.testing import CliRunner
-import pytest
 
 runner = CliRunner()
 
 
-@pytest.mark.skip(reason="Inputs are not read in CI")
 def test_init_with_sqlite():
     tmp = temp_folder()
 
-    response = runner.invoke(init, input=f"{tmp}\nsqlite\n")
+    response = runner.invoke(init, input=f"{tmp}\nsqlite\ntoken\n")
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=EXAMPLE_password_l0cation"
@@ -21,7 +19,6 @@ def test_init_with_sqlite():
     assert os.path.exists(f"{tmp}/local.db")
 
 
-@pytest.mark.skip(reason="Inputs are not read in CI")
 def test_init_with_postgres():
     tmp = temp_folder()
 
@@ -33,7 +30,8 @@ def test_init_with_postgres():
         + "database\n"
         + "username\n"
         + "password\n"
-        + "password\n",
+        + "password\n"
+        + "token\n",
     )
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
@@ -46,7 +44,6 @@ def test_init_with_postgres():
     )
 
 
-@pytest.mark.skip(reason="Inputs are not read in CI")
 def test_init_with_snowflake():
     tmp = temp_folder()
 
@@ -60,7 +57,8 @@ def test_init_with_snowflake():
         + "account\n"
         + "warehouse\n"
         + "password\n"
-        + "password\n",
+        + "password\n"
+        + "token\n",
     )
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
