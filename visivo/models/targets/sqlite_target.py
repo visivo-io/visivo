@@ -12,6 +12,9 @@ class Attachment(BaseModel):
     )
 
 
+SqliteType = Literal["sqlite"]
+
+
 class SqliteTarget(SqlalchemyTarget):
     """
     SqliteTargets hold the connection information to SQLite data sources.
@@ -50,7 +53,7 @@ class SqliteTarget(SqlalchemyTarget):
         Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
     """
 
-    type: Literal["sqlite"]
+    type: SqliteType
     attach: Optional[List[Attachment]] = Field(
         None,
         description="List of other local SQLite database targets to attach in the connection that will be available in the base SQL query.",
