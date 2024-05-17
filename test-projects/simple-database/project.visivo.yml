@@ -217,7 +217,7 @@ traces:
       measure: query('relative')
       x: column(x_data)[:3]
       y: column(y_data)[:3]
-      text: query(cast(y as text))
+      text: query(cast(y as char))
       increasing:
         marker:
           color: "#b97a9b"
