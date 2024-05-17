@@ -104,7 +104,7 @@ tasks:
       sudo apt-get install netcat mysql-client
       sudo apt-get clean
 
-  - key: test-postgres
+  - key: test-mysql
     use: [mysql-packages, node, visivo-install]
     background-processes:
       - key: postgres
