@@ -24,6 +24,13 @@ targets:
     username: postgres
     password: "{{ env_var('PG_PASSWORD') }}"
     port: 5434
+  - name: local-mysql
+    database: visivo
+    type: mysql
+    host: localhost
+    username: root
+    password: "{{ env_var('MYSQL_PASSWORD') }}"
+    port: 3306
   - name: remote-snowflake
     type: snowflake
     database: JARED_DEV
@@ -61,17 +68,17 @@ models:
     sql: |
       SELECT * FROM (
         SELECT 
-          'y*3+1' as grouping,
+          'y*3+1' as cohort_string,
           CASE WHEN x%2=1 THEN y*3+1 ELSE -y END as y, 
           x as week_day 
         FROM test_table 
         UNION ALL 
         SELECT 
-          'y*2+2' as grouping,
+          'y*2+2' as cohort_string,
           CASE WHEN x%2=1 THEN y*2+2 ELSE -y END as y, 
           x as week_day 
         FROM test_table WHERE x between 0 and 6) a
-        ORDER BY week_day asc , grouping
+        ORDER BY week_day asc , cohort_string
 
 traces:
   - name: example_indicator
@@ -201,7 +208,7 @@ traces:
 
   - name: Fibonacci Waterfall
     model: ref(waterfall_model)
-    cohort_on: query(grouping)
+    cohort_on: query(cohort_string)
     columns:
       x_data: week_day
       y_data: y

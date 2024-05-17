@@ -97,3 +97,22 @@ tasks:
       PG_PASSWORD: postgres
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5434
+  
+  - key: mysql-packages
+    run: |
+      sudo apt-get update
+      sudo apt-get install netcat mysql-client
+      sudo apt-get clean
+
+  - key: test-postgres
+    use: [mysql-packages, node, visivo-install]
+    background-processes:
+      - key: postgres
+        run: docker run -p 3306:3306 -e MYSQL_PASSWORD=mysql index.docker.io/library/mysql:latest
+        ready-check: mysql -h localhost -u root -pmysql -e "SELECT 1;"
+    run: |
+      mysql -h localhost -u root -pmysql < tests/setup/populate_ci_mysql.sql
+      cd test-projects/simple-database
+      visivo run -t local-mysql --threads 1
+    env:
+      MYSQL_PASSWORD: mysql
