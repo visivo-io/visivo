@@ -107,8 +107,8 @@ tasks:
   - key: test-mysql
     use: [mysql-packages, node, visivo-install]
     background-processes:
-      - key: postgres
-        run: docker run -p 3306:3306 -e MYSQL_PASSWORD=mysql index.docker.io/library/mysql:latest
+      - key: mysql
+        run: docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mysql index.docker.io/library/mysql:latest
         ready-check: mysql -h localhost -u root -pmysql -e "SELECT 1;"
     run: |
       mysql -h localhost -u root -pmysql < tests/setup/populate_ci_mysql.sql
