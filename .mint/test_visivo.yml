@@ -78,18 +78,17 @@ tasks:
   - key: postgres-packages
     run: |
       sudo apt-get update
-      sudo apt-get install netcat postgresql-client
+      sudo apt-get install postgresql-client
       sudo apt-get clean
 
   - key: test-postgres
-    use: [postgres-packages, node, visivo-install]
+    use: [postgres-packages, visivo-install]
     background-processes:
       - key: postgres
         run: docker run -p 5434:5432 -e POSTGRES_PASSWORD=postgres index.docker.io/library/postgres:latest
         ready-check: PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -c 'SELECT 1'
     run: |
-      npm install pg
-      node tests/setup/populate_ci_postgres_db.js
+      PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -f tests/setup/populate_ci_postgres.sql
       cd test-projects/simple-database
       visivo run -t local-postgres --threads 1
     env:
@@ -101,11 +100,11 @@ tasks:
   - key: mysql-packages
     run: |
       sudo apt-get update
-      sudo apt-get install netcat mysql-client
+      sudo apt-get install mysql-client
       sudo apt-get clean
 
   - key: test-mysql
-    use: [mysql-packages, node, visivo-install]
+    use: [mysql-packages, visivo-install]
     background-processes:
       - key: mysql
         run: docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mysql index.docker.io/library/mysql:latest
