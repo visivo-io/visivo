@@ -6,10 +6,10 @@ import os
 from pathlib import Path
 from visivo.logging.logger import Logger
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.targets.target import Target
 from visivo.models.targets.postgresql_target import PostgresqlTarget, PostgresqlType
 from visivo.models.targets.snowflake_target import SnowflakeTarget, SnowflakeType
 from visivo.models.targets.sqlite_target import SqliteTarget, SqliteType
+from visivo.models.targets.mysql_target import MysqlTarget, MysqlType
 from visivo.models.project import Project
 from visivo.models.dashboard import Dashboard
 from visivo.models.chart import Chart
@@ -33,8 +33,9 @@ def init_phase():
     os.makedirs(project_name, exist_ok=True)
     sqlite_type = get_args(SqliteType)[0]
     postgresql_type = get_args(PostgresqlType)[0]
+    mysql_type = get_args(MysqlType)[0]
     snowflake_type = get_args(SnowflakeType)[0]
-    types = [postgresql_type, sqlite_type, snowflake_type]
+    types = [postgresql_type, mysql_type, sqlite_type, snowflake_type]
 
     target_type = click.prompt("? Database type", type=click.Choice(types))
     if target_type == sqlite_type:
@@ -67,6 +68,25 @@ def init_phase():
             password=password,
             username=username,
         )
+    if target_type == mysql_type:
+        host = click.prompt("? Database host", type=str)
+        database = click.prompt("? Database name", type=str)
+        username = click.prompt("? Database username", type=str)
+        password = click.prompt(
+            "? Database password", type=str, hide_input=True, confirmation_prompt=True
+        )
+        fp = open(f"{project_name}/.env", "w+")
+        fp.write(f"DB_PASSWORD={password}")
+        fp.close()
+        target = MysqlTarget(
+            name="Example Target",
+            host=host,
+            database=database,
+            type=target_type,
+            password=password,
+            username=username,
+        )
+
     if target_type == snowflake_type:
         host = click.prompt("? Database host", type=str)
         database = click.prompt("? Database name", type=str)
