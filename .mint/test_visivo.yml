@@ -116,3 +116,4 @@ tasks:
       visivo run -t local-mysql --threads 1
     env:
       MYSQL_PASSWORD: mysql
+      IS_MYSQL: true
