@@ -217,7 +217,7 @@ traces:
       measure: query('relative')
       x: column(x_data)[:3]
       y: column(y_data)[:3]
-      text: query(cast(y as char))
+      text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
       increasing:
         marker:
           color: "#b97a9b"
