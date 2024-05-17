@@ -33,6 +33,7 @@ mkdocs-autolinks-plugin = "^0.7.1"
 termcolor = "^2.4.0"
 python-dateutil = "^2.9.0.post0"
 pytest-mock = "^3.14.0"
+pymysql = "^1.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"

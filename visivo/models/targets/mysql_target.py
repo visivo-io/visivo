@@ -34,4 +34,4 @@ class MysqlTarget(SqlalchemyTarget):
     )
 
     def get_dialect(self):
-        return "mysql"
+        return "mysql+pymysql"
