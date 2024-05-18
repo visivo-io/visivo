@@ -125,5 +125,6 @@ tasks:
   - key: test-ruby-on-rails
     use: [ruby, visivo-install]
     run: |
-      cd test-projects/ror && bundle install && cd ../..
-      cd test-projects/ror && bundle exec rspec && cd ../..
+      cd test-projects/ror 
+      bundle install 
+      bundle exec rspec
