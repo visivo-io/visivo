@@ -30,7 +30,7 @@ tasks:
   - key: ruby
     call: mint/install-ruby 1.0.9
     with:
-      ruby-version: 3.0.3
+      ruby-version: 3.2.2
 
   - key: pip-install-poetry
     use: [python]
