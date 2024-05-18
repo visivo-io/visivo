@@ -36,6 +36,10 @@ class Serializer:
                             trace.model.target = ParentModel.all_descendants_of_type(
                                 type=Target, dag=dag, from_node=trace.model
                             )[0]
+                        if hasattr(trace.model, "models"):
+                            trace.model.models = ParentModel.all_descendants_of_type(
+                                type=Model, dag=dag, from_node=trace.model
+                            )
 
                 if item.table:
                     item.table = ParentModel.all_descendants_of_type(
