@@ -27,6 +27,11 @@ tasks:
     with:
       node-version: 18.0.0
 
+  - key: ruby
+    call: mint/install-ruby 1.0.9
+    with:
+      ruby-version: 3.2.2
+
   - key: pip-install-poetry
     use: [python]
     run: pip install poetry
@@ -116,3 +121,9 @@ tasks:
     env:
       MYSQL_PASSWORD: mysql
       IS_MYSQL: true
+
+  - key: test-ruby-on-rails
+    use: [ruby, visivo-install]
+    run: |
+      cd test-projects/ror && bundle install && cd ../..
+      cd test-projects/ror && bundle exec rspec && cd ../..
