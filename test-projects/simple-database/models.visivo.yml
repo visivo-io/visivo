@@ -1,10 +1,10 @@
 models:
   - name: pre_join_1
     sql: "SELECT * FROM test_table as tb1"
-  - name: pre_join_2
-    sql: "SELECT * FROM test_table as tb2"
-  - name: join
-    models:
-      - ref(pre_join_1)
-      - ref(pre_join_2)
-    sql: "SELECT * FROM pre_join_1.tb1 JOIN pre_join_2.tb2 on pre_join_1.tb1.x = pre_join.tbl2.x"
+  # - name: pre_join_2
+  #   sql: "SELECT * FROM test_table as tb2"
+  # - name: join
+  #   models:
+  #     - ref(pre_join_1)
+  #     - ref(pre_join_2)
+  #   sql: "SELECT * FROM pre_join_1.tb1 JOIN pre_join_2.tb2 on pre_join_1.tb1.x = pre_join.tbl2.x"
