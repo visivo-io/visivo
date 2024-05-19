@@ -1,5 +1,6 @@
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.models.model import Model
 from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,
@@ -47,6 +48,9 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
 
     jobs = []
     for local_merge_model in local_merge_models:
+        # local_merge_model.models = ParentModel.all_descendants_of_type(
+        #     type=Model, dag=dag, from_node=local_merge_model
+        # )
         jobs.append(
             Job(
                 item=local_merge_model,

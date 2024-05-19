@@ -74,7 +74,7 @@ class LocalMergeModel(Model, ParentModel):
                 data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
 
     def _get_sqlite_from_model(self, model, output_dir) -> SqliteTarget:
-        if isinstance(model.target, SqliteTarget):
+        if hasattr(model, "target") and isinstance(model.target, SqliteTarget):
             return model.target
         elif isinstance(model, CsvScriptModel):
             return model.get_sqlite_target(output_dir=output_dir)

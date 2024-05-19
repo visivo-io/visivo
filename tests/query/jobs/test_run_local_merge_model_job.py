@@ -39,3 +39,18 @@ def test_jobs_with_name_filter():
     )
     assert len(lmm_jobs) == 1
     assert lmm_jobs[0].item == lmm_model
+
+
+def test_jobs_with_ref():
+    output_dir = temp_folder()
+    project = ProjectFactory()
+    lmm_model = LocalMergeModelFactory()
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model = lmm_model
+    project.models = [lmm_model]
+    lmm_model.models = [f"ref({lmm_model.models[0].name})"]
+
+    lmm_jobs = jobs(
+        dag=project.dag(), project=project, output_dir=output_dir, name_filter=None
+    )
+    assert len(lmm_jobs) == 1
+    assert lmm_jobs[0].item == lmm_model
