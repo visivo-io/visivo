@@ -1,8 +1,9 @@
 name: project
 
 includes:
-  - path: csv.visivo.yml
   - path: welcome.visivo.yml
+  - path: charts.visivo.yml
+  - path: models.visivo.yml
 
 defaults:
   target_name: sqlite
@@ -18,28 +19,3 @@ targets:
     username: postgres
     password: "{{ env_var('PG_PASSWORD') }}"
     port: 5434
-
-dashboards:
-  - name: Table
-    rows:
-      - height: medium
-        items:
-          - width: 1
-            markdown: |
-              ## Sub heading
-              1. Numbered
-              1. Lists are cool
-
-              But we can have lots of other _content_ as well
-          - width: 3
-            table:
-              name: awesome-table
-              trace: ref(Fibonacci Waterfall)
-              columns:
-                - header: Widget Type
-                  column: x_data
-                - header: Widget Sales
-                  column: y_data
-          - width: 2
-            chart: ref(indicator_chart)
-
