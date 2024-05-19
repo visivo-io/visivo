@@ -1,0 +1,63 @@
+name: project
+
+includes:
+  - path: models.visivo.yml
+  - path: visivo-io/example-include.git@main
+
+defaults:
+  target_name: sqlite
+  alert_name: slack
+
+alerts:
+  - name: slack
+    type: slack
+    webhook_url: https://hooks.slack.com/services/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
+
+targets:
+  - name: sqlite
+    type: sqlite
+    database: local.db
+  - name: postgres
+    type: postgresql
+    database: postgres
+    host: localhost
+    username: postgres
+    password: postgres
+    port: 5434
+
+models:
+  - name: waterfall_model
+    sql: |
+      SELECT * FROM (
+        SELECT 
+          'y*3+1' as cohort_string,
+          CASE WHEN x%2=1 THEN y*3+1 ELSE -y END as y, 
+          x as week_day 
+        FROM test_table 
+        UNION ALL 
+        SELECT 
+          'y*2+2' as cohort_string,
+          CASE WHEN x%2=1 THEN y*2+2 ELSE -y END as y, 
+          x as week_day 
+        FROM test_table WHERE x between 0 and 6) a
+        ORDER BY week_day asc , cohort_string
+
+dashboards:
+  - name: Table
+    rows:
+      - height: medium
+        items:
+          - width: 1
+            markdown: |
+              # Welcome to Visivo
+
+              This is a demo dashboard that contains some simple examples of common use cases.
+          - width: 1
+            table:
+              name: fibonacci-waterfall-table
+              trace: ref(Fibonacci Waterfall)
+              columns:
+                - header: Widget Type
+                  column: x_data
+                - header: Widget Sales
+                  column: y_data
