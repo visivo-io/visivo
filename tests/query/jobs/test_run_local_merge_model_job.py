@@ -50,7 +50,6 @@ def test_jobs_with_ref():
     project.models = lmm_model.models
     lmm_model.models = [f"ref({lmm_model.models[0].name})"]
 
-    # ParentModel.show_dag(project.dag())
     lmm_jobs = jobs(
         dag=project.dag(), project=project, output_dir=output_dir, name_filter=None
     )

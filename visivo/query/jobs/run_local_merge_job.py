@@ -11,15 +11,17 @@ from visivo.query.jobs.job import (
 from time import time
 
 
-def action(local_merge_model: LocalMergeModel, output_dir):
+def action(local_merge_model: LocalMergeModel, output_dir, dag):
     try:
         start_time = time()
-        local_merge_model.insert_dependent_models_to_sqlite(output_dir=output_dir)
+        local_merge_model.insert_dependent_models_to_sqlite(
+            output_dir=output_dir, dag=dag
+        )
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
             full_path=local_merge_model.get_sqlite_target(
-                output_dir=output_dir
+                output_dir=output_dir, dag=dag
             ).database,
         )
         return JobResult(success=True, message=success_message)
@@ -28,7 +30,7 @@ def action(local_merge_model: LocalMergeModel, output_dir):
             details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
             full_path=local_merge_model.get_sqlite_target(
-                output_dir=output_dir
+                output_dir=output_dir, dag=dag
             ).database,
             error_msg=str(repr(e)),
         )
@@ -57,6 +59,7 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
                 action=action,
                 local_merge_model=local_merge_model,
                 output_dir=output_dir,
+                dag=dag,
             )
         )
     return jobs

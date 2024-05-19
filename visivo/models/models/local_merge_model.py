@@ -1,5 +1,6 @@
 from typing import List
 from pydantic import Field
+from visivo.logging.logger import Logger
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -7,6 +8,8 @@ from visivo.models.models.model import Model
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.targets.sqlite_target import Attachment, SqliteTarget
 import os
+
+from visivo.models.targets.target import Target
 
 
 class LocalMergeModel(Model, ParentModel):
@@ -43,17 +46,13 @@ class LocalMergeModel(Model, ParentModel):
     )
 
     def get_sqlite_target(self, output_dir, dag) -> SqliteTarget:
-        models = ParentModel.all_descendants_of_type(
-            type=Model, dag=dag, from_node=self
-        )
-        models = list(filter(lambda model: model is not self, models))
         attach = list(
             map(
                 lambda model: Attachment(
                     schema_name=model.name,
                     target=self._get_sqlite_from_model(model, output_dir, dag),
                 ),
-                models,
+                self._get_dereferenced_models(dag),
             )
         )
         return SqliteTarget(
@@ -63,23 +62,26 @@ class LocalMergeModel(Model, ParentModel):
             attach=attach,
         )
 
-    def insert_dependent_models_to_sqlite(self, output_dir):
+    def insert_dependent_models_to_sqlite(self, output_dir, dag):
         import pandas
 
-        for model in self.models:
+        for model in self._get_dereferenced_models(dag):
             if isinstance(model, SqlModel) and isinstance(model.target, SqliteTarget):
                 continue
             if isinstance(model, CsvScriptModel):
                 continue
-            sqlite_target = self._get_sqlite_from_model(model, output_dir)
+            sqlite_target = self._get_sqlite_from_model(model, output_dir, dag)
             if not os.path.exists(sqlite_target.database):
                 data_frame = model.target.read_sql(model.sql)
                 engine = sqlite_target.get_engine()
                 data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
 
     def _get_sqlite_from_model(self, model, output_dir, dag) -> SqliteTarget:
-        if isinstance(model.target, SqliteTarget):
-            return model.target
+        target = ParentModel.all_descendants_of_type(
+            type=Target, dag=dag, from_node=model
+        )[0]
+        if isinstance(target, SqliteTarget):
+            return target
         elif isinstance(model, CsvScriptModel):
             return model.get_sqlite_target(output_dir=output_dir)
         elif isinstance(model, LocalMergeModel):
@@ -90,6 +92,12 @@ class LocalMergeModel(Model, ParentModel):
                 database=f"{output_dir}/{model.name}.sqlite",
                 type="sqlite",
             )
+
+    def _get_dereferenced_models(self, dag):
+        models = ParentModel.all_descendants_of_type(
+            type=Model, dag=dag, from_node=self
+        )
+        return list(filter(lambda model: model is not self, models))
 
     def child_items(self):
         return self.models
