@@ -42,14 +42,18 @@ class LocalMergeModel(Model, ParentModel):
         description="A model object defined inline or a ref() to a model."
     )
 
-    def get_sqlite_target(self, output_dir) -> SqliteTarget:
+    def get_sqlite_target(self, output_dir, dag) -> SqliteTarget:
+        models = ParentModel.all_descendants_of_type(
+            type=Model, dag=dag, from_node=self
+        )
+        models = list(filter(lambda model: model is not self, models))
         attach = list(
             map(
                 lambda model: Attachment(
                     schema_name=model.name,
-                    target=self._get_sqlite_from_model(model, output_dir),
+                    target=self._get_sqlite_from_model(model, output_dir, dag),
                 ),
-                self.models,
+                models,
             )
         )
         return SqliteTarget(
@@ -73,13 +77,13 @@ class LocalMergeModel(Model, ParentModel):
                 engine = sqlite_target.get_engine()
                 data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
 
-    def _get_sqlite_from_model(self, model, output_dir) -> SqliteTarget:
-        if hasattr(model, "target") and isinstance(model.target, SqliteTarget):
+    def _get_sqlite_from_model(self, model, output_dir, dag) -> SqliteTarget:
+        if isinstance(model.target, SqliteTarget):
             return model.target
         elif isinstance(model, CsvScriptModel):
             return model.get_sqlite_target(output_dir=output_dir)
         elif isinstance(model, LocalMergeModel):
-            return model.get_sqlite_target(output_dir=output_dir)
+            return model.get_sqlite_target(output_dir=output_dir, dag=dag)
         else:
             return SqliteTarget(
                 name=f"model_{model.name}_generated_target",

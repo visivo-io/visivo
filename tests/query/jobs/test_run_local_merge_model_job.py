@@ -5,6 +5,7 @@ from tests.factories.model_factories import (
     ProjectFactory,
 )
 from tests.support.utils import temp_folder
+from visivo.models.base.parent_model import ParentModel
 from visivo.query.jobs.run_local_merge_job import jobs
 
 
@@ -46,9 +47,10 @@ def test_jobs_with_ref():
     project = ProjectFactory()
     lmm_model = LocalMergeModelFactory()
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = lmm_model
-    project.models = [lmm_model]
+    project.models = lmm_model.models
     lmm_model.models = [f"ref({lmm_model.models[0].name})"]
 
+    # ParentModel.show_dag(project.dag())
     lmm_jobs = jobs(
         dag=project.dag(), project=project, output_dir=output_dir, name_filter=None
     )

@@ -51,12 +51,14 @@ class ScatterTracePropsFactory(factory.Factory):
     x = "query(x)"
     y = "query(y)"
 
+
 class SurfaceTracePropsFactory(factory.Factory):
     class Meta:
         model = Surface
-    
-    type = "surface" 
+
+    type = "surface"
     z = ["query(x+10)", "query(y+15)"]
+
 
 class SqlModelFactory(factory.Factory):
     class Meta:
@@ -84,7 +86,7 @@ class LocalMergeModelFactory(factory.Factory):
     class Meta:
         model = LocalMergeModel
 
-    name = "model"
+    name = "local_merge_model"
     sql = "select * from test_table"
     models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
 
@@ -107,8 +109,9 @@ class TraceFactory(factory.Factory):
             ]
         )
         surface_props = factory.Trait(
-            props = factory.SubFactory(SurfaceTracePropsFactory)
+            props=factory.SubFactory(SurfaceTracePropsFactory)
         )
+
 
 class JobFactory(factory.Factory):
     class Meta:

@@ -48,13 +48,12 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
 
     jobs = []
     for local_merge_model in local_merge_models:
-        # local_merge_model.models = ParentModel.all_descendants_of_type(
-        #     type=Model, dag=dag, from_node=local_merge_model
-        # )
         jobs.append(
             Job(
                 item=local_merge_model,
-                target=local_merge_model.get_sqlite_target(output_dir),
+                target=local_merge_model.get_sqlite_target(
+                    output_dir=output_dir, dag=dag
+                ),
                 action=action,
                 local_merge_model=local_merge_model,
                 output_dir=output_dir,
