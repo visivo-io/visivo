@@ -92,13 +92,13 @@ traces:
         reference: column(x_data)[1]
   - name: surface-trace
     model: ref(test table local)
-    # columns: 
+    # columns:
     #   x_data: x*x+30
     #   y_data: y*y+30
     #   z_data: x*y+40
     props:
       type: surface
-      z: 
+      z:
         - query(x*x+30)
         - query(y*y+30)
         - query(x*y*y+40)
@@ -236,8 +236,8 @@ charts:
       - ref(surface-trace)
     layout:
       title:
-        text: Plot 
-      autosize: false 
+        text: Plot
+      autosize: false
       width: 500
       height: 500
 dashboards:
@@ -263,6 +263,32 @@ dashboards:
                   column: y_data
           - width: 2
             chart: ref(indicator_chart)
+          - width: 3
+            table:
+              name: awesome-table-2
+              trace:
+                name: Temp Table
+                model: ref(join)
+                columns:
+                  x_data: x
+                  y_data: y
+                props:
+                  type: waterfall
+                  measure: query('relative')
+                  x: column(x_data)[:3]
+                  y: column(y_data)[:3]
+                  text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
+                  increasing:
+                    marker:
+                      color: "#b97a9b"
+                  decreasing:
+                    marker:
+                      color: "#edbdb5"
+              columns:
+                - header: Widget Type
+                  column: x_data
+                - header: Widget Sales
+                  column: y_data
 
   - name: Simple Dashboard
     rows:
