@@ -32,7 +32,7 @@ class Job:
         self.target = target
         self.action = action
         self.output_changed = output_changed
-        self.kwargs = kwargs
+        self.kwargs = kwargs  # These get passed to the action when it is run
         self.future: Future = None
 
     @property

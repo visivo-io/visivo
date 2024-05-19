@@ -37,7 +37,9 @@ def test_insert_dependent_models_successfully_inserts_to_sqlite(mocker):
         ],
     )
 
-    local_merge_model.insert_dependent_models_to_sqlite(output_dir)
+    local_merge_model.insert_dependent_models_to_sqlite(
+        output_dir, local_merge_model.dag()
+    )
 
     assert os.path.exists(f"{output_dir}/model1.sqlite")
     assert os.path.exists(f"{output_dir}/model2.sqlite")
@@ -58,7 +60,7 @@ def test_local_merge_model_get_sqlite_target():
         ],
     )
     local_merge_model_target = local_merge_model.get_sqlite_target(
-        output_dir=output_dir
+        output_dir=output_dir, dag=local_merge_model.dag()
     )
     assert (
         local_merge_model_target.attach[0].target.database

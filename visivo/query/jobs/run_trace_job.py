@@ -16,8 +16,10 @@ from time import time
 
 def action(trace, dag, output_dir):
     model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-    if isinstance(model, CsvScriptModel) or isinstance(model, LocalMergeModel):
+    if isinstance(model, CsvScriptModel):
         target = model.get_sqlite_target(output_dir=output_dir)
+    elif isinstance(model, LocalMergeModel):
+        target = model.get_sqlite_target(output_dir=output_dir, dag=dag)
     else:
         target = ParentModel.all_descendants_of_type(
             type=Target, dag=dag, from_node=model
@@ -55,8 +57,10 @@ def _get_target(trace, dag, output_dir):
         return targets[0]
 
     model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-    if isinstance(model, CsvScriptModel) or isinstance(model, LocalMergeModel):
+    if isinstance(model, CsvScriptModel):
         return model.get_sqlite_target(output_dir)
+    elif isinstance(model, LocalMergeModel):
+        return model.get_sqlite_target(output_dir, dag)
     else:
         return model.target
 
