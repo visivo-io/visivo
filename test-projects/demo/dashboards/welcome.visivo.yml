@@ -47,10 +47,30 @@ dashboards:
 
               #### This is a demo dashboard that contains some simple examples of common use cases.
 
+              These words were created using _markdown_ inside the dashboard directly and can be added to help your users understand the data they are looking at!
       - height: medium
         items:
           - markdown: |
-              ## You can display your data in a table!
+              ### There are tons of different chart options to display your data.  
+
+              Each [Chart](https://docs.visivo.io/reference/configuration/Chart/), can have many lines.  Each line is called a [Trace](https://docs.visivo.io/reference/configuration/Trace/).  Here is one with a [Waterfall Trace](https://docs.visivo.io/reference/configuration/Trace/Waterfall/).
+
+              Some common options are:
+              1. [Scatter (line)](https://docs.visivo.io/reference/configuration/Trace/Scatter/)
+              1. [Bar](https://docs.visivo.io/reference/configuration/Trace/Bar/)
+              1. [Indicator](https://docs.visivo.io/reference/configuration/Trace/Indicator/)
+
+          - width: 2
+            chart:
+              name: Fibonacci Waterfall Chart
+              traces:
+                - ref(Fibonacci Waterfall Trace)
+      - height: medium
+        items:
+          - markdown: |
+              ### You can also display your data in a [Table](https://docs.visivo.io/reference/configuration/Table/)!
+
+              This is a useful way to break out your data for analysis.
           - width: 2
             table:
               name: Fibonacci Waterfall Table
