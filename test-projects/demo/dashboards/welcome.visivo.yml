@@ -1,5 +1,5 @@
 models:
-  - name: waterfall_model
+  - name: Waterfall Model
     sql: |
       SELECT * FROM (
         SELECT 
@@ -15,20 +15,46 @@ models:
         FROM test_table WHERE x between 0 and 6) a
         ORDER BY week_day asc , cohort_string
 
+traces:
+  - name: Fibonacci Waterfall Trace
+    model: ref(Waterfall Model)
+    cohort_on: query(cohort_string)
+    columns:
+      x_data: week_day
+      y_data: y
+    props:
+      type: waterfall
+      measure: query('relative')
+      x: column(x_data)[:3]
+      y: column(y_data)[:3]
+      text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
+      increasing:
+        marker:
+          color: "#b97a9b"
+      decreasing:
+        marker:
+          color: "#edbdb5"
+    order_by:
+      - query(week_day asc)
+
 dashboards:
-  - name: Table
+  - name: Welcome to Visivo
     rows:
+      - height: small
+        items:
+          - markdown: |
+              # Welcome to Visivo 
+
+              #### This is a demo dashboard that contains some simple examples of common use cases.
+
       - height: medium
         items:
-          - width: 1
-            markdown: |
-              # Welcome to Visivo
-
-              This is a demo dashboard that contains some simple examples of common use cases.
-          - width: 1
+          - markdown: |
+              ## You can display your data in a table!
+          - width: 2
             table:
-              name: fibonacci-waterfall-table
-              trace: ref(Fibonacci Waterfall)
+              name: Fibonacci Waterfall Table
+              trace: ref(Fibonacci Waterfall Trace)
               columns:
                 - header: Widget Type
                   column: x_data

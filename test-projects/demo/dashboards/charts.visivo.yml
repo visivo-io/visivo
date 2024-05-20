@@ -1,0 +1,9 @@
+dashboards:
+  - name: Chart Examples
+    rows:
+      - height: small
+        items:
+          - markdown: |
+              # Chart Examples
+
+              This dashboard contains example on some common chart types.

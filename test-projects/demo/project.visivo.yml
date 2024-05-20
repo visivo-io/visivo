@@ -1,9 +1,9 @@
 name: project
 
 includes:
-  - path: welcome.visivo.yml
-  - path: charts.visivo.yml
-  - path: models.visivo.yml
+  - path: dashboards/welcome.visivo.yml
+  - path: dashboards/charts.visivo.yml
+  - path: dashboards/models.visivo.yml
 
 defaults:
   target_name: sqlite
@@ -17,5 +17,5 @@ targets:
     database: postgres
     host: localhost
     username: postgres
-    password: "{{ env_var('PG_PASSWORD') }}"
+    password: postgres
     port: 5434
