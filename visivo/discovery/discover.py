@@ -72,6 +72,8 @@ class Discover:
         if "--" in version:
             file = version.split("--")[1].strip()
             version = version.split("--")[0].strip()
+        else:
+            file = None
 
         local_folder = (
             f"{deps_folder}/{git_url.split('@')[0].replace('.git', '')}@{version}"
