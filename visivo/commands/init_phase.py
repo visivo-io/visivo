@@ -122,11 +122,11 @@ def init_phase():
     dashboard = Dashboard(name="Example Dashboard", rows=[row])
     defaults = Defaults(target_name=target.name)
     includes = Include(
-        path="visivo-io/visivo.git@tim-make-demo-project -- test-projects/demo/welcome.visivo.yml"
+        path="visivo-io/visivo.git@tim-make-demo-project -- test-projects/demo/dashboards/welcome.visivo.yml"
     )
     project = Project(
         name=project_name,
-        includes=includes,
+        includes=[includes],
         defaults=defaults,
         targets=[target],
         dashboards=[dashboard],

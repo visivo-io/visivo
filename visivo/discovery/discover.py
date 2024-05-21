@@ -66,13 +66,16 @@ class Discover:
             raise click.ClickException(
                 f'Invalid github dependency "{git_url}". A version specified with "@" is required'
             )
+
         repo_url = f"https://github.com/{git_url.split('@')[0]}"
         version = git_url.split("@")[1]
         if "--" in version:
             file = version.split("--")[1].strip()
             version = version.split("--")[0].strip()
 
-        local_folder = f"{deps_folder}/{repo_url.replace('.git', '')}"
+        local_folder = (
+            f"{deps_folder}/{git_url.split('@')[0].replace('.git', '')}@{version}"
+        )
         if os.path.exists(local_folder):
             repo = Repo(local_folder)
         else:
