@@ -45,7 +45,6 @@ const Dashboard = (props) => {
 
     const renderComponent = (item, row, itemIndex, rowIndex) => {
         if (item.chart) {
-            console.log("Chart " + getWidth(row, item))
             return <Chart
                 chart={item.chart}
                 project={props.project}
@@ -54,7 +53,6 @@ const Dashboard = (props) => {
                 itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.table) {
-            console.log("Table " + getWidth(row, item))
             return <Table
                 table={item.table}
                 project={props.project}
