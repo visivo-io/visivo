@@ -57,6 +57,7 @@ const Dashboard = (props) => {
                 table={item.table}
                 project={props.project}
                 itemWidth={item.width}
+                width={getWidth(row, item)}
                 height={getHeight(row.height)}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.markdown) {

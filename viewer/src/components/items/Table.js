@@ -40,7 +40,7 @@ const Table = (props) => {
                 }}
                 muiTablePaperProps={{
                     sx: {
-                        flexGrow: props.itemWidth,
+                        width: `${props.width - 8}px` //Minus margin
                     },
                 }}
                 {...props.table.props}
