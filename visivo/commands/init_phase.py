@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 from visivo.logging.logger import Logger
+from visivo.models.include import Include
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.targets.postgresql_target import PostgresqlTarget, PostgresqlType
 from visivo.models.targets.snowflake_target import SnowflakeTarget, SnowflakeType
@@ -120,8 +121,13 @@ def init_phase():
     row = Row(items=[item])
     dashboard = Dashboard(name="Example Dashboard", rows=[row])
     defaults = Defaults(target_name=target.name)
+    includes = Include(path="visivo-io/visivo.git@main")
     project = Project(
-        name=project_name, defaults=defaults, targets=[target], dashboards=[dashboard]
+        name=project_name,
+        includes=includes,
+        defaults=defaults,
+        targets=[target],
+        dashboards=[dashboard],
     )
 
     fp = open(f"{project_name}/project.visivo.yml", "w")

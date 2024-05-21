@@ -8,7 +8,7 @@ on:
       - closed
       - synchronize
 env:
-  yml_location: test-projects/simple-database
+  yml_location: test-projects/integration
   visivo_version: ${{ github.head_ref }}
   stage_name: ${{ github.head_ref }} 
 
