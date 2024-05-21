@@ -104,7 +104,7 @@ class CsvScriptModel(Model):
 
     @property
     def sql(self):
-        return f"select * from {self.name}"
+        return f"select * from {self.table_name}"
 
     def get_sqlite_target(self, output_dir) -> SqliteTarget:
         return SqliteTarget(
