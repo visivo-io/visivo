@@ -35,12 +35,12 @@ const Table = (props) => {
                 enableStickyHeader
                 muiTableContainerProps={{
                     sx: {
-                        maxHeight: `${props.height - 120}px`
+                        maxHeight: `${props.height - 120}px`,
                     },
                 }}
                 muiTablePaperProps={{
                     sx: {
-                        flexGrow: props.itemWidth,
+                        width: `${props.width - 8}px` //Minus margin
                     },
                 }}
                 {...props.table.props}

@@ -25,8 +25,8 @@ traces:
     props:
       type: waterfall
       measure: query('relative')
-      x: column(x_data)[:3]
-      y: column(y_data)[:3]
+      x: column(x_data)[:4]
+      y: column(y_data)[:4]
       text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
       increasing:
         marker:
