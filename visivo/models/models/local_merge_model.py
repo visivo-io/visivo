@@ -31,7 +31,7 @@ class LocalMergeModel(Model, ParentModel):
                 models:
                     - ref(first_domain_model)
                     - ref(external_data_model)
-                sql: SELECT * FROM first_domain_model.table AS fdm JOIN external_data_model.table AS edm ON fdm.external_id = edm.id
+                sql: SELECT * FROM first_domain_model.model AS fdm JOIN external_data_model.model AS edm ON fdm.external_id = edm.id
             ```
 
     {% endraw %}
@@ -72,7 +72,7 @@ class LocalMergeModel(Model, ParentModel):
             if not os.path.exists(sqlite_target.database):
                 data_frame = model.target.read_sql(model.sql)
                 engine = sqlite_target.get_engine()
-                data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
+                data_frame.to_sql("model", engine, if_exists="replace", index=False)
 
     def _get_sqlite_from_model(self, model, output_dir, dag) -> SqliteTarget:
         if isinstance(model, CsvScriptModel):

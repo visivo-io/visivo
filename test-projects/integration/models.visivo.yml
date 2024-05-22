@@ -5,8 +5,8 @@ models:
     sql: "SELECT * FROM second_test_table"
   - name: join_table
     sql: |
-      SELECT ltt.x, sltt.y FROM local_test_table.test_table AS ltt 
-        JOIN second_local_test_table.second_test_table AS sltt
+      SELECT ltt.x, sltt.y FROM local_test_table.model AS ltt 
+        JOIN second_local_test_table.model AS sltt
         ON ltt.x = sltt.x
     models:
       - ref(local_test_table)
