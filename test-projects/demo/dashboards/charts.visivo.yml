@@ -7,3 +7,16 @@ dashboards:
               # Chart Examples
 
               This dashboard contains example on some common chart types.
+
+      - height: medium
+        items:
+          - markdown: |
+              # Bar
+          - chart:
+              traces:
+                - name: Simple Bar
+                  model: ref(Local Join)
+                  props:
+                    type: bar
+                    x: query(x)
+                    y: query(y)

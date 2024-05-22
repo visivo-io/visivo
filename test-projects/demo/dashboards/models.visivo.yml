@@ -1,6 +1,4 @@
 models:
-  - name: Simple SQL
-    sql: "SELECT * FROM test_table"
   - name: Echo CSV
     table_name: csv
     args:
@@ -20,3 +18,10 @@ models:
       - create_processes_csv.py
       - "&&"
       - cat target/processes.csv
+  - name: Relational
+    target: ref(postgres)
+    sql: "select * from fiban"
+  - name: Local Join
+    models:
+      - ref(Relational)
+      - ref(Echo CSV)
