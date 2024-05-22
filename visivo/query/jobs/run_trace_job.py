@@ -52,6 +52,7 @@ def action(trace, dag, output_dir):
 
 
 def _get_target(trace, dag, output_dir):
+    # TODO Figure out where the default is being set.
     targets = ParentModel.all_descendants_of_type(type=Target, dag=dag, from_node=trace)
     if len(targets) == 1:
         return targets[0]

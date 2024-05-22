@@ -24,7 +24,7 @@ targets:
     host: localhost
     username: postgres
     password: "{{ env_var('PG_PASSWORD') }}"
-    port: 5434
+    port: 5432
   - name: local-mysql
     database: visivo
     type: mysql

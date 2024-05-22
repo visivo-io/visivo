@@ -56,7 +56,6 @@ class LocalMergeModel(Model, ParentModel):
             )
         )
 
-        Logger.instance().error("attach " + str(attach))
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
             database="",
@@ -70,13 +69,13 @@ class LocalMergeModel(Model, ParentModel):
         for model in self._get_dereferenced_models(dag):
             if isinstance(model, CsvScriptModel):
                 continue
-            Logger.instance().error("Model " + model.name)
             sqlite_target = self._get_sqlite_from_model(model, output_dir, dag)
-            Logger.instance().error("database " + sqlite_target.database)
-            if not os.path.exists(sqlite_target.database):
-                data_frame = model.target.read_sql(model.sql)
-                engine = sqlite_target.get_engine()
-                data_frame.to_sql("model", engine, if_exists="replace", index=False)
+            target = ParentModel.all_descendants_of_type(
+                type=Target, dag=dag, from_node=model
+            )[0]
+            data_frame = target.read_sql(model.sql)
+            engine = sqlite_target.get_engine()
+            data_frame.to_sql("model", engine, if_exists="replace", index=False)
 
     def _get_sqlite_from_model(self, model, output_dir, dag) -> SqliteTarget:
         if isinstance(model, CsvScriptModel):
