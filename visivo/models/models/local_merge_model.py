@@ -56,7 +56,7 @@ class LocalMergeModel(Model, ParentModel):
             )
         )
 
-        Logger.instance().error("attach " + attach)
+        Logger.instance().error("attach " + str(attach))
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
             database="",
