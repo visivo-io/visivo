@@ -5097,7 +5097,7 @@
 <span class="w">    </span><span class="nt">models</span><span class="p">:</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(first_domain_model)</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(external_data_model)</span>
-<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SELECT * FROM first_domain_model.table AS fdm JOIN external_data_model.table AS edm ON fdm.external_id = edm.id</span>
+<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SELECT * FROM first_domain_model.model AS fdm JOIN external_data_model.model AS edm ON fdm.external_id = edm.id</span>
 </code></pre></div></p>
 </div>
 </div>
