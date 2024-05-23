@@ -11,7 +11,11 @@ from pandas import DataFrame
 
 
 def test_LocalMergeModel_simple_data():
-    data = {"name": "model", "models": ["ref(other_model)"]}
+    data = {
+        "name": "model",
+        "sql": "select * from table",
+        "models": ["ref(other_model)"],
+    }
     model = LocalMergeModel(**data)
     assert model.name == "model"
 

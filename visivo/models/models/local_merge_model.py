@@ -38,7 +38,6 @@ class LocalMergeModel(Model, ParentModel):
     """
 
     sql: str = Field(
-        None,
         description="The sql used to generate your base data",
     )
     models: List[generate_ref_field(Model)] = Field(

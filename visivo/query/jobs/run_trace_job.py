@@ -1,3 +1,4 @@
+from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
@@ -52,7 +53,6 @@ def action(trace, dag, output_dir):
 
 
 def _get_target(trace, dag, output_dir):
-    # TODO Figure out where the default is being set.
     targets = ParentModel.all_descendants_of_type(type=Target, dag=dag, from_node=trace)
     if len(targets) == 1:
         return targets[0]

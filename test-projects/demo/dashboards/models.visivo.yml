@@ -20,8 +20,4 @@ models:
       - cat target/processes.csv
   - name: Relational
     target: ref(postgres)
-    sql: "select * from fiban"
-  - name: Local Join
-    models:
-      - ref(Relational)
-      - ref(Echo CSV)
+    sql: "select * from fibonacci"

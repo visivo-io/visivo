@@ -1,32 +1,30 @@
 models:
   - name: Waterfall Model
-    sql: |
-      SELECT * FROM (
-        SELECT 
-          'y*3+1' as cohort_string,
-          CASE WHEN x%2=1 THEN y*3+1 ELSE -y END as y, 
-          x as week_day 
-        FROM test_table 
-        UNION ALL 
-        SELECT 
-          'y*2+2' as cohort_string,
-          CASE WHEN x%2=1 THEN y*2+2 ELSE -y END as y, 
-          x as week_day 
-        FROM test_table WHERE x between 0 and 6) a
-        ORDER BY week_day asc , cohort_string
+    table_name: model
+    args:
+      - echo
+      - |
+        x,y
+        1,4
+        2,10
+        3,0
+        4,-3
+        5,-12
+        6,-4
 
 traces:
   - name: Fibonacci Waterfall Trace
     model: ref(Waterfall Model)
-    cohort_on: query(cohort_string)
     columns:
-      x_data: week_day
+      x_data: x
       y_data: y
+    order_by:
+      - query(x)
     props:
       type: waterfall
       measure: query('relative')
-      x: column(x_data)[:4]
-      y: column(y_data)[:4]
+      x: query(x)
+      y: query(y)
       text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
       increasing:
         marker:
@@ -34,8 +32,6 @@ traces:
       decreasing:
         marker:
           color: "#edbdb5"
-    order_by:
-      - query(week_day asc)
 
 dashboards:
   - name: Welcome to Visivo
