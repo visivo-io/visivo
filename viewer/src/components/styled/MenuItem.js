@@ -1,6 +1,6 @@
 import tw from "tailwind-styled-components"
 
-const Link = tw.a`
+const Link = tw.span`
     block 
     px-4 
     py-2 
@@ -13,7 +13,7 @@ const Link = tw.a`
 const MenuItem = ({ children, onClick }) => {
     return (
         <li>
-            <Link href="#" onClick={onClick}>{children}</Link>
+            <Link onClick={onClick}>{children}</Link>
         </li>
     )
 }
