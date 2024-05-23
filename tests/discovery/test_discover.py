@@ -116,3 +116,33 @@ def test_Core_Parser_includes_git():
         git_models_file,
         profile_file,
     ]
+
+
+def test_Core_Parser_includes_git_single_file():
+    output_dir = temp_folder()
+    project_file = temp_file(
+        contents=yaml.dump(
+            {
+                "name": "project",
+                "includes": [
+                    {"path": "visivo-io/example-include.git@main -- models.yml"}
+                ],
+            }
+        ),
+        output_dir=output_dir,
+        name=PROJECT_FILE_NAME,
+    )
+    profile_file = temp_yml_file({}, ".visivo/profile.yml")
+    discover = Discover(
+        working_directory=os.path.dirname(project_file),
+        home_directory=os.path.dirname(profile_file).replace(".visivo", ""),
+    )
+    git_models_file = Path(
+        f"{output_dir}/.visivo_cache/visivo-io/example-include@main/models.yml"
+    )
+
+    assert discover.files == [
+        project_file,
+        git_models_file,
+        profile_file,
+    ]

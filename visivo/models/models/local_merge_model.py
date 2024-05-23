@@ -31,14 +31,13 @@ class LocalMergeModel(Model, ParentModel):
                 models:
                     - ref(first_domain_model)
                     - ref(external_data_model)
-                sql: SELECT * FROM first_domain_model.table AS fdm JOIN external_data_model.table AS edm ON fdm.external_id = edm.id
+                sql: SELECT * FROM first_domain_model.model AS fdm JOIN external_data_model.model AS edm ON fdm.external_id = edm.id
             ```
 
     {% endraw %}
     """
 
     sql: str = Field(
-        None,
         description="The sql used to generate your base data",
     )
     models: List[generate_ref_field(Model)] = Field(
@@ -55,6 +54,7 @@ class LocalMergeModel(Model, ParentModel):
                 self._get_dereferenced_models(dag),
             )
         )
+
         return SqliteTarget(
             name=f"model_{self.name}_generated_target",
             database="",
@@ -66,23 +66,18 @@ class LocalMergeModel(Model, ParentModel):
         import pandas
 
         for model in self._get_dereferenced_models(dag):
-            if isinstance(model, SqlModel) and isinstance(model.target, SqliteTarget):
-                continue
             if isinstance(model, CsvScriptModel):
                 continue
             sqlite_target = self._get_sqlite_from_model(model, output_dir, dag)
-            if not os.path.exists(sqlite_target.database):
-                data_frame = model.target.read_sql(model.sql)
-                engine = sqlite_target.get_engine()
-                data_frame.to_sql(model.name, engine, if_exists="replace", index=False)
+            target = ParentModel.all_descendants_of_type(
+                type=Target, dag=dag, from_node=model
+            )[0]
+            data_frame = target.read_sql(model.sql)
+            engine = sqlite_target.get_engine()
+            data_frame.to_sql("model", engine, if_exists="replace", index=False)
 
     def _get_sqlite_from_model(self, model, output_dir, dag) -> SqliteTarget:
-        target = ParentModel.all_descendants_of_type(
-            type=Target, dag=dag, from_node=model
-        )[0]
-        if isinstance(target, SqliteTarget):
-            return target
-        elif isinstance(model, CsvScriptModel):
+        if isinstance(model, CsvScriptModel):
             return model.get_sqlite_target(output_dir=output_dir)
         elif isinstance(model, LocalMergeModel):
             return model.get_sqlite_target(output_dir=output_dir, dag=dag)

@@ -35,7 +35,7 @@ const Table = (props) => {
                 enableStickyHeader
                 muiTableContainerProps={{
                     sx: {
-                        maxHeight: `${props.height - 120}px`
+                        maxHeight: `${props.height - 120}px`,
                     },
                 }}
                 muiTablePaperProps={{

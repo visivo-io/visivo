@@ -1,0 +1,49 @@
+models:
+  - name: local_test_table
+    sql: "SELECT * FROM test_table"
+  - name: second_local_test_table
+    sql: "SELECT * FROM second_test_table"
+  - name: join_table
+    sql: |
+      SELECT ltt.x, sltt.y FROM local_test_table.model AS ltt 
+        JOIN second_local_test_table.model AS sltt
+        ON ltt.x = sltt.x
+    models:
+      - ref(local_test_table)
+      - ref(second_local_test_table)
+  - name: csv
+    table_name: csv
+    args:
+      - echo
+      - |
+        x,y
+        1,9
+        2,1
+        3,2
+        4,3
+        5,5
+        6,8
+
+  - name: processes
+    table_name: processes
+    args:
+      - python
+      - create_processes_csv.py
+      - "&&"
+      - cat target/processes.csv
+
+  - name: waterfall_model
+    sql: |
+      SELECT * FROM (
+        SELECT 
+          'y*3+1' as cohort_string,
+          CASE WHEN x%2=1 THEN y*3+1 ELSE -y END as y, 
+          x as week_day 
+        FROM test_table 
+        UNION ALL 
+        SELECT 
+          'y*2+2' as cohort_string,
+          CASE WHEN x%2=1 THEN y*2+2 ELSE -y END as y, 
+          x as week_day 
+        FROM test_table WHERE x between 0 and 6) a
+        ORDER BY week_day asc , cohort_string

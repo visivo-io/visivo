@@ -1,0 +1,21 @@
+name: project
+
+includes:
+  - path: dashboards/welcome.visivo.yml
+  - path: dashboards/charts.visivo.yml
+  - path: dashboards/models.visivo.yml
+
+defaults:
+  target_name: sqlite
+
+targets:
+  - name: sqlite
+    type: sqlite
+    database: local.db
+  - name: postgres
+    type: postgresql
+    database: postgres
+    host: localhost
+    username: postgres
+    password: postgres
+    port: 5434

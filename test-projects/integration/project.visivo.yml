@@ -2,6 +2,7 @@ name: project
 
 includes:
   - path: models.visivo.yml
+  - path: traces.visivo.yml
   - path: visivo-io/example-include.git@main
 
 defaults:
@@ -41,203 +42,17 @@ targets:
     password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
     role: PROD
 
-models:
-  - name: test table local
-    sql: "SELECT * FROM test_table"
-  - name: csv
-    table_name: csv
-    args:
-      - echo
-      - |
-        x,y
-        1,9
-        2,1
-        3,2
-        4,3
-        5,5
-        6,8
-  - name: processes
-    table_name: processes
-    args:
-      - python
-      - create_processes_csv.py
-      - "&&"
-      - cat target/processes.csv
-
-  - name: waterfall_model
-    sql: |
-      SELECT * FROM (
-        SELECT 
-          'y*3+1' as cohort_string,
-          CASE WHEN x%2=1 THEN y*3+1 ELSE -y END as y, 
-          x as week_day 
-        FROM test_table 
-        UNION ALL 
-        SELECT 
-          'y*2+2' as cohort_string,
-          CASE WHEN x%2=1 THEN y*2+2 ELSE -y END as y, 
-          x as week_day 
-        FROM test_table WHERE x between 0 and 6) a
-        ORDER BY week_day asc , cohort_string
-
-traces:
-  - name: example_indicator
-    model: ref(csv)
-    columns:
-      x_data: x
-    props:
-      type: indicator
-      value: column(x_data)[-1]
-      delta:
-        reference: column(x_data)[1]
-  - name: surface-trace
-    model: ref(test table local)
-    # columns: 
-    #   x_data: x*x+30
-    #   y_data: y*y+30
-    #   z_data: x*y+40
-    props:
-      type: surface
-      z: 
-        - query(x*x+30)
-        - query(y*y+30)
-        - query(x*y*y+40)
-  - name: Indicator Trace
-    model: ref(csv)
-    columns:
-      x_data: x
-      y_data: y
-    props:
-      type: "indicator"
-      mode: "number+delta"
-      value: column(y_data)[0]
-      number:
-        prefix: "$"
-      delta:
-        position: "top"
-        reference: 320
-      domain:
-        x: [0, 1]
-        y: [0, 1]
-
-  - name: funnel trace
-    model: ref(test table)
-    order_by:
-      - query(x desc)
-    props:
-      type: funnel
-      y: query( 'Position:' || x)
-      x: query(y)
-      textinfo: "percent initial"
-      marker:
-        color: query( case when y >= 12 then '#713B57' else 'grey' end )
-        opacity: .2
-      textfont:
-        color: "white"
-        family: "Gravitas One"
-        size: 38
-      connector:
-        fillcolor: "#edbdb5"
-
-  - name: Aggregated Line
-    model: ref(test table)
-    props:
-      type: bar
-      x: query( CASE WHEN x <= 3 THEN 'less' else 'More' END )
-      y: query( avg(y) )
-      marker:
-        color: ["rgb(142,124,195)", "rgba(204,204,204,1)"]
-        line:
-          color: query(CASE WHEN x <= 3 THEN '#D25946' else '#191D33' END)
-          width: 2.5
-        pattern:
-          shape: ["/", ""]
-    tests:
-      - coordinate_exists:
-          coordinates:
-            props.marker.line.color: "#D25946"
-            props.x: "less"
-
-  - name: Simple Line
-    model: ref(test table)
-    cohort_on: query( CASE WHEN y >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END )
-    props:
-      type: bar
-      x: query(x)
-      y: query(y)
-      marker:
-        color: query( case when x >= 5 then '#713B57' else 'grey' end )
-        pattern:
-          shape: query( case when x = 5 then '/' when x = 6 THEN 'x' else '' end )
-        line:
-          width: query( Case when x in (5,6) then 2.5 else null end)
-    tests:
-      - coordinate_exists:
-          coordinates:
-            props.x: 2
-            props.y: 1
-  - name: 3d Line One
-    model: ref(test table)
-    order_by:
-      - query(x asc)
-    props:
-      type: scatter3d
-      x: query(x)
-      y: query(y)
-      z: query( -2*(x%2)*x + x + y*(y-3))
-    tests:
-      - coordinate_exists:
-          coordinates:
-            props.x: 2
-            props.y: 1
-      - not_null:
-          attributes:
-            - props.x
-            - props.y
-  - name: 3d Line Two
-    model: ref(test table)
-    order_by:
-      - query(x asc)
-    filters:
-      - query(x>1)
-    props:
-      type: scatter3d
-      x: query(x)
-      y: query(y)
-      z: query( (-3*(x%2)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y)
-
-  - name: Fibonacci Waterfall
-    model: ref(waterfall_model)
-    cohort_on: query(cohort_string)
-    columns:
-      x_data: week_day
-      y_data: y
-    props:
-      type: waterfall
-      measure: query('relative')
-      x: column(x_data)[:3]
-      y: column(y_data)[:3]
-      text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
-      increasing:
-        marker:
-          color: "#b97a9b"
-      decreasing:
-        marker:
-          color: "#edbdb5"
-    order_by:
-      - query(week_day asc)
-
 charts:
   - name: indicator_chart
     traces:
       - ref(Indicator Trace)
   - name: surface-chart
     traces:
-      - ref(surface-trace)
+      - ref(Surface Trace)
     layout:
       title:
-        text: Plot 
-      autosize: false 
+        text: Plot
+      autosize: false
       width: 500
       height: 500
 dashboards:
@@ -273,7 +88,7 @@ dashboards:
               name: A very Fibonacci Waterfall
               traces:
                 - "ref(Fibonacci Waterfall)"
-                - ref(example_indicator)
+                - ref(Example Indicator)
               layout:
                 title:
                   text: "A Great Fibonacci Waterfall"

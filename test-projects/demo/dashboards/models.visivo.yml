@@ -1,0 +1,23 @@
+models:
+  - name: Echo CSV
+    table_name: csv
+    args:
+      - echo
+      - |
+        x,y
+        1,9
+        2,1
+        3,2
+        4,3
+        5,5
+        6,8
+  - name: Create CSV Script
+    table_name: processes
+    args:
+      - python
+      - create_processes_csv.py
+      - "&&"
+      - cat target/processes.csv
+  - name: Relational
+    target: ref(postgres)
+    sql: "select * from fibonacci"
