@@ -91,7 +91,8 @@ dashboards:
                 - ref(Example Indicator)
               layout:
                 title:
-                  text: "A Great Fibonacci Waterfall"
+                  text: "AAPL P&L"
+                waterfallgroupgap: 0.1
           - width: 2
             chart:
               name: Aggregated Fib

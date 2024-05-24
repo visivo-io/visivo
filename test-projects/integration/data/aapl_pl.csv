@@ -1,0 +1,441 @@
+row,section,category,sign,waterfall,is_aggregate_or_calculation,year,thousands_dollars
+0,Revenues,Revenues,1,relative,0,TTM,"381,623.00"
+1,Revenues,Other Revenues,1,relative,0,TTM,-
+2,Revenues,Total Revenues,1,total,1,TTM,"381,623.00"
+3,Revenues,Cost Of Revenues,-1,relative,0,TTM,"207,657.00"
+4,Revenues,Gross Profit,1,total,1,TTM,"173,966.00"
+5,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,TTM,"25,378.00"
+6,Operating Expenses & Income,R&D Expenses,-1,relative,0,TTM,"30,348.00"
+7,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,TTM,"55,726.00"
+8,Operating Expenses & Income,Operating Income,1,total,1,TTM,"118,240.00"
+9,Earnings from Continuing Operations,Interest Expense,1,relative,0,TTM,"-3,933.00"
+10,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,TTM,"3,750.00"
+11,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,TTM,-183
+12,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,TTM,55
+13,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,TTM,"118,112.00"
+14,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,TTM,"17,723.00"
+15,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,TTM,"100,389.00"
+16,Net Income,Net Income to Company,1,,1,TTM,"100,389.00"
+17,Net Income,Net Income,1,total,1,TTM,"100,389.00"
+18,Net Income,NI to Common Incl Extra Items,1,,1,TTM,"100,389.00"
+19,Net Income,NI to Common Excl. Extra Items,1,,1,TTM,"100,389.00"
+20,Supplemental Items,Revenue Per Share,1,,1,TTM,$24.54
+21,Supplemental Items,Basic EPS,1,,1,TTM,$6.45
+22,Supplemental Items,Basic EPS - Continuing Ops,1,,1,TTM,$6.45
+23,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,TTM,"15,553.20"
+24,Supplemental Items,Diluted EPS,1,,1,TTM,$6.42
+25,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,TTM,$6.42
+26,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,TTM,"15,622.20"
+27,Supplemental Items,Normalized Basic EPS,1,,1,TTM,$4.75
+28,Supplemental Items,Normalized Diluted EPS,1,,1,TTM,$4.73
+29,Supplemental Items,Dividend Per Share,1,,1,TTM,$0.96
+30,Supplemental Items,Payout Ratio,1,,1,TTM,15.08%
+31,Supplemental Items,EBITDA,1,,1,TTM,"129,629.00"
+32,Supplemental Items,EBITA,1,,1,TTM,"118,240.00"
+33,Supplemental Items,EBIT,1,,1,TTM,"118,240.00"
+34,Supplemental Items,EBITDAR,1,,1,TTM,-
+35,Supplemental Items,Effective Tax Rate,1,,1,TTM,15.00%
+36,Supplemental Items,Normalized Net Income,1,,1,TTM,"73,820.00"
+37,Supplemental Items,Interest on Long-Term Debt,1,,1,TTM,-
+38,Supplemental Items,R&D Expense From Footnotes,1,,1,TTM,"30,348.00"
+39,Supplemental Items,Foreign Sales,1,,1,TTM,-
+40,Revenues,Revenues,1,relative,0,Sep 2023,"383,285.00"
+41,Revenues,Other Revenues,1,relative,0,Sep 2023,-
+42,Revenues,Total Revenues,1,total,1,Sep 2023,"383,285.00"
+43,Revenues,Cost Of Revenues,-1,relative,0,Sep 2023,"214,137.00"
+44,Revenues,Gross Profit,1,total,1,Sep 2023,"169,148.00"
+45,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2023,"24,932.00"
+46,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2023,"29,915.00"
+47,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2023,"54,847.00"
+48,Operating Expenses & Income,Operating Income,1,total,1,Sep 2023,"114,301.00"
+49,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2023,"-3,933.00"
+50,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2023,"3,750.00"
+51,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2023,-183
+52,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2023,-382
+53,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2023,"113,736.00"
+54,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2023,"16,741.00"
+55,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2023,"96,995.00"
+56,Net Income,Net Income to Company,1,,1,Sep 2023,"96,995.00"
+57,Net Income,Net Income,1,total,1,Sep 2023,"96,995.00"
+58,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2023,"96,995.00"
+59,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2023,"96,995.00"
+60,Supplemental Items,Revenue Per Share,1,,1,Sep 2023,$24.34
+61,Supplemental Items,Basic EPS,1,,1,Sep 2023,$6.16
+62,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2023,$6.16
+63,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2023,"15,744.20"
+64,Supplemental Items,Diluted EPS,1,,1,Sep 2023,$6.13
+65,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2023,$6.13
+66,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2023,"15,812.50"
+67,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2023,$4.51
+68,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2023,$4.50
+69,Supplemental Items,Dividend Per Share,1,,1,Sep 2023,$0.94
+70,Supplemental Items,Payout Ratio,1,,1,Sep 2023,15.49%
+71,Supplemental Items,EBITDA,1,,1,Sep 2023,"125,820.00"
+72,Supplemental Items,EBITA,1,,1,Sep 2023,"114,301.00"
+73,Supplemental Items,EBIT,1,,1,Sep 2023,"114,301.00"
+74,Supplemental Items,EBITDAR,1,,1,Sep 2023,"141,720.00"
+75,Supplemental Items,Effective Tax Rate,1,,1,Sep 2023,14.70%
+76,Supplemental Items,Normalized Net Income,1,,1,Sep 2023,"71,085.00"
+77,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2023,"3,700.00"
+78,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2023,"29,915.00"
+79,Supplemental Items,Foreign Sales,1,,1,Sep 2023,"244,712.00"
+80,Revenues,Revenues,1,relative,0,Sep 2022,"394,328.00"
+81,Revenues,Other Revenues,1,relative,0,Sep 2022,-
+82,Revenues,Total Revenues,1,total,1,Sep 2022,"394,328.00"
+83,Revenues,Cost Of Revenues,-1,relative,0,Sep 2022,"223,546.00"
+84,Revenues,Gross Profit,1,total,1,Sep 2022,"170,782.00"
+85,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2022,"25,094.00"
+86,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2022,"26,251.00"
+87,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2022,"51,345.00"
+88,Operating Expenses & Income,Operating Income,1,total,1,Sep 2022,"119,437.00"
+89,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2022,"-2,931.00"
+90,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2022,"2,825.00"
+91,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2022,-106
+92,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2022,-228
+93,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2022,"119,103.00"
+94,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2022,"19,300.00"
+95,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2022,"99,803.00"
+96,Net Income,Net Income to Company,1,,1,Sep 2022,"99,803.00"
+97,Net Income,Net Income,1,total,1,Sep 2022,"99,803.00"
+98,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2022,"99,803.00"
+99,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2022,"99,803.00"
+100,Supplemental Items,Revenue Per Share,1,,1,Sep 2022,$24.32
+101,Supplemental Items,Basic EPS,1,,1,Sep 2022,$6.15
+102,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2022,$6.15
+103,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2022,"16,216.00"
+104,Supplemental Items,Diluted EPS,1,,1,Sep 2022,$6.11
+105,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2022,$6.11
+106,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2022,"16,325.80"
+107,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2022,$4.59
+108,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2022,$4.56
+109,Supplemental Items,Dividend Per Share,1,,1,Sep 2022,$0.90
+110,Supplemental Items,Payout Ratio,1,,1,Sep 2022,14.87%
+111,Supplemental Items,EBITDA,1,,1,Sep 2022,"130,541.00"
+112,Supplemental Items,EBITA,1,,1,Sep 2022,"119,437.00"
+113,Supplemental Items,EBIT,1,,1,Sep 2022,"119,437.00"
+114,Supplemental Items,EBITDAR,1,,1,Sep 2022,"147,341.00"
+115,Supplemental Items,Effective Tax Rate,1,,1,Sep 2022,16.20%
+116,Supplemental Items,Normalized Net Income,1,,1,Sep 2022,"74,439.40"
+117,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2022,"2,800.00"
+118,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2022,"26,251.00"
+119,Supplemental Items,Foreign Sales,1,,1,Sep 2022,"246,469.00"
+120,Revenues,Revenues,1,relative,0,Sep 2021,"365,817.00"
+121,Revenues,Other Revenues,1,relative,0,Sep 2021,-
+122,Revenues,Total Revenues,1,total,1,Sep 2021,"365,817.00"
+123,Revenues,Cost Of Revenues,-1,relative,0,Sep 2021,"212,981.00"
+124,Revenues,Gross Profit,1,total,1,Sep 2021,"152,836.00"
+125,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2021,"21,973.00"
+126,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2021,"21,914.00"
+127,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2021,"43,887.00"
+128,Operating Expenses & Income,Operating Income,1,total,1,Sep 2021,"108,949.00"
+129,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2021,"-2,645.00"
+130,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2021,"2,843.00"
+131,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2021,198
+132,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2021,60
+133,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2021,"109,207.00"
+134,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2021,"14,527.00"
+135,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2021,"94,680.00"
+136,Net Income,Net Income to Company,1,,1,Sep 2021,"94,680.00"
+137,Net Income,Net Income,1,total,1,Sep 2021,"94,680.00"
+138,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2021,"94,680.00"
+139,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2021,"94,680.00"
+140,Supplemental Items,Revenue Per Share,1,,1,Sep 2021,$21.90
+141,Supplemental Items,Basic EPS,1,,1,Sep 2021,$5.67
+142,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2021,$5.67
+143,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2021,"16,701.30"
+144,Supplemental Items,Diluted EPS,1,,1,Sep 2021,$5.61
+145,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2021,$5.61
+146,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2021,"16,864.90"
+147,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2021,$4.09
+148,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2021,$4.05
+149,Supplemental Items,Dividend Per Share,1,,1,Sep 2021,$0.85
+150,Supplemental Items,Payout Ratio,1,,1,Sep 2021,15.28%
+151,Supplemental Items,EBITDA,1,,1,Sep 2021,"120,233.00"
+152,Supplemental Items,EBITA,1,,1,Sep 2021,"108,949.00"
+153,Supplemental Items,EBIT,1,,1,Sep 2021,"108,949.00"
+154,Supplemental Items,EBITDAR,1,,1,Sep 2021,"134,833.00"
+155,Supplemental Items,Effective Tax Rate,1,,1,Sep 2021,13.30%
+156,Supplemental Items,Normalized Net Income,1,,1,Sep 2021,"68,254.40"
+157,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2021,"2,600.00"
+158,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2021,"21,914.00"
+159,Supplemental Items,Foreign Sales,1,,1,Sep 2021,"232,014.00"
+160,Revenues,Revenues,1,relative,0,Sep 2020,"274,515.00"
+161,Revenues,Other Revenues,1,relative,0,Sep 2020,-
+162,Revenues,Total Revenues,1,total,1,Sep 2020,"274,515.00"
+163,Revenues,Cost Of Revenues,-1,relative,0,Sep 2020,"169,559.00"
+164,Revenues,Gross Profit,1,total,1,Sep 2020,"104,956.00"
+165,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2020,"19,916.00"
+166,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2020,"18,752.00"
+167,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2020,"38,668.00"
+168,Operating Expenses & Income,Operating Income,1,total,1,Sep 2020,"66,288.00"
+169,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2020,"-2,873.00"
+170,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2020,"3,763.00"
+171,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2020,890
+172,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2020,-87
+173,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2020,"67,091.00"
+174,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2020,"9,680.00"
+175,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2020,"57,411.00"
+176,Net Income,Net Income to Company,1,,1,Sep 2020,"57,411.00"
+177,Net Income,Net Income,1,total,1,Sep 2020,"57,411.00"
+178,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2020,"57,411.00"
+179,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2020,"57,411.00"
+180,Supplemental Items,Revenue Per Share,1,,1,Sep 2020,$15.82
+181,Supplemental Items,Basic EPS,1,,1,Sep 2020,$3.31
+182,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2020,$3.31
+183,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2020,"17,352.10"
+184,Supplemental Items,Diluted EPS,1,,1,Sep 2020,$3.28
+185,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2020,$3.28
+186,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2020,"17,528.20"
+187,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2020,$2.42
+188,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2020,$2.39
+189,Supplemental Items,Dividend Per Share,1,,1,Sep 2020,$0.80
+190,Supplemental Items,Payout Ratio,1,,1,Sep 2020,24.53%
+191,Supplemental Items,EBITDA,1,,1,Sep 2020,"77,344.00"
+192,Supplemental Items,EBITA,1,,1,Sep 2020,"66,288.00"
+193,Supplemental Items,EBIT,1,,1,Sep 2020,"66,288.00"
+194,Supplemental Items,EBITDAR,1,,1,Sep 2020,"88,144.00"
+195,Supplemental Items,Effective Tax Rate,1,,1,Sep 2020,14.40%
+196,Supplemental Items,Normalized Net Income,1,,1,Sep 2020,"41,931.90"
+197,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2020,"2,800.00"
+198,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2020,"18,752.00"
+199,Supplemental Items,Foreign Sales,1,,1,Sep 2020,"165,318.00"
+200,Revenues,Revenues,1,relative,0,Sep 2019,"260,174.00"
+201,Revenues,Other Revenues,1,relative,0,Sep 2019,-
+202,Revenues,Total Revenues,1,total,1,Sep 2019,"260,174.00"
+203,Revenues,Cost Of Revenues,-1,relative,0,Sep 2019,"161,782.00"
+204,Revenues,Gross Profit,1,total,1,Sep 2019,"98,392.00"
+205,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2019,"18,245.00"
+206,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2019,"16,217.00"
+207,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2019,"34,462.00"
+208,Operating Expenses & Income,Operating Income,1,total,1,Sep 2019,"63,930.00"
+209,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2019,"-3,576.00"
+210,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2019,"4,961.00"
+211,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2019,"1,385.00"
+212,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2019,422
+213,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2019,"65,737.00"
+214,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2019,"10,481.00"
+215,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2019,"55,256.00"
+216,Net Income,Net Income to Company,1,,1,Sep 2019,"55,256.00"
+217,Net Income,Net Income,1,total,1,Sep 2019,"55,256.00"
+218,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2019,"55,256.00"
+219,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2019,"55,256.00"
+220,Supplemental Items,Revenue Per Share,1,,1,Sep 2019,$14.09
+221,Supplemental Items,Basic EPS,1,,1,Sep 2019,$2.99
+222,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2019,$2.99
+223,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2019,"18,471.30"
+224,Supplemental Items,Diluted EPS,1,,1,Sep 2019,$2.97
+225,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2019,$2.97
+226,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2019,"18,595.70"
+227,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2019,$2.22
+228,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2019,$2.21
+229,Supplemental Items,Dividend Per Share,1,,1,Sep 2019,$0.75
+230,Supplemental Items,Payout Ratio,1,,1,Sep 2019,25.55%
+231,Supplemental Items,EBITDA,1,,1,Sep 2019,"76,477.00"
+232,Supplemental Items,EBITA,1,,1,Sep 2019,"63,930.00"
+233,Supplemental Items,EBIT,1,,1,Sep 2019,"63,930.00"
+234,Supplemental Items,EBITDAR,1,,1,Sep 2019,"77,777.00"
+235,Supplemental Items,Effective Tax Rate,1,,1,Sep 2019,15.90%
+236,Supplemental Items,Normalized Net Income,1,,1,Sep 2019,"41,085.60"
+237,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2019,"3,200.00"
+238,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2019,"16,217.00"
+239,Supplemental Items,Foreign Sales,1,,1,Sep 2019,"157,908.00"
+240,Revenues,Revenues,1,relative,0,Sep 2018,"265,595.00"
+241,Revenues,Other Revenues,1,relative,0,Sep 2018,-
+242,Revenues,Total Revenues,1,total,1,Sep 2018,"265,595.00"
+243,Revenues,Cost Of Revenues,-1,relative,0,Sep 2018,"163,756.00"
+244,Revenues,Gross Profit,1,total,1,Sep 2018,"101,839.00"
+245,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2018,"16,705.00"
+246,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2018,"14,236.00"
+247,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2018,"30,941.00"
+248,Operating Expenses & Income,Operating Income,1,total,1,Sep 2018,"70,898.00"
+249,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2018,"-3,240.00"
+250,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2018,"5,686.00"
+251,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2018,"2,446.00"
+252,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2018,-441
+253,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2018,"72,903.00"
+254,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2018,"13,372.00"
+255,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2018,"59,531.00"
+256,Net Income,Net Income to Company,1,,1,Sep 2018,"59,531.00"
+257,Net Income,Net Income,1,total,1,Sep 2018,"59,531.00"
+258,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2018,"59,531.00"
+259,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2018,"59,531.00"
+260,Supplemental Items,Revenue Per Share,1,,1,Sep 2018,$13.40
+261,Supplemental Items,Basic EPS,1,,1,Sep 2018,$3.00
+262,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2018,$3.00
+263,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2018,"19,821.50"
+264,Supplemental Items,Diluted EPS,1,,1,Sep 2018,$2.98
+265,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2018,$2.98
+266,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2018,"20,000.40"
+267,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2018,$2.30
+268,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2018,$2.28
+269,Supplemental Items,Dividend Per Share,1,,1,Sep 2018,$0.68
+270,Supplemental Items,Payout Ratio,1,,1,Sep 2018,23.03%
+271,Supplemental Items,EBITDA,1,,1,Sep 2018,"81,801.00"
+272,Supplemental Items,EBITA,1,,1,Sep 2018,"70,898.00"
+273,Supplemental Items,EBIT,1,,1,Sep 2018,"70,898.00"
+274,Supplemental Items,EBITDAR,1,,1,Sep 2018,"83,001.00"
+275,Supplemental Items,Effective Tax Rate,1,,1,Sep 2018,18.30%
+276,Supplemental Items,Normalized Net Income,1,,1,Sep 2018,"45,564.40"
+277,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2018,"3,000.00"
+278,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2018,"14,236.00"
+279,Supplemental Items,Foreign Sales,1,,1,Sep 2018,"167,534.00"
+280,Revenues,Revenues,1,relative,0,Sep 2017,"229,234.00"
+281,Revenues,Other Revenues,1,relative,0,Sep 2017,-
+282,Revenues,Total Revenues,1,total,1,Sep 2017,"229,234.00"
+283,Revenues,Cost Of Revenues,-1,relative,0,Sep 2017,"141,048.00"
+284,Revenues,Gross Profit,1,total,1,Sep 2017,"88,186.00"
+285,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2017,"15,261.00"
+286,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2017,"11,581.00"
+287,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2017,"26,842.00"
+288,Operating Expenses & Income,Operating Income,1,total,1,Sep 2017,"61,344.00"
+289,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2017,"-2,323.00"
+290,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2017,"5,201.00"
+291,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2017,"2,878.00"
+292,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2017,-133
+293,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2017,"64,089.00"
+294,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2017,"15,738.00"
+295,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2017,"48,351.00"
+296,Net Income,Net Income to Company,1,,1,Sep 2017,"48,351.00"
+297,Net Income,Net Income,1,total,1,Sep 2017,"48,351.00"
+298,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2017,"48,351.00"
+299,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2017,"48,351.00"
+300,Supplemental Items,Revenue Per Share,1,,1,Sep 2017,$10.98
+301,Supplemental Items,Basic EPS,1,,1,Sep 2017,$2.32
+302,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2017,$2.32
+303,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2017,"20,869.00"
+304,Supplemental Items,Diluted EPS,1,,1,Sep 2017,$2.30
+305,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2017,$2.30
+306,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2017,"21,006.80"
+307,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2017,$1.92
+308,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2017,$1.91
+309,Supplemental Items,Dividend Per Share,1,,1,Sep 2017,$0.60
+310,Supplemental Items,Payout Ratio,1,,1,Sep 2017,26.41%
+311,Supplemental Items,EBITDA,1,,1,Sep 2017,"71,501.00"
+312,Supplemental Items,EBITA,1,,1,Sep 2017,"61,344.00"
+313,Supplemental Items,EBIT,1,,1,Sep 2017,"61,344.00"
+314,Supplemental Items,EBITDAR,1,,1,Sep 2017,"72,601.00"
+315,Supplemental Items,Effective Tax Rate,1,,1,Sep 2017,24.60%
+316,Supplemental Items,Normalized Net Income,1,,1,Sep 2017,"40,055.60"
+317,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2017,"2,200.00"
+318,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2017,"11,581.00"
+319,Supplemental Items,Foreign Sales,1,,1,Sep 2017,"144,895.00"
+320,Revenues,Revenues,1,relative,0,Sep 2016,"215,639.00"
+321,Revenues,Other Revenues,1,relative,0,Sep 2016,-
+322,Revenues,Total Revenues,1,total,1,Sep 2016,"215,639.00"
+323,Revenues,Cost Of Revenues,-1,relative,0,Sep 2016,"131,376.00"
+324,Revenues,Gross Profit,1,total,1,Sep 2016,"84,263.00"
+325,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2016,"14,194.00"
+326,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2016,"10,045.00"
+327,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2016,"24,239.00"
+328,Operating Expenses & Income,Operating Income,1,total,1,Sep 2016,"60,024.00"
+329,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2016,"-1,456.00"
+330,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2016,"3,999.00"
+331,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2016,"2,543.00"
+332,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2016,"-1,195.00"
+333,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2016,"61,372.00"
+334,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2016,"15,685.00"
+335,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2016,"45,687.00"
+336,Net Income,Net Income to Company,1,,1,Sep 2016,"45,687.00"
+337,Net Income,Net Income,1,total,1,Sep 2016,"45,687.00"
+338,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2016,"45,687.00"
+339,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2016,"45,687.00"
+340,Supplemental Items,Revenue Per Share,1,,1,Sep 2016,$9.85
+341,Supplemental Items,Basic EPS,1,,1,Sep 2016,$2.09
+342,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2016,$2.09
+343,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2016,"21,883.30"
+344,Supplemental Items,Diluted EPS,1,,1,Sep 2016,$2.08
+345,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2016,$2.08
+346,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2016,"22,001.10"
+347,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2016,$1.75
+348,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2016,$1.74
+349,Supplemental Items,Dividend Per Share,1,,1,Sep 2016,$0.55
+350,Supplemental Items,Payout Ratio,1,,1,Sep 2016,26.59%
+351,Supplemental Items,EBITDA,1,,1,Sep 2016,"70,529.00"
+352,Supplemental Items,EBITA,1,,1,Sep 2016,"60,024.00"
+353,Supplemental Items,EBIT,1,,1,Sep 2016,"60,024.00"
+354,Supplemental Items,EBITDAR,1,,1,Sep 2016,"71,468.00"
+355,Supplemental Items,Effective Tax Rate,1,,1,Sep 2016,25.60%
+356,Supplemental Items,Normalized Net Income,1,,1,Sep 2016,"38,357.50"
+357,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2016,"1,400.00"
+358,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2016,"10,045.00"
+359,Supplemental Items,Foreign Sales,1,,1,Sep 2016,"139,972.00"
+360,Revenues,Revenues,1,relative,0,Sep 2015,"233,715.00"
+361,Revenues,Other Revenues,1,relative,0,Sep 2015,-
+362,Revenues,Total Revenues,1,total,1,Sep 2015,"233,715.00"
+363,Revenues,Cost Of Revenues,-1,relative,0,Sep 2015,"140,089.00"
+364,Revenues,Gross Profit,1,total,1,Sep 2015,"93,626.00"
+365,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2015,"14,329.00"
+366,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2015,"8,067.00"
+367,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2015,"22,396.00"
+368,Operating Expenses & Income,Operating Income,1,total,1,Sep 2015,"71,230.00"
+369,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2015,-733
+370,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2015,"2,921.00"
+371,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2015,"2,188.00"
+372,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2015,-903
+373,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2015,"72,515.00"
+374,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2015,"19,121.00"
+375,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2015,"53,394.00"
+376,Net Income,Net Income to Company,1,,1,Sep 2015,"53,394.00"
+377,Net Income,Net Income,1,total,1,Sep 2015,"53,394.00"
+378,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2015,"53,394.00"
+379,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2015,"53,394.00"
+380,Supplemental Items,Revenue Per Share,1,,1,Sep 2015,$10.16
+381,Supplemental Items,Basic EPS,1,,1,Sep 2015,$2.32
+382,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2015,$2.32
+383,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2015,"23,013.70"
+384,Supplemental Items,Diluted EPS,1,,1,Sep 2015,$2.31
+385,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2015,$2.31
+386,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2015,"23,172.30"
+387,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2015,$1.97
+388,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2015,$1.96
+389,Supplemental Items,Dividend Per Share,1,,1,Sep 2015,$0.50
+390,Supplemental Items,Payout Ratio,1,,1,Sep 2015,21.65%
+391,Supplemental Items,EBITDA,1,,1,Sep 2015,"82,487.00"
+392,Supplemental Items,EBITA,1,,1,Sep 2015,"72,530.00"
+393,Supplemental Items,EBIT,1,,1,Sep 2015,"71,230.00"
+394,Supplemental Items,EBITDAR,1,,1,Sep 2015,"83,281.00"
+395,Supplemental Items,Effective Tax Rate,1,,1,Sep 2015,26.40%
+396,Supplemental Items,Normalized Net Income,1,,1,Sep 2015,"45,321.90"
+397,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2015,722
+398,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2015,"8,067.00"
+399,Supplemental Items,Foreign Sales,1,,1,Sep 2015,"151,983.00"
+400,Revenues,Revenues,1,relative,0,Sep 2014,"182,795.00"
+401,Revenues,Other Revenues,1,relative,0,Sep 2014,-
+402,Revenues,Total Revenues,1,total,1,Sep 2014,"182,795.00"
+403,Revenues,Cost Of Revenues,-1,relative,0,Sep 2014,"112,258.00"
+404,Revenues,Gross Profit,1,total,1,Sep 2014,"70,537.00"
+405,Operating Expenses & Income,Selling General & Admin Expenses,-1,relative,0,Sep 2014,"11,993.00"
+406,Operating Expenses & Income,R&D Expenses,-1,relative,0,Sep 2014,"6,041.00"
+407,Operating Expenses & Income,Total Operating Expenses,-1,relative,1,Sep 2014,"18,034.00"
+408,Operating Expenses & Income,Operating Income,1,total,1,Sep 2014,"52,503.00"
+409,Earnings from Continuing Operations,Interest Expense,1,relative,0,Sep 2014,-384
+410,Earnings from Continuing Operations,Interest And Investment Income,1,relative,0,Sep 2014,"1,795.00"
+411,Earnings from Continuing Operations,Net Interest Expenses,1,relative,0,Sep 2014,"1,411.00"
+412,Earnings from Continuing Operations,Other Non Operating Income (Expenses),1,relative,0,Sep 2014,-431
+413,Earnings from Continuing Operations,"EBT, Incl. Unusual Items",1,total,0,Sep 2014,"53,483.00"
+414,Earnings from Continuing Operations,Income Tax Expense,-1,relative ,0,Sep 2014,"13,973.00"
+415,Earnings from Continuing Operations,Earnings From Continuing Operations,1,total ,1,Sep 2014,"39,510.00"
+416,Net Income,Net Income to Company,1,,1,Sep 2014,"39,510.00"
+417,Net Income,Net Income,1,total,1,Sep 2014,"39,510.00"
+418,Net Income,NI to Common Incl Extra Items,1,,1,Sep 2014,"39,510.00"
+419,Net Income,NI to Common Excl. Extra Items,1,,1,Sep 2014,"39,510.00"
+420,Supplemental Items,Revenue Per Share,1,,1,Sep 2014,$7.51
+421,Supplemental Items,Basic EPS,1,,1,Sep 2014,$1.62
+422,Supplemental Items,Basic EPS - Continuing Ops,1,,1,Sep 2014,$1.62
+423,Supplemental Items,Basic Weighted Average Shares Outst.,1,,1,Sep 2014,"24,342.30"
+424,Supplemental Items,Diluted EPS,1,,1,Sep 2014,$1.61
+425,Supplemental Items,Diluted EPS - Continuing Ops,1,,1,Sep 2014,$1.61
+426,Supplemental Items,Diluted Weighted Average Shares Outst.,1,,1,Sep 2014,"24,490.70"
+427,Supplemental Items,Normalized Basic EPS,1,,1,Sep 2014,$1.37
+428,Supplemental Items,Normalized Diluted EPS,1,,1,Sep 2014,$1.36
+429,Supplemental Items,Dividend Per Share,1,,1,Sep 2014,$0.46
+430,Supplemental Items,Payout Ratio,1,,1,Sep 2014,28.16%
+431,Supplemental Items,EBITDA,1,,1,Sep 2014,"60,449.00"
+432,Supplemental Items,EBITA,1,,1,Sep 2014,"53,603.00"
+433,Supplemental Items,EBIT,1,,1,Sep 2014,"52,503.00"
+434,Supplemental Items,EBITDAR,1,,1,Sep 2014,"61,166.00"
+435,Supplemental Items,Effective Tax Rate,1,,1,Sep 2014,26.10%
+436,Supplemental Items,Normalized Net Income,1,,1,Sep 2014,"33,426.90"
+437,Supplemental Items,Interest on Long-Term Debt,1,,1,Sep 2014,381
+438,Supplemental Items,R&D Expense From Footnotes,1,,1,Sep 2014,"6,041.00"
+439,Supplemental Items,Foreign Sales,1,,1,Sep 2014,"113,886.00"

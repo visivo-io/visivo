@@ -126,16 +126,18 @@ traces:
 
   - name: Fibonacci Waterfall
     model: ref(waterfall_model)
-    cohort_on: query(cohort_string)
+    cohort_on: query( year)
     columns:
-      x_data: week_day
-      y_data: y
+      x_data: category
+      y_data: cast( replace(thousands_dollars, ',', '') as float ) * cast(sign as float)
+      measure: waterfall
     props:
       type: waterfall
-      measure: query('relative')
-      x: column(x_data)[:3]
-      y: column(y_data)[:3]
-      text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
+      base: 0
+      measure: column(measure)
+      x: column(x_data)
+      y: column(y_data)
+      text: query( cast(thousands_dollars as text) )
       increasing:
         marker:
           color: "#b97a9b"
@@ -143,4 +145,8 @@ traces:
         marker:
           color: "#edbdb5"
     order_by:
-      - query(week_day asc)
+      - query(row asc)
+    filters: 
+      - query( waterfall is not null )
+      - query( category not in ('Earnings From Continuing Operations') )
+      - query( year in ('Sep 2023', 'Sep 2022') )
