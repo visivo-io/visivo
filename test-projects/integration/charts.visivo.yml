@@ -1,30 +1,29 @@
 selectors:
+  # An issue I see with this structure is that we can't display a top level selector because
+  # we don't have a list of traces/cohorts that will result.  Could have an optional selection model.
   - name: Common Selector
     default: Simple Line
     # The matcher lets you have it choose based on a regex
-    matcher: .+(Day|Month|Year) 
+    matcher: .+(Day|Month|Year)
     is_multi: false
+    selection_model: ref(Dates Model)
 
 charts:
   - name: Command Chart
     # The on_ commands can take a chart, table, or selector reference
     # It would then set the value of the selector to the selected trace/cohort from this item
-    selector:
-      on_select: ref(Common Selector)
+    selector: ref(Common Selector)
     traces:
       - ref(Simple Line)
       - ref(Second Line)
   - name: Parent Chart
 
-    # Introduce the idea of wild card ref.
-    selector:
-      on_select: ref(* Chart)
     traces:
       - name: Clickable Trace
         # In addition to the select event, we could add on_click, for when a users
         # clicks a specific value in the items trace.
         on_click:
-          update: ref(Child Chart)
+          update: ref(Child Selector)
           value: y
 
         props:
@@ -34,6 +33,7 @@ charts:
 
   - name: Child Chart
     selector:
+      name: Child Selector
       default: Simple Line
       is_multi: false
     traces:
