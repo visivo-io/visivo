@@ -1,26 +1,30 @@
 selectors:
   - name: Common Selector
     default: Simple Line
+    # The matcher lets you have it choose based on a regex
+    matcher: .+(Day|Month|Year) 
     is_multi: false
 
 charts:
   - name: Command Chart
     # The on_ commands can take a chart, table, or selector reference
     # It would then set the value of the selector to the selected trace/cohort from this item
-    on_select: ref(Common Selector)
+    selector:
+      on_select: ref(Common Selector)
     traces:
       - ref(Simple Line)
       - ref(Second Line)
   - name: Parent Chart
 
     # Introduce the idea of wild card ref.
-    on_select: ref(* Chart)
+    selector:
+      on_select: ref(* Chart)
     traces:
       - name: Clickable Trace
         # In addition to the select event, we could add on_click, for when a users
         # clicks a specific value in the items trace.
         on_click:
-          target: ref(Child Chart)
+          update: ref(Child Chart)
           value: y
 
         props:
