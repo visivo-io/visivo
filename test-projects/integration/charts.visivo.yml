@@ -1,0 +1,44 @@
+selectors:
+  - name: Common Selector
+    default: Simple Line
+    is_multi: false
+
+charts:
+  - name: Command Chart
+    # The on_ commands can take a chart, table, or selector reference
+    # It would then set the value of the selector to the selected trace/cohort from this item
+    on_select: ref(Common Selector)
+    traces:
+      - ref(Simple Line)
+      - ref(Second Line)
+  - name: Parent Chart
+
+    # Introduce the idea of wild card ref.
+    on_select: ref(* Chart)
+    traces:
+      - name: Clickable Trace
+        # In addition to the select event, we could add on_click, for when a users
+        # clicks a specific value in the items trace.
+        on_click:
+          target: ref(Child Chart)
+          value: y
+
+        props:
+          type: scatter
+
+      - ref(Second Line)
+
+  - name: Child Chart
+    selector:
+      default: Simple Line
+      is_multi: false
+    traces:
+      - ref(Simple Line)
+      - ref(Second Line)
+
+  - name: Common Selector Chart
+    # Since this chart uses the common selector, it would respond to the "Command Chart" selection above.
+    selector: ref(Common Selector) # In this situation we might want to hide the selector on this chart.
+    traces:
+      - ref(Simple Line)
+      - ref(Second Line)
