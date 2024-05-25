@@ -144,7 +144,7 @@ class TableFactory(factory.Factory):
 
     name = "table"
     columns = []
-    trace = factory.SubFactory(TraceFactory)
+    traces = factory.List([factory.SubFactory(TraceFactory) for _ in range(1)])
 
 
 class ItemFactory(factory.Factory):

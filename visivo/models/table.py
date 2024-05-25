@@ -50,7 +50,8 @@ class Table(NamedModel, ParentModel):
             y: column(project_name)
     tables:
       - name: latest-projects-table
-        trace: ref(pre-table-trace)
+        traces:
+          - ref(pre-table-trace)
         columns:
           - header: "Project Name"
             column: project_name
@@ -70,26 +71,23 @@ class Table(NamedModel, ParentModel):
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
-    trace: generate_ref_field(Trace) = Field(
-        ...,
-        description="A ref() to a trace or trace defined in line. Data for the table will come from the trace.",
+    traces: List[generate_ref_field(Trace)] = Field(
+        [],
+        description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
     )
+
     columns: List[dict] = Field(
         ...,
         description="A list of dictionaries that contain the keys `header` and `column`. `header` is the title of the column in the table. `column` is the column name from the trace that you want to include in the table.",
     )
 
     def child_items(self):
-        return [self.trace]
+        return self.traces
 
     @property
     def trace_objs(self) -> List[Trace]:
-        if Trace.is_obj(self.trace):
-            return [self.trace]
-        return []
+        return list(filter(Trace.is_obj, self.traces))
 
     @property
     def trace_refs(self) -> List[str]:
-        if Trace.is_ref(self.trace):
-            return [self.trace]
-        return []
+        return list(filter(Trace.is_ref, self.traces))
