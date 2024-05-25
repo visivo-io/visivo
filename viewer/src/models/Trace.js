@@ -72,7 +72,7 @@ export const cleanedTableData = (traceData, dataName, columns) => {
     //TODO find 
     traceData.forEach((traceDatum) => {
         // traceData[dataName][Object.keys(traceData[tableObj.trace.name])[0]]
-    }); 
+    });
     tableData = convertDotKeysToNestedObject(tableData)["columns"];
     const columnData = [];
     columns.forEach((column) => {
@@ -89,3 +89,17 @@ export const cleanedTableData = (traceData, dataName, columns) => {
 
     return columnData;
 };
+
+export const column = (table, traceData) => {
+    let columns
+    if (!table.columns) {
+        columns = table.columns.map((column) => {
+            return { accessorKey: column.column, ...column }
+        })
+    } else if (traceData && traceData.length > 0) {
+        columns = Object.keys(traceData[0]).map((key) => {
+            return { accessorKey: key, header: key }
+        })
+    }
+    return columns;
+}

@@ -3,6 +3,12 @@ import FetchTracesQueryContext from "../contexts/FetchTracesQueryContext";
 import { useQuery } from '@tanstack/react-query'
 import { fetchTracesData } from "../queries/tracesData";
 
+function filterObject(obj, keys) {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([key]) => keys.includes(key))
+    );
+}
+
 export const useTracesData = (projectId, traceNames) => {
     const fetchTraceQuery = useContext(FetchTracesQueryContext)
     const [traceData, setTraceData] = useState(null)
@@ -12,12 +18,14 @@ export const useTracesData = (projectId, traceNames) => {
     useEffect(() => {
         const waitForData = async () => {
             const temp = await fetchTracesData(traces)
-            setTraceData(temp);
+            console.log(traceNames)
+            //This is not filtering
+            setTraceData(filterObject(temp, traceNames));
         }
         if (traces) {
             waitForData()
         }
-    }, [traces]);
+    }, [traces, traceNames]);
 
     if (!traceData) {
         return null
