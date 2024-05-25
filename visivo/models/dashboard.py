@@ -45,7 +45,7 @@ class Dashboard(NamedModel, ParentModel):
         for chart in self.chart_objs:
             traces += chart.traces
         for table in self.table_objs:
-            traces += [table.trace]
+            traces += table.traces
 
         return traces
 

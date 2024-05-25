@@ -45,24 +45,21 @@ class Serializer:
                     item.table = ParentModel.all_descendants_of_type(
                         type=Table, dag=dag, from_node=item
                     )[0]
-                    item.table.trace = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=item.table
-                    )[0]
-                    item.table.trace.model = ParentModel.all_descendants_of_type(
-                        type=Model, dag=dag, from_node=item.table.trace
-                    )[0]
-                    if hasattr(item.table.trace.model, "target"):
-                        item.table.trace.model.target = (
-                            ParentModel.all_descendants_of_type(
-                                type=Target, dag=dag, from_node=item.table.trace.model
+                    item.table.traces = ParentModel.all_descendants_of_type(
+                        type=Trace, dag=dag, from_node=item.chart
+                    )
+                    for trace in item.table.traces:
+                        trace.model = ParentModel.all_descendants_of_type(
+                            type=Model, dag=dag, from_node=trace
+                        )[0]
+                        if hasattr(trace.model, "target"):
+                            trace.model.target = ParentModel.all_descendants_of_type(
+                                type=Target, dag=dag, from_node=trace.model
                             )[0]
-                        )
-                    if hasattr(item.table.trace.model, "models"):
-                        item.table.trace.model.models = (
-                            ParentModel.all_descendants_of_type(
-                                type=Model, dag=dag, from_node=item.table.trace.model
+                        if hasattr(trace.model, "models"):
+                            trace.model.models = ParentModel.all_descendants_of_type(
+                                type=Model, dag=dag, from_node=trace.model
                             )
-                        )
 
             dashboard.for_each_item(replace_item_ref)
 

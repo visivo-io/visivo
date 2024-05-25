@@ -151,7 +151,7 @@ class Project(NamedModel, ParentModel):
         traces = []
         traces += self.traces
         for table in self.tables:
-            traces += [table.trace]
+            traces += table.traces
         for chart in self.charts:
             traces += chart.traces
         for dashboard in self.dashboards:
