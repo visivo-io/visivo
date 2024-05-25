@@ -6,7 +6,7 @@ import { createTheme, ThemeProvider } from '@mui/material';
 import { useTracesData } from "../../hooks/useTracesData";
 
 const Table = (props) => {
-    const traceNames = [props.table.trace.name]
+    const traceNames = props.table.traces.map((trace) => trace.name)
     const tracesData = useTracesData(props.project.id, traceNames)
 
     if (!tracesData) {
@@ -19,6 +19,7 @@ const Table = (props) => {
             info: { main: 'rgb(79, 73, 76)' }
         }
     });
+    console.log(JSON.stringify(tracesData))
     const tableData = cleanedTableData(tracesData, props.table)
     let columns = []
     if (!props.table.columns) {

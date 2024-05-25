@@ -71,8 +71,7 @@ export const cleanedTableData = (traceData, dataName, columns) => {
     let tableData
     //TODO find 
     traceData.forEach((traceDatum) => {
-        traceData[dataName][Object.keys(traceData[tableObj.trace.name])[0]]
-
+        // traceData[dataName][Object.keys(traceData[tableObj.trace.name])[0]]
     }); 
     tableData = convertDotKeysToNestedObject(tableData)["columns"];
     const columnData = [];
