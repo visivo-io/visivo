@@ -20,9 +20,16 @@ const Table = (props) => {
         }
     });
     const tableData = cleanedTableData(tracesData, props.table)
-    const columns = props.table.columns.map((column) => {
-        return { accessorKey: column.column, ...column }
-    })
+    let columns = []
+    if (!props.table.columns) {
+        columns = props.table.columns.map((column) => {
+            return { accessorKey: column.column, ...column }
+        })
+    } else if (tracesData && tableData.length > 0) {
+        columns = Object.keys(tableData[0]).map((key) => {
+            return { accessorKey: key, header: key }
+        })
+    }
 
     return (
         <ThemeProvider theme={tableTheme}>

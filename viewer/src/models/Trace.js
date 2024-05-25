@@ -67,11 +67,16 @@ export const cleanedPlotData = (traceData, traceObj) => {
     })
 };
 
-export const cleanedTableData = (traceData, tableObj) => {
-    let tableData = traceData[tableObj.trace.name][Object.keys(traceData[tableObj.trace.name])[0]]
+export const cleanedTableData = (traceData, dataName, columns) => {
+    let tableData
+    //TODO find 
+    traceData.forEach((traceDatum) => {
+        traceData[dataName][Object.keys(traceData[tableObj.trace.name])[0]]
+
+    }); 
     tableData = convertDotKeysToNestedObject(tableData)["columns"];
     const columnData = [];
-    tableObj.columns.forEach((column) => {
+    columns.forEach((column) => {
         const columnName = column['column'];
         const columnRows = tableData[columnName];
         columnRows.forEach((rowData, index) => {

@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional, Union
 from .trace import Trace
 from pydantic import Field
 from .base.named_model import NamedModel
@@ -53,20 +53,22 @@ class Table(NamedModel, ParentModel):
         traces:
           - ref(pre-table-trace)
         columns:
-          - header: "Project Name"
-            column: project_name
-          - header: "Project Created At"
-            column: project_created_at
-          - header: "Project Json"
-            column: project_json
-          - header: "CLI Version"
-            column: cli_version
-          - header: "Stage Name"
-            column: stage_name
-          - header: "Account Name"
-            column: account_name
-          - header: "Account Name"
-            column: stage_archived
+          - trace_name: pre-table-trace
+            labels:
+            - header: "Project Name"
+              column: project_name
+            - header: "Project Created At"
+              column: project_created_at
+            - header: "Project Json"
+              column: project_json
+            - header: "CLI Version"
+              column: cli_version
+            - header: "Stage Name"
+              column: stage_name
+            - header: "Account Name"
+              column: account_name
+            - header: "Account Name"
+              column: stage_archived
     ```
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
@@ -76,8 +78,7 @@ class Table(NamedModel, ParentModel):
         description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
     )
 
-    columns: List[dict] = Field(
-        ...,
+    columns: Optional[List[dict]] = Field(
         description="A list of dictionaries that contain the keys `header` and `column`. `header` is the title of the column in the table. `column` is the column name from the trace that you want to include in the table.",
     )
 
