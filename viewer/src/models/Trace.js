@@ -2,6 +2,18 @@ import { merge } from 'lodash';
 
 const COLUMN_REGEX = /column\((.+)\)(\[(-?\d*):?(-?\d*)\]|)/
 
+export const traceNamesInData = (tracesData) => {
+    return Object.keys(tracesData);
+}
+
+export const cohortNamesInData = (tracesData) => {
+    return Object.keys(tracesData).map((traceName) => {
+        return Object.keys(tracesData[traceName]).map((cohortName) => {
+            return cohortName
+        })
+    }).flat()
+}
+
 const convertDotKeysToNestedObject = (flatObject) => {
     const nestedObject = {};
     for (let key in flatObject) {
@@ -59,25 +71,18 @@ export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) =>
     return mergedTraceAndNestedData;
 };
 
-export const cleanedPlotData = (traceData, traceObj) => {
-    return Object.keys(traceData[traceObj.name]).map((cohortOn) => {
-        const traceDatum = convertDotKeysToNestedObject(traceData[traceObj.name][cohortOn])
+export const chartDataFromCohortData = (cohortData, trace, cohortName) => {
+    const traceDatum = convertDotKeysToNestedObject(cohortData)
 
-        return mergeStaticPropertiesAndData(traceObj.props, traceDatum, cohortOn)
-    })
-};
+    return mergeStaticPropertiesAndData(trace.props, traceDatum, cohortName)
+}
 
-export const cleanedTableData = (traceData, dataName, columns) => {
-    let tableData
-    //TODO find 
-    traceData.forEach((traceDatum) => {
-        // traceData[dataName][Object.keys(traceData[tableObj.trace.name])[0]]
-    });
-    tableData = convertDotKeysToNestedObject(tableData)["columns"];
+// Table data is an array of objects where the key matches the accessorKey of the column.
+export const tableDataFromCohortData = (tableCohort, columns) => {
     const columnData = [];
     columns.forEach((column) => {
-        const columnName = column['column'];
-        const columnRows = tableData[columnName];
+        const columnName = column['accessorKey'];
+        const columnRows = tableCohort[columnName];
         columnRows.forEach((rowData, index) => {
             if (columnData.length < index + 1) {
                 columnData.push({});
@@ -86,19 +91,18 @@ export const cleanedTableData = (traceData, dataName, columns) => {
             row[columnName] = rowData;
         });
     });
-
     return columnData;
 };
 
-export const column = (table, traceData) => {
-    let columns
+export const tableColumns = (table, tableCohort) => {
+    let columns = []
     if (!table.columns) {
         columns = table.columns.map((column) => {
             return { accessorKey: column.column, ...column }
         })
-    } else if (traceData && traceData.length > 0) {
-        columns = Object.keys(traceData[0]).map((key) => {
-            return { accessorKey: key, header: key }
+    } else if (tableCohort) {
+        columns = Object.keys(tableCohort).map((key) => {
+            return { accessorKey: key, header: key.split('.').slice(-1)[0].replace('_', '') }
         })
     }
     return columns;

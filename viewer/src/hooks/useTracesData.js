@@ -17,12 +17,11 @@ export const useTracesData = (projectId, traceNames) => {
 
     useEffect(() => {
         const waitForData = async () => {
-            const temp = await fetchTracesData(traces)
-            console.log(traceNames)
-            //This is not filtering
-            setTraceData(filterObject(temp, traceNames));
+            const fetchedTracesData = await fetchTracesData(traces)
+            setTraceData(filterObject(fetchedTracesData, traceNames));
         }
         if (traces) {
+            console.log("traces")
             waitForData()
         }
     }, [traces, traceNames]);

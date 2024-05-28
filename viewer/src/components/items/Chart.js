@@ -2,11 +2,10 @@ import Loading from "../Loading";
 import Menu from "./Menu"
 import Plot from 'react-plotly.js';
 import React, { useState } from "react";
-import TraceSelect from "./TraceSelect";
+import CohortSelect from "./CohortSelect";
+import { traceNamesInData, chartDataFromCohortData } from "../../models/Trace";
 import tw from "tailwind-styled-components"
-import { cleanedPlotData } from '../../models/Trace'
 import { useTracesData } from "../../hooks/useTracesData";
-
 import MenuItem from "../styled/MenuItem";
 
 export const ChartContainer = tw.div`
@@ -18,29 +17,28 @@ const Chart = (props) => {
     const tracesData = useTracesData(props.project.id, traceNames)
     const [hovering, setHovering] = useState(false)
 
-    const [selectedPlotData, setSelectedPlotData] = useState([])
-
-    const plotData = () => {
-        return props.chart.traces.map((trace) => {
-            return cleanedPlotData(tracesData, trace)
-        }).flat();
-    }
+    const [selectedCohortData, setSelectedCohortData] = useState([])
 
     if (!tracesData) {
         return <Loading text={props.chart.name} width={props.itemWidth} />
     }
 
-    const initialPlotData = plotData()
+    const selectedPlotData = traceNamesInData(selectedCohortData).map((traceName) => {
+        const trace = props.chart.traces.find((trace) => trace.name === traceName)
+        return Object.keys(selectedCohortData[traceName]).map((cohortName) => {
+            return chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
+        })
+    }).flat();
 
     const onSelectedCohortChange = (changedSelectedTracesData) => {
-        setSelectedPlotData(changedSelectedTracesData)
+        setSelectedCohortData(changedSelectedTracesData)
     }
 
     return (
         <ChartContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering}>
                 <MenuItem>
-                    <TraceSelect plotData={initialPlotData} onChange={onSelectedCohortChange} isMulti={true} />
+                    <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={true} />
                 </MenuItem>
             </Menu>
             <Plot
