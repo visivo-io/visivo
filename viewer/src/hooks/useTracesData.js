@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import FetchTracesQueryContext from "../contexts/FetchTracesQueryContext";
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query';
 import { fetchTracesData } from "../queries/tracesData";
 
 function filterObject(obj, keys) {
@@ -10,24 +10,24 @@ function filterObject(obj, keys) {
 }
 
 export const useTracesData = (projectId, traceNames) => {
-    const fetchTraceQuery = useContext(FetchTracesQueryContext)
-    const [traceData, setTraceData] = useState(null)
+    const fetchTraceQuery = useContext(FetchTracesQueryContext);
+    const [traceData, setTraceData] = useState(null);
 
-    const { data: traces } = useQuery(fetchTraceQuery(projectId, traceNames))
+    const memoizedTraceNames = useMemo(() => traceNames, [traceNames.join(",")]);
+
+    console.log(memoizedTraceNames)
+
+    const { data: traces } = useQuery(fetchTraceQuery(projectId, memoizedTraceNames));
 
     useEffect(() => {
         const waitForData = async () => {
-            const fetchedTracesData = await fetchTracesData(traces)
-            setTraceData(filterObject(fetchedTracesData, traceNames));
-        }
+            const fetchedTracesData = await fetchTracesData(traces);
+            setTraceData(filterObject(fetchedTracesData, memoizedTraceNames));
+        };
         if (traces) {
-            console.log("traces")
-            waitForData()
+            waitForData();
         }
-    }, [traces, traceNames]);
+    }, [traces, memoizedTraceNames]);
 
-    if (!traceData) {
-        return null
-    }
     return traceData;
 };

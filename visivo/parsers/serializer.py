@@ -21,34 +21,22 @@ class Serializer:
         for dashboard in project.dashboards:
 
             def replace_item_ref(item):
-                if item.chart:
-                    item.chart = ParentModel.all_descendants_of_type(
-                        type=Chart, dag=dag, from_node=item
-                    )[0]
-                    item.chart.traces = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=item.chart
-                    )
-                    for trace in item.chart.traces:
-                        trace.model = ParentModel.all_descendants_of_type(
-                            type=Model, dag=dag, from_node=trace
+                if item.chart or item.table:
+                    if item.chart:
+                        item.chart = ParentModel.all_descendants_of_type(
+                            type=Chart, dag=dag, from_node=item
                         )[0]
-                        if hasattr(trace.model, "target"):
-                            trace.model.target = ParentModel.all_descendants_of_type(
-                                type=Target, dag=dag, from_node=trace.model
-                            )[0]
-                        if hasattr(trace.model, "models"):
-                            trace.model.models = ParentModel.all_descendants_of_type(
-                                type=Model, dag=dag, from_node=trace.model
-                            )
+                        component = item.chart
+                    else:
+                        item.table = ParentModel.all_descendants_of_type(
+                            type=Table, dag=dag, from_node=item
+                        )[0]
+                        component = item.table
 
-                if item.table:
-                    item.table = ParentModel.all_descendants_of_type(
-                        type=Table, dag=dag, from_node=item
-                    )[0]
-                    item.table.traces = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=item.chart
+                    component.traces = ParentModel.all_descendants_of_type(
+                        type=Trace, dag=dag, from_node=component
                     )
-                    for trace in item.table.traces:
+                    for trace in component.traces:
                         trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
                         )[0]
