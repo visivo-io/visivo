@@ -15,8 +15,6 @@ export const TableContainer = tw.div`
 
 const Table = ({ table, project, itemWidth, height, width }) => {
     const traceNames = table.traces.map((trace) => trace.name)
-    console.log("Table")
-    console.log(traceNames)
     const tracesData = useTracesData(project.id, traceNames)
     const [hovering, setHovering] = useState(false)
     const [selectedTableCohort, setSelectedTableCohort] = useState(null)

@@ -15,8 +15,6 @@ export const useTracesData = (projectId, traceNames) => {
 
     const memoizedTraceNames = useMemo(() => traceNames, [traceNames.join(",")]);
 
-    console.log(memoizedTraceNames)
-
     const { data: traces } = useQuery(fetchTraceQuery(projectId, memoizedTraceNames));
 
     useEffect(() => {
