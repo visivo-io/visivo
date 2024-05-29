@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Table from './Table';
 import * as useTracesData from '../../hooks/useTracesData';
+import { withProviders } from '../../utils/test-utils';
 
 let table;
 
@@ -31,6 +32,8 @@ test('renders table', async () => {
     }
   };
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
   render(<Table table={table} project={{ id: 1 }} />);
 
