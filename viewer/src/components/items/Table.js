@@ -1,6 +1,4 @@
 import Loading from "../Loading";
-import Menu from "./Menu"
-import MenuItem from "../styled/MenuItem";
 import React, { useEffect, useState } from "react";
 import { tableDataFromCohortData, tableColumnsWithDot, tableColumnsWithUnderscores } from '../../models/Table'
 import { createTheme, ThemeProvider } from '@mui/material';
@@ -31,13 +29,13 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
     useEffect(() => {
         if (selectedTableCohort && tracesData) {
-            setColumns(tableColumnsWithDot(table, selectedTableCohort))
+            setColumns(tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.name))
         }
     }, [selectedTableCohort, tracesData, table]);
 
     useEffect(() => {
         if (selectedTableCohort && columns) {
-            setTableData(tableDataFromCohortData(selectedTableCohort, columns))
+            setTableData(tableDataFromCohortData(selectedTableCohort.data, columns))
         }
     }, [selectedTableCohort, columns]);
 
