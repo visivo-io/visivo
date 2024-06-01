@@ -17,14 +17,19 @@ export const tableDataFromCohortData = (tableCohort, columns) => {
 
 
 export const tableColumnsWithDot = (table, tableCohort) => {
+    const getHeaderFromKey = (key) => {
+        return key.split('.').slice(-1)[0].replace('_', ' ')
+    }
+
     let columns = []
-    if (!table.columns) {
+    if (table.columns) {
         columns = table.columns.map((column) => {
-            return { accessorKey: column.column, ...column }
+            const header = 'header' in column ? column.header : getHeaderFromKey(column.key)
+            return { accessorKey: column.key, header }
         })
     } else if (tableCohort) {
         columns = Object.keys(tableCohort).map((key) => {
-            return { accessorKey: key, header: key.split('.').slice(-1)[0].replace('_', ' ') }
+            return { accessorKey: key, header: getHeaderFromKey(key) }
         })
     }
     return columns;
