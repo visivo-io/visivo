@@ -13,7 +13,7 @@ export const useTracesData = (projectId, traceNames) => {
     const fetchTraceQuery = useContext(FetchTracesQueryContext);
     const [traceData, setTraceData] = useState(null);
 
-    const memoizedTraceNames = useMemo(() => traceNames, [traceNames.join(",")]);
+    const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(",")]);
 
     const { data: traces } = useQuery(fetchTraceQuery(projectId, memoizedTraceNames));
 

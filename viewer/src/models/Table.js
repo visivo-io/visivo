@@ -16,14 +16,15 @@ export const tableDataFromCohortData = (tableCohort, columns) => {
 };
 
 
-export const tableColumnsWithDot = (table, tableCohort) => {
+export const tableColumnsWithDot = (table, tableCohort, cohortName) => {
     const getHeaderFromKey = (key) => {
         return key.split('.').slice(-1)[0].replace('_', ' ')
     }
 
     let columns = []
-    if (table.columns) {
-        columns = table.columns.map((column) => {
+    let tableColumns = table.columns ? table.columns.find((column) => column.cohort_name === cohortName) : null
+    if (tableColumns) {
+        columns = tableColumns.column_defs.map((column) => {
             const header = 'header' in column ? column.header : getHeaderFromKey(column.key)
             return { accessorKey: column.key, header }
         })

@@ -11,12 +11,16 @@ beforeEach(() => {
     props: { enable_column_dragging: true },
     columns: [
       {
-        header: "Widget Type",
-        column: "x_data",
-        enable_grouping: true
+        cohort_name: "cohortName",
+        column_defs: [
+          {
+            header: "Widget Type",
+            key: "columns.x_data",
+          }
+        ]
       }
     ],
-    trace: { name: "traceName", columns: { x_data: "x" } }
+    traces: [{ name: "traceName", columns: { x_data: "x" } }]
   }
 });
 
@@ -33,9 +37,8 @@ test('renders table', async () => {
   };
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
 
+  //Have it return traces.
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
-
-  render(<Table table={table} project={{ id: 1 }} />);
 
   await waitFor(() => {
     expect(screen.getByText('Widget Type')).toBeInTheDocument();
