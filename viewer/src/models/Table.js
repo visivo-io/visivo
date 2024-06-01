@@ -4,13 +4,15 @@ export const tableDataFromCohortData = (tableCohort, columns) => {
     columns.forEach((column) => {
         const columnName = column['accessorKey'];
         const columnRows = tableCohort[columnName];
-        columnRows.forEach((rowData, index) => {
-            if (columnData.length < index + 1) {
-                columnData.push({});
-            }
-            const row = columnData[index];
-            row[columnName.replace(".", "_")] = rowData;
-        });
+        if (columnName && columnRows) {
+            columnRows.forEach((rowData, index) => {
+                if (columnData.length < index + 1) {
+                    columnData.push({});
+                }
+                const row = columnData[index];
+                row[columnName.replace(".", "_")] = rowData;
+            });
+        }
     });
     return columnData;
 };

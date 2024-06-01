@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-pascal-case */
 import Loading from "../Loading";
 import React, { useEffect, useState } from "react";
 import { tableDataFromCohortData, tableColumnsWithDot, tableColumnsWithUnderscores } from '../../models/Table'

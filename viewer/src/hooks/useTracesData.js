@@ -13,6 +13,7 @@ export const useTracesData = (projectId, traceNames) => {
     const fetchTraceQuery = useContext(FetchTracesQueryContext);
     const [traceData, setTraceData] = useState(null);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(",")]);
 
     const { data: traces } = useQuery(fetchTraceQuery(projectId, memoizedTraceNames));
