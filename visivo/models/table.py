@@ -1,10 +1,11 @@
-from typing import List, Optional, Union
+from typing import List, Optional
+
+from visivo.models.table_columns import TableColumns
 from .trace import Trace
 from pydantic import Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import REF_REGEX, generate_ref_field
-from typing_extensions import Annotated
 
 
 class Table(NamedModel, ParentModel):
@@ -14,7 +15,7 @@ class Table(NamedModel, ParentModel):
     Since tables sit on top of trace data, the steps to create a table from scratch are as follows:
 
     1. Create a model.
-    1. Create a trace with columns that references your model.
+    1. Create a trace with columns or props that references your model.
     1. Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.
 
     ??? note
@@ -53,22 +54,22 @@ class Table(NamedModel, ParentModel):
         traces:
           - ref(pre-table-trace)
         columns:
-          - trace_name: pre-table-trace
-            labels:
+          - cohort_name: pre-table-trace
+            column_defs:
             - header: "Project Name"
-              column: project_name
+              key: columns.project_name
             - header: "Project Created At"
-              column: project_created_at
+              key: columns.project_created_at
             - header: "Project Json"
-              column: project_json
+              key: columns.project_json
             - header: "CLI Version"
-              column: cli_version
+              key: columns.cli_version
             - header: "Stage Name"
-              column: stage_name
+              key: columns.stage_name
             - header: "Account Name"
-              column: account_name
+              key: columns.account_name
             - header: "Account Name"
-              column: stage_archived
+              key: columns.stage_archived
     ```
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
@@ -78,7 +79,7 @@ class Table(NamedModel, ParentModel):
         description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
     )
 
-    columns: Optional[List[dict]] = Field(
+    columns: Optional[List[TableColumns]] = Field(
         description="A list of dictionaries that contain the keys `header` and `column`. `header` is the title of the column in the table. `column` is the column name from the trace that you want to include in the table.",
     )
 

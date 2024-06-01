@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import Field
 from pathlib import Path
 
@@ -6,9 +6,9 @@ from visivo.models.base.base_model import BaseModel
 
 
 class TableColumn(BaseModel):
-    header: str = Field(
+    header: Optional[str] = Field(
         None,
-        description="The name of the trace or cohort that the column defs apply to.",
+        description="The display name of the column.  Defaults to readable key name.",
     )
     key: str = Field(
         None,
@@ -18,17 +18,15 @@ class TableColumn(BaseModel):
 
 class TableColumns(BaseModel):
     """
-    Include's can be used to break apart a project file with references to other files. This includes files from remote github repositories.
-
-    [Read more about includes here ](including.md)
+    Table columns allow you to display a subset of the available cohorts data.
     """
 
-    data_name: str = Field(
+    cohort_name: str = Field(
         None,
         description="The name of the trace or cohort that the column defs apply to.",
     )
-    columns_def: List[TableColumn] = Field(
-        description="A list of dictionaries that contain the keys `header` and `column`. `header` is the title of the column in the table. `column` is the column name from the trace that you want to include in the table.",
+    column_defs: List[TableColumn] = Field(
+        description="A list of column definitions that contain `header` and `key`. `header` is the title of the column in the table. `key` is the path to the array property you want to include.  For example 'props.x' or 'columns.x_data'.",
     )
 
     @property
