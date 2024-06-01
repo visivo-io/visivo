@@ -24,7 +24,7 @@ export const tableColumnsWithDot = (table, tableCohort, traceName) => {
     let columns = []
     let tableColumns = table.column_defs ? table.column_defs.find((column_def) => column_def.trace_name === traceName) : null
     if (tableColumns) {
-        columns = tableColumns.column_defs.map((column) => {
+        columns = tableColumns.columns.map((column) => {
             const header = 'header' in column ? column.header : getHeaderFromKey(column.key)
             return { accessorKey: column.key, header }
         })

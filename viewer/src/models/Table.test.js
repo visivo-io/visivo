@@ -9,7 +9,7 @@ describe('tableColumnsWithDot', () => {
     const table = {
       column_defs: [
         {
-          table_name: "cohort",
+          trace_name: "cohort",
           columns: [
             { key: 'name', header: 'Name' },
             { key: 'age', header: 'Age' }

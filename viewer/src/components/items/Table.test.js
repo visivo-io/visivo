@@ -11,7 +11,7 @@ beforeEach(() => {
     props: { enable_column_dragging: true },
     column_defs: [
       {
-        trace_name: "cohortName",
+        trace_name: "traceName",
         columns: [
           {
             header: "Widget Type",
