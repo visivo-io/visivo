@@ -9,10 +9,10 @@ beforeEach(() => {
   table = {
     name: "name",
     props: { enable_column_dragging: true },
-    columns: [
+    column_defs: [
       {
-        cohort_name: "cohortName",
-        column_defs: [
+        trace_name: "cohortName",
+        columns: [
           {
             header: "Widget Type",
             key: "columns.x_data",

@@ -29,7 +29,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
     useEffect(() => {
         if (selectedTableCohort && tracesData) {
-            setColumns(tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.name))
+            setColumns(tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName))
         }
     }, [selectedTableCohort, tracesData, table]);
 
@@ -60,7 +60,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     const onSelectedCohortChange = (changedSelectedTracesData) => {
         const traceName = Object.keys(changedSelectedTracesData)[0]
         const cohortName = Object.keys(changedSelectedTracesData[traceName])[0]
-        setSelectedTableCohort({ name: cohortName, data: changedSelectedTracesData[traceName][cohortName] })
+        setSelectedTableCohort({ traceName, data: changedSelectedTracesData[traceName][cohortName] })
     }
 
     return (

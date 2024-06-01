@@ -16,16 +16,16 @@ class TableColumn(BaseModel):
     )
 
 
-class TableColumns(BaseModel):
+class TableColumnDefinition(BaseModel):
     """
-    Table columns allow you to display a subset of the available cohorts data.
+    Table columns allow you to display a subset of the available trace data.
     """
 
-    cohort_name: str = Field(
+    trace_name: str = Field(
         None,
-        description="The name of the trace or cohort that the column defs apply to.",
+        description="The name of the trace that the column defs apply to.",
     )
-    column_defs: List[TableColumn] = Field(
+    columns: List[TableColumn] = Field(
         description="A list of column definitions that contain `header` and `key`. `header` is the title of the column in the table. `key` is the path to the array property you want to include.  For example 'props.x' or 'columns.x_data'.",
     )
 

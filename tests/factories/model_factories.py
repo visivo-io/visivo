@@ -143,7 +143,7 @@ class TableFactory(factory.Factory):
         model = Table
 
     name = "table"
-    columns = []
+    column_defs = []
     traces = factory.List([factory.SubFactory(TraceFactory) for _ in range(1)])
 
 

@@ -16,13 +16,13 @@ export const tableDataFromCohortData = (tableCohort, columns) => {
 };
 
 
-export const tableColumnsWithDot = (table, tableCohort, cohortName) => {
+export const tableColumnsWithDot = (table, tableCohort, traceName) => {
     const getHeaderFromKey = (key) => {
         return key.split('.').slice(-1)[0].replace('_', ' ')
     }
 
     let columns = []
-    let tableColumns = table.columns ? table.columns.find((column) => column.cohort_name === cohortName) : null
+    let tableColumns = table.column_defs ? table.column_defs.find((column_def) => column_def.trace_name === traceName) : null
     if (tableColumns) {
         columns = tableColumns.column_defs.map((column) => {
             const header = 'header' in column ? column.header : getHeaderFromKey(column.key)

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from visivo.models.table_columns import TableColumns
+from visivo.models.table_column_definition import TableColumnDefinition
 from .trace import Trace
 from pydantic import Field
 from .base.named_model import NamedModel
@@ -53,9 +53,9 @@ class Table(NamedModel, ParentModel):
       - name: latest-projects-table
         traces:
           - ref(pre-table-trace)
-        columns:
-          - cohort_name: pre-table-trace
-            column_defs:
+        column_defs:
+          - trace_name: pre-table-trace
+            columns:
             - header: "Project Name"
               key: columns.project_name
             - header: "Project Created At"
@@ -79,8 +79,8 @@ class Table(NamedModel, ParentModel):
         description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
     )
 
-    columns: Optional[List[TableColumns]] = Field(
-        description="A list of dictionaries that contain the keys `header` and `column`. `header` is the title of the column in the table. `column` is the column name from the trace that you want to include in the table.",
+    column_defs: Optional[List[TableColumnDefinition]] = Field(
+        description="A list of column definitions. These definitions define the columns for a given trace included in this table.",
     )
 
     def child_items(self):

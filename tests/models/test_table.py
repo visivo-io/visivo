@@ -5,7 +5,7 @@ import pytest
 
 
 def test_Table_simple_data():
-    data = {"name": "development", "columns": []}
+    data = {"name": "development", "column_defs": []}
     table = Table(**data)
     assert table.name == "development"
 
@@ -13,7 +13,7 @@ def test_Table_simple_data():
 def test_Table_with_trace_simple_data():
     data = {
         "name": "development",
-        "columns": [],
+        "column_defs": [],
         "traces": [
             {
                 "name": "Trace Name",
@@ -36,20 +36,20 @@ def test_Table_with_columns_with_header():
                 "model": {"sql": "select * from table"},
             }
         ],
-        "columns": [
+        "column_defs": [
             {
-                "cohort_name": "Trace Name",
-                "column_defs": [{"header": "X Value", "key": "props.x"}],
+                "trace_name": "Trace Name",
+                "columns": [{"header": "X Value", "key": "props.x"}],
             }
         ],
     }
     table = Table(**data)
-    assert table.columns[0].cohort_name == "Trace Name"
-    assert table.columns[0].column_defs[0].header == "X Value"
+    assert table.column_defs[0].trace_name == "Trace Name"
+    assert table.column_defs[0].columns[0].header == "X Value"
 
 
 def test_Table_ref_string():
-    table = Table(traces=["ref(trace)"], columns=[])
+    table = Table(traces=["ref(trace)"], column_defs=[])
     assert table.traces[0] == "ref(trace)"
 
     with pytest.raises(ValidationError) as exc_info:

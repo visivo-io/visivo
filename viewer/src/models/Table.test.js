@@ -7,10 +7,10 @@ describe('tableColumnsWithDot', () => {
   // returns columns with accessorKey when table.columns is defined
   it('should return columns with accessorKey when table.columns is defined', () => {
     const table = {
-      columns: [
+      column_defs: [
         {
-          cohort_name: "cohort",
-          column_defs: [
+          table_name: "cohort",
+          columns: [
             { key: 'name', header: 'Name' },
             { key: 'age', header: 'Age' }
           ]
@@ -26,10 +26,10 @@ describe('tableColumnsWithDot', () => {
 
   it('should return columns with accessorKey when table.columns without header is defined', () => {
     const table = {
-      columns: [
+      column_defs: [
         {
-          cohort_name: "cohort",
-          column_defs: [
+          trace_name: "cohort",
+          columns: [
             { key: 'name' },
             { key: 'age' }
           ]
@@ -45,7 +45,7 @@ describe('tableColumnsWithDot', () => {
 
   it('should handle empty table.columns array correctly', () => {
     const table = {
-      columns: []
+      column_defs: []
     };
     const result = tableColumnsWithDot(table, null);
     expect(result).toEqual([]);

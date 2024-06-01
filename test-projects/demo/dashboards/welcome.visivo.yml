@@ -73,9 +73,9 @@ dashboards:
               name: Fibonacci Waterfall Table
               traces:
                 - ref(Fibonacci Waterfall Trace)
-              columns:
+              columns_defs:
                 - trace_name: Fibonacci Waterfall Trace
-                  column_defs:
+                  columns:
                     - header: Widget Type
                       key: columns.x_data
                     - header: Widget Sales
