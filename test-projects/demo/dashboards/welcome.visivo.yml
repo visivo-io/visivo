@@ -71,9 +71,14 @@ dashboards:
           - width: 2
             table:
               name: Fibonacci Waterfall Table
-              trace: ref(Fibonacci Waterfall Trace)
-              columns:
-                - header: Widget Type
-                  column: x_data
-                - header: Widget Sales
-                  column: y_data
+              traces:
+                - ref(Fibonacci Waterfall Trace)
+              column_defs:
+                - trace_name: Fibonacci Waterfall Trace
+                  columns:
+                    - header: Widget Type
+                      key: columns.x_data
+                    - header: Widget Sales
+                      key: columns.y_data
+                    - header: Dollars
+                      key: props.text

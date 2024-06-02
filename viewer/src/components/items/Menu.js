@@ -19,7 +19,7 @@ const Menu = ({ children, hovering }) => {
                 <FontAwesomeIcon icon={showMenu ? faCircleChevronUp : faCircleChevronDown} />
             </button>
             <div style={{ visibility: showMenu && hovering ? "visible" : "hidden" }} className="absolute top-10 right-0 z-20 bg-white w-80 divide-y divide-gray-100 rounded-lg shadow">
-                <ul className="py-2 text-sm text-gray-700 dark:text-gray-200" aria-labelledby="dropdownDefaultButton">
+                <ul className="py-2 text-sm text-gray-700" aria-labelledby="dropdownDefaultButton">
                     {children}
                 </ul>
             </div>

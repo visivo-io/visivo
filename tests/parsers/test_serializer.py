@@ -74,12 +74,12 @@ def test_Serializer_with_table_trace_ref():
     trace = TraceFactory(name="trace_name")
     trace.model.name = "second_model"
     dashboard = DashboardFactory(table_item=True)
-    dashboard.rows[0].items[0].table.trace = "ref(trace_name)"
+    dashboard.rows[0].items[0].table.traces[0] = "ref(trace_name)"
     project = ProjectFactory(dashboards=[dashboard], traces=[trace])
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.traces == []
-    assert project.dashboards[0].rows[0].items[0].table.trace.name == "trace_name"
+    assert project.dashboards[0].rows[0].items[0].table.traces[0].name == "trace_name"
 
 
 def test_Serializer_with_model_ref():
@@ -97,11 +97,14 @@ def test_Serializer_with_model_ref():
 def test_Serializer_with_table_model_ref():
     model = SqlModelFactory(name="model_name")
     project = ProjectFactory(table_item=True, models=[model])
-    project.dashboards[0].rows[0].items[0].table.trace.model = "ref(model_name)"
+    project.dashboards[0].rows[0].items[0].table.traces[0].model = "ref(model_name)"
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.traces == []
-    assert project.dashboards[0].rows[0].items[0].table.trace.model.name == "model_name"
+    assert (
+        project.dashboards[0].rows[0].items[0].table.traces[0].model.name
+        == "model_name"
+    )
 
 
 def test_Serializer_with_refs_does_not_change_original():
