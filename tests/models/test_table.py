@@ -58,3 +58,32 @@ def test_Table_ref_string():
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"String should match pattern '{REF_REGEX}'"
     assert error["type"] == "string_pattern_mismatch"
+
+
+def test_Table_column_def_not_present():
+    data = {
+        "name": "development",
+        "traces": [
+            {
+                "name": "Trace Name",
+                "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+                "model": {"sql": "select * from table"},
+            }
+        ],
+        "column_defs": [
+            {
+                "trace_name": "N/A",
+                "columns": [{"header": "X Value", "key": "props.x"}],
+            }
+        ],
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        Table(**data)
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == f"Value error, Column def trace name 'N/A' is not present in trace list on table."
+    )
+    assert error["type"] == "value_error"

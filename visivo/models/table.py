@@ -6,6 +6,7 @@ from pydantic import Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import REF_REGEX, generate_ref_field
+from pydantic import model_validator
 
 
 class Table(NamedModel, ParentModel):
@@ -94,3 +95,20 @@ class Table(NamedModel, ParentModel):
     @property
     def trace_refs(self) -> List[str]:
         return list(filter(Trace.is_ref, self.traces))
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_column_defs(cls, data: any):
+        traces, column_defs = (data.get("traces"), data.get("column_defs"))
+
+        if not column_defs:
+            return data
+
+        column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
+        traces_trace_names = list(map(lambda t: t["name"], traces))
+        for column_defs_trace_name in column_defs_trace_names:
+            if not column_defs_trace_name in traces_trace_names:
+                raise ValueError(
+                    f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
+                )
+        return data
