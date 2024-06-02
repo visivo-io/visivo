@@ -80,6 +80,7 @@ class Table(NamedModel, ParentModel):
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(
+        None,
         description="A list of column definitions. These definitions define the columns for a given trace included in this table.",
     )
 
