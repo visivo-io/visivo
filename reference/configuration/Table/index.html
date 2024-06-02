@@ -1569,6 +1569,8 @@
           
         
       
+        
+      
     
     
       
@@ -1593,6 +1595,11 @@
 
             </a>
             
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_4_2_7" id="__nav_4_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
           </div>
         
         <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_7_label" aria-expanded="true">
@@ -1602,6 +1609,27 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Traces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
               
             
           </ul>
@@ -5092,7 +5120,7 @@
 <p>Since tables sit on top of trace data, the steps to create a table from scratch are as follows:</p>
 <ol>
 <li>Create a model.</li>
-<li>Create a trace with columns that references your model.</li>
+<li>Create a trace with columns or props that references your model.</li>
 <li>Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.</li>
 </ol>
 <details class="note">
@@ -5127,22 +5155,25 @@
 <span class="w">        </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(project_name)</span>
 <span class="nt">tables</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest-projects-table</span>
-<span class="w">    </span><span class="nt">trace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(pre-table-trace)</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Name&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_name</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Created</span><span class="nv"> </span><span class="s">At&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_created_at</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Json&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">project_json</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CLI</span><span class="nv"> </span><span class="s">Version&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cli_version</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Stage</span><span class="nv"> </span><span class="s">Name&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stage_name</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Account</span><span class="nv"> </span><span class="s">Name&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">account_name</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Account</span><span class="nv"> </span><span class="s">Name&quot;</span>
-<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">stage_archived</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(pre-table-trace)</span>
+<span class="w">    </span><span class="nt">column_defs</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">trace_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pre-table-trace</span>
+<span class="w">        </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.project_name</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Created</span><span class="nv"> </span><span class="s">At&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.project_created_at</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Project</span><span class="nv"> </span><span class="s">Json&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.project_json</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;CLI</span><span class="nv"> </span><span class="s">Version&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.cli_version</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Stage</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.stage_name</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Account</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.account_name</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Account</span><span class="nv"> </span><span class="s">Name&quot;</span>
+<span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.stage_archived</span>
 </code></pre></div>
 Tables are built on the <a href="https://www.material-react-table.com/">material react table framework</a>.</p>
 <h2 id="attributes">Attributes</h2>
@@ -5163,16 +5194,16 @@ Tables are built on the <a href="https://www.material-react-table.com/">material
 <td>The unique name of the object across the entire project.</td>
 </tr>
 <tr>
-<td>trace</td>
-<td></td>
-<td>None</td>
-<td>A ref() to a trace or trace defined in line. Data for the table will come from the trace.</td>
+<td>traces</td>
+<td>Array of <a href="https://docs.visivo.io/reference/configuration/Trace/">Trace</a></td>
+<td>[]</td>
+<td>A ref() to a trace or trace defined in line.  Data for the table will come from the trace.</td>
 </tr>
 <tr>
-<td>columns</td>
-<td>array</td>
+<td>column_defs</td>
+<td>Any of: <a href="https://docs.visivo.io/reference/configuration/Table/">Table</a>ColumnDefinition, array</td>
 <td>None</td>
-<td>A list of dictionaries that contain the keys <code>header</code> and <code>column</code>. <code>header</code> is the title of the column in the table. <code>column</code> is the column name from the trace that you want to include in the table.</td>
+<td>A list of column definitions. These definitions define the columns for a given trace included in this table.</td>
 </tr>
 </tbody>
 </table>
