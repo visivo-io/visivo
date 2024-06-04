@@ -12,19 +12,19 @@ export const ChartContainer = tw.div`
     relative
 `;
 
-const Chart = (props) => {
-    const traceNames = props.chart.traces.map((trace) => trace.name)
-    const tracesData = useTracesData(props.project.id, traceNames)
+const Chart = ({ chart, project, itemWidth, height, width }) => {
+    const traceNames = chart.traces.map((trace) => trace.name)
+    const tracesData = useTracesData(project.id, traceNames)
     const [hovering, setHovering] = useState(false)
 
     const [selectedCohortData, setSelectedCohortData] = useState([])
 
     if (!tracesData) {
-        return <Loading text={props.chart.name} width={props.itemWidth} />
+        return <Loading text={chart.name} width={itemWidth} />
     }
 
     const selectedPlotData = traceNamesInData(selectedCohortData).map((traceName) => {
-        const trace = props.chart.traces.find((trace) => trace.name === traceName)
+        const trace = chart.traces.find((trace) => trace.name === traceName)
         return Object.keys(selectedCohortData[traceName]).map((cohortName) => {
             return chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
         })
@@ -38,14 +38,14 @@ const Chart = (props) => {
         <ChartContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering}>
                 <MenuItem>
-                    <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={true} />
+                    <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={true} name={chart.name} />
                 </MenuItem>
             </Menu>
             <Plot
-                key={`chart_${props.chart.name}`}
-                data-testid={`chart_${props.chart.name}`}
+                key={`chart_${chart.name}`}
+                data-testid={`chart_${chart.name}`}
                 data={selectedPlotData}
-                layout={{ ...props.chart.layout, height: props.height, width: props.width }}
+                layout={{ ...chart.layout, height, width }}
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
             />
