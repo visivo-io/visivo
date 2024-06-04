@@ -37,7 +37,6 @@ const TraceSelect = ({ onChange, tracesData, isMulti, showLabel, name }) => {
     const onSelectChange = (selectedOptions) => {
         setSearchParams((previousSearchParams) => {
             const newSearchParams = new URLSearchParams(previousSearchParams.toString())
-            console.log(JSON.stringify(searchParams))
             if (newSearchParams.has(name)) {
                 newSearchParams.delete(name)
             }
@@ -86,14 +85,10 @@ const TraceSelect = ({ onChange, tracesData, isMulti, showLabel, name }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
 
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     return (
         <>
             {showLabel && <label htmlFor='traceSelect'>Traces</label>}
-            <Select inputId="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />
+            <Select name="traceSelect" inputId="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />
         </>
     )
 }
