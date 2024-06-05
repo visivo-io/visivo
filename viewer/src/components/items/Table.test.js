@@ -46,3 +46,26 @@ test('renders table', async () => {
   expect(screen.getByText('value 1')).toBeInTheDocument();
   expect(screen.getByText('value 2')).toBeInTheDocument();
 });
+
+test('generate', async () => {
+  const traceData = {
+    "traceName": {
+      "cohortName": {
+        "columns.x_data": [
+          "value 1",
+          "value 2",
+        ]
+      }
+    }
+  };
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+
+  //Have it return traces.
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('Widget Type')).toBeInTheDocument();
+  });
+  expect(screen.getByText('value 1')).toBeInTheDocument();
+  expect(screen.getByText('value 2')).toBeInTheDocument();
+});

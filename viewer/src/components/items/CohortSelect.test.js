@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import CohortSelect from './CohortSelect'
+import CohortSelect, { generateNewSearchParams, generateNewTraceDataFromSelection } from './CohortSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
 
@@ -12,21 +12,6 @@ const tracesData = {
     "Cohort Name 3": {},
   }
 };
-
-
-let mockSearchParams = ''
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useSearchParams: () => {
-    return [
-      new URLSearchParams(mockSearchParams),
-      (newParams) => {
-        mockSearchParams = newParams(new URLSearchParams(mockSearchParams))
-      }
-    ]
-  }
-}));
 
 test('renders single select', async () => {
   let selectedTraceData = null;
@@ -58,7 +43,58 @@ test('renders multiselect select', async () => {
   expect(screen.getByText('Cohort Name 2')).toBeInTheDocument();
   const selectWrapper = screen.getByLabelText('Traces')
   await selectEvent.select(selectWrapper, 'Cohort Name 2')
-  await waitFor(() => {
-    expect(mockSearchParams).toEqual(new URLSearchParams({}))
-  })
+});
+
+describe('generateNewSearchParams', () => {
+  test('selects single choice', async () => {
+    const name = "Component"
+    const previousSearchParams = new URLSearchParams({ "Component": "value" })
+    const selectedOptions = { value: "selected", label: "selected" }
+    const defaultOptions = { value: "default", label: "default" }
+    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+
+    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "selected" }))
+  });
+
+  test('selects nothing when equal to default', async () => {
+    const name = "Component"
+    const previousSearchParams = new URLSearchParams({ "Component": "value" })
+    const selectedOptions = { value: "default", label: "default" }
+    const defaultOptions = { value: "default", label: "default" }
+    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+
+    expect(newSearchParams).toEqual(new URLSearchParams({}))
+  });
+
+  test('selects multi choice', async () => {
+    const name = "Component"
+    const previousSearchParams = new URLSearchParams({ "Component": "value" })
+    const selectedOptions = [{ value: "selected", label: "selected" }]
+    const defaultOptions = [{ value: "default", label: "default" }]
+    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+
+    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "selected" }))
+  });
+
+  test('selects no choices', async () => {
+    const name = "Component"
+    const previousSearchParams = new URLSearchParams({ "Component": "value" })
+    const selectedOptions = []
+    const defaultOptions = [{ value: "default", label: "default" }]
+    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+
+    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "NoCohorts" }))
+  });
+});
+
+describe('generateNewTraceDataFromSelection', () => {
+  test('no names given', async () => {
+    const newTracesData = generateNewTraceDataFromSelection(tracesData, null)
+    expect(newTracesData).toEqual({});
+  });
+
+  test('select object', async () => {
+    const newTracesData = generateNewTraceDataFromSelection(tracesData, ["Cohort Name 1"])
+    expect(newTracesData).toEqual({ "Trace Name 1": { "Cohort Name 1": {} } });
+  });
 });
