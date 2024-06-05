@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { FetchTracesQueryProvider } from '../contexts/FetchTracesQueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -22,10 +23,12 @@ export const withProviders = ({ children, traces = [] }) => {
     })
 
     return (
-        <FetchTracesQueryProvider value={fetchTraceQuery}>
-            <QueryClientProvider client={queryClient}>
-                {children}
-            </QueryClientProvider>
-        </FetchTracesQueryProvider>
+        <MemoryRouter>
+            <FetchTracesQueryProvider value={fetchTraceQuery}>
+                <QueryClientProvider client={queryClient}>
+                    {children}
+                </QueryClientProvider>
+            </FetchTracesQueryProvider>
+        </MemoryRouter>
     )
 }
