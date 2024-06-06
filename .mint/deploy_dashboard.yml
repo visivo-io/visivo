@@ -35,7 +35,7 @@ tasks:
     use: [install-visivo, code]
     run: |
       cd test-projects/integration
-      visivo version
+      visivo --version
       visivo run
     
   - key: deploy-ci-stage
