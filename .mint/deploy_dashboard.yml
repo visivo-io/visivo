@@ -47,6 +47,7 @@ tasks:
       gh pr comment ${{ init.pr-num }} -F deployed.txt --edit-last
     env: 
       VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+      GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
   
   - key: archive-ci-stage
     if: ${{ init.archive }}
@@ -57,3 +58,4 @@ tasks:
       gh pr comment ${{ init.pr-num }} --body "Archived stage associated with PR"
     env:
       VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+      GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
