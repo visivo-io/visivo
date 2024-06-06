@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Table from './Table';
 import * as useTracesData from '../../hooks/useTracesData';
+import { withProviders } from '../../utils/test-utils';
 
 let table;
 
@@ -8,14 +9,18 @@ beforeEach(() => {
   table = {
     name: "name",
     props: { enable_column_dragging: true },
-    columns: [
+    column_defs: [
       {
-        header: "Widget Type",
-        column: "x_data",
-        enable_grouping: true
+        trace_name: "traceName",
+        columns: [
+          {
+            header: "Widget Type",
+            key: "columns.x_data",
+          }
+        ]
       }
     ],
-    trace: { name: "traceName", columns: { x_data: "x" } }
+    traces: [{ name: "traceName", columns: { x_data: "x" } }]
   }
 });
 
@@ -32,7 +37,8 @@ test('renders table', async () => {
   };
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
 
-  render(<Table table={table} project={{ id: 1 }} />);
+  //Have it return traces.
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
   await waitFor(() => {
     expect(screen.getByText('Widget Type')).toBeInTheDocument();

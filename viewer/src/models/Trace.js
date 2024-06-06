@@ -2,6 +2,18 @@ import { merge } from 'lodash';
 
 const COLUMN_REGEX = /column\((.+)\)(\[(-?\d*):?(-?\d*)\]|)/
 
+export const traceNamesInData = (tracesData) => {
+    return Object.keys(tracesData);
+}
+
+export const cohortNamesInData = (tracesData) => {
+    return Object.keys(tracesData).map((traceName) => {
+        return Object.keys(tracesData[traceName]).map((cohortName) => {
+            return cohortName
+        })
+    }).flat()
+}
+
 const convertDotKeysToNestedObject = (flatObject) => {
     const nestedObject = {};
     for (let key in flatObject) {
@@ -59,29 +71,9 @@ export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) =>
     return mergedTraceAndNestedData;
 };
 
-export const cleanedPlotData = (traceData, traceObj) => {
-    return Object.keys(traceData[traceObj.name]).map((cohortOn) => {
-        const traceDatum = convertDotKeysToNestedObject(traceData[traceObj.name][cohortOn])
+export const chartDataFromCohortData = (cohortData, trace, cohortName) => {
+    const traceDatum = convertDotKeysToNestedObject(cohortData)
 
-        return mergeStaticPropertiesAndData(traceObj.props, traceDatum, cohortOn)
-    })
-};
+    return mergeStaticPropertiesAndData(trace.props, traceDatum, cohortName)
+}
 
-export const cleanedTableData = (traceData, tableObj) => {
-    let tableData = traceData[tableObj.trace.name][Object.keys(traceData[tableObj.trace.name])[0]]
-    tableData = convertDotKeysToNestedObject(tableData)["columns"];
-    const columnData = [];
-    tableObj.columns.forEach((column) => {
-        const columnName = column['column'];
-        const columnRows = tableData[columnName];
-        columnRows.forEach((rowData, index) => {
-            if (columnData.length < index + 1) {
-                columnData.push({});
-            }
-            const row = columnData[index];
-            row[columnName] = rowData;
-        });
-    });
-
-    return columnData;
-};

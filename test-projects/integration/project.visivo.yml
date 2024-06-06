@@ -70,12 +70,8 @@ dashboards:
           - width: 3
             table:
               name: awesome-table
-              trace: ref(Fibonacci Waterfall)
-              columns:
-                - header: Widget Type
-                  column: x_data
-                - header: Widget Sales
-                  column: y_data
+              traces:
+                - ref(Fibonacci Waterfall)
           - width: 2
             chart: ref(indicator_chart)
 

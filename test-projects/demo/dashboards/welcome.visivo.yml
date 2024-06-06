@@ -1,37 +1,38 @@
 models:
   - name: Waterfall Model
-    table_name: model
+    table_name: appl_pl
     args:
-      - echo
-      - |
-        x,y
-        1,4
-        2,10
-        3,0
-        4,-3
-        5,-12
-        6,-4
+      - curl
+      - -s
+      - https://raw.githubusercontent.com/visivo-io/visivo/main/test-projects/integration/data/aapl_pl.csv
 
 traces:
   - name: Fibonacci Waterfall Trace
     model: ref(Waterfall Model)
+    cohort_on: query(year)
     columns:
-      x_data: x
-      y_data: y
-    order_by:
-      - query(x)
+      x_data: category
+      y_data: cast( replace(thousands_dollars, ',', '') as float ) * cast(sign as float)
+      measure: waterfall
     props:
       type: waterfall
-      measure: query('relative')
-      x: query(x)
-      y: query(y)
-      text: query(cast(y as {% if env_var('IS_MYSQL') == 'NOT-SET' %}text{% else %}char{% endif %}))
+      base: 0
+      measure: column(measure)
+      x: column(x_data)
+      y: column(y_data)
+      text: query( cast(thousands_dollars as text) )
       increasing:
         marker:
           color: "#b97a9b"
       decreasing:
         marker:
           color: "#edbdb5"
+    order_by:
+      - query(row asc)
+    filters:
+      - query( waterfall is not null )
+      - query( category not in ('Earnings From Continuing Operations') )
+      - query( year in ('Sep 2023', 'Sep 2022') )
 
 dashboards:
   - name: Welcome to Visivo
@@ -70,9 +71,14 @@ dashboards:
           - width: 2
             table:
               name: Fibonacci Waterfall Table
-              trace: ref(Fibonacci Waterfall Trace)
-              columns:
-                - header: Widget Type
-                  column: x_data
-                - header: Widget Sales
-                  column: y_data
+              traces:
+                - ref(Fibonacci Waterfall Trace)
+              column_defs:
+                - trace_name: Fibonacci Waterfall Trace
+                  columns:
+                    - header: Widget Type
+                      key: columns.x_data
+                    - header: Widget Sales
+                      key: columns.y_data
+                    - header: Dollars
+                      key: props.text
