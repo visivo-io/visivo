@@ -2,30 +2,31 @@ name: homepage-assets
 defaults:
   target_name: Example Target
 includes:
-- path: visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml
+ # - path: visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml
+  - path: ./aapl-stock.visivo.yml
 alerts: []
 targets:
-- name: Example Target
-  database: local.db
-  type: sqlite
+  - name: Example Target
+    database: local.db
+    type: sqlite
 models: []
 traces: []
 tables: []
 charts: []
 dashboards:
-- name: Example Dashboard
-  rows:
-  - height: medium
-    items:
-    - width: 1
-      chart:
-        name: Example Chart
-        traces:
-        - name: Example Trace
-          model:
-            name: Example Model
-            sql: select * from test_table
-          props:
-            type: scatter
-            x: query(x)
-            y: query(y)
+  - name: Example Dashboard
+    rows:
+    - height: medium
+      items:
+      - width: 1
+        chart:
+          name: Example Chart
+          traces:
+          - name: Example Trace
+            model:
+              name: Example Model
+              sql: select * from test_table
+            props:
+              type: scatter
+              x: query(x)
+              y: query(y)
