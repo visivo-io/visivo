@@ -27,7 +27,7 @@ tasks:
   
   - key: install-visivo
     use: [python]
-    run: pip install git+https://github.com/visivo-io/visivo.git@latest
+    run: pip install git+https://github.com/visivo-io/visivo.git@{{ init.head-ref }}
   
   
   - key: run-visivo
