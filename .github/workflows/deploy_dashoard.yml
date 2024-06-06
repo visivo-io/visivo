@@ -31,7 +31,7 @@ jobs:
           python -m pip install git+https://github.com/visivo-io/visivo.git@${{ env.visivo_version }}  
           cd ${{ env.yml_location}} 
           visivo run 
-          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo deploy -s ${{ env.stage_name }} | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
+          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo deploy -s ${{ env.stage_name }}_actions | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
           deployed=`cat deployed.txt`
           echo "deployed=$deployed" >> "$GITHUB_OUTPUT"
       - name: Comment
@@ -45,5 +45,5 @@ jobs:
         if: github.event.pull_request.merged == true || github.event.pull_request.closed_at != null
         run: |
           python -m pip install git+https://github.com/visivo-io/visivo.git@${{ github.base_ref }} 
-          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo archive -s ${{ github.head_ref }}
+          VISIVO_TOKEN=${{ secrets.VISIVO_TOKEN }} visivo archive -s ${{ github.head_ref }}_actions
       
