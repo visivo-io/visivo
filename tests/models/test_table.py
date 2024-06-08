@@ -49,7 +49,7 @@ def test_Table_with_columns_with_header():
 
 
 def test_Table_ref_string():
-    table = Table(traces=["ref(trace)"], column_defs=[])
+    table = Table(traces=["ref(trace)"], column_defs=[], selector=None)
     assert table.traces[0] == "ref(trace)"
 
     with pytest.raises(ValidationError) as exc_info:

@@ -1,5 +1,7 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
+from visivo.models.base.item_model import ItemModel
+from visivo.models.selector import Selector
 from visivo.models.table_column_definition import TableColumnDefinition
 from .trace import Trace
 from pydantic import Field
@@ -9,7 +11,7 @@ from .base.base_model import REF_REGEX, generate_ref_field
 from pydantic import model_validator
 
 
-class Table(NamedModel, ParentModel):
+class Table(ItemModel, NamedModel, ParentModel):
     """
     Tables enable you to quickly represent trace data in a tabular format.
 
@@ -84,6 +86,18 @@ class Table(NamedModel, ParentModel):
         None,
         description="A list of column definitions. These definitions define the columns for a given trace included in this table.",
     )
+
+    # selector: Optional[generate_ref_field(Selector)] = Field(
+    selector: Optional[Selector] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_selector(cls, data: Any) -> Any:
+        selector = data.get("selector")
+        if selector is None:
+            name = data.get("name")
+            data["selector"] = {"name": name}
+        return data
 
     def child_items(self):
         return self.traces
