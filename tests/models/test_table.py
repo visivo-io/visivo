@@ -49,11 +49,19 @@ def test_Table_with_columns_with_header():
 
 
 def test_Table_ref_string():
-    table = Table(traces=["ref(trace)"], column_defs=[], selector=None)
+    data = {
+        "name": "development",
+        "traces": ["ref(trace)"],
+    }
+    table = Table(**data)
     assert table.traces[0] == "ref(trace)"
 
+    data = {
+        "name": "development",
+        "traces": ["ref(invalid"],
+    }
     with pytest.raises(ValidationError) as exc_info:
-        Table(traces=["ref(trace"])
+        Table(**data)
 
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"String should match pattern '{REF_REGEX}'"

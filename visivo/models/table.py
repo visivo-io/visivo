@@ -87,18 +87,6 @@ class Table(ItemModel, NamedModel, ParentModel):
         description="A list of column definitions. These definitions define the columns for a given trace included in this table.",
     )
 
-    # selector: Optional[generate_ref_field(Selector)] = Field(
-    selector: Optional[Selector] = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def ensure_selector(cls, data: Any) -> Any:
-        selector = data.get("selector")
-        if selector is None:
-            name = data.get("name")
-            data["selector"] = {"name": name}
-        return data
-
     def child_items(self):
         return self.traces
 

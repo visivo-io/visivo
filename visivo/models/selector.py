@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 from pydantic import Field
 from pathlib import Path
 
@@ -11,7 +11,4 @@ class Selector(BaseModel):
     Selectors allow you to specify which data are selected on an item.
     """
 
-    name: Optional[str] = Field(
-        None,
-        description="The name of the selector",
-    )
+    name: str = Field(description="The name of the selector")
