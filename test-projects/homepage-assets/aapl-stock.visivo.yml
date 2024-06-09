@@ -39,6 +39,7 @@ charts:
   - name: aapl-stock-price-chart
     traces:
       - ref(aapl-candlestick)
+      - ref(max-price)
     layout:
       title:
         text: "Apple Stock Price"
@@ -57,6 +58,12 @@ charts:
       title:
         text: "52 Week Low"
 
+tables:
+  - name: aapl-stock-price-table
+    traces:
+      - ref(aapl-candlestick)
+      - ref(max-price)
+
 dashboards:
   - name: "Apple Stock Analysis"
     rows:
@@ -69,3 +76,6 @@ dashboards:
       - height: large
         items:
           - chart: ref(aapl-stock-price-chart)
+      - height: large
+        items:
+          - table: ref(aapl-stock-price-table)
