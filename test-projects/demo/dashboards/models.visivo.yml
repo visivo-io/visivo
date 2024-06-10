@@ -21,3 +21,11 @@ models:
   - name: Relational
     target: ref(postgres)
     sql: "select * from fibonacci"
+  
+  - name: volcano
+    table_name: volcano
+    args:
+      - curl
+      - '-s'
+      -  https://raw.githubusercontent.com/plotly/datasets/master/volcano.csv
+      - '| cat'

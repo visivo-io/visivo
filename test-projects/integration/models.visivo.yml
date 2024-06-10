@@ -37,4 +37,3 @@ models:
     args:
       - cat 
       - data/aapl_pl.csv
-      
