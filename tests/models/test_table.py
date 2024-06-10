@@ -87,3 +87,26 @@ def test_Table_column_def_not_present():
         == f"Value error, Column def trace name 'N/A' is not present in trace list on table."
     )
     assert error["type"] == "value_error"
+
+
+def test_Table_trace_ref_column_def_not_present():
+    data = {
+        "name": "development",
+        "traces": ["ref(trace)"],
+        "column_defs": [
+            {
+                "trace_name": "N/A",
+                "columns": [{"header": "X Value", "key": "props.x"}],
+            }
+        ],
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        Table(**data)
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == f"Value error, Column def trace name 'N/A' is not present in trace list on table."
+    )
+    assert error["type"] == "value_error"
