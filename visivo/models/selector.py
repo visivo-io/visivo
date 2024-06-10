@@ -1,12 +1,10 @@
-from typing import Any, Optional
 from pydantic import Field
-from pathlib import Path
 
 from visivo.models.base.base_model import BaseModel
-from pydantic import model_validator
+from visivo.models.base.named_model import NamedModel
 
 
-class Selector(BaseModel):
+class Selector(NamedModel, BaseModel):
     """
     Selectors allow you to specify which data are selected on an item.
     """

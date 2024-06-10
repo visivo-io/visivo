@@ -3,6 +3,7 @@ from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.selector import Selector
 from visivo.models.targets.snowflake_target import SnowflakeTarget
 from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.models.trace import Trace
@@ -122,12 +123,20 @@ class JobFactory(factory.Factory):
     action = None
 
 
+class SelectorFactory(factory.Factory):
+    class Meta:
+        model = Selector
+
+    name = "selector"
+
+
 class ChartFactory(factory.Factory):
     class Meta:
         model = Chart
 
     name = "chart"
     traces = factory.List([factory.SubFactory(TraceFactory) for _ in range(1)])
+    selector = factory.SubFactory(SelectorFactory)
 
     class Params:
         model_ref = factory.Trait(
@@ -145,6 +154,7 @@ class TableFactory(factory.Factory):
     name = "table"
     column_defs = []
     traces = factory.List([factory.SubFactory(TraceFactory) for _ in range(1)])
+    selector = factory.SubFactory(SelectorFactory)
 
 
 class ItemFactory(factory.Factory):

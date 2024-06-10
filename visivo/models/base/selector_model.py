@@ -5,16 +5,16 @@ from visivo.models.base.base_model import BaseModel, generate_ref_field
 from pydantic import model_validator, Field
 
 
-class ItemModel(BaseModel):
+class SelectorModel(BaseModel):
     selector: Optional[generate_ref_field(Selector)] = Field(
         None, description="The selector for the choosing which trace data is shown."
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def ensure_selector(cls, data: Any) -> Any:
-        selector = data.get("selector")
-        if selector is None:
-            name = data.get("name")
-            data["selector"] = {"name": name}
-        return data
+    # @model_validator(mode="before")
+    # @classmethod
+    # def ensure_selector(cls, data: Any) -> Any:
+    #     selector = data.get("selector")
+    #     if selector is None:
+    #         name = data.get("name")
+    #         data["selector"] = {"name": f"{name} Selector"}
+    #     return data

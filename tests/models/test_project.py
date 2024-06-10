@@ -2,6 +2,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
 from visivo.models.project import Project
 from visivo.models.item import Item
+from visivo.models.selector import Selector
 from visivo.models.targets.target import Target
 from visivo.models.trace import Trace
 from visivo.models.table import Table
@@ -243,17 +244,8 @@ def test_ref_table_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
-    assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
-    assert project.descendants_of_type(type=Table) == [project.tables[0]]
-
-
-def test_ref_table_Project_dag():
-    project = ProjectFactory(table_ref=True)
-    dag = project.dag()
-
-    assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
+    assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
     assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
 
