@@ -107,7 +107,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
             return data
 
         column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
-        traces_trace_names = list(map(lambda t: t["name"], traces))
+        traces_trace_names = list(map(lambda t: NamedModel.get_name(t), traces))
         for column_defs_trace_name in column_defs_trace_names:
             if not column_defs_trace_name in traces_trace_names:
                 raise ValueError(

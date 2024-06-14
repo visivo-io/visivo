@@ -15,7 +15,9 @@ class NamedModel(BaseModel):
 
     @classmethod
     def get_name(cls, obj):
-        if cls.is_obj(obj=obj):
+        if isinstance(obj, dict):
+            return obj["name"]
+        elif cls.is_obj(obj=obj):
             return obj.name
         else:
             return re.match(REF_REGEX, obj).groupdict()["ref_name"]

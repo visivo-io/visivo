@@ -1,0 +1,62 @@
+on:
+  github:
+    pull_request:
+      actions: [opened, reopened, synchronize, closed]
+      init:
+        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+        pr-num: ${{ event.github.pull_request.pull_request.number }}
+        head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
+        deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
+        archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
+
+tasks:
+  - key: code
+    call: mint/git-clone 1.1.6
+    with:
+      preserve-git-dir: true
+      repository: https://github.com/visivo-io/visivo.git
+      ref: ${{ init.commit-sha }}
+      github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+  
+  - key: python
+    call: mint/install-python 1.0.2
+    with:
+      python-version: 3.10.0
+  
+  - key: github-cli
+    call: github/install-cli 1.0.0
+  
+  - key: install-visivo
+    use: [python]
+    run: pip install git+https://github.com/visivo-io/visivo.git@${{ init.head-ref }}
+  
+  
+  - key: run-visivo
+    if: ${{ init.deploy }}
+    use: [install-visivo, code]
+    run: |
+      cd test-projects/integration
+      visivo --version
+      visivo run
+    
+  - key: deploy-ci-stage
+    if: ${{ init.deploy }}
+    use: [run-visivo, github-cli]
+    run: |
+      cd test-projects/integration
+      visivo deploy -s ${{ init.head-ref }}-mint | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
+      gh pr comment ${{ init.pr-num }} -F deployed.txt
+    env: 
+      VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+      GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
+  
+  - key: archive-ci-stage
+    if: ${{ init.archive }}
+    use: [install-visivo, code, github-cli]
+    run: | 
+      cd visivo 
+      visivo archive -s ${{ init.head-ref }}-mint
+      gh pr comment ${{ init.pr-num }} --body "Archived stage associated with PR"
+    env:
+      VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
+      GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
