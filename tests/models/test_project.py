@@ -214,7 +214,7 @@ def test_simple_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [
         project.dashboards[0].rows[0].items[0].chart.traces[0]
     ]
@@ -225,7 +225,7 @@ def test_ref_trace_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [project.traces[0]]
 
 
@@ -234,9 +234,10 @@ def test_ref_chart_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [project.charts[0].traces[0]]
     assert project.descendants_of_type(type=Chart) == [project.charts[0]]
+    assert project.descendants_of_type(type=Selector) == [project.charts[0].selector]
 
 
 def test_ref_table_Project_dag():

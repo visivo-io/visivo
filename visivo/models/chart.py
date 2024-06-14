@@ -33,7 +33,7 @@ class Chart(SelectorModel, NamedModel, ParentModel):
     """
 
     def child_items(self):
-        return self.traces
+        return self.traces + [self.selector]
 
     traces: List[generate_ref_field(Trace)] = Field(
         [],

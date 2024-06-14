@@ -10,11 +10,11 @@ class SelectorModel(BaseModel):
         None, description="The selector for the choosing which trace data is shown."
     )
 
-    # @model_validator(mode="before")
-    # @classmethod
-    # def ensure_selector(cls, data: Any) -> Any:
-    #     selector = data.get("selector")
-    #     if selector is None:
-    #         name = data.get("name")
-    #         data["selector"] = {"name": f"{name} Selector"}
-    #     return data
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_selector(cls, data: Any) -> Any:
+        selector = data.get("selector")
+        if selector is None:
+            name = data.get("name")
+            data["selector"] = {"name": f"{name} Selector"}
+        return data

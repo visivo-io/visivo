@@ -39,7 +39,7 @@ class Serializer:
                     )
                     component.selector = ParentModel.all_descendants_of_type(
                         type=Selector, dag=dag, from_node=component
-                    )
+                    )[0]
                     for trace in component.traces:
                         trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
