@@ -85,7 +85,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                         <MRT_ToggleFiltersButton table={useTable} />
                         <MRT_ShowHideColumnsButton table={useTable} />
                         <MRT_ToggleDensePaddingButton table={useTable} />
-                        <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={false} name={table.name} />
+                        <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={false} name={table.selector.name} />
                     </Box>
                 </Box>
                 <MRT_TableContainer table={useTable} sx={{ width: width, maxHeight: `${height - 120}px` }} />

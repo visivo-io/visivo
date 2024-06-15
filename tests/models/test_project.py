@@ -9,6 +9,7 @@ from visivo.models.table import Table
 from visivo.models.chart import Chart
 from ..factories.model_factories import (
     DefaultsFactory,
+    ItemFactory,
     SqlModelFactory,
     TraceFactory,
     TargetFactory,
@@ -246,6 +247,20 @@ def test_ref_table_Project_dag():
 
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 9
+    assert project.descendants_of_type(type=Trace) == [
+        project.dashboards[0].rows[0].items[0].chart.traces[0]
+    ]
+
+
+def test_ref_selector_Project_dag():
+    project = ProjectFactory(table_ref=True)
+    item = ItemFactory()
+    item.chart.selector = "ref(selector)"
+    project.dashboards[0].rows[0].items = [item]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 10
     assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
     assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]

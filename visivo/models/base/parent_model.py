@@ -19,7 +19,14 @@ class ParentModel(ABC):
     def dag(self, node_permit_list=None):
         dag = nx.DiGraph()
         dag.add_node(self)
-        self.traverse_fields(
+        self.__build_dag(
+            items=self.child_items(),
+            parent_item=self,
+            dag=dag,
+            node_permit_list=node_permit_list,
+            root=self,
+        )
+        self.__dereference_items(
             items=self.child_items(),
             parent_item=self,
             dag=dag,
@@ -28,33 +35,50 @@ class ParentModel(ABC):
         )
         return dag
 
-    def traverse_fields(self, items: List, parent_item, dag, node_permit_list, root):
+    def __build_dag(self, items: List, parent_item, dag, node_permit_list, root):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
-                dereferenced_item = item
+                dag_item = item
                 if BaseModel.is_ref(item):
-                    name = NamedModel.get_name(obj=item)
-                    dereferenced_item = self._get_dereferenced_item(
-                        name=name,
-                        dag=dag,
-                        root=root,
-                        item=item,
-                        parent_item=parent_item,
-                    )
+                    continue
                 elif isinstance(item, DefaultTarget):
                     name = root.defaults.target_name
-                    dereferenced_item = self._get_dereferenced_item(
+                    dag_item = self.__get_dereferenced_item(
                         name=name,
                         dag=dag,
                         root=root,
                         item=item,
                         parent_item=parent_item,
                     )
-                dag.add_edge(parent_item, dereferenced_item)
-                if isinstance(dereferenced_item, ParentModel):
-                    self.traverse_fields(
-                        items=dereferenced_item.child_items(),
-                        parent_item=dereferenced_item,
+                dag.add_edge(parent_item, dag_item)
+                if isinstance(dag_item, ParentModel):
+                    self.__build_dag(
+                        items=dag_item.child_items(),
+                        parent_item=dag_item,
+                        dag=dag,
+                        node_permit_list=node_permit_list,
+                        root=root,
+                    )
+
+    def __dereference_items(
+        self, items: List, parent_item, dag, node_permit_list, root
+    ):
+        for item in items:
+            if node_permit_list is None or item in node_permit_list:
+                if BaseModel.is_ref(item):
+                    name = NamedModel.get_name(obj=item)
+                    dereferenced_item = self.__get_dereferenced_item(
+                        name=name,
+                        dag=dag,
+                        root=root,
+                        item=item,
+                        parent_item=parent_item,
+                    )
+                    dag.add_edge(parent_item, dereferenced_item)
+                if isinstance(item, ParentModel):
+                    self.__dereference_items(
+                        items=item.child_items(),
+                        parent_item=item,
                         dag=dag,
                         node_permit_list=node_permit_list,
                         root=root,
@@ -131,7 +155,7 @@ class ParentModel(ABC):
         pyplot.axis("off")
         pyplot.show()
 
-    def _get_dereferenced_item(self, name, dag, root, item, parent_item):
+    def __get_dereferenced_item(self, name, dag, root, item, parent_item):
         dereferenced_items = ParentModel.all_descendants_with_name(
             name=name, dag=dag, from_node=root
         )

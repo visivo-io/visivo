@@ -38,7 +38,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
         <ChartContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering}>
                 <MenuItem>
-                    <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={true} name={chart.name} />
+                    <CohortSelect tracesData={tracesData} onChange={onSelectedCohortChange} isMulti={true} name={chart.selector.name} />
                 </MenuItem>
             </Menu>
             <Plot
