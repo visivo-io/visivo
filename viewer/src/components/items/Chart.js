@@ -42,7 +42,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                         tracesData={tracesData}
                         onChange={onSelectedCohortChange}
                         selector={chart.selector}
-                        parent_name={chart.name}
+                        parentName={chart.name}
                     />
                 </MenuItem>
             </Menu>
