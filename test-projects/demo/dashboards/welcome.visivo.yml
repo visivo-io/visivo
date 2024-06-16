@@ -60,7 +60,9 @@ dashboards:
           - width: 2
             chart:
               name: Fibonacci Waterfall Chart
-              selector: ref(Fibonacci Waterfall Table Selector)
+              selector:
+                name: Fibonacci Waterfall Selector
+                type: single
               traces:
                 - ref(Fibonacci Waterfall Trace)
       - height: medium
@@ -72,8 +74,7 @@ dashboards:
           - width: 2
             table:
               name: Fibonacci Waterfall Table
-              selector:
-                name: Fibonacci Waterfall Table Selector
+              selector: ref(Fibonacci Waterfall Selector)
               traces:
                 - ref(Fibonacci Waterfall Trace)
               column_defs:

@@ -61,8 +61,11 @@ export const generateNewSearchParams = (previousSearchParams, name, selectedOpti
     return newSearchParams
 }
 
-const TraceSelect = ({ onChange, tracesData, isMulti, showLabel, name }) => {
+const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName }) => {
     let [searchParams, setSearchParams] = useSearchParams();
+    const isMulti = selector.type === "multiple"
+    const name = selector.name
+    const visible = selector.parent_name === parentName
 
     const options = cohortNamesInData(tracesData).map((cohortName) => {
         return { value: cohortName, label: cohortName }
@@ -87,7 +90,7 @@ const TraceSelect = ({ onChange, tracesData, isMulti, showLabel, name }) => {
             return Array.isArray(defaultOptions) ? defaultOptions.map((ds) => ds.value) : defaultOptions.value
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, name, JSON.stringify(defaultOptions)])
+    }, [searchParams, selector, JSON.stringify(defaultOptions)])
 
     useEffect(() => {
         onChange(generateNewTraceDataFromSelection(tracesData, selectedCohortNames))
@@ -97,7 +100,7 @@ const TraceSelect = ({ onChange, tracesData, isMulti, showLabel, name }) => {
     return (
         <>
             {showLabel && <label htmlFor='traceSelect'>Traces</label>}
-            <Select name="traceSelect" inputId="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />
+            {visible && <Select name="traceSelect" inputId="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
         </>
     )
 }

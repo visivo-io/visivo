@@ -18,3 +18,9 @@ class SelectorModel(BaseModel):
             name = data.get("name")
             data["selector"] = {"name": f"{name} Selector"}
         return data
+
+    @model_validator(mode="after")
+    def set_parent_name(self):
+        if BaseModel.is_obj(self.selector):
+            self.selector.set_parent_name(self.name)
+        return self
