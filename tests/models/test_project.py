@@ -247,9 +247,9 @@ def test_ref_table_Project_dag():
 
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 9
-    assert project.descendants_of_type(type=Trace) == [
-        project.dashboards[0].rows[0].items[0].chart.traces[0]
-    ]
+    assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
+    assert project.descendants_of_type(type=Table) == [project.tables[0]]
+    assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
 
 
 def test_ref_selector_Project_dag():
