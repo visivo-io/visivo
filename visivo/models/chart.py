@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import Field
+from typing import Any, List, Optional
+from pydantic import Field, model_validator
 
 from visivo.models.base.selector_model import SelectorModel
 from .base.named_model import NamedModel
@@ -52,3 +52,5 @@ class Chart(SelectorModel, NamedModel, ParentModel):
     @property
     def trace_refs(self) -> List[str]:
         return list(filter(Trace.is_ref, self.traces))
+
+

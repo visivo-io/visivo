@@ -10,6 +10,12 @@ class SelectorModel(BaseModel):
         None, description="The selector for the choosing which trace data is shown."
     )
 
+    @model_validator(mode="after")
+    def set_parent_name(self):
+        if BaseModel.is_obj(self.selector):
+            self.selector.set_parent_name(self.name)
+        return self
+
     @model_validator(mode="before")
     @classmethod
     def ensure_selector(cls, data: Any) -> Any:
@@ -18,9 +24,3 @@ class SelectorModel(BaseModel):
             name = data.get("name")
             data["selector"] = {"name": f"{name} Selector"}
         return data
-
-    @model_validator(mode="after")
-    def set_parent_name(self):
-        if BaseModel.is_obj(self.selector):
-            self.selector.set_parent_name(self.name)
-        return self
