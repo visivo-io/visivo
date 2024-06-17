@@ -210,6 +210,25 @@ def test_Project_validate_default_target_does_not_exists():
     assert error["type"] == "value_error"
 
 
+def test_Project_validate_table_single():
+    target = TargetFactory()
+    data = {
+        "name": "development",
+        "tables": [
+            {"name": "Table", "selector": {"name": "selector", "type": "multiple"}}
+        ],
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == f"Value error, Table with name 'Table' has a selector with a 'multiple' type.  This is not permitted."
+    )
+    assert error["type"] == "value_error"
+
+
 def test_simple_Project_dag():
     project = ProjectFactory()
     dag = project.dag()
