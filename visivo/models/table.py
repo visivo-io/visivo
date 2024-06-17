@@ -21,10 +21,6 @@ class Table(SelectorModel, NamedModel, ParentModel):
     1. Create a trace with columns or props that references your model.
     1. Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.
 
-    ??? note
-
-        We're actively working on improving the table interface by making it possible to define tables directly from models and incorporating more features from material react table such as [aggregation & grouping](https://www.material-react-table.com/docs/guides/aggregation-and-grouping).
-
     ### Example
     ``` yaml
     models:

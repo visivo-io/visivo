@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import Field, PrivateAttr, model_serializer
+from pydantic import ConfigDict, Field, PrivateAttr, model_serializer
 
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
@@ -12,8 +12,26 @@ class SelectorType(str, Enum):
 
 class Selector(NamedModel, BaseModel):
     """
-    Selectors allow you to specify which data are selected on an item.
+    Selectors can be used to add interactivity between charts and tables.
+
+    Below is how you would link two charts to show the same selected data.
+
+    ### Example
+
+    ``` yaml
+    charts:
+        - name: Chart One
+          selector:
+              name: Common Selector
+              type: single
+              ...
+        - name: Chart Two
+          selector: ref(Common Selector)
+          ...
+    ```
+
     """
+    model_config = ConfigDict(extra='ignore')  
 
     name: str = Field(description="The name of the selector")
     type: SelectorType = Field(
