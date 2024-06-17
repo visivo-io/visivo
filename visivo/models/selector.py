@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, model_serializer
 
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
@@ -24,7 +24,6 @@ class Selector(NamedModel, BaseModel):
     def set_parent_name(self, value: str):
         self._parent_name = value
 
-    def model_dump(self, **kwargs):
-        data = super().model_dump(**kwargs)
-        data["parent_name"] = self._parent_name
-        return data
+    @model_serializer()
+    def serialize_model(self):
+        return {"name": self.name, "type": self.type, "parent_name": self._parent_name}
