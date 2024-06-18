@@ -49,11 +49,19 @@ def test_Table_with_columns_with_header():
 
 
 def test_Table_ref_string():
-    table = Table(traces=["ref(trace)"], column_defs=[])
+    data = {
+        "name": "development",
+        "traces": ["ref(trace)"],
+    }
+    table = Table(**data)
     assert table.traces[0] == "ref(trace)"
 
+    data = {
+        "name": "development",
+        "traces": ["ref(invalid"],
+    }
     with pytest.raises(ValidationError) as exc_info:
-        Table(traces=["ref(trace"])
+        Table(**data)
 
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"String should match pattern '{REF_REGEX}'"
@@ -110,3 +118,13 @@ def test_Table_trace_ref_column_def_not_present():
         == f"Value error, Column def trace name 'N/A' is not present in trace list on table."
     )
     assert error["type"] == "value_error"
+
+
+def test_Table_with_selector():
+    data = {"name": "development", "traces": [], "selector": "ref(Other Selector)"}
+    table = Table(**data)
+    assert table.selector == "ref(Other Selector)"
+
+    data = {"name": "development", "traces": [], "selector": {"name": "Selector"}}
+    table = Table(**data)
+    assert table.selector.name == "Selector"

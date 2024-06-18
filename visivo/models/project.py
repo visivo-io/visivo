@@ -6,6 +6,7 @@ from visivo.models.include import Include
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.selector import Selector, SelectorType
 from visivo.models.targets.fields import TargetField
 
 
@@ -125,7 +126,19 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_dag(self):
-        self.dag()
+        dag = self.dag()
+        tables = ParentModel.all_descendants_of_type(
+            type=Table, dag=dag, from_node=self
+        )
+        for table in tables:
+            selector = ParentModel.all_descendants_of_type(
+                type=Selector, dag=dag, from_node=table
+            )[0]
+            if selector.type == SelectorType.multiple:
+                raise ValueError(
+                    f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
+                )
+
         return self
 
     @model_validator(mode="after")

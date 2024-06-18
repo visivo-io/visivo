@@ -16,7 +16,11 @@ const tracesData = {
 test('renders single select', async () => {
   let selectedTraceData = null;
   const onChange = (value) => { selectedTraceData = value }
-  render(<CohortSelect tracesData={tracesData} showLabel onChange={onChange} />, { wrapper: withProviders });
+  render(<CohortSelect
+    tracesData={tracesData}
+    showLabel
+    selector={{ type: "single", name: "selector" }}
+    onChange={onChange} />, { wrapper: withProviders });
 
   const selectWrapper = screen.getByLabelText('Traces')
   await selectEvent.select(selectWrapper, 'Cohort Name 1')
@@ -35,7 +39,13 @@ test('renders single select', async () => {
 test('renders multiselect select', async () => {
   let selectedTraceData = null;
   const onChange = (value) => { selectedTraceData = value }
-  render(<CohortSelect tracesData={tracesData} isMulti showLabel onChange={onChange} name={"Chart"} />, { wrapper: withProviders });
+  render(<CohortSelect
+    tracesData={tracesData}
+    isMulti
+    showLabel
+    onChange={onChange}
+    selector={{ type: "multiple", name: "multiple" }}
+    name={"Chart"} />, { wrapper: withProviders });
 
   await waitFor(() => {
     expect(selectedTraceData).toEqual(tracesData)

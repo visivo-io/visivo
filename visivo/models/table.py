@@ -1,5 +1,7 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
+from visivo.models.base.selector_model import SelectorModel
+from visivo.models.selector import Selector
 from visivo.models.table_column_definition import TableColumnDefinition
 from .trace import Trace
 from pydantic import Field
@@ -9,7 +11,7 @@ from .base.base_model import REF_REGEX, generate_ref_field
 from pydantic import model_validator
 
 
-class Table(NamedModel, ParentModel):
+class Table(SelectorModel, NamedModel, ParentModel):
     """
     Tables enable you to quickly represent trace data in a tabular format.
 
@@ -18,10 +20,6 @@ class Table(NamedModel, ParentModel):
     1. Create a model.
     1. Create a trace with columns or props that references your model.
     1. Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.
-
-    ??? note
-
-        We're actively working on improving the table interface by making it possible to define tables directly from models and incorporating more features from material react table such as [aggregation & grouping](https://www.material-react-table.com/docs/guides/aggregation-and-grouping).
 
     ### Example
     ``` yaml
@@ -86,7 +84,7 @@ class Table(NamedModel, ParentModel):
     )
 
     def child_items(self):
-        return self.traces
+        return self.traces + [self.selector]
 
     @property
     def trace_objs(self) -> List[Trace]:
@@ -111,4 +109,14 @@ class Table(NamedModel, ParentModel):
                 raise ValueError(
                     f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
                 )
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_selector(cls, data: Any) -> Any:
+        selector = data.get("selector")
+        if selector is None:
+            name = data.get("name")
+            data["selector"] = {"name": f"{name} Selector", "type": "single"}
+
         return data

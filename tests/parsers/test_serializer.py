@@ -93,7 +93,6 @@ def test_Serializer_with_model_ref():
         == "model_name"
     )
 
-
 def test_Serializer_with_table_model_ref():
     model = SqlModelFactory(name="model_name")
     project = ProjectFactory(table_item=True, models=[model])
@@ -105,7 +104,6 @@ def test_Serializer_with_table_model_ref():
         project.dashboards[0].rows[0].items[0].table.traces[0].model.name
         == "model_name"
     )
-
 
 def test_Serializer_with_refs_does_not_change_original():
     chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])

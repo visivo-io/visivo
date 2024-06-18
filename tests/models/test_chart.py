@@ -26,12 +26,31 @@ def test_Chart_with_trace_simple_data():
 
 
 def test_Chart_ref_string():
-    chart = Chart(traces=["ref(trace)"])
+    data = {
+        "name": "development",
+        "traces": ["ref(trace)"],
+    }
+    chart = Chart(**data)
     assert chart.traces[0] == "ref(trace)"
 
+    data = {
+        "name": "development",
+        "traces": ["ref(invalid"],
+    }
+
     with pytest.raises(ValidationError) as exc_info:
-        Chart(traces=["ref(trace"])
+        Chart(**data)
 
     error = exc_info.value.errors()[0]
     assert error["msg"] == f"String should match pattern '{REF_REGEX}'"
     assert error["type"] == "string_pattern_mismatch"
+
+
+def test_Chart_with_selector():
+    data = {"name": "development", "traces": [], "selector": "ref(Other Selector)"}
+    table = Chart(**data)
+    assert table.selector == "ref(Other Selector)"
+
+    data = {"name": "development", "traces": [], "selector": {"name": "Selector"}}
+    table = Chart(**data)
+    assert table.selector.name == "Selector"
