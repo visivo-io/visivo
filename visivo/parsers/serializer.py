@@ -1,4 +1,5 @@
 from visivo.models.base.named_model import NamedModel
+from visivo.models.selector import Selector
 from visivo.models.targets.target import Target
 from ..models.project import Project
 from ..models.base.base_model import BaseModel
@@ -36,6 +37,9 @@ class Serializer:
                     component.traces = ParentModel.all_descendants_of_type(
                         type=Trace, dag=dag, from_node=component
                     )
+                    component.selector = ParentModel.all_descendants_of_type(
+                        type=Selector, dag=dag, from_node=component
+                    )[0]
                     for trace in component.traces:
                         trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace

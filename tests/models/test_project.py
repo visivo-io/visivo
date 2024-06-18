@@ -2,12 +2,14 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
 from visivo.models.project import Project
 from visivo.models.item import Item
+from visivo.models.selector import Selector
 from visivo.models.targets.target import Target
 from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.models.chart import Chart
 from ..factories.model_factories import (
     DefaultsFactory,
+    ItemFactory,
     SqlModelFactory,
     TraceFactory,
     TargetFactory,
@@ -208,12 +210,31 @@ def test_Project_validate_default_target_does_not_exists():
     assert error["type"] == "value_error"
 
 
+def test_Project_validate_table_single():
+    target = TargetFactory()
+    data = {
+        "name": "development",
+        "tables": [
+            {"name": "Table", "selector": {"name": "selector", "type": "multiple"}}
+        ],
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        Project(**data)
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == f"Value error, Table with name 'Table' has a selector with a 'multiple' type.  This is not permitted."
+    )
+    assert error["type"] == "value_error"
+
+
 def test_simple_Project_dag():
     project = ProjectFactory()
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [
         project.dashboards[0].rows[0].items[0].chart.traces[0]
     ]
@@ -224,7 +245,7 @@ def test_ref_trace_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [project.traces[0]]
 
 
@@ -233,9 +254,10 @@ def test_ref_chart_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [project.charts[0].traces[0]]
     assert project.descendants_of_type(type=Chart) == [project.charts[0]]
+    assert project.descendants_of_type(type=Selector) == [project.charts[0].selector]
 
 
 def test_ref_table_Project_dag():
@@ -243,17 +265,22 @@ def test_ref_table_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
+    assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
 
 
-def test_ref_table_Project_dag():
+def test_ref_selector_Project_dag():
     project = ProjectFactory(table_ref=True)
+    item = ItemFactory()
+    item.chart.selector = "ref(selector)"
+    project.dashboards[0].rows[0].items = [item]
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 8
+    assert len(project.descendants()) == 10
+    assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
     assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
 

@@ -1,5 +1,7 @@
-from typing import List, Optional
-from pydantic import Field
+from typing import Any, List, Optional
+from pydantic import Field, model_validator
+
+from visivo.models.base.selector_model import SelectorModel
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import generate_ref_field
@@ -8,7 +10,7 @@ from .trace_props import Layout
 from typing_extensions import Annotated
 
 
-class Chart(NamedModel, ParentModel):
+class Chart(SelectorModel, NamedModel, ParentModel):
     """
     Charts are used to house traces and set up layout configurations (titles, axis labels, ect.).
 
@@ -31,7 +33,7 @@ class Chart(NamedModel, ParentModel):
     """
 
     def child_items(self):
-        return self.traces
+        return self.traces + [self.selector]
 
     traces: List[generate_ref_field(Trace)] = Field(
         [],
@@ -50,3 +52,5 @@ class Chart(NamedModel, ParentModel):
     @property
     def trace_refs(self) -> List[str]:
         return list(filter(Trace.is_ref, self.traces))
+
+
