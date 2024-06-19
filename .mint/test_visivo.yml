@@ -87,6 +87,7 @@ tasks:
       sudo apt-get clean
 
   - key: test-postgres
+    docker: true
     use: [postgres-packages, visivo-install]
     background-processes:
       - key: postgres
@@ -109,6 +110,7 @@ tasks:
       sudo apt-get clean
 
   - key: test-mysql
+    docker: true
     use: [mysql-packages, visivo-install]
     background-processes:
       - key: mysql
