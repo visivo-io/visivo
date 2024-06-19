@@ -48,8 +48,8 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
         pull_request:
           actions: [opened, reopened, synchronize, closed]
           init:
-            commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
-            head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
+            commit-sha: ${{ event.git.sha }}
+            head-ref: ${{ event.git.branch	}}
             deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
             archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
 
@@ -59,7 +59,7 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+          github-access-token: ${{ github.token }} #(3)!
       
       - key: python
         call: mint/install-python 1.0.2
@@ -112,8 +112,8 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
         pull_request:
           actions: [opened, reopened, synchronize, closed]
           init:
-            commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
-            head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
+            commit-sha: ${{ event.git.sha }}
+            head-ref: ${{ event.git.branch	}}
             deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
             archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
 
@@ -123,7 +123,7 @@ Mint is a great way to deploy Visivo. It's caching functionality, concurrency an
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+          github-access-token: ${{ github.token }} #(3)!
       
       - key: python
         call: mint/install-python 1.0.2
@@ -335,7 +335,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+          github-access-token: ${{ github.token }} #(3)!
       
       - key: python
         call: mint/install-python 1.0.2
@@ -382,7 +382,7 @@ With [Mint Cron Schedules](https://www.rwx.com/docs/mint/cron-schedules) you can
         with:
           repository: https://github.com/visivo-io/analytics.git
           ref: ${{ init.commit-sha }}
-          github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }} #(3)!
+          github-access-token: ${{ github.token }} #(3)!
       
       - key: python
         call: mint/install-python 1.0.2

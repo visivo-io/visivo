@@ -3,9 +3,9 @@ on:
     pull_request:
       actions: [opened, reopened, synchronize, closed]
       init:
-        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+        commit-sha: ${{ event.git.sha }}
         pr-num: ${{ event.github.pull_request.pull_request.number }}
-        head-ref: ${{ event.github.pull_request.pull_request.head.ref	}}
+        head-ref: ${{ event.git.branch	}}
         deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
         archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
 
@@ -17,20 +17,19 @@ tasks:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
       github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
-  
+
   - key: python
     call: mint/install-python 1.0.2
     with:
       python-version: 3.10.0
-  
+
   - key: github-cli
     call: github/install-cli 1.0.0
-  
+
   - key: install-visivo
     use: [python]
     run: pip install git+https://github.com/visivo-io/visivo.git@${{ init.head-ref }}
-  
-  
+
   - key: run-visivo
     if: ${{ init.deploy }}
     use: [install-visivo, code]
@@ -38,7 +37,7 @@ tasks:
       cd test-projects/integration
       visivo --version
       visivo run
-    
+
   - key: deploy-ci-stage
     if: ${{ init.deploy }}
     use: [run-visivo, github-cli]
@@ -46,14 +45,14 @@ tasks:
       cd test-projects/integration
       visivo deploy -s ${{ init.head-ref }}-mint | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
       gh pr comment ${{ init.pr-num }} -F deployed.txt
-    env: 
+    env:
       VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
       GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
-  
+
   - key: archive-ci-stage
     if: ${{ init.archive }}
     use: [install-visivo, code, github-cli]
-    run: | 
+    run: |
       cd visivo 
       visivo archive -s ${{ init.head-ref }}-mint
       gh pr comment ${{ init.pr-num }} --body "Archived stage associated with PR"

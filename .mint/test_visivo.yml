@@ -3,11 +3,11 @@ on:
     pull_request:
       actions: [opened, reopened, synchronize]
       init:
-        commit-sha: ${{ event.github.pull_request.pull_request.head.sha }}
+        commit-sha: ${{ event.git.sha }}
     push:
-      if: ${{ mint.run.git.branch == 'main' || event.github.push.ref =~ '^refs/tags/v.+$' }}
+      if: ${{ event.git.branch == 'main' || event.git.ref =~ '^refs/tags/v.+$' }}
       init:
-        commit-sha: ${{ event.github.push.head_commit.id }}
+        commit-sha: ${{ event.git.sha }}
 
 tasks:
   - key: code
@@ -15,7 +15,7 @@ tasks:
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
-      github-access-token: ${{ secrets.VISIVO_IO_CLONE_TOKEN }}
+      github-access-token: ${{ github.token }}
 
   - key: python
     call: mint/install-python 1.0.2
