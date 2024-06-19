@@ -61,11 +61,20 @@ export const generateNewSearchParams = (previousSearchParams, name, selectedOpti
     return newSearchParams
 }
 
-const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName }) => {
+const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, parentType }) => {
     let [searchParams, setSearchParams] = useSearchParams();
-    const isMulti = selector.type === "multiple"
-    const name = selector.name
-    const visible = selector.parent_name === parentName
+    let isMulti
+    let name
+    let visible
+    if (selector) {
+        isMulti = selector.type === "multiple"
+        name = selector.name
+        visible = selector.parent_name === parentName
+    } else { // This can be remove once everyone is on 1.0.17+
+        isMulti = parentType === "table" ? false : true
+        name = `${parentName} Selector`
+        visible = true
+    }
 
     const options = cohortNamesInData(tracesData).map((cohortName) => {
         return { value: cohortName, label: cohortName }

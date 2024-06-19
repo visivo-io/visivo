@@ -43,6 +43,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                         onChange={onSelectedCohortChange}
                         selector={chart.selector}
                         parentName={chart.name}
+                        parentType="chart"
                     />
                 </MenuItem>
             </Menu>

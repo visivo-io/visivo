@@ -13,6 +13,29 @@ const tracesData = {
   }
 };
 
+test('renders without selector', async () => {
+  let selectedTraceData = null;
+  const onChange = (value) => { selectedTraceData = value }
+  render(<CohortSelect
+    tracesData={tracesData}
+    showLabel
+    parentType={"table"}
+    onChange={onChange} />, { wrapper: withProviders });
+
+  const selectWrapper = screen.getByLabelText('Traces')
+  await selectEvent.select(selectWrapper, 'Cohort Name 1')
+
+  await waitFor(() => {
+    expect(selectedTraceData).toEqual(
+      {
+        "Trace Name 1": {
+          "Cohort Name 1": {},
+        },
+      })
+  })
+  expect(screen.queryByText('cohortName2')).not.toBeInTheDocument();
+});
+
 test('renders single select', async () => {
   let selectedTraceData = null;
   const onChange = (value) => { selectedTraceData = value }

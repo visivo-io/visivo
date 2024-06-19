@@ -90,6 +90,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                             onChange={onSelectedCohortChange}
                             selector={table.selector}
                             parentName={table.name}
+                            parentType="table"
                         />
                     </Box>
                 </Box>
