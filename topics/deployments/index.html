@@ -5428,8 +5428,8 @@
 <span class="w">    </span><span class="nt">pull_request</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">actions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">opened</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">reopened</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">synchronize</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">closed</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">init</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">commit-sha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.head.sha }}</span>
-<span class="w">        </span><span class="nt">head-ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.head.ref   }}</span>
+<span class="w">        </span><span class="nt">commit-sha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.git.sha }}</span>
+<span class="w">        </span><span class="nt">head-ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.git.branch  }}</span>
 <span class="w">        </span><span class="nt">deploy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.merged == false &amp;&amp; event.github.pull_request.pull_request.state == &#39;open&#39; }}</span>
 <span class="w">        </span><span class="nt">archive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.merged == true &amp;&amp; event.github.pull_request.pull_request.state == &#39;closed&#39; }}</span>
 
@@ -5439,7 +5439,7 @@
 <span class="w">    </span><span class="nt">with</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/visivo-io/analytics.git</span>
 <span class="w">      </span><span class="nt">ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ init.commit-sha }}</span>
-<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.VISIVO_IO_CLONE_TOKEN }}</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.token }}</span><span class="w"> </span><span class="c1">#(3)!</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
 <span class="w">    </span><span class="nt">call</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mint/install-python 1.0.2</span>
@@ -5492,8 +5492,8 @@
 <span class="w">    </span><span class="nt">pull_request</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">actions</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">opened</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">reopened</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">synchronize</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">closed</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">init</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">commit-sha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.head.sha }}</span>
-<span class="w">        </span><span class="nt">head-ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.head.ref   }}</span>
+<span class="w">        </span><span class="nt">commit-sha</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.git.sha }}</span>
+<span class="w">        </span><span class="nt">head-ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.git.branch  }}</span>
 <span class="w">        </span><span class="nt">deploy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.merged == false &amp;&amp; event.github.pull_request.pull_request.state == &#39;open&#39; }}</span>
 <span class="w">        </span><span class="nt">archive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ event.github.pull_request.pull_request.merged == true &amp;&amp; event.github.pull_request.pull_request.state == &#39;closed&#39; }}</span>
 
@@ -5503,7 +5503,7 @@
 <span class="w">    </span><span class="nt">with</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/visivo-io/analytics.git</span>
 <span class="w">      </span><span class="nt">ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ init.commit-sha }}</span>
-<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.VISIVO_IO_CLONE_TOKEN }}</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.token }}</span><span class="w"> </span><span class="c1">#(3)!</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
 <span class="w">    </span><span class="nt">call</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mint/install-python 1.0.2</span>
@@ -5714,7 +5714,7 @@
 <span class="w">    </span><span class="nt">with</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/visivo-io/analytics.git</span>
 <span class="w">      </span><span class="nt">ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ init.commit-sha }}</span>
-<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.VISIVO_IO_CLONE_TOKEN }}</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.token }}</span><span class="w"> </span><span class="c1">#(3)!</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
 <span class="w">    </span><span class="nt">call</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mint/install-python 1.0.2</span>
@@ -5760,7 +5760,7 @@
 <span class="w">    </span><span class="nt">with</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/visivo-io/analytics.git</span>
 <span class="w">      </span><span class="nt">ref</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ init.commit-sha }}</span>
-<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.VISIVO_IO_CLONE_TOKEN }}</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="w">      </span><span class="nt">github-access-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.token }}</span><span class="w"> </span><span class="c1">#(3)!</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
 <span class="w">    </span><span class="nt">call</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mint/install-python 1.0.2</span>
