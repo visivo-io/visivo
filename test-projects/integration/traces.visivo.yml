@@ -150,3 +150,11 @@ traces:
       - query( waterfall is not null )
       - query( category not in ('Earnings From Continuing Operations') )
       - query( year in ('Sep 2023', 'Sep 2022') )
+  - name: surface-trace
+    model: ref(volcano)
+    props:
+      type: surface
+      z: 
+        {%- for i in range(1, 62) %}
+        - query("V{{i}}")
+        {%- endfor %}

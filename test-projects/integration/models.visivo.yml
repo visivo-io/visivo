@@ -37,3 +37,10 @@ models:
     args:
       - cat 
       - data/aapl_pl.csv
+  - name: volcano
+    table_name: volcano
+    args:
+      - curl
+      - '-s'
+      -  https://raw.githubusercontent.com/plotly/datasets/master/volcano.csv
+      - '| cat'

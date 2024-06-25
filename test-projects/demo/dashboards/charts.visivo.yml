@@ -1,32 +1,3 @@
-traces:
-  - name: surface-trace
-    model: ref(volcano)
-    props:
-      type: surface
-      z: 
-        {% for i in range(1, 62) %}
-        - query("V{{i}}")
-        {% endfor %}
-
-charts:
-  - name: surface-chart
-    traces:
-      - ref(surface-trace)
-    layout:
-      title:
-        text: Surface Plot w/ Menu
-      updatemenus: 
-        - buttons:
-            - args: ["type", "surface"]
-              label: "Surface"
-              method: "restyle"
-            - args: ["type", "heatmap"]
-              label: "Heatmap"
-              method: "restyle"
-            - args: ["type", "contour"]
-              label: "Contour"
-              method: "restyle"
-          direction: "right"
 
 dashboards:
   - name: Chart Examples
@@ -50,10 +21,3 @@ dashboards:
                     type: bar
                     x: query(x)
                     y: query(y)
-      - height: medium
-        items:
-          - width: 1
-            markdown: |
-              # Surface
-          - width: 3
-            chart: ref(surface-chart)
