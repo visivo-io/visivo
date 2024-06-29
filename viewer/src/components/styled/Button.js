@@ -2,16 +2,19 @@ import tw from "tailwind-styled-components"
 
 export const Button = tw.button`
   text-white 
-  bg-primary-500 
-  hover:bg-primary-600 
   focus:ring-4 
   focus:ring-primary-300 
+  focus:outline-none 
+  bg-primary-500 
+  hover:bg-primary-600 
+  disabled:bg-secondary-100
+  disabled:text-secondary-300
+  disabled:border-secondary-300
   font-medium 
   rounded-lg 
   text-sm
   px-3 
   py-2 
-  focus:outline-none 
 `;
 
 export const ButtonHighlight = tw(Button)`
