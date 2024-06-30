@@ -1,7 +1,7 @@
-from .base.named_model import NamedModel
+from .base.base_model import BaseModel
 
 
-class Test(NamedModel):
+class Test(BaseModel):
     logic: str
 
     __test__ = False
