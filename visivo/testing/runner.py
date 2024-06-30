@@ -1,18 +1,10 @@
 # supports more generic connections than the snowflake specific connector
-from sqlalchemy import text
-from visivo.query.query_string_factory import QueryStringFactory
-from visivo.testing.test_query_string_factory import TestQueryStringFactory
-from visivo.query.trace_tokenizer import TraceTokenizer
-from visivo.models.targets.target import Target
-from visivo.models.models.model import Model
 from visivo.models.project import Project
-from visivo.models.base.parent_model import ParentModel
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
 from visivo.models.alert import Alert
-from typing import List, Optional
-from pandas import read_sql
-import os
+from typing import List
+import json
 import click
 from datetime import datetime
 import warnings
@@ -37,42 +29,33 @@ class Runner:
         self.alerts = alerts
 
     def run(self):
+        import numpy
+        from assertpy import assert_that
+
         test_run = TestRun()
-        dag = self.project.dag()
-        for trace in self.traces:
-            model = ParentModel.all_descendants_of_type(
-                type=Model, dag=dag, from_node=trace
-            )[0]
-            target = ParentModel.all_descendants_of_type(
-                type=Target, dag=dag, from_node=model
-            )[0]
-            tokenized_trace = TraceTokenizer(
-                trace=trace, model=model, target=target
-            ).tokenize()
-            query_string_factory = QueryStringFactory(tokenized_trace=tokenized_trace)
+        for idx, trace in enumerate(self.traces):
             if not trace.tests:
                 continue
-            for test in trace.all_tests():
-                test_query_string = TestQueryStringFactory(
-                    test=test, query_string_factory=query_string_factory
-                ).build()
-                trace_directory = f"{self.output_dir}/{trace.name}/tests"
-                os.makedirs(trace_directory, exist_ok=True)
-                with open(f"{trace_directory}/{test.name}.sql", "w") as fp:
-                    fp.write(test_query_string)
-
-                data_frame = data_frame = target.read_sql(test_query_string)
-
-                if len(data_frame) > 0:
-                    failure = TestFailure(
-                        test_id=test.name, message=data_frame.loc[0][0]
-                    )
-                    click.echo(click.style("F", fg="red"), nl=False)
-                    test_run.add_failure(failure=failure)
-                else:
-                    click.echo(click.style(".", fg="green"), nl=False)
-                    success = TestSuccess(test_id=test.name)
-                    test_run.add_success(success=success)
+            for test in trace.tests:
+                with open(f"{self.output_dir}/{trace.name}/data.json") as f:
+                    trace_data = json.load(f)
+                    logic = test.logic
+                    for cohort in trace_data.keys():
+                        logic = logic.replace(cohort, f"trace_data['{cohort}']")
+                        for key in trace_data[cohort].keys():
+                            logic = logic.replace(key, f"['{key}']")
+                    logic = logic.replace("].[", "][")
+                    try:
+                        eval(f"{logic}")
+                        click.echo(click.style(".", fg="green"), nl=False)
+                        success = TestSuccess(test_id=f"{trace.name}[{idx}]")
+                        test_run.add_success(success=success)
+                    except Exception as e:
+                        failure = TestFailure(
+                            test_id=f"{trace.name}[{idx}]", message=str(e)
+                        )
+                        click.echo(click.style("F", fg="red"), nl=False)
+                        test_run.add_failure(failure=failure)
         test_run.finished_at = datetime.now()
         click.echo("")
         click.echo(test_run.summary())
