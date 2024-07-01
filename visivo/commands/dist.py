@@ -18,7 +18,8 @@ from visivo.commands.options import (
 @threads
 def dist(output_dir, working_dir, dist_dir, target, name_filter, threads):
     """
-    Creates a distributable version of this dashboard and stores it in a 'dist' folder
+    Creates a distributable version of this dashboard and stores it in a 'dist' folder.
+    This folder can be statically deployed to any web server, hosting service, or bucket storage.
     """
     from visivo.logging.logger import Logger
 
