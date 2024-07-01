@@ -5,7 +5,6 @@ from ..factories.model_factories import (
     ProjectFactory,
 )
 
-# from visivo.models.trace import Trace
 from visivo.testing.runner import Runner
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
