@@ -24,6 +24,17 @@ def output_dir(function):
     )(function)
     return function
 
+
+def dist_dir(function):
+    click.option(
+        "-d",
+        "--dist-dir",
+        help="Directory to output the distribution files",
+        default=f"{os.getcwd()}/dist",
+    )(function)
+    return function
+
+
 def name_filter(function):
     click.option(
         "-nf",
@@ -32,7 +43,8 @@ def name_filter(function):
         default=None,
     )(function)
     return function
-    
+
+
 def target(function):
     click.option(
         "-t",

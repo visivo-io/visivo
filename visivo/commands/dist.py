@@ -1,5 +1,6 @@
 import click
 from visivo.commands.options import (
+    dist_dir,
     name_filter,
     output_dir,
     target,
@@ -12,9 +13,10 @@ from visivo.commands.options import (
 @target
 @working_dir
 @output_dir
+@dist_dir
 @name_filter
 @threads
-def dist(output_dir, working_dir, target, name_filter, threads):
+def dist(output_dir, working_dir, dist_dir, target, name_filter, threads):
     """
     Creates a distributable version of this dashboard and stores it in a 'dist' folder
     """
@@ -27,6 +29,7 @@ def dist(output_dir, working_dir, target, name_filter, threads):
     dist_phase(
         output_dir=output_dir,
         working_dir=working_dir,
+        dist_dir=dist_dir,
         default_target=target,
         name_filter=name_filter,
         threads=threads,
