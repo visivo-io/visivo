@@ -6,6 +6,7 @@ VIEWER_PATH = pkg_resources.resource_filename("visivo", "viewer/")
 def dist_phase(output_dir, working_dir, default_target, name_filter, threads):
     from visivo.commands.run_phase import run_phase
     import os
+    import json
     import shutil
     from glob import glob
     from visivo.logging.logger import Logger
@@ -19,7 +20,9 @@ def dist_phase(output_dir, working_dir, default_target, name_filter, threads):
     )
 
     os.makedirs("dist/data", exist_ok=True)
-    shutil.copyfile(f"{output_dir}/project.json", "dist/data/project.json")
+    project_json = json.load(f"{output_dir}/project.json")
+    with open(f"dist/data/project.json", "w") as f:
+        f.write(json.dumps({"project_json": project_json}))
 
     trace_dirs = glob(f"{output_dir}/*/", recursive=True)
     for trace_dir in trace_dirs:
