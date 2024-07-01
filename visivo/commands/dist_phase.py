@@ -20,7 +20,8 @@ def dist_phase(output_dir, working_dir, default_target, name_filter, threads):
     )
 
     os.makedirs("dist/data", exist_ok=True)
-    project_json = json.load(f"{output_dir}/project.json")
+    with open(f"{output_dir}/project.json", "r") as f:
+        project_json = json.load(f)
     with open(f"dist/data/project.json", "w") as f:
         f.write(json.dumps({"project_json": project_json}))
 
