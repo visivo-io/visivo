@@ -1,4 +1,5 @@
 # supports more generic connections than the snowflake specific connector
+from visivo.logging.logger import Logger
 from visivo.models.project import Project
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
@@ -33,32 +34,41 @@ class Runner:
         from assertpy import assert_that
 
         test_run = TestRun()
-        for idx, trace in enumerate(self.traces):
+
+        Logger.instance().info("")
+        for trace in self.traces:
             if not trace.tests:
                 continue
-            for test in trace.tests:
+            for idx, test in enumerate(trace.tests):
                 with open(f"{self.output_dir}/{trace.name}/data.json") as f:
                     trace_data = json.load(f)
                     logic = test.logic
-                    for cohort in trace_data.keys():
-                        logic = logic.replace(cohort, f"trace_data['{cohort}']")
-                        for key in trace_data[cohort].keys():
-                            logic = logic.replace(key, f"['{key}']")
-                    logic = logic.replace("].[", "][")
                     try:
+                        if not any(k in logic for k in trace_data.keys()):
+                            raise click.ClickException(
+                                f"The test does not reference a valid data cohort.  Available cohorts: {', '.join(trace_data.keys())}"
+                            )
+                        for cohort in trace_data.keys():
+                            if cohort in logic:
+                                logic = logic.replace(cohort, f"trace_data['{cohort}']")
+                                for key in trace_data[cohort].keys():
+                                    logic = logic.replace(key, f"['{key}']")
+                        logic = logic.replace("].[", "][")
                         eval(f"{logic}")
-                        click.echo(click.style(".", fg="green"), nl=False)
-                        success = TestSuccess(test_id=f"{trace.name}[{idx}]")
+                        Logger.instance().success(
+                            click.style(".", fg="green"), nl=False
+                        )
+                        success = TestSuccess(test_id=f"{trace.name}.test[{idx}]")
                         test_run.add_success(success=success)
                     except Exception as e:
                         failure = TestFailure(
-                            test_id=f"{trace.name}[{idx}]", message=str(e)
+                            test_id=f"{trace.name}.test[{idx}]", message=str(e)
                         )
-                        click.echo(click.style("F", fg="red"), nl=False)
+                        Logger.instance().error(click.style("F", fg="red"), nl=False)
                         test_run.add_failure(failure=failure)
         test_run.finished_at = datetime.now()
-        click.echo("")
-        click.echo(test_run.summary())
+        Logger.instance().info("")
+        Logger.instance().info(test_run.summary())
 
         for alert in self.alerts:
             alert.alert(test_run=test_run)
