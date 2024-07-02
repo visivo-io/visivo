@@ -1,5 +1,4 @@
 # supports more generic connections than the snowflake specific connector
-from visivo.logging.logger import Logger
 from visivo.models.project import Project
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
@@ -34,8 +33,6 @@ class Runner:
         from assertpy import assert_that
 
         test_run = TestRun()
-
-        Logger.instance().info("")
         for trace in self.traces:
             if not trace.tests:
                 continue
@@ -55,20 +52,18 @@ class Runner:
                                     logic = logic.replace(key, f"['{key}']")
                         logic = logic.replace("].[", "][")
                         eval(f"{logic}")
-                        Logger.instance().success(
-                            click.style(".", fg="green"), nl=False
-                        )
+                        click.echo(click.style(".", fg="green"), nl=False)
                         success = TestSuccess(test_id=f"{trace.name}.test[{idx}]")
                         test_run.add_success(success=success)
                     except Exception as e:
                         failure = TestFailure(
                             test_id=f"{trace.name}.test[{idx}]", message=str(e)
                         )
-                        Logger.instance().error(click.style("F", fg="red"), nl=False)
+                        click.echo(click.style("F", fg="red"), nl=False)
                         test_run.add_failure(failure=failure)
         test_run.finished_at = datetime.now()
-        Logger.instance().info("")
-        Logger.instance().info(test_run.summary())
+        click.echo("")
+        click.echo(test_run.summary())
 
         for alert in self.alerts:
             alert.alert(test_run=test_run)
