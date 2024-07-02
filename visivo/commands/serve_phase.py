@@ -45,26 +45,10 @@ def app_phase(output_dir, working_dir, default_target, name_filter, threads):
         threads=threads,
     )
 
-    @app.route("/api/projects/")
+    @app.route("/data/project.json")
     def projects():
         project_json = get_project_json(output_dir, name_filter)
         return {"project_json": project_json}
-
-    @app.route("/api/traces/")
-    def traces():
-        trace_dirs = glob(f"{output_dir}/*/", recursive=True)
-        traces = []
-        for trace_dir in trace_dirs:
-            trace_name = os.path.basename(os.path.normpath(trace_dir))
-            if os.path.exists(f"{output_dir}/{trace_name}/data.json"):
-                traces.append(
-                    {
-                        "name": trace_name,
-                        "id": trace_name,
-                        "signed_data_file_url": f"/data/{trace_name}/data.json",
-                    }
-                )
-        return traces
 
     @app.route("/", defaults={"path": "index.html"})
     @app.route("/<path:path>")

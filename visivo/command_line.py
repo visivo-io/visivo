@@ -9,6 +9,7 @@ from visivo.parsers.line_validation_error import LineValidationError
 from .commands.deploy import deploy
 from .commands.serve import serve
 from .commands.run import run
+from .commands.dist import dist
 from .commands.compile import compile
 from .commands.init import init
 from .commands.test import test
@@ -18,7 +19,7 @@ from .commands.archive import archive
 
 @click.group()
 @click.option("-e", "--env-file", default=".env")
-@click.version_option(version=importlib.metadata.version('visivo'))
+@click.version_option(version=importlib.metadata.version("visivo"))
 def visivo(env_file):
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
@@ -29,6 +30,7 @@ visivo.add_command(compile)
 visivo.add_command(run)
 visivo.add_command(serve)
 visivo.add_command(deploy)
+visivo.add_command(dist)
 visivo.add_command(test)
 visivo.add_command(aggregate)
 visivo.add_command(archive)

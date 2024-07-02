@@ -29,12 +29,6 @@ def test_serve():
     )
 
     client = app.test_client()
-    response = client.get("/api/projects/")
+    response = client.get("/data/project.json")
     response_json = json.loads(response.data)
     assert "project_json" in response_json
-
-    response = client.get("/api/traces/")
-    response_json = json.loads(response.data)
-    assert "id" in response_json[0]
-    assert "name" in response_json[0]
-    assert "signed_data_file_url" in response_json[0]

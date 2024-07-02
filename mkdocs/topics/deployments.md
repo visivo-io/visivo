@@ -478,3 +478,7 @@ jobs:
           VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
 ```
 {% endraw %}
+
+## Static
+
+You can also manage and host the dashboard internally if you wish to manage it entirely within your systems.  To create a self-contained build all you need to do is run the `visivo dist` command.  This will create a folder that you can use to host in any manner that suits your needs.
