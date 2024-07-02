@@ -153,10 +153,7 @@ dashboards:
                   order_by:
                     - query(x asc)
                   tests:
-                    - coordinate_exists:
-                        coordinates:
-                          props.x: 2
-                          props.y: 1
+                    - logic: assert_that(Double Simple Line.props.x[2]).is_equal_to(1)
                 - "ref(Simple Line)"
               layout:
                 title:
