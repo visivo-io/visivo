@@ -46,15 +46,33 @@ charts:
   - name: indicator_chart
     traces:
       - ref(Indicator Trace)
-  - name: surface-chart
+  - name: surface-chart-calculated
     traces:
       - ref(Surface Trace)
     layout:
       title:
-        text: Plot
+        text: Calculated Surface Plot
       autosize: false
       width: 500
       height: 500
+  - name: surface-chart
+    traces:
+      - ref(surface-trace)
+    layout:
+      title:
+        text: Surface Plot w/ Menu
+      updatemenus: 
+        - buttons:
+            - args: ["type", "surface"]
+              label: "Surface"
+              method: "restyle"
+            - args: ["type", "heatmap"]
+              label: "Heatmap"
+              method: "restyle"
+            - args: ["type", "contour"]
+              label: "Contour"
+              method: "restyle"
+          direction: "right"
 dashboards:
   - name: Table
     rows:
@@ -182,6 +200,9 @@ dashboards:
               layout:
                 title:
                   text: "Funnel Chart"
+      - height: large
+        items:
+          - chart: ref(surface-chart-calculated)
       - height: large
         items:
           - chart: ref(surface-chart)

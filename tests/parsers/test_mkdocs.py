@@ -45,6 +45,9 @@ def test_docs_content_from_pydantic_model():
     target_md = mkdocs.get_md_content("SnowflakeTarget")
     assert len(target_md) > 50
 
+    target_md = mkdocs.get_md_content("Selector")
+    assert len(target_md) > 50
+
 
 def test_docs_content_from_traceprops_model():
     bar_md = mkdocs.get_md_content("Bar")

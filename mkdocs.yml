@@ -111,6 +111,7 @@ nav:
                   - reference/configuration/Models/LocalMergeModel/index.md
           - Table:
               - reference/configuration/Table/index.md
+              - Traces: []
           - Targets:
               - SqliteTarget:
                   - reference/configuration/Targets/SqliteTarget/index.md
