@@ -58,8 +58,6 @@ from .trace_props import (
 from .trace_columns import TraceColumns
 from typing import Optional, List, Union
 from collections import Counter
-from .base.base_model import REF_REGEX, generate_ref_field
-from typing_extensions import Annotated
 
 Props = Union[
     Mesh3d,
@@ -183,7 +181,7 @@ class Trace(NamedModel, ParentModel):
         None,
         description="A list of `column()` or `query()` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
     )
-    tests: Optional[List[dict]] = Field(
+    tests: Optional[List[Test]] = Field(
         None,
         description="A list of tests to run against the trace data. Enables making assertions about the nullability of data and relationships between data.",
     )
@@ -195,22 +193,6 @@ class Trace(NamedModel, ParentModel):
 
     def child_items(self):
         return [self.model]
-
-    def all_tests(self) -> List[Optional[Test]]:
-        tests = []
-        type_counter = Counter()
-        for test in self.tests:
-            if len(test.keys()) > 1:
-                # TODO Move this to validation
-                raise InvalidTestConfiguration(
-                    f"Test in {self.name} has more than one type key"
-                )
-            type = list(test.keys())[0]
-            type_counter.update({type: 1})
-            kwargs = test[type]
-            name = f"{self.name}-{type}-{type_counter[type]}"
-            tests.append(Test(name=name, type=type, kwargs=kwargs))
-        return tests
 
     @model_validator(mode="before")
     @classmethod

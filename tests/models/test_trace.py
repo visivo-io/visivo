@@ -15,20 +15,6 @@ def test_Trace_simple_data():
     assert trace.name == "development"
 
 
-def test_Trace_Test_generation():
-    data = {
-        "name": "development",
-        "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
-        "model": {"sql": "select * from table"},
-        "tests": [{"coordinate_exists": {"coordinates": {"query.x": 2, "query.y": 1}}}],
-    }
-    trace = Trace(**data)
-    tests = trace.all_tests()
-    assert tests[0].name == "development-coordinate_exists-1"
-    assert tests[0].kwargs == {"coordinates": {"query.x": 2, "query.y": 1}}
-    assert tests[0].type == "coordinate_exists"
-
-
 def test_Trace_missing_data():
     with pytest.raises(ValidationError) as exc_info:
         Trace()

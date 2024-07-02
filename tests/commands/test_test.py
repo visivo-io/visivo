@@ -2,6 +2,7 @@ import os
 from click.testing import CliRunner
 import json
 from visivo.commands.test import test
+from visivo.models.test import Test
 from visivo.parsers.core_parser import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
 from tests.factories.model_factories import ProjectFactory
@@ -29,12 +30,20 @@ def test_test():
 def test_test_failure():
     output_dir = temp_folder()
     project = ProjectFactory()
-    project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [{"fail": {}}]
+    project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [
+        Test(logic="assert_that(False).is_true()")
+    ]
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
+    data = {"trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
+    folders = f"{output_dir}/trace"
+    os.makedirs(folders, exist_ok=True)
+    json_file = open(f"{folders}/data.json", "w")
+    json_file.write(json.dumps(data))
+    json_file.close()
     response = runner.invoke(
         test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
     )
