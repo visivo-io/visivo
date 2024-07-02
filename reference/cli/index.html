@@ -685,6 +685,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dist" class="md-nav__link">
+    <span class="md-ellipsis">
+      dist
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#init" class="md-nav__link">
     <span class="md-ellipsis">
       init
@@ -5224,6 +5233,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dist" class="md-nav__link">
+    <span class="md-ellipsis">
+      dist
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#init" class="md-nav__link">
     <span class="md-ellipsis">
       init
@@ -5334,6 +5352,24 @@
   -h, --host TEXT         Host to deploy to
   -u, --user-dir TEXT     Directory containing profile
   --help                  Show this message and exit.
+</code></pre></div>
+<h2 id="dist">dist</h2>
+<p>Creates a distributable version of this dashboard and stores it in a 'dist' folder.
+This folder can be statically deployed to any web server, hosting service, or bucket storage.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code>visivo dist [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code>  -t, --target TEXT        Name of the default target connection to use. This
+                           overrides the default target in the project.
+  -w, --working-dir TEXT   Directory to run the command
+  -o, --output-dir TEXT    Directory to output results
+  -d, --dist-dir TEXT      Directory to output the distribution files
+  -nf, --name-filter TEXT  Run the command to only include the dag that
+                           includes the node with the given name
+  -th, --threads INTEGER   The max number of threads to use when running trace
+                           queries
+  --help                   Show this message and exit.
 </code></pre></div>
 <h2 id="init">init</h2>
 <p>Enables a quick set up by writing your target &amp; api credentials to an env file.</p>
