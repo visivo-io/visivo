@@ -64,8 +64,6 @@ You can write a trace in any yml file directly your project. The trace can be ju
         columns:
           - name: widget
             description: The type of widget sold
-            tests: 
-              - logic: assert_that(True).is_true()
           - name: quantity
             description: The number of widgets sold
           - name: completed_at

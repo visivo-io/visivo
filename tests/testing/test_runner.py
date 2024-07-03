@@ -49,7 +49,7 @@ def test_TestQueryStringFactory_errors(capsys):
     ).run()
     captured = capsys.readouterr()
     assert (
-        "two_test_trace[0]: Expected <21> to be equal to <1>, but was not."
+        "two_test_trace.test[0]: Expected <21> to be equal to <1>, but was not."
         in captured.out
     )
     assert "two_test_trace[1]:" not in captured.out

@@ -31,13 +31,19 @@ class Runner:
     def run(self):
         import numpy
         from assertpy import assert_that
+        import os
 
         test_run = TestRun()
         for trace in self.traces:
             if not trace.tests:
                 continue
             for idx, test in enumerate(trace.tests):
-                with open(f"{self.output_dir}/{trace.name}/data.json") as f:
+                data_file = f"{self.output_dir}/{trace.name}/data.json"
+                if not os.path.exists(data_file):
+                    raise click.ClickException(
+                        f"The trace '{trace.name}' doesn't have a data file present, please run 'visivo run'."
+                    )
+                with open(data_file) as f:
                     trace_data = json.load(f)
                     logic = test.logic
                     try:
@@ -48,7 +54,9 @@ class Runner:
                         for cohort in trace_data.keys():
                             if cohort in logic:
                                 logic = logic.replace(cohort, f"trace_data['{cohort}']")
-                                for key in trace_data[cohort].keys():
+                                cohort_keys = list(trace_data[cohort].keys())
+                                cohort_keys.sort(key=len, reverse=True)
+                                for key in cohort_keys:
                                     logic = logic.replace(key, f"['{key}']")
                         logic = logic.replace("].[", "][")
                         eval(f"{logic}")
