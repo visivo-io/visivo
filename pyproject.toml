@@ -4,6 +4,7 @@ version = "1.0.21"
 description = ""
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
+readme = "README.md"
 
 [tool.poetry.scripts]
 visivo = "visivo.command_line:safe_visivo"
