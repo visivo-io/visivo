@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "visivo"
 version = "1.0.21"
-description = ""
+description = "Visivo CLI for BI and visualizations as code"
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
 readme = "README.md"
