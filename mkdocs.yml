@@ -225,6 +225,11 @@ nav:
               - reference/functions/jinja/variables.md
           - Run Time:
               - reference/functions/runtime_functions/index.md
+      - Interactivity:
+          - Chart Layout Update Menus:
+              - reference/interactivity/chart-layout-update-menus/index.md
+          - Selector:
+              - reference/interactivity/selectors/index.md
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md
