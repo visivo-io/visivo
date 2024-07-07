@@ -23,6 +23,16 @@ files = [
 ]
 
 [[package]]
+name = "assertpy"
+version = "1.1"
+description = "Simple assertion library for unit testing in python with a fluent API"
+optional = false
+python-versions = "*"
+files = [
+    {file = "assertpy-1.1.tar.gz", hash = "sha256:acc64329934ad71a3221de185517a43af33e373bb44dc05b5a9b174394ef4833"},
+]
+
+[[package]]
 name = "babel"
 version = "2.15.0"
 description = "Internationalization utilities"
@@ -2504,4 +2514,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = " >=3.10,<3.13"
-content-hash = "9ac944adaa847d875e8055214a67b81b2053c67ce84d31e7e0509948ee3c8d87"
+content-hash = "4c97b00559f70b81325f998941200ba544545b9d0728b6d9244756eb947aa766"
