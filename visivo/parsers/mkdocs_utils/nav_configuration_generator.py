@@ -14,6 +14,16 @@ def _get_ref(field_data):
             ref = entry.get("$ref")
             if ref:
                 refs.append(ref)
+            items = entry.get("items")
+            if isinstance(items, dict):
+                items_ref = items.get("$ref")
+                if items_ref:
+                    refs.append(items_ref)
+            one_of = entry.get("oneOf", [])
+            for one_of_entry in one_of:
+                one_of_ref = one_of_entry.get("$ref")
+                if one_of_ref:
+                    refs.append(one_of_ref)
         return refs, "anyOf"
 
     # Check for refs inside 'oneOf'
@@ -59,9 +69,9 @@ def _process_model(schema, model_data, processed_models):
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
-                nested_structure[field.capitalize()][
-                    nested_model_name
-                ] = _process_model(schema, nested_model_data, processed_models)
+                nested_structure[field.capitalize()][nested_model_name] = (
+                    _process_model(schema, nested_model_data, processed_models)
+                )
         else:
             nested_structure[field] = field_data.get("type", "unknown")
 

@@ -23,6 +23,17 @@ def test_nav_configuration():
     assert len(nav_config) > 5
 
 
+# def test_schema_assumptions():
+#     schema = mkdocs.SCHEMA
+#     print(schema.keys())
+#     print(schema["$defs"]["Chart"])
+#     print("-------------------")
+#     print(schema["$defs"]["Trace"])
+#     print("-------------------")
+#     print(schema["$defs"]["Selector"])
+#     assert 1 == 2
+
+
 def test_docs_content_from_pydantic_model():
     trace_md = mkdocs.get_md_content("Trace")
     assert len(trace_md) > 50
@@ -45,8 +56,11 @@ def test_docs_content_from_pydantic_model():
     target_md = mkdocs.get_md_content("SnowflakeTarget")
     assert len(target_md) > 50
 
-    target_md = mkdocs.get_md_content("Selector")
-    assert len(target_md) > 50
+    selector_md = mkdocs.get_md_content("Selector")
+    assert len(selector_md) > 50
+
+    test_md = mkdocs.get_md_content("Test")
+    assert len(test_md) > 50
 
 
 def test_docs_content_from_traceprops_model():

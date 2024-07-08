@@ -91,6 +91,8 @@ nav:
               - reference/configuration/Chart/index.md
               - Layout:
                   - reference/configuration/Chart/Layout/index.md
+              - Selector:
+                  - reference/configuration/Chart/Selector/index.md
               - Traces: []
           - Dashboard:
               - reference/configuration/Dashboard/index.md
@@ -111,10 +113,18 @@ nav:
                   - reference/configuration/Models/LocalMergeModel/index.md
           - Table:
               - reference/configuration/Table/index.md
+              - TableColumnDefinition:
+                  - reference/configuration/Table/TableColumnDefinition/index.md
+                  - TableColumn:
+                      - reference/configuration/Table/TableColumnDefinition/TableColumn/index.md
+              - Selector:
+                  - reference/configuration/Table/Selector/index.md
               - Traces: []
           - Targets:
               - SqliteTarget:
                   - reference/configuration/Targets/SqliteTarget/index.md
+                  - Attachment:
+                      - reference/configuration/Targets/SqliteTarget/Attachment/index.md
               - PostgresqlTarget:
                   - reference/configuration/Targets/PostgresqlTarget/index.md
               - MysqlTarget:
@@ -217,6 +227,8 @@ nav:
                   - reference/configuration/Trace/Volume/index.md
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
+              - Test:
+                  - reference/configuration/Trace/Test/index.md
       - Functions:
           - On Compile:
               - reference/functions/jinja/index.md
