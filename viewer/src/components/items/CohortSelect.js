@@ -109,7 +109,7 @@ const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, pa
     return (
         <>
             {showLabel && <label htmlFor='traceSelect'>Traces</label>}
-            {visible && <Select data-testid="selector" name="traceSelect" inputId="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
+            {visible && <Select data-testid="selector" name="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
         </>
     )
 }
