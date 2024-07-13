@@ -53,6 +53,7 @@ tasks:
   - key: post-pytest-results
     use: [poetry-install]
     run: |
+      mint-breakpoint
       curl -X POST -H "Content-Type: application/json" -d @pytest-report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}
 
 
