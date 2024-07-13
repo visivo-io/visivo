@@ -46,9 +46,15 @@ tasks:
 
   - key: test-cli
     use: [poetry-install]
-    run: poetry run pytest
+    run: poetry run pytest --json-report --json-report-file=pytest-report.json
     env:
       STACKTRACE: true
+  
+  - key: post-pytest-results
+    use: [poetry-install]
+    run: |
+      curl -X POST -H "Content-Type: application/json" -d @pytest-report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}
+
 
   - key: test-viewer
     use: [code, node]
