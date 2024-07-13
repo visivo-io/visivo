@@ -46,7 +46,7 @@ tasks:
 
   - key: test-cli
     use: [poetry-install]
-    run: poetry run pytest --json-report --json-report-file=pytest-report.json
+    run: poetry run pytest --json-report
     env:
       STACKTRACE: true
   
