@@ -77,3 +77,13 @@ def test_Trace_column_root_validation_with_reference_extra_paren():
     }
     trace = Trace(**data)
     assert trace.name == "development"
+
+
+def test_Trace_with_columns_without_props():
+    data = {
+        "name": "development",
+        "columns": {"x_data": "x"},
+        "model": {"sql": "select * from table"},
+    }
+    trace = Trace(**data)
+    assert trace.name == "development"

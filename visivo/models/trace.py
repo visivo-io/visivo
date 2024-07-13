@@ -200,7 +200,7 @@ class Trace(NamedModel, ParentModel):
         if isinstance(data, str):
             return data
         columns, props = (data.get("columns"), data.get("props"))
-        if columns is None:
+        if columns is None or props is None:
             return data
 
         columnKeys = list(columns.keys())
