@@ -35,6 +35,5 @@ models:
   - name: waterfall_model
     table_name: appl_pl
     args:
-      - cat 
+      - cat
       - data/aapl_pl.csv
-      
