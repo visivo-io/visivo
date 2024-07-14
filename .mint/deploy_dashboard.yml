@@ -44,7 +44,9 @@ tasks:
     run: |
       cd test-projects/integration
       visivo deploy -s ${{ init.head-ref }}-mint | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
-      gh pr comment ${{ init.pr-num }} -F deployed.txt
+      if ! gh pr comment ${{ init.pr-num }} -F deployed.txt --edit-last 2>/dev/null; then
+        gh pr comment ${{ init.pr-num }} -F deployed.txt
+      fi
     env:
       VISIVO_TOKEN: ${{ secrets.VISIVO_TOKEN }}
       GH_TOKEN: ${{ vaults.default.github-apps.mint-automation-visivo.token }}

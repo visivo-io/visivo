@@ -21,3 +21,5 @@ mkdocs_build/
 dist/
 
 node_modules
+
+.report.json
