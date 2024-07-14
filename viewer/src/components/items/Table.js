@@ -60,8 +60,10 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
     const onSelectedCohortChange = (changedSelectedTracesData) => {
         const traceName = Object.keys(changedSelectedTracesData)[0]
-        const cohortName = Object.keys(changedSelectedTracesData[traceName])[0]
-        setSelectedTableCohort({ traceName, data: changedSelectedTracesData[traceName][cohortName] })
+        if (traceName) {
+            const cohortName = Object.keys(changedSelectedTracesData[traceName])[0]
+            setSelectedTableCohort({ traceName, data: changedSelectedTracesData[traceName][cohortName] })
+        }
     }
 
     return (
