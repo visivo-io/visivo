@@ -1,11 +1,9 @@
 import click
-import yaml
 import pytest
-from tests.support.utils import temp_yml_file, temp_file, temp_folder
-from pathlib import Path
-from visivo.parsers.core_parser import CoreParser, PROJECT_FILE_NAME, PROFILE_FILE_NAME
+from tests.support.utils import temp_yml_file, temp_file
+from visivo.parsers.core_parser import CoreParser
+from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.parsers.line_validation_error import LineValidationError
-from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 
 
 def test_Core_Parser_with_empty_project():

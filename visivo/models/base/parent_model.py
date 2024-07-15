@@ -4,9 +4,6 @@ from typing import List
 from abc import ABC, abstractmethod
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
-import networkx as nx
-import networkx.algorithms.traversal.depth_first_search as dfs
-import matplotlib.pyplot as pyplot
 from pydantic_core import PydanticCustomError
 from visivo.models.targets.target import DefaultTarget
 
@@ -17,7 +14,9 @@ class ParentModel(ABC):
         return []
 
     def dag(self, node_permit_list=None):
-        dag = nx.DiGraph()
+        from networkx import DiGraph
+
+        dag = DiGraph()
         dag.add_node(self)
         self.__build_dag(
             items=self.child_items(),
@@ -86,6 +85,8 @@ class ParentModel(ABC):
 
     @staticmethod
     def all_descendants(dag, from_node=None):
+        import networkx.algorithms.traversal.depth_first_search as dfs
+
         return dfs.dfs_tree(dag, from_node)
 
     def descendants(self):
@@ -119,6 +120,8 @@ class ParentModel(ABC):
 
     @staticmethod
     def all_nodes_including_named_node_in_graph(name: str, dag):
+        from networkx import descendants, ancestors
+
         item = ParentModel.all_descendants_with_name(name=name, dag=dag)
 
         if len(item) == 1:
@@ -126,9 +129,9 @@ class ParentModel(ABC):
         else:
             raise click.ClickException(f"No item found with name: '{name}'.")
 
-        decendants = nx.descendants(dag, item)
-        ancestors = nx.ancestors(dag, item)
-        items = decendants.union(ancestors)
+        d = descendants(dag, item)
+        a = ancestors(dag, item)
+        items = d.union(a)
         items.add(item)
         return items
 
@@ -146,9 +149,12 @@ class ParentModel(ABC):
 
     @staticmethod
     def show_dag(dag):
+        import matplotlib.pyplot as pyplot
+        from networkx import planar_layout, draw_networkx
+
         options = {}
-        pos = nx.planar_layout(dag)
-        nx.draw_networkx(dag, pos, **options)
+        pos = planar_layout(dag)
+        draw_networkx(dag, pos, **options)
 
         ax = pyplot.gca()
         ax.margins(0.20)

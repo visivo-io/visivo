@@ -3,7 +3,7 @@ import json
 from tests.support.utils import temp_file, temp_yml_file, temp_folder
 from click.testing import CliRunner
 from visivo.commands.deploy import deploy
-from visivo.parsers.core_parser import PROJECT_FILE_NAME, PROFILE_FILE_NAME
+from visivo.parsers.file_names import PROJECT_FILE_NAME, PROFILE_FILE_NAME
 from visivo.commands.utils import create_file_database
 from tests.factories.model_factories import ProjectFactory
 

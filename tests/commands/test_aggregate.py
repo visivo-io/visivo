@@ -1,7 +1,6 @@
 import os
 import json
 from visivo.commands.aggregate import aggregate
-from visivo.parsers.core_parser import PROJECT_FILE_NAME
 from click.testing import CliRunner
 from tests.support.utils import temp_folder
 

@@ -1,6 +1,4 @@
 import os
-import click
-import pytest
 from tests.support.utils import temp_folder
 from tests.factories.model_factories import LocalMergeModelFactory
 from pydantic import ValidationError

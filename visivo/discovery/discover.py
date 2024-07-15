@@ -1,12 +1,9 @@
-from visivo.commands.utils import get_profile_file
-from visivo.utils import list_all_ymls_in_dir
 import os
 import click
 from pathlib import Path
-from visivo.parsers.core_parser import PROJECT_FILE_NAME, PROFILE_FILE_NAME
-from visivo.models.include import Include
+from visivo.parsers.file_names import PROJECT_FILE_NAME
+from visivo.commands.utils import get_profile_file
 from visivo.utils import load_yaml_file
-from git import Repo
 
 
 class Discover:
@@ -33,6 +30,8 @@ class Discover:
         return files
 
     def __add_includes(self, files, file):
+        from visivo.models.include import Include
+
         data = load_yaml_file(file)
         base_path = os.path.dirname(file)
 
@@ -59,6 +58,8 @@ class Discover:
         return f"{dir}/{PROJECT_FILE_NAME}"
 
     def __get_project_file_from_git(self, git_url):
+        from git import Repo
+
         deps_folder = f"{self.working_directory}/.visivo_cache"
         if not os.path.exists(deps_folder):
             os.makedirs(deps_folder)

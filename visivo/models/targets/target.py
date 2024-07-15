@@ -1,7 +1,6 @@
 from typing import Optional
 from ..base.named_model import NamedModel
 from sqlalchemy.engine import URL
-from pandas import DataFrame
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
 
@@ -33,7 +32,7 @@ class Target(ABC, NamedModel):
         raise NotImplementedError(f"No connection method implemented for {self.type}")
 
     @abstractmethod
-    def read_sql(self, query: str) -> DataFrame:
+    def read_sql(self, query: str):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
 
     def get_password(self):

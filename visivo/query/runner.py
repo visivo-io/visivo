@@ -1,10 +1,8 @@
 from typing import List
 import warnings
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.models import local_merge_model
 
 from visivo.models.project import Project
-from visivo.models.trace import Trace
 from visivo.logging.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor

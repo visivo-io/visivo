@@ -1,6 +1,5 @@
 from typing import Literal, Optional
 from visivo.models.targets.target import Target
-from pandas import DataFrame
 import click
 from pydantic import Field
 
@@ -45,7 +44,9 @@ class SnowflakeTarget(Target):
 
     type: SnowflakeType
 
-    def read_sql(self, query: str) -> DataFrame:
+    def read_sql(self, query: str):
+        from pandas import DataFrame
+
         with self.connect() as connection:
             cursor = connection.cursor()
             cursor.execute(query)

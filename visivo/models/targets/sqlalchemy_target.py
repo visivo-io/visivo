@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from pandas import DataFrame
-from sqlalchemy import create_engine, text
 import click
 from visivo.models.targets.target import Target
 
@@ -14,7 +12,10 @@ class SqlalchemyTarget(Target, ABC):
     def get_dialect(self):
         raise NotImplementedError(f"No dialect method implemented for {self.type}")
 
-    def read_sql(self, query: str) -> DataFrame:
+    def read_sql(self, query: str):
+        from pandas import DataFrame
+        from sqlalchemy import text
+
         with self.connect() as connection:
             query = text(query)
             results = connection.execute(query)
@@ -41,6 +42,8 @@ class SqlalchemyTarget(Target, ABC):
             )
 
     def get_engine(self):
+        from sqlalchemy import create_engine
+
         if not self._engine:
             if hasattr(self, "connection_pool_size"):
                 self._engine = create_engine(
