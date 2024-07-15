@@ -47,3 +47,16 @@ test('renders table', async () => {
   expect(screen.getByText('value 1')).toBeInTheDocument();
   expect(screen.getByText('value 2')).toBeInTheDocument();
 });
+
+test('renders table when no data returned', async () => {
+  const traceData = {
+    "traceName": {}
+  };
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('No records to display')).toBeInTheDocument();
+  });
+});

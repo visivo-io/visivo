@@ -78,6 +78,24 @@ test('renders multiselect select', async () => {
   await selectEvent.select(selectWrapper, 'Cohort Name 2')
 });
 
+test('renders without data', async () => {
+  let selectedTraceData = null;
+  const onChange = (value) => { selectedTraceData = value }
+  render(<CohortSelect
+    tracesData={{
+      "Trace Name 1": {
+      },
+    }}
+    showLabel
+    onChange={onChange}
+    selector={{ type: "single", name: "multiple" }}
+    name={"Chart"} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(selectedTraceData).toEqual({})
+  })
+});
+
 describe('generateNewSearchParams', () => {
   test('selects single choice', async () => {
     const name = "Component"

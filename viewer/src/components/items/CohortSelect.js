@@ -95,6 +95,8 @@ const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, pa
     const selectedCohortNames = useMemo(() => {
         if (searchParams.has(name)) {
             return searchParams.getAll(name)
+        } else if (!defaultOptions) {
+            return ""
         } else {
             return Array.isArray(defaultOptions) ? defaultOptions.map((ds) => ds.value) : defaultOptions.value
         }
@@ -108,8 +110,8 @@ const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, pa
 
     return (
         <>
-            {showLabel && <label htmlFor='traceSelect'>Traces</label>}
-            {visible && <Select data-testid="selector" name="traceSelect" inputId="traceSelect" options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
+            {showLabel && <label htmlFor={`traceSelect${name}`}>Traces</label>}
+            {visible && <Select data-testid="selector" name="traceSelect" inputId={`traceSelect${name}`} options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
         </>
     )
 }
