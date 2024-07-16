@@ -7,6 +7,9 @@ from .base.parent_model import ParentModel
 
 from .test import Test
 from typing import Union
+from .trace_columns import TraceColumns
+from typing import Optional, List, Union
+
 from .trace_props import (
     Mesh3d,
     Barpolar,
@@ -55,9 +58,7 @@ from .trace_props import (
     Scattergl,
     Splom,
 )
-from .trace_columns import TraceColumns
-from typing import Optional, List, Union
-from collections import Counter
+
 
 Props = Union[
     Mesh3d,

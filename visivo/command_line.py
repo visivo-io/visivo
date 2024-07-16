@@ -25,6 +25,7 @@ def visivo(env_file, profile):
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
+    # https://github.com/nschloe/tuna
     if profile:
         import cProfile
         import pstats
@@ -39,10 +40,8 @@ def visivo(env_file, profile):
             pr.disable()
             Logger.instance().info("Profiling completed")
             s = io.StringIO()
-            pstats.Stats(pr, stream=s).sort_stats("cumulative").print_stats()
-            Logger.instance().info(s.getvalue())
-            with open("profile_results", "w") as file:
-                file.write(s)
+            pstats.Stats(pr, stream=s).sort_stats("cumulative")
+            pstats.dump_stats("visivo-profile.dmp")
 
         atexit.register(exit)
 
