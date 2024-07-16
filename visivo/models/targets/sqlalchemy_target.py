@@ -26,6 +26,8 @@ class SqlalchemyTarget(Target, ABC):
         return DataFrame(data, columns=columns)
 
     def get_connection(self):
+        from sqlalchemy import text
+
         try:
             connection = self.get_engine().connect()
             if hasattr(self, "attach") and self.attach:
