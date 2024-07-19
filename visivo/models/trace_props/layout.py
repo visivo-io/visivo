@@ -3305,7 +3305,7 @@ class Steps1(TracePropsAttribute):
 	)
 	value: Optional[str]= Field(
 		None,
-		description=""" string<br>Sets the value of the slider step, used to refer to the step programatically. Defaults to the slider label if not provided. """
+		description=""" string<br>Sets the value of the slider step, used to refer to the step programmatically. Defaults to the slider label if not provided. """
 	)
 	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
@@ -5019,7 +5019,7 @@ class LayoutXaxis(TracePropsAttribute):
 	)
 	spikemode: Optional[str]= Field(
 		None,
-		description=""" flaglist string. any combination of "toaxis", "across", "marker" joined with a "+"<br>Determines the drawing mode for the spike line If "toaxis", the line is drawn from the data point to the axis the series is plotted on. If "across", the line is drawn across the entire plot area, and supercedes "toaxis". If "marker", then a marker dot is drawn on the axis the series is plotted on """
+		description=""" flaglist string. any combination of "toaxis", "across", "marker" joined with a "+"<br>Determines the drawing mode for the spike line If "toaxis", the line is drawn from the data point to the axis the series is plotted on. If "across", the line is drawn across the entire plot area, and supersedes "toaxis". If "marker", then a marker dot is drawn on the axis the series is plotted on """
 	)
 	spikesnap: Optional[str]= Field(
 		None,
@@ -5466,7 +5466,7 @@ class LayoutYaxis(TracePropsAttribute):
 	)
 	spikemode: Optional[str]= Field(
 		None,
-		description=""" flaglist string. any combination of "toaxis", "across", "marker" joined with a "+"<br>Determines the drawing mode for the spike line If "toaxis", the line is drawn from the data point to the axis the series is plotted on. If "across", the line is drawn across the entire plot area, and supercedes "toaxis". If "marker", then a marker dot is drawn on the axis the series is plotted on """
+		description=""" flaglist string. any combination of "toaxis", "across", "marker" joined with a "+"<br>Determines the drawing mode for the spike line If "toaxis", the line is drawn from the data point to the axis the series is plotted on. If "across", the line is drawn across the entire plot area, and supersedes "toaxis". If "marker", then a marker dot is drawn on the axis the series is plotted on """
 	)
 	spikesnap: Optional[str]= Field(
 		None,
