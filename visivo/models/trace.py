@@ -10,10 +10,10 @@ from .test import Test
 from .trace_columns import TraceColumns
 from typing import Optional, List
 
-if os.getenv("INCLUDE_TRACE_PROPS"):
-    from visivo.models.trace_props.fields import TracePropsField
-else:
+if os.getenv("EXCLUDE_TRACE_PROPS") == "true":
     from visivo.models.trace_props.scatter import Scatter
+else:
+    from visivo.models.trace_props.fields import TracePropsField
 
 
 class InvalidTestConfiguration(Exception):
@@ -100,10 +100,10 @@ class Trace(NamedModel, ParentModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    if os.getenv("INCLUDE_TRACE_PROPS"):
-        props: TracePropsField
-    else:
+    if os.getenv("EXCLUDE_TRACE_PROPS"):
         props: Any = Field(Scatter(type="scatter"))
+    else:
+        props: TracePropsField
 
     def child_items(self):
         return [self.model]

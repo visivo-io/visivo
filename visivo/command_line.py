@@ -22,6 +22,7 @@ from .commands.archive import archive
 @click.option("-e", "--env-file", default=".env")
 @click.version_option(version=importlib.metadata.version("visivo"))
 def visivo(env_file, profile):
+    os.environ["EXCLUDE_TRACE_PROPS"] = "true"
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
