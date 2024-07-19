@@ -12,7 +12,8 @@ from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
 from visivo.models.table import Table
-from visivo.models.trace_props import Scatter, Surface
+from visivo.models.trace_props.scatter import Scatter
+from visivo.models.trace_props.surface import Surface
 from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
 from visivo.query.jobs.job import Job

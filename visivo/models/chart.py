@@ -6,8 +6,7 @@ from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import generate_ref_field
 from .trace import Trace
-from .trace_props import Layout
-from typing_extensions import Annotated
+from .trace_props.layout import Layout
 
 
 class Chart(SelectorModel, NamedModel, ParentModel):
@@ -52,5 +51,3 @@ class Chart(SelectorModel, NamedModel, ParentModel):
     @property
     def trace_refs(self) -> List[str]:
         return list(filter(Trace.is_ref, self.traces))
-
-

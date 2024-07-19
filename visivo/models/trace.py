@@ -1,117 +1,27 @@
 import re
-from typing import Any
-from pydantic import model_validator, Field
+import os
+from typing import Any, Literal, Union
+from pydantic import BaseModel, Field, model_validator
 from visivo.models.models.fields import ModelRefField
+from visivo.models.trace_props.fields import validate_trace_props
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
-
 from .test import Test
-from typing import Union
 from .trace_columns import TraceColumns
-from typing import Optional, List, Union
+from typing import Optional, List
 
-from .trace_props import (
-    Mesh3d,
-    Barpolar,
-    Scattersmith,
-    Streamtube,
-    Cone,
-    Scattermapbox,
-    Scattergeo,
-    Scatterpolar,
-    Sunburst,
-    Histogram2d,
-    Isosurface,
-    Violin,
-    Scatter,
-    Image,
-    Ohlc,
-    Heatmapgl,
-    Indicator,
-    Funnelarea,
-    Carpet,
-    Icicle,
-    Surface,
-    Parcats,
-    Treemap,
-    Funnel,
-    Histogram2dcontour,
-    Contourcarpet,
-    Parcoords,
-    Candlestick,
-    Scatter3d,
-    Waterfall,
-    Choropleth,
-    Heatmap,
-    Histogram,
-    Volume,
-    Contour,
-    Scatterternary,
-    Sankey,
-    Scattercarpet,
-    Densitymapbox,
-    Choroplethmapbox,
-    Box,
-    Pie,
-    Bar,
-    Scatterpolargl,
-    Scattergl,
-    Splom,
-)
-
-
-Props = Union[
-    Mesh3d,
-    Barpolar,
-    Scattersmith,
-    Streamtube,
-    Cone,
-    Scattermapbox,
-    Scattergeo,
-    Scatterpolar,
-    Sunburst,
-    Histogram2d,
-    Isosurface,
-    Violin,
-    Scatter,
-    Image,
-    Ohlc,
-    Heatmapgl,
-    Indicator,
-    Funnelarea,
-    Carpet,
-    Icicle,
-    Surface,
-    Parcats,
-    Treemap,
-    Funnel,
-    Histogram2dcontour,
-    Contourcarpet,
-    Parcoords,
-    Candlestick,
-    Scatter3d,
-    Waterfall,
-    Choropleth,
-    Heatmap,
-    Histogram,
-    Volume,
-    Contour,
-    Scatterternary,
-    Sankey,
-    Scattercarpet,
-    Densitymapbox,
-    Choroplethmapbox,
-    Box,
-    Pie,
-    Bar,
-    Scatterpolargl,
-    Scattergl,
-    Splom,
-]
+if os.getenv("INCLUDE_TRACE_PROPS"):
+    from visivo.models.trace_props.fields import TracePropsField
+else:
+    from visivo.models.trace_props.scatter import Scatter
 
 
 class InvalidTestConfiguration(Exception):
     pass
+
+
+class TestClass(BaseModel):
+    type: Literal["test"]
 
 
 class Trace(NamedModel, ParentModel):
@@ -190,10 +100,26 @@ class Trace(NamedModel, ParentModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    props: Props = Field(Scatter(type="scatter"), discriminator="type")
+    if os.getenv("INCLUDE_TRACE_PROPS"):
+        props: TracePropsField
+    else:
+        props: Any = Field(Scatter(type="scatter"))
 
     def child_items(self):
         return [self.model]
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_props(cls, data: Any):
+        if isinstance(data, str):
+            return data
+
+        if "props" not in data:
+            raise ValueError(f"Trace props must have a type.")
+        if isinstance(data["props"], dict):
+            data["props"] = validate_trace_props(data["props"])
+
+        return data
 
     @model_validator(mode="before")
     @classmethod

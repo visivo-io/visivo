@@ -18,7 +18,7 @@ from visivo.models.item import Item
 from visivo.models.row import Row
 from visivo.models.trace import Trace
 from visivo.models.defaults import Defaults
-from visivo.models.trace_props import Scatter
+from visivo.models.trace_props.scatter import Scatter
 from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 

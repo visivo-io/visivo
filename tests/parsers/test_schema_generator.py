@@ -1,4 +1,3 @@
-import json
 from tests.support.utils import temp_file
 from visivo.parsers.schema_generator import generate_schema
 
