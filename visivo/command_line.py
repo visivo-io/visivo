@@ -20,9 +20,10 @@ from .commands.archive import archive
 @click.group()
 @click.option("--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
+@click.option("-fcpl", "--force-complete-property-loading", is_flag=True)
 @click.version_option(version=importlib.metadata.version("visivo"))
-def visivo(env_file, profile):
-    os.environ["EXCLUDE_TRACE_PROPS"] = "true"
+def visivo(env_file, profile, force_complete_property_loading):
+    os.environ["EXCLUDE_TRACE_PROPS"] = str(not force_complete_property_loading)
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
