@@ -40,7 +40,6 @@ from visivo.models.trace_props.splom import Splom
 from visivo.models.trace_props.streamtube import Streamtube
 from visivo.models.trace_props.sunburst import Sunburst
 from visivo.models.trace_props.surface import Surface
-from visivo.models.trace_props.table import Table
 from visivo.models.trace_props.treemap import Treemap
 from visivo.models.trace_props.violin import Violin
 from visivo.models.trace_props.volume import Volume
@@ -48,7 +47,7 @@ from visivo.models.trace_props.waterfall import Waterfall
 from typing import Union, Annotated
 from pydantic import Field
 
-TracePropsFieldUnion = Union[Bar, Barpolar, Box, Candlestick, Carpet, Choropleth, Choroplethmapbox, Cone, Contour, Contourcarpet, Densitymapbox, Funnel, Funnelarea, Heatmap, Heatmapgl, Histogram, Histogram2d, Histogram2dcontour, Icicle, Image, Indicator, Isosurface, Mesh3d, Ohlc, Parcats, Parcoords, Pie, Sankey, Scatter, Scatter3d, Scattercarpet, Scattergeo, Scattergl, Scattermapbox, Scatterpolar, Scatterpolargl, Scattersmith, Scatterternary, Splom, Streamtube, Sunburst, Surface, Table, Treemap, Violin, Volume, Waterfall]
+TracePropsFieldUnion = Union[Bar, Barpolar, Box, Candlestick, Carpet, Choropleth, Choroplethmapbox, Cone, Contour, Contourcarpet, Densitymapbox, Funnel, Funnelarea, Heatmap, Heatmapgl, Histogram, Histogram2d, Histogram2dcontour, Icicle, Image, Indicator, Isosurface, Mesh3d, Ohlc, Parcats, Parcoords, Pie, Sankey, Scatter, Scatter3d, Scattercarpet, Scattergeo, Scattergl, Scattermapbox, Scatterpolar, Scatterpolargl, Scattersmith, Scatterternary, Splom, Streamtube, Sunburst, Surface, Treemap, Violin, Volume, Waterfall]
 TracePropsField = Annotated[TracePropsFieldUnion, Field(discriminator="type")]
 
 def validate_trace_props(props):
@@ -137,8 +136,6 @@ def validate_trace_props(props):
            return Sunburst(**props)
         case "surface":
            return Surface(**props)
-        case "table":
-           return Table(**props)
         case "treemap":
            return Treemap(**props)
         case "violin":
