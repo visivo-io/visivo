@@ -1,7 +1,7 @@
 import os
 import json
 from visivo.commands.run import run
-from visivo.parsers.core_parser import PROJECT_FILE_NAME
+from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
 from tests.support.utils import temp_yml_file
 from click.testing import CliRunner

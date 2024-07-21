@@ -18,11 +18,34 @@ from .commands.archive import archive
 
 
 @click.group()
+@click.option("--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
+@click.option("-fcpl", "--force-complete-property-loading", is_flag=True)
 @click.version_option(version=importlib.metadata.version("visivo"))
-def visivo(env_file):
+def visivo(env_file, profile, force_complete_property_loading):
+    os.environ["EXCLUDE_TRACE_PROPS"] = str(not force_complete_property_loading)
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
+
+    # https://github.com/nschloe/tuna
+    if profile:
+        import cProfile
+        import pstats
+        import io
+        import atexit
+
+        Logger.instance().info("Profiling...")
+        pr = cProfile.Profile()
+        pr.enable()
+
+        def exit():
+            pr.disable()
+            Logger.instance().info("Profiling completed")
+            s = io.StringIO()
+            pstats.Stats(pr, stream=s).sort_stats("cumulative")
+            pstats.dump_stats("visivo-profile.dmp")
+
+        atexit.register(exit)
 
 
 visivo.add_command(init)

@@ -1,4 +1,3 @@
-import jinja2
 from deepmerge import always_merger
 from typing import List
 from pathlib import Path
@@ -7,9 +6,6 @@ from visivo.parsers.line_validation_error import LineValidationError
 from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 from visivo.utils import load_yaml_file
 from ..models.project import Project
-
-PROJECT_FILE_NAME = "project.visivo.yml"
-PROFILE_FILE_NAME = "profile.yml"
 
 
 class CoreParser:

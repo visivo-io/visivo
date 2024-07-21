@@ -1,11 +1,9 @@
 from typing import List
 from pydantic import Field
-from visivo.logging.logger import Logger
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.model import Model
-from visivo.models.models.sql_model import SqlModel
 from visivo.models.targets.sqlite_target import Attachment, SqliteTarget
 import os
 
@@ -63,8 +61,6 @@ class LocalMergeModel(Model, ParentModel):
         )
 
     def insert_dependent_models_to_sqlite(self, output_dir, dag):
-        import pandas
-
         for model in self._get_dereferenced_models(dag):
             if isinstance(model, CsvScriptModel):
                 continue

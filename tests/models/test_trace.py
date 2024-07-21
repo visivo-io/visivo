@@ -20,8 +20,8 @@ def test_Trace_missing_data():
         Trace()
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == "Field required"
-    assert error["type"] == "missing"
+    assert error["msg"] == "Value error, Trace props must have a type."
+    assert error["type"] == "value_error"
 
 
 def test_Trace_get_trace_name():

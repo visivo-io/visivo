@@ -1,9 +1,8 @@
-from pandas import read_json
-
-
 class Aggregator:
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
+        from pandas import read_json
+
         data_frame = read_json(json_file)
         cls.aggregate_data_frame(data_frame=data_frame, trace_dir=trace_dir)
 

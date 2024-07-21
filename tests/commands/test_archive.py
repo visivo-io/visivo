@@ -1,7 +1,7 @@
 from click.testing import CliRunner
 from tests.support.utils import temp_file, temp_folder
 from visivo.commands.archive import archive
-from visivo.parsers.core_parser import PROFILE_FILE_NAME
+from visivo.parsers.file_names import PROFILE_FILE_NAME
 
 runner = CliRunner()
 

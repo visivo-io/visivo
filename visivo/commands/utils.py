@@ -1,11 +1,7 @@
 import click
-import json
 import os
 from pathlib import Path
-from visivo.models.project import Project
-from visivo.models.targets.target import Target
-from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert
-from visivo.parsers.core_parser import PROFILE_FILE_NAME
+from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.utils import load_yaml_file
 
 
@@ -30,6 +26,8 @@ def get_profile_file(home_directory=os.path.expanduser("~")):
 
 
 def create_file_database(url, output_dir: str):
+    from sqlalchemy import create_engine, MetaData, Table, Integer, Column, insert
+
     os.makedirs(output_dir, exist_ok=True)
     engine = create_engine(url, echo=True)
     metadata_obj = MetaData()

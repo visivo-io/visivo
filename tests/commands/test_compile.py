@@ -1,6 +1,6 @@
 import os
 from visivo.commands.compile import compile
-from visivo.parsers.core_parser import PROJECT_FILE_NAME
+from visivo.parsers.file_names import PROJECT_FILE_NAME
 from tests.support.utils import temp_yml_file
 import json
 from click.testing import CliRunner

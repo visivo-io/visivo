@@ -3,7 +3,6 @@ from typing_extensions import Annotated
 from pydantic import Field
 import smtplib
 import click
-import requests
 import json
 from .base.named_model import NamedModel
 from .test_run import TestRun
@@ -116,6 +115,8 @@ class SlackAlert(Alert):
     )
 
     def alert(self, test_run: TestRun):
+        import requests
+
         json_headers = {"content-type": "application/json"}
 
         if not test_run.failures:
