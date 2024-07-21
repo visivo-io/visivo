@@ -39,9 +39,12 @@ test('renders without selector', async () => {
 test('renders single select', async () => {
   let selectedTraceData = null;
   const onChange = (value) => { selectedTraceData = value }
+  let visible = null;
+  const onVisible = (value) => { visible = value }
   render(<CohortSelect
     tracesData={tracesData}
     showLabel
+    onVisible={onVisible}
     selector={{ type: "single", name: "selector" }}
     onChange={onChange} />, { wrapper: withProviders });
 
@@ -57,6 +60,7 @@ test('renders single select', async () => {
       })
   })
   expect(screen.queryByText('cohortName2')).not.toBeInTheDocument();
+  expect(visible).toEqual(true);
 });
 
 test('renders multiselect select', async () => {
@@ -93,6 +97,27 @@ test('renders without data', async () => {
 
   await waitFor(() => {
     expect(selectedTraceData).toEqual({})
+  })
+});
+
+test('renders not visible', async () => {
+  let visible = null;
+  const onVisible = (value) => { visible = value }
+  const onChange = () => { }
+  render(<CohortSelect
+    tracesData={{
+      "Trace Name 1": {
+      },
+    }}
+    showLabel
+    onChange={onChange}
+    parentName={"selectorParentName"}
+    onVisible={onVisible}
+    selector={{ type: "single", name: "multiple", parent: { name: "parentName" } }}
+    name={"Chart"} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(visible).toEqual(false)
   })
 });
 
