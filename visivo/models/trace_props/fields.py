@@ -144,3 +144,5 @@ def validate_trace_props(props):
            return Volume(**props)
         case "waterfall":
            return Waterfall(**props)
+        case _:
+           raise ValueError(f"{props['type']} is not a valid trace_props type.")
