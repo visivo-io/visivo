@@ -8,10 +8,10 @@ export const TestComponent = () => {
     return <div>TEST COMPONENT</div>
 }
 
-export const withProviders = ({ children, traces = [] }) => {
+export const withProviders = ({ children }) => {
     const fetchTraceQuery = (projectId, name) => ({
         queryKey: ['trace', projectId, name],
-        queryFn: () => traces,
+        queryFn: () => [],
     })
 
     const queryClient = new QueryClient({
@@ -21,6 +21,7 @@ export const withProviders = ({ children, traces = [] }) => {
             },
         },
     })
+
 
     return (
         <MemoryRouter>

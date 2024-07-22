@@ -98,7 +98,7 @@ const CohortSelect = ({ onChange, tracesData, showLabel, selector, parentName, p
 
     const selectedCohortNames = useMemo(() => {
         if (searchParams.has(name)) {
-            return searchParams.getAll(name)
+            return searchParams.get(name).split(",")
         } else if (!defaultOptions) {
             return ""
         } else {

@@ -10,9 +10,9 @@ from .test import Test
 from .trace_columns import TraceColumns
 from typing import Optional, List
 
-if os.getenv("EXCLUDE_TRACE_PROPS") == "True":
-    from visivo.models.trace_props.scatter import Scatter
-else:
+from visivo.models.trace_props.scatter import Scatter
+
+if os.getenv("EXCLUDE_TRACE_PROPS") != "True":
     from visivo.models.trace_props.fields import TracePropsField
 
 
@@ -103,7 +103,7 @@ class Trace(NamedModel, ParentModel):
     if os.getenv("EXCLUDE_TRACE_PROPS") == "True":
         props: Any = Field(Scatter(type="scatter"))
     else:
-        props: TracePropsField
+        props: TracePropsField = Field(Scatter(type="scatter"))
 
     def child_items(self):
         return [self.model]
@@ -114,9 +114,7 @@ class Trace(NamedModel, ParentModel):
         if isinstance(data, str):
             return data
 
-        if "props" not in data:
-            raise ValueError(f"Trace props must have a type.")
-        if isinstance(data["props"], dict):
+        if "props" in data and isinstance(data["props"], dict):
             data["props"] = validate_trace_props(data["props"])
 
         return data
