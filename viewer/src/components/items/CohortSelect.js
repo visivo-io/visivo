@@ -61,7 +61,7 @@ export const generateNewSearchParams = (previousSearchParams, name, selectedOpti
     return newSearchParams
 }
 
-const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, parentType }) => {
+const CohortSelect = ({ onChange, tracesData, showLabel, selector, parentName, parentType, onVisible = () => { } }) => {
     let [searchParams, setSearchParams] = useSearchParams();
     let isMulti
     let name
@@ -75,6 +75,10 @@ const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, pa
         name = `${parentName} Selector`
         visible = true
     }
+
+    useEffect(() => {
+        onVisible(visible)
+    }, [visible, onVisible]);
 
     const options = cohortNamesInData(tracesData).map((cohortName) => {
         return { value: cohortName, label: cohortName }
@@ -116,4 +120,4 @@ const TraceSelect = ({ onChange, tracesData, showLabel, selector, parentName, pa
     )
 }
 
-export default TraceSelect;
+export default CohortSelect;
