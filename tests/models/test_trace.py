@@ -32,11 +32,25 @@ def test_Trace_missing_props_type():
         "model": {"sql": "select * from table"},
     }
     with pytest.raises(ValidationError) as exc_info:
-        Trace()
+        Trace(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == "Field required"
-    assert error["type"] == "missing"
+    assert error["msg"] == "Value error, trace_props type is required."
+    assert error["type"] == "value_error"
+
+
+def test_Trace_unknown_props_type():
+    data = {
+        "name": "development",
+        "props": {"type": "unknown", "x": "query(x)", "y": "query(y)"},
+        "model": {"sql": "select * from table"},
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        Trace(**data)
+
+    error = exc_info.value.errors()[0]
+    assert error["msg"] == "Value error, unknown is not a valid trace_props type."
+    assert error["type"] == "value_error"
 
 
 def test_Trace_get_trace_name():
