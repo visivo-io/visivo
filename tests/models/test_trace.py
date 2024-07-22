@@ -15,13 +15,28 @@ def test_Trace_simple_data():
     assert trace.name == "development"
 
 
-def test_Trace_missing_data():
+def test_Trace_missing_props():
+    data = {
+        "name": "development",
+        "model": {"sql": "select * from table"},
+    }
+
+    trace = Trace(**data)
+    assert trace.name == "development"
+
+
+def test_Trace_missing_props_type():
+    data = {
+        "name": "development",
+        "props": {"x": "query(x)", "y": "query(y)"},
+        "model": {"sql": "select * from table"},
+    }
     with pytest.raises(ValidationError) as exc_info:
         Trace()
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == "Value error, Trace props must have a type."
-    assert error["type"] == "value_error"
+    assert error["msg"] == "Field required"
+    assert error["type"] == "missing"
 
 
 def test_Trace_get_trace_name():
