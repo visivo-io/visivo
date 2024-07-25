@@ -21,10 +21,9 @@ const Dashboard = (props) => {
             return 256
         } else if (height === 'medium') {
             return 396
-        } else if (height === 'large') {
+        } else {
             return 512
         }
-        return 128
     }
 
     const getWidth = (row, item) => {

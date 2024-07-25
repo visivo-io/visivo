@@ -34,6 +34,18 @@ def test_Item_both_chart_and_table():
     assert error["type"] == "value_error"
 
 
+def test_Item_both_chart_and_selector():
+    with pytest.raises(ValidationError) as exc_info:
+        Item(selector="ref(selector)", markdown="markdown")
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == 'Value error, only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
+    )
+    assert error["type"] == "value_error"
+
+
 def test_Item_invalid_ref_string():
     item = Item(chart="ref(chart)")
     item.chart = "ref(chart)"

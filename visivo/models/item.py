@@ -27,9 +27,10 @@ class Item(BaseModel, ParentModel):
         chart: ref(selector-name)
     ```
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._id = kwargs["id"] if "id" in kwargs else uuid.uuid4().hex 
+        self._id = kwargs["id"] if "id" in kwargs else uuid.uuid4().hex
 
     def id(self):
         return f"Item - {self._id}"
@@ -53,7 +54,7 @@ class Item(BaseModel, ParentModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_column_refs(cls, data: any):
+    def validate_unique_item_types(cls, data: any):
         markdown, chart, table, selector = (
             data.get("markdown"),
             data.get("chart"),

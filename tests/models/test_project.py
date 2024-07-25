@@ -10,6 +10,7 @@ from visivo.models.chart import Chart
 from ..factories.model_factories import (
     DefaultsFactory,
     ItemFactory,
+    SelectorFactory,
     SqlModelFactory,
     TraceFactory,
     TargetFactory,
@@ -283,6 +284,26 @@ def test_ref_selector_Project_dag():
     assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
     assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
+
+
+def test_ref_selector_item_Project_dag():
+    project = ProjectFactory(table_ref=True)
+    item = ItemFactory()
+    item.chart.selector = "ref(selector)"
+    project.dashboards[0].rows[0].items = [item]
+    project.tables[0].selector = "ref(selector)"
+    selector = SelectorFactory()
+    project.selectors = [selector]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 10
+    assert project.descendants_of_type(type=Selector) == project.selectors
+    assert project.descendants_of_type(type=Trace) == project.tables[0].traces
+    assert project.descendants_of_type(type=Table) == project.tables
+    assert project.descendants_of_type(type=Chart) == [
+        project.dashboards[0].rows[0].items[0].chart
+    ]
 
 
 def test_invalid_ref_Project_dag():

@@ -40,6 +40,9 @@ class Serializer:
                     component.selector = ParentModel.all_descendants_of_type(
                         type=Selector, dag=dag, from_node=component
                     )[0]
+                    component.selector.options = ParentModel.all_descendants_of_type(
+                        type=Trace, dag=dag, from_node=item.selector
+                    )
                     for trace in component.traces:
                         trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
