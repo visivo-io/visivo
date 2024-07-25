@@ -33,6 +33,7 @@ class Project(NamedModel, ParentModel):
     traces: List[Trace] = []
     tables: List[Table] = []
     charts: List[Chart] = []
+    selectors: List[Selector] = []
     dashboards: List[Dashboard] = []
 
     def child_items(self):
@@ -43,6 +44,7 @@ class Project(NamedModel, ParentModel):
             + self.traces
             + self.tables
             + self.charts
+            + self.selectors
             + self.dashboards
         )
 

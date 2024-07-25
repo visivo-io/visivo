@@ -1,3 +1,4 @@
+from visivo.models.selector import Selector
 from .base.base_model import BaseModel, REF_REGEX, generate_ref_field
 from .base.parent_model import ParentModel
 from pydantic import Field
@@ -22,6 +23,8 @@ class Item(BaseModel, ParentModel):
         table: ref(table-name)
       - width: 2
         chart: ref(chart-name)
+      - width: 1
+        chart: ref(selector-name)
     ```
     """
     def __init__(self, **kwargs):
@@ -44,19 +47,23 @@ class Item(BaseModel, ParentModel):
     table: Optional[generate_ref_field(Table)] = Field(
         None, description="A Table object defined inline or a ref() to a table"
     )
+    selector: Optional[generate_ref_field(Selector)] = Field(
+        None, description="A Selector object defined inline or a ref() to a selector"
+    )
 
     @model_validator(mode="before")
     @classmethod
     def validate_column_refs(cls, data: any):
-        markdown, chart, table = (
+        markdown, chart, table, selector = (
             data.get("markdown"),
             data.get("chart"),
             data.get("table"),
+            data.get("selector"),
         )
-        items_set = [i for i in [markdown, chart, table] if i is not None]
+        items_set = [i for i in [markdown, chart, table, selector] if i is not None]
         if len(items_set) > 1:
             raise ValueError(
-                'only one of the "markdown", "chart", or "table" properties should be set on an item'
+                'only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
             )
         return data
 
@@ -70,3 +77,5 @@ class Item(BaseModel, ParentModel):
             return self.table
         if self.chart is not None:
             return self.chart
+        if self.selector is not None:
+            return self.selector

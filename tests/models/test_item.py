@@ -17,7 +17,7 @@ def test_Item_both_chart_and_markdown():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == 'Value error, only one of the "markdown", "chart", or "table" properties should be set on an item'
+        == 'Value error, only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
     )
     assert error["type"] == "value_error"
 
@@ -29,7 +29,7 @@ def test_Item_both_chart_and_table():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == 'Value error, only one of the "markdown", "chart", or "table" properties should be set on an item'
+        == 'Value error, only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
     )
     assert error["type"] == "value_error"
 
