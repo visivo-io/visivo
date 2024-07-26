@@ -24,7 +24,7 @@ class Item(BaseModel, ParentModel):
       - width: 2
         chart: ref(chart-name)
       - width: 1
-        chart: ref(selector-name)
+        selector: ref(selector-name)
     ```
     """
 
