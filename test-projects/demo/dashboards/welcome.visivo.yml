@@ -88,7 +88,7 @@ dashboards:
         items:
           - width: 2
             markdown: |
-              ### You link your charts and tables together
+              ### Link your charts and tables together
 
               A _selector_ allows you define which data is shown.  Change this selector and watch the table and chart above change.
 
