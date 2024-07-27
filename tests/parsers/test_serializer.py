@@ -1,3 +1,4 @@
+from visivo.models.selector import Selector
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
     DashboardFactory,
@@ -93,6 +94,7 @@ def test_Serializer_with_model_ref():
         == "model_name"
     )
 
+
 def test_Serializer_with_table_model_ref():
     model = SqlModelFactory(name="model_name")
     project = ProjectFactory(table_item=True, models=[model])
@@ -104,6 +106,22 @@ def test_Serializer_with_table_model_ref():
         project.dashboards[0].rows[0].items[0].table.traces[0].model.name
         == "model_name"
     )
+
+
+def test_Serializer_with_selector_model_ref():
+    selector = Selector(name="selector_name")
+    project = ProjectFactory(selectors=[selector])
+    chart = project.dashboards[0].rows[0].items[0].chart
+    chart.selector = "ref(selector_name)"
+    selector.options = [f"ref({chart.traces[0].name})"]
+    project = Serializer(project=project).dereference()
+    assert project.name == "project"
+    assert project.selectors == []
+    assert project.dashboards[0].rows[0].items[0].chart.selector.name == "selector_name"
+    assert (
+        project.dashboards[0].rows[0].items[0].chart.selector.options[0].name == "trace"
+    )
+
 
 def test_Serializer_with_refs_does_not_change_original():
     chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])

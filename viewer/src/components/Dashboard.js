@@ -1,6 +1,7 @@
 import React from "react";
 import Chart from './items/Chart.js'
 import Table from './items/Table.js'
+import Selector from './items/Selector.js'
 import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
@@ -60,6 +61,13 @@ const Dashboard = (props) => {
                 width={getWidth(row, item)}
                 height={getHeight(row.height)}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
+        } else if (item.selector) {
+            return <Selector
+                selector={item.selector}
+                project={props.project}
+                itemWidth={item.width}
+                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
+            </Selector>
         } else if (item.markdown) {
             return <Markdown
                 className={`grow-${item.width} p-2 m-auto prose`}
@@ -70,9 +78,17 @@ const Dashboard = (props) => {
         return null
     }
 
+    const getHeightStyle = (row) => {
+        if (row.height !== "compact") {
+            return { height: getHeight(row.height) }
+        } else {
+            return null
+        }
+    }
+
     const renderRow = (row, rowIndex) => {
         return (
-            <div className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} style={isColumn ? {} : { height: getHeight(row.height) }} key={`dashboardRow${rowIndex}`}>
+            <div className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} style={isColumn ? {} : getHeightStyle(row)} key={`dashboardRow${rowIndex}`}>
                 {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
             </div>
         )

@@ -14,6 +14,10 @@ class SelectorModel(BaseModel):
     def set_parent_name(self):
         if BaseModel.is_obj(self.selector):
             self.selector.set_parent_name(self.name)
+            if len(self.selector.options) > 0:
+                raise ValueError(
+                    f"Selector '{self.selector.name}' can not have options set, they are set from the parent item."
+                )
         return self
 
     @model_validator(mode="before")

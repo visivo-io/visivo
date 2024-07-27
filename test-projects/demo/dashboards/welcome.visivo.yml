@@ -37,7 +37,7 @@ traces:
 dashboards:
   - name: Welcome to Visivo
     rows:
-      - height: small
+      - height: compact
         items:
           - markdown: |
               # Welcome to Visivo 
@@ -60,9 +60,7 @@ dashboards:
           - width: 2
             chart:
               name: Fibonacci Waterfall Chart
-              selector:
-                name: Fibonacci Waterfall Selector
-                type: single
+              selector: ref(Fibonacci Waterfall Selector)
               traces:
                 - ref(Fibonacci Waterfall Trace)
       - height: medium
@@ -86,3 +84,16 @@ dashboards:
                       key: columns.y_data
                     - header: Dollars
                       key: props.text
+      - height: small
+        items:
+          - width: 2
+            markdown: |
+              ### Link your charts and tables together
+
+              A _selector_ allows you define which data is shown.  Change this selector and watch the table and chart above change.
+
+          - selector:
+              name: Fibonacci Waterfall Selector
+              type: single
+              options:
+                - ref(Fibonacci Waterfall Trace)

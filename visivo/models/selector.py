@@ -1,8 +1,10 @@
 from enum import Enum
+from typing import List
 from pydantic import ConfigDict, Field, PrivateAttr, model_serializer
 
-from visivo.models.base.base_model import BaseModel
+from visivo.models.base.base_model import BaseModel, RefString, generate_ref_field
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
 
 
 class SelectorType(str, Enum):
@@ -10,7 +12,7 @@ class SelectorType(str, Enum):
     multiple = "multiple"
 
 
-class Selector(NamedModel, BaseModel):
+class Selector(ParentModel, NamedModel, BaseModel):
     """
     Selectors can be used to add interactivity between charts and tables.
 
@@ -31,12 +33,17 @@ class Selector(NamedModel, BaseModel):
     ```
 
     """
-    model_config = ConfigDict(extra='ignore')  
+
+    model_config = ConfigDict(extra="ignore")
 
     name: str = Field(description="The name of the selector")
     type: SelectorType = Field(
         SelectorType.multiple, description="Single or multiple selector"
     )
+    options: List[RefString] = Field(
+        [], description="Optional to set the traces to create the choices list"
+    )
+
     _parent_name: str = PrivateAttr()
 
     def set_parent_name(self, value: str):
@@ -44,4 +51,12 @@ class Selector(NamedModel, BaseModel):
 
     @model_serializer()
     def serialize_model(self):
-        return {"name": self.name, "type": self.type, "parent_name": self._parent_name}
+        model = {"name": self.name, "type": self.type, "options": self.options}
+        if hasattr(self, "_parent_name"):
+            model["parent_name"] = self._parent_name
+        else:
+            model["parent_name"] = self.name
+        return model
+
+    def child_items(self):
+        return self.options

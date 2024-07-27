@@ -7,6 +7,7 @@ from .item import Item
 
 
 class HeightEnum(str, Enum):
+    compact = "compact"
     small = "small"
     medium = "medium"
     large = "large"

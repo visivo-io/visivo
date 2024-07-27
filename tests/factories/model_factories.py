@@ -130,6 +130,7 @@ class SelectorFactory(factory.Factory):
 
     name = "selector"
     type = "single"
+    options = []
 
 
 class ChartFactory(factory.Factory):
