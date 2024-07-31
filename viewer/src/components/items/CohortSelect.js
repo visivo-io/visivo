@@ -125,7 +125,9 @@ const CohortSelect = ({
     }, [JSON.stringify(selectedCohortNames)]);
 
     useEffect(() => {
-        onSelectChange(defaultOptions)
+        if (defaultOptions) {
+            onSelectChange(defaultOptions)
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
