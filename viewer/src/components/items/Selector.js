@@ -25,6 +25,7 @@ const Selector = ({ selector, project, itemWidth }) => {
                     selector={selector}
                     parentName={selector.name}
                     parentType="chart"
+                    alwaysPushSelectionToUrl={true}
                 />
             </div>
         </div>

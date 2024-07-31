@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import CohortSelect, { generateNewSearchParams, generateNewTraceDataFromSelection } from './CohortSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
+import { createBrowserHistory } from 'history';
+import { unstable_HistoryRouter as HistoryRouter } from 'react-router-dom';
 
 const tracesData = {
   "Trace Name 1": {
@@ -61,6 +63,26 @@ test('renders single select', async () => {
   })
   expect(screen.queryByText('cohortName2')).not.toBeInTheDocument();
   expect(visible).toEqual(true);
+});
+
+test('renders with push to history', async () => {
+  let history = createBrowserHistory();
+  render(<HistoryRouter history={history}>
+    <CohortSelect
+      tracesData={tracesData}
+      showLabel
+      alwaysPushSelectionToUrl={true}
+      onVisible={() => { }}
+      selector={{ type: "single", name: "selector" }}
+      onChange={() => { }} />
+  </HistoryRouter>);
+
+  const selectWrapper = screen.getByLabelText('Traces')
+  await selectEvent.select(selectWrapper, 'Cohort Name 1')
+
+  await waitFor(() => {
+    expect(history.location.search).toEqual('?selector=Cohort+Name+1')
+  });
 });
 
 test('renders multiselect select', async () => {
