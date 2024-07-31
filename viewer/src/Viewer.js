@@ -18,9 +18,10 @@ const Viewer = createBrowserRouter(
       handle={{ crumb: () => <a href="https://docs.visivo.io"><img className='h-6' src={logo} alt="Logo" /></a> }}
     >
       <Route
-        path="/*"
+        path="/"
         element={<ProjectContainer />}
         errorElement={<ErrorPage />}
+        shouldRevalidate={() => false}
         loader={loadProject}
         handle={{ crumb: () => <BreadcrumbLink to={"/"}>Project</BreadcrumbLink> }}
       >
@@ -29,6 +30,7 @@ const Viewer = createBrowserRouter(
           path=":dashboardName?/*"
           element={<ProjectContainer />}
           loader={loadProject}
+          shouldRevalidate={() => false}
           handle={{ crumb: (match) => <BreadcrumbLink to={`${match.params.dashboardName}`}>{match.params.dashboardName}</BreadcrumbLink> }}
         />
       </Route>

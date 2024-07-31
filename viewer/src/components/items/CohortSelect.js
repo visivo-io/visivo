@@ -39,16 +39,19 @@ export const generateNewTraceDataFromSelection = (tracesData, selectedCohortName
     return newTraceData
 }
 
-export const generateNewSearchParams = (previousSearchParams, name, selectedOptions, defaultOptions) => {
+export const generateNewSearchParams = (previousSearchParams, name, selectedOptions, defaultOptions, alwaysPushSelectionToUrl) => {
     const newSearchParams = new URLSearchParams(previousSearchParams.toString())
     if (newSearchParams.has(name)) {
         newSearchParams.delete(name)
     }
     const selectedOptionsValues = getValuesFromOptions(selectedOptions)
-    const defaultOptionsValues = getValuesFromOptions(defaultOptions)
-    if (selectedOptionsValues.length === defaultOptionsValues.length
-        && defaultOptionsValues.every(dov => selectedOptionsValues.includes(dov))) {
-        return newSearchParams
+
+    if (!alwaysPushSelectionToUrl) {
+        const defaultOptionsValues = getValuesFromOptions(defaultOptions)
+        if (selectedOptionsValues.length === defaultOptionsValues.length
+            && defaultOptionsValues.every(dov => selectedOptionsValues.includes(dov))) {
+            return newSearchParams
+        }
     }
 
     if (Array.isArray(selectedOptions) && selectedOptions.length !== 0) {
@@ -61,7 +64,16 @@ export const generateNewSearchParams = (previousSearchParams, name, selectedOpti
     return newSearchParams
 }
 
-const CohortSelect = ({ onChange, tracesData, showLabel, selector, parentName, parentType, onVisible = () => { } }) => {
+const CohortSelect = ({
+    onChange,
+    tracesData,
+    showLabel,
+    selector,
+    parentName,
+    parentType,
+    alwaysPushSelectionToUrl = false,
+    onVisible = () => { }
+}) => {
     let [searchParams, setSearchParams] = useSearchParams();
     let isMulti
     let name
@@ -92,7 +104,7 @@ const CohortSelect = ({ onChange, tracesData, showLabel, selector, parentName, p
 
     const onSelectChange = (selectedOptions) => {
         setSearchParams((previousSearchParams) => {
-            return generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+            return generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions, alwaysPushSelectionToUrl)
         })
     }
 
@@ -111,6 +123,11 @@ const CohortSelect = ({ onChange, tracesData, showLabel, selector, parentName, p
         onChange(generateNewTraceDataFromSelection(tracesData, selectedCohortNames))
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
+
+    useEffect(() => {
+        onSelectChange(defaultOptions)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <>

@@ -13,6 +13,7 @@ dashboards:
           - markdown: |
               # Bar
           - chart:
+              name: Bar Chart
               traces:
                 - name: Simple Bar
                   model: ref(Echo CSV)
