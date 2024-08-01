@@ -150,10 +150,10 @@ class ParentModel(ABC):
     @staticmethod
     def show_dag(dag):
         import matplotlib.pyplot as pyplot
-        from networkx import planar_layout, draw_networkx
+        from networkx import spring_layout, draw_networkx
 
         options = {}
-        pos = planar_layout(dag)
+        pos = spring_layout(dag)
         draw_networkx(dag, pos, **options)
 
         ax = pyplot.gca()
