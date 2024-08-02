@@ -18,7 +18,6 @@ class Serializer:
         project.cli_version = version("visivo")
         dag = project.dag()
 
-        # ParentModel.show_dag(dag)
         for dashboard in project.dashboards:
 
             def replace_item_ref(item):
