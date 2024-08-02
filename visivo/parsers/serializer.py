@@ -18,6 +18,7 @@ class Serializer:
         project.cli_version = version("visivo")
         dag = project.dag()
 
+        # ParentModel.show_dag(dag)
         for dashboard in project.dashboards:
 
             def replace_item_ref(item):
@@ -34,13 +35,13 @@ class Serializer:
                         component = item.table
 
                     component.traces = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=component
+                        type=Trace, dag=dag, from_node=component, depth=1
                     )
                     component.selector = ParentModel.all_descendants_of_type(
-                        type=Selector, dag=dag, from_node=component
+                        type=Selector, dag=dag, from_node=component, depth=1
                     )[0]
                     component.selector.options = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=component.selector
+                        type=Trace, dag=dag, from_node=component.selector, depth=1
                     )
                     for trace in component.traces:
                         trace.model = ParentModel.all_descendants_of_type(
@@ -56,10 +57,10 @@ class Serializer:
                             )
                 if item.selector:
                     item.selector = ParentModel.all_descendants_of_type(
-                        type=Selector, dag=dag, from_node=item
+                        type=Selector, dag=dag, from_node=item, depth=1
                     )[0]
                     item.selector.options = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=item.selector
+                        type=Trace, dag=dag, from_node=item.selector, depth=1
                     )
 
             dashboard.for_each_item(replace_item_ref)

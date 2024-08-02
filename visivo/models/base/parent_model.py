@@ -84,21 +84,27 @@ class ParentModel(ABC):
                     )
 
     @staticmethod
-    def all_descendants(dag, from_node=None):
+    def all_descendants(dag, from_node=None, depth=None):
         import networkx.algorithms.traversal.depth_first_search as dfs
 
-        return dfs.dfs_tree(dag, from_node)
+        return dfs.dfs_tree(dag, from_node, depth_limit=depth)
 
     def descendants(self):
         return ParentModel.all_descendants(dag=self.dag(), from_node=self)
 
     @staticmethod
-    def all_descendants_of_type(type, dag, from_node=None):
+    def all_descendants_of_type(type, dag, from_node=None, depth=None):
+        if not depth:
+            depth = len(dag)
+
         def find_type(item):
             return isinstance(item, type)
 
         return list(
-            filter(find_type, ParentModel.all_descendants(dag=dag, from_node=from_node))
+            filter(
+                find_type,
+                ParentModel.all_descendants(dag=dag, from_node=from_node, depth=depth),
+            )
         )
 
     def descendants_of_type(self, type):
