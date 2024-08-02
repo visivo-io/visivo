@@ -6,6 +6,7 @@ from tests.factories.model_factories import (
     ItemFactory,
     ProjectFactory,
     RowFactory,
+    SelectorFactory,
     TraceFactory,
     ChartFactory,
     SqlModelFactory,
@@ -131,6 +132,40 @@ def test_Serializer_with_refs_does_not_change_original():
     Serializer(project=project).dereference()
     assert len(project.chart_objs) == 1
     assert len(project.trace_objs) == 1
+
+
+def test_Serializer_with_item_selector():
+    selector = SelectorFactory(name="selector_name", options=["ref(trace_name_1)"])
+    chart1 = ChartFactory(
+        name="chart_name_1", traces=["ref(trace_name_1)"], selector="ref(selector_name)"
+    )
+    chart2 = ChartFactory(
+        name="chart_name_2", traces=["ref(trace_name_2)"], selector="ref(selector_name)"
+    )
+    model = SqlModelFactory()
+    trace1 = TraceFactory(name="trace_name_1", model="ref(model)")
+    trace2 = TraceFactory(name="trace_name_2", model="ref(model)")
+    dashboard = DashboardFactory(
+        rows=[
+            RowFactory(
+                items=[
+                    ItemFactory(chart="ref(chart_name_1)"),
+                    ItemFactory(chart="ref(chart_name_2)"),
+                ]
+            )
+        ]
+    )
+    project = ProjectFactory(
+        chart_ref=True,
+        models=[model],
+        selectors=[selector],
+        charts=[chart1, chart2],
+        traces=[trace1, trace2],
+        dashboards=[dashboard],
+    )
+    project = Serializer(project=project).dereference()
+    assert len(project.dashboards[0].rows[0].items[0].chart.traces) == 1
+    assert len(project.dashboards[0].rows[0].items[1].chart.traces) == 1
 
 
 def test_Serializer_with_multiple_use_of_same_ref():
