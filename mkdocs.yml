@@ -109,6 +109,8 @@ nav:
                   - reference/configuration/Models/CsvScriptModel/index.md
               - LocalMergeModel:
                   - reference/configuration/Models/LocalMergeModel/index.md
+          - Selector:
+              - reference/configuration/Selector/index.md
           - Table:
               - reference/configuration/Table/index.md
               - Traces: []
