@@ -27,3 +27,6 @@ def test_dist():
     assert "Created dist folder" in response.output
     assert response.exit_code == 0
     assert os.path.exists(f"dist/data/trace/data.json")
+    assert os.path.exists(f"dist/data/project.json")
+    with open("dist/data/project.json") as project_json:
+        assert '"created_at"' in project_json.read()
