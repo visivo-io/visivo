@@ -1,6 +1,6 @@
-import pkg_resources
+import importlib.resources as resources
 
-VIEWER_PATH = pkg_resources.resource_filename("visivo", "viewer/")
+VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
 def dist_phase(output_dir, working_dir, dist_dir, default_target, name_filter, threads):
