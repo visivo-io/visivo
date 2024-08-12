@@ -27,6 +27,7 @@ const Viewer = createBrowserRouter(
       >
         <Route index element={<ProjectContainer />} />
         <Route
+          id="project"
           path=":dashboardName?/*"
           element={<ProjectContainer />}
           loader={loadProject}

@@ -1,6 +1,6 @@
-import pkg_resources
+import importlib.resources as resources
 
-VIEWER_PATH = pkg_resources.resource_filename("visivo", "viewer/")
+VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
 def dist_phase(output_dir, working_dir, dist_dir, default_target, name_filter, threads):
@@ -9,6 +9,7 @@ def dist_phase(output_dir, working_dir, dist_dir, default_target, name_filter, t
     import json
     import shutil
     from glob import glob
+    import datetime
 
     run_phase(
         output_dir=output_dir,
@@ -22,7 +23,14 @@ def dist_phase(output_dir, working_dir, dist_dir, default_target, name_filter, t
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
     with open(f"{dist_dir}/data/project.json", "w") as f:
-        f.write(json.dumps({"project_json": project_json}))
+        f.write(
+            json.dumps(
+                {
+                    "project_json": project_json,
+                    "created_at": datetime.datetime.now().isoformat(),
+                }
+            )
+        )
 
     trace_dirs = glob(f"{output_dir}/*/", recursive=True)
     for trace_dir in trace_dirs:

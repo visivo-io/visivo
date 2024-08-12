@@ -1,15 +1,14 @@
 import click
-import os
 import re
 from visivo.logging.logger import Logger
 import json
-import pkg_resources
 from flask import Flask, current_app, send_from_directory
 from livereload import Server
 from .run_phase import run_phase
-from glob import glob
+import datetime
+import importlib.resources as resources
 
-VIEWER_PATH = pkg_resources.resource_filename("visivo", "viewer/")
+VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
 def get_project_json(output_dir, name_filter=None):
@@ -48,7 +47,10 @@ def app_phase(output_dir, working_dir, default_target, name_filter, threads):
     @app.route("/data/project.json")
     def projects():
         project_json = get_project_json(output_dir, name_filter)
-        return {"project_json": project_json}
+        return {
+            "project_json": project_json,
+            "created_at": datetime.datetime.now().isoformat(),
+        }
 
     @app.route("/", defaults={"path": "index.html"})
     @app.route("/<path:path>")
