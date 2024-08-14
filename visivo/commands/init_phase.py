@@ -89,7 +89,6 @@ def init_phase():
         )
 
     if target_type == snowflake_type:
-        host = click.prompt("? Database host", type=str)
         database = click.prompt("? Database name", type=str)
         account = click.prompt("? Snowflake account", type=str)
         warehouse = click.prompt("? Snowflake warehouse", type=str)
