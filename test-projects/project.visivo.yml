@@ -2,6 +2,12 @@
 
 name: V2
 
+groups:
+  - name: Executives
+    emails:
+      - ceo@visivo.io
+      - cto@visivo.io
+
 conditions:
   - name: if_during_business_hours
     logic: if now() < 16:00 && now() > 08:00
@@ -20,17 +26,30 @@ alerts:
         webhook_url: https://slack.com
   - name: Once a Day Alert
     condition: if_morning_notifications
-    message: |
-      Trigger {{ trigger.name }} has failed
+    # We could move toward a {{ }} syntax for dynamic content
+    message:
+      | # This could be optional and default to what we had.  I think being able to format the message is key.  How are we going to reference the test failure data.
+      Trigger {{ context.name }} has failed.
+      {{ context.test }} Values
     destinations:
       - type: slack
         webhook_url: https://slack.com
+      - type: email
+        email: alert@visivo.io
 
 traces:
   - name: Meta Trace
     meta:
-      data-grain: daily
+      data-grain: daily # This doesn't allow us to choose the cohort_on information
     test_suites:
+      - name: operation_report
+        condition: if_production # Should this be a list? Conditions?
+        tests:
+          - logic: len(items) == 0
+        on_failure: continue
+        alerts:
+          - Once A Day Alert
+
       - name: production
         condition: if_production
         tests:
@@ -39,23 +58,22 @@ traces:
         on_failure: exit # or continue
         alerts:
           - Failure During Business Hours
-          - Once a Day Alert
 
-selectors:
+selectors: # Selectors select the grain.
   - name: Meta Selector
-    default: 0 # could base this on the position in the list or the title.
+    default: day
     options:
-      - title: day
-        attribute: trace.meta.date-grain # location of attribute on trace
-        value: daily
-      - title: week
-        attribute: trace.meta.date-grain # could do any trace attribute.
-        value: weekly # we could still allow for regex here in sitatuions where you might to select multiple traces with one option.
+      - label: day
+        matcher: trace.meta.date-grain == "daily" || cohort.name == "daily" # We need a consistent way to have python logic statements
+      - label: week
+        matcher: trace.meta.date-grain == "weekly" || cohort.name == "weekly"
       - title: month
-        attribute: trace.meta.date-grain # location of attribute on trace
-        value: monthly
+        matcher: trace.meta.date-grain == "monthly" || cohort.name == "monthly"
 
 dashboards:
   - name: Restricted
-    meta:
-      group: Executives
+    permissions: # I can't think of a use case that we would actually want to exclude a group. The easiest is to do "if in any". Maybe call this something else.
+      - Executives
+      - Finance
+
+  - name: Open
