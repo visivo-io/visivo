@@ -39,13 +39,23 @@ alerts:
 
 traces:
   - name: Meta Trace
+    model: Meta Model
+    columns:
+      y: [[x]]
+    props:
+      type: scatter
+      x: [[x]]
+      y: {{ trace.columns.y }}
+    filters:
+      - [[x > 0]]
+
     meta:
-      data-grain: daily # This doesn't allow us to choose the cohort_on information
+      data-grain: daily # this doesn't allow us to choose the cohort_on information
     test_suites:
       - name: operation_report
-        condition: if_production # Should this be a list? Conditions?
+        condition: if_production # should this be a list? conditions?
         tests:
-          - logic: len(items) == 0
+          - logic: assert_that( len( {{ trace.props.marker.line.color[1] }} ).is_equal_to("#d25946")
         on_failure: continue
         alerts:
           - Once A Day Alert
@@ -53,8 +63,7 @@ traces:
       - name: production
         condition: if_production
         tests:
-          - logic: if y > 0
-          - logic: if x > 0
+          - logic: assert_that( {{ Meta Trace.props.marker.line.color[1] }} ).is_equal_to("#D25946")
         on_failure: exit # or continue
         alerts:
           - Failure During Business Hours
