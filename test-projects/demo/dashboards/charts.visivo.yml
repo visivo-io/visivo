@@ -13,11 +13,11 @@ dashboards:
           - markdown: |
               # Bar
           - chart:
-              name: Bar Chart
-              traces:
-                - name: Simple Bar
-                  model: ref(Echo CSV)
+              traces: # Names for nested objects should be optional, maybe even forbidden to prevent complicated reference structures
+                - model: Echo CSV # I Don't think we need the ref
                   props:
                     type: bar
-                    x: query(x)
-                    y: query(y)
+                    x: 
+                      query: x
+                    y: 
+                      query: y

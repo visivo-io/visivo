@@ -9,30 +9,37 @@ models:
 traces:
   - name: Fibonacci Waterfall Trace
     model: ref(Waterfall Model)
-    cohort_on: query(year)
-    columns:
+    columns: # Columns default to query
       x_data: category
       y_data: cast( replace(thousands_dollars, ',', '') as float ) * cast(sign as float)
       measure: waterfall
-    props:
+    props: # Props would default to static
       type: waterfall
       base: 0
-      measure: column(measure)
-      x: column(x_data)
-      y: column(y_data)
-      text: query( cast(thousands_dollars as text) )
+      measure:
+        column: measure
+      x:
+        column: x_data
+      y:
+        column: y_data
+      text:
+        query: cast(thousands_dollars as text)
       increasing:
         marker:
           color: "#b97a9b"
+          # Equivalent to:
+          # color:
+          #   static: #b97a9b
       decreasing:
         marker:
           color: "#edbdb5"
-    order_by:
-      - query(row asc)
-    filters:
-      - query( waterfall is not null )
-      - query( category not in ('Earnings From Continuing Operations') )
-      - query( year in ('Sep 2023', 'Sep 2022') )
+    cohort_on: year # cohort defaults to query
+    order_by: # defaults to query
+      - row asc
+    filters: # defaults to query
+      - waterfall is not null # I think things can be query or static, and we have a default
+      - query: category not in ('Earnings From Continuing Operations')
+      - year in ('Sep 2023', 'Sep 2022')
 
 dashboards:
   - name: Welcome to Visivo
@@ -60,9 +67,9 @@ dashboards:
           - width: 2
             chart:
               name: Fibonacci Waterfall Chart
-              selector: ref(Fibonacci Waterfall Selector)
+              selector: Fibonacci Waterfall Selector
               traces:
-                - ref(Fibonacci Waterfall Trace)
+                - Fibonacci Waterfall Trace
       - height: medium
         items:
           - markdown: |
@@ -72,9 +79,9 @@ dashboards:
           - width: 2
             table:
               name: Fibonacci Waterfall Table
-              selector: ref(Fibonacci Waterfall Selector)
+              selector: Fibonacci Waterfall Selector
               traces:
-                - ref(Fibonacci Waterfall Trace)
+                - Fibonacci Waterfall Trace
               column_defs:
                 - trace_name: Fibonacci Waterfall Trace
                   columns:
@@ -96,4 +103,4 @@ dashboards:
               name: Fibonacci Waterfall Selector
               type: single
               options:
-                - ref(Fibonacci Waterfall Trace)
+                - Fibonacci Waterfall Trace
