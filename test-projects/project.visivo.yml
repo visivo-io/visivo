@@ -1,0 +1,61 @@
+# V2 Spec
+
+name: V2
+
+conditions:
+  - name: if_during_business_hours
+    logic: if now() < 16:00 && now() > 08:00
+  - name: if_production
+    logic: if env == production
+  - name: if_morning_notifications
+    logic: if env["MORNING_NOTIFICATION"] == true
+
+alerts:
+  - name: Failure During Business Hours
+    condition: if_during_business_hours
+    message: |
+      Trigger {{ trigger.name }} has failed
+    destinations:
+      - type: slack
+        webhook_url: https://slack.com
+  - name: Once a Day Alert
+    condition: if_morning_notifications
+    message: |
+      Trigger {{ trigger.name }} has failed
+    destinations:
+      - type: slack
+        webhook_url: https://slack.com
+
+traces:
+  - name: Meta Trace
+    meta:
+      data-grain: daily
+    test_suites:
+      - name: production
+        condition: if_production
+        tests:
+          - logic: if y > 0
+          - logic: if x > 0
+        on_failure: exit # or continue
+        alerts:
+          - Failure During Business Hours
+          - Once a Day Alert
+
+selectors:
+  - name: Meta Selector
+    default: 0 # could base this on the position in the list or the title.
+    options:
+      - title: day
+        attribute: trace.meta.date-grain # location of attribute on trace
+        value: daily
+      - title: week
+        attribute: trace.meta.date-grain # could do any trace attribute.
+        value: weekly # we could still allow for regex here in sitatuions where you might to select multiple traces with one option.
+      - title: month
+        attribute: trace.meta.date-grain # location of attribute on trace
+        value: monthly
+
+dashboards:
+  - name: Restricted
+    meta:
+      group: Executives
