@@ -37,7 +37,7 @@ To quickly create the files you need to get up and running, you can run `visivo 
     
     Run `visivo serve`, checkout your dashboard and start playing around with it. 
     
-    You can always add another target with a connection to your ~real~ database later.
+    You can always add a target with another connection later.
 
 {% endraw %}
 
@@ -83,7 +83,7 @@ models:
 traces:
   - name: simple_trace
     model: ref(widget_sales)
-    cohort_on: query( widget )
+    cohort_on: widget
     props:
       x: query( date_trunc('week', completed_at) )
       y: query( sum(amount) )
@@ -180,7 +180,7 @@ Here's a simple example of a trace:
 traces:
   - name: simple_trace
     model: ref(widget_sales)
-    cohort_on: query( widget )
+    cohort_on: widget
     props:
       type: scatter
       x: query( date_trunc('week', completed_at) )
