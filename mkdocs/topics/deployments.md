@@ -1,6 +1,28 @@
 # Deployment
 
 Continuous visualization testing in production :recycle: and deploying dashboards as part of a CI/CD pipeline :material-publish:{ .visivo-orange } are critical components of a high quality data stack that stakeholders can depends on. These deployments create opportunities to prevent, discover and fix bugs proactively :material-robot-happy:{ .visivo-purple }
+## API Key
+If you plan to deploy to the Visivo cloud using `visivo deploy` then you will need an API key. 
+
+You can get an api key by logging into your profile at [app.visivo.io](https://app.visivo.io).
+
+!!! note
+    Visivo will put your API in the right place during `visivo init` however there's a few other option if you want to store your API key differently. 
+    === "Env Var"
+
+        * Store your Visivo token in an environment variable.
+        * Create a file called `profile.yml` anywhere in the project and include this in the first line: `token: {% raw %}'{{ env_var('YOUR_TOKEN_ENV_VAR')}}'{% endraw %}`.
+
+        The nice thing about this method is that it makes setting up a CI like github actions super easy with a different token. 
+
+    === "Special Location"
+
+        * Create a file called `profile.yml` at this location: `~/.visivo/profile.yml`
+        * Add this to the the first line of the file: `token: 'your-visivo-token'
+
+        This approach is a little easier for those who are not sure how to configure environment variables.
+
+
 ## CI/CD
 It's highly recommended that you create a staging version of your project anytime that someone on your team creates a pull request. This is beneficial for a few reasons.
 <div class="grid cards" markdown> 
