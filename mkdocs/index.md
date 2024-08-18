@@ -1,4 +1,3 @@
-## Getting Started with Visivo
 There's a few things that you will need to get configured to get started with your visivo project. We will walk through those together in this article to help get you up and running fast! 
 ![type:video](https://www.youtube.com/embed/BWiwYpDCuek?si=jEFhQKq9kPEoFycl)
 
