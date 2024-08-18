@@ -1,5 +1,6 @@
 site_name: Visivo Docs
 plugins:
+  - mkdocs-video
   - autolinks
   - search: {}
   - macros:
