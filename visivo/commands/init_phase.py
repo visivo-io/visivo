@@ -101,7 +101,6 @@ def init_phase():
         fp.close()
         target = SnowflakeTarget(
             name="Example Target",
-            host=host,
             database=database,
             type=target_type,
             password=password,
