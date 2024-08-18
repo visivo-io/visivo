@@ -2,6 +2,13 @@
 
 name: V2
 
+# Strings can be "evaluate" in several ways:
+# 1. They are a reference to another object, a "ref"
+#    1. I propose we drop this and simply use the name.  Because it can be an object or a name simple
+# 2. They are a reference to the output of our "query"
+# 3. They are a bash script, like in script model
+# 4. They are a python like in tests
+# 5. We also can have jinja templates
 groups:
   - name: Executives
     emails:
@@ -10,65 +17,73 @@ groups:
 
 conditions:
   - name: if_during_business_hours
-    logic: if now() < 16:00 && now() > 08:00
+    if: ${{ now() < 16:00 && now() > 08:00 }} 
   - name: if_production
-    logic: if env == production
+    if: env == production
   - name: if_morning_notifications
-    logic: if env["MORNING_NOTIFICATION"] == true
+    if: env["MORNING_NOTIFICATION"] == True 
+
+tests:
+  - logic: ${{ traces["First"].value != traces["Last"].value }}
+
+destinations:
+  - name: Email Alert
+    smtp: smtp:2525
 
 alerts:
   - name: Failure During Business Hours
-    condition: if_during_business_hours
+    if: if_during_business_hours
     message: |
-      Trigger {{ trigger.name }} has failed
+      Trigger ${{ trigger.name }} has failed
     destinations:
       - type: slack
         webhook_url: https://slack.com
   - name: Once a Day Alert
-    condition: if_morning_notifications
-    # We could move toward a {{ }} syntax for dynamic content
-    message:
-      | # This could be optional and default to what we had.  I think being able to format the message is key.  How are we going to reference the test failure data.
-      Trigger {{ context.name }} has failed.
-      {{ context.test }} Values
+    if: if_morning_notifications
     destinations:
       - type: slack
         webhook_url: https://slack.com
-      - type: email
-        email: alert@visivo.io
+      - extends: Email Alert
+        to: alert@visivo.io
+        subject: ${{ alert.title }} Failure I really mean it
+        message:
+          | # Is this enough combined with good defaults enough for Empora?
+          Long text ${{ test.failures }} form
 
 traces:
   - name: Meta Trace
     model: Meta Model
-    columns:
-      y: [[x]]
+    query: # Everything in here is by default injecting into the query
+      select:
+        y: y
+        x: abs(x)
+      cohort_on: query.select.x
+      filters:
+        - query.select.x > 0
     props:
       type: scatter
-      x: [[x]]
-      y: {{ trace.columns.y }}
-    filters:
-      - [[x > 0]]
-
+      y: ${{ query.select.x }}
+      x: ${{ query.select.y }}
     meta:
       data-grain: daily # this doesn't allow us to choose the cohort_on information
-    test_suites:
+    tests:
       - name: operation_report
-        condition: if_production # should this be a list? conditions?
-        tests:
-          - logic: assert_that( len( {{ trace.props.marker.line.color[1] }} ).is_equal_to("#d25946")
+        if: if_production # should this be a list? conditions?
+        assertions:
+          - assert_that(len( test.trace.props.marker.line.color[1] ).is_equal_to(1)
         on_failure: continue
         alerts:
           - Once A Day Alert
 
       - name: production
-        condition: if_production
-        tests:
-          - logic: assert_that( {{ Meta Trace.props.marker.line.color[1] }} ).is_equal_to("#D25946")
+        if: if_production
+        assertions:
+          - assert_that( context(trace.props.marker.line.color[1]) ).is_equal_to("#D25946")
         on_failure: exit # or continue
         alerts:
           - Failure During Business Hours
 
-selectors: # Selectors select the grain.
+selectors:
   - name: Meta Selector
     default: day
     options:
