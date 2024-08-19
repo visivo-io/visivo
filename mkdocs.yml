@@ -78,6 +78,8 @@ nav:
       - Including: topics/including.md
       - Targets: topics/targets.md
       - Deployment: topics/deployments.md
+      - Testing: topics/testing.md
+      - Interactivity: topics/interactivity.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
