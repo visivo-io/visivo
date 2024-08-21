@@ -1,20 +1,36 @@
 # Target Overview
+Targets are data sources. They are databases that contain your data. This page describes some best practices how to set targets up. 
 
-Targets are data sources. They are databases that contain your data. There is specific documentation on how to connect to a variety of databases in the [Configuration documentation](../reference/configuration/targets/sqlitetarget.md), this page describes some best practices how how to set them up. 
+!!! tip
+    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/Targets/PostgresqlTarget/))
 
-# Environments 
+## One Project Many Targets
+Visivo enables you to configure multiple targets in a single project. 
 
-An example of a target might be the database that your application runs on.  We recommend that you think of a target in your project by the what it is used for and not by its environment.  
+This is really useful for joining together data that lives in different sources. 
 
-For example lets say you have an application that stores its data in a PostgreSQL database call `app_db` and runs locally, in staging, and in production. This means you have three separate databases, but they all used to run your application, so that is a single `target`.  The following might be how you set that up in your project:
+Once your targets are set up, you can bring data together in a single chart with traces that originate from different targets, or through sqlite queries that leverage tables from multiple targets (see [LocalMergeModel](/../reference/configuration/Models/LocalMergeModel/)), or through writing csvs to stdout (see [CsvScriptModels](/../reference/configuration/Models/CsvScriptModel/)).
+
+
+## Environments 
+We recommend that you think of a target as a consistent data source you have across environments.  
+
+For example lets say you have an application that stores its data in a PostgreSQL database call `app_db` and runs locally, in staging, and in production. 
+
+You have three separate databases, but they all used to run your application, so we'd recommend making that a single `target`. The following might be how you set up the target in your project:
 
 ``` yaml
 targets:
   - name: domain_target
     database: app_db
     type: postgresql
-    username: {% raw %} {{ env_var('APP_DATABASE_USERNAME') }} {% endraw %}
-    password: {% raw %} {{ env_var('APP_DATABASE_USERNAME') }} {% endraw %}
+    port: 5432
+    host: {% raw %} "{{ env_var('APP_HOST') }}" {% endraw %}
+    username: {% raw %} "{{ env_var('APP_DATABASE_USERNAME') }}" {% endraw %}
+    password: {% raw %} "{{ env_var('APP_DATABASE_USERNAME') }}" {% endraw %}
 ```
 
-This structure then allows you to set your username and password per environment to connect to that environment's `app_db`.  The `env_var` use isn't limited to the username and password, your database name or any other property may also be environment specific.  
+This structure then allows you to set your username, password, and host differently in each environment to connect with the right app_db. 
+
+!!! tip 
+    You can use the [`env_var` function](/../reference/functions/jinja/macros/#environment-variables-env_var) to store any secrets or things that you would want to change dynamically in different environments. 

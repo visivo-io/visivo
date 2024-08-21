@@ -26,15 +26,34 @@ class TestClass(BaseModel):
 
 class Trace(NamedModel, ParentModel):
     """
-    The Trace is one of the most important and unique objects within a Visivo Project. You can think of traces as collection of lines or bars on a chart. For example, `Total Revenue by Week` would be a trace. Once you define this metric in a single trace in your project, you can add it to as many charts as you want. This is especially powerful since charts are able to join disparate axis automatically. Meaning you can define a trace for `Revenue Per Week` and then define another trace for `Revenue per Day` and include both of those traces on the same chart with no extra configuration needed.
+    The Trace is one of the most important objects within a Visivo Project. You can think of a trace as a single series on a chart (ie. one line, a sequence of bars, a big number ect.).
+
+    !!! example
+        `Total Revenue by Week` would be a trace. Once you define this metric in a single trace in your project, you can add it to as many charts as you want. This is especially powerful since charts are able to join disparate axis automatically. Meaning you can define a trace for `Revenue Per Week` and then define another trace for `Revenue per Day` and include both of those traces on the same chart with no extra configuration needed.
 
     This approach has a few key advantages:
 
-    * **Modularity**: Traces are repeatable across as many charts as you need.
-    * **Single Source of Truth**: Traces are singularly defined once in your project.
-    * **Testable**: Attributes of Traces are testable with simple configurations to make assertions about relationships that you expect to see in your data (ie. revenue = 300,000 on the week of 2022-09-19)
+    * **Modularity**: Traces can appear on multiple charts & tables.
+    * **Single Source of Truth**: Traces are a single source of truth.
+    * **Testable**: You can write  general & fast tests to ensure that trace data is correct.
 
-    Sometimes you might want to create a number of different series within a trace. For example you might want to know `Revenue Per Week by Account Executive`. You can use the `cohort_on` attribute to split out data into different series within a single trace.
+    ## Cohorts
+    To easily cut a trace into multiple cohorts you can use the `cohort_on` attribute.
+    !!! example
+        To represent `Revenue Per Week by Account Executive`. You can use the `cohort_on` attribute to split out data into different series within a single trace.
+        ``` yaml
+        traces:
+          - name: rev-per-week-by-account-executive
+            cohort_on: "account_executive_name"
+            model: ref(orders)
+            columns:
+              week: date_trunc('week', "order_date")
+              orders: count(*)
+            props:
+              type: bar
+              x: column(week)
+              y: column(orders)
+        ```
 
     Traces are also where you define how you want to represent your data visually. Since Visivo leverages plotly for charting, you can set up a number of unique and useful trace types that are also highly customizable. See types below.
 

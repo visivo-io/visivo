@@ -1,28 +1,37 @@
-## Getting Started with Visivo
 There's a few things that you will need to get configured to get started with your visivo project. We will walk through those together in this article to help get you up and running fast! 
-![](assets/start.jpeg)
+![type:video](https://www.youtube.com/embed/BWiwYpDCuek?si=jEFhQKq9kPEoFycl)
 
 _Still have questions after reading? Reach out to [join@visivo.io](mailto:join@visiov.io) and we'd be happy to help._
 
 ### Install Visivo Python Package
-We will be publishing a pypi version of visivo soon! 
-
-However, the command line _is_ open source and you can install the latest release via git:
+You can easily install visivo via `pip`:
 ```
-pip install git+https://github.com/visivo-io/visivo@latest
+pip install visivo
 ```
 
 or a specific version:
 
 ```
-pip install git+https://github.com/visivo-io/visivo@v1.0.0
+pip install visivo==1.0.26
 ```
+Now you have access to the `visivo` CLI! 
+!!! note
+    Visivo requires Python 3.10+ You may need to create a virtual environment using Python 3.10+ to run visivo.
 
-_Note: Visivo requires Python 3.10. You may need to create a virtual environment using python 3.10 to run visivo_
+## Get a Visivo API Key
+If you want to deploy your Visivo project to the Visivo cloud (recommended), you will need an API key. Here's how you can get one: 
+
+1. Visit [app.visivo.io](https://app.visivo.io/accounts/register/) and register or login. There's a free trial with no credit card required. 
+2. On login you will be routed to [the profile page](https://app.visivo.io/profile). 
+3. Create a new token & copy the value down! You will need that value in the next section. 
 
 ## Setup using `visivo init`
 
-To quickly create the files you need to get up and running, you can run `visivo init` and that will create a `project folder`, `project.visivo.yml`, and `profile.yml` with skeleton of entries to get you started.  To learn more about how to extend those files, read the `Manual Setup` section below.
+To quickly get up and running, you can run `visivo init` and that will create a `project folder`, `project.visivo.yml`, and `profile.yml` with a project skeleton. 
+
+When prompted enter in the API key value that you jotted down.
+
+You can manually edit everything that Visivo created _(more on that in the Manual Setup section)_. 
 
 {% raw %}
 ??? tip
@@ -37,9 +46,31 @@ To quickly create the files you need to get up and running, you can run `visivo 
     
     Run `visivo serve`, checkout your dashboard and start playing around with it. 
     
-    You can always add another target with a connection to your ~real~ database later.
+    You can always add a target with another connection later.
 
 {% endraw %}
+
+
+## Run Your Project Locally With `visivo serve`
+Visivo gives you the ability to run your project locally and view dashboards on local host using the command `visivo serve`. 
+
+Once you run that command you should see something similar to this:
+![](assets/visivo_serve_example.png)
+
+Click through the the link after `Serving project at`, which in the example above was `http://localhost:8000`
+
+every time you change your configurations in your project, Visivo will automatically update impacted items with a live reload. 
+
+
+## Deploy your Project to Remote With `visivo deploy`
+Now that you have a project that you are happy with, you can push it to a deployment where you will be able to share these insights with your team. 
+
+We recommend setting up a CI process that performs production deploys after your transformations run and performs deploys for pull requests. However you can also deploy from local if you want to share development version of your work.
+
+To deploy all you have to do is run `visivo deploy -s a-name-of-your-choice`. 
+
+The `-s` flag tells Visivo which stage you want to deploy to. You can think of stages like environments where you house different versions of your project remotely. 
+
 
 ## Manual setup 
 
@@ -83,7 +114,7 @@ models:
 traces:
   - name: simple_trace
     model: ref(widget_sales)
-    cohort_on: query( widget )
+    cohort_on: widget
     props:
       x: query( date_trunc('week', completed_at) )
       y: query( sum(amount) )
@@ -111,26 +142,6 @@ dashboards:
               1. Numbered
               1. List
 ```
-
-### Get a Visivo API Key & Store It Locally
-1. Visit [app.visivo.io](https://app.visivo.io/accounts/register/) and register or login.
-2. On login you will be routed to [the profile page](https://app.visivo.io/profile). 
-3. Create a new token.
-4. Next you can do either of the following to store the token locally.
-
-    === "Env Var"
-
-        * Store your Visivo token in an environment variable.
-        * Create a file called `profile.yml` anywhere in the project and include this in the first line: `token: {% raw %}'{{ env_var('YOUR_TOKEN_ENV_VAR')}}'{% endraw %}`.
-
-        The nice thing about this method is that it makes setting up a CI like github actions super easy with a different token. 
-
-    === "Special Location"
-
-        * Create a file called `profile.yml` at this location: `~/.visivo/profile.yml`
-        * Add this to the the first line of the file: `token: 'your-visivo-token'
-
-        This approach is a little easier for those who are not sure how to configure environment variables. 
 
 ### Set up a Target & store secrets safely
 Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up targets by configuring them in your `project.visivo.yml`. 
@@ -180,7 +191,7 @@ Here's a simple example of a trace:
 traces:
   - name: simple_trace
     model: ref(widget_sales)
-    cohort_on: query( widget )
+    cohort_on: widget
     props:
       type: scatter
       x: query( date_trunc('week', completed_at) )
@@ -250,23 +261,3 @@ alerts:
     type: slack
     webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
 ```    
-
-### Run Your Project Locally 
-Alright, now that you have all of the major components in place you can checkout the results of your project! Visivo gives you the ability to run your project locally and view dashboards on local host using the command `visivo serve`. 
-
-Once you run that command you should see something similar to this:
-![](assets/visivo_serve_example.png)
-
-Click through the the link after `Serving project at`, which in the example above was `http://localhost:8000`
-
-every time you change your configurations in your project, Visivo will automatically update impacted items with a live reload. 
-
-
-### Deploy your Project to Remote
-Now that you have a project that you are happy with, you can push it to a deployment where you will be able to share these insights with your team. 
-
-We recommend setting up a CI process that performs production deploys after your transformations run and performs deploys for pull requests. However you can also deploy from local if you want to share development version of your work.
-
-To deploy all you have to do is run `visivo deploy -s a-name-of-your-choice`. 
-
-The `-s` flag tells Visivo which stage you want to deploy to. You can think of stages like environments where you house different versions of your project remotely. 

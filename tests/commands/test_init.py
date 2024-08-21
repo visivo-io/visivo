@@ -79,15 +79,15 @@ def test_init_with_snowflake():
         init,
         input=f"{tmp}\n"
         + "snowflake\n"
-        + "host\n"
         + "database\n"
-        + "username\n"
         + "account\n"
         + "warehouse\n"
+        + "username\n"
         + "password\n"
         + "password\n"
         + "token\n",
     )
+    print(response.output)
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=password"

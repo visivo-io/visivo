@@ -10,8 +10,7 @@ Macros are a powerful feature that enable dynamic content generation within your
 - [Unix Timestamp Converter (`to_unix`)](#unix-timestamp-converter-to_unix)
 - [ISO 8601 Formatter (`to_iso`)](#iso-8601-formatter-to_iso)
 - [Custom Format Time (`to_str_format`)](#custom-format-time-to_str_format)
-- [YAML Renderer (`render_yaml`)](#yaml-renderer-render_yaml)
-- [Timedelta Macro (`timedelta`)](#timedelta)
+- [Timedelta Macro (`timedelta`)](#timedelta-timedelta)
 - [Read Json File (`read_json_file`)](#read-json-file-read_json_file)
 ---
 

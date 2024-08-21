@@ -1,5 +1,6 @@
 site_name: Visivo Docs
 plugins:
+  - mkdocs-video
   - autolinks
   - search: {}
   - macros:
@@ -77,6 +78,8 @@ nav:
       - Including: topics/including.md
       - Targets: topics/targets.md
       - Deployment: topics/deployments.md
+      - Testing: topics/testing.md
+      - Interactivity: topics/interactivity.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
@@ -109,6 +112,8 @@ nav:
                   - reference/configuration/Models/CsvScriptModel/index.md
               - LocalMergeModel:
                   - reference/configuration/Models/LocalMergeModel/index.md
+          - Selector:
+              - reference/configuration/Selector/index.md
           - Table:
               - reference/configuration/Table/index.md
               - Traces: []
