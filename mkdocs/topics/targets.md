@@ -13,7 +13,7 @@ Once your targets are set up, you can bring data together in a single chart with
 
 
 ## Environments 
-We recommend that you think of a target in your project as something that represents a type of data source and _not_ its a type of data source + it's environment.  
+We recommend that you think of a target as a consistent data source you have across environments.  
 
 For example lets say you have an application that stores its data in a PostgreSQL database call `app_db` and runs locally, in staging, and in production. 
 
