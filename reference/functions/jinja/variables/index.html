@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5157,7 +5203,7 @@
   
 
 
-<h1 id="variables">Variables</h1>
+<div><h1 id="variables">Variables</h1>
 <p>You can set variables in yaml files using the jinja <code>{% set %}</code> macro. </p>
 <p>This enables you to keep your code cleaner by storing variables that you can reuse across the file.</p>
 <div class="admonition example">
@@ -5171,8 +5217,8 @@
 <span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">layout</span><span class="p p-Indicator">:</span>
 <span class="w">      </span><span class="nt">xaxis</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;{{</span><span class="nv"> </span><span class="s">current_timestamp</span><span class="nv"> </span><span class="s">}}&#39;</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&#39;{{</span><span class="nv"> </span><span class="s">seven_days_ago</span><span class="nv"> </span><span class="s">}}&#39;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">'{{</span><span class="nv"> </span><span class="s">current_timestamp</span><span class="nv"> </span><span class="s">}}'</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">'{{</span><span class="nv"> </span><span class="s">seven_days_ago</span><span class="nv"> </span><span class="s">}}'</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 <span class="w">  </span><span class="l l-Scalar l-Scalar-Plain">- name</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">awesome-trace</span>
@@ -5181,7 +5227,7 @@
 <span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
 <span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 <span class="w">  </span><span class="w w-Error">  </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(date_column between &#39;{{ seven_days_ago }}&#39;::date and &#39;{{ current_timestamp }}&#39;::date )</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(date_column between '{{ seven_days_ago }}'::date and '{{ current_timestamp }}'::date )</span>
 </code></pre></div>
 </div>
 <p>It also gives you to the ability to store configurations and reuse them. </p>
@@ -5189,9 +5235,9 @@
 <p class="admonition-title">Example</p>
 <div class="highlight"><pre><span></span><code><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- set bar-marker-options %</span><span class="p p-Indicator">}</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Earth&#39;</span>
+<span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'Earth'</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;blue&#39;</span>
+<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'blue'</span>
 <span class="w">          </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
 <span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">endset %</span><span class="p p-Indicator">}</span>
 <span class="nt">traces</span><span class="p">:</span>
@@ -5206,7 +5252,7 @@
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span>
 <span class="w">      </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">bar-marker-options</span><span class="w"> </span><span class="p p-Indicator">}}</span>
 </code></pre></div>
-</div>
+</div></div>
 
 
 

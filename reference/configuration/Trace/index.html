@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5138,6 +5184,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#cohorts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cohorts
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       Example
@@ -5173,42 +5228,63 @@
   
 
 
-<h1 id="trace">Trace</h1>
-<p>The Trace is one of the most important and unique objects within a Visivo Project. You can think of traces as collection of lines or bars on a chart. For example, <code>Total Revenue by Week</code> would be a trace. Once you define this metric in a single trace in your project, you can add it to as many charts as you want. This is especially powerful since charts are able to join disparate axis automatically. Meaning you can define a trace for <code>Revenue Per Week</code> and then define another trace for <code>Revenue per Day</code> and include both of those traces on the same chart with no extra configuration needed.</p>
+<div><h1 id="trace">Trace</h1>
+<p>The Trace is one of the most important objects within a Visivo Project. You can think of a trace as a single series on a chart (ie. one line, a sequence of bars, a big number ect.).</p>
+<div class="admonition example">
+<p class="admonition-title">Example</p>
+<p><code>Total Revenue by Week</code> would be a trace. Once you define this metric in a single trace in your project, you can add it to as many charts as you want. This is especially powerful since charts are able to join disparate axis automatically. Meaning you can define a trace for <code>Revenue Per Week</code> and then define another trace for <code>Revenue per Day</code> and include both of those traces on the same chart with no extra configuration needed.</p>
+</div>
 <p>This approach has a few key advantages:</p>
 <ul>
-<li><strong>Modularity</strong>: Traces are repeatable across as many charts as you need.</li>
-<li><strong>Single Source of Truth</strong>: Traces are singularly defined once in your project.</li>
-<li><strong>Testable</strong>: Attributes of Traces are testable with simple configurations to make assertions about relationships that you expect to see in your data (ie. revenue = 300,000 on the week of 2022-09-19)</li>
+<li><strong>Modularity</strong>: Traces can appear on multiple charts &amp; tables.</li>
+<li><strong>Single Source of Truth</strong>: Traces are a single source of truth.</li>
+<li><strong>Testable</strong>: You can write  general &amp; fast tests to ensure that trace data is correct.</li>
 </ul>
-<p>Sometimes you might want to create a number of different series within a trace. For example you might want to know <code>Revenue Per Week by Account Executive</code>. You can use the <code>cohort_on</code> attribute to split out data into different series within a single trace.</p>
+<h2 id="cohorts">Cohorts</h2>
+<p>To easily cut a trace into multiple cohorts you can use the <code>cohort_on</code> attribute.</p>
+<div class="admonition example">
+<p class="admonition-title">Example</p>
+<p>To represent <code>Revenue Per Week by Account Executive</code>. You can use the <code>cohort_on</code> attribute to split out data into different series within a single trace.
+</p><div class="highlight"><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">rev-per-week-by-account-executive</span>
+<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="s">"account_executive_name"</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">week</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">date_trunc('week', "order_date")</span>
+<span class="w">      </span><span class="nt">orders</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">count(*)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(week)</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(orders)</span>
+</code></pre></div>
+</div>
 <p>Traces are also where you define how you want to represent your data visually. Since Visivo leverages plotly for charting, you can set up a number of unique and useful trace types that are also highly customizable. See types below.</p>
 <h2 id="example">Example</h2>
 <div class="highlight"><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">crypto ohlc</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;SELECT</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">finance_data_atlas.FINANCE.CMCCD2019&#39;</span>
+<span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">'SELECT</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">finance_data_atlas.FINANCE.CMCCD2019'</span>
 <span class="w">    </span><span class="nt">target_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">remote-snowflake</span>
-<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( &quot;Cryptocurrency Name&quot; )</span>
+<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( "Cryptocurrency Name" )</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, &quot;Date&quot;)::date::varchar )</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( max_by(&quot;Value&quot;, &quot;Date&quot;) )</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( max(&quot;Value&quot;) )</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( min(&quot;Value&quot;) )</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( min_by(&quot;Value&quot;, &quot;Date&quot;) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', "Date")::date::varchar )</span>
+<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( max_by("Value", "Date") )</span>
+<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( max("Value") )</span>
+<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( min("Value") )</span>
+<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( min_by("Value", "Date") )</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;green&#39;</span>
+<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'green'</span>
 <span class="w">      </span><span class="nt">decreasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;red&#39;</span>
-<span class="w">      </span><span class="nt">xaxis</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;x&#39;</span>
-<span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;y&#39;</span>
+<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'red'</span>
+<span class="w">      </span><span class="nt">xaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'x'</span>
+<span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'y'</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(&quot;Date&quot; &gt;= &#39;2015-01-01&#39;)</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( &quot;Cryptocurrency Name&quot; in (&#39;Bitcoin (btc)&#39;, &#39;Ethereum (eth)&#39;, &#39;Dogecoin (doge)&#39;) )</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( &quot;Measure Name&quot; = &#39;Price, USD&#39; )</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query("Date" &gt;= '2015-01-01')</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') )</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( "Measure Name" = 'Price, USD' )</span>
 </code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
@@ -5276,7 +5352,7 @@
 <td></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

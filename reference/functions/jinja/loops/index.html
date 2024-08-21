@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5279,7 +5325,7 @@
   
 
 
-<h1 id="looping">Looping <img alt="➿" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.0.3/assets/svg/27bf.svg" title=":loop:" /></h1>
+<div><h1 id="looping">Looping <img alt="➿" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.0.3/assets/svg/27bf.svg" title=":loop:"></h1>
 <p>Jinja2 loops allow you to iterate over data structures and conditionally include elements in your YAML files. This is particularly useful for:</p>
 <ul>
 <li>Generating configurations for multiple environments or instances</li>
@@ -5297,48 +5343,48 @@
 <p>Generate a list of users in a YAML configuration.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">YAML with Jinja2</label><label for="__tabbed_1_2">Rendered YAML</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">YAML with Jinja2</label><label for="__tabbed_1_2">Rendered YAML</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- for user in</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;Alice&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;Bob&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;Charlie&#39;</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="err">%</span><span class="p p-Indicator">}</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">user</span><span class="nv"> </span><span class="s">}}_weekly_orders_trace&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- for user in</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'Alice'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'Bob'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'Charlie'</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="err">%</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">user</span><span class="nv"> </span><span class="s">}}_weekly_orders_trace"</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;orders&#39;)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('orders')</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( orders )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = &#39;{{ user }}&#39; )</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = '{{ user }}' )</span>
 <span class="w">  </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- endfor %</span><span class="p p-Indicator">}</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Alice_weekly_orders_trace&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Alice_weekly_orders_trace"</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;orders&#39;)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('orders')</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( orders )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = &#39;Alice&#39; )</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bob_weekly_orders_trace&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = 'Alice' )</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Bob_weekly_orders_trace"</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;orders&#39;)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('orders')</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( orders )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = &#39;Bob&#39; )</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Charlie_weekly_orders_trace&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = 'Bob' )</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Charlie_weekly_orders_trace"</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;orders&#39;)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('orders')</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( orders )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = &#39;Charlie&#39; )</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( user = 'Charlie' )</span>
 </code></pre></div>
 </div>
 </div>
@@ -5348,34 +5394,34 @@
 <p>Create a nested structure of departments and employees.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">YAML with Jinja2</label><label for="__tabbed_2_2">Rendered YAML</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked id="__tabbed_2_1" name="__tabbed_2" type="radio"><input id="__tabbed_2_2" name="__tabbed_2" type="radio"><div class="tabbed-labels"><label for="__tabbed_2_1">YAML with Jinja2</label><label for="__tabbed_2_2">Rendered YAML</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">departments</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">for department</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">employees in</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="s">&#39;Sales&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;Alice&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;Bob&#39;</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="s">&#39;Engineering&#39;</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;Charlie&#39;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&#39;Dave&#39;</span><span class="p p-Indicator">]}</span><span class="nv">.items() %</span><span class="p p-Indicator">}</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">department</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">for department</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">employees in</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="s">'Sales'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'Alice'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'Bob'</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="s">'Engineering'</span><span class="p p-Indicator">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">'Charlie'</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">'Dave'</span><span class="p p-Indicator">]}</span><span class="nv">.items() %</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">department</span><span class="nv"> </span><span class="s">}}"</span>
 <span class="w">    </span><span class="nt">employees</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">for employee in employees %</span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">employee</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">employee</span><span class="nv"> </span><span class="s">}}"</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">endfor %</span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">endfor %</span><span class="p p-Indicator">}</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">departments</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Sales&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">"Sales"</span>
 <span class="w">    </span><span class="nt">employees</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Alice&quot;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Bob&quot;</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Engineering&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Alice"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Bob"</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">department</span><span class="p">:</span><span class="w"> </span><span class="s">"Engineering"</span>
 <span class="w">    </span><span class="nt">employees</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Charlie&quot;</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Dave&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Charlie"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">"Dave"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
-</div>
+</div></div>
 
 
 

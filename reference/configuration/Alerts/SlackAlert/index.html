@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5166,13 +5212,13 @@
   
 
 
-<h1 id="slackalert">SlackAlert</h1>
+<div><h1 id="slackalert">SlackAlert</h1>
 <p>You can configure slack alerts by setting up an incoming message slack webhook. Once you do that, the set up in Visivo is super simple:
-<div class="highlight"><pre><span></span><code><span class="nt">alerts</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">alerts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slack-destination</span><span class="w"> </span><span class="c1">#any name you choose</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slack</span>
-<span class="w">    </span><span class="nt">webhook_url</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var(&quot;SLACK_WEBHOOK&quot;)</span><span class="p p-Indicator">}}</span>
-</code></pre></div></p>
+<span class="w">    </span><span class="nt">webhook_url</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var("SLACK_WEBHOOK")</span><span class="p p-Indicator">}}</span>
+</code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5194,7 +5240,7 @@
 <td>webhook_url</td>
 <td>string</td>
 <td>None</td>
-<td>An incoming message slack webhook url. You can set one of those up by following <a href='https://api.slack.com/messaging/webhooks'>these instructions</a>.</td>
+<td>An incoming message slack webhook url. You can set one of those up by following <a href="https://api.slack.com/messaging/webhooks">these instructions</a>.</td>
 </tr>
 <tr>
 <td>type</td>
@@ -5203,7 +5249,7 @@
 <td>The type of Alert Destination. Needs to be <code>slack</code> to configure a slack destination</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

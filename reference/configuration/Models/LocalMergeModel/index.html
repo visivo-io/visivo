@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5166,7 +5212,7 @@
   
 
 
-<h1 id="localmergemodel">LocalMergeModel</h1>
+<div><h1 id="localmergemodel">LocalMergeModel</h1>
 <p>Local Merge Models are models that allow you to merge data from multiple other models locally.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -5174,17 +5220,17 @@
 </div>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Internal join External</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Internal join External</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Here is an example of merging two models that are defined in your project. One that is external and one that is internal.
-<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local_merge</span>
 <span class="w">    </span><span class="nt">models</span><span class="p">:</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(first_domain_model)</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(external_data_model)</span>
 <span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SELECT * FROM first_domain_model.model AS fdm JOIN external_data_model.model AS edm ON fdm.external_id = edm.id</span>
-</code></pre></div></p>
+</code></pre></div>
 </div>
 </div>
 </div>
@@ -5219,7 +5265,7 @@
 <td>A model object defined inline or a ref() to a model.</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

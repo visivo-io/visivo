@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5166,18 +5212,18 @@
   
 
 
-<h1 id="emailalert">EmailAlert</h1>
+<div><h1 id="emailalert">EmailAlert</h1>
 <p>You can configure email alert destinations for any SMTP provider. Here's an example of this configuration looks in your yaml file:
-<div class="highlight"><pre><span></span><code><span class="nt">alerts</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">alerts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">email-destination</span><span class="w"> </span><span class="c1">#any unique name of your choosing</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">email</span>
-<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;[ALERT]</span><span class="nv"> </span><span class="s">Your</span><span class="nv"> </span><span class="s">Visivo</span><span class="nv"> </span><span class="s">Tests</span><span class="nv"> </span><span class="s">Have</span><span class="nv"> </span><span class="s">Failed&quot;</span><span class="w"> </span><span class="c1">#can be any message you want</span>
+<span class="w">    </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="s">"[ALERT]</span><span class="nv"> </span><span class="s">Your</span><span class="nv"> </span><span class="s">Visivo</span><span class="nv"> </span><span class="s">Tests</span><span class="nv"> </span><span class="s">Have</span><span class="nv"> </span><span class="s">Failed"</span><span class="w"> </span><span class="c1">#can be any message you want</span>
 <span class="w">    </span><span class="nt">to</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">someone@your_company.com</span>
 <span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2525</span><span class="w"> </span><span class="c1">#is this port by default</span>
 <span class="w">    </span><span class="nt">host</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your_company_email_server.com</span>
 <span class="w">    </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">someones_username</span>
-<span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var(&#39;EMAIL_PASSWORD&#39;)</span><span class="p p-Indicator">}}</span><span class="w"> </span><span class="c1">#We&#39;d recommend using environment variables here for security</span>
-</code></pre></div></p>
+<span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var('EMAIL_PASSWORD')</span><span class="p p-Indicator">}}</span><span class="w"> </span><span class="c1">#We'd recommend using environment variables here for security</span>
+</code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5238,7 +5284,7 @@
 <td>The password for authenticating the email server.</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

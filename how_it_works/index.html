@@ -420,6 +420,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -528,6 +532,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5151,7 +5197,7 @@
   
 
 
-<h1 id="how-visivo-works">How Visivo Works</h1>
+<div><h1 id="how-visivo-works">How Visivo Works</h1>
 <p>When working with Visivo, all you have to do is write yaml configurations &amp; CLI commands. Visivo handles everything else automatically so you and your team can focus on just the stuff that matters. While the example that we will go through here is not exactly how Visivo functions under the hood, it's a pretty nice approximation to give you an idea of how the sauce is made!</p>
 <p>Say you have a model called <code>widget_sales</code> that looks like this: </p>
 <table>
@@ -5196,7 +5242,7 @@
 </tbody>
 </table>
 <p>You can write a trace in any yml file directly your project. The trace can be just a few lines or more complex if you want to customize it. Here's an example of a fairly simple trace that builds on the <code>widget_sales</code> model: </p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Relational Db</label><label for="__tabbed_1_2">dbt</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Relational Db</label><label for="__tabbed_1_2">dbt</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><span class="filename">project_dir/project.visivo.yml</span><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
@@ -5204,44 +5250,44 @@
 <span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select * from widget_sales</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_trace</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;widget_sales&#39;)</span>
-<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( widget )</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('widget_sales')</span>
+<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, completed_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', completed_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( sum(amount) )</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case sum(amount) &gt; 200 then &#39;green&#39; else &#39;blue&#39; end )</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case sum(amount) &gt; 200 then 'green' else 'blue' end )</span>
 <span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">square</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;lines&#39;</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">'lines'</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;simple_trace&#39;)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('simple_trace')</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Widget Sales by Week</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<p><div class="highlight"><span class="filename">project_dir/models/schema.yml</span><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
+<p></p><div class="highlight"><span class="filename">project_dir/models/schema.yml</span><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_trace</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;widget_sales&#39;)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('widget_sales')</span>
 <span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( widget )</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, completed_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', completed_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( sum(amount) )</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case sum(amount) &gt; 200 then &#39;green&#39; else &#39;blue&#39; end )</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case sum(amount) &gt; 200 then 'green' else 'blue' end )</span>
 <span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">square</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;lines&#39;</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">'lines'</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(&#39;simple_trace&#39;)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref('simple_trace')</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Widget Sales by Week</span>
 <span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget_sales</span>
-<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;A</span><span class="nv"> </span><span class="s">table</span><span class="nv"> </span><span class="s">containing</span><span class="nv"> </span><span class="s">widgets</span><span class="nv"> </span><span class="s">sales</span><span class="nv"> </span><span class="s">sourced</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">CRM&quot;</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">"A</span><span class="nv"> </span><span class="s">table</span><span class="nv"> </span><span class="s">containing</span><span class="nv"> </span><span class="s">widgets</span><span class="nv"> </span><span class="s">sales</span><span class="nv"> </span><span class="s">sourced</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">the</span><span class="nv"> </span><span class="s">CRM"</span>
 <span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget</span>
 <span class="w">        </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">The type of widget sold</span>
@@ -5255,37 +5301,37 @@ Where the dbt model is defined like this:
 <span class="w">  </span><span class="n">widget</span><span class="p">,</span><span class="w"> </span>
 <span class="w">  </span><span class="n">quantity</span><span class="p">,</span><span class="w"> </span>
 <span class="w">  </span><span class="n">completed_at</span>
-<span class="k">FROM</span><span class="w"> </span><span class="err">{{</span><span class="w"> </span><span class="k">source</span><span class="p">(</span><span class="s1">&#39;crm&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;sales_of_widgets&#39;</span><span class="p">)</span><span class="w"> </span><span class="err">}}</span>
-</code></pre></div></p>
+<span class="k">FROM</span><span class="w"> </span><span class="err">{{</span><span class="w"> </span><span class="k">source</span><span class="p">(</span><span class="s1">'crm'</span><span class="p">,</span><span class="w"> </span><span class="s1">'sales_of_widgets'</span><span class="p">)</span><span class="w"> </span><span class="err">}}</span>
+</code></pre></div>
 </div>
 </div>
 </div>
 <p>Using that context, Visivo will produce this query and store it in your target directory:
-<div class="highlight"><span class="filename">project_dir/target/traces/simple_trace/query.sql</span><pre><span></span><code><span class="k">WITH</span><span class="w"> </span>
+</p><div class="highlight"><span class="filename">project_dir/target/traces/simple_trace/query.sql</span><pre><span></span><code><span class="k">WITH</span><span class="w"> </span>
 <span class="k">sql</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="p">(</span>
 <span class="k">select</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">from</span><span class="w"> </span><span class="n">widget_sales</span><span class="w"> </span><span class="c1">--context set to target.database &amp; target.schema</span>
 <span class="p">)</span>
 <span class="k">select</span><span class="w"> </span>
-<span class="w">  </span><span class="n">widget</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">&quot;cohort_on&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="n">date_trunc</span><span class="p">(</span><span class="s1">&#39;week&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">completed_at</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">&quot;x&quot;</span><span class="p">,</span><span class="w"> </span>
-<span class="w">  </span><span class="k">sum</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">&quot;y&quot;</span><span class="p">,</span><span class="w"> </span>
-<span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="k">sum</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">300</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="s1">&#39;green&#39;</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;blue&#39;</span><span class="w"> </span><span class="k">end</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">&quot;marker.color&quot;</span>
+<span class="w">  </span><span class="n">widget</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">"cohort_on"</span><span class="p">,</span>
+<span class="w">  </span><span class="n">date_trunc</span><span class="p">(</span><span class="s1">'week'</span><span class="p">,</span><span class="w"> </span><span class="n">completed_at</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">"x"</span><span class="p">,</span><span class="w"> </span>
+<span class="w">  </span><span class="k">sum</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">"y"</span><span class="p">,</span><span class="w"> </span>
+<span class="w">  </span><span class="k">case</span><span class="w"> </span><span class="k">sum</span><span class="p">(</span><span class="n">amount</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">300</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="s1">'green'</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">'blue'</span><span class="w"> </span><span class="k">end</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="ss">"marker.color"</span>
 <span class="k">from</span><span class="w"> </span><span class="k">sql</span><span class="w"> </span>
 <span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span>
-<span class="w">  </span><span class="ss">&quot;cohort_on&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="ss">&quot;x&quot;</span>
+<span class="w">  </span><span class="ss">"cohort_on"</span><span class="p">,</span>
+<span class="w">  </span><span class="ss">"x"</span>
 </code></pre></div>
 After small transformations on the output of the query you get this <code>data.json</code> which is stored in the target directly next to the query to enable debugging:
 <div class="highlight"><span class="filename">project_dir/target/traces/simple_trace/data.json</span><pre><span></span><code><span class="p">{</span>
-<span class="nt">&quot;Useful Widget&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;2023-01-08&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">300</span><span class="p">,</span><span class="w"> </span><span class="mi">400</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;marker.color&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;green&quot;</span><span class="p">]</span>
+<span class="nt">"Useful Widget"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"x"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"2023-01-01"</span><span class="p">,</span><span class="w"> </span><span class="s2">"2023-01-08"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"y"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">300</span><span class="p">,</span><span class="w"> </span><span class="mi">400</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"marker.color"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"blue"</span><span class="p">,</span><span class="w"> </span><span class="s2">"green"</span><span class="p">]</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="nt">&quot;Expensive Widget&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;x&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;2023-01-08&quot;</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;y&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">950</span><span class="p">,</span><span class="w"> </span><span class="mi">50</span><span class="p">],</span>
-<span class="w">  </span><span class="nt">&quot;marker.color&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;green&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;blue&quot;</span><span class="p">]</span>
+<span class="nt">"Expensive Widget"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">"x"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"2023-01-01"</span><span class="p">,</span><span class="w"> </span><span class="s2">"2023-01-08"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"y"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">950</span><span class="p">,</span><span class="w"> </span><span class="mi">50</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"marker.color"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"green"</span><span class="p">,</span><span class="w"> </span><span class="s2">"blue"</span><span class="p">]</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -5294,32 +5340,32 @@ Next Visivo generates the plotly chart configuration:
 
 <span class="kd">var</span><span class="w"> </span><span class="nx">traces</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
 <span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Useful Widget&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">&quot;Useful Widget&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">],</span>
-<span class="w">    </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">&quot;Useful Widget&quot;</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">"Useful Widget"</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">"Useful Widget"</span><span class="p">][</span><span class="s2">"x"</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">"Useful Widget"</span><span class="p">][</span><span class="s2">"y"</span><span class="p">],</span>
 <span class="w">    </span><span class="nx">marker</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">color</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">&quot;Useful Widget&quot;</span><span class="p">][</span><span class="s2">&quot;marker.color&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nx">shape</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;square&quot;</span>
+<span class="w">      </span><span class="nx">color</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">"Useful Widget"</span><span class="p">][</span><span class="s2">"marker.color"</span><span class="p">],</span>
+<span class="w">      </span><span class="nx">shape</span><span class="o">:</span><span class="w"> </span><span class="s2">"square"</span>
 <span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nx">mode</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;lines&quot;</span>
+<span class="w">    </span><span class="nx">mode</span><span class="o">:</span><span class="w"> </span><span class="s2">"lines"</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Expensive Widget&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">&quot;Expensive Widget&quot;</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">],</span>
-<span class="w">    </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">&quot;Expensive Widget&quot;</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s2">"Expensive Widget"</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">x</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">"Expensive Widget"</span><span class="p">][</span><span class="s2">"x"</span><span class="p">],</span>
+<span class="w">    </span><span class="nx">y</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">"Expensive Widget"</span><span class="p">][</span><span class="s2">"y"</span><span class="p">],</span>
 <span class="w">    </span><span class="nx">marker</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="nx">color</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">&quot;Expensive Widget&quot;</span><span class="p">][</span><span class="s2">&quot;marker.color&quot;</span><span class="p">],</span>
-<span class="w">      </span><span class="nx">shape</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;square&quot;</span>
+<span class="w">      </span><span class="nx">color</span><span class="o">:</span><span class="w"> </span><span class="nx">data</span><span class="p">[</span><span class="s2">"Expensive Widget"</span><span class="p">][</span><span class="s2">"marker.color"</span><span class="p">],</span>
+<span class="w">      </span><span class="nx">shape</span><span class="o">:</span><span class="w"> </span><span class="s2">"square"</span>
 <span class="w">    </span><span class="p">},</span>
-<span class="w">    </span><span class="nx">mode</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;lines&quot;</span>
+<span class="w">    </span><span class="nx">mode</span><span class="o">:</span><span class="w"> </span><span class="s2">"lines"</span>
 <span class="w">  </span><span class="p">},</span>
 <span class="p">]</span>
-<span class="kd">var</span><span class="w"> </span><span class="nx">layout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Widget Sales by Week&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="kd">var</span><span class="w"> </span><span class="nx">layout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s2">"Widget Sales by Week"</span><span class="w"> </span><span class="p">}</span>
 
-<span class="nx">Plotly</span><span class="p">.</span><span class="nx">newPlot</span><span class="p">(</span><span class="s1">&#39;aDiv&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">layout</span><span class="p">);</span>
+<span class="nx">Plotly</span><span class="p">.</span><span class="nx">newPlot</span><span class="p">(</span><span class="s1">'aDiv'</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">layout</span><span class="p">);</span>
 </code></pre></div>
-The compiled JS produces a chart! Now you can mix and match traces with the one we outlined here or deploy this chart to 1 or more dashboards without having to do any duplicate work.  </p>
-<p><img alt="" src="../assets/example_chart.png" /></p>
+The compiled JS produces a chart! Now you can mix and match traces with the one we outlined here or deploy this chart to 1 or more dashboards without having to do any duplicate work.  
+<p><img alt="" src="../assets/example_chart.png"></p></div>
 
 
 

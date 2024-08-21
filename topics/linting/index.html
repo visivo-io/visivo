@@ -424,6 +424,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -605,6 +609,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5257,9 +5303,9 @@
   
 
 
-<h1 id="linting-projectvisivoyml">Linting <code>project.visivo.yml</code></h1>
+<div><h1 id="linting-projectvisivoyml">Linting <code>project.visivo.yml</code></h1>
 <p>We publish a json schema file for our <a href="https://docs.visivo.io/assets/visivo_schema.json"><code>project.visivo.yml</code></a>. With this file you can get realtime linting &amp; feedback while developing your project.</p>
-<h2 id="vscode-plugin"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 16.47V7.39l-6 4.54M2.22 9.19a.858.858 0 0 1-.02-1.15l1.2-1.11c.2-.18.69-.26 1.05 0l3.42 2.61 7.93-7.25c.32-.32.87-.45 1.5-.12l4 1.91c.36.21.7.54.7 1.15v13.5c0 .4-.29.83-.6 1l-4.4 2.1c-.32.13-.92.01-1.13-.2l-8.02-7.3-3.4 2.6c-.38.26-.85.19-1.05 0l-1.2-1.1c-.32-.33-.28-.87.05-1.2l3-2.7"/></svg></span> VSCode Plugin</h2>
+<h2 id="vscode-plugin"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 24 24"><path d="M17 16.47V7.39l-6 4.54M2.22 9.19a.858.858 0 0 1-.02-1.15l1.2-1.11c.2-.18.69-.26 1.05 0l3.42 2.61 7.93-7.25c.32-.32.87-.45 1.5-.12l4 1.91c.36.21.7.54.7 1.15v13.5c0 .4-.29.83-.6 1l-4.4 2.1c-.32.13-.92.01-1.13-.2l-8.02-7.3-3.4 2.6c-.38.26-.85.19-1.05 0l-1.2-1.1c-.32-.33-.28-.87.05-1.2l3-2.7"></path></svg></span> VSCode Plugin</h2>
 <p>Install the <a href="https://github.com/redhat-developer/vscode-yaml">YAML plugin</a> from the good people of redhat-developer. The plugin enables you to lint any yaml file that you associate a schema to.  </p>
 <h3 id="configuration-optional">Configuration (Optional)</h3>
 <p>By default any file with the format <code>*.visivo.yml</code> will be linted.  If you have a file that is named differently, you can add it to the local configuration.</p>
@@ -5267,13 +5313,13 @@
 <li>Install the plugin per the instructions</li>
 <li>Edit the plugin settings, and click "Edit in settings.json" under the "Yaml: Schemas" section.</li>
 <li>Edit the "yaml.schemas" to include: 
-<div class="highlight"><pre><span></span><code>&quot;yaml.schemas&quot;: {
-    &quot;https://docs.visivo.io/assets/visivo_schema.json&quot;: &quot;name_of_file.yml&quot;
+<div class="highlight"><pre><span></span><code>"yaml.schemas": {
+    "https://docs.visivo.io/assets/visivo_schema.json": "name_of_file.yml"
 },
 </code></pre></div></li>
 </ol>
 <h2 id="gotchas">Gotchas</h2>
-<p>If you are using <code>env_var</code> substitution, surrounding the value with <code>"</code> will make the linter happy. For example: <code>password: "{{ env_var('SECRET_PASSWORD') }}"</code></p>
+<p>If you are using <code>env_var</code> substitution, surrounding the value with <code>"</code> will make the linter happy. For example: <code>password: "{{ env_var('SECRET_PASSWORD') }}"</code></p></div>
 
 
 

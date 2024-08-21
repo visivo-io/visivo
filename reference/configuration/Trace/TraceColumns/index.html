@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5199,7 +5245,7 @@
   
 
 
-<h1 id="tracecolumns">TraceColumns</h1>
+<div><h1 id="tracecolumns">TraceColumns</h1>
 <p>Trace Columns enable you to reuse query elements as columns throughout multiple different areas within the trace.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -5208,7 +5254,7 @@
 <p>Trace Columns perform the same basic service that the <code>query()</code> function does- allowing you to define sql select statements.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">With Inline <code>query()</code> Function</label><label for="__tabbed_1_2">With Trace Columns</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">With Inline <code>query()</code> Function</label><label for="__tabbed_1_2">With Trace Columns</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Line</span>
@@ -5218,11 +5264,11 @@
 <span class="w">    </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(x)</span>
 <span class="w">    </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(y)</span>
 <span class="w">    </span><span class="nt">marker</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case when x &gt;= 5 then &#39;#713B57&#39; else &#39;grey&#39; end )</span>
+<span class="w">      </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case when x &gt;= 5 then '#713B57' else 'grey' end )</span>
 <span class="w">      </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case when x &gt;= 5 then &#39;#713B57&#39; else &#39;grey&#39; end )</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case when x &gt;= 5 then '#713B57' else 'grey' end )</span>
 <span class="w">    </span><span class="nt">pattern</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case when x = 5 then &#39;/&#39; when x = 6 THEN &#39;x&#39; else &#39;&#39; end )</span>
+<span class="w">      </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case when x = 5 then '/' when x = 6 THEN 'x' else '' end )</span>
 <span class="w">    </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( Case when x in (5,6) then 2.5 else null end)</span>
 </code></pre></div>
@@ -5233,8 +5279,8 @@
 <span class="w">  </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">x_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x</span>
 <span class="w">    </span><span class="nt">y_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">y</span>
-<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case when x &gt;= 5 then &#39;#713B57&#39; else &#39;grey&#39; end</span>
-<span class="w">    </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case when x = 5 then &#39;/&#39; when x = 6 THEN &#39;x&#39; else &#39;&#39; end</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case when x &gt;= 5 then '#713B57' else 'grey' end</span>
+<span class="w">    </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case when x = 5 then '/' when x = 6 THEN 'x' else '' end</span>
 <span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case when x in (5,6) then 2.5 else null end</span>
 <span class="w">  </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span>
@@ -5260,45 +5306,45 @@
 big value in the card. Since the <code>query()</code> and <code>column()</code> functions always return arrays, indexing allows you to grab a single value
 from the array to use in configurations that require a single value.</p>
 <p>You can index columns by using the following syntax:
-<div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">column(column_name)[index]</span>
+</p><div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">column(column_name)[index]</span>
 </code></pre></div>
 The <code>index</code> is a zero-based index that represents the position in the array you want to pull out. Negative indexes are also supported,
-allowing you to count from the end of the array. The last value in the array is represented by -1, the second to last by -2, and so on.</p>
+allowing you to count from the end of the array. The last value in the array is represented by -1, the second to last by -2, and so on.
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <p>A great example of a situation where you would want to use Column indexing are indicator traces.
-<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Indicator Trace</span>
+</p><div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Indicator Trace</span>
 <span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(csv)</span>
 <span class="w">  </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">x_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x</span>
 <span class="w">  </span><span class="nt">y_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">y</span>
 <span class="w">  </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;indicator&quot;</span>
-<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;number+delta&quot;</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">"indicator"</span>
+<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"number+delta"</span>
 <span class="w">    </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(y_data)[0]</span>
 <span class="w">    </span><span class="nt">number</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;$&quot;</span>
+<span class="w">      </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s">"$"</span>
 <span class="w">    </span><span class="nt">delta</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">position</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;top&quot;</span>
+<span class="w">      </span><span class="nt">position</span><span class="p">:</span><span class="w"> </span><span class="s">"top"</span>
 <span class="w">      </span><span class="nt">reference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(y_data)[1]</span>
 </code></pre></div>
-In the trace above <code>column(y_data)[0]</code> is pulling the first item in the array as the value and comparing its delta to the second item in the column y_data array.</p>
+In the trace above <code>column(y_data)[0]</code> is pulling the first item in the array as the value and comparing its delta to the second item in the column y_data array.
 </div>
 <h3 id="slicing">Slicing</h3>
 <p>Slicing allows you to pull out a sub-array from a given column array. This is useful when you only want to use a portion of the array in
 a given configuration, but don't want to filter the whole trace.</p>
 <p>You can slice columns by using the following syntax:
-<div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">column(column_name)[start:stop]</span>
+</p><div class="highlight"><pre><span></span><code><span class="l l-Scalar l-Scalar-Plain">column(column_name)[start:stop]</span>
 </code></pre></div>
 The <code>start</code> and <code>stop</code> values are zero-based indexes that represent the start and end of the slice you want to pull out.
 Negative indexes are also supported, allowing you to count from the end of the array. The last value in the array is represented
-by -1, the second to last by -2, and so on.</p>
+by -1, the second to last by -2, and so on.
 <p>If you omit the stop value, the slice will continue to the end of the array. If you omit the start value, the slice will start at
 the beginning of the array.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <p>Surface plots can be a really useful place to utilize slicing.
-<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Surface Trace</span>
+</p><div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Surface Trace</span>
 <span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(csv)</span>
 <span class="w">  </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">x_data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x</span>
@@ -5314,7 +5360,7 @@ the beginning of the array.</p>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(x_data)[5:10]</span>
 </code></pre></div>
 The trace above is creating a surface plot with lines on the plane of different lengths that represent different portions
-of the x_data and y_data arrays.</p>
+of the x_data and y_data arrays.
 </div>
 <h2 id="attributes">Attributes</h2>
 <table>
@@ -5334,7 +5380,7 @@ of the x_data and y_data arrays.</p>
 <td></td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

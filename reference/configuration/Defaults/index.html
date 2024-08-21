@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5164,7 +5210,7 @@
   
 
 
-<h1 id="defaults">Defaults</h1>
+<div><h1 id="defaults">Defaults</h1>
 <p>Defaults enable you to set a target and alert that will be used whenever one is not explicitly passed.</p>
 <p>Defaults will be overridden if:</p>
 <ol>
@@ -5172,7 +5218,7 @@
 <li>A target is specified in the trace using the <code>target_name</code> attribute. when this attribute is set the trace will always run queries against that target.</li>
 </ol>
 <p>Here's how defaults look in the <code>project.visivo.yml</code> file:
-<div class="highlight"><pre><span></span><code><span class="nt">defaults</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">defaults</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">target_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local-sqlite</span>
 <span class="w">  </span><span class="nt">alert_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slack</span>
 
@@ -5185,7 +5231,7 @@
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local-sqlite</span>
 <span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target/local.db</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
-</code></pre></div></p>
+</code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5210,7 +5256,7 @@
 <td>The name of a target defined elsewhere in the Visivo project.</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

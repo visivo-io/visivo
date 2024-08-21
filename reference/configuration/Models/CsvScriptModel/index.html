@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5166,17 +5212,17 @@
   
 
 
-<h1 id="csvscriptmodel">CsvScriptModel</h1>
+<div><h1 id="csvscriptmodel">CsvScriptModel</h1>
 <p>CSV Script Models are a type of model that executes a command with a given set of args.
-This command needs to return a well formatted <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M0 64C0 28.7 28.7 0 64 0h160v128c0 17.7 14.3 32 32 32h128v144H176c-35.3 0-64 28.7-64 64v144H64c-35.3 0-64-28.7-64-64V64zm384 64H256V0l128 128zM200 352h16c22.1 0 40 17.9 40 40v8c0 8.8-7.2 16-16 16s-16-7.2-16-16v-8c0-4.4-3.6-8-8-8h-16c-4.4 0-8 3.6-8 8v80c0 4.4 3.6 8 8 8h16c4.4 0 8-3.6 8-8v-8c0-8.8 7.2-16 16-16s16 7.2 16 16v8c0 22.1-17.9 40-40 40h-16c-22.1 0-40-17.9-40-40v-80c0-22.1 17.9-40 40-40zm133.1 0H368c8.8 0 16 7.2 16 16s-7.2 16-16 16h-34.9c-7.2 0-13.1 5.9-13.1 13.1 0 5.2 3 9.9 7.8 12l37.4 16.6c16.3 7.2 26.8 23.4 26.8 41.2 0 24.9-20.2 45.1-45.1 45.1H304c-8.8 0-16-7.2-16-16s7.2-16 16-16h42.9c7.2 0 13.1-5.9 13.1-13.1 0-5.2-3-9.9-7.8-12l-37.4-16.6c-16.3-7.2-26.8-23.4-26.8-41.2 0-24.9 20.2-45.1 45.1-45.1zm98.9 0c8.8 0 16 7.2 16 16v31.6c0 23 5.5 45.6 16 66 10.5-20.3 16-42.9 16-66V368c0-8.8 7.2-16 16-16s16 7.2 16 16v31.6c0 34.7-10.3 68.7-29.6 97.6l-5.1 7.7c-3 4.5-8 7.1-13.3 7.1s-10.3-2.7-13.3-7.1l-5.1-7.7c-19.3-28.9-29.6-62.9-29.6-97.6V368c0-8.8 7.2-16 16-16z"/></svg></span> with a header row to stdout.</p>
+This command needs to return a well formatted <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewbox="0 0 512 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M0 64C0 28.7 28.7 0 64 0h160v128c0 17.7 14.3 32 32 32h128v144H176c-35.3 0-64 28.7-64 64v144H64c-35.3 0-64-28.7-64-64V64zm384 64H256V0l128 128zM200 352h16c22.1 0 40 17.9 40 40v8c0 8.8-7.2 16-16 16s-16-7.2-16-16v-8c0-4.4-3.6-8-8-8h-16c-4.4 0-8 3.6-8 8v80c0 4.4 3.6 8 8 8h16c4.4 0 8-3.6 8-8v-8c0-8.8 7.2-16 16-16s16 7.2 16 16v8c0 22.1-17.9 40-40 40h-16c-22.1 0-40-17.9-40-40v-80c0-22.1 17.9-40 40-40zm133.1 0H368c8.8 0 16 7.2 16 16s-7.2 16-16 16h-34.9c-7.2 0-13.1 5.9-13.1 13.1 0 5.2 3 9.9 7.8 12l37.4 16.6c16.3 7.2 26.8 23.4 26.8 41.2 0 24.9-20.2 45.1-45.1 45.1H304c-8.8 0-16-7.2-16-16s7.2-16 16-16h42.9c7.2 0 13.1-5.9 13.1-13.1 0-5.2-3-9.9-7.8-12l-37.4-16.6c-16.3-7.2-26.8-23.4-26.8-41.2 0-24.9 20.2-45.1 45.1-45.1zm98.9 0c8.8 0 16 7.2 16 16v31.6c0 23 5.5 45.6 16 66 10.5-20.3 16-42.9 16-66V368c0-8.8 7.2-16 16-16s16 7.2 16 16v31.6c0 34.7-10.3 68.7-29.6 97.6l-5.1 7.7c-3 4.5-8 7.1-13.3 7.1s-10.3-2.7-13.3-7.1l-5.1-7.7c-19.3-28.9-29.6-62.9-29.6-97.6V368c0-8.8 7.2-16 16-16z"></path></svg></span> with a header row to stdout.</p>
 <p>Visivo will be able to access the generate file as a model by storing a sqlite file in the target directory.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Echo</label><label for="__tabbed_1_2">Python Script</label><label for="__tabbed_1_3">CSV File</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Echo</label><label for="__tabbed_1_2">Python Script</label><label for="__tabbed_1_3">CSV File</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Echoing all of your data is probably not a very practical example, but it does nicely demonstrate how the feature works!
-<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csv</span>
 <span class="w">    </span><span class="nt">table_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">csv</span>
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span>
@@ -5189,28 +5235,28 @@ This command needs to return a well formatted <span class="twemoji"><svg xmlns="
 <span class="w">          </span><span class="no">4,3</span>
 <span class="w">          </span><span class="no">5,5</span>
 <span class="w">          </span><span class="no">6,8</span>
-</code></pre></div></p>
+</code></pre></div>
 </div>
 <div class="tabbed-block">
 <p>In this example we'll use python to generate a csv of processes running on your machine and make that csv available to Visivo as
 a model for analysis.
-<div class="highlight"><span class="filename">created_processes_csv.py</span><pre><span></span><code><span class="kn">import</span> <span class="nn">subprocess</span>
+</p><div class="highlight"><span class="filename">created_processes_csv.py</span><pre><span></span><code><span class="kn">import</span> <span class="nn">subprocess</span>
 <span class="kn">import</span> <span class="nn">csv</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="c1"># Define the CSV file to write</span>
-<span class="n">csv_file</span> <span class="o">=</span> <span class="s2">&quot;target/processes.csv&quot;</span>
+<span class="n">csv_file</span> <span class="o">=</span> <span class="s2">"target/processes.csv"</span>
 
-<span class="c1"># Execute the &#39;ps aux&#39; command</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;ps&quot;</span><span class="p">,</span> <span class="s2">&quot;aux&quot;</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1"># Execute the 'ps aux' command</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">"ps"</span><span class="p">,</span> <span class="s2">"aux"</span><span class="p">],</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># Split the output into lines</span>
-<span class="n">lines</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/n&quot;</span><span class="p">)</span>
+<span class="n">lines</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"/n"</span><span class="p">)</span>
 
 <span class="c1"># Write CSV to stdout</span>
 <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
 <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span>
-    <span class="p">[</span><span class="s2">&quot;USER&quot;</span><span class="p">,</span><span class="s2">&quot;PID&quot;</span><span class="p">,</span><span class="s2">&quot;%CPU&quot;</span><span class="p">,</span><span class="s2">&quot;%MEM&quot;</span><span class="p">,</span><span class="s2">&quot;VSZ&quot;</span><span class="p">,</span><span class="s2">&quot;RSS&quot;</span><span class="p">,</span><span class="s2">&quot;TTY&quot;</span><span class="p">,</span><span class="s2">&quot;STAT&quot;</span><span class="p">,</span><span class="s2">&quot;START&quot;</span><span class="p">,</span><span class="s2">&quot;TIME&quot;</span><span class="p">,</span><span class="s2">&quot;COMMAND&quot;</span><span class="p">]</span>
+    <span class="p">[</span><span class="s2">"USER"</span><span class="p">,</span><span class="s2">"PID"</span><span class="p">,</span><span class="s2">"%CPU"</span><span class="p">,</span><span class="s2">"%MEM"</span><span class="p">,</span><span class="s2">"VSZ"</span><span class="p">,</span><span class="s2">"RSS"</span><span class="p">,</span><span class="s2">"TTY"</span><span class="p">,</span><span class="s2">"STAT"</span><span class="p">,</span><span class="s2">"START"</span><span class="p">,</span><span class="s2">"TIME"</span><span class="p">,</span><span class="s2">"COMMAND"</span><span class="p">]</span>
 <span class="p">)</span>  <span class="c1"># Header</span>
 
 <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>  <span class="c1"># Skip the header line from the ps output</span>
@@ -5224,12 +5270,12 @@ With your script ready to go, all you have to do is convert <code>python create_
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">create_processes_csv.py</span>
-</code></pre></div></p>
+</code></pre></div>
 </div>
 <div class="tabbed-block">
 <p>One of the best use cases for this type of model is to store a static csv in your project and cat it into a model.
 This great because it's simple and allows you to version control your csv data.
-<div class="highlight"><span class="filename">file.csv</span><pre><span></span><code>columns,go,up,here
+</p><div class="highlight"><span class="filename">file.csv</span><pre><span></span><code>columns,go,up,here
 1,text,more text,6
 2,stuff,more stuff,7
 </code></pre></div>
@@ -5240,7 +5286,7 @@ Then just <code>cat</code> the csv file in a model.
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cat</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">file.csv</span>
-</code></pre></div></p>
+</code></pre></div>
 </div>
 </div>
 </div>
@@ -5276,7 +5322,7 @@ Then just <code>cat</code> the csv file in a model.
 <td>An array of the variables that build your command to run.</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

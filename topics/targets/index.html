@@ -424,6 +424,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -515,6 +519,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Targets
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -524,6 +539,43 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#one-project-many-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      One Project Many Targets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environments
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -542,6 +594,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5137,6 +5231,32 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#one-project-many-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      One Project Many Targets
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environments
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -5153,19 +5273,34 @@
   
 
 
-<h1 id="target-overview">Target Overview</h1>
-<p>Targets are data sources. They are databases that contain your data. There is specific documentation on how to connect to a variety of databases in the <a href="../reference/configuration/targets/sqlitetarget.md">Configuration documentation</a>, this page describes some best practices how how to set them up. </p>
-<h1 id="environments">Environments</h1>
-<p>An example of a target might be the database that your application runs on.  We recommend that you think of a target in your project by the what it is used for and not by its environment.  </p>
-<p>For example lets say you have an application that stores its data in a PostgreSQL database call <code>app_db</code> and runs locally, in staging, and in production. This means you have three separate databases, but they all used to run your application, so that is a single <code>target</code>.  The following might be how you set that up in your project:</p>
+<div><h1 id="target-overview">Target Overview</h1>
+<p>Targets are data sources. They are databases that contain your data. This page describes some best practices how to set targets up. </p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>There is specific documentation on how to connect to a variety of databases in the Configuration documentation (<a href="/../reference/configuration/Targets/PostgresqlTarget/">ie. PostgresSQL</a>)</p>
+</div>
+<h2 id="one-project-many-targets">One Project Many Targets</h2>
+<p>Visivo enables you to configure multiple targets in a single project. </p>
+<p>This is really useful for joining together data that lives in different sources. </p>
+<p>Once your targets are set up, you can bring data together in a single chart with traces that originate from different targets, or through sqlite queries that leverage tables from multiple targets (see <a href="/../reference/configuration/Models/LocalMergeModel/">LocalMergeModel</a>), or through writing csvs to stdout (see <a href="/../reference/configuration/Models/CsvScriptModel/">CsvScriptModels</a>).</p>
+<h2 id="environments">Environments</h2>
+<p>We recommend that you think of a target as a consistent data source you have across environments.  </p>
+<p>For example lets say you have an application that stores its data in a PostgreSQL database call <code>app_db</code> and runs locally, in staging, and in production. </p>
+<p>You have three separate databases, but they all used to run your application, so we'd recommend making that a single <code>target</code>. The following might be how you set up the target in your project:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">targets</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">domain_target</span>
 <span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">app_db</span>
 <span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgresql</span>
-<span class="w">    </span><span class="nt">username</span><span class="p">:</span><span class="w">  </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var(&#39;APP_DATABASE_USERNAME&#39;)</span><span class="w"> </span><span class="p p-Indicator">}}</span><span class="w"> </span>
-<span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w">  </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var(&#39;APP_DATABASE_USERNAME&#39;)</span><span class="w"> </span><span class="p p-Indicator">}}</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5432</span>
+<span class="w">    </span><span class="nt">host</span><span class="p">:</span><span class="w">  </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env_var('APP_HOST')</span><span class="nv"> </span><span class="s">}}"</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">username</span><span class="p">:</span><span class="w">  </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env_var('APP_DATABASE_USERNAME')</span><span class="nv"> </span><span class="s">}}"</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w">  </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env_var('APP_DATABASE_USERNAME')</span><span class="nv"> </span><span class="s">}}"</span><span class="w"> </span>
 </code></pre></div>
-<p>This structure then allows you to set your username and password per environment to connect to that environment's <code>app_db</code>.  The <code>env_var</code> use isn't limited to the username and password, your database name or any other property may also be environment specific.  </p>
+<p>This structure then allows you to set your username, password, and host differently in each environment to connect with the right app_db. </p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>You can use the <a href="/../reference/functions/jinja/macros/#environment-variables-env_var"><code>env_var</code> function</a> to store any secrets or things that you would want to change dynamically in different environments. </p>
+</div></div>
 
 
 

@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5351,7 +5397,7 @@
   
 
 
-<h1 id="macros">Macros</h1>
+<div><h1 id="macros">Macros</h1>
 <p>Macros are a powerful feature that enable dynamic content generation within your Visivo configuration files on compile. They enable you to perform a wide range of operations to support your visualizations, CI/CD process &amp; architecture across multiple environments. </p>
 <h2 id="table-of-contents">Table of Contents</h2>
 <ul>
@@ -5360,11 +5406,10 @@
 <li><a href="#unix-timestamp-converter-to_unix">Unix Timestamp Converter (<code>to_unix</code>)</a></li>
 <li><a href="#iso-8601-formatter-to_iso">ISO 8601 Formatter (<code>to_iso</code>)</a></li>
 <li><a href="#custom-format-time-to_str_format">Custom Format Time (<code>to_str_format</code>)</a></li>
-<li><a href="#yaml-renderer-render_yaml">YAML Renderer (<code>render_yaml</code>)</a></li>
-<li><a href="#timedelta">Timedelta Macro (<code>timedelta</code>)</a></li>
+<li><a href="#timedelta-timedelta">Timedelta Macro (<code>timedelta</code>)</a></li>
 <li><a href="#read-json-file-read_json_file">Read Json File (<code>read_json_file</code>)</a></li>
 </ul>
-<hr />
+<hr>
 <h3 id="environment-variables-env_var">Environment Variables (<code>env_var</code>)</h3>
 <p>Fetches the value of an environment variable for use in YAML configurations. If the variable is not found then <code>NOT-SET</code> is returned. </p>
 <p><code>env_var</code> is very useful for storing secrets &amp; configuring environment specific components of your project. </p>
@@ -5376,35 +5421,35 @@ Returns:
 <div class="admonition example">
 <p class="admonition-title">Examples</p>
 <p>It's very common to use the macros in your targets to ensure connection details are kept secret.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Raw</label><label for="__tabbed_1_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Raw</label><label for="__tabbed_1_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><span class="filename">Raw</span><pre><span></span><code><span class="nt">database_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">env_var(&#39;DATABASE_URL&#39;)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><span class="filename">Raw</span><pre><span></span><code><span class="nt">database_url</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">env_var('DATABASE_URL')</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><span class="filename">Rendered</span><pre><span></span><code><span class="nt">database_url</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;postgresql://myuser:mypass@localhost:5432/mydatabase&quot;</span>
+<div class="highlight"><span class="filename">Rendered</span><pre><span></span><code><span class="nt">database_url</span><span class="p">:</span><span class="w"> </span><span class="s">"postgresql://myuser:mypass@localhost:5432/mydatabase"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>Another way you can use the macro is to configure visivo to compile differently in different environments. For example if you have <code>DEV</code>, <code>PROD</code> and <code>STAGING</code> environments where each injects their name into an env var called <code>LOCALITY</code> and you wanted to conditionally change the trace used depending on the locality you could do something like this: </p>
-<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Raw</label><label for="__tabbed_2_2">Rendered <code>LOCALITY = 'DEV'</code></label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked id="__tabbed_2_1" name="__tabbed_2" type="radio"><input id="__tabbed_2_2" name="__tabbed_2" type="radio"><div class="tabbed-labels"><label for="__tabbed_2_1">Raw</label><label for="__tabbed_2_2">Rendered <code>LOCALITY = 'DEV'</code></label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">charts</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic-chart</span>
 <span class="w">      </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- if env_var(&#39;LOCALITY&#39;) == &#39;DEV&#39; %</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- if env_var('LOCALITY') == 'DEV' %</span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(dev-trace)</span>
-<span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- elif  env_var(&#39;LOCALITY&#39;) == &#39;STAGING&#39; %</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- elif  env_var('LOCALITY') == 'STAGING' %</span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(staging-trace)</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">else %</span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(prod-trace)</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">endif %</span><span class="p p-Indicator">}</span>
 <span class="w">      </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">title</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Dynamic</span><span class="nv"> </span><span class="s">Chart</span><span class="nv"> </span><span class="s">With</span><span class="nv"> </span><span class="s">Trace</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">env_var(&quot;</span><span class="l l-Scalar l-Scalar-Plain">LOCALITY&quot;) }}&quot;</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Dynamic</span><span class="nv"> </span><span class="s">Chart</span><span class="nv"> </span><span class="s">With</span><span class="nv"> </span><span class="s">Trace</span><span class="nv"> </span><span class="s">{{</span><span class="nv"> </span><span class="s">env_var("</span><span class="l l-Scalar l-Scalar-Plain">LOCALITY") }}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -5414,13 +5459,13 @@ Returns:
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(dev-trace)</span>
 <span class="w">      </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">title</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Dyanmic</span><span class="nv"> </span><span class="s">Chart</span><span class="nv"> </span><span class="s">With</span><span class="nv"> </span><span class="s">Trace</span><span class="nv"> </span><span class="s">DEV&quot;</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Dyanmic</span><span class="nv"> </span><span class="s">Chart</span><span class="nv"> </span><span class="s">With</span><span class="nv"> </span><span class="s">Trace</span><span class="nv"> </span><span class="s">DEV"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 </div>
-<hr />
+<hr>
 <h3 id="current-time-now">Current Time (<code>now</code>)</h3>
 <p>Generates the current Unix timestamp in seconds. Enables setting dynamic date and time values in configurations. This is particularly useful for controlling default chart ranges. </p>
 <div class="highlight"><pre><span></span><code>Args: 
@@ -5430,20 +5475,20 @@ Returns:
 </code></pre></div>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Raw</label><label for="__tabbed_3_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked id="__tabbed_3_1" name="__tabbed_3" type="radio"><input id="__tabbed_3_2" name="__tabbed_3" type="radio"><div class="tabbed-labels"><label for="__tabbed_3_1">Raw</label><label for="__tabbed_3_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">timestamp_now</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">now()</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">timestamp_now</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">now()</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">timestamp_now</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1711928451.845498&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">timestamp_now</span><span class="p">:</span><span class="w"> </span><span class="s">"1711928451.845498"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 </div>
-<hr />
+<hr>
 <h3 id="unix-timestamp-converter-to_unix">Unix Timestamp Converter (<code>to_unix</code>)</h3>
 <p>Converts date strings to UTC Unix timestamps, supporting a wide range of formats for flexible date parsing. This conversion can be useful if you want to add or subtract units of time with the <a href="#timedelta">Timedelta Macro</a>.</p>
 <div class="highlight"><pre><span></span><code>Args:
@@ -5455,36 +5500,36 @@ Returns:
 <div class="admonition example">
 <p class="admonition-title">Examples</p>
 <p>You can pass a plain date.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Raw</label><label for="__tabbed_4_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked id="__tabbed_4_1" name="__tabbed_4" type="radio"><input id="__tabbed_4_2" name="__tabbed_4" type="radio"><div class="tabbed-labels"><label for="__tabbed_4_1">Raw</label><label for="__tabbed_4_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">start_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_unix(&#39;2024-01-01&#39;)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">start_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_unix('2024-01-01')</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">start_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1704067200.0&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">start_date</span><span class="p">:</span><span class="w"> </span><span class="s">"1704067200.0"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>The function will accept common date strings too.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">Raw</label><label for="__tabbed_5_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked id="__tabbed_5_1" name="__tabbed_5" type="radio"><input id="__tabbed_5_2" name="__tabbed_5" type="radio"><div class="tabbed-labels"><label for="__tabbed_5_1">Raw</label><label for="__tabbed_5_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">end_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_unix(&#39;Dec</span><span class="nv"> </span><span class="s">31,</span><span class="nv"> </span><span class="s">2024&#39;)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">end_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_unix('Dec</span><span class="nv"> </span><span class="s">31,</span><span class="nv"> </span><span class="s">2024')</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">end_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1735603200.0&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">end_date</span><span class="p">:</span><span class="w"> </span><span class="s">"1735603200.0"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 <p>Common time formats will get converted to unix as well.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">Raw</label><label for="__tabbed_6_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked id="__tabbed_6_1" name="__tabbed_6" type="radio"><input id="__tabbed_6_2" name="__tabbed_6" type="radio"><div class="tabbed-labels"><label for="__tabbed_6_1">Raw</label><label for="__tabbed_6_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">event_date</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">to_unix(&#39;2024/12/24 18</span><span class="p p-Indicator">:</span><span class="nv">00&#39;)</span><span class="w"> </span><span class="p p-Indicator">}}</span>
+<div class="highlight"><pre><span></span><code><span class="nt">event_date</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">to_unix('2024/12/24 18</span><span class="p p-Indicator">:</span><span class="nv">00')</span><span class="w"> </span><span class="p p-Indicator">}}</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -5494,64 +5539,64 @@ Returns:
 </div>
 </div>
 </div>
-<hr />
+<hr>
 <h3 id="iso-8601-formatter-to_iso">ISO 8601 Formatter (<code>to_iso</code>)</h3>
 <p>Transforms Unix timestamps into ISO 8601 formatted strings, offering a standard date and time format for documentation and configuration.
-<div class="highlight"><pre><span></span><code>Args:
+</p><div class="highlight"><pre><span></span><code>Args:
     unix_timestamp (float): The UTC unix timestamp.
 
 Returns:
     str: The ISO 8601 formatted string.
-</code></pre></div></p>
+</code></pre></div>
 <div class="admonition example">
 <p class="admonition-title">Examples</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="7:3"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><input id="__tabbed_7_3" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">Example 1</label><label for="__tabbed_7_2">Example 2</label><label for="__tabbed_7_3">Example 3</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:3"><input checked id="__tabbed_7_1" name="__tabbed_7" type="radio"><input id="__tabbed_7_2" name="__tabbed_7" type="radio"><input id="__tabbed_7_3" name="__tabbed_7" type="radio"><div class="tabbed-labels"><label for="__tabbed_7_1">Example 1</label><label for="__tabbed_7_2">Example 2</label><label for="__tabbed_7_3">Example 3</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">creation_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_iso(1609459200)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">creation_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_iso(1609459200)</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">update_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_iso(1612137600)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">update_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_iso(1612137600)</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">expiration_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_iso(1619827200)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">expiration_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_iso(1619827200)</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 </div>
-<hr />
+<hr>
 <h3 id="custom-format-time-to_str_format">Custom Format Time (<code>to_str_format</code>)</h3>
 <p>Provides customized date and time formatting for Unix timestamps, allowing specific date-time representations.
-<div class="highlight"><pre><span></span><code>Args:
+</p><div class="highlight"><pre><span></span><code>Args:
     unix_timestamp (float): The UTC unix timestamp.
     str_format (str): The format string.
 
 Returns:
     str: The formatted string. 
-</code></pre></div></p>
+</code></pre></div>
 <div class="admonition example">
 <p class="admonition-title">Examples</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="8:3"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><input id="__tabbed_8_3" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">Example 1</label><label for="__tabbed_8_2">Example 2</label><label for="__tabbed_8_3">Example 3</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:3"><input checked id="__tabbed_8_1" name="__tabbed_8" type="radio"><input id="__tabbed_8_2" name="__tabbed_8" type="radio"><input id="__tabbed_8_3" name="__tabbed_8" type="radio"><div class="tabbed-labels"><label for="__tabbed_8_1">Example 1</label><label for="__tabbed_8_2">Example 2</label><label for="__tabbed_8_3">Example 3</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">simple_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_str_format(1609459200,</span><span class="nv"> </span><span class="s">&#39;%Y-%m-%d&#39;)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">simple_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_str_format(1609459200,</span><span class="nv"> </span><span class="s">'%Y-%m-%d')</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">verbose_date</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_str_format(1609459200,</span><span class="nv"> </span><span class="s">&#39;%A,</span><span class="nv"> </span><span class="s">%d</span><span class="nv"> </span><span class="s">%B</span><span class="nv"> </span><span class="s">%Y&#39;)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">verbose_date</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_str_format(1609459200,</span><span class="nv"> </span><span class="s">'%A,</span><span class="nv"> </span><span class="s">%d</span><span class="nv"> </span><span class="s">%B</span><span class="nv"> </span><span class="s">%Y')</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">time_stamp</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_str_format(1609459200,</span><span class="nv"> </span><span class="s">&#39;%H:%M:%S,</span><span class="nv"> </span><span class="s">%d</span><span class="nv"> </span><span class="s">%m</span><span class="nv"> </span><span class="s">%Y&#39;)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nt">time_stamp</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_str_format(1609459200,</span><span class="nv"> </span><span class="s">'%H:%M:%S,</span><span class="nv"> </span><span class="s">%d</span><span class="nv"> </span><span class="s">%m</span><span class="nv"> </span><span class="s">%Y')</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 </div>
 </div>
 </div>
-<hr />
+<hr>
 <h3 id="timedelta-timedelta">Timedelta (<code>timedelta</code>)</h3>
 <p>Produces the seconds corresponding to the units of time passed to the function. This enables you to perform arithmetic operations on unix timestamps through adding or subtracting time intervals from a given date or time. You can add or subtract days, hours, minutes, seconds and micro seconds from a given date or time.</p>
 <div class="highlight"><pre><span></span><code>Args:
@@ -5567,7 +5612,7 @@ Returns:
 <div class="admonition example">
 <p class="admonition-title">Examples</p>
 <p>You can render the raw timedelta in seconds all on its own.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">Raw</label><label for="__tabbed_9_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked id="__tabbed_9_1" name="__tabbed_9" type="radio"><input id="__tabbed_9_2" name="__tabbed_9" type="radio"><div class="tabbed-labels"><label for="__tabbed_9_1">Raw</label><label for="__tabbed_9_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">timedelta(days=7)</span><span class="w"> </span><span class="p p-Indicator">}}</span>
@@ -5580,7 +5625,7 @@ Returns:
 </div>
 </div>
 <p>A more common use of timedelta is to set relative dates. </p>
-<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">Raw</label><label for="__tabbed_10_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked id="__tabbed_10_1" name="__tabbed_10" type="radio"><input id="__tabbed_10_2" name="__tabbed_10" type="radio"><div class="tabbed-labels"><label for="__tabbed_10_1">Raw</label><label for="__tabbed_10_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="nt">charts</span><span class="p">:</span>
@@ -5592,8 +5637,8 @@ Returns:
 <span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">xaxis</span><span class="p p-Indicator">:</span>
 <span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span>
 <span class="w">          </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- set current_time = now() %</span><span class="p p-Indicator">}</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_iso(current_time</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">timedelta(days=7))</span><span class="nv"> </span><span class="s">}}&quot;</span>
-<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;{{</span><span class="nv"> </span><span class="s">to_iso(current_time)</span><span class="nv"> </span><span class="s">}}&quot;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_iso(current_time</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">timedelta(days=7))</span><span class="nv"> </span><span class="s">}}"</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">to_iso(current_time)</span><span class="nv"> </span><span class="s">}}"</span>
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -5605,8 +5650,8 @@ Returns:
 <span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">layout</span>
 <span class="w">    </span><span class="nt">xaxis</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">range</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;2024-03-26T14:02:40.101522+00:00&quot;</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;2024-04-02T14:02:40.101522+00:00&quot;</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"2024-03-26T14:02:40.101522+00:00"</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"2024-04-02T14:02:40.101522+00:00"</span>
 </code></pre></div>
 </div>
 </div>
@@ -5614,12 +5659,12 @@ Returns:
 </div>
 <h3 id="read-json-file-read_json_file">Read Json File (<code>read_json_file</code>)</h3>
 <p>Enables you to read a <code>.json</code> file into a jinja object from a file.
-<div class="highlight"><pre><span></span><code>Args:
+</p><div class="highlight"><pre><span></span><code>Args:
     filepath (str): The relative or absolute file path to the .json
 
 Returns:
     obj: The json represented as a jinja object.
-</code></pre></div></p>
+</code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>Passing an invalid file path will lead to a compile error, so ensure your file exists! </p>
@@ -5628,23 +5673,23 @@ Returns:
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <p>Rather than creating a long list in the jinja <code>{% set %}</code> you may want to store that information in a json file and just read it into the template using the macro.
-<div class="highlight"><span class="filename">dir/iterables.json</span><pre><span></span><code><span class="p">{</span><span class="nt">&quot;accounts&quot;</span><span class="p">:[</span><span class="s2">&quot;Acme Co&quot;</span><span class="p">,</span><span class="s2">&quot;Knights of Ni LTD&quot;</span><span class="p">]}</span>
-</code></pre></div></p>
+</p><div class="highlight"><span class="filename">dir/iterables.json</span><pre><span></span><code><span class="p">{</span><span class="nt">"accounts"</span><span class="p">:[</span><span class="s2">"Acme Co"</span><span class="p">,</span><span class="s2">"Knights of Ni LTD"</span><span class="p">]}</span>
+</code></pre></div>
 <p>Then in your yaml file you can read in the configuration. </p>
-<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">Raw</label><label for="__tabbed_11_2">Rendered</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked id="__tabbed_11_1" name="__tabbed_11" type="radio"><input id="__tabbed_11_2" name="__tabbed_11" type="radio"><div class="tabbed-labels"><label for="__tabbed_11_1">Raw</label><label for="__tabbed_11_2">Rendered</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><span class="filename">dir/project.visivo.yml</span><pre><span></span><code><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- set accounts = read_json_file(iterables.json)</span><span class="p p-Indicator">[</span><span class="s">&#39;accounts&#39;</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="err">%</span><span class="p p-Indicator">}</span>
+<div class="highlight"><span class="filename">dir/project.visivo.yml</span><pre><span></span><code><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- set accounts = read_json_file(iterables.json)</span><span class="p p-Indicator">[</span><span class="s">'accounts'</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="err">%</span><span class="p p-Indicator">}</span>
 <span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- for account in accounts %</span><span class="p p-Indicator">}</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">account</span><span class="w"> </span><span class="p p-Indicator">}}</span><span class="l l-Scalar l-Scalar-Plain">-orders-per-week</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( count(distinct id) )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( account_name = &#39;{{ account }}&#39;)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( account_name = '{{ account }}')</span>
 <span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- endfor %</span><span class="p p-Indicator">}</span>
 </code></pre></div>
 </div>
@@ -5654,23 +5699,23 @@ Returns:
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( count(distinct id) )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( account_name = &#39;Acme Co&#39;)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( account_name = 'Acme Co')</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Knights of Ni LTD-orders-per-week</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc(&#39;week&#39;, created_at) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', created_at) )</span>
 <span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( count(distinct id) )</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( account_name = &#39;Knights of Ni LTD&#39;)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( account_name = 'Knights of Ni LTD')</span>
 </code></pre></div>
 </div>
 </div>
 </div>
-</div>
+</div></div>
 
 
 

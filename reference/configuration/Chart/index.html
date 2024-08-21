@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5164,22 +5210,22 @@
   
 
 
-<h1 id="chart">Chart</h1>
+<div><h1 id="chart">Chart</h1>
 <p>Charts are used to house traces and set up layout configurations (titles, axis labels, ect.).</p>
 <p>A chart contains 1 to many traces. This is really useful if you want to combine traces that are on different date grains, bars and lines, or even overlay big numbers over line chart to show the current value and the trend.</p>
 <p>The layout is where you define static labels like titles but also where you can set interactive elements like buttons and drop downs. With those interactive elements you can toggle between traces or cohorts on traces.
-<div class="highlight"><pre><span></span><code><span class="nt">chart</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">chart</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">a-chart-name</span>
 <span class="w">  </span><span class="nt">traces</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(a-trace-name)</span>
 <span class="w">  </span><span class="nt">layout</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Aggregated</span><span class="nv"> </span><span class="s">Fibonacci&#39;</span>
+<span class="w">    </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">'Aggregated</span><span class="nv"> </span><span class="s">Fibonacci'</span>
 <span class="w">    </span><span class="nt">yaxis</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Widgets</span><span class="nv"> </span><span class="s">Sold&#39;</span><span class="w"> </span><span class="c1">#Describe the data in your y axis</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">'Widgets</span><span class="nv"> </span><span class="s">Sold'</span><span class="w"> </span><span class="c1">#Describe the data in your y axis</span>
 <span class="w">    </span><span class="nt">xaxis</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;Week&#39;</span><span class="w"> </span><span class="c1">#Describe the data in your x axis</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="s">'Week'</span><span class="w"> </span><span class="c1">#Describe the data in your x axis</span>
 <span class="w">    </span><span class="nt">stack</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">False</span>
-</code></pre></div></p>
+</code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5216,7 +5262,7 @@
 <td>The layout attribute of the chart accepts any valid plotly layout configurations.</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 

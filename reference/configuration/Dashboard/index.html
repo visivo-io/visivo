@@ -422,6 +422,10 @@
       
         
       
+        
+      
+        
+      
     
     
       
@@ -530,6 +534,48 @@
   
   <span class="md-ellipsis">
     Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
   </span>
   
 
@@ -5164,10 +5210,10 @@
   
 
 
-<h1 id="dashboard">Dashboard</h1>
+<div><h1 id="dashboard">Dashboard</h1>
 <p>Dashboards are grids where you are able to organize and present <code>charts</code>, <code>tables</code> and <code>markdown</code>.</p>
 <p>The grid is build from <code>Rows</code> that can house 1 to n <code>Items</code>. <code>Items</code> wrap around your charts, tables or markdown and allow you to control the width of your columns within the Row. Here's an example of a dashboard configuration:
-<div class="highlight"><pre><span></span><code><span class="nt">dashboards</span><span class="p">:</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">dashboards</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any-name-you-want</span><span class="w">  </span><span class="c1">#unique name of your dashboard</span>
 <span class="w">    </span><span class="nt">rows</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
@@ -5179,12 +5225,12 @@
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">small</span>
 <span class="w">        </span><span class="nt">items</span><span class="p">:</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">            </span><span class="nt">markdown</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;#</span><span class="nv"> </span><span class="s">Some</span><span class="nv"> </span><span class="s">inline</span><span class="nv"> </span><span class="s">**markdown**&quot;</span>
+<span class="w">            </span><span class="nt">markdown</span><span class="p">:</span><span class="w"> </span><span class="s">"#</span><span class="nv"> </span><span class="s">Some</span><span class="nv"> </span><span class="s">inline</span><span class="nv"> </span><span class="s">**markdown**"</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">            </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(another-chart)</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 <span class="w">            </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(a-third-chart)</span>
-</code></pre></div></p>
+</code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5209,7 +5255,7 @@
 <td>A list of <code>Row</code> objects</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 
 
 
