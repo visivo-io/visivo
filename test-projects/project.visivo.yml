@@ -9,6 +9,12 @@ name: V2
 # 3. They are a bash script, like in script model
 # 4. They are a python like in tests
 # 5. We also can have jinja templates
+# jinja {{ }}
+# evaluate as code ${{ }} : Sometimes you need this I think.  Github mentions YAML reserved beginning characters
+# context reference - ${} : ${trace.name}
+# schema find by name - ref( ) : finds an object in the schema
+# find data - data( ) : data(Trace, Cohort) finds a cohort in the data
+
 groups:
   - name: Executives
     emails:
@@ -17,14 +23,21 @@ groups:
 
 conditions:
   - name: if_during_business_hours
-    if: ${{ now() < 16:00 && now() > 08:00 }} 
+    if: now() < 16:00 && now() > 08:00
   - name: if_production
     if: env == production
   - name: if_morning_notifications
-    if: env["MORNING_NOTIFICATION"] == True 
+    if: env["MORNING_NOTIFICATION"] == True
 
 tests:
-  - logic: ${{ traces["First"].value != traces["Last"].value }}
+  - name: operation_report
+    if: if_production # should this be a list? conditions?
+    assertions: # Can use the assert_that or return a boolean
+      - data("Trace 1", "Cohort 1").x[0] != data("Trace 2", "Cohort 2").x[0]
+      - assert_that(test.trace.data["Cohort"].props.marker.line.color[1]).is_length(1)
+    on_failure: continue
+    alerts:
+      - Once A Day Alert
 
 destinations:
   - name: Email Alert
@@ -34,7 +47,7 @@ alerts:
   - name: Failure During Business Hours
     if: if_during_business_hours
     message: |
-      Trigger ${{ trigger.name }} has failed
+      Trigger $trigger.name has failed
     destinations:
       - type: slack
         webhook_url: https://slack.com
@@ -53,17 +66,29 @@ alerts:
 traces:
   - name: Meta Trace
     model: Meta Model
-    query: # Everything in here is by default injecting into the query
-      select:
-        y: y
-        x: abs(x)
-      cohort_on: query.select.x
+    columns:
+      # Default *: *.model
+      # Everything in here is by default injecting into the query
+      # Context is at the trace level
+      # Everything is evaluated by
+      y: ${ model.y }
+      x: abs(${ model.x })
+      other: "'Position:' || ${ model.x }"
+      color: case when ${ model.y } >= 12 then '#713B57' else 'grey' end
+    query:
+      order:
+        - ${ columns.x } desc
+      cohort_on: $columns.x
       filters:
-        - query.select.x > 0
+        - $columns.x > 0
+
     props:
+      # Context is at the trace level
       type: scatter
-      y: ${{ query.select.x }}
-      x: ${{ query.select.y }}
+      y: $columns.x
+      x: $columns.y
+      layout:
+        color: $columns.color
     meta:
       data-grain: daily # this doesn't allow us to choose the cohort_on information
     tests:
