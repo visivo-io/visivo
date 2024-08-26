@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { tableDataFromCohortData, tableColumnsWithDot, tableColumnsWithUnderscores } from '../../models/Table'
 import { createTheme, ThemeProvider } from '@mui/material';
 import { useTracesData } from "../../hooks/useTracesData";
-import tw from "tailwind-styled-components"
+import { ItemContainer } from "./ItemContainer";
 import CohortSelect from "./CohortSelect";
 import {
     MRT_ShowHideColumnsButton,
@@ -17,9 +17,6 @@ import {
 } from 'material-react-table';
 import { Box } from '@mui/material';
 
-export const TableContainer = tw.div`
-    relative
-`;
 
 const Table = ({ table, project, itemWidth, height, width }) => {
     const traceNames = table.traces.map((trace) => trace.name)
@@ -67,6 +64,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     }
 
     return (
+        <ItemContainer>
         <ThemeProvider theme={tableTheme}>
             <Box >
                 <Box
@@ -107,6 +105,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 </Box>
             </Box>
         </ThemeProvider>
+        </ItemContainer>
     );
 }
 

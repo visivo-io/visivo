@@ -5,6 +5,7 @@ import Selector from './items/Selector.js'
 import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
+import { ItemContainer } from "./items/ItemContainer.js";
 
 const Dashboard = (props) => {
     const { observe, width } = useDimensions({
@@ -88,7 +89,12 @@ const Dashboard = (props) => {
 
     const renderRow = (row, rowIndex) => {
         return (
-            <div className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} style={isColumn ? {} : getHeightStyle(row)} key={`dashboardRow${rowIndex}`}>
+            <div 
+                //className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} 
+                className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
+                style={isColumn ? {} : getHeightStyle(row)} 
+                key={`dashboardRow${rowIndex}`}
+            >
                 {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
             </div>
         )

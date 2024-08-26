@@ -4,13 +4,9 @@ import Plot from 'react-plotly.js';
 import React, { useState } from "react";
 import CohortSelect from "./CohortSelect";
 import { traceNamesInData, chartDataFromCohortData } from "../../models/Trace";
-import tw from "tailwind-styled-components"
 import { useTracesData } from "../../hooks/useTracesData";
 import MenuItem from "../styled/MenuItem";
-
-export const ChartContainer = tw.div`
-    relative
-`;
+import { ItemContainer  } from "./ItemContainer";
 
 const Chart = ({ chart, project, itemWidth, height, width }) => {
     const traceNames = chart.traces.map((trace) => trace.name)
@@ -36,7 +32,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
     }
 
     return (
-        <ChartContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
+        <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering && cohortSelectVisible}>
                 <MenuItem>
                     <CohortSelect
@@ -57,7 +53,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
             />
-        </ChartContainer>
+        </ItemContainer>
     );
 }
 
