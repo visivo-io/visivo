@@ -1,6 +1,6 @@
 import re
 from typing import List, Optional
-from visivo.models.alert import AlertField, Alert
+from visivo.models.destination import DestinationField, Destination
 
 from visivo.models.include import Include
 from visivo.models.models.model import Model
@@ -27,7 +27,7 @@ class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = None
     cli_version: Optional[str] = None
     includes: List[Include] = []
-    alerts: List[AlertField] = []
+    alerts: List[DestinationField] = []
     targets: List[TargetField] = []
     models: List[ModelField] = []
     traces: List[Trace] = []
@@ -92,7 +92,7 @@ class Project(NamedModel, ParentModel):
     def find_table(self, name: str) -> Chart:
         return next((t for t in self.table_objs if t.name == name), None)
 
-    def find_alert(self, name: str) -> Alert:
+    def find_alert(self, name: str) -> Destination:
         return next((a for a in self.alerts if a.name == name), None)
 
     @model_validator(mode="after")

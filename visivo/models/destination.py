@@ -10,14 +10,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 
-class Alert(NamedModel):
+class Destination(NamedModel):
     def alert(self, test_run: TestRun):
         raise NotImplementedError("Please Implement this method")
 
 
-class ConsoleAlert(Alert):
+class ConsoleDestination(Destination):
     called: bool = False
-    message: str = "Console Alert Run"
+    message: str = "Console Destination Run"
     type: Literal["console"]
 
     def alert(self, test_run: TestRun):
@@ -25,11 +25,11 @@ class ConsoleAlert(Alert):
         self.called = True
 
 
-class EmailAlert(Alert):
+class EmailDestination(Destination):
     """
-    You can configure email alert destinations for any SMTP provider. Here's an example of this configuration looks in your yaml file:
+    You can configure email destinations for any SMTP provider. Here's an example of this configuration looks in your yaml file:
     ``` yaml
-    alerts:
+    destinations:
       - name: email-destination #any unique name of your choosing
         type: email
         subject: "[ALERT] Your Visivo Tests Have Failed" #can be any message you want
@@ -43,7 +43,9 @@ class EmailAlert(Alert):
     """
 
     type: Literal["email"] = Field(None, description="The type of alert destination.")
-    subject: str = Field("Visivo Alert", description="Subject of the alert email.")
+    subject: str = Field(
+        "Visivo Destination", description="Subject of the alert email."
+    )
     to: str = Field(None, description="The email to send the alert to.")
     port: int = Field(
         2525,
@@ -94,7 +96,7 @@ class EmailAlert(Alert):
             server.sendmail(sender_email, self.to, message.as_string())
 
 
-class SlackAlert(Alert):
+class SlackDestination(Destination):
     """
     You can configure slack alerts by setting up an incoming message slack webhook. Once you do that, the set up in Visivo is super simple:
     ``` yaml
@@ -111,7 +113,7 @@ class SlackAlert(Alert):
     )
     type: Literal["slack"] = Field(
         None,
-        description="The type of Alert Destination. Needs to be `slack` to configure a slack destination",
+        description="The type of Destination Destination. Needs to be `slack` to configure a slack destination",
     )
 
     def alert(self, test_run: TestRun):
@@ -151,6 +153,7 @@ class SlackAlert(Alert):
         requests.post(self.webhook_url, data=json.dumps(body), headers=json_headers)
 
 
-AlertField = Annotated[
-    Union[SlackAlert, EmailAlert, ConsoleAlert], Field(discriminator="type")
+DestinationField = Annotated[
+    Union[SlackDestination, EmailDestination, ConsoleDestination],
+    Field(discriminator="type"),
 ]

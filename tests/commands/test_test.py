@@ -7,7 +7,7 @@ from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
 from tests.factories.model_factories import ProjectFactory
 from tests.support.utils import temp_folder, temp_yml_file
-from tests.factories.model_factories import AlertFactory
+from tests.factories.model_factories import DestinationFactory
 
 runner = CliRunner()
 
@@ -53,7 +53,7 @@ def test_test_failure():
 
 def test_test_alert():
     output_dir = temp_folder()
-    alert = AlertFactory()
+    alert = DestinationFactory()
     project = ProjectFactory(alerts=[alert])
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
@@ -64,5 +64,5 @@ def test_test_alert():
         test, ["-o", output_dir, "-w", working_dir, "-t", "target", "-a", alert.name]
     )
     assert "tests run" in response.output
-    assert "Console Alert Run" in response.output
+    assert "Console Destination Run" in response.output
     assert response.exit_code == 0

@@ -2,7 +2,7 @@
 from visivo.models.project import Project
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
-from visivo.models.alert import Alert
+from visivo.models.destination import Destination
 from typing import List
 import json
 import click
@@ -20,7 +20,7 @@ class Runner:
         project: Project,
         output_dir: str,
         default_target: str = None,
-        alerts: List[Alert] = [],
+        alerts: List[Destination] = [],
     ):
         self.project = project
         self.traces = traces

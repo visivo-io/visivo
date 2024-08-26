@@ -17,7 +17,7 @@ from ..factories.model_factories import (
     ChartFactory,
     DashboardFactory,
     RowFactory,
-    AlertFactory,
+    DestinationFactory,
     ProjectFactory,
 )
 from pydantic import ValidationError
@@ -186,7 +186,7 @@ def test_Project_validate_default_target_does_not_exists():
 
 
 def test_Project_validate_default_alerts_exists():
-    alert = AlertFactory()
+    alert = DestinationFactory()
     data = {
         "name": "development",
         "alerts": [alert],
