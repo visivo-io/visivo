@@ -1,5 +1,6 @@
 import re
 from typing import List, Optional
+from visivo.models.alert import Alert
 from visivo.models.destination import DestinationField, Destination
 
 from visivo.models.include import Include
@@ -27,7 +28,8 @@ class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = None
     cli_version: Optional[str] = None
     includes: List[Include] = []
-    alerts: List[DestinationField] = []
+    destinations: List[DestinationField] = []
+    alerts: List[Alert] = []
     targets: List[TargetField] = []
     models: List[ModelField] = []
     traces: List[Trace] = []
@@ -38,7 +40,8 @@ class Project(NamedModel, ParentModel):
 
     def child_items(self):
         return (
-            self.alerts
+            self.destinations
+            + self.alerts
             + self.targets
             + self.models
             + self.traces

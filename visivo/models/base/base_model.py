@@ -6,7 +6,7 @@ from pydantic import (
     ConfigDict,
 )
 from typing_extensions import Annotated
-from typing import Any, Union, NewType
+from typing import Any, List, Union, NewType
 import re
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
