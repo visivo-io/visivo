@@ -21,7 +21,8 @@ traces:
           y: column(project_name)
       tests:
         - assertions: 
-            - assert_that(numpy.sum(Tested Trace.props.x)).is_equal_to(7)
+            - >{ assert_that(numpy.sum( ${ ref(Tested Trace).props.x) } ).is_equal_to(7) }
+            - ${ ref(Tested Trace).props.x[0] == 1 }
           alerts:
             - ${ ref(Alert One) }
 ```
