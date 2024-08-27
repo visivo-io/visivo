@@ -64,48 +64,49 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     }
 
     return (
-        <ItemContainer>
         <ThemeProvider theme={tableTheme}>
-            <Box >
-                <Box
-                    sx={(theme) => ({
-                        display: 'flex',
-                        backgroundColor: 'inherit',
-                        borderRadius: '4px',
-                        flexDirection: 'column',
-                        gap: '6px',
-                        padding: '11px 11px',
-                        alignItems: 'flex-end',
-                        '@media max-width: 768px': {
+            <ItemContainer>
+                <Box >
+                    <Box
+                        sx={(theme) => ({
+                            display: 'flex',
+                            backgroundColor: 'inherit',
+                            borderRadius: '4px',
                             flexDirection: 'column',
-                        },
-                    })}
-                >
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
-                        <MRT_ToggleFiltersButton table={useTable} />
-                        <MRT_ShowHideColumnsButton table={useTable} />
-                        <MRT_ToggleDensePaddingButton table={useTable} />
-                        <CohortSelect
-                            tracesData={tracesData}
-                            onChange={onSelectedCohortChange}
-                            selector={table.selector}
-                            parentName={table.name}
-                            parentType="table"
-                        />
+                            gap: '6px',
+                            padding: '11px 11px',
+                            alignItems: 'flex-end',
+                            '@media max-width: 768px': {
+                                flexDirection: 'column',
+                            },
+                        })}
+                    >
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+                            <MRT_ToggleFiltersButton table={useTable} />
+                            <MRT_ShowHideColumnsButton table={useTable} />
+                            <MRT_ToggleDensePaddingButton table={useTable} />
+                            <CohortSelect
+                                tracesData={tracesData}
+                                onChange={onSelectedCohortChange}
+                                selector={table.selector}
+                                parentName={table.name}
+                                parentType="table"
+                            />
+                        </Box>
+                    </Box>
+                    <MRT_TableContainer table={useTable} sx={{ width: width, maxHeight: `${height - 120}px` }} />
+                    <Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <MRT_TablePagination table={useTable} />
+                        </Box>
+                        <Box sx={{ display: 'grid', width: '100%' }}>
+                            <MRT_ToolbarAlertBanner stackAlertBanner table={useTable} />
+                        </Box>
                     </Box>
                 </Box>
-                <MRT_TableContainer table={useTable} sx={{ width: width, maxHeight: `${height - 120}px` }} />
-                <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <MRT_TablePagination table={useTable} />
-                    </Box>
-                    <Box sx={{ display: 'grid', width: '100%' }}>
-                        <MRT_ToolbarAlertBanner stackAlertBanner table={useTable} />
-                    </Box>
-                </Box>
-            </Box>
+            </ItemContainer>
         </ThemeProvider>
-        </ItemContainer>
+       
     );
 }
 
