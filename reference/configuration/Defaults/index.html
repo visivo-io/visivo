@@ -508,11 +508,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/targets/" class="md-nav__link">
+      <a href="../../../topics/sources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Targets
+    Sources
   </span>
   
 
@@ -1818,11 +1818,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../Targets/SqliteTarget/" class="md-nav__link ">
+            <a href="../Targets/SqliteSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SqliteTarget
+    SqliteSource
   </span>
   
 
@@ -1833,7 +1833,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_1">
             <span class="md-nav__icon md-icon"></span>
-            SqliteTarget
+            SqliteSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1874,11 +1874,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../Targets/PostgresqlTarget/" class="md-nav__link ">
+            <a href="../Targets/PostgresqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    PostgresqlTarget
+    PostgresqlSource
   </span>
   
 
@@ -1889,7 +1889,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_2">
             <span class="md-nav__icon md-icon"></span>
-            PostgresqlTarget
+            PostgresqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1930,11 +1930,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../Targets/MysqlTarget/" class="md-nav__link ">
+            <a href="../Targets/MysqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    MysqlTarget
+    MysqlSource
   </span>
   
 
@@ -1945,7 +1945,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_3">
             <span class="md-nav__icon md-icon"></span>
-            MysqlTarget
+            MysqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1986,11 +1986,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../Targets/SnowflakeTarget/" class="md-nav__link ">
+            <a href="../Targets/SnowflakeSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SnowflakeTarget
+    SnowflakeSource
   </span>
   
 
@@ -2001,7 +2001,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_4">
             <span class="md-nav__icon md-icon"></span>
-            SnowflakeTarget
+            SnowflakeSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -5211,27 +5211,6 @@
 
 
 <div><h1 id="defaults">Defaults</h1>
-<p>Defaults enable you to set a target and alert that will be used whenever one is not explicitly passed.</p>
-<p>Defaults will be overridden if:</p>
-<ol>
-<li>A target / alert is passed to a command. ex: <code>visivo serve -t target-name</code></li>
-<li>A target is specified in the trace using the <code>target_name</code> attribute. when this attribute is set the trace will always run queries against that target.</li>
-</ol>
-<p>Here's how defaults look in the <code>project.visivo.yml</code> file:
-</p><div class="highlight"><pre><span></span><code><span class="nt">defaults</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">target_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local-sqlite</span>
-<span class="w">  </span><span class="nt">alert_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slack</span>
-
-<span class="nt">alerts</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slack</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">slack</span>
-<span class="w">    </span><span class="nt">webhook_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://hooks.slack.com/services/ap8ub98ssoijbloisojbo8ys8</span>
-
-<span class="nt">targets</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local-sqlite</span>
-<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">target/local.db</span>
-<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
-</code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5253,7 +5232,7 @@
 <td>target_name</td>
 <td>string</td>
 <td>None</td>
-<td>The name of a target defined elsewhere in the Visivo project.</td>
+<td>The name of a source defined elsewhere in the Visivo project.</td>
 </tr>
 </tbody>
 </table></div>

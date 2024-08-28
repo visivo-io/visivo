@@ -508,11 +508,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../topics/targets/" class="md-nav__link">
+      <a href="../../../../topics/sources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Targets
+    Sources
   </span>
   
 
@@ -1820,11 +1820,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../Targets/SqliteTarget/" class="md-nav__link ">
+            <a href="../../Targets/SqliteSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SqliteTarget
+    SqliteSource
   </span>
   
 
@@ -1835,7 +1835,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_1">
             <span class="md-nav__icon md-icon"></span>
-            SqliteTarget
+            SqliteSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1876,11 +1876,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../Targets/PostgresqlTarget/" class="md-nav__link ">
+            <a href="../../Targets/PostgresqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    PostgresqlTarget
+    PostgresqlSource
   </span>
   
 
@@ -1891,7 +1891,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_2">
             <span class="md-nav__icon md-icon"></span>
-            PostgresqlTarget
+            PostgresqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1932,11 +1932,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../Targets/MysqlTarget/" class="md-nav__link ">
+            <a href="../../Targets/MysqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    MysqlTarget
+    MysqlSource
   </span>
   
 
@@ -1947,7 +1947,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_3">
             <span class="md-nav__icon md-icon"></span>
-            MysqlTarget
+            MysqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1988,11 +1988,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../Targets/SnowflakeTarget/" class="md-nav__link ">
+            <a href="../../Targets/SnowflakeSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SnowflakeTarget
+    SnowflakeSource
   </span>
   
 
@@ -2003,7 +2003,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_4">
             <span class="md-nav__icon md-icon"></span>
-            SnowflakeTarget
+            SnowflakeSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -5213,21 +5213,6 @@
 
 
 <div><h1 id="sqlmodel">SqlModel</h1>
-<p>SQL Models are queries that return base data from a SQL target. These data are then used in Traces</p>
-<div class="admonition example">
-<p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Select All</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sql_model</span>
-<span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(sql_target)</span>
-<span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select * from table_in_target</span>
-</code></pre></div>
-</div>
-</div>
-</div>
-</div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5253,9 +5238,9 @@
 </tr>
 <tr>
 <td>target</td>
-<td>Any of: <a href="https://docs.visivo.io/reference/configuration/Targets/MysqlTarget/">MysqlTarget</a>, <a href="https://docs.visivo.io/reference/configuration/Targets/PostgresqlTarget/">PostgresqlTarget</a>, <a href="https://docs.visivo.io/reference/configuration/Targets/SnowflakeTarget/">SnowflakeTarget</a>, <a href="https://docs.visivo.io/reference/configuration/Targets/SqliteTarget/">SqliteTarget</a></td>
+<td>Any of: <a href="https://docs.visivo.io/reference/configuration/Targets/MysqlSource/">MysqlSource</a>, <a href="https://docs.visivo.io/reference/configuration/Targets/PostgresqlSource/">PostgresqlSource</a>, <a href="https://docs.visivo.io/reference/configuration/Targets/SnowflakeSource/">SnowflakeSource</a>, <a href="https://docs.visivo.io/reference/configuration/Targets/SqliteSource/">SqliteSource</a></td>
 <td>None</td>
-<td>A target object defined inline or a ref() to a chart. Override the defaults.target_name</td>
+<td>A source object defined inline or a ref() to a chart. Override the defaults.source_name</td>
 </tr>
 </tbody>
 </table></div>

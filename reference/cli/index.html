@@ -508,11 +508,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../topics/targets/" class="md-nav__link">
+      <a href="../../topics/sources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Targets
+    Sources
   </span>
   
 
@@ -1935,11 +1935,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../configuration/Targets/SqliteTarget/" class="md-nav__link ">
+            <a href="../configuration/Targets/SqliteSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SqliteTarget
+    SqliteSource
   </span>
   
 
@@ -1950,7 +1950,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_1">
             <span class="md-nav__icon md-icon"></span>
-            SqliteTarget
+            SqliteSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1991,11 +1991,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../configuration/Targets/PostgresqlTarget/" class="md-nav__link ">
+            <a href="../configuration/Targets/PostgresqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    PostgresqlTarget
+    PostgresqlSource
   </span>
   
 
@@ -2006,7 +2006,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_2">
             <span class="md-nav__icon md-icon"></span>
-            PostgresqlTarget
+            PostgresqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -2047,11 +2047,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../configuration/Targets/MysqlTarget/" class="md-nav__link ">
+            <a href="../configuration/Targets/MysqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    MysqlTarget
+    MysqlSource
   </span>
   
 
@@ -2062,7 +2062,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_3">
             <span class="md-nav__icon md-icon"></span>
-            MysqlTarget
+            MysqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -2103,11 +2103,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../configuration/Targets/SnowflakeTarget/" class="md-nav__link ">
+            <a href="../configuration/Targets/SnowflakeSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SnowflakeTarget
+    SnowflakeSource
   </span>
   
 
@@ -2118,7 +2118,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_4">
             <span class="md-nav__icon md-icon"></span>
-            SnowflakeTarget
+            SnowflakeSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -5432,13 +5432,13 @@
   --help               Show this message and exit.
 </code></pre></div>
 <h2 id="compile">compile</h2>
-<p>Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the trace queries and a project.json file in your target directory. Queries are not run on compile, just written.</p>
+<p>Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the trace queries and a project.json file in your source directory. Queries are not run on compile, just written.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo compile [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -t, --target TEXT        Name of the default target connection to use. This
-                           overrides the default target in the project.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
+                           overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
   -nf, --name-filter TEXT  Run the command to only include the dag that
@@ -5466,8 +5466,8 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo dist [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -t, --target TEXT        Name of the default target connection to use. This
-                           overrides the default target in the project.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
+                           overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
   -d, --dist-dir TEXT      Directory to output the distribution files
@@ -5478,7 +5478,7 @@ This folder can be statically deployed to any web server, hosting service, or bu
   --help                   Show this message and exit.
 </code></pre></div>
 <h2 id="init">init</h2>
-<p>Enables a quick set up by writing your target &amp; api credentials to an env file.</p>
+<p>Enables a quick set up by writing your source &amp; api credentials to an env file.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo init [OPTIONS]
 </code></pre></div>
@@ -5486,13 +5486,13 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>  --help  Show this message and exit.
 </code></pre></div>
 <h2 id="run">run</h2>
-<p>Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the target directory.</p>
+<p>Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo run [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -t, --target TEXT        Name of the default target connection to use. This
-                           overrides the default target in the project.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
+                           overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
   -nf, --name-filter TEXT  Run the command to only include the dag that
@@ -5507,8 +5507,8 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo serve [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -t, --target TEXT        Name of the default target connection to use. This
-                           overrides the default target in the project.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
+                           overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
   -nf, --name-filter TEXT  Run the command to only include the dag that
@@ -5524,8 +5524,8 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo test [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -t, --target TEXT       Name of the default target connection to use. This
-                          overrides the default target in the project.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT       Name of the default source connection to use. This
+                          overrides the default source in the project.
   -w, --working-dir TEXT  Directory to run the command
   -o, --output-dir TEXT   Directory to output results
   -a, --alert TEXT        Name of the alert to use

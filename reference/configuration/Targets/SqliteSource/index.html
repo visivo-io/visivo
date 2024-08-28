@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../MysqlTarget/">
+        <link rel="prev" href="../../Table/">
       
       
-        <link rel="next" href="../../Trace/">
+        <link rel="next" href="../PostgresqlSource/">
       
       
       <link rel="icon" href="../../../../assets/favicon_io/favicon-32x32.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>SnowflakeTarget - Visivo Docs</title>
+        <title>SqliteSource - Visivo Docs</title>
       
     
     
@@ -195,7 +195,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#snowflaketarget" class="md-skip">
+        <a href="#sqlitesource" class="md-skip">
           Skip to content
         </a>
       
@@ -230,7 +230,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              SnowflakeTarget
+              SqliteSource
             
           </span>
         </div>
@@ -508,11 +508,11 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../topics/targets/" class="md-nav__link">
+      <a href="../../../../topics/sources/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Targets
+    Sources
   </span>
   
 
@@ -1795,6 +1795,8 @@
                 
   
   
+    
+  
   
   
     
@@ -1809,20 +1811,20 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_1" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../SqliteTarget/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   <span class="md-ellipsis">
-    SqliteTarget
+    SqliteSource
   </span>
   
 
@@ -1830,10 +1832,10 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2_9_1">
             <span class="md-nav__icon md-icon"></span>
-            SqliteTarget
+            SqliteSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1874,11 +1876,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../PostgresqlTarget/" class="md-nav__link ">
+            <a href="../PostgresqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    PostgresqlTarget
+    PostgresqlSource
   </span>
   
 
@@ -1889,7 +1891,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_2">
             <span class="md-nav__icon md-icon"></span>
-            PostgresqlTarget
+            PostgresqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1930,11 +1932,11 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../MysqlTarget/" class="md-nav__link ">
+            <a href="../MysqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    MysqlTarget
+    MysqlSource
   </span>
   
 
@@ -1945,7 +1947,7 @@
         <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_3">
             <span class="md-nav__icon md-icon"></span>
-            MysqlTarget
+            MysqlSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -1963,8 +1965,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1979,20 +1979,20 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_4" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../SnowflakeSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
-    SnowflakeTarget
+    SnowflakeSource
   </span>
   
 
@@ -2000,10 +2000,10 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_9_4">
             <span class="md-nav__icon md-icon"></span>
-            SnowflakeTarget
+            SnowflakeSource
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
@@ -5212,28 +5212,40 @@
   
 
 
-<div><h1 id="snowflaketarget">SnowflakeTarget</h1>
-<p>SnowflakeTargets hold the connection information to Snowflake data sources.</p>
+<div><h1 id="sqlitesource">SqliteSource</h1>
+<p>SqliteSources hold the connection information to SQLite data sources.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple</label><label for="__tabbed_1_2">Additional Attached</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nt">targets</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snowflake_target</span>
-<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">snowflake</span>
-<span class="w">        </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DEV</span>
-<span class="w">        </span><span class="nt">warehouse</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DEV</span>
-<span class="w">        </span><span class="nt">account</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ab12345.us-west-1.aws</span>
-<span class="w">        </span><span class="nt">db_schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DEFAULT</span>
-<span class="w">        </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var('SNOWFLAKE_USER')</span><span class="w"> </span><span class="p p-Indicator">}}</span>
-<span class="w">        </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var('SNOWFLAKE_PASSWORD')</span><span class="w"> </span><span class="p p-Indicator">}}</span>
+<div class="highlight"><pre><span></span><code><span class="nt">sources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite_source</span>
+<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local/file/local.db</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
 </code></pre></div>
 </div>
+<div class="tabbed-block">
+<p>Attaching other SQLite databases allows you to join models between databases.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">sources</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite_source</span>
+<span class="w">    </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local/file/local.db</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
+<span class="w">    </span><span class="nt">attach</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">static_source</span>
+<span class="w">        </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local/static/file/local.db</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sqlite</span>
+</code></pre></div>
+<p>The above source can be then used in a model and the sql for that model might look similar to: <code>SELECT * FROM local AS l JOIN static.data AS sd ON l.static_id=sd.id</code></p>
 </div>
 </div>
 </div>
-<p>Note: Recommended environment variable use is covered in the <a href="/topics/targets/">targets overview.</a></p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Recommended environment variable use is covered in the <a href="/topics/sources/">sources overview.</a></p>
+</div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5288,28 +5300,16 @@
 <td>The schema that the Visivo project will use in queries.</td>
 </tr>
 <tr>
-<td>account</td>
-<td>string</td>
-<td>None</td>
-<td>The snowflake account url. Here's how you find this: <a href="https://docs.snowflake.com/en/user-guide/admin-account-identifier">snowflake docs</a>.</td>
-</tr>
-<tr>
-<td>warehouse</td>
-<td>string</td>
-<td>None</td>
-<td>The compute warehouse that you want queries from your Visivo project to leverage.</td>
-</tr>
-<tr>
-<td>role</td>
-<td>string</td>
-<td>None</td>
-<td>The access role that you want to use when running queries.</td>
-</tr>
-<tr>
 <td>type</td>
 <td>string</td>
 <td>None</td>
 <td></td>
+</tr>
+<tr>
+<td>attach</td>
+<td>Any of: #/$defs/Attachment, array</td>
+<td>None</td>
+<td>List of other local SQLite database sources to attach in the connection that will be available in the base SQL query.</td>
 </tr>
 </tbody>
 </table></div>
