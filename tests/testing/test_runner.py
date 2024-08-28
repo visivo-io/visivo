@@ -1,4 +1,4 @@
-from visivo.models.targets.sqlite_target import SqliteTarget
+from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.trace import Trace
 from ..factories.model_factories import (
     AlertFactory,
@@ -20,7 +20,7 @@ def test_TestQueryStringFactory_errors(capsys):
             "x": "query(x)",
             "y": "query(y)",
         },
-        "model": {"sql": "select * from test_table", "target": "ref(target)"},
+        "model": {"sql": "select * from test_table", "source": "ref(source)"},
         "tests": [
             {"logic": "assert_that(numpy.sum(trace.props.x)).is_equal_to(1)"},
             {

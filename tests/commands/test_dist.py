@@ -14,14 +14,14 @@ def test_dist():
     output_dir = temp_folder()
     project = ProjectFactory()
 
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
 
     response = runner.invoke(
-        dist, ["-w", working_dir, "-o", output_dir, "-t", "target"]
+        dist, ["-w", working_dir, "-o", output_dir, "-s", "source"]
     )
 
     assert "Created dist folder" in response.output

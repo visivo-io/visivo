@@ -1,15 +1,15 @@
 from queue import Queue
 from typing import List
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 from visivo.query.jobs.job import Job
 
 
-class TargetLimit:
-    def __init__(self, target: Target):
-        self.target_name = target.name
+class SourceLimit:
+    def __init__(self, source: Source):
+        self.source_name = source.name
         self.limit = 1
-        if hasattr(target, "connection_pool_size"):
-            self.limit = target.connection_pool_size
+        if hasattr(source, "connection_pool_size"):
+            self.limit = source.connection_pool_size
         self.enqueued: List[Job] = []
         self.running: List[Job] = []
         self.done: List[Job] = []
@@ -47,51 +47,51 @@ class TargetLimit:
         self.enqueued = list(filter(lambda job: not job.future, self.enqueued))
 
 
-class TargetJobTracker:
+class SourceJobTracker:
     def __init__(self):
-        self.target_limits: List[TargetLimit] = []
+        self.source_limits: List[SourceLimit] = []
         self.job_queue = Queue()
 
     @property
-    def target_names(self):
+    def source_names(self):
         return list(
-            map(lambda target_limit: target_limit.target_name, self.target_limits)
+            map(lambda source_limit: source_limit.source_name, self.source_limits)
         )
 
     @property
     def all_tracked_job_names(self):
         all_tracked_job_names = set()
-        for target_limit in self.target_limits:
+        for source_limit in self.source_limits:
             all_tracked_job_names = all_tracked_job_names.union(
-                target_limit.all_tracked_job_names
+                source_limit.all_tracked_job_names
             )
         return all_tracked_job_names
 
     @property
     def all_done_job_names(self):
         all_done_job_names = set()
-        for target_limit in self.target_limits:
+        for source_limit in self.source_limits:
             all_done_job_names = all_done_job_names.union(
-                target_limit.all_done_job_names
+                source_limit.all_done_job_names
             )
         return all_done_job_names
 
     def is_accepting_job(self, job: Job):
-        self.__add_target(job.target)
+        self.__add_source(job.source)
         self.__update()
-        target_limit = next(
-            target_limit
-            for target_limit in self.target_limits
-            if target_limit.target_name == job.target.name
+        source_limit = next(
+            source_limit
+            for source_limit in self.source_limits
+            if source_limit.source_name == job.source.name
         )
-        return target_limit.is_accepting_job()
+        return source_limit.is_accepting_job()
 
     def track_job(self, job: Job):
-        self.__add_target(job.target)
+        self.__add_source(job.source)
         self.__update()
-        for target_limit in self.target_limits:
-            if target_limit.target_name == job.target.name:
-                target_limit.enqueued.append(job)
+        for source_limit in self.source_limits:
+            if source_limit.source_name == job.source.name:
+                source_limit.enqueued.append(job)
                 self.job_queue.put(job)
 
     def is_job_name_enqueued(self, job_name: str) -> bool:
@@ -104,8 +104,8 @@ class TargetJobTracker:
 
     def is_done(self) -> bool:
         self.__update()
-        for target_limit in self.target_limits:
-            if target_limit.is_processing():
+        for source_limit in self.source_limits:
+            if source_limit.is_processing():
                 return False
         return True
 
@@ -120,9 +120,9 @@ class TargetJobTracker:
         return self.job_queue.empty()
 
     def __update(self):
-        for target_job_limit in self.target_limits:
-            target_job_limit.update()
+        for source_job_limit in self.source_limits:
+            source_job_limit.update()
 
-    def __add_target(self, target):
-        if target.name not in self.target_names:
-            self.target_limits.append(TargetLimit(target=target))
+    def __add_source(self, source):
+        if source.name not in self.source_names:
+            self.source_limits.append(SourceLimit(source=source))

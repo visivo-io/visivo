@@ -4,7 +4,7 @@ import click
 @click.command()
 def init():
     """
-    Enables a quick set up by writing your target & api credentials to an env file.
+    Enables a quick set up by writing your source & api credentials to an env file.
     """
     from visivo.logging.logger import Logger
 

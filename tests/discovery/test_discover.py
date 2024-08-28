@@ -55,7 +55,7 @@ def test_Core_Parser_includes_file():
     sub_file = temp_file(
         contents=yaml.dump(
             {
-                "targets": [{"name": "import_target_name", "database": "database"}],
+                "sources": [{"name": "import_source_name", "database": "database"}],
             }
         ),
         output_dir=output_dir,

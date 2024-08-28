@@ -6,10 +6,10 @@ from visivo.commands.compile_phase import compile_phase
 
 
 def test_phase(
-    output_dir: str, default_target: str, working_dir: str, alert_names: str
+    output_dir: str, default_source: str, working_dir: str, alert_names: str
 ):
     project = compile_phase(
-        default_target=default_target, working_dir=working_dir, output_dir=output_dir
+        default_source=default_source, working_dir=working_dir, output_dir=output_dir
     )
     Logger.instance().debug("Testing project")
     alerts = list(map(lambda an: project.find_alert(name=an), alert_names))
@@ -19,7 +19,7 @@ def test_phase(
         project=project,
         output_dir=output_dir,
         alerts=alerts,
-        default_target=default_target,
+        default_source=default_source,
     )
     if not test_runner.run().success:
         sys.exit(1)

@@ -1,7 +1,7 @@
 from typing import List
 from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
-from visivo.models.targets.sqlite_target import SqliteTarget
+from visivo.models.sources.sqlite_source import SqliteSource
 import io
 import click
 
@@ -11,7 +11,7 @@ class CsvScriptModel(Model):
     CSV Script Models are a type of model that executes a command with a given set of args.
     This command needs to return a well formatted :fontawesome-solid-file-csv: with a header row to stdout.
 
-    Visivo will be able to access the generate file as a model by storing a sqlite file in the target directory.
+    Visivo will be able to access the generate file as a model by storing a sqlite file in the source directory.
 
     !!! example {% raw %}
 
@@ -44,7 +44,7 @@ class CsvScriptModel(Model):
             import sys
 
             # Define the CSV file to write
-            csv_file = "target/processes.csv"
+            csv_file = "source/processes.csv"
 
             # Execute the 'ps aux' command
             result = subprocess.run(["ps", "aux"], stdout=subprocess.PIPE, text=True)
@@ -106,9 +106,9 @@ class CsvScriptModel(Model):
     def sql(self):
         return f"select * from {self.table_name}"
 
-    def get_sqlite_target(self, output_dir) -> SqliteTarget:
-        return SqliteTarget(
-            name=f"model_{self.name}_generated_target",
+    def get_sqlite_source(self, output_dir) -> SqliteSource:
+        return SqliteSource(
+            name=f"model_{self.name}_generated_source",
             database=f"{output_dir}/{self.name}.sqlite",
             type="sqlite",
         )
@@ -118,7 +118,7 @@ class CsvScriptModel(Model):
         import subprocess
 
         process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
-        engine = self.get_sqlite_target(output_dir).get_engine()
+        engine = self.get_sqlite_source(output_dir).get_engine()
         try:
             csv = io.StringIO(process.stdout.read().decode())
             data_frame = pandas.read_csv(csv)

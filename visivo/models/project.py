@@ -7,28 +7,34 @@ from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
-from visivo.models.targets.fields import TargetField
+from visivo.models.sources.fields import SourceField
 
 
 from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
-from .targets.target import Target
+from .sources.source import Source
 from .table import Table
 from .defaults import Defaults
 from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
-from pydantic import model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 
 class Project(NamedModel, ParentModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     defaults: Optional[Defaults] = None
     cli_version: Optional[str] = None
     includes: List[Include] = []
     alerts: List[AlertField] = []
-    targets: List[TargetField] = []
+    sources: List[SourceField] = Field(
+        [],
+        description="A list of source objects defined inline.",
+        alias="targets",
+    )
     models: List[ModelField] = []
     traces: List[Trace] = []
     tables: List[Table] = []
@@ -39,7 +45,7 @@ class Project(NamedModel, ParentModel):
     def child_items(self):
         return (
             self.alerts
-            + self.targets
+            + self.sources
             + self.models
             + self.traces
             + self.tables
@@ -73,8 +79,8 @@ class Project(NamedModel, ParentModel):
         return list(filter(Model.is_obj, self.__all_models()))
 
     @property
-    def target_objs(self) -> List[Target]:
-        return list(filter(Target.is_obj, self.__all_targets()))
+    def source_objs(self) -> List[Source]:
+        return list(filter(Source.is_obj, self.__all_sources()))
 
     def filter_traces(self, name_filter) -> List[Trace]:
         if name_filter:
@@ -83,8 +89,8 @@ class Project(NamedModel, ParentModel):
             included_nodes = self.descendants()
         return set(self.descendants_of_type(Trace)).intersection(included_nodes)
 
-    def find_target(self, name: str) -> Target:
-        return next((t for t in self.target_objs if t.name == name), None)
+    def find_source(self, name: str) -> Source:
+        return next((t for t in self.source_objs if t.name == name), None)
 
     def find_chart(self, name: str) -> Chart:
         return next((c for c in self.chart_objs if c.name == name), None)
@@ -97,15 +103,15 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_default_names(self):
-        targets, alerts = (self.targets, self.alerts)
-        target_names = [target.name for target in targets]
+        sources, alerts = (self.sources, self.alerts)
+        source_names = [source.name for source in sources]
         alert_names = [alert.name for alert in alerts]
         defaults = self.defaults
         if not defaults:
             return self
 
-        if defaults.target_name and defaults.target_name not in target_names:
-            raise ValueError(f"default target '{defaults.target_name}' does not exist")
+        if defaults.source_name and defaults.source_name not in source_names:
+            raise ValueError(f"default source '{defaults.source_name}' does not exist")
 
         if defaults.alert_name and defaults.alert_name not in alert_names:
             raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
@@ -113,15 +119,15 @@ class Project(NamedModel, ParentModel):
         return self
 
     @model_validator(mode="after")
-    def validate_models_have_targets(self):
+    def validate_models_have_sources(self):
         defaults = self.defaults
-        if defaults and defaults.target_name:
+        if defaults and defaults.source_name:
             return self
 
         for model in self.model_objs:
-            if isinstance(model, SqlModel) and not model.target:
+            if isinstance(model, SqlModel) and not model.source:
                 raise ValueError(
-                    f"'{model.name}' does not specify a target and project does not specify default target"
+                    f"'{model.name}' does not specify a source and project does not specify default source"
                 )
 
         return self
@@ -194,10 +200,10 @@ class Project(NamedModel, ParentModel):
             tables += dashboard.all_tables
         return tables
 
-    def __all_targets(self):
-        targets = []
-        targets += self.targets
+    def __all_sources(self):
+        sources = []
+        sources += self.sources
         for model in self.model_objs:
-            if model.target:
-                targets += [model.target]
-        return targets
+            if model.source:
+                sources += [model.source]
+        return sources

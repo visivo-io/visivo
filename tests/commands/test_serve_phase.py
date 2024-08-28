@@ -16,7 +16,7 @@ def test_get_project_json():
         0
     ].model.name = "Additional Model"
     project.dashboards.append(additional_dashboard)
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
     tmp = temp_file(contents=project.model_dump_json(), name="project.json")
     working_dir = os.path.dirname(tmp)

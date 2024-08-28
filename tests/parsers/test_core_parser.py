@@ -28,8 +28,8 @@ def test_Core_Parser_with_one_of_each_project():
                     "name": "trace",
                     "model": {
                         "sql": "select * from table",
-                        "target": {
-                            "name": "target",
+                        "source": {
+                            "name": "source",
                             "database": "postgresql",
                             "type": "postgresql",
                         },
@@ -64,8 +64,8 @@ def test_Core_Parser_combines_different_files():
     project_file = temp_yml_file(
         {
             "name": "project",
-            "targets": [
-                {"name": "target", "database": "project_url", "type": "sqlite"}
+            "sources": [
+                {"name": "source", "database": "project_url", "type": "sqlite"}
             ],
         },
         name=PROJECT_FILE_NAME,
@@ -73,7 +73,7 @@ def test_Core_Parser_combines_different_files():
     other_file = temp_yml_file(
         {
             "name": "project",
-            "targets": [{"name": "local", "database": "other_url", "type": "sqlite"}],
+            "sources": [{"name": "local", "database": "other_url", "type": "sqlite"}],
         },
         name="other.yml",
     )
@@ -82,16 +82,16 @@ def test_Core_Parser_combines_different_files():
         project_file=project_file, files=[project_file, other_file]
     )
     project = core_parser.parse()
-    assert len(project.targets) == 2
-    assert project.targets[0].database == "project_url"
-    assert project.targets[1].database == "other_url"
+    assert len(project.sources) == 2
+    assert project.sources[0].database == "project_url"
+    assert project.sources[1].database == "other_url"
 
 
 def test_Core_Parser_invalid_yaml():
     project_file = temp_file(
         contents="""
         name: project
-        targets invalid
+        sources invalid
         """,
         name=PROJECT_FILE_NAME,
     )

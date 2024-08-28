@@ -33,17 +33,17 @@ def test_docs_content_from_pydantic_model():
     dashboard_md = mkdocs.get_md_content("Dashboard")
     assert len(dashboard_md) > 50
 
-    target_md = mkdocs.get_md_content("SqliteTarget")
-    assert len(target_md) > 50
+    source_md = mkdocs.get_md_content("SqliteSource")
+    assert len(source_md) > 50
 
-    target_md = mkdocs.get_md_content("PostgresqlTarget")
-    assert len(target_md) > 50
+    source_md = mkdocs.get_md_content("PostgresqlSource")
+    assert len(source_md) > 50
 
-    target_md = mkdocs.get_md_content("MysqlTarget")
-    assert len(target_md) > 50
+    source_md = mkdocs.get_md_content("MysqlSource")
+    assert len(source_md) > 50
 
-    target_md = mkdocs.get_md_content("SnowflakeTarget")
-    assert len(target_md) > 50
+    source_md = mkdocs.get_md_content("SnowflakeSource")
+    assert len(source_md) > 50
 
 
 def test_docs_content_from_traceprops_model():

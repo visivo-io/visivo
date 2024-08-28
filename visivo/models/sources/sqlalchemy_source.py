@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any
 import click
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 
 
-class SqlalchemyTarget(Target, ABC):
+class SqlalchemySource(Source, ABC):
 
     _engine: Any = None
 
@@ -34,13 +34,13 @@ class SqlalchemyTarget(Target, ABC):
                 for attachment in self.attach:
                     connection.execute(
                         text(
-                            f"attach database '{attachment.target.database}' as {attachment.schema_name};"
+                            f"attach database '{attachment.source.database}' as {attachment.schema_name};"
                         )
                     )
             return connection
         except Exception as err:
             raise click.ClickException(
-                f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
+                f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct."
             )
 
     def get_engine(self):

@@ -1,5 +1,5 @@
 from visivo.models.selector import Selector
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 from ..models.project import Project
 from ..models.base.parent_model import ParentModel
 from visivo.models.chart import Chart
@@ -46,9 +46,9 @@ class Serializer:
                         trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
                         )[0]
-                        if hasattr(trace.model, "target"):
-                            trace.model.target = ParentModel.all_descendants_of_type(
-                                type=Target, dag=dag, from_node=trace.model
+                        if hasattr(trace.model, "source"):
+                            trace.model.source = ParentModel.all_descendants_of_type(
+                                type=Source, dag=dag, from_node=trace.model
                             )[0]
                         if hasattr(trace.model, "models"):
                             trace.model.models = ParentModel.all_descendants_of_type(
@@ -68,6 +68,6 @@ class Serializer:
         project.traces = []
         project.tables = []
         project.models = []
-        project.targets = []
+        project.sources = []
         project.selectors = []
         return project

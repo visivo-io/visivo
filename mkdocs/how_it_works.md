@@ -78,7 +78,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
     FROM {% raw %}{{ source('crm', 'sales_of_widgets') }}{% endraw %}
     ```
 
-Using that context, Visivo will produce this query and store it in your target directory:
+Using that context, Visivo will produce this query and store it in your sources directory:
 ``` sql title="project_dir/target/traces/simple_trace/query.sql"
 WITH 
 sql as (
@@ -95,7 +95,7 @@ GROUP BY
   "x"
 ```
 After small transformations on the output of the query you get this `data.json` which is stored in the target directly next to the query to enable debugging:
-``` json title="project_dir/target/traces/simple_trace/data.json"
+``` json title="project_dir/source/traces/simple_trace/data.json"
 {
 "Useful Widget": {
   "x": ["2023-01-01", "2023-01-08"],

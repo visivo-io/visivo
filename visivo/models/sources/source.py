@@ -4,13 +4,13 @@ from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
 
 
-class DefaultTarget:
+class DefaultSource:
     pass
 
 
-class Target(ABC, NamedModel):
+class Source(ABC, NamedModel):
     """
-    Targets hold the connection information to your data sources.
+    Sources hold the connection information to your data sources.
     """
 
     host: Optional[str] = Field(None, description="The host url of the database.")
@@ -38,7 +38,7 @@ class Target(ABC, NamedModel):
         return self.password.get_secret_value() if self.password is not None else None
 
     def connect(self):
-        return Connection(target=self)
+        return Connection(source=self)
 
     def url(self):
         from sqlalchemy.engine import URL
@@ -56,11 +56,11 @@ class Target(ABC, NamedModel):
 
 
 class Connection:
-    def __init__(self, target: Target):
-        self.target = target
+    def __init__(self, source: Source):
+        self.source = source
 
     def __enter__(self):
-        self.conn = self.target.get_connection()
+        self.conn = self.source.get_connection()
         return self.conn
 
     def __exit__(self, exc_type, exc_val, exc_tb):

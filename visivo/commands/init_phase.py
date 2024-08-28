@@ -7,10 +7,10 @@ from pathlib import Path
 from visivo.logging.logger import Logger
 from visivo.models.include import Include
 from visivo.models.models.sql_model import SqlModel
-from visivo.models.targets.postgresql_target import PostgresqlTarget, PostgresqlType
-from visivo.models.targets.snowflake_target import SnowflakeTarget, SnowflakeType
-from visivo.models.targets.sqlite_target import SqliteTarget, SqliteType
-from visivo.models.targets.mysql_target import MysqlTarget, MysqlType
+from visivo.models.sources.postgresql_source import PostgresqlSource, PostgresqlType
+from visivo.models.sources.snowflake_source import SnowflakeSource, SnowflakeType
+from visivo.models.sources.sqlite_source import SqliteSource, SqliteType
+from visivo.models.sources.mysql_source import MysqlSource, MysqlType
 from visivo.models.project import Project
 from visivo.models.dashboard import Dashboard
 from visivo.models.chart import Chart
@@ -24,7 +24,7 @@ from visivo.parsers.file_names import PROFILE_FILE_NAME
 
 
 def init_phase():
-    """Enables a quick set up by writing your target & api credentials to an env file."""
+    """Enables a quick set up by writing your source & api credentials to an env file."""
     user_home = os.path.expanduser("~")
     Logger.instance().success("Initialized")
     project_name = click.prompt("? Project name", type=str)
@@ -38,20 +38,20 @@ def init_phase():
     snowflake_type = get_args(SnowflakeType)[0]
     types = [postgresql_type, mysql_type, sqlite_type, snowflake_type]
 
-    target_type = click.prompt("? Database type", type=click.Choice(types))
-    if target_type == sqlite_type:
-        target = SqliteTarget(
-            name="Example Target",
+    source_type = click.prompt("? Database type", type=click.Choice(types))
+    if source_type == sqlite_type:
+        source = SqliteSource(
+            name="Example Source",
             database=f"{project_name}/local.db",
-            type=target_type,
+            type=source_type,
         )
-        create_file_database(target.url(), project_name)
-        target.database = "local.db"
+        create_file_database(source.url(), project_name)
+        source.database = "local.db"
         fp = open(f"{project_name}/.env", "w+")
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
 
-    if target_type == postgresql_type:
+    if source_type == postgresql_type:
         host = click.prompt("? Database host", type=str)
         database = click.prompt("? Database name", type=str)
         username = click.prompt("? Database username", type=str)
@@ -61,15 +61,15 @@ def init_phase():
         fp = open(f"{project_name}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
-        target = PostgresqlTarget(
-            name="Example Target",
+        source = PostgresqlSource(
+            name="Example Source",
             host=host,
             database=database,
-            type=target_type,
+            type=source_type,
             password=password,
             username=username,
         )
-    if target_type == mysql_type:
+    if source_type == mysql_type:
         host = click.prompt("? Database host", type=str)
         database = click.prompt("? Database name", type=str)
         username = click.prompt("? Database username", type=str)
@@ -79,16 +79,16 @@ def init_phase():
         fp = open(f"{project_name}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
-        target = MysqlTarget(
-            name="Example Target",
+        source = MysqlSource(
+            name="Example Source",
             host=host,
             database=database,
-            type=target_type,
+            type=source_type,
             password=password,
             username=username,
         )
 
-    if target_type == snowflake_type:
+    if source_type == snowflake_type:
         database = click.prompt("? Database name", type=str)
         account = click.prompt("? Snowflake account", type=str)
         warehouse = click.prompt("? Snowflake warehouse", type=str)
@@ -99,10 +99,10 @@ def init_phase():
         fp = open(f"{project_name}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
-        target = SnowflakeTarget(
-            name="Example Target",
+        source = SnowflakeSource(
+            name="Example Source",
             database=database,
-            type=target_type,
+            type=source_type,
             password=password,
             username=username,
             account=account,
@@ -118,7 +118,7 @@ def init_phase():
     item = Item(chart=chart)
     row = Row(items=[item])
     dashboard = Dashboard(name="Example Dashboard", rows=[row])
-    defaults = Defaults(target_name=target.name)
+    defaults = Defaults(source_name=source.name)
     includes = Include(
         path="visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml"
     )
@@ -126,7 +126,7 @@ def init_phase():
         name=project_name,
         includes=[includes],
         defaults=defaults,
-        targets=[target],
+        sources=[source],
         dashboards=[dashboard],
     )
 

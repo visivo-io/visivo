@@ -14,7 +14,7 @@ def test_serve():
     output_dir = temp_folder()
     project = ProjectFactory()
 
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
@@ -23,7 +23,7 @@ def test_serve():
     app = app_phase(
         working_dir=working_dir,
         output_dir=output_dir,
-        default_target="target",
+        default_source="source",
         name_filter=None,
         threads=2,
     )

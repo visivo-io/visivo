@@ -46,7 +46,7 @@ You can manually edit everything that Visivo created _(more on that in the Manua
     
     Run `visivo serve`, checkout your dashboard and start playing around with it. 
     
-    You can always add a target with another connection later.
+    You can always add a source with another connection later.
 
 {% endraw %}
 
@@ -81,7 +81,7 @@ The `project.visivo.yml` only requires that the name attribute is filled out how
 ``` yaml title="project_dir/project.visivo.yml"
 name: awesome-project
 defaults:
-  target_name: local-sqlite
+  source_name: local-sqlite
   alert_name: slack
 
 alerts:
@@ -89,7 +89,7 @@ alerts:
     type: slack
     webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
 
-targets:
+sources:
   - name: local-sqlite
     database: target/local.db
     type: sqlite
@@ -144,9 +144,9 @@ dashboards:
 ```
 
 ### Set up a Target & store secrets safely
-Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up targets by configuring them in your `project.visivo.yml`. 
+Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up sources by configuring them in your `project.visivo.yml`. 
 ``` yaml title="project_dir/project.visivo.yml"
-targets:
+sources:
   - name: local-sqlite
     database: target/local.db
     type: sqlite
@@ -166,22 +166,22 @@ targets:
     warehouse: DEV
     password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
 ```
-For some targets like the `local-sqlite` and `local-postgres` you may not need to store any secrets since they are just running locally. However remote connections like the `remote-snowflake` target, you will definitely want to make sure that you are not storing these attributes in plain text. 
+For some sources like the `local-sqlite` and `local-postgres` you may not need to store any secrets since they are just running locally. However remote connections like the `remote-snowflake` target, you will definitely want to make sure that you are not storing these attributes in plain text. 
 
 This is where the `env_var()` jinja function comes in handy. You can use this jinja function to reference environment variables that are either stored on your machine or in a `.env` file. 
 
 ### Configure Defaults
 Defaults are also optional, but highly recommended configurations to run Visivo. 
 
-Without defaults you would need to specify the target and / or alert whenever you needed to use them. For example to run the `test` command you would need to pass the target and alert flag: `visivo test -t remote-snowflake -a slack`
+Without defaults you would need to specify the source and / or alert whenever you needed to use them. For example to run the `test` command you would need to pass the source and alert flag: `visivo test -t remote-snowflake -a slack`
 
 However, if you have defaults set like this: 
 ``` yaml title="project_dir/project.visivo.yml"
 defaults:
-  target_name: remote-snowflake
+  source_name: remote-snowflake
   alert_name: slack
 ```
-Then you can just run `visivo test` and Visivo will default to remote-snowflake for the target and slack for the destination. 
+Then you can just run `visivo test` and Visivo will default to remote-snowflake for the source and slack for the destination. 
 
 ### Create a Trace
 You can think of traces like lines on a chart with specific configurations. With Visivo you can configure pretty much anything from the curve of a line, to if data should be represented as a bar, line or area. Additionally you can set these configurations based on attributes of your underlying data. 
@@ -205,10 +205,10 @@ We won't go into all of the details of the trace here, but a few things to note:
 
 * **`type`** tells Visivo how to plot the data. Visivo utilizes plotly.js and you can use most plotly trace types for this attribute. 
 * **`cohort_on`** let's Visivo know that you would like cut your chart by the `widget` column from the `widget_sales` table. Thus you will get as many lines as you have distinct `widget` types in the table from this trace. 
-* **`query( )`** is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your target. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. 
+* **`query( )`** is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. 
 * When **`query()`** is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. 
 
-Traces are able to be sourced from different targets. You can set the default target at the trace level by specifying a target name in the `target_name` attribute of the target. 
+Traces are able to be sourced from different sources. You can set the default source at the trace level by specifying a source name in the `source_name` attribute of the source. 
 
 ### Create a Chart 
 Charts are objects that can contain one to many traces and traces can be present on many charts. This allows both modularity, the ability to connect traces of different grains on the same chart, and the ability to connect traces from different data sources on the same chart. 

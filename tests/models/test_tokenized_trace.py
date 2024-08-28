@@ -7,12 +7,12 @@ def test_TokenizedTrace_simple_data():
     data = {
         "sql": "select * from table",
         "cohort_on": "query(x)",
-        "target": "name",
+        "source": "name",
     }
     trace = TokenizedTrace(**data)
     assert trace.sql == "select * from table"
     assert trace.cohort_on == "query(x)"
-    assert trace.target == "name"
+    assert trace.source == "name"
 
 
 def test_TokenizedTrace_missing_data():
@@ -31,7 +31,7 @@ def test_TokenizedTrace_invalid_order_by_input():
         "groupby_statements": ["widget", "completed_at"],
         "select_items": {"y": "sum(amount)", "x": "completed_at"},
         "order_by": {"no": "dicts allowed!"},
-        "target": "name",
+        "source": "name",
     }
     with pytest.raises(ValidationError) as exc_info:
         TokenizedTrace(**data)
