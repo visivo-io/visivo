@@ -44,7 +44,7 @@ class CsvScriptModel(Model):
             import sys
 
             # Define the CSV file to write
-            csv_file = "source/processes.csv"
+            csv_file = "data/processes.csv"
 
             # Execute the 'ps aux' command
             result = subprocess.run(["ps", "aux"], stdout=subprocess.PIPE, text=True)

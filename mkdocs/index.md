@@ -143,8 +143,8 @@ dashboards:
               1. List
 ```
 
-### Set up a Target & store secrets safely
-Targets are connections to your data warehouses and databases that Visivo will run queries against. You can set up sources by configuring them in your `project.visivo.yml`. 
+### Set up a Source & store secrets safely
+Sources are connections to your data warehouses and databases that Visivo will run queries against. You can set up sources by configuring them in your `project.visivo.yml`. 
 ``` yaml title="project_dir/project.visivo.yml"
 sources:
   - name: local-sqlite

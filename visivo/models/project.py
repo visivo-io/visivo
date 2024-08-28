@@ -32,7 +32,7 @@ class Project(NamedModel, ParentModel):
     alerts: List[AlertField] = []
     sources: List[SourceField] = Field(
         [],
-        description="A list of source objects defined inline.",
+        description="A list of source objects.",
         alias="targets",
     )
     models: List[ModelField] = []
