@@ -20,3 +20,9 @@ The local development environment is a basic Create React App setup.  You can te
     1. `cd viewer`
     1. `yarn start`
     1. Navigate to localhost:3000 this will proxy any data requests to the running `visivo serve` command 
+
+## Generating a Release
+
+There is a script that will make the needed tags and trigger the builds.  Find the new number you want and use the `release_command_line` utility.  Example:
+
+`release_command_line 1.0.22`
