@@ -2,7 +2,7 @@
 from visivo.models.project import Project
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
-from visivo.models.destination import Destination
+from visivo.models.destinations.destination import Destination
 from typing import List
 import json
 import click
