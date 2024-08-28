@@ -64,7 +64,7 @@ tasks:
     use: [visivo-install]
     run: |
       cd test-projects/integration
-      visivo run -t remote-snowflake
+      visivo run -s remote-snowflake
     env:
       STACKTRACE: true
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -98,7 +98,7 @@ tasks:
     run: |
       PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -f tests/setup/populate_ci_postgres.sql
       cd test-projects/integration
-      visivo run -t local-postgres --threads 1
+      visivo run -s local-postgres --threads 1
     env:
       PGPASSWORD: postgres
       PG_PASSWORD: postgres
@@ -121,7 +121,7 @@ tasks:
     run: |
       mysql --protocol tcp -h localhost -u root -pmysql < tests/setup/populate_ci_mysql.sql
       cd test-projects/integration
-      visivo run -t local-mysql --threads 1
+      visivo run -s local-mysql --threads 1
     env:
       MYSQL_PASSWORD: mysql
       IS_MYSQL: true

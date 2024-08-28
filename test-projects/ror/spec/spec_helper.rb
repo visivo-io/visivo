@@ -12,7 +12,7 @@ RSpec.configure do |config|
   RSpec.shared_context "Trace spec helpers" do
     let(:visivo_tmp_folder) {"tmp/visivo"}
     let(:trace_data){
-      value = %x( visivo compile -o "#{visivo_tmp_folder}" -t development)
+      value = %x( visivo compile -o "#{visivo_tmp_folder}" -s development)
       raise "Error running external Visivo command" if $?.exitstatus != 0
 
       sql = File.read("tmp/visivo/#{trace_name}/query.sql")
