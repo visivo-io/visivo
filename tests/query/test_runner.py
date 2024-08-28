@@ -5,9 +5,9 @@ from tests.factories.model_factories import (
     LocalMergeModelFactory,
     SqlModelFactory,
     ProjectFactory,
-    TargetFactory,
+    SourceFactory,
 )
-from visivo.models.targets.sqlite_target import SqliteTarget
+from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
@@ -17,15 +17,15 @@ import os
 
 def test_Runner_trace_with_default():
     output_dir = temp_folder()
-    target = TargetFactory(name="target", database=f"{output_dir}/test.sqlite")
-    model = SqlModelFactory(name="model1", target=None)
+    source = SourceFactory(name="source", database=f"{output_dir}/test.sqlite")
+    model = SqlModelFactory(name="model1", source=None)
     trace = TraceFactory(name="trace1", model=model)
-    defaults = DefaultsFactory(target_name=target.name)
+    defaults = DefaultsFactory(source_name=source.name)
     project = ProjectFactory(
-        defaults=defaults, targets=[target], traces=[trace], dashboards=[]
+        defaults=defaults, sources=[source], traces=[trace], dashboards=[]
     )
 
-    create_file_database(url=target.url(), output_dir=output_dir)
+    create_file_database(url=source.url(), output_dir=output_dir)
 
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
@@ -37,14 +37,14 @@ def test_Runner_trace_with_default():
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
 
 
-def test_Runner_trace_given_target():
+def test_Runner_trace_given_source():
     output_dir = temp_folder()
-    target = TargetFactory(database=f"{output_dir}/test.sqlite")
-    model = SqlModelFactory(name="model1", target=target)
+    source = SourceFactory(database=f"{output_dir}/test.sqlite")
+    model = SqlModelFactory(name="model1", source=source)
     trace = TraceFactory(name="trace1", model=model)
-    project = ProjectFactory(targets=[], traces=[trace], dashboards=[])
+    project = ProjectFactory(sources=[], traces=[trace], dashboards=[])
 
-    create_file_database(url=target.url(), output_dir=output_dir)
+    create_file_database(url=source.url(), output_dir=output_dir)
 
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
@@ -60,7 +60,7 @@ def test_runner_with_csv_script_model():
     output_dir = temp_folder()
     model = CsvScriptModelFactory(name="csv_script_model")
     trace = TraceFactory(name="trace1", model=model)
-    project = ProjectFactory(targets=[], traces=[trace], dashboards=[])
+    project = ProjectFactory(sources=[], traces=[trace], dashboards=[])
 
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
@@ -76,18 +76,18 @@ def test_runner_with_csv_script_model():
 def test_runner_with_local_merge_model():
     output_dir = temp_folder()
 
-    target1 = TargetFactory(name="target1", database=f"{output_dir}/test1.db")
-    target2 = TargetFactory(name="target2", database=f"{output_dir}/test2.db")
-    sub_model1 = SqlModelFactory(name="model1", target=target1)
-    sub_model2 = SqlModelFactory(name="model2", target=target2)
-    create_file_database(url=target1.url(), output_dir=output_dir)
-    create_file_database(url=target2.url(), output_dir=output_dir)
+    source1 = SourceFactory(name="source1", database=f"{output_dir}/test1.db")
+    source2 = SourceFactory(name="source2", database=f"{output_dir}/test2.db")
+    sub_model1 = SqlModelFactory(name="model1", source=source1)
+    sub_model2 = SqlModelFactory(name="model2", source=source2)
+    create_file_database(url=source1.url(), output_dir=output_dir)
+    create_file_database(url=source2.url(), output_dir=output_dir)
 
     model = LocalMergeModelFactory(
         name="local_merge_model", models=[sub_model1, sub_model2]
     )
     trace = TraceFactory(name="trace1", model=model)
-    project = ProjectFactory(targets=[], traces=[trace], dashboards=[], models=[])
+    project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
 
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
@@ -104,8 +104,8 @@ def test_runner_with_local_merge_model():
 def test_runner_name_filter():
     output_dir = temp_folder()
     project = ProjectFactory()
-    target = TargetFactory(database=f"{output_dir}/test.sqlite")
-    model = SqlModelFactory(name="model1", target=target)
+    source = SourceFactory(database=f"{output_dir}/test.sqlite")
+    model = SqlModelFactory(name="model1", source=source)
     trace = TraceFactory(name="trace1", model=model)
     project.dashboards[0].rows[0].items[0].chart.traces[0] = trace
 
@@ -116,10 +116,10 @@ def test_runner_name_filter():
     additional_dashboard.rows[0].items[0].chart.traces[
         0
     ].model.sql = "select * from no_exist"
-    additional_dashboard.rows[0].items[0].chart.traces[0].model.target = target
+    additional_dashboard.rows[0].items[0].chart.traces[0].model.source = source
     project.dashboards.append(additional_dashboard)
 
-    create_file_database(url=target.url(), output_dir=output_dir)
+    create_file_database(url=source.url(), output_dir=output_dir)
 
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:

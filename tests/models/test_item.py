@@ -4,7 +4,7 @@ from pydantic import ValidationError
 import pytest
 
 
-def test_Target_simple_data():
+def test_Source_simple_data():
     data = {"width": 2}
     item = Item(**data)
     assert item.width == 2

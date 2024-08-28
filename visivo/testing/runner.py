@@ -19,12 +19,12 @@ class Runner:
         traces: List[Trace],
         project: Project,
         output_dir: str,
-        default_target: str = None,
+        default_source: str = None,
         alerts: List[Alert] = [],
     ):
         self.project = project
         self.traces = traces
-        self.default_target = default_target
+        self.default_source = default_source
         self.output_dir = output_dir
         self.alerts = alerts
 

@@ -4,12 +4,12 @@ from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.trace import Trace
 from visivo.models.tokenized_trace import TokenizedTrace
 from sql_formatter.core import format_sql
-from tests.factories.model_factories import SnowflakeTargetFactory, TargetFactory
+from tests.factories.model_factories import SnowflakeSourceFactory
 
 
 def test_QueryStringBuilder_with_only_base_query():
     tokenized_trace = TokenizedTrace(
-        sql="select * from table", cohort_on="'value'", target="name"
+        sql="select * from table", cohort_on="'value'", source="name"
     )
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert format_sql(query_string) == format_sql(
@@ -29,7 +29,7 @@ def test_QueryStringBuilder_with_only_base_query():
         FROM columnize_cohort_on
             GROUP BY
             "cohort_on" 
-        -- target: name"""
+        -- source: name"""
     )
 
 
@@ -49,11 +49,11 @@ def test_tokenization_query_string_order_by():
         ],
     }
     trace = Trace(**data)
-    target = SnowflakeTargetFactory()
-    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, target=target)
+    source = SnowflakeSourceFactory()
+    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert "ORDER BY a_different_column desc, count(amount) desc" in format_sql(
         query_string
     )
-    assert f"-- target: {target.name}" in format_sql(query_string)
+    assert f"-- source: {source.name}" in format_sql(query_string)

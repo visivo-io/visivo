@@ -1,22 +1,22 @@
 from typing import Literal, Optional
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 import click
 from pydantic import Field
 
 SnowflakeType = Literal["snowflake"]
 
 
-class SnowflakeTarget(Target):
+class SnowflakeSource(Source):
     """
-    SnowflakeTargets hold the connection information to Snowflake data sources.
+    SnowflakeSources hold the connection information to Snowflake data sources.
 
     !!! example
 
         === "Simple"
 
             ``` yaml
-                targets:
-                  - name: snowflake_target
+                sources:
+                  - name: snowflake_source
                     type: snowflake
                     database: DEV
                     warehouse: DEV
@@ -26,7 +26,7 @@ class SnowflakeTarget(Target):
                     password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
             ```
 
-    Note: Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
+    Note: Recommended environment variable use is covered in the [sources overview.](/topics/sources/)
     """
 
     account: Optional[str] = Field(
@@ -71,5 +71,5 @@ class SnowflakeTarget(Target):
             )
         except Exception as err:
             raise click.ClickException(
-                f"Error connecting to target '{self.name}'. Ensure the database is running and the connection properties are correct."
+                f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct."
             )

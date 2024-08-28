@@ -1,7 +1,7 @@
 from concurrent.futures import Future
 from typing import List
 from visivo.models.base.named_model import NamedModel
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 import os
 import textwrap
 from time import time
@@ -23,13 +23,13 @@ class Job:
     def __init__(
         self,
         item: NamedModel,
-        target: Target,
+        source: Source,
         action,
         output_changed: bool = True,
         **kwargs,
     ):
         self.item = item
-        self.target = target
+        self.source = source
         self.action = action
         self.output_changed = output_changed
         self.kwargs = kwargs  # These get passed to the action when it is run

@@ -1,21 +1,21 @@
 from typing import Literal, Optional
-from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field
 
 MysqlType = Literal["mysql"]
 
 
-class MysqlTarget(SqlalchemyTarget):
+class MysqlSource(SqlalchemySource):
     """
-    MysqlTargets hold the connection information to MySQL data sources.
+    MysqlSources hold the connection information to MySQL data sources.
 
     !!! example
 
         === "Simple"
 
             ``` yaml
-                targets:
-                  - name: mysql_target
+                sources:
+                  - name: mysql_source
                     type: mysql
                     database: database
                     username: {% raw %}{{ env_var('MYSQL_USER') }}{% endraw %}
@@ -25,7 +25,7 @@ class MysqlTarget(SqlalchemyTarget):
 
     !!! note
 
-        Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
+        Recommended environment variable use is covered in the [sources overview.](/topics/sources/)
     """
 
     type: MysqlType

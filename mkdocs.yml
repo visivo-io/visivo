@@ -76,7 +76,7 @@ nav:
   - Topics:
       - Linting: topics/linting.md
       - Including: topics/including.md
-      - Targets: topics/targets.md
+      - Sources: topics/sources.md
       - Deployment: topics/deployments.md
       - Testing: topics/testing.md
       - Interactivity: topics/interactivity.md

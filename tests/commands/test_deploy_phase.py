@@ -10,7 +10,7 @@ from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
 def test_deploy_success(requests_mock, capsys):
     output_dir = temp_folder()
     project = ProjectFactory()
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
     tmp = temp_yml_file(dict=json.loads('{"name": "name"}'), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)

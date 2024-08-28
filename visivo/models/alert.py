@@ -64,7 +64,7 @@ class EmailAlert(Alert):
         if not test_run.failures:
             return
 
-        body = f"There were test failures running against {test_run.target_name}\n\n"
+        body = f"There were test failures running against {test_run.source_name}\n\n"
 
         for test_failure in test_run.failures:
             body += f"* {test_failure.test_id} - {test_failure.message}\n"
@@ -128,7 +128,7 @@ class SlackAlert(Alert):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"There were test failures running against {test_run.target_name}",
+                        "text": f"There were test failures running against {test_run.source_name}",
                     },
                 }
             ]

@@ -4,7 +4,7 @@ import yaml
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.parser_factory import ParserFactory
@@ -16,7 +16,7 @@ from visivo.logging.logger import Logger
 
 
 def compile_phase(
-    default_target: str, working_dir: str, output_dir: str, name_filter: str = None
+    default_source: str, working_dir: str, output_dir: str, name_filter: str = None
 ):
     Logger.instance().debug("Compiling project")
     discover = Discover(working_directory=working_dir)
@@ -28,8 +28,8 @@ def compile_phase(
         project = parser.parse()
         if not project.defaults:
             project.defaults = Defaults()
-        if default_target:
-            project.defaults.target_name = default_target
+        if default_source:
+            project.defaults.source_name = default_source
     except yaml.YAMLError as e:
         message = "\n"
         if hasattr(e, "problem_mark"):
@@ -50,13 +50,13 @@ def compile_phase(
             type=Model, dag=dag, from_node=trace
         )[0]
         if isinstance(model, CsvScriptModel):
-            target = model.get_sqlite_target(output_dir=output_dir)
+            source = model.get_sqlite_source(output_dir=output_dir)
         else:
-            target = ParentModel.all_descendants_of_type(
-                type=Target, dag=dag, from_node=model
+            source = ParentModel.all_descendants_of_type(
+                type=Source, dag=dag, from_node=model
             )[0]
         tokenized_trace = TraceTokenizer(
-            trace=trace, model=model, target=target
+            trace=trace, model=model, source=source
         ).tokenize()
         query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
         QueryWriter(

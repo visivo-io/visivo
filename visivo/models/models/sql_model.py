@@ -1,16 +1,18 @@
 from typing import Optional
 
 from visivo.models.base.base_model import generate_ref_field
-from pydantic import Field
+from pydantic import ConfigDict, Field
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
-from visivo.models.targets.fields import TargetRefField
-from visivo.models.targets.target import DefaultTarget, Target
+from visivo.models.sources.fields import SourceRefField
+from visivo.models.sources.source import DefaultSource
 
 
 class SqlModel(Model, ParentModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     """
-    SQL Models are queries that return base data from a SQL target. These data are then used in Traces
+    SQL Models are queries that return base data from a SQL source. These data are then used in Traces
 
     !!! example {% raw %}
 
@@ -19,8 +21,8 @@ class SqlModel(Model, ParentModel):
             ``` yaml
             models:
               - name: sql_model
-                target: ref(sql_target)
-                sql: select * from table_in_target
+                source: ref(sql_source)
+                sql: select * from table_in_source
             ```
     {% endraw %}
     """
@@ -30,13 +32,14 @@ class SqlModel(Model, ParentModel):
         description="The sql used to generate your base data",
     )
 
-    target: Optional[TargetRefField] = Field(
+    source: Optional[SourceRefField] = Field(
         None,
-        description="A target object defined inline or a ref() to a chart. Override the defaults.target_name",
+        description="A source object defined inline or a ref() to a chart. Override the defaults.source_name",
+        alias="target",
     )
 
     def child_items(self):
-        if self.target:
-            return [self.target]
+        if self.source:
+            return [self.source]
         else:
-            return [DefaultTarget()]
+            return [DefaultSource()]

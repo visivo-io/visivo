@@ -1,21 +1,21 @@
 from typing import Literal, Optional
-from visivo.models.targets.sqlalchemy_target import SqlalchemyTarget
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field
 
 PostgresqlType = Literal["postgresql"]
 
 
-class PostgresqlTarget(SqlalchemyTarget):
+class PostgresqlSource(SqlalchemySource):
     """
-    PostgresqlTargets hold the connection information to PostgreSQL data sources.
+    PostgresqlSources hold the connection information to PostgreSQL data sources.
 
     !!! example
 
         === "Simple"
 
             ``` yaml
-                targets:
-                  - name: postgresql_target
+                sources:
+                  - name: postgresql_source
                     type: postgresql
                     database: database
                     username: {% raw %}{{ env_var('PG_USER') }}{% endraw %}
@@ -25,7 +25,7 @@ class PostgresqlTarget(SqlalchemyTarget):
 
     !!! note
 
-        Recommended environment variable use is covered in the [targets overview.](/topics/targets/)
+        Recommended environment variable use is covered in the [sources overview.](/topics/sources/)
     """
 
     type: PostgresqlType

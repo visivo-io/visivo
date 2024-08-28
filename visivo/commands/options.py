@@ -45,11 +45,11 @@ def name_filter(function):
     return function
 
 
-def target(function):
+def source(function):
     click.option(
-        "-t",
-        "--target",
-        help="Name of the default target connection to use. This overrides the default target in the project.",
+        "-s",
+        "--source",
+        help="Name of the default source connection to use. This overrides the default source in the project.",
     )(function)
     return function
 

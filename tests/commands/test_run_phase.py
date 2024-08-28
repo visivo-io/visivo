@@ -13,7 +13,7 @@ from unittest.mock import ANY
 
 def test_run_phase():
     output_dir = temp_folder()
-    project = ProjectFactory(defaults=Defaults(target_name="target"))
+    project = ProjectFactory(defaults=Defaults(source_name="source"))
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
     additional_dashboard = DashboardFactory(name="Other Dashboard")
     additional_dashboard.rows[0].items[
@@ -25,7 +25,7 @@ def test_run_phase():
         0
     ].model.name = "Additional Model"
     project.dashboards.append(additional_dashboard)
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
@@ -33,7 +33,7 @@ def test_run_phase():
     working_dir = os.path.dirname(tmp)
 
     run_phase(
-        default_target="target",
+        default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter="dashboard",

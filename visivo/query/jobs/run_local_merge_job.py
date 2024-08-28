@@ -20,7 +20,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_sqlite_target(
+            full_path=local_merge_model.get_sqlite_source(
                 output_dir=output_dir, dag=dag
             ).database,
         )
@@ -29,7 +29,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_sqlite_target(
+            full_path=local_merge_model.get_sqlite_source(
                 output_dir=output_dir, dag=dag
             ).database,
             error_msg=str(repr(e)),
@@ -53,7 +53,7 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
         jobs.append(
             Job(
                 item=local_merge_model,
-                target=local_merge_model.get_sqlite_target(
+                source=local_merge_model.get_sqlite_source(
                     output_dir=output_dir, dag=dag
                 ),
                 action=action,

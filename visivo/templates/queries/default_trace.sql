@@ -51,4 +51,4 @@ FROM columnize_cohort_on
         {{ order }}{% if not loop.last %}, {% endif %}
     {%- endfor %}
 {%- endif %} 
--- target: {{ target }}
+-- source: {{ source }}

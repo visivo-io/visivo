@@ -14,7 +14,7 @@ from visivo.parsers.file_names import PROJECT_FILE_NAME
 
 def test_filtered_dashboard():
     output_dir = temp_folder()
-    project = ProjectFactory(defaults=Defaults(target_name="target"))
+    project = ProjectFactory(defaults=Defaults(source_name="source"))
     additional_dashboard = DashboardFactory(name="Other Dashboard")
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
     additional_dashboard.rows[0].items[
@@ -25,7 +25,7 @@ def test_filtered_dashboard():
         0
     ].model.name = "Additional Model"
     project.dashboards.append(additional_dashboard)
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
@@ -33,7 +33,7 @@ def test_filtered_dashboard():
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
-        default_target="target",
+        default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter="dashboard",
@@ -45,11 +45,11 @@ def test_filtered_dashboard():
 def test_compile_csv_script_model():
     output_dir = temp_folder()
     project = ProjectFactory()
-    project.targets = []
+    project.sources = []
     model = CsvScriptModelFactory(name="csv_script_model")
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = model
     create_file_database(
-        url=model.get_sqlite_target(output_dir).url(), output_dir=output_dir
+        url=model.get_sqlite_source(output_dir).url(), output_dir=output_dir
     )
 
     tmp = temp_yml_file(
@@ -58,7 +58,7 @@ def test_compile_csv_script_model():
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
-        default_target="target",
+        default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter="dashboard",
