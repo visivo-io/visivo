@@ -59,6 +59,7 @@ tasks:
       npm install --global yarn
       yarn install 
       yarn test
+      yart run lint
 
   - key: test-snowflake
     use: [visivo-install]
