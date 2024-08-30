@@ -14,7 +14,7 @@ Tests allow you to assert on the computed values that are the output of a trace.
 ``` yaml
 alerts:
     - name: Example Alert
-      if: ${ anyTestFailed() && env == PRODUCTION }
+      if: >{ ${ anyTestFailed() } && env.ENVIRONMENT == "PRODUCTION" }
       - destinations: 
         - ${ ref(Production Slack) }
         - ${ ref(Production Email) }
