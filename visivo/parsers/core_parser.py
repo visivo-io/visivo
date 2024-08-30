@@ -46,6 +46,7 @@ class CoreParser:
     def __merge_data_into_project(self, project_data: dict, data_files: List[dict]):
         keys_to_merge = [
             "alerts",
+            "selectors",
             "sources",
             "models",
             "traces",
