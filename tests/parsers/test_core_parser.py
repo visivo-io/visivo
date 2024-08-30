@@ -74,6 +74,7 @@ def test_Core_Parser_combines_different_files():
         {
             "name": "project",
             "sources": [{"name": "local", "database": "other_url", "type": "sqlite"}],
+            "selectors": [{"name": "selector"}],
         },
         name="other.yml",
     )
@@ -85,6 +86,7 @@ def test_Core_Parser_combines_different_files():
     assert len(project.sources) == 2
     assert project.sources[0].database == "project_url"
     assert project.sources[1].database == "other_url"
+    assert project.selectors[0].name == "selector"
 
 
 def test_Core_Parser_invalid_yaml():
