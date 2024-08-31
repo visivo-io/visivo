@@ -1,7 +1,8 @@
 from typing import Any
 
-from visivo.models.base.base_model import REF_REGEX, INLINE_REF_REGEX
 import re
+
+INLINE_REF_REGEX = r"ref\((.*?)\)"
 
 
 class ContextString:
@@ -12,8 +13,25 @@ class ContextString:
         return self.value
 
     def get_references(self):
-        return re.findall(INLINE_REF_REGEX, self.value)
+        if self.value.startswith("${") and self.value.endswith("}"):
+            return re.findall(INLINE_REF_REGEX, self.value)
+        else:
+            return []
 
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):
-        return handler.generate_schema(str)
+        from pydantic_core import core_schema
+
+        def validate_and_create(value: Any) -> 'ContextString':
+            if isinstance(value, cls):
+                return value
+            str_value = str(value)
+            if not (str_value.startswith("${") and str_value.endswith("}")):
+                raise ValueError("ContextString must start with '${' and end with '}'")
+            return cls(str_value)
+
+        return core_schema.no_info_after_validator_function(
+            validate_and_create,
+            core_schema.str_schema(),
+            serialization=core_schema.plain_serializer_function_ser_schema(str),
+        )
