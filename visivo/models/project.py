@@ -1,8 +1,9 @@
 import re
 from typing import List, Optional
 from visivo.models.alert import Alert
-from visivo.models.destinations.destination import DestinationField, Destination
+from visivo.models.destinations.destination import Destination
 
+from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField

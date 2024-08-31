@@ -1,7 +1,7 @@
 import json
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, ImportString
 from visivo.models.destinations.destination import Destination
 from visivo.models.test_run import TestRun
 
@@ -22,7 +22,6 @@ class SlackDestination(Destination):
         description="An incoming message slack webhook url. You can set one of those up by following <a href='https://api.slack.com/messaging/webhooks'>these instructions</a>.",
     )
     type: Literal["slack"] = Field(
-        None,
         description="The type of Destination Destination. Needs to be `slack` to configure a slack destination",
     )
 

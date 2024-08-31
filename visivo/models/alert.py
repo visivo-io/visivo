@@ -3,7 +3,7 @@ from typing import List, Optional
 from pydantic import Field
 
 from visivo.models.base.context_string import ContextString
-from visivo.models.destinations.destination import DestinationField
+from visivo.models.destinations.fields import DestinationField
 from .base.named_model import NamedModel
 
 

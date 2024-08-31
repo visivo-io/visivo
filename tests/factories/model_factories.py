@@ -1,5 +1,6 @@
 import factory
 from visivo.models.defaults import Defaults
+from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
@@ -14,7 +15,6 @@ from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props.scatter import Scatter
 from visivo.models.trace_props.surface import Surface
-from visivo.models.destinations.destination import ConsoleDestination
 from visivo.models.row import Row, HeightEnum
 from visivo.query.jobs.job import Job
 

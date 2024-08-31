@@ -1,9 +1,10 @@
+from enum import Enum
 from typing import List, Optional
 from pydantic import Field
 
 from visivo.models.alert import Alert
 from visivo.models.base.context_string import ContextString
-from .base.base_model import BaseModel, StringOrList
+from .base.base_model import BaseModel
 
 """
 Tests allow you to assert on the computed values that are the output of a trace.  The tests are run with the `visivo test` command.
@@ -39,6 +40,6 @@ class Test(BaseModel):
     if_: Optional[ContextString] = Field(None, alias="if")
     on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
     assertions: List[ContextString] = Field(None)
-    alerts: List[Alert] = Field([], "Alerts that will be triggered")
+    alerts: List[Alert] = Field([], description="Alerts that will be triggered")
 
     __test__ = False
