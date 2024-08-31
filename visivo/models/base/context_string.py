@@ -2,7 +2,7 @@ from typing import Any
 
 import re
 
-INLINE_REF_REGEX = r"ref\((.*?)\)"
+INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)\s*}"
 
 
 class ContextString:
@@ -12,17 +12,18 @@ class ContextString:
     def __str__(self):
         return self.value
 
-    def get_references(self):
-        if self.value.startswith("${") and self.value.endswith("}"):
-            return re.findall(INLINE_REF_REGEX, self.value)
+    def get_reference(self) -> str:
+        matches = re.findall(INLINE_REF_REGEX, self.value)
+        if len(matches) == 0:
+            return None
         else:
-            return []
+            return matches[0]
 
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):
         from pydantic_core import core_schema
 
-        def validate_and_create(value: Any) -> 'ContextString':
+        def validate_and_create(value: Any) -> "ContextString":
             if isinstance(value, cls):
                 return value
             str_value = str(value)
