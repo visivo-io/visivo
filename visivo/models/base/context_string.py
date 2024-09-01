@@ -6,6 +6,13 @@ INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)\s*}"
 
 
 class ContextString:
+    """
+    Represents a string that contains a reference to named object in the project model.
+    Currently you can reference another object by using the ref() function.  Example:
+
+    ${ ref(Name) }
+    """
+
     def __init__(self, value: str):
         self.value = value
 

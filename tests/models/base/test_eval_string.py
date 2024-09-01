@@ -34,3 +34,30 @@ def test_EvalString_as_field():
 
     with pytest.raises(ValueError):
         MockStringModel(**{"eval": "{ ref(Name) }"})
+
+
+def test_evaluate():
+    # Test basic arithmetic
+    es = EvalString(">{ True }")
+    assert es.evaluate() == True
+
+    es = EvalString(">{ 2 + 3 * 4 }")
+    assert es.evaluate() == 14
+
+    es = EvalString(">{ 5 > 3 and 2 <= 2 }")
+    assert es.evaluate() == True
+
+    es = EvalString(">{ any_test_failed() }")
+    assert es.evaluate() == False
+
+    es = EvalString(">{ any_test_failed() == False }")
+    assert es.evaluate() == True
+
+    es = EvalString(">{ env.ENVIRONMENT == 'PRODUCTION' }")
+    assert es.evaluate() == False
+
+    with pytest.raises(ValueError):
+        EvalString(">{ unsupported_function() }").evaluate()
+
+    with pytest.raises(ValueError):
+        EvalString(">{ 1 + 'string' }").evaluate()

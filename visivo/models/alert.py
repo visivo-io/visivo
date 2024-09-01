@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional
 from pydantic import Field
 
-from visivo.models.base.context_string import ContextString
+from visivo.models.base.eval_string import EvalString
 from visivo.models.destinations.fields import DestinationField
 from .base.named_model import NamedModel
 
@@ -14,7 +14,7 @@ Tests allow you to assert on the computed values that are the output of a trace.
 ``` yaml
 alerts:
     - name: Example Alert
-      if: >{ ${ anyTestFailed() } && env.ENVIRONMENT == "PRODUCTION" }
+      if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
       - destinations: 
         - ${ ref(Production Slack) }
         - ${ ref(Production Email) }
@@ -23,5 +23,5 @@ alerts:
 
 
 class Alert(NamedModel):
-    if_: Optional[ContextString] = Field(None, alias="if", description="A")
+    if_: Optional[EvalString] = Field(None, alias="if", description="A EvalString that must evaluate to true for the alert to fire")
     destinations: List[DestinationField] = []
