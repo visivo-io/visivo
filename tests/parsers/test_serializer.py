@@ -1,7 +1,6 @@
-from trace import Trace
-from visivo.models.base.parent_model import ParentModel
 from visivo.models.chart import Chart
 from visivo.models.selector import Selector
+from visivo.models.trace import Trace
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
     DashboardFactory,
@@ -133,8 +132,6 @@ def test_Serializer_with_refs_does_not_change_original():
     project = ProjectFactory(chart_ref=True, charts=[chart], traces=[trace])
     project.dashboards[0].rows[0].items[0].chart = "ref(chart_name)"
     Serializer(project=project).dereference()
-    # project.show_dag()
-    # breakpoint()
     assert len(project.descendants_of_type(type=Chart)) == 1
     assert len(project.descendants_of_type(type=Trace)) == 1
 

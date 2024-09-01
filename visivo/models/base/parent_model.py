@@ -153,12 +153,11 @@ class ParentModel(ABC):
 
         return list(filter(name_match, objects))
 
-
     def show_dag(self, dag=None):
         dag = self.dag()
 
         import plotly.graph_objects as go
-        from networkx import random_layout 
+        from networkx import random_layout
 
         pos = random_layout(dag)
         edge_x = []
@@ -178,17 +177,17 @@ class ParentModel(ABC):
                 dict(
                     ax=x0,
                     ay=y0,
-                    axref='x',
-                    ayref='y',
+                    axref="x",
+                    ayref="y",
                     x=x1,
                     y=y1,
-                    xref='x',
-                    yref='y',
+                    xref="x",
+                    yref="y",
                     showarrow=True,
                     arrowhead=2,
                     arrowsize=1,
                     arrowwidth=1,
-                    arrowcolor='#888'
+                    arrowcolor="#888",
                 )
             )
 
