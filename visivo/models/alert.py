@@ -4,6 +4,7 @@ from pydantic import Field
 
 from visivo.models.base.eval_string import EvalString
 from visivo.models.destinations.fields import DestinationField
+from visivo.models.test_run import TestRun
 from .base.named_model import NamedModel
 
 
@@ -25,3 +26,7 @@ alerts:
 class Alert(NamedModel):
     if_: Optional[EvalString] = Field(None, alias="if", description="A EvalString that must evaluate to true for the alert to fire")
     destinations: List[DestinationField] = []
+
+    def alert(self, test_run: TestRun):
+        for destination in self.destinations:
+            destination.alert(test_run=test_run)

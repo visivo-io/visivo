@@ -107,10 +107,10 @@ class ParentModel(ABC):
             )
         )
 
-    def descendants_of_type(self, type):
-        return ParentModel.all_descendants_of_type(
-            type=type, dag=self.dag(), from_node=self
-        )
+    def descendants_of_type(self, type, dag=None):
+        if not dag:
+            dag = self.dag()
+        return ParentModel.all_descendants_of_type(type=type, dag=dag, from_node=self)
 
     @staticmethod
     def all_descendants_with_name(name: str, dag, from_node=None):
@@ -153,19 +153,93 @@ class ParentModel(ABC):
 
         return list(filter(name_match, objects))
 
-    @staticmethod
-    def show_dag(dag):
-        import matplotlib.pyplot as pyplot
-        from networkx import spring_layout, draw_networkx
 
-        options = {}
-        pos = spring_layout(dag)
-        draw_networkx(dag, pos, **options)
+    def show_dag(self, dag=None):
+        dag = self.dag()
 
-        ax = pyplot.gca()
-        ax.margins(0.20)
-        pyplot.axis("off")
-        pyplot.show()
+        import plotly.graph_objects as go
+        from networkx import random_layout 
+
+        pos = random_layout(dag)
+        edge_x = []
+        edge_y = []
+        edge_annotations = []
+
+        for edge in dag.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+            edge_annotations.append(
+                dict(
+                    ax=x0,
+                    ay=y0,
+                    axref='x',
+                    ayref='y',
+                    x=x1,
+                    y=y1,
+                    xref='x',
+                    yref='y',
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=1,
+                    arrowwidth=1,
+                    arrowcolor='#888'
+                )
+            )
+
+        edge_trace = go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            line=dict(width=0.5, color="#888"),
+            hoverinfo="none",
+            mode="lines",
+        )
+
+        node_x = []
+        node_y = []
+        node_text = []
+        for node in dag.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(str(node))
+
+        node_trace = go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers+text",
+            hoverinfo="text",
+            text=node_text,
+            marker=dict(
+                showscale=True,
+                colorscale="YlGnBu",
+                size=10,
+                colorbar=dict(
+                    thickness=15,
+                    title="Node Connections",
+                    xanchor="left",
+                    titleside="right",
+                ),
+            ),
+        )
+
+        fig = go.Figure(
+            data=[edge_trace, node_trace],
+            layout=go.Layout(
+                showlegend=False,
+                hovermode="closest",
+                margin=dict(b=20, l=5, r=5, t=40),
+                xaxis=dict(showgrid=False, zeroline=False),
+                yaxis=dict(showgrid=False, zeroline=False),
+                annotations=edge_annotations,
+            ),
+        )
+        fig.show()
 
     def __get_dereferenced_item(self, name, dag, root, item, parent_item):
         dereferenced_items = ParentModel.all_descendants_with_name(

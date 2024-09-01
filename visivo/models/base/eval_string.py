@@ -38,7 +38,7 @@ class EvalString:
             )
         )
 
-    def evaluate(self) -> Any:
+    def evaluate(self, project, output_dir) -> Any:
         operators = {
             ast.Add: op.add,
             ast.Sub: op.sub,
@@ -121,7 +121,7 @@ class EvalString:
                 return value
             str_value = str(value)
             if not (str_value.startswith(">{") and str_value.endswith("}")):
-                raise ValueError("ContextString must start with '>{' and end with '}'")
+                raise ValueError("EvalString must start with '>{' and end with '}'")
             return cls(str_value)
 
         return core_schema.no_info_after_validator_function(

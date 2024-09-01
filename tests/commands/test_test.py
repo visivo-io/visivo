@@ -5,7 +5,7 @@ from visivo.commands.test import test
 from visivo.models.test import Test
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
-from tests.factories.model_factories import ProjectFactory
+from tests.factories.model_factories import AlertFactory, ProjectFactory
 from tests.support.utils import temp_folder, temp_yml_file
 from tests.factories.model_factories import DestinationFactory
 
@@ -31,7 +31,7 @@ def test_test_failure():
     output_dir = temp_folder()
     project = ProjectFactory()
     project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [
-        Test(logic="assert_that(False).is_true()")
+        Test(assertions=[">{ False }"])
     ]
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
@@ -53,7 +53,7 @@ def test_test_failure():
 
 def test_test_alert():
     output_dir = temp_folder()
-    alert = DestinationFactory()
+    alert = AlertFactory()
     project = ProjectFactory(alerts=[alert])
     create_file_database(url=project.targets[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
@@ -61,7 +61,7 @@ def test_test_alert():
     )
     working_dir = os.path.dirname(tmp)
     response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-t", "target", "-a", alert.name]
+        test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
     )
     assert "tests run" in response.output
     assert "Console Destination Run" in response.output

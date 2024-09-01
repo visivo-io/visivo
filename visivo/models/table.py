@@ -86,14 +86,6 @@ class Table(SelectorModel, NamedModel, ParentModel):
     def child_items(self):
         return self.traces + [self.selector]
 
-    @property
-    def trace_objs(self) -> List[Trace]:
-        return list(filter(Trace.is_obj, self.traces))
-
-    @property
-    def trace_refs(self) -> List[str]:
-        return list(filter(Trace.is_ref, self.traces))
-
     @model_validator(mode="before")
     @classmethod
     def validate_column_defs(cls, data: any):

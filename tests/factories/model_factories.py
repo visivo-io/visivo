@@ -1,4 +1,5 @@
 import factory
+from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
 from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -23,8 +24,18 @@ class DestinationFactory(factory.Factory):
     class Meta:
         model = ConsoleDestination
 
-    name = "alert"
+    name = "destination"
     type = "console"
+
+
+class AlertFactory(factory.Factory):
+    class Meta:
+        model = Alert
+
+    name = "alert"
+    destinations = factory.List(
+        [factory.SubFactory(DestinationFactory) for _ in range(1)]
+    )
 
 
 class SnowflakeTargetFactory(factory.Factory):

@@ -43,11 +43,3 @@ class Chart(SelectorModel, NamedModel, ParentModel):
         None,
         description="The layout attribute of the chart accepts any valid plotly layout configurations.",
     )
-
-    @property
-    def trace_objs(self) -> List[Trace]:
-        return list(filter(Trace.is_obj, self.traces))
-
-    @property
-    def trace_refs(self) -> List[str]:
-        return list(filter(Trace.is_ref, self.traces))

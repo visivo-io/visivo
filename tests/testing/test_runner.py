@@ -22,10 +22,8 @@ def test_TestQueryStringFactory_errors(capsys):
         },
         "model": {"sql": "select * from test_table", "target": "ref(target)"},
         "tests": [
-            {"logic": "assert_that(numpy.sum(trace.props.x)).is_equal_to(1)"},
-            {
-                "logic": "assert_that(numpy.all(numpy.asarray(trace.props.x) < 7)).is_true()"
-            },
+            {"assertions": [">{ sum( ${ trace.props.x } ) == 1 }"]},
+            {"assertions": [">{ all( ${ trace.props.x } ) < 7 }"]},
         ],
     }
     trace = Trace(**data)
@@ -52,5 +50,5 @@ def test_TestQueryStringFactory_errors(capsys):
         "two_test_trace.test[0]: Expected <21> to be equal to <1>, but was not."
         in captured.out
     )
-    assert "two_test_trace[1]:" not in captured.out
+    assert "two_test_trace.test[1]:" not in captured.out
     assert alert.called

@@ -4,6 +4,7 @@ from pydantic import Field
 
 from visivo.models.alert import Alert
 from visivo.models.base.context_string import ContextString
+from visivo.models.base.eval_string import EvalString
 from .base.base_model import BaseModel
 
 """
@@ -37,9 +38,9 @@ class OnFailureEnum(str, Enum):
 
 
 class Test(BaseModel):
-    if_: Optional[ContextString] = Field(None, alias="if")
+    if_: Optional[EvalString] = Field(None, alias="if")
     on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
-    assertions: List[ContextString] = Field(None)
+    assertions: List[EvalString] = Field(None)
     alerts: List[Alert] = Field([], description="Alerts that will be triggered")
 
     __test__ = False

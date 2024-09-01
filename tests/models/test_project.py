@@ -31,12 +31,6 @@ def test_Project_simple_data():
     assert project.name == "development"
 
 
-def test_Project_find_target():
-    target = TargetFactory()
-    project = Project(targets=[target])
-    assert project.find_target(name=target.name) == target
-
-
 def test_Project_validate_project_trace_refs():
     ref = "ref(trace_name)"
     chart = ChartFactory(traces=[ref])
@@ -65,7 +59,7 @@ def test_Project_validate_project_trace_refs():
     }
     project = Project(**data)
     assert project.traces[0].name == "trace_name"
-    assert project.dashboards[0].all_traces[0] == "ref(trace_name)"
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0]== "ref(trace_name)"
 
 
 def test_Project_validate_chart_refs():
@@ -186,7 +180,7 @@ def test_Project_validate_default_target_does_not_exists():
 
 
 def test_Project_validate_default_alerts_exists():
-    alert = DestinationFactory()
+    alert = AlertFactory()
     data = {
         "name": "development",
         "alerts": [alert],

@@ -1,4 +1,5 @@
 from pydantic import Field
+from tests.factories.model_factories import ProjectFactory
 from visivo.models.base.context_string import ContextString
 from visivo.models.base.base_model import BaseModel
 import pytest
@@ -37,27 +38,29 @@ def test_EvalString_as_field():
 
 
 def test_evaluate():
-    # Test basic arithmetic
+    project = ProjectFactory()
+    output_dir = "tmp"
+
     es = EvalString(">{ True }")
-    assert es.evaluate() == True
+    assert es.evaluate(project, output_dir) == True
 
     es = EvalString(">{ 2 + 3 * 4 }")
-    assert es.evaluate() == 14
+    assert es.evaluate(project, output_dir) == 14
 
     es = EvalString(">{ 5 > 3 and 2 <= 2 }")
-    assert es.evaluate() == True
+    assert es.evaluate(project, output_dir) == True
 
     es = EvalString(">{ any_test_failed() }")
-    assert es.evaluate() == False
+    assert es.evaluate(project, output_dir) == False
 
     es = EvalString(">{ any_test_failed() == False }")
-    assert es.evaluate() == True
+    assert es.evaluate(project, output_dir) == True
 
     es = EvalString(">{ env.ENVIRONMENT == 'PRODUCTION' }")
-    assert es.evaluate() == False
+    assert es.evaluate(project, output_dir) == False
 
     with pytest.raises(ValueError):
-        EvalString(">{ unsupported_function() }").evaluate()
+        EvalString(">{ unsupported_function() }").evaluate(project, output_dir)
 
     with pytest.raises(ValueError):
-        EvalString(">{ 1 + 'string' }").evaluate()
+        EvalString(">{ 1 + 'string' }").evaluate(project, output_dir)
