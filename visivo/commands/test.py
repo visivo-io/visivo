@@ -20,6 +20,5 @@ def test(output_dir, working_dir, target):
         default_target=target,
         output_dir=output_dir,
         working_dir=working_dir,
-        alert_names=alert,
     )
     Logger.instance().success("Done")

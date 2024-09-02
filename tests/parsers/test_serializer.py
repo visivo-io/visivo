@@ -152,7 +152,7 @@ def test_Serializer_with_item_selector():
             RowFactory(
                 items=[
                     ItemFactory(chart="ref(chart_name_1)"),
-                    ItemFactory(chart="ref(chart_name_2)"),
+                    ItemFactory(name="item_2", chart="ref(chart_name_2)"),
                 ]
             )
         ]
@@ -175,7 +175,7 @@ def test_Serializer_with_multiple_use_of_same_ref():
     trace = TraceFactory(name="trace_name", model="ref(model_name)")
     chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])
     item_1 = ItemFactory(chart="ref(chart_name)")
-    item_2 = ItemFactory(chart="ref(chart_name)")
+    item_2 = ItemFactory(name="item_2", chart="ref(chart_name)")
     row = RowFactory(items=[item_1, item_2])
     dashboard = DashboardFactory(rows=[row])
     project = ProjectFactory(

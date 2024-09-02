@@ -16,6 +16,7 @@ def test_run_phase():
     project = ProjectFactory(defaults=Defaults(target_name="target"))
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
     additional_dashboard = DashboardFactory(name="Other Dashboard")
+    additional_dashboard.rows[0].items[0].name = "Additional Item"
     additional_dashboard.rows[0].items[
         0
     ].chart.selector.name = "Additional Chart Selector"

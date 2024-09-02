@@ -1,3 +1,4 @@
+from visivo.models.base.named_model import NamedModel
 from .base.base_model import BaseModel
 from .base.parent_model import ParentModel
 from pydantic import Field
@@ -13,13 +14,10 @@ class HeightEnum(str, Enum):
     large = "large"
 
 
-class Row(BaseModel, ParentModel):
+class Row(NamedModel, ParentModel):
     """
     Rows are the horizontal component of the dashboard grid and house 1 to many Items.
     """
-
-    def id(self):
-        return f"Row - {','.join(list(map(lambda i: i.id(), self.items)))}"
 
     height: HeightEnum = Field(
         HeightEnum.medium, description="Sets the height of the row."

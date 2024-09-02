@@ -16,6 +16,7 @@ def test_filtered_dashboard():
     output_dir = temp_folder()
     project = ProjectFactory(defaults=Defaults(target_name="target"))
     additional_dashboard = DashboardFactory(name="Other Dashboard")
+    additional_dashboard.rows[0].items[0].name = "Additional Item"
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
     additional_dashboard.rows[0].items[
         0

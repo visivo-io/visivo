@@ -38,6 +38,10 @@ class EvalString:
             )
         )
 
+    def get_references(self) -> List[str]:
+        references = map(lambda c: c.get_references(), self.get_context_strings())
+        return [ref for sublist in references for ref in sublist]
+
     def evaluate(self, project, output_dir) -> Any:
         operators = {
             ast.Add: op.add,

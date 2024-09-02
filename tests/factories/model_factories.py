@@ -178,6 +178,7 @@ class ItemFactory(factory.Factory):
     width = 1
     chart = factory.SubFactory(ChartFactory)
     table = None
+    name = "item"
 
     class Params:
         model_ref = factory.Trait(

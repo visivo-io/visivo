@@ -8,6 +8,7 @@ from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.models.chart import Chart
 from ..factories.model_factories import (
+    AlertFactory,
     DefaultsFactory,
     ItemFactory,
     SelectorFactory,
@@ -59,7 +60,7 @@ def test_Project_validate_project_trace_refs():
     }
     project = Project(**data)
     assert project.traces[0].name == "trace_name"
-    assert project.dashboards[0].rows[0].items[0].chart.traces[0]== "ref(trace_name)"
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0] == "ref(trace_name)"
 
 
 def test_Project_validate_chart_refs():
@@ -222,6 +223,16 @@ def test_Project_validate_table_single():
         == f"Value error, Table with name 'Table' has a selector with a 'multiple' type.  This is not permitted."
     )
     assert error["type"] == "value_error"
+
+
+def test_Project_validate_set_names_on_named_models():
+    data = {"tables": [{}]}
+    project = Project(**data)
+    assert project.tables[0].name == "project.tables[0]"
+
+    data = {"name": "project name", "tables": [{}]}
+    project = Project(**data)
+    assert project.tables[0].name == "project.tables[0]"
 
 
 def test_simple_Project_dag():

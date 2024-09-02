@@ -3,9 +3,9 @@ from typing import List, Optional
 from pydantic import Field
 
 from visivo.models.alert import Alert
-from visivo.models.base.context_string import ContextString
 from visivo.models.base.eval_string import EvalString
-from .base.base_model import BaseModel
+from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
 
 """
 Tests allow you to assert on the computed values that are the output of a trace.  The tests are run with the `visivo test` command.
@@ -37,10 +37,15 @@ class OnFailureEnum(str, Enum):
     continue_ = "continue"
 
 
-class Test(BaseModel):
+class Test(NamedModel, ParentModel):
     if_: Optional[EvalString] = Field(None, alias="if")
     on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
     assertions: List[EvalString] = Field(None)
     alerts: List[Alert] = Field([], description="Alerts that will be triggered")
 
     __test__ = False
+
+    def child_items(self):
+        references = list(map(lambda a: a.get_references(), self.assertions))
+        references = [item for sublist in references for item in sublist]
+        return references
