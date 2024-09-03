@@ -225,14 +225,14 @@ def test_Project_validate_table_single():
     assert error["type"] == "value_error"
 
 
-def test_Project_validate_set_names_on_named_models():
+def test_Project_validate_set_path_on_named_models():
     data = {"tables": [{}]}
     project = Project(**data)
-    assert project.tables[0].name == "project.tables[0]"
+    assert project.tables[0].path == "project.tables[0]"
 
     data = {"name": "project name", "tables": [{}]}
     project = Project(**data)
-    assert project.tables[0].name == "project.tables[0]"
+    assert project.tables[0].path == "project.tables[0]"
 
 
 def test_simple_Project_dag():

@@ -116,8 +116,7 @@ class Project(NamedModel, ParentModel):
     def set_names_on_named_models(cls, values):
         def set_name_recursively(obj, path=""):
             if isinstance(obj, dict):
-                if "name" not in obj:
-                    obj["name"] = path
+                obj["path"] = path
                 for key, value in obj.items():
                     if key not in ["props", "defaults"]:
                         new_path = f"{path}.{key}" if path else key
