@@ -42,7 +42,9 @@ def compile_phase(
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
-        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
+        fp.write(
+            serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
+        )
 
     dag = project.dag()
     for trace in project.filter_traces(name_filter=name_filter):

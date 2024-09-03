@@ -32,8 +32,9 @@ class Runner:
 
     def run(self):
         test_run = TestRun()
-        # TODO This is going to need to go off the tests, determine which traces they reference, and run those traces.
+        alerts = []
         for test in enumerate(self.tests):
+            alerts.append(test.alerts)
             for assertion in test.assertions:
                 try:
                     assertion.evaluate(self.project, self.output_dir)
@@ -48,7 +49,7 @@ class Runner:
         click.echo("")
         click.echo(test_run.summary())
 
-        for alert in self.alerts:
+        for alert in set(alerts):
             alert.alert(test_run=test_run)
 
         return test_run

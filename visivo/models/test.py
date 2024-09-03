@@ -47,5 +47,5 @@ class Test(NamedModel, ParentModel):
 
     def child_items(self):
         references = list(map(lambda a: a.get_references(), self.assertions))
-        references = [item for sublist in references for item in sublist]
-        return references
+        refrencese = [item for sublist in references for item in sublist]
+        return re

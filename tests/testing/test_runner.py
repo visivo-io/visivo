@@ -1,7 +1,7 @@
 from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.models.trace import Trace
 from ..factories.model_factories import (
-    DestinationFactory,
+    AlertFactory,
     ProjectFactory,
 )
 
@@ -27,6 +27,7 @@ def test_TestQueryStringFactory_errors(capsys):
         ],
     }
     trace = Trace(**data)
+    tests = trace.tests
 
     output_dir = temp_folder()
     folders = f"{output_dir}/two_test_trace"
@@ -36,14 +37,13 @@ def test_TestQueryStringFactory_errors(capsys):
     json_file.write(json.dumps(data))
     json_file.close()
 
-    alert = DestinationFactory()
-    project = ProjectFactory(traces=[trace], dashboards=[])
+    alert = AlertFactory()
+    project = ProjectFactory(traces=[trace], dashboards=[DashboardFactory()])
 
     Runner(
-        traces=[trace],
+        tests=tests,
         project=project,
         output_dir=output_dir,
-        alerts=[alert],
     ).run()
     captured = capsys.readouterr()
     assert (
