@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from visivo.models.alert import Alert
+from visivo.models.base.base_model import BaseModel
 from visivo.models.base.eval_string import EvalString
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
@@ -45,7 +46,14 @@ class Test(NamedModel, ParentModel):
 
     __test__ = False
 
+    @model_validator(mode="after")
+    def set_parent_test(self):
+        for alert in self.alerts:
+            if BaseModel.is_obj(alert):
+                alert.set_parent_test(self.path)
+        return self
+
     def child_items(self):
         references = list(map(lambda a: a.get_references(), self.assertions))
-        refrencese = [item for sublist in references for item in sublist]
-        return re
+        references = [item for sublist in references for item in sublist]
+        return references

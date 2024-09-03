@@ -24,30 +24,31 @@ class Runner:
         dag: Any,
         default_target: str = None,
     ):
-        self.project = project
         self.tests = tests
-        self.default_target = default_target
+        self.project = project
         self.output_dir = output_dir
         self.dag = dag
+        self.default_target = default_target
 
     def run(self):
         test_run = TestRun()
-        alerts = []
-        for test in enumerate(self.tests):
-            alerts.append(test.alerts)
+        for test in self.tests:
             for assertion in test.assertions:
                 try:
                     assertion.evaluate(self.project, self.output_dir)
                     click.echo(click.style(".", fg="green"), nl=False)
-                    success = TestSuccess(test_id=test.name)
+                    success = TestSuccess(test_id=test.id())
                     test_run.add_success(success=success)
                 except Exception as e:
-                    failure = TestFailure(test_id=test.name, message=str(e))
+                    failure = TestFailure(test_id=test.id(), message=str(e))
                     click.echo(click.style("F", fg="red"), nl=False)
                     test_run.add_failure(failure=failure)
         test_run.finished_at = datetime.now()
         click.echo("")
         click.echo(test_run.summary())
+
+        alerts = []
+        # TODO: Alerts will need determined from the tests that are run.
 
         for alert in set(alerts):
             alert.alert(test_run=test_run)

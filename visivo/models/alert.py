@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 
 from visivo.models.base.eval_string import EvalString
 from visivo.models.destinations.fields import DestinationField
@@ -24,8 +24,17 @@ alerts:
 
 
 class Alert(NamedModel):
-    if_: Optional[EvalString] = Field(None, alias="if", description="A EvalString that must evaluate to true for the alert to fire")
+    if_: Optional[EvalString] = Field(
+        None,
+        alias="if",
+        description="A EvalString that must evaluate to true for the alert to fire",
+    )
     destinations: List[DestinationField] = []
+
+    _parent_test: str = PrivateAttr(default=None)
+
+    def set_parent_test(self, value: str):
+        self._parent_test = value
 
     def alert(self, test_run: TestRun):
         for destination in self.destinations:

@@ -2,6 +2,7 @@ from visivo.models.targets.sqlite_target import SqliteTarget
 from visivo.models.trace import Trace
 from ..factories.model_factories import (
     AlertFactory,
+    DashboardFactory,
     ProjectFactory,
 )
 
@@ -22,8 +23,8 @@ def test_TestQueryStringFactory_errors(capsys):
         },
         "model": {"sql": "select * from test_table", "target": "ref(target)"},
         "tests": [
-            {"assertions": [">{ sum( ${ trace.props.x } ) == 1 }"]},
-            {"assertions": [">{ all( ${ trace.props.x } ) < 7 }"]},
+            {"name": "test1", "assertions": [">{ sum( ${ trace.props.x } ) == 1 }"]},
+            {"name": "test2", "assertions": [">{ all( ${ trace.props.x } ) < 7 }"]},
         ],
     }
     trace = Trace(**data)
@@ -39,11 +40,12 @@ def test_TestQueryStringFactory_errors(capsys):
 
     alert = AlertFactory()
     project = ProjectFactory(traces=[trace], dashboards=[DashboardFactory()])
-
+    dag = project.dag()
     Runner(
         tests=tests,
         project=project,
         output_dir=output_dir,
+        dag=dag,
     ).run()
     captured = capsys.readouterr()
     assert (

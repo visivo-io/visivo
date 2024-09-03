@@ -52,7 +52,7 @@ class ModelStrDiscriminator:
 class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    path: Optional[str] = Field(None, description="A unique path to this object.")
+    path: Optional[str] = Field(None, description="A unique path to this object")
 
     def id(self):
         return self.path
