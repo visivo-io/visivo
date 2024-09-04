@@ -101,7 +101,6 @@ const CohortSelect = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(options), isMulti])
 
-
     const onSelectChange = (selectedOptions) => {
         setSearchParams((previousSearchParams) => {
             return generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions, alwaysPushSelectionToUrl)
@@ -124,17 +123,24 @@ const CohortSelect = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
 
-    useEffect(() => {
-        if (defaultOptions && alwaysPushSelectionToUrl) {
-            onSelectChange(defaultOptions)
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const selectedOptions = useMemo(() => {
+        return getOptionsFromValues(selectedCohortNames);
+    }, [selectedCohortNames]);
 
     return (
         <>
             {showLabel && <label htmlFor={`traceSelect${name}`}>Traces</label>}
-            {visible && <Select data-testid="selector" name="traceSelect" inputId={`traceSelect${name}`} options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
+            {visible && (
+                <Select
+                    data-testid="selector"
+                    name="traceSelect"
+                    inputId={`traceSelect${name}`}
+                    options={options}
+                    value={selectedOptions}
+                    isMulti={isMulti}
+                    onChange={onSelectChange}
+                />
+            )}
         </>
     )
 }

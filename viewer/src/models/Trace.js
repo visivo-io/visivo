@@ -11,7 +11,7 @@ export const cohortNamesInData = (tracesData) => {
         return Object.keys(tracesData[traceName]).map((cohortName) => {
             return cohortName
         })
-    }).flat()
+    }).flat().sort()
 }
 
 const convertDotKeysToNestedObject = (flatObject) => {
