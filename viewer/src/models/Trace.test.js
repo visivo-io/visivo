@@ -1,4 +1,4 @@
-import { chartDataFromCohortData, replaceColumnRefWithData } from './Trace';
+import { chartDataFromCohortData, replaceColumnRefWithData, cohortNamesInData } from './Trace';
 
 const exampleData = {
   "traceName": {
@@ -88,5 +88,17 @@ test('cleaned indicator data', async () => {
     "x": exampleData["traceName"]["cohortName"]["columns.x_data"][0],
     "text": exampleData["traceName"]["cohortName"]["props.text"]
   })
+})
+
+test('cohort names in data', async () => {
+
+  const exampleData = {
+    "traceName": {
+      "a": {},
+      "z": {}
+    }
+  }
+  const cohortNames = cohortNamesInData(exampleData)
+  expect(cohortNames).toEqual(["a", "z"])
 })
 
