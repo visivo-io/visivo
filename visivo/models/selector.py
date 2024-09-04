@@ -40,8 +40,11 @@ class Selector(ParentModel, NamedModel, BaseModel):
     type: SelectorType = Field(
         SelectorType.multiple, description="Single or multiple selector"
     )
-    options: List[RefString] = Field(
-        [], description="Optional to set the traces to create the choices list"
+    traces: List[RefString] = Field(
+        [], description="Optional set of traces to create the choices list"
+    )
+    rows: List[RefString] = Field(
+        [], description="Optional set of rowsto create the choices list"
     )
 
     _parent_name: str = PrivateAttr()
