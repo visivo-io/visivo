@@ -73,7 +73,8 @@ export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) =>
 
 export const chartDataFromCohortData = (cohortData, trace, cohortName) => {
     const traceDatum = convertDotKeysToNestedObject(cohortData)
+    const duplicatedProps = structuredClone(trace.props)
 
-    return mergeStaticPropertiesAndData(trace.props, traceDatum, cohortName)
+    return mergeStaticPropertiesAndData(duplicatedProps, traceDatum, cohortName)
 }
 

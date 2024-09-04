@@ -136,13 +136,14 @@ const CohortSelect = ({
     }, [searchParams, selector, JSON.stringify(defaultOptions)])
 
     useEffect(() => {
-        onChange(generateNewTraceDataFromSelection(tracesData, selectedCohortNames))
+        const newTraceData = generateNewTraceDataFromSelection(tracesData, selectedCohortNames)
+        onChange(newTraceData)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
 
     const selectedOptions = useMemo(() => {
         return getOptionsFromValues(selectedCohortNames);
-    }, [selectedCohortNames]);
+    }, [JSON.stringify(selectedCohortNames)]);
 
     return (
         <>
