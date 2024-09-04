@@ -107,6 +107,23 @@ const CohortSelect = ({
         })
     }
 
+    useEffect(() => {
+        if (alwaysPushSelectionToUrl) {
+            setSearchParams((previousSearchParams) => {
+                const newSearchParams = new URLSearchParams(previousSearchParams);
+                if (!newSearchParams.has(name)) {
+                    if (Array.isArray(defaultOptions)) {
+                        newSearchParams.set(name, defaultOptions.map(option => option.value).join(','));
+                    } else if (defaultOptions) {
+                        newSearchParams.set(name, defaultOptions.value);
+                    }
+                }
+                return newSearchParams;
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const selectedCohortNames = useMemo(() => {
         if (searchParams.has(name)) {
             return searchParams.get(name).split(",")
