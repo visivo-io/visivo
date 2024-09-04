@@ -101,12 +101,28 @@ const CohortSelect = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(options), isMulti])
 
-
     const onSelectChange = (selectedOptions) => {
         setSearchParams((previousSearchParams) => {
             return generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions, alwaysPushSelectionToUrl)
         })
     }
+
+    useEffect(() => {
+        if (alwaysPushSelectionToUrl) {
+            setSearchParams((previousSearchParams) => {
+                const newSearchParams = new URLSearchParams(previousSearchParams);
+                if (!newSearchParams.has(name)) {
+                    if (Array.isArray(defaultOptions)) {
+                        newSearchParams.set(name, defaultOptions.map(option => option.value).join(','));
+                    } else if (defaultOptions) {
+                        newSearchParams.set(name, defaultOptions.value);
+                    }
+                }
+                return newSearchParams;
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const selectedCohortNames = useMemo(() => {
         if (searchParams.has(name)) {
@@ -120,21 +136,30 @@ const CohortSelect = ({
     }, [searchParams, selector, JSON.stringify(defaultOptions)])
 
     useEffect(() => {
-        onChange(generateNewTraceDataFromSelection(tracesData, selectedCohortNames))
+        const newTraceData = generateNewTraceDataFromSelection(tracesData, selectedCohortNames)
+        onChange(newTraceData)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
 
-    useEffect(() => {
-        if (defaultOptions) {
-            onSelectChange(defaultOptions)
-        }
+    const selectedOptions = useMemo(() => {
+        return getOptionsFromValues(selectedCohortNames);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [JSON.stringify(selectedCohortNames)]);
 
     return (
         <>
             {showLabel && <label htmlFor={`traceSelect${name}`}>Traces</label>}
-            {visible && <Select data-testid="selector" name="traceSelect" inputId={`traceSelect${name}`} options={options} defaultValue={getOptionsFromValues(selectedCohortNames)} isMulti={isMulti} onChange={onSelectChange} />}
+            {visible && (
+                <Select
+                    data-testid="selector"
+                    name="traceSelect"
+                    inputId={`traceSelect${name}`}
+                    options={options}
+                    value={selectedOptions}
+                    isMulti={isMulti}
+                    onChange={onSelectChange}
+                />
+            )}
         </>
     )
 }
