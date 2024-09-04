@@ -143,6 +143,7 @@ const CohortSelect = ({
 
     const selectedOptions = useMemo(() => {
         return getOptionsFromValues(selectedCohortNames);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
 
     return (
