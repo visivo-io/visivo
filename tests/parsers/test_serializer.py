@@ -172,8 +172,8 @@ def test_Serializer_with_multiple_use_of_same_ref():
     model = SqlModelFactory(name="model_name")
     trace = TraceFactory(name="trace_name", model="ref(model_name)")
     chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])
-    item_1 = ItemFactory(chart="ref(chart_name)")
-    item_2 = ItemFactory(chart="ref(chart_name)")
+    item_1 = ItemFactory(chart="ref(chart_name)", name="item_1")
+    item_2 = ItemFactory(chart="ref(chart_name)", name="item_2")
     row = RowFactory(items=[item_1, item_2])
     dashboard = DashboardFactory(rows=[row])
     project = ProjectFactory(

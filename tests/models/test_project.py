@@ -51,7 +51,7 @@ def test_Project_validate_project_trace_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+        == f'The reference "ref(trace_name)" on item "chart" does not point to an object.'
     )
     assert error["type"] == "bad_reference"
 
@@ -79,7 +79,7 @@ def test_Project_validate_chart_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+        == f'The reference "ref(trace_name)" on item "chart" does not point to an object.'
     )
     assert error["type"] == "bad_reference"
 
@@ -308,12 +308,16 @@ def test_ref_selector_item_Project_dag():
 
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
+    project.dashboards[0].rows[0].items[0].name = "item"
 
     with pytest.raises(ValueError) as exc_info:
         # It is an incomplete reference from the level of dashboards.
         project.dashboards[0].descendants()
 
-    assert 'The reference "ref(table_name)" on item "Item -' in str(exc_info.value)
+    assert (
+        'The reference "ref(table_name)" on item "item" does not point to an object.'
+        in str(exc_info.value)
+    )
 
 
 def test_sub_dag_including_dashboard_name_Project_dag():
