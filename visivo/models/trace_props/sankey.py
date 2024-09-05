@@ -222,9 +222,9 @@ class SankeyLink(TracePropsAttribute):
         None,
         description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the source node. """,
     )
-    source: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
+    target: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
-        description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the source node. """,
+        description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the target node. """,
     )
     value: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,

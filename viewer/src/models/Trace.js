@@ -11,7 +11,7 @@ export const cohortNamesInData = (tracesData) => {
         return Object.keys(tracesData[traceName]).map((cohortName) => {
             return cohortName
         })
-    }).flat()
+    }).flat().sort()
 }
 
 const convertDotKeysToNestedObject = (flatObject) => {
@@ -73,7 +73,8 @@ export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) =>
 
 export const chartDataFromCohortData = (cohortData, trace, cohortName) => {
     const traceDatum = convertDotKeysToNestedObject(cohortData)
+    const duplicatedProps = JSON.parse(JSON.stringify(trace.props))
 
-    return mergeStaticPropertiesAndData(trace.props, traceDatum, cohortName)
+    return mergeStaticPropertiesAndData(duplicatedProps, traceDatum, cohortName)
 }
 

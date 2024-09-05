@@ -1,7 +1,7 @@
 import Loading from "../Loading";
 import Menu from "./Menu"
 import Plot from 'react-plotly.js';
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import CohortSelect from "./CohortSelect";
 import { traceNamesInData, chartDataFromCohortData } from "../../models/Trace";
 import { useTracesData } from "../../hooks/useTracesData";
@@ -16,16 +16,21 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
 
     const [selectedCohortData, setSelectedCohortData] = useState([])
 
+    const selectedPlotData = useMemo(() => {
+        return traceNamesInData(selectedCohortData).map((traceName) => {
+            const trace = chart.traces.find((trace) => trace.name === traceName)
+            return Object.keys(selectedCohortData[traceName]).map((cohortName) => {
+                const chartData = chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
+                return chartData
+            })
+        }).flat();
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [JSON.stringify(selectedCohortData), JSON.stringify(chart.traces)]);
+
     if (!tracesData) {
         return <Loading text={chart.name} width={itemWidth} />
     }
-
-    const selectedPlotData = traceNamesInData(selectedCohortData).map((traceName) => {
-        const trace = chart.traces.find((trace) => trace.name === traceName)
-        return Object.keys(selectedCohortData[traceName]).map((cohortName) => {
-            return chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
-        })
-    }).flat();
 
     const onSelectedCohortChange = (changedSelectedTracesData) => {
         setSelectedCohortData(changedSelectedTracesData)
