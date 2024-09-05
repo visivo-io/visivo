@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import CohortSelect, { generateNewSearchParams, generateNewTraceDataFromSelection } from './CohortSelect'
+import CohortSelect, { generateNewTraceDataFromSelection } from './CohortSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
@@ -24,7 +24,7 @@ test('renders without selector', async () => {
     parentType={"table"}
     onChange={onChange} />, { wrapper: withProviders });
 
-  const selectWrapper = screen.getByLabelText('Traces')
+  const selectWrapper = screen.getByLabelText('Selector')
   await selectEvent.select(selectWrapper, 'Cohort Name 1')
 
   await waitFor(() => {
@@ -50,7 +50,7 @@ test('renders single select', async () => {
     selector={{ type: "single", name: "selector" }}
     onChange={onChange} />, { wrapper: withProviders });
 
-  const selectWrapper = screen.getByLabelText('Traces')
+  const selectWrapper = screen.getByLabelText('Selector')
   await selectEvent.select(selectWrapper, 'Cohort Name 1')
 
   await waitFor(() => {
@@ -77,7 +77,7 @@ test('renders with push to history', async () => {
       onChange={() => { }} />
   </HistoryRouter>);
 
-  const selectWrapper = screen.getByLabelText('Traces')
+  const selectWrapper = screen.getByLabelText('Selector')
   await selectEvent.select(selectWrapper, 'Cohort Name 1')
 
   await waitFor(() => {
@@ -100,7 +100,7 @@ test('renders multiselect select', async () => {
     expect(selectedTraceData).toEqual(tracesData)
   })
   expect(screen.getByText('Cohort Name 2')).toBeInTheDocument();
-  const selectWrapper = screen.getByLabelText('Traces')
+  const selectWrapper = screen.getByLabelText('Selector')
   await selectEvent.select(selectWrapper, 'Cohort Name 2')
 });
 
@@ -141,48 +141,6 @@ test('renders not visible', async () => {
   await waitFor(() => {
     expect(visible).toEqual(false)
   })
-});
-
-describe('generateNewSearchParams', () => {
-  test('selects single choice', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
-    const selectedOptions = { value: "selected", label: "selected" }
-    const defaultOptions = { value: "default", label: "default" }
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
-
-    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "selected" }))
-  });
-
-  test('selects nothing when equal to default', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
-    const selectedOptions = { value: "default", label: "default" }
-    const defaultOptions = { value: "default", label: "default" }
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
-
-    expect(newSearchParams).toEqual(new URLSearchParams({}))
-  });
-
-  test('selects multi choice', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
-    const selectedOptions = [{ value: "selected", label: "selected" }]
-    const defaultOptions = [{ value: "default", label: "default" }]
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
-
-    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "selected" }))
-  });
-
-  test('selects no choices', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
-    const selectedOptions = []
-    const defaultOptions = [{ value: "default", label: "default" }]
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
-
-    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "NoCohorts" }))
-  });
 });
 
 describe('generateNewTraceDataFromSelection', () => {

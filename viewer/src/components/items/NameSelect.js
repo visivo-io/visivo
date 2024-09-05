@@ -114,7 +114,7 @@ const NameSelect = ({
             return Array.isArray(defaultOptions) ? defaultOptions.map((ds) => ds.value) : defaultOptions.value
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, selector.name, JSON.stringify(defaultOptions)])
+    }, [searchParams, selector, JSON.stringify(defaultOptions)])
 
 
     const selectedOptions = useMemo(() => {
@@ -129,12 +129,12 @@ const NameSelect = ({
 
     return (
         <>
-            {showLabel && <label htmlFor={`nameSelect${name}`}>Names</label>}
+            {showLabel && <label htmlFor={`selector${name}`}>Selector</label>}
             {visible && (
                 <Select
-                    data-testid="name-selector"
-                    name="nameSelect"
-                    inputId={`nameSelect${name}`}
+                    data-testid="selector"
+                    name="selector"
+                    inputId={`selector${name}`}
                     options={options}
                     value={selectedOptions}
                     isMulti={isMulti}
