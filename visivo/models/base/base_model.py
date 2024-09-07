@@ -79,4 +79,6 @@ class BaseModel(PydanticBaseModel):
         return hash(self.__str__())
 
     def __str__(self):
+        if self.id() is None:
+            return self.__class__.__name__
         return self.id()

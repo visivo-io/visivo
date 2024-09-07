@@ -15,7 +15,7 @@ class HeightEnum(str, Enum):
     large = "large"
 
 
-class Row(SelectorModel, NamedModel, ParentModel):
+class Row(NamedModel, ParentModel):
     """
     Rows are the horizontal component of the dashboard grid and house 1 to many Items.
     """
@@ -29,4 +29,4 @@ class Row(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        return self.items + [self.selector]
+        return self.items

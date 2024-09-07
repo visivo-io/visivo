@@ -25,3 +25,8 @@ class NamedModel(BaseModel):
             return obj.name
         else:
             return re.match(REF_REGEX, obj).groupdict()["ref_name"]
+
+    def __str__(self):
+        if self.id() is None:
+            return self.__class__.__name__
+        return self.id()

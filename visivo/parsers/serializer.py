@@ -68,14 +68,6 @@ class Serializer:
                         type=Trace, dag=dag, from_node=item.selector, depth=1
                     )
 
-            for row in dashboard.rows:
-                if row.selector:
-                    row.selector = ParentModel.first_descendant_of_type(
-                        type=Selector, dag=dag, from_node=row, depth=1
-                    )
-                    row.selector.options = ParentModel.all_descendants(
-                        dag=dag, from_node=row.selector, depth=1
-                    )
             dashboard.for_each_item(replace_item_ref)
 
         project.charts = []
