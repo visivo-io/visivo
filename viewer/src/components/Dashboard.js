@@ -5,8 +5,10 @@ import Selector from './items/Selector.js'
 import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
+import { useSearchParams } from "react-router-dom";
 
 const Dashboard = (props) => {
+    const [searchParams] = useSearchParams();
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
             observe();
@@ -87,10 +89,14 @@ const Dashboard = (props) => {
     }
 
     const renderRow = (row, rowIndex) => {
+        if (row.selector && searchParams.has(row.selector.name)) {
+            const selectedNames = searchParams.get(row.selector.name).split(",")
+            if (!selectedNames.includes(row.name)) {
+                return null
+            }
+        }
         return (
-            <div
-                //className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} 
-                className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
+            <div className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
                 style={isColumn ? {} : getHeightStyle(row)}
                 key={`dashboardRow${rowIndex}`}
             >

@@ -7,9 +7,14 @@ class TestSelectorModel(SelectorModel):
     name: str
 
 
-def test_dumps_parent_name():
-    model = TestSelectorModel(**{"name": "name"})
+def test_dumps_parent_name_when_selector_present():
+    model = TestSelectorModel(**{"name": "name", "selector": {"name": "selector"}})
     assert '"parent_name":"name"' in model.model_dump_json()
+
+
+def test_dumps_parent_name_when_selector_present():
+    model = TestSelectorModel(**{"name": "name"})
+    assert not '"parent_name":"name"' in model.model_dump_json()
 
 
 def test_options_under_object():

@@ -38,7 +38,7 @@ class ParentModel(ABC):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
                 dag_item = item
-                if BaseModel.is_ref(item):
+                if item is None or BaseModel.is_ref(item):
                     continue
                 elif isinstance(item, DefaultSource):
                     name = root.defaults.source_name
@@ -49,6 +49,8 @@ class ParentModel(ABC):
                         item=item,
                         parent_item=parent_item,
                     )
+                if "Selector" in str(dag_item.__class__):
+                    breakpoint()
                 dag.add_edge(parent_item, dag_item)
                 if isinstance(dag_item, ParentModel):
                     self.__build_dag(
@@ -106,6 +108,15 @@ class ParentModel(ABC):
                 ParentModel.all_descendants(dag=dag, from_node=from_node, depth=depth),
             )
         )
+
+    @staticmethod
+    def first_descendant_of_type(type, dag, from_node=None, depth=None):
+        descendants = ParentModel.all_descendants_of_type(
+            type=type, dag=dag, from_node=from_node, depth=depth
+        )
+        if len(descendants) == 0:
+            return None
+        return descendants[0]
 
     def descendants_of_type(self, type):
         return ParentModel.all_descendants_of_type(

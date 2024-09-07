@@ -306,6 +306,20 @@ def test_ref_selector_item_Project_dag():
     ]
 
 
+def test_ref_selector_row_item_Project_dag():
+    project = ProjectFactory()
+    row = RowFactory()
+    row.selector = "ref(selector)"
+    project.dashboards[0].rows = [row]
+    selector = SelectorFactory(options=[row])
+    project.selectors = [selector]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 11
+    assert project.descendants_of_type(type=Selector) == project.selectors
+
+
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
     project.dashboards[0].rows[0].items[0].name = "item"

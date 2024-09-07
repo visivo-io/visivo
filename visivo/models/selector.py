@@ -36,7 +36,6 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    name: str = Field(description="The name of the selector")
     type: SelectorType = Field(
         SelectorType.multiple, description="Single or multiple selector"
     )

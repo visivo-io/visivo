@@ -1,13 +1,12 @@
 from visivo.models.base.named_model import NamedModel
 from visivo.models.selector import Selector
-from .base.base_model import BaseModel, REF_REGEX, generate_ref_field
+from .base.base_model import generate_ref_field
 from .base.parent_model import ParentModel
 from pydantic import Field
 from typing import Optional
 from .chart import Chart
 from .table import Table
 from pydantic import model_validator
-import uuid
 
 
 class Item(NamedModel, ParentModel):

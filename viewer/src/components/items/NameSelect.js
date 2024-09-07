@@ -64,7 +64,7 @@ const NameSelect = ({
         isMulti = selector.type === "multiple"
         name = selector.name
         visible = selector.parent_name === parentName
-    } else { // This can be remove once everyone is on 1.0.17+
+    } else { 
         isMulti = parentType === "table" ? false : true
         name = `${parentName} Selector`
         visible = true

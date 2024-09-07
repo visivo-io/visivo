@@ -12,19 +12,10 @@ class SelectorModel(BaseModel):
 
     @model_validator(mode="after")
     def set_parent_name(self):
-        if BaseModel.is_obj(self.selector):
+        if self.selector and BaseModel.is_obj(self.selector):
             self.selector.set_parent_name(self.name)
             if len(self.selector.options) > 0:
                 raise ValueError(
                     f"Selector '{self.selector.name}' can not have options set, they are set from the parent item."
                 )
         return self
-
-    @model_validator(mode="before")
-    @classmethod
-    def ensure_selector(cls, data: Any) -> Any:
-        selector = data.get("selector")
-        if selector is None:
-            name = data.get("name")
-            data["selector"] = {"name": f"{name} Selector"}
-        return data
