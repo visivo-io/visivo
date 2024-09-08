@@ -139,10 +139,10 @@ class Project(NamedModel, ParentModel):
             type=Table, dag=dag, from_node=self
         )
         for table in tables:
-            selector = ParentModel.all_descendants_of_type(
+            selectors = ParentModel.all_descendants_of_type(
                 type=Selector, dag=dag, from_node=table
-            )[0]
-            if selector.type == SelectorType.multiple:
+            )
+            if len(selectors) > 0 and selectors[0].type == SelectorType.multiple:
                 raise ValueError(
                     f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
                 )
