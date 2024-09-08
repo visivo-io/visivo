@@ -64,9 +64,12 @@ class Serializer:
                     item.selector = ParentModel.first_descendant_of_type(
                         type=Selector, dag=dag, from_node=item, depth=1
                     )
-                    item.selector.options = ParentModel.all_descendants_of_type(
-                        type=Trace, dag=dag, from_node=item.selector, depth=1
-                    )
+                    options = [
+                        option for option in ParentModel.all_descendants(
+                            dag=dag, from_node=item.selector, depth=1
+                        ) if not isinstance(option, Selector)
+                    ]
+                    item.selector.options = options
 
             dashboard.for_each_item(replace_item_ref)
 

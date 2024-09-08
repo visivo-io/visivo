@@ -6,8 +6,9 @@ import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
 import { useSearchParams } from "react-router-dom";
+import { getSelectorByOptionName } from "../models/Project.js";
 
-const Dashboard = (props) => {
+const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
@@ -41,16 +42,16 @@ const Dashboard = (props) => {
         return width * (itemWidth / totalWidth)
     }
 
-    const dashboard = props.project.project_json.dashboards.find(d => d.name === props.dashboardName)
+    const dashboard = project.project_json.dashboards.find(d => d.name === dashboardName)
     if (!dashboard) {
-        throwError(`Dashboard with name ${props.dashboardName} not found.`, 404);
+        throwError(`Dashboard with name ${dashboardName} not found.`, 404);
     }
 
     const renderComponent = (item, row, itemIndex, rowIndex) => {
         if (item.chart) {
             return <Chart
                 chart={item.chart}
-                project={props.project}
+                project={project}
                 height={getHeight(row.height)}
                 width={getWidth(row, item)}
                 itemWidth={item.width}
@@ -58,7 +59,7 @@ const Dashboard = (props) => {
         } else if (item.table) {
             return <Table
                 table={item.table}
-                project={props.project}
+                project={project}
                 itemWidth={item.width}
                 width={getWidth(row, item)}
                 height={getHeight(row.height)}
@@ -66,7 +67,7 @@ const Dashboard = (props) => {
         } else if (item.selector) {
             return <Selector
                 selector={item.selector}
-                project={props.project}
+                project={project}
                 itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} >
             </Selector>
@@ -89,8 +90,9 @@ const Dashboard = (props) => {
     }
 
     const renderRow = (row, rowIndex) => {
-        if (row.selector && searchParams.has(row.selector.name)) {
-            const selectedNames = searchParams.get(row.selector.name).split(",")
+        const selector = getSelectorByOptionName(project, row.name)
+        if (selector && searchParams.has(selector.name)) {
+            const selectedNames = searchParams.get(selector.name).split(",")
             if (!selectedNames.includes(row.name)) {
                 return null
             }
@@ -105,7 +107,7 @@ const Dashboard = (props) => {
         )
     }
     return (
-        <div ref={observe} data-testid={`dashboard_${props.dashboardName}`} className='flex grow flex-col justify-items-stretch'>
+        <div ref={observe} data-testid={`dashboard_${dashboardName}`} className='flex grow flex-col justify-items-stretch'>
             {dashboard.rows.map(renderRow)}
         </div >
     );
