@@ -359,3 +359,21 @@ def test_trace_with_default_source_Project_dag():
     assert len(project.descendants()) == 3
     assert project.descendants_of_type(type=Model) == [project.models[0]]
     assert project.descendants_of_type(type=Source) == [project.sources[0]]
+
+
+def test_set_paths_on_models():
+    project_data = {
+        "name": "test_project",
+        "dashboards": [
+            {
+                "name": "dashboard1",
+                "rows": [{"items": []}],
+            }
+        ],
+    }
+
+    project = Project(**project_data)
+
+    assert project.path == "project"
+    assert project.dashboards[0].path == "project.dashboards[0]"
+    assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"
