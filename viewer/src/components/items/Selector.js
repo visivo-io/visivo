@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import tw from "tailwind-styled-components"
 import CohortSelector from "../select/CohortSelector";
 import NameSelector from "../select/NameSelector";
