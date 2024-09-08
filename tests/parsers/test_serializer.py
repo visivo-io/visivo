@@ -168,6 +168,15 @@ def test_Serializer_with_item_selector():
     assert len(project.dashboards[0].rows[0].items[1].chart.traces) == 1
 
 
+def test_Serializer_with_item_row_selector():
+    selector = SelectorFactory(name="selector_name", options=["ref(row)"])
+    project = ProjectFactory()
+    item = ItemFactory(chart=None, selector=selector)
+    project.dashboards[0].rows[0].items.append(item)
+    project = Serializer(project=project).dereference()
+    assert project.dashboards[0].rows[0].items[1].selector.options[0].name == "row"
+
+
 def test_Serializer_with_multiple_use_of_same_ref():
     model = SqlModelFactory(name="model_name")
     trace = TraceFactory(name="trace_name", model="ref(model_name)")
