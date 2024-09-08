@@ -5,7 +5,7 @@ import { tableDataFromCohortData, tableColumnsWithDot, tableColumnsWithUnderscor
 import { createTheme, ThemeProvider } from '@mui/material';
 import { useTracesData } from "../../hooks/useTracesData";
 import { ItemContainer } from "./ItemContainer";
-import CohortSelect from "./CohortSelect";
+import CohortSelect from "../select/CohortSelect";
 import {
     MRT_ShowHideColumnsButton,
     MRT_TablePagination,
@@ -106,7 +106,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 </Box>
             </ItemContainer>
         </ThemeProvider>
-       
+
     );
 }
 

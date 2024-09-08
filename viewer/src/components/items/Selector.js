@@ -1,14 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import tw from "tailwind-styled-components"
-import CohortSelector from "./CohortSelector";
-import NameSelector from "./NameSelector";
+import CohortSelector from "../select/CohortSelector";
+import NameSelector from "../select/NameSelector";
 
 export const ChartContainer = tw.div`
     relative
 `;
 
 const Selector = ({ selector, project, itemWidth }) => {
-    const isTraces = selector.options.every((option) => option.hasOwnProperty("props"))
+    const isTraces = selector.options.every((option) => option.hasOwnProperty("type") && option.type === "trace")
     const names = selector.options.map((option) => option.name)
 
     if (isTraces) {
