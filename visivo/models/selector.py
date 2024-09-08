@@ -51,7 +51,12 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     @model_serializer()
     def serialize_model(self):
-        model = {"name": self.name, "type": self.type, "options": self.options}
+        model = {"name": self.name, "type": self.type, "options": []}
+        for option in self.options:
+            if isinstance(option, str):
+                model["options"].append(option)
+            else:
+                model["options"].append({"name": option.name, "type": option.__class__.__name__.lower()})
         if hasattr(self, "_parent_name"):
             model["parent_name"] = self._parent_name
         else:
