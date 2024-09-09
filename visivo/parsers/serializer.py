@@ -37,9 +37,9 @@ class Serializer:
                         type=Trace, dag=dag, from_node=component, depth=1
                     )
                     if component.selector:
-                        component.selector = ParentModel.first_descendant_of_type(
+                        component.selector = ParentModel.all_descendants_of_type(
                             type=Selector, dag=dag, from_node=component, depth=1
-                        )
+                        )[0]
                         component.selector.options = (
                             ParentModel.all_descendants_of_type(
                                 type=Trace,
@@ -49,21 +49,21 @@ class Serializer:
                             )
                         )
                     for trace in component.traces:
-                        trace.model = ParentModel.first_descendant_of_type(
+                        trace.model = ParentModel.all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
-                        )
+                        )[0]
                         if hasattr(trace.model, "source"):
-                            trace.model.source = ParentModel.first_descendant_of_type(
+                            trace.model.source = ParentModel.all_descendants_of_type(
                                 type=Source, dag=dag, from_node=trace.model
-                            )
+                            )[0]
                         if hasattr(trace.model, "models"):
-                            trace.model.models = ParentModel.first_descendant_of_type(
+                            trace.model.models = ParentModel.all_descendants_of_type(
                                 type=Model, dag=dag, from_node=trace.model
                             )
                 if item.selector:
-                    item.selector = ParentModel.first_descendant_of_type(
+                    item.selector = ParentModel.all_descendants_of_type(
                         type=Selector, dag=dag, from_node=item, depth=1
-                    )
+                    )[0]
                     options = [
                         option
                         for option in ParentModel.all_descendants(

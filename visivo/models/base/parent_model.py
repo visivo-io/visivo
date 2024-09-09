@@ -107,15 +107,6 @@ class ParentModel(ABC):
             )
         )
 
-    @staticmethod
-    def first_descendant_of_type(type, dag, from_node=None, depth=None):
-        descendants = ParentModel.all_descendants_of_type(
-            type=type, dag=dag, from_node=from_node, depth=depth
-        )
-        if len(descendants) == 0:
-            return None
-        return descendants[0]
-
     def descendants_of_type(self, type):
         return ParentModel.all_descendants_of_type(
             type=type, dag=self.dag(), from_node=self
