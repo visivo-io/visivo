@@ -65,9 +65,11 @@ class Serializer:
                         type=Selector, dag=dag, from_node=item, depth=1
                     )
                     options = [
-                        option for option in ParentModel.all_descendants(
+                        option
+                        for option in ParentModel.all_descendants(
                             dag=dag, from_node=item.selector, depth=1
-                        ) if not isinstance(option, Selector)
+                        )
+                        if not isinstance(option, Selector)
                     ]
                     item.selector.options = options
 
