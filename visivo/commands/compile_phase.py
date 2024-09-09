@@ -1,6 +1,7 @@
 import click
 import os
 import yaml
+import json
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -42,7 +43,9 @@ def compile_phase(
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
-        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
+        model = serializer.dereference().model_dump(mode="json", exclude_none=True)
+        model["dag"] = project.dag_dict()
+        fp.write(json.dumps(model))
 
     dag = project.dag()
     for trace in project.filter_traces(name_filter=name_filter):
