@@ -1,0 +1,128 @@
+# V2 Spec
+
+name: V2
+
+# Strings can be "evaluate" in several ways:
+# 1. They are a reference to another object, a "ref"
+#    1. I propose we drop this and simply use the name.  Because it can be an object or a name simple
+# 2. They are a reference to the output of our "query"
+# 3. They are a bash script, like in script model
+# 4. They are a python like in tests
+# 5. We also can have jinja templates
+# jinja {{ }}
+# evaluate as code ${{ }} : Sometimes you need this I think.  Github mentions YAML reserved beginning characters
+# context reference - ${} : ${trace.name}
+# schema find by name - ref( ) : finds an object in the schema
+# find data - data( ) : data(Trace, Cohort) finds a cohort in the data
+
+groups:
+  - name: Executives
+    emails:
+      - ceo@visivo.io
+      - cto@visivo.io
+
+conditions:
+  - name: if_during_business_hours
+    if: now() < 16:00 && now() > 08:00
+  - name: if_production
+    if: env == production
+  - name: if_morning_notifications
+    if: env["MORNING_NOTIFICATION"] == True
+
+tests:
+  - name: operation_report
+    if: if_production # should this be a list? conditions?
+    assertions: # Can use the assert_that or return a boolean
+      - data("Trace 1", "Cohort 1").x[0] != data("Trace 2", "Cohort 2").x[0]
+      - assert_that(test.trace.data["Cohort"].props.marker.line.color[1]).is_length(1)
+    on_failure: continue
+    alerts:
+      - Once A Day Alert
+
+destinations:
+  - name: Email Alert
+    smtp: smtp:2525
+
+alerts:
+  - name: Failure During Business Hours
+    if: if_during_business_hours
+    message: |
+      Trigger $trigger.name has failed
+    destinations:
+      - type: slack
+        webhook_url: https://slack.com
+  - name: Once a Day Alert
+    if: if_morning_notifications
+    destinations:
+      - type: slack
+        webhook_url: https://slack.com
+      - extends: Email Alert
+        to: alert@visivo.io
+        subject: ${{ alert.title }} Failure I really mean it
+        message:
+          | # Is this enough combined with good defaults enough for Empora?
+          Long text ${{ test.failures }} form
+
+traces:
+  - name: Meta Trace
+    model: Meta Model
+    columns:
+      # Default *: *.model
+      # Everything in here is by default injecting into the query
+      # Context is at the trace level
+      # Everything is evaluated by
+      y: ${ model.y }
+      x: abs(${ model.x })
+      other: "'Position:' || ${ model.x }"
+      color: case when ${ model.y } >= 12 then '#713B57' else 'grey' end
+    query:
+      order:
+        - ${ columns.x } desc
+      cohort_on: $columns.x
+      filters:
+        - $columns.x > 0
+
+    props:
+      # Context is at the trace level
+      type: scatter
+      y: $columns.x
+      x: $columns.y
+      layout:
+        color: $columns.color
+    meta:
+      data-grain: daily # this doesn't allow us to choose the cohort_on information
+    tests:
+      - name: operation_report
+        if: if_production # should this be a list? conditions?
+        assertions:
+          - assert_that(len( test.trace.props.marker.line.color[1] ).is_equal_to(1)
+        on_failure: continue
+        alerts:
+          - Once A Day Alert
+
+      - name: production
+        if: if_production
+        assertions:
+          - assert_that( context(trace.props.marker.line.color[1]) ).is_equal_to("#D25946")
+        on_failure: exit # or continue
+        alerts:
+          - Failure During Business Hours
+
+selectors:
+  - name: Meta Selector
+    default: day
+    options:
+      - label: day
+        matcher: trace.meta.date-grain == "daily" || cohort.name == "daily" # We need a consistent way to have python logic statements
+      - label: week
+        matcher: trace.meta.date-grain == "weekly" || cohort.name == "weekly"
+      - title: month
+        matcher: trace.meta.date-grain == "monthly" || cohort.name == "monthly"
+
+dashboards:
+  - name: Restricted
+    permissions: # I can't think of a use case that we would actually want to exclude a group. The easiest is to do "if in any". Maybe call this something else.
+      - Executives
+      - Finance
+
+  - name: Open
