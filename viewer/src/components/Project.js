@@ -5,15 +5,12 @@ import Dashboard from "./Dashboard";
 import Loading from "./Loading";
 import Heading from "./styled/Heading";
 import { Container } from "./styled/Container";
-import Dag from "./Dag";
 function Project(props) {
   const renderLoading = () => {
     return (
       <Loading />
     )
   };
-
-
 
   const renderDashboardList = () => {
     return (
@@ -28,7 +25,6 @@ function Project(props) {
             </li>
           )}
         </ul>
-        <Dag dag={props.project.project_json.dag} />
       </Container>
     )
   }

@@ -10,6 +10,7 @@ import Home from './components/Home'
 import ProjectContainer from './components/ProjectContainer'
 import BreadcrumbLink from './components/styled/BreadcrumbLink'
 import ErrorPage from './components/ErrorPage'
+import Dag from './components/Dag'
 
 const Viewer = createBrowserRouter(
   createRoutesFromElements(
@@ -17,6 +18,11 @@ const Viewer = createBrowserRouter(
       element={<Home />}
       handle={{ crumb: () => <a href="https://docs.visivo.io"><img className='h-6' src={logo} alt="Logo" /></a> }}
     >
+      <Route
+        id="dag"
+        path="/_dag"
+        element={<Dag />}
+        loader={loadProject} />
       <Route
         path="/"
         element={<ProjectContainer />}
@@ -26,6 +32,7 @@ const Viewer = createBrowserRouter(
         handle={{ crumb: () => <BreadcrumbLink to={"/"}>Project</BreadcrumbLink> }}
       >
         <Route index element={<ProjectContainer />} />
+
         <Route
           id="project"
           path=":dashboardName?/*"
