@@ -164,7 +164,7 @@ dashboards:
                 xaxis:
                   title:
                     text: "Input"
-      - height: small
+      - height: medium
         items:
           - width: 2
             markdown: |
@@ -179,6 +179,6 @@ dashboards:
               layout:
                 title:
                   text: "Funnel Chart"
-      - height: large
+      - height: xlarge
         items:
           - chart: ref(surface-chart)

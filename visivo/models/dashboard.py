@@ -10,7 +10,7 @@ from typing import List
 
 class Dashboard(NamedModel, ParentModel):
     """
-    Dashboards are grids where you are able to organize and present `charts`, `tables` and `markdown`.
+    Dashboards are grids where you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project.
 
     The grid is build from `Rows` that can house 1 to n `Items`. `Items` wrap around your charts, tables or markdown and allow you to control the width of your columns within the Row. Here's an example of a dashboard configuration:
     ``` yaml
