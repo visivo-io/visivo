@@ -164,7 +164,7 @@ dashboards:
                 xaxis:
                   title:
                     text: "Input"
-      - height: medium
+      - height: small
         items:
           - width: 2
             markdown: |

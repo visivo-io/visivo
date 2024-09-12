@@ -8,9 +8,12 @@ from .item import Item
 
 class HeightEnum(str, Enum):
     compact = "compact"
+    xsmall= "xsmall"
     small = "small"
     medium = "medium"
     large = "large"
+    xlarge = "xlarge"
+    xxlarge = 'xxlarge'
 
 
 class Row(BaseModel, ParentModel):
