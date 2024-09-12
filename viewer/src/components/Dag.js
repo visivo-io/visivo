@@ -1,16 +1,70 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import * as dagreD3 from 'dagre-d3';
 import { useLoaderData } from 'react-router-dom';
 import { Container } from './styled/Container';
 
+const typeColors = {
+    'model': '#E6F3FF',     // Light Blue
+    'trace': '#FFF0E6',     // Light Peach
+    'chart': '#E6FFE6',     // Light Green
+    'table': '#FFE6E6',     // Light Pink
+    'selector': '#F0E6FF',  // Light Lavender
+    'project': '#E6FFF0',   // Light Mint
+    'source': '#FFE6F0',    // Light Rose
+};
+
+const filterDag = (dag, nodeName, before, after) => {
+    if (!nodeName) return dag;
+
+    const nodeIndex = dag.nodes.findIndex(node => node.name === nodeName);
+    if (nodeIndex === -1) return dag;
+
+    const targetNode = dag.nodes[nodeIndex];
+    const nodesToInclude = new Set([targetNode.id]);
+
+    // Function to recursively add nodes based on edge connections
+    const addConnectedNodes = (nodeId, depth, direction) => {
+        if (depth === 0) return;
+
+        const relevantEdges = dag.edges.filter(edge =>
+            direction === 'backward' ? edge.target === nodeId : edge.source === nodeId
+        );
+
+        relevantEdges.forEach(edge => {
+            const connectedNodeId = direction === 'backward' ? edge.source : edge.target;
+            if (!nodesToInclude.has(connectedNodeId)) {
+                nodesToInclude.add(connectedNodeId);
+                addConnectedNodes(connectedNodeId, depth - 1, direction);
+            }
+        });
+    };
+
+    // Add nodes before
+    addConnectedNodes(targetNode.id, before, 'backward');
+
+    // Add nodes after
+    addConnectedNodes(targetNode.id, after, 'forward');
+
+    const filteredNodes = dag.nodes.filter(node => nodesToInclude.has(node.id));
+    const filteredEdges = dag.edges.filter(edge =>
+        nodesToInclude.has(edge.source) && nodesToInclude.has(edge.target)
+    );
+
+    return { nodes: filteredNodes, edges: filteredEdges };
+};
+
 const Dag = () => {
     const svgRef = useRef(null);
     const project = useLoaderData();
-    console.log(project)
-    const dag = project.project_json.dag;
+    const [state, setState] = useState({
+        nodeName: null,
+        before: 0,
+        after: 0,
+    });
 
-    console.log(dag)
+    console.log(state)
+    const dag = useMemo(() => filterDag(project.project_json.dag, state.nodeName, state.before, state.after), [project, state.nodeName, state.before, state.after]);
 
     useEffect(() => {
         if (!dag || !svgRef.current) return;
@@ -18,23 +72,13 @@ const Dag = () => {
         const svg = d3.select(svgRef.current);
         const g = new dagreD3.graphlib.Graph().setGraph({
             rankdir: 'LR',
-            nodesep: 70,
-            ranksep: 50,
+            nodesep: 20,
+            ranksep: 30,
             marginx: 20,
             marginy: 20
         });
 
         dag.nodes.forEach(node => {
-            const typeColors = {
-                'model': '#E6F3FF',     // Light Blue
-                'trace': '#FFF0E6',     // Light Peach
-                'chart': '#E6FFE6',     // Light Green
-                'table': '#FFE6E6',     // Light Pink
-                'selector': '#F0E6FF',  // Light Lavender
-                'project': '#E6FFF0',   // Light Mint
-                'source': '#FFE6F0',    // Light Rose
-            };
-
             g.setNode(node.id, {
                 label: node.name || node.type,
                 shape: "rect",
@@ -98,7 +142,41 @@ const Dag = () => {
         svg.call(zoom.transform, d3.zoomIdentity.translate(xCenterOffset, yCenterOffset).scale(scale));
     }, [dag]);
 
-    return <Container><svg ref={svgRef} height={800}></svg></Container>;
+    return (
+        <Container>
+            <div className="mb-4 flex space-x-4">
+                <input
+                    type="text"
+                    placeholder="Filter by node name"
+                    className="px-2 py-1 border rounded mr-2"
+                    onChange={(e) => setState(prevState => ({ ...prevState, nodeName: e.target.value }))}
+                />
+                <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="Before"
+                    className="px-2 py-1 border rounded mr-2"
+                    onChange={(e) => {
+                        const value = Math.max(0, parseInt(e.target.value) || 0);
+                        setState(prevState => ({ ...prevState, before: value }));
+                    }}
+                />
+                <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="After"
+                    className="px-2 py-1 border rounded"
+                    onChange={(e) => {
+                        const value = Math.max(0, parseInt(e.target.value) || 0);
+                        setState(prevState => ({ ...prevState, after: value }));
+                    }}
+                />
+            </div>
+            <svg ref={svgRef} height={800}></svg>
+        </Container>
+    )
 };
 
 export default Dag
