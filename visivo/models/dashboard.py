@@ -10,9 +10,9 @@ from typing import List
 
 class Dashboard(NamedModel, ParentModel):
     """
-    Dashboards are lists of rows. Within the [rows](./row) you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project as items.
-
-    The grid is build from `Rows` that can house 1 to n `Items`. `Items` wrap around your charts, tables or markdown and allow you to control the width of your columns within the Row. 
+    Dashboards are lists of [rows](./row) that enable you to build your dashboard grid. 
+    
+    Within the [rows](./row) you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project as [items](./row/item).
     
     !!! example
 
