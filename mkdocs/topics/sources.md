@@ -2,7 +2,7 @@
 Sources are data sources. They are databases that contain your data. This page describes some best practices how to set sources up. 
 
 !!! tip
-    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/Sources/PostgresqlSource/))
+    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/targets/PostgresqlSource/))
 
 ## One Project Many Sources
 Visivo enables you to configure multiple sources in a single project. 
