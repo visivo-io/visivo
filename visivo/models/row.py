@@ -32,7 +32,7 @@ class Row(BaseModel, ParentModel):
             | small | 256 |
             | medium | 396 |
             | large | 512 |
-            | xlarge | 792 |
+            | xlarge | 768 |
             | xxlarge | 1024 |
     """
 
