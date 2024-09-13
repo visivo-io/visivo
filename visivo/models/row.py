@@ -11,6 +11,8 @@ class HeightEnum(str, Enum):
     small = "small"
     medium = "medium"
     large = "large"
+    extra_large = "x_large"
+    double_extra_large = "2x_large"
 
 
 class Row(BaseModel, ParentModel):

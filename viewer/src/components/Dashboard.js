@@ -21,6 +21,12 @@ const Dashboard = (props) => {
             return 256
         } else if (height === 'medium') {
             return 396
+        } else if (height === 'large') {
+            return 512
+        } else if (height === 'x_large') {
+            return 768
+        } else if (height === '2x_large') {
+            return 1024
         } else {
             return 512
         }
