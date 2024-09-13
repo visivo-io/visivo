@@ -8,14 +8,32 @@ from .item import Item
 
 class HeightEnum(str, Enum):
     compact = "compact"
+    xsmall= "xsmall"
     small = "small"
     medium = "medium"
     large = "large"
+    xlarge = "xlarge"
+    xxlarge = 'xxlarge'
 
 
 class Row(BaseModel, ParentModel):
     """
     Rows are the horizontal component of the dashboard grid and house 1 to many Items.
+
+    !!! tip
+        You can set the height of a row using the `height` attribute on a row
+        
+        ??? information
+
+            | Height | Pixels |
+            |------------|-------|
+            | compact | wrapped |
+            | xsmall | 128 |
+            | small | 256 |
+            | medium | 396 |
+            | large | 512 |
+            | xlarge | 768 |
+            | xxlarge | 1024 |
     """
 
     def id(self):

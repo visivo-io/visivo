@@ -19,7 +19,7 @@ def run_phase(
     )
 
     source_details = (
-        "\n" if default_source == None else f"and default source {default_source}\n"
+        "\n" if default_source == None else f" and default source {default_source}\n"
     )
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
