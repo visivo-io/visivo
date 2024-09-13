@@ -39,7 +39,15 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: |
+          - width: 2
+            markdown: |
+              # Welcome to Visivo 
+
+              #### This is a demo dashboard that contains some simple examples of common use cases.
+
+              These words were created using _markdown_ inside the dashboard directly and can be added to help your users understand the data they are looking at!
+          - width: 4
+            markdown: |
               # Welcome to Visivo 
 
               #### This is a demo dashboard that contains some simple examples of common use cases.
