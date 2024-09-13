@@ -10,13 +10,13 @@ from typing import List
 
 class Dashboard(NamedModel, ParentModel):
     """
-    Dashboards are lists of [rows](./row) that enable you to build your dashboard grid. 
+    Dashboards are lists of [rows](./Row/) that enable you to build your dashboard grid. 
 
     !!! tip 
         
         By leveraging [`visivo serve`](../../cli/#serve) while building you can quickly optimize your layout. Simply re-size your row heights and item widths, save the file and quickly see the new layout of your dashboard on localhost:8000. 
     
-    Within the [rows](./row) you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project as [items](./row/item).
+    Within the [rows](./Row/) you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project as [items](./Row/Item/).
 
     <div class="grid" markdown>
 
