@@ -36,7 +36,8 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
         setSelectedCohortData(changedSelectedTracesData)
     }
 
-    const xaxis = { xaxis: { autorange: false } }
+    console.log(chart.layout)
+
     return (
         <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering && cohortSelectVisible}>
@@ -55,7 +56,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                 key={`chart_${chart.name}`}
                 data-testid={`chart_${chart.name}`}
                 data={selectedPlotData}
-                layout={{ ...chart.layout, height, width, ...xaxis }}
+                layout={{ ...chart.layout, height, width }}
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
             />
