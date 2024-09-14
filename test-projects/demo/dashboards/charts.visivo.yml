@@ -14,6 +14,9 @@ dashboards:
               # Bar
           - chart:
               name: Bar Chart
+              layout:
+                xaxis:
+                  autorange: "false"
               traces:
                 - name: Simple Bar
                   model: ref(Echo CSV)
