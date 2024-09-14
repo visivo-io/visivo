@@ -151,7 +151,6 @@ const CohortSelect = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [JSON.stringify(selectedCohortNames)]);
 
-    console.log("Render")
     return (
         <>
             {showLabel && <label htmlFor={`traceSelect${name}`}>Traces</label>}

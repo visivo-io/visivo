@@ -36,11 +36,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
         setSelectedCohortData(changedSelectedTracesData)
     }
 
-
     const layout = JSON.parse(JSON.stringify(chart.layout))
-    console.log("-------------------")
-    console.log(chart.name)
-    console.log(layout)
     return (
         <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering && cohortSelectVisible}>
