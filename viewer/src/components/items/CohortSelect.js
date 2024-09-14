@@ -3,7 +3,7 @@ import Select from 'react-select'
 import { cohortNamesInData } from '../../models/Trace';
 import { useSearchParams } from "react-router-dom";
 
-const getOptionsFromValues = (valueArrayOrString) => {
+export const getOptionsFromValues = (valueArrayOrString) => {
     if (!valueArrayOrString) {
         return null
     }
