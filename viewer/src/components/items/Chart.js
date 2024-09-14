@@ -36,7 +36,8 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
         setSelectedCohortData(changedSelectedTracesData)
     }
 
-    const layout = JSON.parse(JSON.stringify(chart.layout))
+    const layout = structuredClone(chart.layout ? chart.layout : {})
+
     return (
         <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering && cohortSelectVisible}>
