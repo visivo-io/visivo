@@ -2,7 +2,10 @@ import { useEffect, useMemo } from 'react'
 import Select from 'react-select'
 import { useSearchParams } from "react-router-dom";
 
-const getOptionsFromValues = (valueArrayOrString) => {
+export const getOptionsFromValues = (valueArrayOrString) => {
+    if (!valueArrayOrString) {
+        return null
+    }
     if (Array.isArray(valueArrayOrString)) {
         return valueArrayOrString.map((valueArray) => {
             return { value: valueArray, label: valueArray }
@@ -106,10 +109,12 @@ const NameSelect = ({
     }, []);
 
     const selectedNames = useMemo(() => {
-        if (searchParams.has(name)) {
+        if (searchParams.has(name) && searchParams.get(name).includes("NoCohorts")) {
+            return null
+        } else if (searchParams.has(name)) {
             return searchParams.get(name).split(",")
         } else if (!defaultOptions) {
-            return ""
+            return null
         } else {
             return Array.isArray(defaultOptions) ? defaultOptions.map((ds) => ds.value) : defaultOptions.value
         }

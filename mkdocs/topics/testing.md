@@ -16,7 +16,7 @@ The combination of python based boolean statements and access to all trace data 
         ``` yaml
         tests:
           - name: revenue-date-grains-match
-            logic: "numpy.sum( $(project.traces['revenue-per-week'].props.y) ) = numpy.sum( $(project.traces['revenue-per-month'].props.y) )"
+            logic: ">{ numpy.sum( ${project.traces['revenue-per-week'].props.y} ) = numpy.sum( ${project.traces['revenue-per-month'].props.y} ) }"
         ```
 
     === "Standard Deviation"
@@ -24,7 +24,7 @@ The combination of python based boolean statements and access to all trace data 
         ``` yaml
         tests:
           - name: recent-std-less-double-normal
-            logic: "numpy.std( $(project.traces['revenue-per-week'].props.y) ) * 2 > numpy.std( $(project.traces['revenue-per-month'].props.y[:-10]) )"
+            logic: ">{ numpy.std( ${project.traces['revenue-per-week'].props.y} ) * 2 > numpy.std( ${project.traces['revenue-per-month'].props.y[:-10]} ) }"
         ```
 
     === "Assert Value"
@@ -32,10 +32,10 @@ The combination of python based boolean statements and access to all trace data 
         ``` yaml
         tests:
           - name: recent-std-less-double-normal
-            logic: "round( $(project.traces['revenue-per-week'].props.y[10]) ) = 2901384"
+            logic: ">{ round( ${project.traces['revenue-per-week'].props.y[10]} ) = 2901384 }"
         ```
 
-You can also define tests within the trace it's self which gives you access to the information of the trace data that you're defining the test on through the `$(trace)` context variable. You can still access the `$(project)` context variable from within the trace definition. 
+You can also define tests within the trace it's self which gives you access to the information of the trace data that you're defining the test on through the `${trace}` context variable. You can still access the `${project}` context variable from within the trace definition. 
 !!! example 
 
     ``` yaml
@@ -49,8 +49,8 @@ You can also define tests within the trace it's self which gives you access to t
             x: column(project_created_at)
             y: column(project_name)
         tests:
-            - logic: assert_that(numpy.sum( $(trace.props.x) ).is_equal_to(7)
-            - logic: 'key account' in $(trace.columns.account_name)
-            - logic: numpy.unique( $(trace.columns.account_name) ) = numpy.unique( $(project.traces[another-trace].columns.account_name) ) 
+            - logic: ">{ assert_that(numpy.sum( ${trace.props.x} ).is_equal_to(7) }"
+            - logic: ">{ 'key account' in ${trace.columns.account_name} }"
+            - logic: ">{ numpy.unique( ${trace.columns.account_name} ) = numpy.unique( ${project.traces[another-trace].columns.account_name} ) }
     ```
 The `assert_that()` function from the [assertpy](https://assertpy.github.io/) library and the [numpy](https://numpy.org/doc/stable/index.html) library are available to reference. The combination of these two libraries enable a wide array of calculations and logical assertions. 
