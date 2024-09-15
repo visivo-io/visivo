@@ -25,7 +25,7 @@ tasks:
   - key: node
     call: mint/install-node 1.0.5
     with:
-      node-version: 20.17.0
+      node-version: 20.16.0
 
   - key: ruby
     call: mint/install-ruby 1.0.9
