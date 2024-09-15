@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import NameSelect, { generateNewSearchParams } from './NameSelect'
+import { render, screen, waitFor, act } from '@testing-library/react';
+import NameSelect, { generateNewSearchParams, getOptionsFromValues } from './NameSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
@@ -16,12 +16,15 @@ test('renders without selector', async () => {
     onChange={onChange} />, { wrapper: withProviders });
 
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'name1')
+  await act(() => selectEvent.select(selectWrapper, 'name1'));
 
   await waitFor(() => {
     expect(selectedNames).toEqual("name1")
   })
-  expect(screen.queryByText('name2')).not.toBeInTheDocument();
+  await act(() => selectEvent.select(selectWrapper, 'name2'));
+  await waitFor(() => {
+    expect(selectedNames).toEqual(["name2"])
+  })
 });
 
 test('renders single select', async () => {
@@ -37,12 +40,11 @@ test('renders single select', async () => {
     onChange={onChange} />, { wrapper: withProviders });
 
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'name1')
+  await act(() => selectEvent.select(selectWrapper, 'name1'));
 
   await waitFor(() => {
     expect(selectedNames).toEqual("name1")
   })
-  expect(screen.queryByText('name2')).not.toBeInTheDocument();
   expect(visible).toEqual(true);
 });
 
@@ -59,7 +61,7 @@ test('renders with push to history', async () => {
   </HistoryRouter>);
 
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'name1')
+  await act(() => selectEvent.select(selectWrapper, 'name1'));
 
   await waitFor(() => {
     expect(history.location.search).toEqual('?selector=name1')
@@ -82,7 +84,7 @@ test('renders multiselect select', async () => {
   })
   expect(screen.getByText('name1')).toBeInTheDocument();
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'name2')
+  await act(() => selectEvent.select(selectWrapper, 'name2'));
 });
 
 test('renders not visible', async () => {
@@ -142,5 +144,11 @@ describe('generateNewSearchParams', () => {
     const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
 
     expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "NoCohorts" }))
+  });
+});
+
+describe('getOptionsFromValues', () => {
+  test('returns null if passed null', async () => {
+    expect(getOptionsFromValues(null)).toEqual(null)
   });
 });

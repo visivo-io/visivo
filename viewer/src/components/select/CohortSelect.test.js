@@ -1,5 +1,5 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
-import CohortSelect, { generateNewSearchParams, generateNewTraceDataFromSelection, getOptionsFromValues } from './CohortSelect'
+import CohortSelect, { generateNewTraceDataFromSelection } from './CohortSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
@@ -155,8 +155,4 @@ describe('generateNewTraceDataFromSelection', () => {
   });
 });
 
-describe('getOptionsFromValues', () => {
-  test('returns null if passed null', async () => {
-    expect(getOptionsFromValues(null)).toEqual(null)
-  });
-});
+
