@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import CohortSelect, { generateNewTraceDataFromSelection } from './CohortSelect'
+import { render, screen, waitFor, act } from '@testing-library/react';
+import CohortSelect, { generateNewSearchParams, generateNewTraceDataFromSelection, getOptionsFromValues } from './CohortSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
@@ -25,7 +25,7 @@ test('renders without selector', async () => {
     onChange={onChange} />, { wrapper: withProviders });
 
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'Cohort Name 1')
+  await act(() => selectEvent.select(selectWrapper, 'Cohort Name 1'));
 
   await waitFor(() => {
     expect(selectedTraceData).toEqual(
@@ -51,7 +51,7 @@ test('renders single select', async () => {
     onChange={onChange} />, { wrapper: withProviders });
 
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'Cohort Name 1')
+  await act(() => selectEvent.select(selectWrapper, 'Cohort Name 1'));
 
   await waitFor(() => {
     expect(selectedTraceData).toEqual(
@@ -78,7 +78,7 @@ test('renders with push to history', async () => {
   </HistoryRouter>);
 
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'Cohort Name 1')
+  await act(() => selectEvent.select(selectWrapper, 'Cohort Name 1'));
 
   await waitFor(() => {
     expect(history.location.search).toEqual('?selector=Cohort+Name+1')
@@ -101,7 +101,7 @@ test('renders multiselect select', async () => {
   })
   expect(screen.getByText('Cohort Name 2')).toBeInTheDocument();
   const selectWrapper = screen.getByLabelText('Selector')
-  await selectEvent.select(selectWrapper, 'Cohort Name 2')
+  await act(() => selectEvent.select(selectWrapper, 'Cohort Name 2'));
 });
 
 test('renders without data', async () => {
@@ -152,5 +152,11 @@ describe('generateNewTraceDataFromSelection', () => {
   test('select object', async () => {
     const newTracesData = generateNewTraceDataFromSelection(tracesData, ["Cohort Name 1"])
     expect(newTracesData).toEqual({ "Trace Name 1": { "Cohort Name 1": {} } });
+  });
+});
+
+describe('getOptionsFromValues', () => {
+  test('returns null if passed null', async () => {
+    expect(getOptionsFromValues(null)).toEqual(null)
   });
 });

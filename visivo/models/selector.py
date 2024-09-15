@@ -14,12 +14,15 @@ class SelectorType(str, Enum):
 
 class Selector(ParentModel, NamedModel, BaseModel):
     """
-    Selectors can be used to add interactivity between charts and tables.
+    Selectors enable you to toggle between multiple different traces in your chart. 
+    
+    !!! tip
+        Selectors can also be used to add interactivity between charts different tables. You can read more about using [selectors to add interactivity here](../../../topics/interactivity).
 
-    Below is how you would link two charts to show the same selected data.
+    You can configure selectors to be single select or multi-select. Single select is great if you only want to show a single trace at a time on the chart while the multi-select can be really useful for providing filtering capabilities. 
 
     ### Example
-
+    Here's how you might use selectors to create interactivity between two different charts. 
     ``` yaml
     charts:
         - name: Chart One

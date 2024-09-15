@@ -179,6 +179,6 @@ dashboards:
               layout:
                 title:
                   text: "Funnel Chart"
-      - height: large
+      - height: xlarge
         items:
           - chart: ref(surface-chart)

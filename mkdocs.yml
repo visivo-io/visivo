@@ -118,14 +118,14 @@ nav:
               - reference/configuration/Table/index.md
               - Traces: []
           - Targets:
-              - SqliteTarget:
-                  - reference/configuration/Targets/SqliteTarget/index.md
-              - PostgresqlTarget:
-                  - reference/configuration/Targets/PostgresqlTarget/index.md
-              - MysqlTarget:
-                  - reference/configuration/Targets/MysqlTarget/index.md
-              - SnowflakeTarget:
-                  - reference/configuration/Targets/SnowflakeTarget/index.md
+              - SqliteSource:
+                  - reference/configuration/Targets/SqliteSource/index.md
+              - PostgresqlSource:
+                  - reference/configuration/Targets/PostgresqlSource/index.md
+              - MysqlSource:
+                  - reference/configuration/Targets/MysqlSource/index.md
+              - SnowflakeSource:
+                  - reference/configuration/Targets/SnowflakeSource/index.md
           - Trace:
               - reference/configuration/Trace/index.md
               - TraceColumns:

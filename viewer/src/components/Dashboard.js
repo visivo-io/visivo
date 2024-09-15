@@ -19,13 +19,19 @@ const Dashboard = ({ project, dashboardName }) => {
     const widthBreakpoint = 1024;
     const isColumn = width < widthBreakpoint;
 
-    const getHeight = (height) => {
-        if (height === 'small') {
+    const getHeight = (height) => {  
+        if (height === 'xsmall') {
+            return 128
+        } else if (height === 'small') {
             return 256
         } else if (height === 'medium') {
             return 396
-        } else {
+        } else if (height === 'large') {
             return 512
+        } else if (height === 'xlarge') {
+            return 768
+        } else {
+            return 1024
         }
     }
 
