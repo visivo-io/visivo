@@ -19,7 +19,7 @@ const Dashboard = ({ project, dashboardName }) => {
     const widthBreakpoint = 1024;
     const isColumn = width < widthBreakpoint;
 
-    const getHeight = (height) => {  
+    const getHeight = (height) => {
         if (height === 'xsmall') {
             return 128
         } else if (height === 'small') {
@@ -35,11 +35,11 @@ const Dashboard = ({ project, dashboardName }) => {
         }
     }
 
-    const getWidth = (row, item) => {
+    const getWidth = (items, item) => {
         if (width < widthBreakpoint) {
             return width;
         }
-        const totalWidth = row.items.reduce((partialSum, i) => {
+        const totalWidth = items.reduce((partialSum, i) => {
             const itemWidth = i.width ? i.width : 1
             return partialSum + itemWidth;
         }, 0);
@@ -53,13 +53,28 @@ const Dashboard = ({ project, dashboardName }) => {
         throwError(`Dashboard with name ${dashboardName} not found.`, 404);
     }
 
+    const shouldShowNamedModel = (namedModel) => {
+        const selector = getSelectorByOptionName(project, namedModel.name)
+        if (selector && searchParams.has(selector.name)) {
+            const selectedNames = searchParams.get(selector.name).split(",")
+            if (!selectedNames.includes(namedModel.name)) {
+                return false
+            }
+        }
+        return true
+    }
+
     const renderComponent = (item, row, itemIndex, rowIndex) => {
+        const items = row.items.filter(item => shouldShowNamedModel(item))
+        if (items.indexOf(item) < 0) {
+            return null
+        }
         if (item.chart) {
             return <Chart
                 chart={item.chart}
                 project={project}
                 height={getHeight(row.height)}
-                width={getWidth(row, item)}
+                width={getWidth(items, item)}
                 itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.table) {
@@ -67,7 +82,7 @@ const Dashboard = ({ project, dashboardName }) => {
                 table={item.table}
                 project={project}
                 itemWidth={item.width}
-                width={getWidth(row, item)}
+                width={getWidth(items, item)}
                 height={getHeight(row.height)}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.selector) {
@@ -96,12 +111,8 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const renderRow = (row, rowIndex) => {
-        const selector = getSelectorByOptionName(project, row.name)
-        if (selector && searchParams.has(selector.name)) {
-            const selectedNames = searchParams.get(selector.name).split(",")
-            if (!selectedNames.includes(row.name)) {
-                return null
-            }
+        if (!shouldShowNamedModel(row)) {
+            return null
         }
         return (
             <div className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
