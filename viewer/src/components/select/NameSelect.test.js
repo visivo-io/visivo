@@ -84,7 +84,7 @@ test('renders multiselect select', async () => {
   })
   expect(screen.getByText('name1')).toBeInTheDocument();
   const selectWrapper = screen.getByLabelText('Selector')
-(??)
+  await act(() => selectEvent.select(selectWrapper, 'name2'));
 });
 
 test('renders not visible', async () => {
@@ -144,7 +144,11 @@ describe('generateNewSearchParams', () => {
     const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
 
     expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "NoCohorts" }))
-(??)
   });
 });
 
+describe('getOptionsFromValues', () => {
+  test('returns null if passed null', async () => {
+    expect(getOptionsFromValues(null)).toEqual(null)
+  });
+});

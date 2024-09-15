@@ -5,6 +5,7 @@ import Dashboard from "./Dashboard";
 import Loading from "./Loading";
 import Heading from "./styled/Heading";
 import { Container } from "./styled/Container";
+
 function Project(props) {
   const renderLoading = () => {
     return (
