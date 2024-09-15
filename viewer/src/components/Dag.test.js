@@ -13,8 +13,8 @@ const getProject = (items) => {
       }]
     },
     dag: {
-      nodes: ["1", "2"],
-      edges:
+      nodes: [{ id: "1" }, { id: "2" }],
+      edges: [{ source: "1", target: "2" }]
     }
   }
 };
