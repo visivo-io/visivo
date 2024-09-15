@@ -96,7 +96,36 @@ describe('shows/hides row based on selector in URL', () => {
   });
 });
 
-(??)
+describe('shows/hides item based on selector in URL', () => {
+  test('shows markdown 1 if selected', async () => {
+    renderDashboard(project_with_json, "dashboard", "/dashboard?selector2=markdown1");
+
+    await waitFor(() => {
+      expect(screen.getByText("Option 1 Content")).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.queryByText("Option 2 Content")).not.toBeInTheDocument();
+    });
+  });
+
+  test('shows markdown 2 if selected', async () => {
+    renderDashboard(project_with_json, "dashboard", "/dashboard?selector2=markdown2");
+
+    await waitFor(() => {
+      expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Option 1 Content")).not.toBeInTheDocument();
+  });
+
+  test('show both markdowns if both selected', async () => {
+    renderDashboard(project_with_json, "dashboard", "/dashboard?selector2=markdown1,markdown2");
+
+    await waitFor(() => {
+      expect(screen.getByText("Option 1 Content")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
+  });
+});
 
 test('throws when dashboard not found', async () => {
   const project = getProject([{ width: 1, chart: { name: "chart_name", traces: [] } }])
