@@ -63,7 +63,6 @@ const Dag = () => {
         after: 0,
     });
 
-    console.log(state)
     const dag = useMemo(() => filterDag(project.project_json.dag, state.nodeName, state.before, state.after), [project, state.nodeName, state.before, state.after]);
 
     useEffect(() => {
