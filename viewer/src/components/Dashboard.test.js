@@ -17,18 +17,19 @@ const getProject = (items) => {
 const project_with_json = {
   project_json: {
     selectors: [
-      { name: 'selector1', type: "single", options: [{ name: 'option1' }, { name: 'option2' }] }
+      { name: 'selector1', type: "single", options: [{ name: 'option1' }, { name: 'option2' }] },
+      { name: 'selector2', type: "single", options: [{ name: 'markdown1' }, { name: 'markdown2' }] }
     ],
     dashboards: [{
       name: "dashboard",
       rows: [
         {
           name: "option1",
-          items: [{ markdown: "Option 1 Content" }]
+          items: [{ name: "markdown1", markdown: "Option 1 Content" }]
         },
         {
           name: "option2",
-          items: [{ markdown: "Option 2 Content" }]
+          items: [{ name: "markdown2", markdown: "Option 2 Content" }]
         }
       ]
     }]
@@ -95,6 +96,7 @@ describe('shows/hides row based on selector in URL', () => {
   });
 });
 
+(??)
 
 test('throws when dashboard not found', async () => {
   const project = getProject([{ width: 1, chart: { name: "chart_name", traces: [] } }])
