@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import Selector from './Selector';
+import CohortSelector from './CohortSelector';
 import * as useTracesData from '../../hooks/useTracesData';
 import { withProviders } from '../../utils/test-utils';
 
@@ -29,7 +29,7 @@ test('renders selector', async () => {
   };
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
 
-  render(<Selector selector={selector} project={{ id: 1 }} itemWidth={1} />, { wrapper: withProviders });
+  render(<CohortSelector names={["cohortName"]} selector={selector} project={{ id: 1 }} itemWidth={1} />, { wrapper: withProviders });
 
   await waitFor(() => {
     expect(screen.getByText('cohortName')).toBeInTheDocument();

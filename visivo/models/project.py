@@ -139,15 +139,32 @@ class Project(NamedModel, ParentModel):
             type=Table, dag=dag, from_node=self
         )
         for table in tables:
-            selector = ParentModel.all_descendants_of_type(
+            selectors = ParentModel.all_descendants_of_type(
                 type=Selector, dag=dag, from_node=table
-            )[0]
-            if selector.type == SelectorType.multiple:
+            )
+            if len(selectors) > 0 and selectors[0].type == SelectorType.multiple:
                 raise ValueError(
                     f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
                 )
 
         return self
+
+    @model_validator(mode="before")
+    def set_paths_on_models(cls, values):
+        def set_path_recursively(obj, path=""):
+            if isinstance(obj, dict):
+                obj["path"] = path
+                for key, value in obj.items():
+                    if key not in ["props", "defaults", "layout", "columns"]:
+                        new_path = f"{path}.{key}" if path else key
+                        set_path_recursively(value, new_path)
+            elif isinstance(obj, list):
+                for index, item in enumerate(obj):
+                    new_path = f"{path}[{index}]"
+                    set_path_recursively(item, new_path)
+
+        set_path_recursively(values, "project")
+        return values
 
     @model_validator(mode="after")
     def validate_names(self):

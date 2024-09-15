@@ -38,7 +38,7 @@ class ParentModel(ABC):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
                 dag_item = item
-                if BaseModel.is_ref(item):
+                if item is None or BaseModel.is_ref(item):
                     continue
                 elif isinstance(item, DefaultSource):
                     name = root.defaults.source_name
@@ -153,19 +153,93 @@ class ParentModel(ABC):
 
         return list(filter(name_match, objects))
 
-    @staticmethod
-    def show_dag(dag):
-        import matplotlib.pyplot as pyplot
-        from networkx import spring_layout, draw_networkx
+    def show_dag(self, dag=None):
+        if dag is None:
+            dag = self.dag()
 
-        options = {}
-        pos = spring_layout(dag)
-        draw_networkx(dag, pos, **options)
+        import plotly.graph_objects as go
+        from networkx import shell_layout
 
-        ax = pyplot.gca()
-        ax.margins(0.20)
-        pyplot.axis("off")
-        pyplot.show()
+        pos = shell_layout(dag)
+        edge_x = []
+        edge_y = []
+        edge_annotations = []
+
+        for edge in dag.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+            edge_annotations.append(
+                dict(
+                    ax=x0,
+                    ay=y0,
+                    axref="x",
+                    ayref="y",
+                    x=x1,
+                    y=y1,
+                    xref="x",
+                    yref="y",
+                    showarrow=True,
+                    arrowhead=2,
+                    arrowsize=2,
+                    arrowwidth=1,
+                    arrowcolor="#333",
+                )
+            )
+
+        edge_trace = go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            line=dict(width=0.5, color="#333"),
+            hoverinfo="none",
+            mode="lines",
+        )
+
+        node_x = []
+        node_y = []
+        node_text = []
+        for node in dag.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(str(node))
+
+        node_trace = go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers+text",
+            hoverinfo="text",
+            text=node_text,
+            marker=dict(
+                showscale=True,
+                colorscale="YlGnBu",
+                size=30,
+                colorbar=dict(
+                    thickness=15,
+                    title="Node Connections",
+                    xanchor="left",
+                    titleside="right",
+                ),
+            ),
+        )
+
+        fig = go.Figure(
+            data=[edge_trace, node_trace],
+            layout=go.Layout(
+                showlegend=False,
+                hovermode="closest",
+                margin=dict(b=20, l=5, r=5, t=40),
+                xaxis=dict(showgrid=False, zeroline=False),
+                yaxis=dict(showgrid=False, zeroline=False),
+                annotations=edge_annotations,
+            ),
+        )
+        fig.show()
 
     def __get_dereferenced_item(self, name, dag, root, item, parent_item):
         dereferenced_items = ParentModel.all_descendants_with_name(

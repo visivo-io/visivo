@@ -1,15 +1,15 @@
+from visivo.models.base.named_model import NamedModel
 from visivo.models.selector import Selector
-from .base.base_model import BaseModel, REF_REGEX, generate_ref_field
+from .base.base_model import generate_ref_field
 from .base.parent_model import ParentModel
 from pydantic import Field
-from typing import Optional, Union
+from typing import Optional
 from .chart import Chart
 from .table import Table
 from pydantic import model_validator
-import uuid
 
 
-class Item(BaseModel, ParentModel):
+class Item(NamedModel, ParentModel):
     """
     The Item houses a single chart, table, selector or markdown object. 
     
@@ -29,13 +29,6 @@ class Item(BaseModel, ParentModel):
         selector: ref(selector-name)
     ```
     """
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._id = kwargs["id"] if "id" in kwargs else uuid.uuid4().hex
-
-    def id(self):
-        return f"Item - {self._id}"
 
     width: int = Field(
         1,

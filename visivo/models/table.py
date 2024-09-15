@@ -110,13 +110,3 @@ class Table(SelectorModel, NamedModel, ParentModel):
                     f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
                 )
         return data
-
-    @model_validator(mode="before")
-    @classmethod
-    def ensure_selector(cls, data: Any) -> Any:
-        selector = data.get("selector")
-        if selector is None:
-            name = data.get("name")
-            data["selector"] = {"name": f"{name} Selector", "type": "single"}
-
-        return data

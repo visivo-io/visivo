@@ -39,12 +39,12 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    name: str = Field(description="The name of the selector")
     type: SelectorType = Field(
         SelectorType.multiple, description="Single or multiple selector"
     )
     options: List[RefString] = Field(
-        [], description="Optional to set the traces to create the choices list"
+        [],
+        description="Optional set of traces, items, or rows to create the choices list",
     )
 
     _parent_name: str = PrivateAttr()
@@ -54,7 +54,12 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     @model_serializer()
     def serialize_model(self):
-        model = {"name": self.name, "type": self.type, "options": self.options}
+        model = {"name": self.name, "type": self.type, "options": []}
+        for option in self.options:
+            if isinstance(option, str):
+                model["options"].append(option)
+            else:
+                model["options"].append({"name": option.name, "type": option.__class__.__name__.lower()})
         if hasattr(self, "_parent_name"):
             model["parent_name"] = self._parent_name
         else:

@@ -2,7 +2,7 @@ import Loading from "../Loading";
 import Menu from "./Menu"
 import Plot from 'react-plotly.js';
 import React, { useState, useMemo } from "react";
-import CohortSelect from "./CohortSelect";
+import CohortSelect from "../select/CohortSelect";
 import { traceNamesInData, chartDataFromCohortData } from "../../models/Trace";
 import { useTracesData } from "../../hooks/useTracesData";
 import MenuItem from "../styled/MenuItem";
