@@ -1,53 +1,30 @@
 import { render, screen } from '@testing-library/react';
-import Project from './Project';
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import Dag from './Dag';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 
-const getProject = (items) => {
+const getProject = () => {
   return {
-    project_json: {
-      selectors: [],
-      dashboards: [{
-        name: "dashboard", rows: [{
-          height: "medium", items: items
-        }]
-      }]
-    },
-    dag: {
-      nodes: [{ id: "1" }, { id: "2" }],
-      edges: [{ source: "1", target: "2" }]
-    }
+    project_json: {}
   }
 };
 
-const fetchTraces = () => {
-  return []
-}
+const routes = [
+  {
+    path: "/:project",
+    element: <Dag />,
+    id: 'project',
+    loader: getProject
+  },
+];
 
-test('renders dashboard names without dashboard name param', async () => {
-  const project = getProject([{ width: 1, markdown: "First Markdown" }])
-  render(<MemoryRouter initialEntries={['/dashboard']}>
-    <Routes>
-      <Route path="/:dashboardName?"
-        element={<Project project={project} fetchTraces={fetchTraces} dashboardName={null} dashboards={[{ name: "dashboard", path: "/dashboard" }]} />}
-      />)
-    </Routes>
-  </MemoryRouter>)
+const router = createMemoryRouter(routes, {
+  initialEntries: ["/project"],
+  initialIndex: 0,
+});
 
-  const text = await screen.findByText(/dashboard/);
-  expect(text).toBeInTheDocument();
-})
+test('renders the input fields', async () => {
+  render(<RouterProvider router={router} />);
 
-test('renders dashboard with dashboard name param', async () => {
-  const project = getProject([{ width: 1, markdown: "First Markdown" }])
-
-  render(<MemoryRouter initialEntries={['/dashboard']}>
-    <Routes>
-      <Route path="/:dashboardName?"
-        element={<Project project={project} fetchTraces={fetchTraces} dashboardName={'dashboard'} dashboards={[{ name: "dashboard", path: "/dashboard" }]} />}
-      />)
-    </Routes>
-  </MemoryRouter>)
-
-  const text = await screen.findByText(/First Markdown/);
+  const text = await screen.findByPlaceholderText("Filter by node name");
   expect(text).toBeInTheDocument();
 })
