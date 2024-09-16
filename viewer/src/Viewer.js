@@ -5,6 +5,7 @@ import {
   createRoutesFromElements,
 } from 'react-router-dom';
 import { loadProject } from './loaders/project'
+import { loadDag } from './loaders/dag'
 import logo from './images/logo.png';
 import Home from './components/Home'
 import ProjectContainer from './components/ProjectContainer'
@@ -22,7 +23,7 @@ const Viewer = createBrowserRouter(
         id="dag"
         path="/_dag"
         element={<Dag />}
-        loader={loadProject} />
+        loader={loadDag} />
       <Route
         path="/"
         element={<ProjectContainer />}
