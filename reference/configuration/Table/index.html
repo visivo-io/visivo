@@ -5270,6 +5270,7 @@
 <span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.cli_version</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">"Stage</span><span class="nv"> </span><span class="s">Name"</span>
 <span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.stage_name</span>
+<span class="w">          </span><span class="nt">aggregation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uniqueCount</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">"Account</span><span class="nv"> </span><span class="s">Name"</span>
 <span class="w">          </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">columns.account_name</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="s">"Account</span><span class="nv"> </span><span class="s">Name"</span>
@@ -5316,6 +5317,12 @@ Tables are built on the <a href="https://www.material-react-table.com/">material
 <td>Any of: <a href="https://docs.visivo.io/reference/configuration/Table/">Table</a>ColumnDefinition, array</td>
 <td>None</td>
 <td>A list of column definitions. These definitions define the columns for a given trace included in this table.</td>
+</tr>
+<tr>
+<td>rows_per_page</td>
+<td></td>
+<td>50</td>
+<td>The number of rows to show per page. Default is 50 rows</td>
 </tr>
 </tbody>
 </table></div>
