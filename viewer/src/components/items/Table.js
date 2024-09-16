@@ -44,7 +44,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
         }
     }, [selectedTableCohort, columns]);
-    
+
     const handleExportData = () => {
         const csv = generateCsv(csvConfig)(tableData); 
         const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -131,7 +131,11 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                         <MRT_ToggleFiltersButton table={useTable} />
                         <MRT_ShowHideColumnsButton table={useTable} />
                         <MRT_ToggleDensePaddingButton table={useTable} />
-                        <Button onClick={handleExportData} startIcon={<FileDownloadIcon />}></Button>
+                        <Button 
+                            aria-label="DownloadCsv" 
+                            onClick={handleExportData} 
+                            startIcon={<FileDownloadIcon />}
+                        ></Button>
                         <CohortSelect
                             tracesData={tracesData}
                             onChange={onSelectedCohortChange}
