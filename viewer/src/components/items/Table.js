@@ -16,7 +16,7 @@ import {
     MRT_TableContainer,
 } from 'material-react-table';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import { mkConfig, generateCsv } from 'export-to-csv';
+import { mkConfig, generateCsv } from "export-to-csv";
 
 const Table = ({ table, project, itemWidth, height, width }) => {
     const traceNames = table.traces.map((trace) => trace.name);
@@ -43,7 +43,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         }
     }, [selectedTableCohort, columns]);
     const handleExportData = () => {
-        const csv = generateCsv(csvConfig)(tableData); // Generate CSV data
+        const csv = generateCsv(csvConfig)(tableData); 
         const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(csvBlob);
         const link = document.createElement('a');
@@ -55,8 +55,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         link.setAttribute('download', `${table.name}_${traceName}_${cohortName}.csv`);
         
         document.body.appendChild(link);
-        link.click(); // Trigger the download
-        document.body.removeChild(link); // Clean up
+        link.click(); 
+        document.body.removeChild(link);
     };
     
     

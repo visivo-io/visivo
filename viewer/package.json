@@ -41,7 +41,7 @@
   },
   "scripts": {
     "start": "REACT_APP_API_BASE_URL='http://localhost:8000' react-scripts start",
-    "test": "react-scripts test",
+    "test": "react-scripts test --transformIgnorePatterns \"node_modules/(?!export-to-csv)/\"",
     "build": "PUBLIC_URL='/' yarn run react-scripts build",
     "deploy": "yarn run build && rm -rf ../visivo/viewer && cp -Rv build/ ../visivo/viewer/",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx"

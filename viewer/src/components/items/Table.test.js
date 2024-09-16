@@ -20,6 +20,7 @@ beforeEach(() => {
         ]
       }
     ],
+    rows_per_page: 50,
     traces: [{ name: "traceName", columns: { x_data: "x" } }],
     selector: { name: "selector", type: "single", parent_name: "name" }
   }
