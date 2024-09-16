@@ -75,7 +75,7 @@ test('exports table data as CSV when export button is clicked', async () => {
   };
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
 
-  const { container } = render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
   global.URL.createObjectURL = jest.fn();
   global.Blob = jest.fn(() => ({ type: 'text/csv;charset=utf-8;' }));
