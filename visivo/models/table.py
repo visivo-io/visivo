@@ -14,11 +14,11 @@ class RowsPerPageEnum(IntEnum):
     three = 3
     five = 5
     ten = 15
-    twentyfive = 25 
+    twenty_five = 25 
     fifty = 50 
-    onehundred = 100
-    fivehundred = 500
-    onethousand = 1000
+    one_hundred = 100
+    five_hundred = 500
+    one_thousand = 1000
 
 
 class Table(SelectorModel, NamedModel, ParentModel):

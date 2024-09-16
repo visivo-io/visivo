@@ -44,6 +44,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
         }
     }, [selectedTableCohort, columns]);
+    
     const handleExportData = () => {
         const csv = generateCsv(csvConfig)(tableData); 
         const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -62,7 +63,6 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     };
     
     
-
     const useTable = useMaterialReactTable({
         columns: tableColumnsWithUnderscores(columns),
         data: tableData,

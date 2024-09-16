@@ -1,5 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Table from './Table';
+import { mkConfig, generateCsv } from "export-to-csv";
 import * as useTracesData from '../../hooks/useTracesData';
 import { withProviders } from '../../utils/test-utils';
 
