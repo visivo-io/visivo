@@ -5,6 +5,7 @@ import { createTheme, ThemeProvider, Box, Button } from '@mui/material';
 import { useTracesData } from "../../hooks/useTracesData";
 import { ItemContainer } from "./ItemContainer";
 import CohortSelect from "../select/CohortSelect";
+/* eslint-disable react/jsx-pascal-case */
 import {
     MRT_ShowHideColumnsButton,
     MRT_TablePagination,
@@ -15,6 +16,7 @@ import {
     useMaterialReactTable,
     MRT_TableContainer,
 } from 'material-react-table';
+/* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { mkConfig, generateCsv } from "export-to-csv";
 
@@ -101,7 +103,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             setSelectedTableCohort({ traceName, data: changedSelectedTracesData[traceName][cohortName], cohortName });
         }
     };
-
+    /* eslint-disable react/jsx-pascal-case */
     return (
         <ThemeProvider theme={tableTheme}>
             <ItemContainer>
@@ -154,6 +156,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             </ItemContainer>
         </ThemeProvider>
     );
+    /* eslint-enable react/jsx-pascal-case */
 }
 
 export default Table;
