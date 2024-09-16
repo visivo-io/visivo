@@ -16,7 +16,7 @@ import {
     MRT_TableContainer,
 } from 'material-react-table';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import { mkConfig, generateCsv, download } from 'export-to-csv';
+import { mkConfig, generateCsv } from 'export-to-csv';
 
 const Table = ({ table, project, itemWidth, height, width }) => {
     const traceNames = table.traces.map((trace) => trace.name);

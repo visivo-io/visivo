@@ -75,6 +75,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
               key: columns.cli_version
             - header: "Stage Name"
               key: columns.stage_name
+              aggregation: uniqueCount
             - header: "Account Name"
               key: columns.account_name
             - header: "Account Name"
