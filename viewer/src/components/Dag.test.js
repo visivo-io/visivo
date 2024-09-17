@@ -2,10 +2,8 @@ import { render, screen } from '@testing-library/react';
 import Dag from './Dag';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 
-const getProject = () => {
-  return {
-    project_json: {}
-  }
+const getDag = () => {
+  return null
 };
 
 const routes = [
@@ -13,7 +11,7 @@ const routes = [
     path: "/:project",
     element: <Dag />,
     id: 'project',
-    loader: getProject
+    loader: getDag
   },
 ];
 
