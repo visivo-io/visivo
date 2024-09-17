@@ -56,14 +56,14 @@ const filterDag = (dag, nodeName, before, after) => {
 
 const Dag = () => {
     const svgRef = useRef(null);
-    const project = useLoaderData();
+    const dagModel = useLoaderData();
     const [state, setState] = useState({
         nodeName: null,
         before: 0,
         after: 0,
     });
 
-    const dag = useMemo(() => filterDag(project.project_json.dag, state.nodeName, state.before, state.after), [project, state.nodeName, state.before, state.after]);
+    const dag = useMemo(() => filterDag(dagModel, state.nodeName, state.before, state.after), [dagModel, state.nodeName, state.before, state.after]);
 
     useEffect(() => {
         if (!dag || !svgRef.current) return;

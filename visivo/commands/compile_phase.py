@@ -44,7 +44,6 @@ def compile_phase(
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
         model = serializer.dereference().model_dump(mode="json", exclude_none=True)
-        model["dag"] = project.dag_dict()
         fp.write(json.dumps(model))
 
     dag = project.dag()
