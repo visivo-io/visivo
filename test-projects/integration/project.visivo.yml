@@ -70,8 +70,18 @@ dashboards:
           - width: 3
             table:
               name: awesome-table
+              column_defs:
+                - trace_name: Fibonacci Waterfall
+                  columns:
+                    - key: "columns.x_data"
+                    - key: "columns.y_data"
+                      header: "y amount"
+                      aggregation: 'sum'
+                    - key: "columns.measure"
+                    - key: "props.text"
               traces:
                 - ref(Fibonacci Waterfall)
+              rows_per_page: 1000
           - width: 2
             chart: ref(indicator_chart)
 
