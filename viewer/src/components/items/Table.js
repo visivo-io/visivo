@@ -80,7 +80,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             showGlobalFilter: true, 
             density: "compact", 
             pagination: {
-                pageSize: table.rows_per_page
+                pageSize: table.rows_per_page || 50
             }
         },
     });
