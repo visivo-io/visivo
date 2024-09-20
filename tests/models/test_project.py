@@ -51,7 +51,7 @@ def test_Project_validate_project_trace_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+        == f'The reference "ref(trace_name)" on item "chart" does not point to an object.'
     )
     assert error["type"] == "bad_reference"
 
@@ -79,7 +79,7 @@ def test_Project_validate_chart_refs():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == f'The reference "ref(trace_name)" on item "Chart - chart" does not point to an object.'
+        == f'The reference "ref(trace_name)" on item "chart" does not point to an object.'
     )
     assert error["type"] == "bad_reference"
 
@@ -306,14 +306,30 @@ def test_ref_selector_item_Project_dag():
     ]
 
 
+def test_ref_selector_row_item_Project_dag():
+    row = RowFactory()
+    selector = SelectorFactory(name="row selector", options=["ref(row)"])
+    project = ProjectFactory(selectors=[selector])
+    project.dashboards[0].rows = [row]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 10
+    assert selector in project.descendants_of_type(type=Selector)
+
+
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
+    project.dashboards[0].rows[0].items[0].name = "item"
 
     with pytest.raises(ValueError) as exc_info:
         # It is an incomplete reference from the level of dashboards.
         project.dashboards[0].descendants()
 
-    assert 'The reference "ref(table_name)" on item "Item -' in str(exc_info.value)
+    assert (
+        'The reference "ref(table_name)" on item "item" does not point to an object.'
+        in str(exc_info.value)
+    )
 
 
 def test_sub_dag_including_dashboard_name_Project_dag():
@@ -343,3 +359,21 @@ def test_trace_with_default_source_Project_dag():
     assert len(project.descendants()) == 3
     assert project.descendants_of_type(type=Model) == [project.models[0]]
     assert project.descendants_of_type(type=Source) == [project.sources[0]]
+
+
+def test_set_paths_on_models():
+    project_data = {
+        "name": "test_project",
+        "dashboards": [
+            {
+                "name": "dashboard1",
+                "rows": [{"items": []}],
+            }
+        ],
+    }
+
+    project = Project(**project_data)
+
+    assert project.path == "project"
+    assert project.dashboards[0].path == "project.dashboards[0]"
+    assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"

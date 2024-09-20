@@ -1,4 +1,5 @@
 from pydantic import (
+    Field,
     StringConstraints,
     Discriminator,
     Tag,
@@ -6,7 +7,7 @@ from pydantic import (
     ConfigDict,
 )
 from typing_extensions import Annotated
-from typing import Any, Union, NewType
+from typing import Any, Optional, Union, NewType
 import re
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
@@ -51,7 +52,15 @@ class ModelStrDiscriminator:
 class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    path: Optional[str] = Field(None, description="A unique path to this object")
+
     def id(self):
+        return self.path
+
+    def id(self):
+        if self.path:
+            return self.path
+
         return (
             self.__class__.__name__
             + " - "
@@ -70,4 +79,6 @@ class BaseModel(PydanticBaseModel):
         return hash(self.__str__())
 
     def __str__(self):
+        if self.id() is None:
+            return self.__class__.__name__
         return self.id()

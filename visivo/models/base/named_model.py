@@ -1,3 +1,4 @@
+from typing import Optional
 import pydantic
 import re
 from .base_model import BaseModel, REF_REGEX
@@ -7,9 +8,12 @@ NAME_REGEX = r"^[a-zA-Z0-9\s'\"\-_]+$"
 
 class NamedModel(BaseModel):
     def id(self):
-        return self.__class__.__name__ + " - " + str(self.name)
+        if self.name:
+            return self.name
+        else:
+            return self.path
 
-    name: str = pydantic.Field(
+    name: Optional[str] = pydantic.Field(
         None, description="The unique name of the object across the entire project."
     )
 
@@ -21,3 +25,8 @@ class NamedModel(BaseModel):
             return obj.name
         else:
             return re.match(REF_REGEX, obj).groupdict()["ref_name"]
+
+    def __str__(self):
+        if self.id() is None:
+            return self.__class__.__name__
+        return self.id()

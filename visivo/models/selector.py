@@ -14,12 +14,15 @@ class SelectorType(str, Enum):
 
 class Selector(ParentModel, NamedModel, BaseModel):
     """
-    Selectors can be used to add interactivity between charts and tables.
+    Selectors enable you to toggle between multiple different traces in your chart. 
+    
+    !!! tip
+        Selectors can also be used to add interactivity between charts different tables. You can read more about using [selectors to add interactivity here](../../../topics/interactivity).
 
-    Below is how you would link two charts to show the same selected data.
+    You can configure selectors to be single select or multi-select. Single select is great if you only want to show a single trace at a time on the chart while the multi-select can be really useful for providing filtering capabilities. 
 
     ### Example
-
+    Here's how you might use selectors to create interactivity between two different charts. 
     ``` yaml
     charts:
         - name: Chart One
@@ -36,12 +39,12 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    name: str = Field(description="The name of the selector")
     type: SelectorType = Field(
         SelectorType.multiple, description="Single or multiple selector"
     )
     options: List[RefString] = Field(
-        [], description="Optional to set the traces to create the choices list"
+        [],
+        description="Optional set of traces, items, or rows to create the choices list",
     )
 
     _parent_name: str = PrivateAttr()
@@ -51,7 +54,12 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     @model_serializer()
     def serialize_model(self):
-        model = {"name": self.name, "type": self.type, "options": self.options}
+        model = {"name": self.name, "type": self.type, "options": []}
+        for option in self.options:
+            if isinstance(option, str):
+                model["options"].append(option)
+            else:
+                model["options"].append({"name": option.name, "type": option.__class__.__name__.lower()})
         if hasattr(self, "_parent_name"):
             model["parent_name"] = self._parent_name
         else:

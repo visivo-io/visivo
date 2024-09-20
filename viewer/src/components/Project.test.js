@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 const getProject = (items) => {
   return {
     project_json: {
+      selectors: [],
       dashboards: [{
         name: "dashboard", rows: [{
           height: "medium", items: items

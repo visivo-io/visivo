@@ -17,7 +17,7 @@ jobs:
       
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
         
       - name: Build App
         run: cd viewer && yarn install && yarn deploy && cd ..

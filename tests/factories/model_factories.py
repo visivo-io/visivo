@@ -184,6 +184,7 @@ class RowFactory(factory.Factory):
     class Meta:
         model = Row
 
+    name = "row"
     height = HeightEnum.medium
     items = factory.List([factory.SubFactory(ItemFactory) for _ in range(1)])
 

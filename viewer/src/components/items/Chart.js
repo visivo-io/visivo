@@ -2,11 +2,11 @@ import Loading from "../Loading";
 import Menu from "./Menu"
 import Plot from 'react-plotly.js';
 import React, { useState, useMemo } from "react";
-import CohortSelect from "./CohortSelect";
+import CohortSelect from "../select/CohortSelect";
 import { traceNamesInData, chartDataFromCohortData } from "../../models/Trace";
 import { useTracesData } from "../../hooks/useTracesData";
 import MenuItem from "../styled/MenuItem";
-import { ItemContainer  } from "./ItemContainer";
+import { ItemContainer } from "./ItemContainer";
 
 const Chart = ({ chart, project, itemWidth, height, width }) => {
     const traceNames = chart.traces.map((trace) => trace.name)
@@ -36,6 +36,8 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
         setSelectedCohortData(changedSelectedTracesData)
     }
 
+    const layout = structuredClone(chart.layout ? chart.layout : {})
+
     return (
         <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
             <Menu hovering={hovering && cohortSelectVisible}>
@@ -54,7 +56,7 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                 key={`chart_${chart.name}`}
                 data-testid={`chart_${chart.name}`}
                 data={selectedPlotData}
-                layout={{ ...chart.layout, height, width }}
+                layout={{ ...layout, height, width }}
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
             />
