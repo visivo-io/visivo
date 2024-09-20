@@ -63,6 +63,37 @@ const Dashboard = ({ project, dashboardName }) => {
         }
         return true
     }
+    const renderRow = (row, rowIndex) => {
+        if (!shouldShowNamedModel(row)) {
+            return null;
+        }
+        const visibleItems = row.items.filter(item => shouldShowNamedModel(item));
+        const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
+
+        return (
+            <div
+                key={`row-${rowIndex}`}
+                className="dashboard-row"
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${totalWidth}, 1fr)`,
+                    gap: '1rem',
+                    ...getHeightStyle(row)
+                }}
+            >
+                {visibleItems.map((item, itemIndex) => (
+                    <div
+                        key={`item-${rowIndex}-${itemIndex}`}
+                        style={{
+                            gridColumn: `span ${item.width || 1}`,
+                        }}
+                    >
+                        {renderComponent(item, row, itemIndex, rowIndex)}
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     const renderComponent = (item, row, itemIndex, rowIndex) => {
         const items = row.items.filter(item => shouldShowNamedModel(item))
@@ -110,19 +141,19 @@ const Dashboard = ({ project, dashboardName }) => {
         }
     }
 
-    const renderRow = (row, rowIndex) => {
-        if (!shouldShowNamedModel(row)) {
-            return null
-        }
-        return (
-            <div className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
-                style={isColumn ? {} : getHeightStyle(row)}
-                key={`dashboardRow${rowIndex}`}
-            >
-                {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
-            </div>
-        )
-    }
+    // const renderRow = (row, rowIndex) => {
+    //     if (!shouldShowNamedModel(row)) {
+    //         return null
+    //     }
+    //     return (
+    //         <div className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
+    //             style={isColumn ? {} : getHeightStyle(row)}
+    //             key={`dashboardRow${rowIndex}`}
+    //         >
+    //             {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
+    //         </div>
+    //     )
+    // }
     return (
         <div ref={observe} data-testid={`dashboard_${dashboardName}`} className='flex grow flex-col justify-items-stretch'>
             {dashboard.rows.map(renderRow)}
