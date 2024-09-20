@@ -44,6 +44,11 @@ def app_phase(output_dir, working_dir, default_source, name_filter, threads):
         threads=threads,
     )
 
+    @app.route("/data/error.json")
+    def error():
+        with open(f"{output_dir}/error.json", "r") as error_file:
+            return error_file.read()
+
     @app.route("/data/project.json")
     def projects():
         project_json = get_project_json(output_dir, name_filter)
@@ -84,8 +89,13 @@ def serve_phase(output_dir, working_dir, default_source, name_filter, threads):
                 soft_failure=True,
             )
             Logger.instance().info("Files changed. Reloading . . .")
+            with open(f"{output_dir}/error.json", "w") as error_file:
+                error_file.write(json.dumps({}))
         except Exception as e:
-            Logger.instance().error(e)
+            error_message = str(e)
+            Logger.instance().error(error_message)
+            with open(f"{output_dir}/error.json", "w") as error_file:
+                error_file.write(json.dumps({"error": error_message}))
 
     server = Server(app.wsgi_app)
     server.watch(f"**/*.yml", cli_changed)
