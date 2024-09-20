@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import Table from './Table';
 import * as useTracesData from '../../hooks/useTracesData';
 import { withProviders } from '../../utils/test-utils';
@@ -80,6 +80,9 @@ test('exports table data as CSV when export button is clicked', async () => {
   global.URL.createObjectURL = jest.fn();
   global.Blob = jest.fn(() => ({ type: 'text/csv;charset=utf-8;' }));
 
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeInTheDocument();
+  })
   const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
   fireEvent.click(exportButton);
 
