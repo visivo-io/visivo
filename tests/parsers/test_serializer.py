@@ -31,28 +31,28 @@ def test_Serializer_with_trace_ref():
     assert project.dashboards[0].rows[0].items[0].chart.traces[0].name == "trace_name"
 
 
-def test_Serializer_with_target_ref():
+def test_Serializer_with_source_ref():
     project = ProjectFactory()
-    project.dashboards[0].rows[0].items[0].chart.traces[0].model.target = "ref(target)"
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model.source = "ref(source)"
     project = Serializer(project=project).dereference()
     assert project.name == "project"
-    assert project.targets == []
+    assert project.sources == []
     assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].model.target.name
-        == "target"
+        project.dashboards[0].rows[0].items[0].chart.traces[0].model.source.name
+        == "source"
     )
 
 
-def test_Serializer_with_default_target():
+def test_Serializer_with_default_source():
     project = ProjectFactory()
-    project.defaults = DefaultsFactory(target_name="target")
-    project.dashboards[0].rows[0].items[0].chart.traces[0].model.target = None
+    project.defaults = DefaultsFactory(source_name="source")
+    project.dashboards[0].rows[0].items[0].chart.traces[0].model.source = None
     project = Serializer(project=project).dereference()
     assert project.name == "project"
-    assert project.targets == []
+    assert project.sources == []
     assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].model.target.name
-        == "target"
+        project.dashboards[0].rows[0].items[0].chart.traces[0].model.source.name
+        == "source"
     )
 
 
@@ -170,12 +170,21 @@ def test_Serializer_with_item_selector():
     assert len(project.dashboards[0].rows[0].items[1].chart.traces) == 1
 
 
+def test_Serializer_with_item_row_selector():
+    selector = SelectorFactory(name="selector_name", options=["ref(row)"])
+    project = ProjectFactory()
+    item = ItemFactory(chart=None, selector=selector)
+    project.dashboards[0].rows[0].items.append(item)
+    project = Serializer(project=project).dereference()
+    assert project.dashboards[0].rows[0].items[1].selector.options[0].name == "row"
+
+
 def test_Serializer_with_multiple_use_of_same_ref():
     model = SqlModelFactory(name="model_name")
     trace = TraceFactory(name="trace_name", model="ref(model_name)")
     chart = ChartFactory(name="chart_name", traces=["ref(trace_name)"])
-    item_1 = ItemFactory(chart="ref(chart_name)")
-    item_2 = ItemFactory(name="item_2", chart="ref(chart_name)")
+    item_1 = ItemFactory(chart="ref(chart_name)", name="item_1")
+    item_2 = ItemFactory(chart="ref(chart_name)", name="item_2")
     row = RowFactory(items=[item_1, item_2])
     dashboard = DashboardFactory(rows=[row])
     project = ProjectFactory(
@@ -183,7 +192,7 @@ def test_Serializer_with_multiple_use_of_same_ref():
     )
     project = Serializer(project=project).dereference()
     assert project.name == "project"
-    assert project.targets == []
+    assert project.sources == []
     assert project.traces == []
     assert project.charts == []
     assert project.models == []

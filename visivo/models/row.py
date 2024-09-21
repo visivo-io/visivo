@@ -1,22 +1,42 @@
 from visivo.models.base.named_model import NamedModel
-from .base.base_model import BaseModel
+from visivo.models.base.named_model import NamedModel
+from visivo.models.base.selector_model import SelectorModel
+from .base.base_model import RefString
 from .base.parent_model import ParentModel
 from pydantic import Field
-from typing import List
+from typing import List, Optional
 from enum import Enum
 from .item import Item
 
 
 class HeightEnum(str, Enum):
     compact = "compact"
+    xsmall= "xsmall"
     small = "small"
     medium = "medium"
     large = "large"
+    xlarge = "xlarge"
+    xxlarge = 'xxlarge'
 
 
 class Row(NamedModel, ParentModel):
     """
-    Rows are the horizontal component of the dashboard grid and house 1 to many Items.
+    Rows are the horizontal component of the dashboard grid and house 1 to many [Items](./Item/).
+
+    !!! tip
+        You can set the height of a row using the `height` attribute on a row
+        
+        ??? information "Row Height Options in Pixels"
+
+            | Height | Pixels |
+            |------------|-------|
+            | compact | wrapped |
+            | xsmall | 128 |
+            | small | 256 |
+            | medium | 396 |
+            | large | 512 |
+            | xlarge | 768 |
+            | xxlarge | 1024 |
     """
 
     height: HeightEnum = Field(

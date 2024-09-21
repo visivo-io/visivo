@@ -11,7 +11,7 @@ beforeEach(() => {
     type: "single",
     parent_name: "selector",
     options: [
-      { name: "traceName", columns: { x_data: "x" } }
+      { name: "traceName", type: "trace" }
     ]
   }
 });

@@ -1,7 +1,6 @@
 from typing import Any, List, Optional
 
 from visivo.models.base.selector_model import SelectorModel
-from visivo.models.selector import Selector
 from visivo.models.table_column_definition import TableColumnDefinition
 from .trace import Trace
 from pydantic import Field
@@ -9,6 +8,17 @@ from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .base.base_model import REF_REGEX, generate_ref_field
 from pydantic import model_validator
+from enum import IntEnum
+
+class RowsPerPageEnum(IntEnum):
+    three = 3
+    five = 5
+    ten = 15
+    twenty_five = 25 
+    fifty = 50 
+    one_hundred = 100
+    five_hundred = 500
+    one_thousand = 1000
 
 
 class Table(SelectorModel, NamedModel, ParentModel):
@@ -65,6 +75,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
               key: columns.cli_version
             - header: "Stage Name"
               key: columns.stage_name
+              aggregation: uniqueCount
             - header: "Account Name"
               key: columns.account_name
             - header: "Account Name"
@@ -81,6 +92,11 @@ class Table(SelectorModel, NamedModel, ParentModel):
     column_defs: Optional[List[TableColumnDefinition]] = Field(
         None,
         description="A list of column definitions. These definitions define the columns for a given trace included in this table.",
+    )
+
+    rows_per_page: RowsPerPageEnum = Field(
+        RowsPerPageEnum.fifty, 
+        description= "The number of rows to show per page. Default is 50 rows"
     )
 
     def child_items(self):
@@ -101,14 +117,4 @@ class Table(SelectorModel, NamedModel, ParentModel):
                 raise ValueError(
                     f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
                 )
-        return data
-
-    @model_validator(mode="before")
-    @classmethod
-    def ensure_selector(cls, data: Any) -> Any:
-        selector = data.get("selector")
-        if selector is None:
-            name = data.get("name")
-            data["selector"] = {"name": f"{name} Selector", "type": "single"}
-
         return data

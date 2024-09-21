@@ -25,7 +25,7 @@ tasks:
   - key: node
     call: mint/install-node 1.0.5
     with:
-      node-version: 18.0.0
+      node-version: 20.0.0
 
   - key: ruby
     call: mint/install-ruby 1.0.9
@@ -59,12 +59,13 @@ tasks:
       npm install --global yarn
       yarn install 
       yarn test
+      yarn run lint --max-warnings=0
 
   - key: test-snowflake
     use: [visivo-install]
     run: |
       cd test-projects/integration
-      visivo run -t remote-snowflake
+      visivo run -s remote-snowflake
     env:
       STACKTRACE: true
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -98,7 +99,7 @@ tasks:
     run: |
       PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -f tests/setup/populate_ci_postgres.sql
       cd test-projects/integration
-      visivo run -t local-postgres --threads 1
+      visivo run -s local-postgres --threads 1
     env:
       PGPASSWORD: postgres
       PG_PASSWORD: postgres
@@ -121,7 +122,7 @@ tasks:
     run: |
       mysql --protocol tcp -h localhost -u root -pmysql < tests/setup/populate_ci_mysql.sql
       cd test-projects/integration
-      visivo run -t local-mysql --threads 1
+      visivo run -s local-mysql --threads 1
     env:
       MYSQL_PASSWORD: mysql
       IS_MYSQL: true

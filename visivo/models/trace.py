@@ -63,7 +63,7 @@ class Trace(NamedModel, ParentModel):
       - name: crypto ohlc
         model:
           sql: 'SELECT * finance_data_atlas.FINANCE.CMCCD2019'
-        target_name: remote-snowflake
+        source_name: remote-snowflake
         cohort_on: query( "Cryptocurrency Name" )
         props:
           type: ohlc

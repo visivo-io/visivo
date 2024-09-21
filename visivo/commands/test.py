@@ -1,9 +1,9 @@
 import click
-from visivo.commands.options import output_dir, working_dir, target
+from visivo.commands.options import output_dir, working_dir, source
 
 
 @click.command()
-@target
+@source
 @working_dir
 @output_dir
 def test(output_dir, working_dir, target):
@@ -17,7 +17,7 @@ def test(output_dir, working_dir, target):
     from visivo.commands.test_phase import test_phase
 
     test_phase(
-        default_target=target,
+        default_source=source,
         output_dir=output_dir,
         working_dir=working_dir,
     )

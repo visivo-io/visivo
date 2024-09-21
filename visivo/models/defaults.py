@@ -1,20 +1,21 @@
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Defaults(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     """
-    Defaults enable you to set a target and alert that will be used whenever one is not explicitly passed.
+    Defaults enable you to set a source and alert that will be used whenever one is not explicitly passed.
 
     Defaults will be overridden if:
 
-    1. A target / alert is passed to a command. ex: `visivo serve -t target-name`
-    2. A target is specified in the trace using the `target_name` attribute. when this attribute is set the trace will always run queries against that target.
+    1. A source / alert is passed to a command. ex: `visivo serve -t source-name`
+    2. A source is specified in the trace using the `source_name` attribute. when this attribute is set the trace will always run queries against that source.
 
     Here's how defaults look in the `project.visivo.yml` file:
     ``` yaml
     defaults:
-      target_name: local-sqlite
+      source_name: local-sqlite
       alert_name: slack
 
     alerts:
@@ -22,9 +23,9 @@ class Defaults(BaseModel):
         type: slack
         webhook_url: https://hooks.slack.com/services/ap8ub98ssoijbloisojbo8ys8
 
-    targets:
+    sources:
       - name: local-sqlite
-        database: target/local.db
+        database: source/local.db
         type: sqlite
     ```
     """
@@ -33,9 +34,10 @@ class Defaults(BaseModel):
         None,
         description="The name of an alert defined elsewhere in the Visivo project.",
     )
-    target_name: Optional[str] = Field(
+    source_name: Optional[str] = Field(
         None,
-        description="The name of a target defined elsewhere in the Visivo project.",
+        description="The name of a source defined elsewhere in the Visivo project.",
+        alias="target_name",
     )
 
     def __hash__(self):

@@ -9,29 +9,35 @@ from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
-from visivo.models.targets.fields import TargetField
+from visivo.models.sources.fields import SourceField
 
 
 from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
-from .targets.target import Target
+from .sources.source import Source
 from .table import Table
 from .defaults import Defaults
 from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
-from pydantic import model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 
 class Project(NamedModel, ParentModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     defaults: Optional[Defaults] = None
     cli_version: Optional[str] = None
     includes: List[Include] = []
     destinations: List[DestinationField] = []
     alerts: List[Alert] = []
-    targets: List[TargetField] = []
+    sources: List[SourceField] = Field(
+        [],
+        description="A list of source objects.",
+        alias="targets",
+    )
     models: List[ModelField] = []
     traces: List[Trace] = []
     tables: List[Table] = []
@@ -43,7 +49,7 @@ class Project(NamedModel, ParentModel):
         return (
             self.destinations
             + self.alerts
-            + self.targets
+            + self.sources
             + self.models
             + self.traces
             + self.tables
@@ -61,15 +67,15 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_default_names(self):
-        targets, alerts = (self.targets, self.alerts)
-        target_names = [target.name for target in targets]
+        sources, alerts = (self.sources, self.alerts)
+        source_names = [source.name for source in sources]
         alert_names = [alert.name for alert in alerts]
         defaults = self.defaults
         if not defaults:
             return self
 
-        if defaults.target_name and defaults.target_name not in target_names:
-            raise ValueError(f"default target '{defaults.target_name}' does not exist")
+        if defaults.source_name and defaults.source_name not in source_names:
+            raise ValueError(f"default source '{defaults.source_name}' does not exist")
 
         if defaults.alert_name and defaults.alert_name not in alert_names:
             raise ValueError(f"default alert '{defaults.alert_name}' does not exist")
@@ -77,15 +83,15 @@ class Project(NamedModel, ParentModel):
         return self
 
     @model_validator(mode="after")
-    def validate_models_have_targets(self):
+    def validate_models_have_sources(self):
         defaults = self.defaults
-        if defaults and defaults.target_name:
+        if defaults and defaults.source_name:
             return self
 
         for model in self.descendants_of_type(Model):
-            if isinstance(model, SqlModel) and not model.target:
+            if isinstance(model, SqlModel) and not model.source:
                 raise ValueError(
-                    f"'{model.name}' does not specify a target and the project does not specify default target."
+                    f"'{model.name}' does not specify a source and project does not specify default source"
                 )
 
         return self
@@ -97,15 +103,32 @@ class Project(NamedModel, ParentModel):
             type=Table, dag=dag, from_node=self
         )
         for table in tables:
-            selector = ParentModel.all_descendants_of_type(
+            selectors = ParentModel.all_descendants_of_type(
                 type=Selector, dag=dag, from_node=table
-            )[0]
-            if selector.type == SelectorType.multiple:
+            )
+            if len(selectors) > 0 and selectors[0].type == SelectorType.multiple:
                 raise ValueError(
                     f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."
                 )
 
         return self
+
+    @model_validator(mode="before")
+    def set_paths_on_models(cls, values):
+        def set_path_recursively(obj, path=""):
+            if isinstance(obj, dict):
+                obj["path"] = path
+                for key, value in obj.items():
+                    if key not in ["props", "defaults", "layout", "columns"]:
+                        new_path = f"{path}.{key}" if path else key
+                        set_path_recursively(value, new_path)
+            elif isinstance(obj, list):
+                for index, item in enumerate(obj):
+                    new_path = f"{path}[{index}]"
+                    set_path_recursively(item, new_path)
+
+        set_path_recursively(values, "project")
+        return values
 
     @model_validator(mode="after")
     def validate_names(self):

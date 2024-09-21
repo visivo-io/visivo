@@ -3,7 +3,7 @@ from visivo.models.models.model import Model
 from visivo.models.project import Project
 from visivo.models.item import Item
 from visivo.models.selector import Selector
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.models.chart import Chart
@@ -14,7 +14,7 @@ from ..factories.model_factories import (
     SelectorFactory,
     SqlModelFactory,
     TraceFactory,
-    TargetFactory,
+    SourceFactory,
     ChartFactory,
     DashboardFactory,
     RowFactory,
@@ -30,6 +30,12 @@ def test_Project_simple_data():
     data = {"name": "development"}
     project = Project(**data)
     assert project.name == "development"
+
+
+def test_Project_find_source():
+    source = SourceFactory()
+    project = Project(sources=[source])
+    assert project.find_source(name=source.name) == source
 
 
 def test_Project_validate_project_trace_refs():
@@ -51,12 +57,12 @@ def test_Project_validate_project_trace_refs():
     assert error["type"] == "bad_reference"
 
     trace = TraceFactory(name="trace_name")
-    target = TargetFactory()
+    source = SourceFactory()
     data = {
         "name": "development",
         "traces": [trace],
         "dashboards": [dashboard],
-        "targets": [target],
+        "sources": [source],
     }
     project = Project(**data)
     assert project.traces[0].name == "trace_name"
@@ -79,12 +85,12 @@ def test_Project_validate_chart_refs():
     assert error["type"] == "bad_reference"
 
     trace = TraceFactory(name="trace_name")
-    target = TargetFactory()
+    source = SourceFactory()
     data = {
         "name": "development",
         "traces": [trace],
         "charts": [chart],
-        "targets": [target],
+        "sources": [source],
         "dashboards": [],
     }
     project = Project(**data)
@@ -134,11 +140,11 @@ def test_Project_validate_chart_names():
 def test_Project_validate_trace_names():
     trace_orig = TraceFactory()
     trace_dup = TraceFactory(name=trace_orig.name)
-    target = TargetFactory(name="target")
+    source = SourceFactory(name="source")
     data = {
         "name": "development",
-        "defaults": {"target_name": "target"},
-        "targets": [target],
+        "defaults": {"source_name": "source"},
+        "sources": [source],
         "traces": [trace_orig, trace_dup],
         "charts": [],
         "dashboards": [],
@@ -154,29 +160,29 @@ def test_Project_validate_trace_names():
     assert error["type"] == "value_error"
 
 
-def test_Project_validate_default_target_exists():
-    target = TargetFactory()
+def test_Project_validate_default_source_exists():
+    source = SourceFactory()
     data = {
         "name": "development",
-        "targets": [target],
-        "defaults": {"target_name": target.name},
+        "sources": [source],
+        "defaults": {"source_name": source.name},
     }
 
     Project(**data)
 
 
-def test_Project_validate_default_target_does_not_exists():
-    target = TargetFactory()
+def test_Project_validate_default_source_does_not_exists():
+    source = SourceFactory()
     data = {
         "name": "development",
-        "defaults": {"target_name": target.name},
+        "defaults": {"source_name": source.name},
     }
 
     with pytest.raises(ValidationError) as exc_info:
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == f"Value error, default target '{target.name}' does not exist"
+    assert error["msg"] == f"Value error, default source '{source.name}' does not exist"
     assert error["type"] == "value_error"
 
 
@@ -191,8 +197,8 @@ def test_Project_validate_default_alerts_exists():
     Project(**data)
 
 
-def test_Project_validate_default_target_does_not_exists():
-    alert = TargetFactory()
+def test_Project_validate_default_source_does_not_exists():
+    alert = SourceFactory()
     data = {
         "name": "development",
         "defaults": {"alert_name": alert.name},
@@ -207,7 +213,7 @@ def test_Project_validate_default_target_does_not_exists():
 
 
 def test_Project_validate_table_single():
-    target = TargetFactory()
+    source = SourceFactory()
     data = {
         "name": "development",
         "tables": [
@@ -311,14 +317,30 @@ def test_ref_selector_item_Project_dag():
     ]
 
 
+def test_ref_selector_row_item_Project_dag():
+    row = RowFactory()
+    selector = SelectorFactory(name="row selector", options=["ref(row)"])
+    project = ProjectFactory(selectors=[selector])
+    project.dashboards[0].rows = [row]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 10
+    assert selector in project.descendants_of_type(type=Selector)
+
+
 def test_invalid_ref_Project_dag():
     project = ProjectFactory(table_ref=True)
+    project.dashboards[0].rows[0].items[0].name = "item"
 
     with pytest.raises(ValueError) as exc_info:
         # It is an incomplete reference from the level of dashboards.
         project.dashboards[0].descendants()
 
-    assert 'The reference "ref(table_name)" on item "item' in str(exc_info.value)
+    assert (
+        'The reference "ref(table_name)" on item "item" does not point to an object.'
+        in str(exc_info.value)
+    )
 
 
 def test_sub_dag_including_dashboard_name_Project_dag():
@@ -333,18 +355,36 @@ def test_sub_dag_including_dashboard_name_Project_dag():
     assert additional_dashboard not in included_nodes
 
 
-def test_trace_with_default_target_Project_dag():
-    model = SqlModelFactory(target=None)
-    target = TargetFactory()
+def test_trace_with_default_source_Project_dag():
+    model = SqlModelFactory(source=None)
+    source = SourceFactory()
     project = ProjectFactory(
         dashboards=[],
-        targets=[target],
+        sources=[source],
         models=[model],
-        defaults=DefaultsFactory(target_name=target.name),
+        defaults=DefaultsFactory(source_name=source.name),
     )
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 3
     assert project.descendants_of_type(type=Model) == [project.models[0]]
-    assert project.descendants_of_type(type=Target) == [project.targets[0]]
+    assert project.descendants_of_type(type=Source) == [project.sources[0]]
+
+
+def test_set_paths_on_models():
+    project_data = {
+        "name": "test_project",
+        "dashboards": [
+            {
+                "name": "dashboard1",
+                "rows": [{"items": []}],
+            }
+        ],
+    }
+
+    project = Project(**project_data)
+
+    assert project.path == "project"
+    assert project.dashboards[0].path == "project.dashboards[0]"
+    assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"

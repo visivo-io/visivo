@@ -57,6 +57,12 @@ class BaseModel(PydanticBaseModel):
     def id(self):
         return self.path
 
+    def id(self):
+        if self.path:
+            return self.path
+
+        return self.path
+
     @classmethod
     def is_obj(cls, obj) -> bool:
         return not cls.is_ref(obj)
@@ -69,4 +75,6 @@ class BaseModel(PydanticBaseModel):
         return hash(self.__str__())
 
     def __str__(self):
+        if self.id() is None:
+            return self.__class__.__name__
         return self.id()

@@ -22,6 +22,10 @@ jest.mock("react-markdown", () => (props) => {
     return <div>{props.children}</div>
 })
 
+global.structuredClone = (val) => {
+    return JSON.parse(JSON.stringify(val));
+};
+
 beforeAll(() => {
     global.ResizeObserver = ResizeObserver;
     global.ResizeObserverEntry = ResizeObserverEntry;

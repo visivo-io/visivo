@@ -1,5 +1,5 @@
 def run_phase(
-    default_target: str,
+    default_source: str,
     output_dir: str,
     working_dir: str,
     name_filter: str = None,
@@ -12,16 +12,16 @@ def run_phase(
     from visivo.commands.compile_phase import compile_phase
 
     project = compile_phase(
-        default_target=default_target,
+        default_source=default_source,
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter=name_filter,
     )
 
-    target_details = (
-        "\n" if default_target == None else f"and default target {default_target}\n"
+    source_details = (
+        "\n" if default_source == None else f" and default source {default_source}\n"
     )
-    Logger.instance().info(f"Running project across {threads} threads" + target_details)
+    Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
     runner = Runner(
         project=project,

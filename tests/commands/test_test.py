@@ -15,13 +15,13 @@ runner = CliRunner()
 def test_test():
     output_dir = temp_folder()
     project = ProjectFactory()
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
     response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
+        test, ["-o", output_dir, "-w", working_dir, "-s", "source"]
     )
     assert "tests run" in response.output
     assert response.exit_code == 0
@@ -33,7 +33,7 @@ def test_test_failure():
     project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [
         Test(assertions=[">{ False }"])
     ]
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json(by_alias=True)), name=PROJECT_FILE_NAME
     )
@@ -45,7 +45,7 @@ def test_test_failure():
     json_file.write(json.dumps(data))
     json_file.close()
     response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
+        test, ["-o", output_dir, "-w", working_dir, "-s", "source"]
     )
     assert "tests run" in response.output
     assert response.exit_code == 1
@@ -55,13 +55,13 @@ def test_test_alert():
     output_dir = temp_folder()
     alert = AlertFactory()
     project = ProjectFactory(alerts=[alert])
-    create_file_database(url=project.targets[0].url(), output_dir=output_dir)
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json(by_alias=True)), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
     response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-t", "target"]
+        test, ["-o", output_dir, "-w", working_dir, "-s", "source"]
     )
     assert "tests run" in response.output
     assert "Console Destination Run" in response.output

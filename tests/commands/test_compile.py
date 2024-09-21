@@ -11,9 +11,9 @@ runner = CliRunner()
 def test_compile():
     tmp = temp_yml_file(dict={"name": "project"}, name=PROJECT_FILE_NAME)
     dir = os.path.dirname(tmp)
-    target = {"name": "local", "database": "target/local.db", "type": "sqlite"}
+    source = {"name": "local", "database": "target/local.db", "type": "sqlite"}
 
-    response = runner.invoke(compile, ["-w", dir, "-t", json.dumps(target)])
+    response = runner.invoke(compile, ["-w", dir, "-s", json.dumps(source)])
 
     assert "Compiling project" in response.output
     assert response.exit_code == 0

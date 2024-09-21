@@ -24,7 +24,16 @@ def handle_allOf(attribute_property_object: dict, model_defs: dict):
     enum_model = model_defs.get(enum_model_key, {})
     if not enum_model:
         raise KeyError(f"Key {enum_model_key} was not found in $defs dictionary.")
-    type = "Enumerated - one of: " + ", ".join(enum_model.get("enum"))
+    if enum_model.get('type') != 'string':
+        enum_options = [ str(a) for a in  enum_model.get("enum")]
+    else:
+        enum_options = enum_model.get("enum")
+    try: 
+        type = "Enumerated - one of: " + ", ".join(enum_options)
+    except Exception as e:
+        print(enum_model)
+        raise Exception
+        
     return type, default
 
 

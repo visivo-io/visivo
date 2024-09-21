@@ -1,5 +1,5 @@
 from visivo.query.dialect import Dialect
-from ..factories.model_factories import TargetFactory
+from ..factories.model_factories import SourceFactory
 
 
 def test_dialect():
@@ -22,9 +22,9 @@ def test_dialect():
     assert "count" in mysql_aggregates and "json_arrayagg" in mysql_aggregates
 
 
-def test_dialect_from_target():
-    target = TargetFactory()
-    dialect = Dialect(type=target.type)
+def test_dialect_from_source():
+    source = SourceFactory()
+    dialect = Dialect(type=source.type)
     assert dialect.type == "sqlite"
 
     assert "like" in dialect.comparisons

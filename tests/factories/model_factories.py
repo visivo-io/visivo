@@ -6,8 +6,8 @@ from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector
-from visivo.models.targets.snowflake_target import SnowflakeTarget
-from visivo.models.targets.sqlite_target import SqliteTarget
+from visivo.models.sources.snowflake_source import SnowflakeSource
+from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
@@ -38,20 +38,20 @@ class AlertFactory(factory.Factory):
     )
 
 
-class SnowflakeTargetFactory(factory.Factory):
+class SnowflakeSourceFactory(factory.Factory):
     class Meta:
-        model = SnowflakeTarget
+        model = SnowflakeSource
 
-    name = "target"
+    name = "source"
     database = "tmp/test.db"
     type = "snowflake"
 
 
-class TargetFactory(factory.Factory):
+class SourceFactory(factory.Factory):
     class Meta:
-        model = SqliteTarget
+        model = SqliteSource
 
-    name = "target"
+    name = "source"
     database = "tmp/test.sqlite"
     type = "sqlite"
 
@@ -79,11 +79,11 @@ class SqlModelFactory(factory.Factory):
 
     name = "model"
     sql = "select * from test_table"
-    target = "ref(target)"
+    source = "ref(source)"
 
     class Params:
-        target_include = factory.Trait(target=factory.SubFactory(TargetFactory))
-        target_default = factory.Trait(target=None)
+        source_include = factory.Trait(source=factory.SubFactory(SourceFactory))
+        source_default = factory.Trait(source=None)
 
 
 class CsvScriptModelFactory(factory.Factory):
@@ -131,7 +131,7 @@ class JobFactory(factory.Factory):
         model = Job
 
     item = factory.SubFactory(TraceFactory)
-    target = factory.SubFactory(TargetFactory)
+    source = factory.SubFactory(SourceFactory)
     action = None
 
 
@@ -196,6 +196,7 @@ class RowFactory(factory.Factory):
     class Meta:
         model = Row
 
+    name = "row"
     height = HeightEnum.medium
     items = factory.List([factory.SubFactory(ItemFactory) for _ in range(1)])
 
@@ -264,7 +265,7 @@ class DashboardFactory(factory.Factory):
 
 
 class DefaultsFactory(factory.Factory):
-    target_name = "target"
+    source_name = "source"
 
     class Meta:
         model = Defaults
@@ -275,7 +276,7 @@ class ProjectFactory(factory.Factory):
         model = Project
 
     name = "project"
-    targets = factory.List([factory.SubFactory(TargetFactory) for _ in range(1)])
+    sources = factory.List([factory.SubFactory(SourceFactory) for _ in range(1)])
     dashboards = factory.List([factory.SubFactory(DashboardFactory) for _ in range(1)])
     traces = []
     alerts = []

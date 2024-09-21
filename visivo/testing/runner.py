@@ -22,7 +22,7 @@ class Runner:
         project: Project,
         output_dir: str,
         dag: Any,
-        default_target: str = None,
+        default_source: str = None,
     ):
         self.tests = tests
         self.project = project

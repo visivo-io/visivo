@@ -7,9 +7,9 @@ from visivo.testing.runner import Runner
 from visivo.commands.compile_phase import compile_phase
 
 
-def test_phase(output_dir: str, default_target: str, working_dir: str):
+def test_phase(output_dir: str, default_source: str, working_dir: str):
     project = compile_phase(
-        default_target=default_target, working_dir=working_dir, output_dir=output_dir
+        default_source=default_source, working_dir=working_dir, output_dir=output_dir
     )
     Logger.instance().debug("Testing project")
 
@@ -21,7 +21,7 @@ def test_phase(output_dir: str, default_target: str, working_dir: str):
         project=project,
         output_dir=output_dir,
         dag=dag,
-        default_target=default_target,
+        default_source=default_source,
     )
     if not test_runner.run().success:
         sys.exit(1)

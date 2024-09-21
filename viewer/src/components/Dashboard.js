@@ -5,8 +5,11 @@ import Selector from './items/Selector.js'
 import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
+import { useSearchParams } from "react-router-dom";
+import { getSelectorByOptionName } from "../models/Project.js";
 
-const Dashboard = (props) => {
+const Dashboard = ({ project, dashboardName }) => {
+    const [searchParams] = useSearchParams();
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
             observe();
@@ -17,20 +20,26 @@ const Dashboard = (props) => {
     const isColumn = width < widthBreakpoint;
 
     const getHeight = (height) => {
-        if (height === 'small') {
+        if (height === 'xsmall') {
+            return 128
+        } else if (height === 'small') {
             return 256
         } else if (height === 'medium') {
             return 396
-        } else {
+        } else if (height === 'large') {
             return 512
+        } else if (height === 'xlarge') {
+            return 768
+        } else {
+            return 1024
         }
     }
 
-    const getWidth = (row, item) => {
+    const getWidth = (items, item) => {
         if (width < widthBreakpoint) {
             return width;
         }
-        const totalWidth = row.items.reduce((partialSum, i) => {
+        const totalWidth = items.reduce((partialSum, i) => {
             const itemWidth = i.width ? i.width : 1
             return partialSum + itemWidth;
         }, 0);
@@ -39,32 +48,47 @@ const Dashboard = (props) => {
         return width * (itemWidth / totalWidth)
     }
 
-    const dashboard = props.project.project_json.dashboards.find(d => d.name === props.dashboardName)
+    const dashboard = project.project_json.dashboards.find(d => d.name === dashboardName)
     if (!dashboard) {
-        throwError(`Dashboard with name ${props.dashboardName} not found.`, 404);
+        throwError(`Dashboard with name ${dashboardName} not found.`, 404);
+    }
+
+    const shouldShowNamedModel = (namedModel) => {
+        const selector = getSelectorByOptionName(project, namedModel.name)
+        if (selector && searchParams.has(selector.name)) {
+            const selectedNames = searchParams.get(selector.name).split(",")
+            if (!selectedNames.includes(namedModel.name)) {
+                return false
+            }
+        }
+        return true
     }
 
     const renderComponent = (item, row, itemIndex, rowIndex) => {
+        const items = row.items.filter(item => shouldShowNamedModel(item))
+        if (items.indexOf(item) < 0) {
+            return null
+        }
         if (item.chart) {
             return <Chart
                 chart={item.chart}
-                project={props.project}
+                project={project}
                 height={getHeight(row.height)}
-                width={getWidth(row, item)}
+                width={getWidth(items, item)}
                 itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.table) {
             return <Table
                 table={item.table}
-                project={props.project}
+                project={project}
                 itemWidth={item.width}
-                width={getWidth(row, item)}
+                width={getWidth(items, item)}
                 height={getHeight(row.height)}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.selector) {
             return <Selector
                 selector={item.selector}
-                project={props.project}
+                project={project}
                 itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} >
             </Selector>
@@ -87,14 +111,20 @@ const Dashboard = (props) => {
     }
 
     const renderRow = (row, rowIndex) => {
+        if (!shouldShowNamedModel(row)) {
+            return null
+        }
         return (
-            <div className={`flex ${isColumn ? 'flex-col' : 'flex-row'}`} style={isColumn ? {} : getHeightStyle(row)} key={`dashboardRow${rowIndex}`}>
+            <div className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
+                style={isColumn ? {} : getHeightStyle(row)}
+                key={`dashboardRow${rowIndex}`}
+            >
                 {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
             </div>
         )
     }
     return (
-        <div ref={observe} data-testid={`dashboard_${props.dashboardName}`} className='flex grow flex-col justify-items-stretch'>
+        <div ref={observe} data-testid={`dashboard_${dashboardName}`} className='flex grow flex-col justify-items-stretch'>
             {dashboard.rows.map(renderRow)}
         </div >
     );

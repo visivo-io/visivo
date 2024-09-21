@@ -17,7 +17,7 @@ def action(csv_script_model: CsvScriptModel, output_dir):
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{csv_script_model.name}\033[0m",
             start_time=start_time,
-            full_path=csv_script_model.get_sqlite_target(
+            full_path=csv_script_model.get_sqlite_source(
                 output_dir=output_dir
             ).database,
         )
@@ -26,7 +26,7 @@ def action(csv_script_model: CsvScriptModel, output_dir):
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{csv_script_model.name}\033[0m",
             start_time=start_time,
-            full_path=csv_script_model.get_sqlite_target(
+            full_path=csv_script_model.get_sqlite_source(
                 output_dir=output_dir
             ).database,
             error_msg=str(repr(e)),
@@ -50,7 +50,7 @@ def jobs(dag, output_dir: str, project: Project, name_filter: str):
         jobs.append(
             Job(
                 item=csv_script_model,
-                target=csv_script_model.get_sqlite_target(output_dir),
+                source=csv_script_model.get_sqlite_source(output_dir),
                 action=action,
                 csv_script_model=csv_script_model,
                 output_dir=output_dir,

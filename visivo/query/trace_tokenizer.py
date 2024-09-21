@@ -1,5 +1,5 @@
 from visivo.models.trace import Trace
-from visivo.models.targets.target import Target
+from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.tokenized_trace import TokenizedTrace
 from .dialect import Dialect
@@ -12,11 +12,11 @@ DEFAULT_COHORT_ON = "'values'"
 
 
 class TraceTokenizer:
-    def __init__(self, trace: Trace, model: Model, target: Target):
+    def __init__(self, trace: Trace, model: Model, source: Source):
         self.trace = trace
-        self.target = target
+        self.source = source
         self.model = model
-        self.dialect = Dialect(type=target.type)
+        self.dialect = Dialect(type=source.type)
         self.statement_classifier = StatementClassifier(dialect=self.dialect)
         self.select_items = {}
         self._set_select_items()
@@ -30,7 +30,7 @@ class TraceTokenizer:
             "sql": self.model.sql,
             "cohort_on": cohort_on,
             "select_items": self.select_items,
-            "target": self.target.name,
+            "source": self.source.name,
         }
         if hasattr(self, "groupby_statements"):
             data.update({"groupby_statements": self.groupby_statements})
@@ -117,7 +117,7 @@ class TraceTokenizer:
             if str(self.dialect.type) != "snowflake":
                 if filter_by["window"] != []:
                     warnings.warn(
-                        "Window function filtering is only supported on snowflake targets",
+                        "Window function filtering is only supported on snowflake sources",
                         Warning,
                     )
                 filter_by["window"] = []

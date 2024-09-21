@@ -12,6 +12,11 @@ def test_dumps_parent_name():
     assert '"parent_name":"name"' in model.model_dump_json()
 
 
+def test_dumps_parent_name_when_selector_present():
+    model = MockSelectorModel(**{"name": "name"})
+    assert not '"parent_name":"name"' in model.model_dump_json()
+
+
 def test_options_under_object():
     with pytest.raises(ValidationError) as exc_info:
         MockSelectorModel(

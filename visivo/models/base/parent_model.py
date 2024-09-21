@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
 from pydantic_core import PydanticCustomError
-from visivo.models.targets.target import DefaultTarget
+from visivo.models.sources.source import DefaultSource
 
 
 class ParentModel(ABC):
@@ -38,10 +38,10 @@ class ParentModel(ABC):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
                 dag_item = item
-                if BaseModel.is_ref(item):
+                if item is None or BaseModel.is_ref(item):
                     continue
-                elif isinstance(item, DefaultTarget):
-                    name = root.defaults.target_name
+                elif isinstance(item, DefaultSource):
+                    name = root.defaults.source_name
                     dag_item = self.__get_dereferenced_item(
                         name=name,
                         dag=dag,
