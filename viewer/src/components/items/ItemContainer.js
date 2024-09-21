@@ -8,7 +8,7 @@ export const ItemContainer = tw.div`
     duration-200        // Sets the duration of the transition
     overflow-hidden
     hover:shadow-lg     // Increases shadow on hover for the "pop out" effect
-    hover:z-50
+    hover:z-40
     border
     border-gray-100
 `;
