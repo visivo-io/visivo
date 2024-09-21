@@ -1,5 +1,6 @@
 import click
 import re
+import os
 from visivo.logging.logger import Logger
 import json
 from flask import Flask, current_app, send_from_directory
@@ -44,6 +45,14 @@ def app_phase(output_dir, working_dir, default_source, name_filter, threads):
         threads=threads,
     )
 
+    @app.route("/data/error.json")
+    def error():
+        if os.path.exists(f"{output_dir}/error.json"):
+            with open(f"{output_dir}/error.json", "r") as error_file:
+                return error_file.read()
+        else:
+            return json.dumps({})
+
     @app.route("/data/project.json")
     def projects():
         project_json = get_project_json(output_dir, name_filter)
@@ -84,8 +93,13 @@ def serve_phase(output_dir, working_dir, default_source, name_filter, threads):
                 soft_failure=True,
             )
             Logger.instance().info("Files changed. Reloading . . .")
+            with open(f"{output_dir}/error.json", "w") as error_file:
+                error_file.write(json.dumps({}))
         except Exception as e:
-            Logger.instance().error(e)
+            error_message = str(e)
+            Logger.instance().error(error_message)
+            with open(f"{output_dir}/error.json", "w") as error_file:
+                error_file.write(json.dumps({"message": error_message}))
 
     server = Server(app.wsgi_app)
     server.watch(f"**/*.yml", cli_changed)

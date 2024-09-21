@@ -80,6 +80,9 @@ test('exports table data as CSV when export button is clicked', async () => {
   global.URL.createObjectURL = jest.fn();
   global.Blob = jest.fn(() => ({ type: 'text/csv;charset=utf-8;' }));
 
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeInTheDocument();
+  })
   const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
   fireEvent.click(exportButton);
 
