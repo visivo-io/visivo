@@ -33,5 +33,5 @@ jobs:
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}
-          repository: visivo/core
+          repository: visivo-io/core
           event-type: visivo-merge
