@@ -8,7 +8,7 @@ class MockSelectorModel(SelectorModel):
 
 
 def test_dumps_parent_name():
-    model = MockSelectorModel(**{"name": "name"})
+    model = MockSelectorModel(**{"name": "name", "selector": {"name": "selector"}})
     assert '"parent_name":"name"' in model.model_dump_json()
 
 

@@ -32,12 +32,6 @@ def test_Project_simple_data():
     assert project.name == "development"
 
 
-def test_Project_find_source():
-    source = SourceFactory()
-    project = Project(sources=[source])
-    assert project.find_source(name=source.name) == source
-
-
 def test_Project_validate_project_trace_refs():
     ref = "ref(trace_name)"
     chart = ChartFactory(traces=[ref])

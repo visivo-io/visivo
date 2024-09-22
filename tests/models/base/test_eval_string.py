@@ -1,6 +1,5 @@
 from pydantic import Field
 from tests.factories.model_factories import ProjectFactory
-from visivo.models.base.context_string import ContextString
 from visivo.models.base.base_model import BaseModel
 import pytest
 

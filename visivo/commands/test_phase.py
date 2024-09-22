@@ -21,7 +21,6 @@ def test_phase(output_dir: str, default_source: str, working_dir: str):
         project=project,
         output_dir=output_dir,
         dag=dag,
-        default_source=default_source,
     )
     if not test_runner.run().success:
         sys.exit(1)

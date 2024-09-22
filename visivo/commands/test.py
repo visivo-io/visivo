@@ -6,7 +6,7 @@ from visivo.commands.options import output_dir, working_dir, source
 @source
 @working_dir
 @output_dir
-def test(output_dir, working_dir, target):
+def test(output_dir, working_dir, source):
     """
     Enables testing trace values to ensure that the charts that are being produced have the characteristics that you would expect.
     """

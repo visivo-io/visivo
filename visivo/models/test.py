@@ -13,6 +13,12 @@ Tests allow you to assert on the computed values that are the output of a trace.
 
 ### Example
 ``` yaml
+tests:
+  - name: Test One
+    if: ${ ref(Tested Trace).props.type } == "scatter"
+    assertions:
+      - >{ sum( ${ ref(Tested Trace).props.x) } ) == 7 }
+      - >{ ${ ref(Tested Trace).props.x[0] } == 1 } 
 traces:
     - name: Tested Trace
       model: ref(model)
@@ -24,13 +30,17 @@ traces:
           y: column(project_name)
       tests:
         - assertions: 
-            - >{ assert_that(numpy.sum( ${ ref(Tested Trace).props.x) } ).is_equal_to(7) }
-            - ${ ref(Tested Trace).props.x[0] == 1 }
+            - >{ sum( ${ ref(Tested Trace).props.x) } ) == 7 }
+            - >{ ${ ref(Tested Trace).props.x[0] } == 1 } 
           alerts:
             - ${ ref(Alert One) }
 ```
-The [assertpy](https://assertpy.github.io/) and [numpy](https://numpy.org/doc/stable/index.html) libraries are available for testing.
+The [numpy](https://numpy.org/doc/stable/index.html) libraries are available for testing.
 """
+
+# TODO: SHOULD TESTS DEFINED IN TRACES TO BE ABLE TO REFERENCE PROPS/COLUMNS OF OTHER TRACE?
+# The reason is that the actual dependency is the other way around.
+# The test is dependent on the trace but the trace is not dependent on the test.
 
 
 class OnFailureEnum(str, Enum):
@@ -42,6 +52,7 @@ class Test(NamedModel, ParentModel):
     if_: Optional[EvalString] = Field(None, alias="if")
     on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
     assertions: List[EvalString] = Field(None)
+    #   I AM NOT SURE WE SHOULD HAVE ALERTS NESTED IN TEST AND IN TRACES
     alerts: List[Alert] = Field([], description="Alerts that will be triggered")
 
     __test__ = False

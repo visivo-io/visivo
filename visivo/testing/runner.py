@@ -22,13 +22,11 @@ class Runner:
         project: Project,
         output_dir: str,
         dag: Any,
-        default_source: str = None,
     ):
         self.tests = tests
         self.project = project
         self.output_dir = output_dir
         self.dag = dag
-        self.default_target = default_target
 
     def run(self):
         test_run = TestRun()
