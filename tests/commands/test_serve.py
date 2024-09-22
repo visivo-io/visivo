@@ -32,3 +32,7 @@ def test_serve():
     response = client.get("/data/project.json")
     response_json = json.loads(response.data)
     assert "project_json" in response_json
+
+    response = client.get("/data/error.json")
+    response_json = json.loads(response.data)
+    assert "error" not in response_json

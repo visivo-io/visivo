@@ -6,6 +6,7 @@ import {
 } from 'react-router-dom';
 import { loadProject } from './loaders/project'
 import { loadDag } from './loaders/dag'
+import { loadError } from './loaders/error'
 import logo from './images/logo.png';
 import Home from './components/Home'
 import ProjectContainer from './components/ProjectContainer'
@@ -17,6 +18,7 @@ const Viewer = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/"
       element={<Home />}
+      loader={loadError}
       handle={{ crumb: () => <a href="https://docs.visivo.io"><img className='h-6' src={logo} alt="Logo" /></a> }}
     >
       <Route

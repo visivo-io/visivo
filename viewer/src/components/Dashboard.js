@@ -64,6 +64,44 @@ const Dashboard = ({ project, dashboardName }) => {
         return true
     }
 
+    const renderRow = (row, rowIndex) => {
+        if (!shouldShowNamedModel(row)) {
+            return null;
+        }
+        const visibleItems = row.items.filter(item => shouldShowNamedModel(item));
+        const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
+        const rowStyle = isColumn ? {} : getHeightStyle(row)
+
+        return (
+            <div
+                key={`row-${rowIndex}`}
+                className="dashboard-row"
+                style={{
+                    margin: '0.1rem',
+                    display: isColumn ? 'flex' : 'grid',
+                    flexDirection: isColumn ? 'column' : undefined,
+                    gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
+                    gap: '0.1rem',
+                    ...rowStyle
+                }}
+            >
+                {visibleItems.map((item, itemIndex) => (
+                    <div
+                        key={`item-${rowIndex}-${itemIndex}`}
+                        style={{
+                            gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
+                            width: isColumn ? '100%' : 'auto'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                            {renderComponent(item, row, itemIndex, rowIndex)}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     const renderComponent = (item, row, itemIndex, rowIndex) => {
         const items = row.items.filter(item => shouldShowNamedModel(item))
         if (items.indexOf(item) < 0) {
@@ -73,7 +111,7 @@ const Dashboard = ({ project, dashboardName }) => {
             return <Chart
                 chart={item.chart}
                 project={project}
-                height={getHeight(row.height)}
+                height={getHeight(row.height) - 8}
                 width={getWidth(items, item)}
                 itemWidth={item.width}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
@@ -110,19 +148,6 @@ const Dashboard = ({ project, dashboardName }) => {
         }
     }
 
-    const renderRow = (row, rowIndex) => {
-        if (!shouldShowNamedModel(row)) {
-            return null
-        }
-        return (
-            <div className={`flex ${isColumn ? 'flex-col space-y-2' : 'flex-row space-x-2'} my-1`}
-                style={isColumn ? {} : getHeightStyle(row)}
-                key={`dashboardRow${rowIndex}`}
-            >
-                {row.items.map((item, itemIndex) => renderComponent(item, row, itemIndex, rowIndex))}
-            </div>
-        )
-    }
     return (
         <div ref={observe} data-testid={`dashboard_${dashboardName}`} className='flex grow flex-col justify-items-stretch'>
             {dashboard.rows.map(renderRow)}
