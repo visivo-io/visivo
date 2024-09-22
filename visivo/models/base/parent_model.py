@@ -153,6 +153,28 @@ class ParentModel(ABC):
 
         return list(filter(name_match, objects))
 
+    def dag_dict(self):
+        dag = self.dag()
+        nodes = []
+        edges = []
+
+        for node in dag.nodes():
+            if type(node) == str:
+                breakpoint()
+            node_data = {
+                "id": str(id(node)),
+                "name": node.name,
+                "path": node.path,
+                "type": type(node).__name__.lower(),
+            }
+            nodes.append(node_data)
+
+        for edge in dag.edges():
+            edge_data = {"source": str(id(edge[0])), "target": str(id(edge[1]))}
+            edges.append(edge_data)
+
+        return {"nodes": nodes, "edges": edges}
+
     def show_dag(self, dag=None):
         if dag is None:
             dag = self.dag()

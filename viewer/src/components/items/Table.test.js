@@ -82,7 +82,8 @@ test('exports table data as CSV when export button is clicked', async () => {
 
   await waitFor(() => {
     expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeInTheDocument();
-  })
+  });
+
   const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
   fireEvent.click(exportButton);
 

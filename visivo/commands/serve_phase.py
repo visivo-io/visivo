@@ -12,6 +12,11 @@ import importlib.resources as resources
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
+def write_dag(project, output_dir):
+    with open(f"{output_dir}/dag.json", "w") as fp:
+        fp.write(json.dumps(project.dag_dict()))
+
+
 def get_project_json(output_dir, name_filter=None):
     project_json = ""
     with open(f"{output_dir}/project.json", "r") as f:
@@ -37,13 +42,14 @@ def app_phase(output_dir, working_dir, default_source, name_filter, threads):
     )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
-    run_phase(
+    runner = run_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=default_source,
         name_filter=name_filter,
         threads=threads,
     )
+    write_dag(project=runner.project, output_dir=output_dir)
 
     @app.route("/data/error.json")
     def error():
@@ -60,6 +66,12 @@ def app_phase(output_dir, working_dir, default_source, name_filter, threads):
             "project_json": project_json,
             "created_at": datetime.datetime.now().isoformat(),
         }
+
+    @app.route("/data/dag.json")
+    def dag():
+        with open(f"{output_dir}/dag.json", "r") as f:
+            dag_json = json.load(f)
+            return dag_json
 
     @app.route("/", defaults={"path": "index.html"})
     @app.route("/<path:path>")
@@ -83,7 +95,7 @@ def serve_phase(output_dir, working_dir, default_source, name_filter, threads):
 
     def cli_changed():  # TODO: Include changes to cmd models
         try:
-            run_phase(
+            runner = run_phase(
                 output_dir=output_dir,
                 working_dir=working_dir,
                 default_source=default_source,
@@ -92,6 +104,7 @@ def serve_phase(output_dir, working_dir, default_source, name_filter, threads):
                 threads=threads,
                 soft_failure=True,
             )
+            write_dag(project=runner.project, output_dir=output_dir)
             Logger.instance().info("Files changed. Reloading . . .")
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({}))

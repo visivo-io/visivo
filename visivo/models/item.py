@@ -11,8 +11,8 @@ from pydantic import model_validator
 
 class Item(NamedModel, ParentModel):
     """
-    The Item houses a single chart, table, selector or markdown object. 
-    
+    The Item houses a single chart, table, selector or markdown object.
+
     It also informs the width that the chart, table or markdown should occupy within a row. Widths are evaluated for each item in a row relative to all of the other items in the row.
 
     In the example below, the markdown would take up 1/4th of the row and would be positioned on the left edge. The table would also take up 1/4th of the page and would sit to the right of the markdown. The chart would take up 1/2 of the page and would touch the right edge of the row.
@@ -64,11 +64,12 @@ class Item(NamedModel, ParentModel):
         return data
 
     def child_items(self):
-        return [self.__get_child()]
+        child = self.__get_child()
+        if child:
+            return [self.__get_child()]
+        return []
 
     def __get_child(self):
-        if self.markdown is not None:
-            return self.markdown
         if self.table is not None:
             return self.table
         if self.chart is not None:
