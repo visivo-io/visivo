@@ -25,7 +25,9 @@ const Viewer = createBrowserRouter(
         id="dag"
         path="/_dag"
         element={<Dag />}
-        loader={loadDag} />
+        loader={loadDag}
+        handle={{ crumb: () => <BreadcrumbLink to={"/"}>Project</BreadcrumbLink> }}
+      />
       <Route
         path="/"
         element={<ProjectContainer />}
