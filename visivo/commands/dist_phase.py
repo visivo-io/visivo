@@ -31,6 +31,8 @@ def dist_phase(output_dir, working_dir, dist_dir, default_source, name_filter, t
                 }
             )
         )
+    with open(f"{dist_dir}/data/error.json", "w") as f:
+        f.write(json.dumps({}))
 
     trace_dirs = glob(f"{output_dir}/*/", recursive=True)
     for trace_dir in trace_dirs:
