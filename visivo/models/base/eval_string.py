@@ -112,8 +112,18 @@ class EvalString:
                 re.match(EVAL_STRING_REGEX, self.value.strip()).group(1).strip()
             )
             parsed = ast.parse(expression, mode="eval")
+            def replace_context_strings(expression):
+                context_strings = self.get_context_strings()
+                for context_string in context_strings:
+                    expression = expression.replace(
+                        context_string.value, context_string.get_path()
+                    )
+                return expression
+
+            expression = replace_context_strings(expression)
             return eval_expr(parsed.body)
         except (SyntaxError, TypeError, KeyError, ValueError, NameError) as e:
+            breakpoint()
             raise ValueError(f"Invalid expression: {self.value}") from e
 
     @classmethod

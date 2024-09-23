@@ -58,6 +58,9 @@ def test_evaluate():
     es = EvalString(">{ env.ENVIRONMENT == 'PRODUCTION' }")
     assert es.evaluate(project, output_dir) == False
 
+    es = EvalString(">{ ${ ref(trace)} }")
+    assert es.evaluate(project, output_dir) == True
+
     with pytest.raises(ValueError):
         EvalString(">{ unsupported_function() }").evaluate(project, output_dir)
 
