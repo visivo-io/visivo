@@ -73,6 +73,8 @@ def _generate_structure(schema):
 
 
 def _to_mkdocs_yaml(schema, structure, base_path="reference/configuration"):
+    """Handles taking the flat structure and turning it into the mkdocs yaml format that will 
+    point to the correct file locations where the model docs will be written."""
     output = []
 
     for model, contents in structure.items():
@@ -83,12 +85,23 @@ def _to_mkdocs_yaml(schema, structure, base_path="reference/configuration"):
                     model: [f"{sub_path}/index.md"]
                     + _to_mkdocs_yaml(schema, contents, sub_path)
                 }
+                output.append(model_content)
             else:
                 model_content = {model: _to_mkdocs_yaml(schema, contents, sub_path)}
-            output.append(model_content)
+                output.append(model_content)
         # Handle other cases if necessary (e.g., primitive types)
 
     return output
+
+def remove_empty_terminal_nodes(data):
+    """Function nested to remove the list and then the dict at an arbitary depth"""
+    def _remove_empty_terminal_nodes(data):
+        if isinstance(data, list):
+            return [remove_empty_terminal_nodes(item) for item in data if item != {}]
+        elif isinstance(data, dict):
+            return {k: remove_empty_terminal_nodes(v) for k, v in data.items() if v != []}
+        return data
+    return _remove_empty_terminal_nodes(_remove_empty_terminal_nodes(data))
 
 
 def _pop_nested_path(dictionary: dict, path: list):
@@ -103,6 +116,10 @@ def _pop_nested_path(dictionary: dict, path: list):
 
 
 def _pop_list_of_nested_paths(dictionary: dict, paths: list):
+    """Removes a list of nested paths from a dictionary. This is needed because the schema 
+    is generated with all the models deeply nested within each other. This function 
+    removes the nested paths to a model so that the nav configuration is not cluttered 
+    with duplicate models."""
     for path in paths:
         _pop_nested_path(dictionary, path)
 
@@ -120,6 +137,7 @@ def _get_all_key_paths(dictionary, path=None) -> list:
 
 
 def _consolidate_paths(paths: list) -> dict:
+    """Finds all the paths to a model and makes a list of path lists stored under the model name as the key."""
     consolidated = {}
     for dictionary in paths:
         model = list(dictionary.keys())[0]
@@ -132,6 +150,10 @@ def _consolidate_paths(paths: list) -> dict:
 
 
 def _get_paths_to_remove(consolidated_paths: dict) -> list:
+    """Creates a list of all the paths to a model that are not the shortest path. This is needed because
+    The schema is generated with all the models deeply nested within each other. This function
+    removes the nested paths to a model so that the nav configuration is not cluttered with 
+    duplicate models."""
     to_remove = []
     for model, paths in consolidated_paths.items():
 
@@ -148,12 +170,18 @@ def _get_paths_to_remove(consolidated_paths: dict) -> list:
 
 
 def mkdocs_pydantic_nav(schema: dict) -> list:
+    #Nested structure with all the models deeply nested within each other. 
     nested_structure = _generate_structure(schema)
+    #All the paths in the nested structure
     all_key_paths = _get_all_key_paths(nested_structure)
     consolidated_paths = _consolidate_paths(all_key_paths)
     paths_to_remove = _get_paths_to_remove(consolidated_paths)
     _pop_list_of_nested_paths(nested_structure, paths=paths_to_remove)
+    #After removing the nested paths, the structure is flattened and ready to be converted to mkdocs yaml
     yaml_output = _to_mkdocs_yaml(schema, nested_structure)
+    #Remove the empty terminal nodes that are just empty lists, which create empty pages in mkdocs
+    yaml_output = remove_empty_terminal_nodes(yaml_output)
+    
     return yaml_output
 
 
@@ -175,6 +203,7 @@ def _extract_strings_from_yaml(yaml_obj):
 
 
 def get_model_to_page_mapping(nav_configuration: list) -> dict:
+    """Creates a mapping of model names to their corresponding markdown links."""
     file_paths = _extract_strings_from_yaml(nav_configuration)
     mapping = {}
     for path in file_paths:
@@ -188,6 +217,7 @@ def get_model_to_page_mapping(nav_configuration: list) -> dict:
 
 
 def get_model_to_path_mapping(nav_configuration: list) -> dict:
+    """Creates a mapping of model names to their corresponding file paths. This enables Mkdocs to write the markdown files to the correct location in the untracted mkdocs/reference/configuration folder."""
     file_paths = _extract_strings_from_yaml(nav_configuration)
     mapping = {}
     for path in file_paths:

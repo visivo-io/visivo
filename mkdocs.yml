@@ -94,7 +94,6 @@ nav:
               - reference/configuration/Chart/index.md
               - Layout:
                   - reference/configuration/Chart/Layout/index.md
-              - Traces: []
           - Dashboard:
               - reference/configuration/Dashboard/index.md
               - Row:
@@ -114,18 +113,17 @@ nav:
                   - reference/configuration/Models/LocalMergeModel/index.md
           - Selector:
               - reference/configuration/Selector/index.md
+          - Sources:
+              - SqliteSource:
+                  - reference/configuration/Sources/SqliteSource/index.md
+              - PostgresqlSource:
+                  - reference/configuration/Sources/PostgresqlSource/index.md
+              - MysqlSource:
+                  - reference/configuration/Sources/MysqlSource/index.md
+              - SnowflakeSource:
+                  - reference/configuration/Sources/SnowflakeSource/index.md
           - Table:
               - reference/configuration/Table/index.md
-              - Traces: []
-          - Targets:
-              - SqliteSource:
-                  - reference/configuration/Targets/SqliteSource/index.md
-              - PostgresqlSource:
-                  - reference/configuration/Targets/PostgresqlSource/index.md
-              - MysqlSource:
-                  - reference/configuration/Targets/MysqlSource/index.md
-              - SnowflakeSource:
-                  - reference/configuration/Targets/SnowflakeSource/index.md
           - Trace:
               - reference/configuration/Trace/index.md
               - TraceColumns:
