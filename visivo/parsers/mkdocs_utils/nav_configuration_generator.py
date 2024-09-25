@@ -14,6 +14,9 @@ def _get_ref(field_data):
             ref = entry.get("$ref")
             if ref:
                 refs.append(ref)
+            item_refs = entry.get("items", {}).get("$ref")
+            if item_refs:
+                refs.append(item_refs)
         return refs, "anyOf"
 
     # Check for refs inside 'oneOf'
@@ -62,6 +65,15 @@ def _process_model(schema, model_data, processed_models):
                 nested_structure[field.capitalize()][
                     nested_model_name
                 ] = _process_model(schema, nested_model_data, processed_models)
+        # elif refs and ref_type == "anyOfItems":
+        #     nested_structure[field.capitalize()] = {}
+        #     for ref in refs:
+        #         print(ref)
+        #         nested_model_name = ref.split("/")[-1]
+        #         nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
+        #         nested_structure[field.capitalize()][
+        #             nested_model_name
+        #         ] = _process_model(schema, nested_model_data, processed_models)
         else:
             nested_structure[field] = field_data.get("type", "unknown")
 
@@ -180,9 +192,8 @@ def mkdocs_pydantic_nav(schema: dict) -> list:
     #After removing the nested paths, the structure is flattened and ready to be converted to mkdocs yaml
     yaml_output = _to_mkdocs_yaml(schema, nested_structure)
     #Remove the empty terminal nodes that are just empty lists, which create empty pages in mkdocs
-    yaml_output = remove_empty_terminal_nodes(yaml_output)
-    
-    return yaml_output
+    cleaned_yaml_output = remove_empty_terminal_nodes(yaml_output.copy())
+    return cleaned_yaml_output
 
 
 def _extract_strings_from_yaml(yaml_obj):

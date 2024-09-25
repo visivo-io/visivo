@@ -19,21 +19,27 @@ def find_refs(obj):
 
 
 def handle_allOf(attribute_property_object: dict, model_defs: dict):
-    default = attribute_property_object.get("default", "None")
-    enum_model_key = find_refs(attribute_property_object)[0].split("/")[-1]
-    enum_model = model_defs.get(enum_model_key, {})
-    if not enum_model:
-        raise KeyError(f"Key {enum_model_key} was not found in $defs dictionary.")
-    if enum_model.get('type') != 'string':
-        enum_options = [ str(a) for a in  enum_model.get("enum")]
-    else:
-        enum_options = enum_model.get("enum")
-    try: 
-        type = "Enumerated - one of: " + ", ".join(enum_options)
+    try:
+        default = attribute_property_object.get("default", "None")
+        model_key = find_refs(attribute_property_object)[0].split("/")[-1]
+        model = model_defs.get(model_key, {})
+        if not model:
+            raise KeyError(f"Key {model_key} was not found in $defs dictionary.")
+
+        if model.get('enum'):
+            if model.get('type') not in ['string', 'object']:
+                enum_options = [ str(a) for a in  model.get("enum")]
+            else:
+                enum_options = model.get("enum")
+            type = "Enumerated - one of: " + ", ".join(enum_options)
+        else:
+            type = model.get("type", "None")
     except Exception as e:
-        print(enum_model)
-        raise Exception
-        
+        print(f"attribute_property_object: {attribute_property_object}")
+        print(f"model_key: {model_key}")
+        print(f"refs: {find_refs(attribute_property_object)}")
+        print(f"model: {model}")
+        raise e
     return type, default
 
 
@@ -94,7 +100,12 @@ def handle_attribute_properties(model_defs: dict, attribute_property_object: dic
 
     attribute_key_type = ".".join(list(attribute_property_object.keys()))
     if "allOf" in attribute_key_type:
-        type, default = handle_allOf(attribute_property_object, model_defs)
+        try:
+            type, default = handle_allOf(attribute_property_object, model_defs)
+        except Exception as e:
+            print(f"attribute_key_type: {attribute_key_type}")
+            print(f"attribute_property_object: {attribute_property_object}")
+            raise e
     elif "anyOf" in attribute_key_type:
         type, default = handle_anyOf(attribute_property_object)
     elif "const" in attribute_key_type:
