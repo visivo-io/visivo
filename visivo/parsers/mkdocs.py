@@ -14,8 +14,6 @@ class Mkdocs:
     """Holds SCHEMA state so that upstream scripts only need to run that import once."""
 
     SCHEMA = json.loads(generate_schema())
-    with open("schema.json", "w") as f:
-        json.dump(SCHEMA, f, indent=3)
     nav_configuration = mkdocs_pydantic_nav(SCHEMA)
     model_to_page_map = get_model_to_page_mapping(nav_configuration)
     model_to_path_map = get_model_to_path_mapping(nav_configuration)

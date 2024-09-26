@@ -65,15 +65,6 @@ def _process_model(schema, model_data, processed_models):
                 nested_structure[field.capitalize()][
                     nested_model_name
                 ] = _process_model(schema, nested_model_data, processed_models)
-        # elif refs and ref_type == "anyOfItems":
-        #     nested_structure[field.capitalize()] = {}
-        #     for ref in refs:
-        #         print(ref)
-        #         nested_model_name = ref.split("/")[-1]
-        #         nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
-        #         nested_structure[field.capitalize()][
-        #             nested_model_name
-        #         ] = _process_model(schema, nested_model_data, processed_models)
         else:
             nested_structure[field] = field_data.get("type", "unknown")
 

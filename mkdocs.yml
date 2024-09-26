@@ -116,6 +116,8 @@ nav:
           - Sources:
               - SqliteSource:
                   - reference/configuration/Sources/SqliteSource/index.md
+                  - Attachment:
+                      - reference/configuration/Sources/SqliteSource/Attachment/index.md
               - PostgresqlSource:
                   - reference/configuration/Sources/PostgresqlSource/index.md
               - MysqlSource:
@@ -124,6 +126,12 @@ nav:
                   - reference/configuration/Sources/SnowflakeSource/index.md
           - Table:
               - reference/configuration/Table/index.md
+              - TableColumnDefinition:
+                  - reference/configuration/Table/TableColumnDefinition/index.md
+                  - TableColumn:
+                      - reference/configuration/Table/TableColumnDefinition/TableColumn/index.md
+                      - AggregationEnum:
+                          - reference/configuration/Table/TableColumnDefinition/TableColumn/AggregationEnum/index.md
           - Trace:
               - reference/configuration/Trace/index.md
               - TraceColumns:
@@ -220,6 +228,8 @@ nav:
                   - reference/configuration/Trace/Volume/index.md
               - Waterfall:
                   - reference/configuration/Trace/Waterfall/index.md
+              - Test:
+                  - reference/configuration/Trace/Test/index.md
       - Functions:
           - On Compile:
               - reference/functions/jinja/index.md

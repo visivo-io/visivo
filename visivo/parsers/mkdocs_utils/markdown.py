@@ -19,27 +19,22 @@ def find_refs(obj):
 
 
 def handle_allOf(attribute_property_object: dict, model_defs: dict):
-    try:
-        default = attribute_property_object.get("default", "None")
-        model_key = find_refs(attribute_property_object)[0].split("/")[-1]
-        model = model_defs.get(model_key, {})
-        if not model:
-            raise KeyError(f"Key {model_key} was not found in $defs dictionary.")
 
-        if model.get('enum'):
-            if model.get('type') not in ['string', 'object']:
-                enum_options = [ str(a) for a in  model.get("enum")]
-            else:
-                enum_options = model.get("enum")
-            type = "Enumerated - one of: " + ", ".join(enum_options)
+    default = attribute_property_object.get("default", "None")
+    model_key = find_refs(attribute_property_object)[0].split("/")[-1]
+    model = model_defs.get(model_key, {})
+    if not model:
+        raise KeyError(f"Key {model_key} was not found in $defs dictionary.")
+
+    if model.get('enum'):
+        if model.get('type') not in ['string', 'object']:
+            enum_options = [ str(a) for a in  model.get("enum")]
         else:
-            type = model.get("type", "None")
-    except Exception as e:
-        print(f"attribute_property_object: {attribute_property_object}")
-        print(f"model_key: {model_key}")
-        print(f"refs: {find_refs(attribute_property_object)}")
-        print(f"model: {model}")
-        raise e
+            enum_options = model.get("enum")
+        type = "Enumerated - one of: " + ", ".join(enum_options)
+    else:
+        type = model.get("type", "None")
+
     return type, default
 
 
