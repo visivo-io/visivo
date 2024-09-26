@@ -92,7 +92,6 @@ def _to_mkdocs_yaml(schema, structure, base_path="reference/configuration"):
             else:
                 model_content = {model: _to_mkdocs_yaml(schema, contents, sub_path)}
                 output.append(model_content)
-        # Handle other cases if necessary (e.g., primitive types)
 
     return output
 
