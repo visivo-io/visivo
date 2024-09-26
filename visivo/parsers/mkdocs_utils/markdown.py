@@ -206,7 +206,8 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
             "{!" + f" include-markdown '" f"reference/props-docs/{model_name.lower()}.md' " + "!}" 
         )
     full_doc = (
-        f"# {model_name}"
+        f"# {model_name} "
+        + "\n"
         + includes
         + model_md
         + "{% raw %}\n"
