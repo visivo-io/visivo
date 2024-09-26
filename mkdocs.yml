@@ -17,6 +17,10 @@ plugins:
       ignore_code: true
       min_length: 2
       max_capital: 1
+  - include-markdown:
+      opening_tag: '{!'
+      closing_tag: '!}'
+      comments: false
 markdown_extensions:
   - mkdocs-click
   - admonition
