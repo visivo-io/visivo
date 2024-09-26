@@ -55,7 +55,16 @@ def _process_model(schema, model_data, processed_models):
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
-                nested_structure[nested_model_name] = {}
+                if field == "props":
+                    directory = "Props"
+                #Create a nested directory for the props and layout
+                    try: 
+                        nested_structure[directory][nested_model_name] = {}
+                    except KeyError:
+                        nested_structure[directory] = {}
+                        nested_structure[directory][nested_model_name] = {}
+                else:
+                    nested_structure[nested_model_name] = {}
 
         elif refs and ref_type == "oneOf":
             nested_structure[field.capitalize()] = {}
@@ -172,6 +181,7 @@ def _get_paths_to_remove(consolidated_paths: dict) -> list:
 
 
 def mkdocs_pydantic_nav(schema: dict) -> list:
+    """Takes the pydantic generated schema and returns the nav configuration that can be used to generate the configuration nav and determines the paths of the model docs files."""
     #Nested structure with all the models deeply nested within each other. 
     nested_structure = _generate_structure(schema)
     #All the paths in the nested structure
