@@ -11,11 +11,21 @@ from .trace_props.layout import Layout
 
 class Chart(SelectorModel, NamedModel, ParentModel):
     """
-    Charts are used to house traces and set up layout configurations (titles, axis labels, ect.).
+    Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_. 
 
-    A chart contains 1 to many traces. This is really useful if you want to combine traces that are on different date grains, bars and lines, or even overlay big numbers over line chart to show the current value and the trend.
+    !!! tip 
 
-    The layout is where you define static labels like titles but also where you can set interactive elements like buttons and drop downs. With those interactive elements you can toggle between traces or cohorts on traces.
+        You can add traces of **different types** to a chart. For example, you may want to display an [`indicator`](../Trace/Props/Indicator/) 
+        on top of a [`bar`](../Trace/Props/Bar/) to show how what the bars add up to.
+  
+    You can also configure interactivity in your charts by setting up a  [`selector`](../Selector/). 
+
+    ## Common Setups
+
+    ### Single Trace
+
+    This is the most common and simplest chart setup. You will use this when you want to display a single trace. Typically you will also 
+    want to configure chart and axis titles as well. 
     ``` yaml
     chart:
       name: a-chart-name
@@ -29,6 +39,13 @@ class Chart(SelectorModel, NamedModel, ParentModel):
           title: 'Week' #Describe the data in your x axis
         stack: False
     ```
+
+    ### Duel Yaxis
+
+    ### Position Traces with Domains
+
+    ### Single Select Traces
+    
     """
 
     def child_items(self):
