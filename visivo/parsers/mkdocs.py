@@ -42,6 +42,7 @@ class Mkdocs:
         return mkdocs_yaml_object
 
     def _replace_model_with_page(self, md: str) -> str:
+
         sorted_map = dict(
             sorted(
                 self.model_to_page_map.items(),
@@ -55,6 +56,7 @@ class Mkdocs:
         return md
 
     def _get_trace_prop_models(self) -> list:
+        """Helper function to get the list of trace prop models. Enables a better error if the model is not found."""
         trace_def = self.SCHEMA["$defs"].get("Trace")
         props = trace_def.get("properties").get("props")
         refs = list(set(find_refs(props)))

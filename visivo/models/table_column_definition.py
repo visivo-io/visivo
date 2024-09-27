@@ -7,25 +7,25 @@ from visivo.models.base.base_model import BaseModel
 
 class AggregationEnum(Enum):
     """
-    The options for aggregating table columns. Details on the calculations below:
+    The options for aggregating table columns. Details on the calculations below:<br>
 
-        count - Finds the number of rows in a group
+        **count** - Finds the number of rows in a group<br>
 
-        extent - Finds the minimum and maximum values of a group of rows
+        **extent** - Finds the minimum and maximum values of a group of rows<br>
 
-        max - Finds the maximum value of a group of rows
+        **max** - Finds the maximum value of a group of rows<br>
 
-        mean - Finds the average value of a group of rows
+        **mean** - Finds the average value of a group of rows<br>
 
-        median - Finds the median value of a group of rows
+        **median** - Finds the median value of a group of rows<br>
 
-        min - Finds the minimum value of a group of rows
+        **min** - Finds the minimum value of a group of rows<br>
 
-        sum - sums the values of a group of rows
+        **sum** - sums the values of a group of rows<br>
 
-        uniqueCount - Finds the number of unique values of a group of rows
+        **uniqueCount** - Finds the number of unique values of a group of rows<br>
 
-        unique - Finds the unique values of a group of rows
+        **unique** - Finds the unique values of a group of rows
     """
     count = "count"
     extent = "extent"
@@ -47,7 +47,7 @@ class TableColumn(BaseModel):
     )
     aggregation: Optional[AggregationEnum] = Field(
         None, 
-        description = AggregationEnum.__doc__
+        description = "The aggregate function that will apply to the column when a user groups the table by a different column. Defaults to none."
     )
 
 
