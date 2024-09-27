@@ -1,0 +1,5853 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../Bar/">
+      
+      
+        <link rel="next" href="../Box/">
+      
+      
+      <link rel="icon" href="../../../../../assets/favicon_io/favicon-32x32.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.38">
+    
+    
+      
+        <title>Barpolar - Visivo Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.8c3ca2c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+  
+  
+  
+  
+  <style>:root{--md-annotation-icon:url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 12a10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2a10 10 0 0 1 10 10M6 13h8l-3.5 3.5 1.42 1.42L17.84 12l-5.92-5.92L10.5 7.5 14 11H6z"/></svg>');}</style>
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/brand_colors.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/icon-colors.css">
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  <!--
+  Copyright (c) 2016-2023 Martin Donath <martin.donath@squidfunk.com>
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to
+  deal in the Software without restriction, including without limitation the
+  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+  sell copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+  IN THE SOFTWARE.
+-->
+
+<!-- Determine analytics property -->
+
+
+
+
+<!-- Integrate with Google Analytics 4 -->
+<script id="__analytics">
+  function __md_analytics() {
+    window.dataLayer = window.dataLayer || []
+    function gtag() { dataLayer.push(arguments) }
+
+    /* Set up integration and send page view */
+    gtag("js", new Date())
+    gtag("config", "G-50DF3C95TL")
+
+    /* Register event handlers after documented loaded */
+    document.addEventListener("DOMContentLoaded", function () {
+
+      /* Set up search tracking */
+      if (document.forms.search) {
+        var query = document.forms.search.query
+        query.addEventListener("blur", function () {
+          if (this.value)
+            gtag("event", "search", { search_term: this.value })
+        })
+      }
+
+      /* Set up feedback, i.e. "Was this page helpful?" */
+      document$.subscribe(function () {
+        var feedback = document.forms.feedback
+        if (typeof feedback === "undefined")
+          return
+
+        /* Send feedback to Google Analytics */
+        for (var button of feedback.querySelectorAll("[type=submit]")) {
+          button.addEventListener("click", function (ev) {
+            ev.preventDefault()
+
+            /* Retrieve and send data */
+            var page = document.location.pathname
+            var data = this.getAttribute("data-md-value")
+            gtag("event", "feedback", { page, data })
+
+            /* Disable form and show note, if given */
+            feedback.firstElementChild.disabled = true
+            var note = feedback.querySelector(
+              ".md-feedback__note [data-md-value='" + data + "']"
+            )
+            if (note)
+              note.hidden = false
+          })
+
+          /* Show feedback */
+          feedback.hidden = false
+        }
+      })
+
+      /* Send page view on location change */
+      location$.subscribe(function (url) {
+        gtag("config", "G-50DF3C95TL", {
+          page_path: url.pathname
+        })
+      })
+    })
+
+    /* Create script tag */
+    var script = document.createElement("script")
+    script.async = true
+    script.src = "https://www.googletagmanager.com/gtag/js?id=G-50DF3C95TL"
+
+    /* Inject script tag */
+    var container = document.getElementById("__analytics")
+    container.insertAdjacentElement("afterEnd", script)
+  }
+</script>
+<script>
+  (function (h, o, t, j, a, r) {
+    h.hj = h.hj || function () { (h.hj.q = h.hj.q || []).push(arguments) };
+    h._hjSettings = { hjid: 3760829, hjsv: 6 };
+    a = o.getElementsByTagName('head')[0];
+    r = o.createElement('script'); r.async = 1;
+    r.src = t + h._hjSettings.hjid + j + h._hjSettings.hjsv;
+    a.appendChild(r);
+  })(window, document, 'https://static.hotjar.com/c/hotjar-', '.js?sv=');
+</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="visivo_light" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#barpolar" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="Visivo Docs" class="md-header__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
+      
+  <img src="../../../../../assets/favicon_io/android-chrome-192x192.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Visivo Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Barpolar
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="visivo_light" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="visivo_dark" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/visivo-io/visivo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    visivo-io/visivo
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="Visivo Docs" class="md-nav__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
+      
+  <img src="../../../../../assets/favicon_io/android-chrome-192x192.png" alt="logo">
+
+    </a>
+    Visivo Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/visivo-io/visivo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    visivo-io/visivo
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/visivo-io/visivo/releases" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Topics
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Topics
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../topics/linting/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../topics/including/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Including
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../topics/sources/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Sources
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../topics/deployments/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../topics/testing/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../topics/interactivity/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interactivity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../cli/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CLI
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Configuration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Configuration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2_1" id="__nav_4_2_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Alerts
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            Alerts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_1_1" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Alerts/SlackAlert/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    SlackAlert
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_1_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_1_1">
+            <span class="md-nav__icon md-icon"></span>
+            SlackAlert
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_1_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Alerts/EmailAlert/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    EmailAlert
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            EmailAlert
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_1_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Alerts/ConsoleAlert/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    ConsoleAlert
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_1_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_1_3">
+            <span class="md-nav__icon md-icon"></span>
+            ConsoleAlert
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Chart/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Chart
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_2" id="__nav_4_2_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Chart
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_2_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Chart/Layout/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Layout
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Layout
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Dashboard/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Dashboard
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_3" id="__nav_4_2_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboard
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Dashboard/Row/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Row
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_3_2" id="__nav_4_2_3_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Row
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3_2_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Dashboard/Row/Item/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Item
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_3_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_3_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Item
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Defaults/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Defaults
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            Defaults
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Include/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Include
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Include
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2_6" id="__nav_4_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Models
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            Models
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_6_1" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Models/SqlModel/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    SqlModel
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_6_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_6_1">
+            <span class="md-nav__icon md-icon"></span>
+            SqlModel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_6_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Models/CsvScriptModel/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    CsvScriptModel
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_6_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_6_2">
+            <span class="md-nav__icon md-icon"></span>
+            CsvScriptModel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_6_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Models/LocalMergeModel/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    LocalMergeModel
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_6_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_6_3">
+            <span class="md-nav__icon md-icon"></span>
+            LocalMergeModel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_7" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Selector/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Selector
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Selector
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2_8" id="__nav_4_2_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Sources
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            Sources
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_8_1" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Sources/SqliteSource/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    SqliteSource
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_8_1" id="__nav_4_2_8_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_8_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_8_1">
+            <span class="md-nav__icon md-icon"></span>
+            SqliteSource
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_8_1_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Sources/SqliteSource/Attachment/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Attachment
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_8_1_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_8_1_2">
+            <span class="md-nav__icon md-icon"></span>
+            Attachment
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_8_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Sources/PostgresqlSource/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    PostgresqlSource
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_8_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_8_2">
+            <span class="md-nav__icon md-icon"></span>
+            PostgresqlSource
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_8_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Sources/MysqlSource/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    MysqlSource
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_8_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_8_3">
+            <span class="md-nav__icon md-icon"></span>
+            MysqlSource
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_8_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Sources/SnowflakeSource/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    SnowflakeSource
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_8_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_8_4">
+            <span class="md-nav__icon md-icon"></span>
+            SnowflakeSource
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Table/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Table
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_9" id="__nav_4_2_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            Table
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Table/TableColumnDefinition/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    TableColumnDefinition
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_9_2" id="__nav_4_2_9_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_9_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_9_2">
+            <span class="md-nav__icon md-icon"></span>
+            TableColumnDefinition
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_2_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Table/TableColumnDefinition/TableColumn/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    TableColumn
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_9_2_2" id="__nav_4_2_9_2_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_9_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_9_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            TableColumn
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_9_2_2_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../Table/TableColumnDefinition/TableColumn/AggregationEnum/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    AggregationEnum
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="6" aria-labelledby="__nav_4_2_9_2_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_9_2_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            AggregationEnum
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Trace
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_2_10" id="__nav_4_2_10_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_10_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            Trace
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../TraceColumns/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    TraceColumns
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_2">
+            <span class="md-nav__icon md-icon"></span>
+            TraceColumns
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_2_10_3" id="__nav_4_2_10_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Props
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2_10_3">
+            <span class="md-nav__icon md-icon"></span>
+            Props
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_1" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Bar/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Bar
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            Bar
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_2" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="./" class="md-nav__link md-nav__link--active">
+              
+  
+  <span class="md-ellipsis">
+    Barpolar
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2_10_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Barpolar
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_3" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Box/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Box
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            Box
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Candlestick/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Candlestick
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            Candlestick
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Carpet/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Carpet
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Carpet
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Choropleth/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Choropleth
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            Choropleth
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_7" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Choroplethmapbox/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Choroplethmapbox
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_7">
+            <span class="md-nav__icon md-icon"></span>
+            Choroplethmapbox
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_8" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Cone/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Cone
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_8">
+            <span class="md-nav__icon md-icon"></span>
+            Cone
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_9" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Contour/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Contour
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_9">
+            <span class="md-nav__icon md-icon"></span>
+            Contour
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_10" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Contourcarpet/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Contourcarpet
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_10">
+            <span class="md-nav__icon md-icon"></span>
+            Contourcarpet
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_11" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Densitymapbox/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Densitymapbox
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_11">
+            <span class="md-nav__icon md-icon"></span>
+            Densitymapbox
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_12" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Funnel/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Funnel
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_12">
+            <span class="md-nav__icon md-icon"></span>
+            Funnel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_13" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Funnelarea/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Funnelarea
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_13">
+            <span class="md-nav__icon md-icon"></span>
+            Funnelarea
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_14" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Heatmap/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Heatmap
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_14">
+            <span class="md-nav__icon md-icon"></span>
+            Heatmap
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_15" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Heatmapgl/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Heatmapgl
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_15_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_15">
+            <span class="md-nav__icon md-icon"></span>
+            Heatmapgl
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_16" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Histogram/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Histogram
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_16_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_16">
+            <span class="md-nav__icon md-icon"></span>
+            Histogram
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_17" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Histogram2d/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Histogram2d
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_17_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_17">
+            <span class="md-nav__icon md-icon"></span>
+            Histogram2d
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_18" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Histogram2dcontour/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Histogram2dcontour
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_18_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_18">
+            <span class="md-nav__icon md-icon"></span>
+            Histogram2dcontour
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_19" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Icicle/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Icicle
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_19_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_19">
+            <span class="md-nav__icon md-icon"></span>
+            Icicle
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_20" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Image/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Image
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_20_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_20">
+            <span class="md-nav__icon md-icon"></span>
+            Image
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_21" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Indicator/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Indicator
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_21_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_21">
+            <span class="md-nav__icon md-icon"></span>
+            Indicator
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_22" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Isosurface/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Isosurface
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_22_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_22">
+            <span class="md-nav__icon md-icon"></span>
+            Isosurface
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_23" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Mesh3d/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Mesh3d
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_23_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_23">
+            <span class="md-nav__icon md-icon"></span>
+            Mesh3d
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_24" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Ohlc/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Ohlc
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_24_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_24">
+            <span class="md-nav__icon md-icon"></span>
+            Ohlc
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_25" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Parcats/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Parcats
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_25_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_25">
+            <span class="md-nav__icon md-icon"></span>
+            Parcats
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_26" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Parcoords/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Parcoords
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_26_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_26">
+            <span class="md-nav__icon md-icon"></span>
+            Parcoords
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_27" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Pie/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Pie
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_27_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_27">
+            <span class="md-nav__icon md-icon"></span>
+            Pie
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_28" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Sankey/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Sankey
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_28_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_28">
+            <span class="md-nav__icon md-icon"></span>
+            Sankey
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_29" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scatter/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scatter
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_29_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_29">
+            <span class="md-nav__icon md-icon"></span>
+            Scatter
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_30" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scatter3d/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scatter3d
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_30_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_30">
+            <span class="md-nav__icon md-icon"></span>
+            Scatter3d
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_31" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scattercarpet/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scattercarpet
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_31_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_31">
+            <span class="md-nav__icon md-icon"></span>
+            Scattercarpet
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_32" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scattergeo/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scattergeo
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_32_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_32">
+            <span class="md-nav__icon md-icon"></span>
+            Scattergeo
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_33" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scattergl/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scattergl
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_33_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_33">
+            <span class="md-nav__icon md-icon"></span>
+            Scattergl
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_34" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scattermapbox/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scattermapbox
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_34_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_34">
+            <span class="md-nav__icon md-icon"></span>
+            Scattermapbox
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_35" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scatterpolar/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scatterpolar
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_35_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_35">
+            <span class="md-nav__icon md-icon"></span>
+            Scatterpolar
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_36" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scatterpolargl/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scatterpolargl
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_36_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_36">
+            <span class="md-nav__icon md-icon"></span>
+            Scatterpolargl
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_37" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scattersmith/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scattersmith
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_37_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_37">
+            <span class="md-nav__icon md-icon"></span>
+            Scattersmith
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_38" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Scatterternary/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Scatterternary
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_38_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_38">
+            <span class="md-nav__icon md-icon"></span>
+            Scatterternary
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_39" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Splom/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Splom
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_39_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_39">
+            <span class="md-nav__icon md-icon"></span>
+            Splom
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_40" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Streamtube/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Streamtube
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_40_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_40">
+            <span class="md-nav__icon md-icon"></span>
+            Streamtube
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_41" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Sunburst/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Sunburst
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_41_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_41">
+            <span class="md-nav__icon md-icon"></span>
+            Sunburst
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_42" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Surface/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Surface
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_42_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_42">
+            <span class="md-nav__icon md-icon"></span>
+            Surface
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_43" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Treemap/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Treemap
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_43_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_43">
+            <span class="md-nav__icon md-icon"></span>
+            Treemap
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_44" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Violin/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Violin
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_44_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_44">
+            <span class="md-nav__icon md-icon"></span>
+            Violin
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_45" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Volume/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Volume
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_45_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_45">
+            <span class="md-nav__icon md-icon"></span>
+            Volume
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3_46" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../Waterfall/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Waterfall
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_2_10_3_46_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_3_46">
+            <span class="md-nav__icon md-icon"></span>
+            Waterfall
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../Test/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Test
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_4">
+            <span class="md-nav__icon md-icon"></span>
+            Test
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Functions
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            Functions
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_1" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../../functions/jinja/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    On Compile
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_3_1" id="__nav_4_3_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            On Compile
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../functions/jinja/macros/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Macros
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../functions/jinja/loops/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Looping ➿
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../functions/jinja/variables/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Variables
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../../functions/runtime_functions/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Run Time
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Run Time
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Background
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Background
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../viewpoint/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Viewpoint
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../how_it_works/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    How It Works
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Attributes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<div><h1 id="barpolar">Barpolar</h1>
+<h2 id="attributes">Attributes</h2>
+<div class="highlight"><pre><span></span><code><span class="nt">base</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
+<span class="nt">dr</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="nt">dtheta</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(4)!</span>
+<span class="nt">hoverinfo</span><span class="p">:</span><span class="w"> </span><span class="s">'flaglist</span><span class="nv"> </span><span class="s">string.</span><span class="nv"> </span><span class="s">any</span><span class="nv"> </span><span class="s">combination</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">"r",</span><span class="nv"> </span><span class="s">"theta",</span><span class="nv"> </span><span class="s">"text",</span><span class="nv"> </span><span class="s">"name"</span><span class="nv"> </span><span class="s">joined</span>
+<span class="w">  </span><span class="s">with</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">"+"</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">"all"</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">"none"</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">"skip".'</span><span class="w"> </span><span class="c1">#(5)!</span>
+<span class="nt">hoverlabel</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">enumerateds</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"right"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"auto"</span>
+<span class="w">    </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(6)!</span>
+<span class="w">  </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(7)!</span>
+<span class="w">  </span><span class="nt">bordercolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(8)!</span>
+<span class="w">  </span><span class="nt">font</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color or array of colors</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(9)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number or array of numbers greater than or equal to 1</span>
+<span class="w">  </span><span class="nt">namelength</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">integers</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">-1'</span><span class="w"> </span><span class="c1">#(10)!</span>
+<span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(11)!</span>
+<span class="nt">hovertext</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(12)!</span>
+<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(13)!</span>
+<span class="nt">legendgroup</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(14)!</span>
+<span class="nt">legendgrouptitle</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">font</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(15)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number greater than or equal to 1</span>
+<span class="w">  </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(16)!</span>
+<span class="nt">legendrank</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(17)!</span>
+<span class="nt">legendwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(18)!</span>
+<span class="nt">marker</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(19)!</span>
+<span class="w">  </span><span class="nt">cauto</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(20)!</span>
+<span class="w">  </span><span class="nt">cmax</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(21)!</span>
+<span class="w">  </span><span class="nt">cmid</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(22)!</span>
+<span class="w">  </span><span class="nt">cmin</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(23)!</span>
+<span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(24)!</span>
+<span class="w">  </span><span class="nt">coloraxis</span><span class="p">:</span><span class="w"> </span><span class="s">'subplotid'</span><span class="w"> </span><span class="c1">#(25)!</span>
+<span class="w">  </span><span class="nt">colorbar</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(26)!</span>
+<span class="w">    </span><span class="nt">bordercolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(27)!</span>
+<span class="w">    </span><span class="nt">borderwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(28)!</span>
+<span class="w">    </span><span class="nt">dtick</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(29)!</span>
+<span class="w">    </span><span class="nt">exponentformat</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"none"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"e"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"e"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"power"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"si"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"b"</span>
+<span class="w">      </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(30)!</span>
+<span class="w">    </span><span class="nt">len</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(31)!</span>
+<span class="w">    </span><span class="nt">lenmode</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"fraction"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"pixels"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(32)!</span>
+<span class="w">    </span><span class="nt">minexponent</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(33)!</span>
+<span class="w">    </span><span class="nt">nticks</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(34)!</span>
+<span class="w">    </span><span class="nt">orientation</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"h"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"v"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(35)!</span>
+<span class="w">    </span><span class="nt">outlinecolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(36)!</span>
+<span class="w">    </span><span class="nt">outlinewidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(37)!</span>
+<span class="w">    </span><span class="nt">separatethousands</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(38)!</span>
+<span class="w">    </span><span class="nt">showexponent</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"all"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"first"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"last"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"none"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(39)!</span>
+<span class="w">    </span><span class="nt">showticklabels</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(40)!</span>
+<span class="w">    </span><span class="nt">showtickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"all"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"first"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"last"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"none"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(41)!</span>
+<span class="w">    </span><span class="nt">showticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"all"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"first"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"last"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"none"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(42)!</span>
+<span class="w">    </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(43)!</span>
+<span class="w">    </span><span class="nt">thicknessmode</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"fraction"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"pixels"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(44)!</span>
+<span class="w">    </span><span class="nt">tick0</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(45)!</span>
+<span class="w">    </span><span class="nt">tickangle</span><span class="p">:</span><span class="w"> </span><span class="s">'angle'</span><span class="w"> </span><span class="c1">#(46)!</span>
+<span class="w">    </span><span class="nt">tickcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(47)!</span>
+<span class="w">    </span><span class="nt">tickfont</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color</span>
+<span class="w">      </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(48)!</span>
+<span class="w">      </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number greater than or equal to 1</span>
+<span class="w">    </span><span class="nt">tickformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(49)!</span>
+<span class="w">    </span><span class="nt">tickformatstops</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">dtickrange</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(50)!</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(51)!</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(52)!</span>
+<span class="w">      </span><span class="nt">templateitemname</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(53)!</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(54)!</span>
+<span class="w">    </span><span class="nt">ticklabeloverflow</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"allow"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"hide</span><span class="nv"> </span><span class="s">past</span><span class="nv"> </span><span class="s">div"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"hide</span><span class="nv"> </span><span class="s">past</span>
+<span class="w">      </span><span class="s">domain"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(55)!</span>
+<span class="w">    </span><span class="nt">ticklabelposition</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"outside"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"inside"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"outside</span><span class="nv"> </span><span class="s">top"</span>
+<span class="w">      </span><span class="s">|</span><span class="nv"> </span><span class="s">"inside</span><span class="nv"> </span><span class="s">top"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"outside</span><span class="nv"> </span><span class="s">left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"inside</span><span class="nv"> </span><span class="s">left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"outside</span><span class="nv"> </span><span class="s">right"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"inside</span>
+<span class="w">      </span><span class="s">right"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"outside</span><span class="nv"> </span><span class="s">bottom"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"inside</span><span class="nv"> </span><span class="s">bottom"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(56)!</span>
+<span class="w">    </span><span class="nt">ticklabelstep</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(57)!</span>
+<span class="w">    </span><span class="nt">ticklen</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(58)!</span>
+<span class="w">    </span><span class="nt">tickmode</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"auto"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"linear"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"array"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(59)!</span>
+<span class="w">    </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(60)!</span>
+<span class="w">    </span><span class="nt">ticks</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"outside"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"inside"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">""</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(61)!</span>
+<span class="w">    </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(62)!</span>
+<span class="w">    </span><span class="nt">ticktext</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(63)!</span>
+<span class="w">    </span><span class="nt">tickvals</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(64)!</span>
+<span class="w">    </span><span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(65)!</span>
+<span class="w">    </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">font</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color</span>
+<span class="w">        </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(66)!</span>
+<span class="w">        </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number greater than or equal to 1</span>
+<span class="w">      </span><span class="nt">side</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"right"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"top"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(67)!</span>
+<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(68)!</span>
+<span class="w">    </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">-2</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">3'</span><span class="w"> </span><span class="c1">#(69)!</span>
+<span class="w">    </span><span class="nt">xanchor</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"center"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"right"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(70)!</span>
+<span class="w">    </span><span class="nt">xpad</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(71)!</span>
+<span class="w">    </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">-2</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">3'</span><span class="w"> </span><span class="c1">#(72)!</span>
+<span class="w">    </span><span class="nt">yanchor</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"top"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"middle"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(73)!</span>
+<span class="w">    </span><span class="nt">ypad</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(74)!</span>
+<span class="w">  </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'colorscale'</span><span class="w"> </span><span class="c1">#(75)!</span>
+<span class="w">  </span><span class="nt">line</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(76)!</span>
+<span class="w">    </span><span class="nt">cauto</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(77)!</span>
+<span class="w">    </span><span class="nt">cmax</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(78)!</span>
+<span class="w">    </span><span class="nt">cmid</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(79)!</span>
+<span class="w">    </span><span class="nt">cmin</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(80)!</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(81)!</span>
+<span class="w">    </span><span class="nt">coloraxis</span><span class="p">:</span><span class="w"> </span><span class="s">'subplotid'</span><span class="w"> </span><span class="c1">#(82)!</span>
+<span class="w">    </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'colorscale'</span><span class="w"> </span><span class="c1">#(83)!</span>
+<span class="w">    </span><span class="nt">reversescale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(84)!</span>
+<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(85)!</span>
+<span class="w">  </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(86)!</span>
+<span class="w">  </span><span class="nt">pattern</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(87)!</span>
+<span class="w">    </span><span class="nt">fgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(88)!</span>
+<span class="w">    </span><span class="nt">fgopacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(89)!</span>
+<span class="w">    </span><span class="nt">fillmode</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"replace"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"overlay"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(90)!</span>
+<span class="w">    </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">enumerateds</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">""</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"/"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">""</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"x"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"-"</span>
+<span class="w">      </span><span class="s">|</span><span class="nv"> </span><span class="s">"|"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"+"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"."</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(91)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(92)!</span>
+<span class="w">    </span><span class="nt">solidity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(93)!</span>
+<span class="w">  </span><span class="nt">reversescale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(94)!</span>
+<span class="w">  </span><span class="nt">showscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(95)!</span>
+<span class="nt">meta</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(96)!</span>
+<span class="nt">offset</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers'</span><span class="w"> </span><span class="c1">#(97)!</span>
+<span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(98)!</span>
+<span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(100)!</span>
+<span class="nt">r0</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(99)!</span>
+<span class="nt">selected</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(101)!</span>
+<span class="w">    </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(102)!</span>
+<span class="w">  </span><span class="nt">textfont</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(103)!</span>
+<span class="nt">selectedpoints</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(104)!</span>
+<span class="nt">showlegend</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(105)!</span>
+<span class="nt">subplot</span><span class="p">:</span><span class="w"> </span><span class="s">'subplotid'</span><span class="w"> </span><span class="c1">#(106)!</span>
+<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(107)!</span>
+<span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(109)!</span>
+<span class="nt">theta0</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(108)!</span>
+<span class="nt">thetaunit</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"radians"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"degrees"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"gradians"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(110)!</span>
+<span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
+<span class="nt">uirevision</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(111)!</span>
+<span class="nt">unselected</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(112)!</span>
+<span class="w">    </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(113)!</span>
+<span class="w">  </span><span class="nt">textfont</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(114)!</span>
+<span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">true</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">false</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"legendonly"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(115)!</span>
+<span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(116)!</span>
+</code></pre></div>
+<ol>
+<li>Sets where the bar base is drawn (in radial axis units). In "stack" barmode, traces that set "base" will be excluded and drawn in "overlay" mode instead. </li>
+<li>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements </li>
+<li>Sets the r coordinate step. </li>
+<li>Sets the theta coordinate step. By default, the <code>dtheta</code> step equals the subplot's period divided by the length of the <code>r</code> coordinates. </li>
+<li>Determines which trace information appear on hover. If <code>none</code> or <code>skip</code> are set, no information is displayed upon hovering. But, if <code>none</code> is set, click and hover events are still fired. </li>
+<li>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines </li>
+<li>Sets the background color of the hover labels for this trace </li>
+<li>Sets the border color of the hover labels for this trace. </li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". </li>
+<li>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer &gt;3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to <code>namelength - 3</code> characters and add an ellipsis. </li>
+<li>Template string used for rendering the information that appear on hover box. Note that this will override <code>hoverinfo</code>. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%<em>xother}, {%_xother</em>}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in <code>hovertemplate</code> are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are <code>arrayOk: true</code>) are available. Anything contained in tag <code>&lt;extra&gt;</code> is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag <code>&lt;extra&gt;&lt;/extra&gt;</code>. </li>
+<li>Same as <code>text</code>. </li>
+<li>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. </li>
+<li>Sets the legend group for this trace. Traces part of the same legend group hide/show at the same time when toggling legend items. </li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". </li>
+<li>Sets the title of the legend group. </li>
+<li>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with <code>"reversed"</code>legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. </li>
+<li>Sets the width (in px or fraction) of the legend for this trace. </li>
+<li>Determines whether the colorscale is a default palette (<code>autocolorscale: true</code>) or the palette determined by <code>marker.colorscale</code>. Has an effect only if in <code>marker.color</code> is set to a numerical array. In case <code>colorscale</code> is unspecified or <code>autocolorscale</code> is true, the default palette will be chosen according to whether numbers in the <code>color</code> array are all positive, all negative or mixed. </li>
+<li>Determines whether or not the color domain is computed with respect to the input data (here in <code>marker.color</code>) or the bounds set in <code>marker.cmin</code> and <code>marker.cmax</code> Has an effect only if in <code>marker.color</code> is set to a numerical array. Defaults to <code>false</code> when <code>marker.cmin</code> and <code>marker.cmax</code> are set by the user. </li>
+<li>Sets the upper bound of the color domain. Has an effect only if in <code>marker.color</code> is set to a numerical array. Value should have the same units as in <code>marker.color</code> and if set, <code>marker.cmin</code> must be set as well. </li>
+<li>Sets the mid-point of the color domain by scaling <code>marker.cmin</code> and/or <code>marker.cmax</code> to be equidistant to this point. Has an effect only if in <code>marker.color</code> is set to a numerical array. Value should have the same units as in <code>marker.color</code>. Has no effect when <code>marker.cauto</code> is <code>false</code>. </li>
+<li>Sets the lower bound of the color domain. Has an effect only if in <code>marker.color</code> is set to a numerical array. Value should have the same units as in <code>marker.color</code> and if set, <code>marker.cmax</code> must be set as well. </li>
+<li>Sets the marker color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to <code>marker.cmin</code> and <code>marker.cmax</code> if set. </li>
+<li>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under <code>layout.coloraxis</code>, <code>layout.coloraxis2</code>, etc. Note that multiple color scales can be linked to the same color axis. </li>
+<li>Sets the color of padded area. </li>
+<li>Sets the axis line color. </li>
+<li>Sets the width (in px) or the border enclosing this color bar. </li>
+<li>Sets the step in-between ticks on this axis. Use with <code>tick0</code>. Must be a positive number, or special strings available to "log" and "date" axes. If the axis <code>type</code> is "log", then ticks are set every 10^(n"dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. "log" has several special values; "L<f>", where <code>f</code> is a positive number, gives ticks linearly spaced in value (but not position). For example <code>tick0</code> = 0.1, <code>dtick</code> = "L0.5" will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use "D1" (all digits) or "D2" (only 2 and 5). <code>tick0</code> is ignored for "D1" and "D2". If the axis <code>type</code> is "date", then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set <code>dtick</code> to 86400000.0. "date" also has special values "M<n>" gives ticks spaced by a number of months. <code>n</code> must be a positive integer. To set ticks on the 15th of every third month, set <code>tick0</code> to "2000-01-15" and <code>dtick</code> to "M3". To set ticks every 4 years, set <code>dtick</code> to "M48" </n></f></li>
+<li>Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If "none", it appears as 1,000,000,000. If "e", 1e+9. If "E", 1E+9. If "power", 1x10^9 (with 9 in a super script). If "SI", 1G. If "B", 1B. </li>
+<li>Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends. </li>
+<li>Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot "fraction" or in "pixels. Use <code>len</code> to set the value. </li>
+<li>Hide SI prefix for 10^n if |n| is below this number. This only has an effect when <code>tickformat</code> is "SI" or "B". </li>
+<li>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to <code>nticks</code>. Has an effect only if <code>tickmode</code> is set to "auto". </li>
+<li>Sets the orientation of the colorbar. </li>
+<li>Sets the axis line color. </li>
+<li>Sets the width (in px) of the axis line. </li>
+<li>If "true", even 4-digit integers are separated </li>
+<li>If "all", all exponents are shown besides their significands. If "first", only the exponent of the first tick is shown. If "last", only the exponent of the last tick is shown. If "none", no exponents appear. </li>
+<li>Determines whether or not the tick labels are drawn. </li>
+<li>If "all", all tick labels are displayed with a prefix. If "first", only the first tick is displayed with a prefix. If "last", only the last tick is displayed with a suffix. If "none", tick prefixes are hidden. </li>
+<li>Same as <code>showtickprefix</code> but for tick suffixes. </li>
+<li>Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels. </li>
+<li>Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot "fraction" or in "pixels". Use <code>thickness</code> to set the value. </li>
+<li>Sets the placement of the first tick on this axis. Use with <code>dtick</code>. If the axis <code>type</code> is "log", then you must take the log of your starting tick (e.g. to set the starting tick to 100, set the <code>tick0</code> to 2) except when <code>dtick</code>="L<f>" (see <code>dtick</code> for more info). If the axis <code>type</code> is "date", it should be a date string, like date data. If the axis <code>type</code> is "category", it should be a number, using the scale where each category is assigned a serial number from zero in the order it appears. </f></li>
+<li>Sets the angle of the tick labels with respect to the horizontal. For example, a <code>tickangle</code> of -90 draws the tick labels vertically. </li>
+<li>Sets the tick color. </li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". </li>
+<li>Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46" </li>
+<li>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" </li>
+<li>Determines whether or not this stop is used. If <code>false</code>, this stop is ignored even within its <code>dtickrange</code>. </li>
+<li>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with <code>templateitemname</code> matching this <code>name</code> alongside your modifications (including <code>visible: false</code> or <code>enabled: false</code> to hide it). Has no effect outside of a template. </li>
+<li>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with <code>templateitemname</code> matching its <code>name</code>, alongside your modifications (including <code>visible: false</code> or <code>enabled: false</code> to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with <code>visible: true</code>. </li>
+<li>string - dtickformat for described zoom level, the same as "tickformat" </li>
+<li>Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is "hide past domain". In other cases the default is "hide past div". </li>
+<li>Determines where tick labels are drawn relative to the ticks. Left and right options are used when <code>orientation</code> is "h", top and bottom when <code>orientation</code> is "v". </li>
+<li>Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. <code>tick0</code> determines which labels are shown. Not implemented for axes with <code>type</code> "log" or "multicategory", or when <code>tickmode</code> is "array". </li>
+<li>Sets the tick length (in px). </li>
+<li>Sets the tick mode for this axis. If "auto", the number of ticks is set via <code>nticks</code>. If "linear", the placement of the ticks is determined by a starting position <code>tick0</code> and a tick step <code>dtick</code> ("linear" is the default value if <code>tick0</code> and <code>dtick</code> are provided). If "array", the placement of the ticks is set via <code>tickvals</code> and the tick text is <code>ticktext</code>. ("array" is the default value if <code>tickvals</code> is provided). </li>
+<li>Sets a tick label prefix. </li>
+<li>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. </li>
+<li>Sets a tick label suffix. </li>
+<li>Sets the text displayed at the ticks position via <code>tickvals</code>. Only has an effect if <code>tickmode</code> is set to "array". Used with <code>tickvals</code>. </li>
+<li>Sets the values at which ticks on this axis appear. Only has an effect if <code>tickmode</code> is set to "array". Used with <code>ticktext</code>. </li>
+<li>Sets the tick width (in px). </li>
+<li>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". </li>
+<li>Determines the location of color bar's title with respect to the color bar. Defaults to "top" when <code>orientation</code> if "v" and defaults to "right" when <code>orientation</code> if "h". Note that the title's location used to be set by the now deprecated <code>titleside</code> attribute. </li>
+<li>Sets the title of the color bar. Note that before the existence of <code>title.text</code>, the title's contents used to be defined as the <code>title</code> attribute itself. This behavior has been deprecated. </li>
+<li>Sets the x position of the color bar (in plot fraction). Defaults to 1.02 when <code>orientation</code> is "v" and 0.5 when <code>orientation</code> is "h". </li>
+<li>Sets this color bar's horizontal position anchor. This anchor binds the <code>x</code> position to the "left", "center" or "right" of the color bar. Defaults to "left" when <code>orientation</code> is "v" and "center" when <code>orientation</code> is "h". </li>
+<li>Sets the amount of padding (in px) along the x direction. </li>
+<li>Sets the y position of the color bar (in plot fraction). Defaults to 0.5 when <code>orientation</code> is "v" and 1.02 when <code>orientation</code> is "h". </li>
+<li>Sets this color bar's vertical position anchor This anchor binds the <code>y</code> position to the "top", "middle" or "bottom" of the color bar. Defaults to "middle" when <code>orientation</code> is "v" and "bottom" when <code>orientation</code> is "h". </li>
+<li>Sets the amount of padding (in px) along the y direction. </li>
+<li>Sets the colorscale. Has an effect only if in <code>marker.color</code> is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, <code>[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]</code>. To control the bounds of the colorscale in color space, use <code>marker.cmin</code> and <code>marker.cmax</code>. Alternatively, <code>colorscale</code> may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. </li>
+<li>Determines whether the colorscale is a default palette (<code>autocolorscale: true</code>) or the palette determined by <code>marker.line.colorscale</code>. Has an effect only if in <code>marker.line.color</code> is set to a numerical array. In case <code>colorscale</code> is unspecified or <code>autocolorscale</code> is true, the default palette will be chosen according to whether numbers in the <code>color</code> array are all positive, all negative or mixed. </li>
+<li>Determines whether or not the color domain is computed with respect to the input data (here in <code>marker.line.color</code>) or the bounds set in <code>marker.line.cmin</code> and <code>marker.line.cmax</code> Has an effect only if in <code>marker.line.color</code> is set to a numerical array. Defaults to <code>false</code> when <code>marker.line.cmin</code> and <code>marker.line.cmax</code> are set by the user. </li>
+<li>Sets the upper bound of the color domain. Has an effect only if in <code>marker.line.color</code> is set to a numerical array. Value should have the same units as in <code>marker.line.color</code> and if set, <code>marker.line.cmin</code> must be set as well. </li>
+<li>Sets the mid-point of the color domain by scaling <code>marker.line.cmin</code> and/or <code>marker.line.cmax</code> to be equidistant to this point. Has an effect only if in <code>marker.line.color</code> is set to a numerical array. Value should have the same units as in <code>marker.line.color</code>. Has no effect when <code>marker.line.cauto</code> is <code>false</code>. </li>
+<li>Sets the lower bound of the color domain. Has an effect only if in <code>marker.line.color</code> is set to a numerical array. Value should have the same units as in <code>marker.line.color</code> and if set, <code>marker.line.cmax</code> must be set as well. </li>
+<li>Sets the marker.line color. It accepts either a specific color or an array of numbers that are mapped to the colorscale relative to the max and min values of the array or relative to <code>marker.line.cmin</code> and <code>marker.line.cmax</code> if set. </li>
+<li>Sets a reference to a shared color axis. References to these shared color axes are "coloraxis", "coloraxis2", "coloraxis3", etc. Settings for these shared color axes are set in the layout, under <code>layout.coloraxis</code>, <code>layout.coloraxis2</code>, etc. Note that multiple color scales can be linked to the same color axis. </li>
+<li>Sets the colorscale. Has an effect only if in <code>marker.line.color</code> is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, <code>[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]</code>. To control the bounds of the colorscale in color space, use <code>marker.line.cmin</code> and <code>marker.line.cmax</code>. Alternatively, <code>colorscale</code> may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. </li>
+<li>Reverses the color mapping if true. Has an effect only if in <code>marker.line.color</code> is set to a numerical array. If true, <code>marker.line.cmin</code> will correspond to the last color in the array and <code>marker.line.cmax</code> will correspond to the first color. </li>
+<li>Sets the width (in px) of the lines bounding the marker points. </li>
+<li>Sets the opacity of the bars. </li>
+<li>When there is no colorscale sets the color of background pattern fill. Defaults to a <code>marker.color</code> background when <code>fillmode</code> is "overlay". Otherwise, defaults to a transparent background. </li>
+<li>When there is no colorscale sets the color of foreground pattern fill. Defaults to a <code>marker.color</code> background when <code>fillmode</code> is "replace". Otherwise, defaults to dark grey or white to increase contrast with the <code>bgcolor</code>. </li>
+<li>Sets the opacity of the foreground pattern fill. Defaults to a 0.5 when <code>fillmode</code> is "overlay". Otherwise, defaults to 1. </li>
+<li>Determines whether <code>marker.color</code> should be used as a default to <code>bgcolor</code> or a <code>fgcolor</code>. </li>
+<li>Sets the shape of the pattern fill. By default, no pattern is used for filling the area. </li>
+<li>Sets the size of unit squares of the pattern fill in pixels, which corresponds to the interval of repetition of the pattern. </li>
+<li>Sets the solidity of the pattern fill. Solidity is roughly the fraction of the area filled by the pattern. Solidity of 0 shows only the background color without pattern and solidty of 1 shows only the foreground color without pattern. </li>
+<li>Reverses the color mapping if true. Has an effect only if in <code>marker.color</code> is set to a numerical array. If true, <code>marker.cmin</code> will correspond to the last color in the array and <code>marker.cmax</code> will correspond to the first color. </li>
+<li>Determines whether or not a colorbar is displayed for this trace. Has an effect only if in <code>marker.color</code> is set to a numerical array. </li>
+<li>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace <code>name</code>, graph, axis and colorbar <code>title.text</code>, annotation <code>text</code> <code>rangeselector</code>, <code>updatemenues</code> and <code>sliders</code> <code>label</code> text all support <code>meta</code>. To access the trace <code>meta</code> values in an attribute in the same trace, simply use <code>%{meta[i]}</code> where <code>i</code> is the index or key of the <code>meta</code> item in question. To access trace <code>meta</code> in layout attributes, use <code>%{data[n[.meta[i]}</code> where <code>i</code> is the index or key of the <code>meta</code> and <code>n</code> is the trace index. </li>
+<li>Shifts the angular position where the bar is drawn (in "thetatunit" units). </li>
+<li>Sets the opacity of the trace. </li>
+<li>Alternate to <code>r</code>. Builds a linear space of r coordinates. Use with <code>dr</code> where <code>r0</code> is the starting coordinate and <code>dr</code> the step. </li>
+<li>Sets the radial coordinates </li>
+<li>Sets the marker color of selected points. </li>
+<li>Sets the marker opacity of selected points. </li>
+<li>Sets the text font color of selected points. </li>
+<li>Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the <code>unselected</code> are turned on for all points, whereas, any other non-array values means no selection all where the <code>selected</code> and <code>unselected</code> styles have no effect. </li>
+<li>Determines whether or not an item corresponding to this trace is shown in the legend. </li>
+<li>Sets a reference between this trace's data coordinates and a polar subplot. If "polar" (the default value), the data refer to <code>layout.polar</code>. If "polar2", the data refer to <code>layout.polar2</code>, and so on. </li>
+<li>Sets hover text elements associated with each bar. If a single string, the same string appears over all bars. If an array of string, the items are mapped in order to the this trace's coordinates. </li>
+<li>Alternate to <code>theta</code>. Builds a linear space of theta coordinates. Use with <code>dtheta</code> where <code>theta0</code> is the starting coordinate and <code>dtheta</code> the step. </li>
+<li>Sets the angular coordinates </li>
+<li>Sets the unit of input "theta" values. Has an effect only when on "linear" angular axes. </li>
+<li>Controls persistence of some user-driven changes to the trace: <code>constraintrange</code> in <code>parcoords</code> traces, as well as some <code>editable: true</code> modifications such as <code>name</code> and <code>colorbar.title</code>. Defaults to <code>layout.uirevision</code>. Note that other user-driven trace attribute changes are controlled by <code>layout</code> attributes: <code>trace.visible</code> is controlled by <code>layout.legend.uirevision</code>, <code>selectedpoints</code> is controlled by <code>layout.selectionrevision</code>, and <code>colorbar.(x|y)</code> (accessible with <code>config: {editable: true}</code>) is controlled by <code>layout.editrevision</code>. Trace changes are tracked by <code>uid</code>, which only falls back on trace index if no <code>uid</code> is provided. So if your app can add/remove traces before the end of the <code>data</code> array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a <code>uid</code> that stays with it as it moves. </li>
+<li>Sets the marker color of unselected points, applied only when a selection exists. </li>
+<li>Sets the marker opacity of unselected points, applied only when a selection exists. </li>
+<li>Sets the text font color of unselected points, applied only when a selection exists. </li>
+<li>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). </li>
+<li>Sets the bar angular width (in "thetaunit" units). </li>
+</ol></div>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../../..", "features": ["content.tabs.link", "navigation.indexes", "navigation.sections", "content.tooltips", "content.code.annotate", "content.code.copy"], "search": "../../../../../assets/javascripts/workers/search.6ce7567c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.d6f25eb3.min.js"></script>
+      
+    
+  </body>
+</html>
