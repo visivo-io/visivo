@@ -2,7 +2,11 @@ from typing import Any
 
 import re
 
-INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)\s*}"
+from visivo.models.base.parent_model import ParentModel
+
+INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w]*\s*}"
+INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w]*)\s*}"
+INLINE_PATH_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.]+?)\s*}"
 
 
 class ContextString:
@@ -25,6 +29,27 @@ class ContextString:
             return None
         else:
             return matches[0]
+
+    def get_ref_props_path(self) -> str:
+        matches = re.findall(INLINE_REF_PROPS_PATH_REGEX, self.value)
+        if len(matches) == 0:
+            return None
+        else:
+            return matches[0]
+
+    def get_path(self) -> str:
+        matches = re.findall(INLINE_PATH_REGEX, self.value)
+        if len(matches) == 0:
+            return None
+        else:
+            return matches[0]
+
+    def get_item(self, dag: Any) -> Any:
+        reference = self.get_reference()
+        items = ParentModel.all_descendants_with_name(reference, dag)
+        if len(items) == 0:
+            raise ValueError(f"Invalid context string reference name: '{reference}'.")
+        return items[0]
 
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):

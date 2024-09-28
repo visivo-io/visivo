@@ -1,11 +1,10 @@
-import os
 from typing import Any, List
-import ast
-import operator as op
 import re
 from visivo.models.base.context_string import ContextString
+from visivo.models.base.parent_model import ParentModel
+from visivo.parsers.evaluator import evaluate_expression
 
-INLINE_CONTEXT_STRING_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)\s*}"
+INLINE_CONTEXT_STRING_REGEX = r"\${\s*[\(a-zA-Z0-9\s'\"\-_\\.)]+?\s*}"
 EVAL_STRING_REGEX = r"^>{(.*)}$"
 
 """
@@ -42,89 +41,29 @@ class EvalString:
         references = map(lambda c: c.get_references(), self.get_context_strings())
         return [ref for sublist in references for ref in sublist]
 
-    def evaluate(self, project, output_dir) -> Any:
-        operators = {
-            ast.Add: op.add,
-            ast.Sub: op.sub,
-            ast.Mult: op.mul,
-            ast.Div: op.truediv,
-            ast.Pow: op.pow,
-            ast.BitXor: op.xor,
-            ast.USub: op.neg,
-        }
+    def evaluate(self, dag: Any, project: Any, output_dir: str) -> Any:
+        expression = re.match(EVAL_STRING_REGEX, self.value.strip()).group(1).strip()
+        expression = self.__replace_context_strings(expression=expression, dag=dag)
+        return evaluate_expression(
+            expression=expression, project=project, output_dir=output_dir
+        )
 
-        def any_test_failed():
-            # This is a placeholder. Replace with actual implementation.
-            return False
+    def __replace_context_strings(self, expression: str, dag: Any) -> str:
+        context_strings = self.get_context_strings()
+        for context_string in context_strings:
+            if context_string.get_reference() is not None:
+                item = context_string.get_item(dag=dag)
 
-        def eval_expr(node):
-            if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
-                return all(eval_expr(value) for value in node.values)
-            if isinstance(node, ast.Constant):
-                return node.n
-            elif isinstance(node, ast.BinOp):
-                return operators[type(node.op)](
-                    eval_expr(node.left), eval_expr(node.right)
-                )
-            elif isinstance(node, ast.UnaryOp):
-                return operators[type(node.op)](eval_expr(node.operand))
-            elif isinstance(node, ast.BoolOp):
-                return operators[type(node.op)](eval_expr(node.operand))
-            elif isinstance(node, ast.Call):
-                if node.func.id == "any_test_failed":
-                    return any_test_failed()
-                else:
-                    raise ValueError(f"Unsupported function: {node.func.id}")
-            elif isinstance(node, ast.Compare):
-                left = eval_expr(node.left)
-                for op, right in zip(node.ops, node.comparators):
-                    if not isinstance(
-                        op, (ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE)
-                    ):
-                        raise TypeError(
-                            f"Unsupported comparison operator: {op.__class__.__name__}"
-                        )
-                    right = eval_expr(right)
-                    if not compare_op(op, left, right):
-                        return False
-                    left = right
-                return True
-            elif isinstance(node, ast.Attribute):
-                if node.value.id == "env":
-                    return os.getenv(node.attr)
-                else:
-                    raise ValueError(f"Unsupported attribute: {node.value.id}")
+                path = item.path
+                props_path = context_string.get_ref_props_path()
+                if props_path is not None:
+                    path = path + props_path
+                expression = expression.replace(context_string.value, path)
             else:
-                raise TypeError(f"Unsupported type {node.__class__}")
-
-        def compare_op(op, left, right):
-            return {
-                ast.Eq: lambda: left == right,
-                ast.NotEq: lambda: left != right,
-                ast.Lt: lambda: left < right,
-                ast.LtE: lambda: left <= right,
-                ast.Gt: lambda: left > right,
-                ast.GtE: lambda: left >= right,
-            }[type(op)]()
-
-        try:
-            expression = (
-                re.match(EVAL_STRING_REGEX, self.value.strip()).group(1).strip()
-            )
-            parsed = ast.parse(expression, mode="eval")
-            def replace_context_strings(expression):
-                context_strings = self.get_context_strings()
-                for context_string in context_strings:
-                    expression = expression.replace(
-                        context_string.value, context_string.get_path()
-                    )
-                return expression
-
-            expression = replace_context_strings(expression)
-            return eval_expr(parsed.body)
-        except (SyntaxError, TypeError, KeyError, ValueError, NameError) as e:
-            breakpoint()
-            raise ValueError(f"Invalid expression: {self.value}") from e
+                expression = expression.replace(
+                    context_string.value, context_string.get_path()
+                )
+        return expression
 
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):
