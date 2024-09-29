@@ -27,6 +27,9 @@ def test_EvalString_get_context_strings():
     assert context_string.get_context_strings()[0].value == "${ ref(Name) }"
     assert context_string.get_context_strings()[1].value == "${ ref(Name 2) }"
 
+    context_string = EvalString(">{ ${ project.name } }")
+    assert context_string.get_context_strings()[0].value == "${ project.name }"
+
 
 def test_EvalString_as_field():
     test_string_model = MockStringModel(**{"eval": ">{ ${ ref(Name) } }"})
