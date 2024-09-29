@@ -38,10 +38,6 @@ traces:
 The [numpy](https://numpy.org/doc/stable/index.html) libraries are available for testing.
 """
 
-# TODO: SHOULD TESTS DEFINED IN TRACES TO BE ABLE TO REFERENCE PROPS/COLUMNS OF OTHER TRACE?
-# The reason is that the actual dependency is the other way around.
-# The test is dependent on the trace but the trace is not dependent on the test.
-
 
 class OnFailureEnum(str, Enum):
     exit = "exit"
@@ -52,17 +48,8 @@ class Test(NamedModel, ParentModel):
     if_: Optional[EvalString] = Field(None, alias="if")
     on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
     assertions: List[EvalString] = Field(None)
-    #   I AM NOT SURE WE SHOULD HAVE ALERTS NESTED IN TEST AND IN TRACES
-    alerts: List[Alert] = Field([], description="Alerts that will be triggered")
 
     __test__ = False
-
-    @model_validator(mode="after")
-    def set_parent_test(self):
-        for alert in self.alerts:
-            if BaseModel.is_obj(alert):
-                alert.set_parent_test(self.path)
-        return self
 
     def child_items(self):
         references = list(map(lambda a: a.get_references(), self.assertions))

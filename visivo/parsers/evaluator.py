@@ -3,8 +3,12 @@ import ast
 import operator as op
 import os
 
+SUPPORTED_NUMPY_FUNCTIONS = ["sum", "all", "mean"]
+
 
 def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
+    import numpy
+
     operators = {
         ast.Add: op.add,
         ast.Sub: op.sub,
@@ -57,11 +61,20 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
         else:
             raise ValueError(f"Unsupported node type: {nodes[0].id}")
 
+    def handle_numpy(node):
+        if hasattr(numpy, node.func.id):
+            numpy_function = getattr(numpy, node.func.id)
+            return numpy_function(*[evaluate_node(arg) for arg in node.args])
+        else:
+            raise ValueError(f"Unsupported numpy function: {node.func.id}")
+
     def evaluate_node(node):
         if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
             return all(evaluate_node(value) for value in node.values)
         if isinstance(node, ast.Constant):
             return node.n
+        if isinstance(node, ast.List):
+            return list(map(lambda a: evaluate_node(a), node.elts))
         elif isinstance(node, ast.BinOp):
             return operators[type(node.op)](
                 evaluate_node(node.left), evaluate_node(node.right)
@@ -73,6 +86,8 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
         elif isinstance(node, ast.Call):
             if node.func.id == "any_test_failed":
                 return any_test_failed()
+            elif node.func.id in SUPPORTED_NUMPY_FUNCTIONS:
+                return handle_numpy(node)
             else:
                 raise ValueError(f"Unsupported function: {node.func.id}")
         elif isinstance(node, ast.Compare):

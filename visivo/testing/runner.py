@@ -33,7 +33,9 @@ class Runner:
         for test in self.tests:
             for assertion in test.assertions:
                 try:
-                    assertion.evaluate(self.project, self.output_dir)
+                    assertion.evaluate(
+                        dag=self.dag, project=self.project, output_dir=self.output_dir
+                    )
                     click.echo(click.style(".", fg="green"), nl=False)
                     success = TestSuccess(test_id=test.id())
                     test_run.add_success(success=success)

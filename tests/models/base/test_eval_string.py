@@ -39,6 +39,30 @@ def test_EvalString_as_field():
         MockStringModel(**{"eval": "{ ref(Name) }"})
 
 
+def test_evaluate_numby():
+    output_dir = "tmp"
+    es = EvalString(">{ sum([1,2,3]) == 6 }")
+    assert es.evaluate({}, {}, output_dir) == True
+
+    es = EvalString(">{ all([1,2,3]) < 4 }")
+    assert es.evaluate({}, {}, output_dir) == True
+
+    es = EvalString(">{ mean([1,2,3]) == 2 }")
+    assert es.evaluate({}, {}, output_dir) == True
+
+
+def test_evaluate_basic():
+    output_dir = "tmp"
+    es = EvalString(">{ True }")
+    assert es.evaluate({}, {}, output_dir) == True
+
+    es = EvalString(">{ 2 + 3 * 4 }")
+    assert es.evaluate({}, {}, output_dir) == 14
+
+    es = EvalString(">{ 5 > 3 and 2 <= 2 }")
+    assert es.evaluate({}, {}, output_dir) == True
+
+
 def test_evaluate():
     project = ProjectFactory()
     project.dashboards[0].rows[0].items[0].chart.traces[
@@ -49,15 +73,6 @@ def test_evaluate():
     ].path = "project.dashboards[0].rows[0].items[0]"
     dag = project.dag()
     output_dir = "tmp"
-
-    es = EvalString(">{ True }")
-    assert es.evaluate(dag, project, output_dir) == True
-
-    es = EvalString(">{ 2 + 3 * 4 }")
-    assert es.evaluate(dag, project, output_dir) == 14
-
-    es = EvalString(">{ 5 > 3 and 2 <= 2 }")
-    assert es.evaluate(dag, project, output_dir) == True
 
     es = EvalString(">{ any_test_failed() }")
     assert es.evaluate(dag, project, output_dir) == False
