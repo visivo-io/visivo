@@ -6,9 +6,16 @@ includes:
 dashboards:
   - name: Chart Layout Examples
     rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Chart Examples
+          - markdown: ""
+            width: 5
       - height: medium
         items:
           - chart: ref(Big Number Over Line Chart)
-          - chart: ref(Duel Axis)
           - chart: ref(Single Trace Chart)
+          - chart: ref(Duel Axis)
+          
             
