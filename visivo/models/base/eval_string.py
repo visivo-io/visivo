@@ -4,7 +4,7 @@ from visivo.models.base.context_string import ContextString
 from visivo.models.base.parent_model import ParentModel
 from visivo.parsers.evaluator import evaluate_expression
 
-INLINE_CONTEXT_STRING_REGEX = r"\${\s*[\(a-zA-Z0-9\s'\"\-_\\.)]+?\s*}"
+INLINE_CONTEXT_STRING_REGEX = r"\${\s*[\(a-zA-Z0-9\s'\"\-_\\.\]\[)]+?\s*}"
 EVAL_STRING_REGEX = r"^>{(.*)}$"
 
 """

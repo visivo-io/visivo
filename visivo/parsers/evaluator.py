@@ -19,23 +19,43 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
         # This is a placeholder. Replace with actual implementation.
         return False
 
-    def build_list_of_nodes(node):
-        if isinstance(node, ast.Subscript) or isinstance(node.value, ast.Attribute):
-            return [build_list_of_nodes(node.value)]
+    def build_list_of_nodes(node, previous_nodes=[]):
+        if isinstance(node, ast.Subscript) or isinstance(node, ast.Attribute):
+            previous_nodes.append(node)
+            return build_list_of_nodes(node.value, previous_nodes)
         elif isinstance(node, ast.Name):
-            return [node.id]
+            previous_nodes.append(node)
+            return previous_nodes
         else:
-            return []
+            return previous_nodes
+
+    def get_object_from_node(current_object, index, nodes):
+        node = nodes[index]
+        last_node = index == len(nodes) - 1
+        next_index = index + 1
+        if isinstance(node, ast.Subscript):
+            value = current_object[node.slice.value]
+            if last_node:
+                return value
+            return get_object_from_node(value, next_index, nodes)
+        elif isinstance(node, ast.Attribute):
+            value = getattr(current_object, node.attr)
+            if last_node:
+                return value
+            return get_object_from_node(value, next_index, nodes)
+        elif isinstance(node, ast.Name):
+            return current_object
+        else:
+            raise ValueError(f"Unsupported node type: {node.__class__.__name__}")
 
     def eval_subscripts(node):
         nodes = build_list_of_nodes(node)
         nodes = nodes[::-1]  # Reverse the order of nodes
-        if nodes[0] == "project":
-            for node in nodes:
-                if isinstance(node, ast.Subscript):
-                    project = project[node.value]
-                else:
-                    project = getattr(project, node)
+        if hasattr(nodes[0], "id") and nodes[0].id == "project":
+            value = get_object_from_node(project, 1, nodes)
+            return value
+        else:
+            raise ValueError(f"Unsupported node type: {nodes[0].id}")
 
     def evaluate_node(node):
         if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.And):
@@ -71,7 +91,7 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
             return True
         elif isinstance(node, ast.Attribute):
             if isinstance(node.value, ast.Subscript):
-                eval_subscripts(node.value)
+                return eval_subscripts(node)
             if isinstance(node.value, ast.Name):
                 if node.value.id == "env":
                     return os.getenv(node.attr)
@@ -96,5 +116,13 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
         parsed = ast.parse(expression, mode="eval")
 
         return evaluate_node(parsed.body)
-    except (SyntaxError, TypeError, KeyError, ValueError, NameError) as e:
-        raise ValueError(f"Invalid expression: {expression}") from e
+    except (
+        SyntaxError,
+        TypeError,
+        KeyError,
+        ValueError,
+        NameError,
+        AttributeError,
+        IndexError,
+    ) as e:
+        raise ValueError(f"Invalid expression: {expression}: {e}") from e
