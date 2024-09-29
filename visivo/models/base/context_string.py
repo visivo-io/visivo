@@ -5,7 +5,7 @@ import re
 from visivo.models.base.parent_model import ParentModel
 
 INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w]*\s*}"
-INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w]*)\s*}"
+INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w\]\[]*)\s*}"
 INLINE_PATH_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]]+?)\s*}"
 
 
