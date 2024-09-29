@@ -39,3 +39,10 @@ jobs:
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry build
           poetry publish 
+
+      - name: Trigger Core Deployment
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.CORE_DEPLOY_TOKEN }}
+          repository: visivo-io/core
+          event-type: visivo-release

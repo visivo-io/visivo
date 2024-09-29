@@ -1,6 +1,7 @@
 import click
 import os
 import yaml
+import json
 from visivo.discovery.discover import Discover
 from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel

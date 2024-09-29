@@ -28,3 +28,10 @@ jobs:
           author_name: Visivo
           author_email: info@visivo.io
           message: 'Build viewer for Python package'
+      
+      - name: Trigger Core Deployment
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.CORE_DEPLOY_TOKEN }}
+          repository: visivo-io/core
+          event-type: visivo-merge
