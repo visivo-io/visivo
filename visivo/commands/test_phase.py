@@ -1,6 +1,4 @@
 import sys
-from trace import Trace
-import click
 from visivo.logging.logger import Logger
 from visivo.models.test import Test
 from visivo.testing.runner import Runner

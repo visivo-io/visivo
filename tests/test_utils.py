@@ -71,3 +71,42 @@ def test_load_yaml_file_with_backslash(monkeypatch):
 
     loaded = load_yaml_file(project_file)
     assert loaded["name"] == password
+
+
+def test_nested_dict_from_dotted_keys():
+    flat_dict = {
+        "a.b.c": 1,
+        "a.b.d": 2,
+        "a.e": 3,
+        "f": 4,
+    }
+    assert nested_dict_from_dotted_keys(flat_dict) == {
+        "a": {"b": {"c": 1, "d": 2}, "e": 3},
+        "f": 4,
+    }
+
+    flat_dict = {
+        "top": {
+            "a.b.c": 1,
+            "a.b.d": 2,
+            "a.e": 3,
+            "f": 4,
+        }
+    }
+    assert nested_dict_from_dotted_keys(flat_dict) == {
+        "top": {
+            "a": {"b": {"c": 1, "d": 2}, "e": 3},
+            "f": 4,
+        }
+    }
+
+
+def test_merge_dicts():
+    dict1 = {"a": 1, "b": 2, "c": {"d": 3, "e": 4}}
+    dict2 = {"b": 20, "c": {"e": 40, "f": 50}, "g": 60}
+    assert merge_dicts(dict1, dict2) == {
+        "a": 1,
+        "b": 20,
+        "c": {"d": 3, "e": 40, "f": 50},
+        "g": 60,
+    }

@@ -1,12 +1,22 @@
-from typing import Any
+from typing import Any, Optional
 import ast
 import operator as op
 import os
+import json
 
-SUPPORTED_NUMPY_FUNCTIONS = ["sum", "all", "mean"]
+from visivo.models.test_run import TestRun
+from visivo.utils import merge_dicts, nested_dict_from_dotted_keys
+
+SUPPORTED_NUMPY_FUNCTIONS = ["sum", "all", "mean", "any"]
+TRACE_DATA_NODES = ["props", "columns"]
 
 
-def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
+def evaluate_expression(
+    expression: str,
+    project: Any = None,
+    output_dir: str = "",
+    test_run: Optional[TestRun] = None,
+) -> Any:
     import numpy
 
     operators = {
@@ -20,8 +30,10 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
     }
 
     def any_test_failed():
-        # This is a placeholder. Replace with actual implementation.
-        return False
+        if test_run is None:
+            return False
+        else:
+            return test_run.success
 
     def build_list_of_nodes(node, previous_nodes=[]):
         if isinstance(node, ast.Subscript) or isinstance(node, ast.Attribute):
@@ -33,6 +45,16 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
         else:
             return previous_nodes
 
+    def get_object_from_data(trace):
+        data_file_path = os.path.join(output_dir, trace.name, "data.json")
+
+        if not os.path.exists(data_file_path):
+            raise FileNotFoundError(f"Data file not found: {data_file_path}")
+
+        with open(data_file_path, "r") as file:
+            data = json.load(file)
+            return nested_dict_from_dotted_keys(data)
+
     def get_object_from_node(current_object, index, nodes):
         node = nodes[index]
         last_node = index == len(nodes) - 1
@@ -43,6 +65,12 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
                 return value
             return get_object_from_node(value, next_index, nodes)
         elif isinstance(node, ast.Attribute):
+            if current_object.__class__.__name__ == "Trace":
+                breakpoint()
+                trace_data = get_object_from_data(current_object)
+                current_object = merge_dicts(
+                    current_object.model_dump(by_alias=True), trace_data
+                )
             value = getattr(current_object, node.attr)
             if last_node:
                 return value
@@ -105,15 +133,12 @@ def evaluate_expression(expression: str, project: Any, output_dir: str) -> Any:
                 left = right
             return True
         elif isinstance(node, ast.Attribute):
-            if isinstance(node.value, ast.Subscript):
-                return eval_subscripts(node)
             if isinstance(node.value, ast.Name):
                 if node.value.id == "env":
                     return os.getenv(node.attr)
                 elif node.value.id == "project":
                     return getattr(project, node.attr)
-            else:
-                raise ValueError(f"Unsupported attribute: {node.value.id}")
+            return eval_subscripts(node)
         else:
             raise TypeError(f"Unsupported type {node.__class__}")
 

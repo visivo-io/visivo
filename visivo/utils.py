@@ -106,3 +106,29 @@ def load_yaml_file(file):
                 raise click.ClickException(error_location)
             else:
                 raise click.ClickException(exc)
+
+
+def nested_dict_from_dotted_keys(flat_dict):
+    nested_dict = {}
+    for key, value in flat_dict.items():
+        parts = key.split(".")
+        d = nested_dict
+        for part in parts[:-1]:
+            if part not in d:
+                d[part] = {}
+            d = d[part]
+        if isinstance(value, dict):
+            d[parts[-1]] = nested_dict_from_dotted_keys(value)
+        else:
+            d[parts[-1]] = value
+    return nested_dict
+
+
+def merge_dicts(dict1, dict2):
+    merged = dict1.copy()
+    for key, value in dict2.items():
+        if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
+            merged[key] = merge_dicts(merged[key], value)
+        else:
+            merged[key] = value
+    return merged

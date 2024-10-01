@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import Field, PrivateAttr
+from typing import List
+from pydantic import Field, PrivateAttr, ConfigDict
 
 from visivo.models.base.eval_string import EvalString
 from visivo.models.destinations.fields import DestinationField
@@ -15,7 +15,7 @@ Tests allow you to assert on the computed values that are the output of a trace.
 alerts:
     - name: Example Alert
       if: >{ anyTestFailed() && env.ENVIRONMENT == "PRODUCTION" }
-      - destinations: 
+      destinations: 
         - ${ ref(Production Slack) }
         - ${ ref(Production Email) }
 ```
@@ -23,7 +23,8 @@ alerts:
 
 
 class Alert(NamedModel):
-    if_: Optional[EvalString] = Field(
+    model_config = ConfigDict(populate_by_name=True)
+    if_: EvalString = Field(
         None,
         alias="if",
         description="A EvalString that must evaluate to true for the alert to fire",

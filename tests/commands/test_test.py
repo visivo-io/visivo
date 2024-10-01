@@ -53,7 +53,7 @@ def test_test_failure():
 
 def test_test_alert():
     output_dir = temp_folder()
-    alert = AlertFactory()
+    alert = AlertFactory(if_=">{ True }")
     project = ProjectFactory(alerts=[alert])
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(

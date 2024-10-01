@@ -1,7 +1,8 @@
 from typing import Any, List
 import re
 from visivo.models.base.context_string import ContextString
-from visivo.parsers.evaluator import evaluate_expression, SUPPORTED_NUMPY_FUNCTIONS
+from visivo.models.test_run import TestRun
+from visivo.parsers.evaluator import evaluate_expression
 
 INLINE_CONTEXT_STRING_REGEX = r"\${\s*[\(a-zA-Z0-9\s'\"\-_\\.\]\[)]+?\s*}"
 EVAL_STRING_REGEX = r"^>{(.*)}$"
@@ -37,14 +38,19 @@ class EvalString:
         )
 
     def get_references(self) -> List[str]:
-        references = map(lambda c: c.get_references(), self.get_context_strings())
+        references = map(lambda c: c.get_reference(), self.get_context_strings())
         return [ref for sublist in references for ref in sublist]
 
-    def evaluate(self, dag: Any, project: Any, output_dir: str) -> Any:
+    def evaluate(
+        self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None
+    ) -> Any:
         expression = re.match(EVAL_STRING_REGEX, self.value.strip()).group(1).strip()
         expression = self.__replace_context_strings(expression=expression, dag=dag)
         return evaluate_expression(
-            expression=expression, project=project, output_dir=output_dir
+            expression=expression,
+            project=project,
+            output_dir=output_dir,
+            test_run=test_run,
         )
 
     def __replace_context_strings(self, expression: str, dag: Any) -> str:

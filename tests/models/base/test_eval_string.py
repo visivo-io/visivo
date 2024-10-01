@@ -4,6 +4,7 @@ from visivo.models.base.base_model import BaseModel
 import pytest
 
 from visivo.models.base.eval_string import EvalString
+from visivo.models.test_run import TestRun, TestSuccess
 
 
 class MockStringModel(BaseModel):
@@ -39,7 +40,7 @@ def test_EvalString_as_field():
         MockStringModel(**{"eval": "{ ref(Name) }"})
 
 
-def test_evaluate_numby():
+def test_evaluate_numpy():
     output_dir = "tmp"
     es = EvalString(">{ sum([1,2,3]) == 6 }")
     assert es.evaluate({}, {}, output_dir) == True
@@ -48,6 +49,9 @@ def test_evaluate_numby():
     assert es.evaluate({}, {}, output_dir) == True
 
     es = EvalString(">{ mean([1,2,3]) == 2 }")
+    assert es.evaluate({}, {}, output_dir) == True
+
+    es = EvalString(">{ any([1,2,3]) < 2 }")
     assert es.evaluate({}, {}, output_dir) == True
 
 
@@ -62,6 +66,22 @@ def test_evaluate_basic():
     es = EvalString(">{ 5 > 3 and 2 <= 2 }")
     assert es.evaluate({}, {}, output_dir) == True
 
+    with pytest.raises(ValueError):
+        EvalString(">{ unsupported_function() }").evaluate({}, {}, output_dir)
+
+    with pytest.raises(ValueError):
+        EvalString(">{ 1 + 'string' }").evaluate({}, {}, output_dir)
+
+
+def test_evaluate_test_run():
+    es = EvalString(">{ any_test_failed() }")
+    assert es.evaluate({}, {}, "tmp") == False
+
+    test_run = TestRun()
+    test_run.add_success(TestSuccess(test_id="test_id", message="test_message"))
+    es = EvalString(">{ any_test_failed() }")
+    assert es.evaluate({}, {}, "tmp", test_run) == True
+
 
 def test_evaluate():
     project = ProjectFactory()
@@ -73,12 +93,6 @@ def test_evaluate():
     ].path = "project.dashboards[0].rows[0].items[0]"
     dag = project.dag()
     output_dir = "tmp"
-
-    es = EvalString(">{ any_test_failed() }")
-    assert es.evaluate(dag, project, output_dir) == False
-
-    es = EvalString(">{ any_test_failed() == False }")
-    assert es.evaluate(dag, project, output_dir) == True
 
     es = EvalString(">{ env.ENVIRONMENT == 'PRODUCTION' }")
     assert es.evaluate(dag, project, output_dir) == False
@@ -108,9 +122,3 @@ def test_evaluate():
     ):
         es = EvalString(">{ ${ project.dashboards[1].name } == 'item' }")
         es.evaluate(dag, project, output_dir)
-
-    with pytest.raises(ValueError):
-        EvalString(">{ unsupported_function() }").evaluate(dag, project, output_dir)
-
-    with pytest.raises(ValueError):
-        EvalString(">{ 1 + 'string' }").evaluate(dag, project, output_dir)

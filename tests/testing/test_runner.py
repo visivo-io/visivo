@@ -1,3 +1,4 @@
+from visivo.models.project import Project
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.trace import Trace
 from ..factories.model_factories import (
@@ -23,8 +24,14 @@ def test_TestQueryStringFactory_errors(capsys):
         },
         "model": {"sql": "select * from test_table", "source": "ref(source)"},
         "tests": [
-            {"name": "test1", "assertions": [">{ sum( ${ ref(two_test_trace).props.x } ) == 1 }"]},
-            {"name": "test2", "assertions": [">{ all( ${ ref(two_test_trace).props.x } ) < 7 }"]},
+            {
+                "name": "test1",
+                "assertions": [">{ sum( ${ ref(two_test_trace).props.x } ) == 1 }"],
+            },
+            {
+                "name": "test2",
+                "assertions": [">{ all( ${ ref(two_test_trace).props.x } ) < 7 }"],
+            },
         ],
     }
     trace = Trace(**data)
@@ -32,7 +39,9 @@ def test_TestQueryStringFactory_errors(capsys):
 
     output_dir = temp_folder()
     folders = f"{output_dir}/two_test_trace"
-    data = {"two_test_trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
+    data = {
+        "two_test_trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}
+    }
     os.makedirs(folders, exist_ok=True)
     json_file = open(f"{folders}/data.json", "w")
     json_file.write(json.dumps(data))
@@ -40,6 +49,7 @@ def test_TestQueryStringFactory_errors(capsys):
 
     alert = AlertFactory()
     project = ProjectFactory(traces=[trace], dashboards=[DashboardFactory()])
+    project = Project(**project.model_dump(by_alias=True))
     dag = project.dag()
     Runner(
         tests=tests,
