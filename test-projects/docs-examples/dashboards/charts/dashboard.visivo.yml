@@ -17,5 +17,3 @@ dashboards:
           - chart: ref(Big Number Over Line Chart)
           - chart: ref(Single Trace Chart)
           - chart: ref(Duel Axis)
-          
-            

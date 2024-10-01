@@ -4,15 +4,8 @@ defaults:
   source_name: Example Source
 includes:
   - path: dashboards/includes.visivo.yml
-  - path: visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml
-alerts: []
 sources:
 - name: Example Source
   database: local.db
   type: sqlite
-models: []
-traces: []
-tables: []
-charts: []
-selectors: []
-dashboards: []
+

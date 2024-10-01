@@ -212,6 +212,7 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
         + model_md
         + "{% raw %}\n"
         + "## Attributes\n"
+        + f"These attributes apply to traces where `trace.props.type` is set to `{model_name.lower()}`. You would configure these attributes on the trace with the `trace.props` object.\n"
         + "``` yaml\n"
         + processed_yaml_doc
         + "\n```\n\n"

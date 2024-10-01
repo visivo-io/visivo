@@ -11,6 +11,7 @@ from .trace_props.layout import Layout
 
 class Chart(SelectorModel, NamedModel, ParentModel):
     """
+    ## Overview
     Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_. 
 
     !!! tip 
