@@ -123,6 +123,18 @@ def nested_dict_from_dotted_keys(flat_dict):
             d[parts[-1]] = value
     return nested_dict
 
+def combine_dict_properties(input_dict):
+    combined = {}
+    for outer_key, inner_dict in input_dict.items():
+        for key, value in inner_dict.items():
+            if key not in combined:
+                combined[key] = []
+            if isinstance(value, list):
+                combined[key].extend(value)
+            else:
+                combined[key].append(value)
+    return combined
+
 
 def merge_dicts(dict1, dict2):
     merged = dict1.copy()

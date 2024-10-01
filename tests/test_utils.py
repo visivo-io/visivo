@@ -110,3 +110,13 @@ def test_merge_dicts():
         "c": {"d": 3, "e": 40, "f": 50},
         "g": 60,
     }
+
+
+def test_combine_dict_properties():
+    input_dict = {
+        "a": {"b": [1], "c": 2},
+        "d": {"b": 3, "c": [4]},
+        "e": {"b": 5, "c": 6},
+    }
+    expected_output = {"b": [1, 3, 5], "c": [2, 4, 6]}
+    assert combine_dict_properties(input_dict) == expected_output

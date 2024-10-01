@@ -39,16 +39,16 @@ class Runner:
                     )
                     if passed:
                         click.echo(click.style(".", fg="green"), nl=False)
-                        success = TestSuccess(test_id=test.id())
+                        success = TestSuccess(test_id=test.path)
                         test_run.add_success(success=success)
                     else:
                         click.echo(click.style("F", fg="red"), nl=False)
                         failure = TestFailure(
-                            test_id=test.id(), message=assertion.value
+                            test_id=test.path, message=assertion.value
                         )
                         test_run.add_failure(failure=failure)
                 except Exception as e:
-                    failure = TestFailure(test_id=test.id(), message=str(e))
+                    failure = TestFailure(test_id=test.path, message=str(e))
                     click.echo(click.style("F", fg="red"), nl=False)
                     test_run.add_failure(failure=failure)
         test_run.finished_at = datetime.now()

@@ -33,6 +33,7 @@ class AlertFactory(factory.Factory):
         model = Alert
 
     name = "alert"
+    if_ = ">{ True }"
     destinations = factory.List(
         [factory.SubFactory(DestinationFactory) for _ in range(1)]
     )

@@ -5,7 +5,11 @@ import os
 import json
 
 from visivo.models.test_run import TestRun
-from visivo.utils import merge_dicts, nested_dict_from_dotted_keys
+from visivo.utils import (
+    combine_dict_properties,
+    merge_dicts,
+    nested_dict_from_dotted_keys,
+)
 
 SUPPORTED_NUMPY_FUNCTIONS = ["sum", "all", "mean", "any"]
 TRACE_DATA_NODES = ["props", "columns"]
@@ -53,7 +57,8 @@ def evaluate_expression(
 
         with open(data_file_path, "r") as file:
             data = json.load(file)
-            return nested_dict_from_dotted_keys(data)
+            combined = combine_dict_properties(data)
+            return nested_dict_from_dotted_keys(combined)
 
     def get_object_from_node(current_object, index, nodes):
         node = nodes[index]
@@ -65,13 +70,18 @@ def evaluate_expression(
                 return value
             return get_object_from_node(value, next_index, nodes)
         elif isinstance(node, ast.Attribute):
-            if current_object.__class__.__name__ == "Trace":
-                breakpoint()
+            if (
+                current_object.__class__.__name__ == "Trace"
+                and node.attr in TRACE_DATA_NODES
+            ):
                 trace_data = get_object_from_data(current_object)
                 current_object = merge_dicts(
                     current_object.model_dump(by_alias=True), trace_data
                 )
-            value = getattr(current_object, node.attr)
+            if isinstance(current_object, dict):
+                value = current_object[node.attr]
+            else:
+                value = getattr(current_object, node.attr)
             if last_node:
                 return value
             return get_object_from_node(value, next_index, nodes)

@@ -35,8 +35,6 @@ def test_TestQueryStringFactory_errors(capsys):
         ],
     }
     trace = Trace(**data)
-    tests = trace.tests
-
     output_dir = temp_folder()
     folders = f"{output_dir}/two_test_trace"
     data = {
@@ -48,19 +46,23 @@ def test_TestQueryStringFactory_errors(capsys):
     json_file.close()
 
     alert = AlertFactory()
-    project = ProjectFactory(traces=[trace], dashboards=[DashboardFactory()])
+    project = ProjectFactory(
+        traces=[trace], dashboards=[DashboardFactory()], alerts=[alert]
+    )
+
+    # Trigger set_path_on_named_models
     project = Project(**project.model_dump(by_alias=True))
     dag = project.dag()
     Runner(
-        tests=tests,
+        tests=project.traces[0].tests,
         project=project,
         output_dir=output_dir,
         dag=dag,
     ).run()
     captured = capsys.readouterr()
     assert (
-        "two_test_trace.test[0]: Expected <21> to be equal to <1>, but was not."
+        "project.traces[0].tests[0]: >{ sum( ${ ref(two_test_trace).props.x } ) == 1 }"
         in captured.out
     )
-    assert "two_test_trace.test[1]:" not in captured.out
-    assert alert.called
+    assert "project.traces[0].tests[1]:" not in captured.out
+    assert project.alerts[0].destinations[0].called

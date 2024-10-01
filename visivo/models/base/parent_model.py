@@ -159,8 +159,6 @@ class ParentModel(ABC):
         edges = []
 
         for node in dag.nodes():
-            if type(node) == str:
-                breakpoint()
             node_data = {
                 "id": str(id(node)),
                 "name": node.name,
