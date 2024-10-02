@@ -1,0 +1,22 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "wind-rose.visivo.yml"
+  - path: "custom-radial-data.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Barpolar"
+    rows: 
+      - height: compact 
+        items:
+          - markdown: "# Barpolar"
+          - markdown: ""
+            width: 5 
+      - height: medium 
+        items: 
+          - chart: ref(Wind Rose Chart)
+          - chart: ref(Activity Level Polar Chart)
+      - height: medium
+        items: 
+          - chart: ref(Custom Radial Barpolar Chart)
+          - markdown: ""
+          

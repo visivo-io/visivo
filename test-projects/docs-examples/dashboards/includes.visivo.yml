@@ -1,3 +1,5 @@
 includes:
   - path: charts/dashboard.visivo.yml
   - path: bar/dashboard.visivo.yml
+  - path: barpolar/dashboard.visivo.yml
+  - path: box/dashboard.visivo.yml

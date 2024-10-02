@@ -1,0 +1,40 @@
+models:
+  - name: custom-radial-data
+    args:
+      - echo
+      - |
+        direction,radial_start,radial_end
+        0,1,3
+        60,2,5
+        120,3,6
+        180,1,4
+        240,2,7
+        300,3,5
+traces:
+  - name: Custom Radial Barpolar
+    model: ref(custom-radial-data)
+    props:
+      type: barpolar
+      theta: query(direction)
+      width: 30
+      r0: 1
+      dr: 2
+      marker:
+        color: "#d62728"
+      opacity: 0.8
+    order_by:
+      - query(direction)
+charts:
+  - name: Custom Radial Barpolar Chart
+    traces:
+      - ref(Custom Radial Barpolar)
+    layout:
+      polar:
+        radialaxis:
+          visible: true
+      margin: 
+        l: 0 
+        r: 0 
+        b: 40
+      title:
+        text: Polar Bar with Custom Radial Range<br><sub>Bars Starting and Ending at Custom Radial Positions</sub>

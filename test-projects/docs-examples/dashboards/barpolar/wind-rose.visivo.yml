@@ -1,0 +1,73 @@
+models:
+  - name: wind-data
+    args:
+      - echo
+      - |
+        cardinal_order,direction,speed,count
+        1,N,0-1 m/s,2
+        1,N,1-2 m/s,3
+        1,N,2-3 m/s,5
+        2,NE,0-1 m/s,1
+        2,NE,1-2 m/s,4
+        2,NE,2-3 m/s,6
+        3,E,0-1 m/s,2
+        3,E,1-2 m/s,5
+        3,E,2-3 m/s,3
+        4,SE,0-1 m/s,3
+        4,SE,1-2 m/s,2
+        4,SE,2-3 m/s,4
+        5,S,0-1 m/s,4
+        5,S,1-2 m/s,5
+        5,S,2-3 m/s,2
+        6,SW,0-1 m/s,2
+        6,SW,1-2 m/s,3
+        6,SW,2-3 m/s,5
+        7,W,0-1 m/s,1
+        7,W,1-2 m/s,4
+        7,W,2-3 m/s,6
+        8,NW,0-1 m/s,2
+        8,NW,1-2 m/s,5
+        8,NW,2-3 m/s,3
+traces:
+  - name: Wind Rose
+    model: ref(wind-data)
+    cohort_on: "speed"
+    columns:
+      bar_color: | 
+        CASE speed 
+          when '0-1 m/s' THEN '#1f77b4' 
+          when '1-2 m/s' then '#ff7f0e' 
+          when '2-3 m/s' then '#2ca02c' 
+        end 
+    props:
+      type: barpolar
+      r: query(count)
+      theta: query(direction)
+      text: query(speed)
+      marker:
+        color: column(bar_color)
+        opacity: .85
+      hoverinfo: "theta+r+name"
+    order_by: 
+      - query(cardinal_order)
+charts:
+  - name: Wind Rose Chart
+    traces:
+      - ref(Wind Rose)
+    layout:
+      polar:
+        radialaxis:
+          ticksuffix: ""
+          angle: 0
+        angularaxis:
+          direction: "clockwise"
+          period: 8
+      margin: 
+        l: 110 
+        r: 0
+        b: 40
+      legend:
+        title:
+          text: "Wind Speed"
+      title:
+        text: Wind Rose Chart<br><sub>Wind Speed Distribution by Direction</sub>
