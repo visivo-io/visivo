@@ -1,0 +1,34 @@
+models:
+  - name: country-population-data
+    args:
+      - echo
+      - |
+        country,population_density
+        USA,38 
+        BRA,25
+        ARG,17
+        UK,286
+        CAN,4
+        RUS,9
+        CHN,153
+        IND,450
+        COD,48
+traces:
+  - name: Simple Choropleth Map Trace
+    model: ref(country-population-data)
+    props:
+      type: choropleth
+      locations: query(country)
+      z: query(population_density)
+      colorscale: "Picnic"
+charts:
+  - name: Simple Choropleth Map
+    traces:
+      - ref(Simple Choropleth Map Trace)
+    layout:
+      title:
+        text: Population Density by Country<br><sub>Data in Persons per Square Kilometer</sub>
+      geo:
+        showcoastlines: true
+        projection:
+          type: "natural earth"

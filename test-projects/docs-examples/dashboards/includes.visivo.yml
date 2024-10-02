@@ -4,3 +4,5 @@ includes:
   - path: barpolar/dashboard.visivo.yml
   - path: box/dashboard.visivo.yml
   - path: candlestick/dashboard.visivo.yml
+  - path: carpet/dashboard.visivo.yml
+  - path: choropleth/dashboard.visivo.yml

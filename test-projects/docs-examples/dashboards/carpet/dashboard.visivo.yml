@@ -1,0 +1,15 @@
+includes:
+  - path: "simple.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Carpet"
+    rows: 
+      - height: compact 
+        items:
+          - markdown: "# Carpet"
+          - markdown: ""
+            width: 5 
+      - height: medium 
+        items: 
+          - chart: ref(Simple Carpet Chart)
+          - markdown: ""

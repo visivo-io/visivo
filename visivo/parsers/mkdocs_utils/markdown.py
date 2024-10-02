@@ -204,7 +204,7 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     pattern = r"'([^'#]+) (\#\(.*?\)!)'"
     processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
     includes = "" 
-    if model_name.lower() in ['bar', 'barpolar', 'box', 'candlestick']:
+    if model_name.lower() in ['bar', 'barpolar', 'box', 'candlestick', 'carpet', 'choropleth']:
         includes = (
             "{!" + f" include-markdown '" f"reference/props-docs/{model_name.lower()}.md' " + "!}" 
         )
