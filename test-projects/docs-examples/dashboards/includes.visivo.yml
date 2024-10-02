@@ -6,3 +6,5 @@ includes:
   - path: candlestick/dashboard.visivo.yml
   - path: carpet/dashboard.visivo.yml
   - path: choropleth/dashboard.visivo.yml
+  - path: cone/dashboard.visivo.yml
+  - path: choroplethmapbox/dashboard.visivo.yml

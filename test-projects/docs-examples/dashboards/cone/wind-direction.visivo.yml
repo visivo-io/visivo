@@ -1,0 +1,49 @@
+models:
+  - name: wind-data-cone
+    args:
+      - echo
+      - |
+        x,y,z,u,v,w,speed
+        0,0,0,5,5,0,7.07
+        2,2,1,-5,5,0,7.07
+        4,4,3,-5,-5,0,7.07
+        6,6,5,5,-5,0,7.07
+        8,8,8,0,0,5,5.00
+
+traces:
+  - name: Wind Direction Cone Plot Trace
+    model: ref(wind-data-cone)
+    props:
+      type: cone
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      u: query(u)
+      v: query(v)
+      w: query(w)
+      colorscale: "Virdis"
+      colorbar:
+        title: 
+          text: "Wind Speed (m/s)"
+      hoverinfo: "text"
+      text: query(speed)
+    
+
+charts:
+  - name: Wind Direction Cone Plot
+    traces:
+      - ref(Wind Direction Cone Plot Trace)
+    layout:
+      title:
+        text: Wind Direction and Speed
+      scene:
+        camera:
+          eye:
+            x: 1.5
+            y: -.5
+            z: 1
+      margin:
+        l: 90
+        r: 0
+        t: 40
+        b: 90

@@ -100,13 +100,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
               u: query(u)
               v: query(v)
               w: query(w)
-              colorscale: "Blues"
-              sizemode: "absolute"
-              sizeref: 0.5
+              colorscale: "Virdis"
               colorbar:
                 title: "Wind Speed (m/s)"
               hoverinfo: "text"
-              text: query(speed | format("Wind Speed: {:.2f} m/s"))
+              text: query(speed)
         charts:
           - name: Wind Direction Cone Plot
             traces:
@@ -118,8 +116,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
                 camera:
                   eye:
                     x: 1.5
-                    y: 1.5
-                    z: 1.5
+                    y: -.5
+                    z: 1.1
+              margin:
+                l: 90
+                r: 0
+                t: 40
+                b: 90
         ```
 
 {% endraw %}

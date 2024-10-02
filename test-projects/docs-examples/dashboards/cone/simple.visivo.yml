@@ -1,0 +1,43 @@
+models:
+  - name: vector-field-data
+    args:
+      - echo
+      - |
+        x,y,z,u,v,w
+        0,0,0,1,0,0
+        0,1,0,0,1,0
+        1,0,0,0,0,1
+        1,1,0,1,1,1
+        0,0,1,-1,0,0
+        0,1,1,0,-1,0
+        1,0,1,0,0,-1
+        1,1,1,-1,-1,-1
+
+traces:
+  - name: Simple Cone Plot Trace
+    model: ref(vector-field-data)
+    props:
+      type: cone
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      u: query(u)
+      v: query(v)
+      w: query(w)
+      colorscale: "Viridis"
+      sizemode: "absolute"
+      sizeref: 0.5
+
+charts:
+  - name: Simple Cone Plot
+    traces:
+      - ref(Simple Cone Plot Trace)
+    layout:
+      title:
+        text: Simple 3D Vector Field
+      scene:
+        camera:
+          eye:
+            x: 1.5
+            y: 1.5
+            z: 1.5

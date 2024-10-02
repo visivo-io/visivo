@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colorscale.visivo.yml"
+  - path: "interactive-hover.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: ChoroplethMapbox"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# ChoroplethMapbox"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple ChoroplethMapbox Chart)
+          - chart: ref(ChoroplethMapbox with Custom Colorscale)
+      - height: medium
+        items:
+          - chart: ref(Interactive ChoroplethMapbox with Hover Data)
+          - markdown: ""

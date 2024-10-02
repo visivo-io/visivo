@@ -1,6 +1,10 @@
 
 ## Overview
 
+!!! danger 
+    
+    You need a mapbox api key to use choroplethmapbox traces.
+
 The `choroplethmapbox` trace type is used to create choropleth maps on top of a Mapbox layer. It’s a more advanced form of the standard `choropleth` trace, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.
 
 With `choroplethmapbox`, you can visualize data across geographic regions on Mapbox maps, and customize the map's appearance using layers, color scales, and hover labels.
@@ -28,7 +32,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         ```yaml
         models:
-          - name: country-population-data
+          - name: country-population-data-mapbox
             args:
               - echo
               - |
@@ -40,7 +44,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 IND,450
         traces:
           - name: Simple ChoroplethMapbox Map
-            model: ref(country-population-data)
+            model: ref(country-population-data-mapbox
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
@@ -85,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 ESP,1419
                 GBR,2827
         traces:
-          - name: ChoroplethMapbox with Custom Colorscale
+          - name: ChoroplethMapbox with Custom Colorscale Trace
             model: ref(european-gdp-data)
             props:
               type: choroplethmapbox
@@ -98,7 +102,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: ChoroplethMapbox with Custom Colorscale
             traces:
-              - ref(ChoroplethMapbox with Custom Colorscale)
+              - ref(ChoroplethMapbox with Custom Colorscale Trace)
             layout:
               title:
                 text: GDP by Country in Europe<br><sub>Data in Billions of USD</sub>
@@ -131,7 +135,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 RUS,6000000,150000
                 ZAF,2000000,60000
         traces:
-          - name: Interactive ChoroplethMapbox with Hover Data
+          - name: Interactive ChoroplethMapbox with Hover Data Trace
             model: ref(covid-data-mapbox)
             props:
               type: choroplethmapbox
@@ -146,7 +150,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: Interactive ChoroplethMapbox with Hover Data
             traces:
-              - ref(Interactive ChoroplethMapbox with Hover Data)
+              - ref(Interactive ChoroplethMapbox with Hover Data Trace)
             layout:
               title:
                 text: COVID-19 Cases by Country on Mapbox<br><sub>Hover to See Deaths Data</sub>
