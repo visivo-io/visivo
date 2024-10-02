@@ -203,11 +203,12 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
     pattern = r"'([^'#]+) (\#\(.*?\)!)'"
     processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
-    includes = "" 
-    if model_name.lower() in ['bar', 'barpolar', 'box', 'candlestick', 'carpet', 'choropleth']:
+    if model_name.lower() != 'layout':
         includes = (
             "{!" + f" include-markdown '" f"reference/props-docs/{model_name.lower()}.md' " + "!}" 
         )
+    else:
+        includes = ""
     full_doc = (
         f"# {model_name} "
         + "\n"
