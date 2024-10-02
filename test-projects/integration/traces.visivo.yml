@@ -69,8 +69,9 @@ traces:
         pattern:
           shape: ["/", ""]
     tests:
-      - logic: assert_that(Aggregated Line.props.marker.line.color[1]).is_equal_to("#D25946")
-      - logic: assert_that(Aggregated Line.props.x[1]).is_equal_to("less")
+      - assertions:
+          - ">{ ${ref(Aggregated Line).props.marker.line.color[1]} == '#D25946' }"
+          - ">{ ${ref(Aggregated Line).props.x[1]} == 'less' }"
 
   - name: Simple Line
     model: ref(join_table)
@@ -86,8 +87,9 @@ traces:
         line:
           width: query( Case when x in (5,6) then 2.5 else null end)
     tests:
-      - logic: assert_that(Normal Fibonacci.props.x[0]).is_equal_to(5)
-      - logic: assert_that(Normal Fibonacci.props.y[0]).is_equal_to(10)
+      - assertions:
+          - ">{ ${ref(Simple Line).props.x[0]} == 5 }"
+          - ">{ ${ref(Simple Line).props.y[0]} == 10 }"
 
   - name: 3d Line One
     model: ref(test table)
@@ -99,8 +101,9 @@ traces:
       y: query(y)
       z: query( -2*(x%2)*x + x + y*(y-3))
     tests:
-      - logic: assert_that(3d Line One.props.x[1]).is_equal_to(2)
-      - logic: assert_that(3d Line One.props.y[1]).is_equal_to(1)
+      - assertions:
+          - ">{ ${ref(3d Line One).props.x[1]} == 2 }"
+          - ">{ ${ref(3d Line One).props.y[1]} == 1 }"
 
   - name: 3d Line Two
     model: ref(test table)

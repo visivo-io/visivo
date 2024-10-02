@@ -11,8 +11,9 @@ defaults:
 
 alerts:
   - name: slack
-    type: slack
-    webhook_url: https://hooks.slack.com/services/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
+    destinations:
+      - type: slack
+        webhook_url: https://hooks.slack.com/services/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
 
 targets:
   - name: local-sqlite
@@ -76,7 +77,7 @@ dashboards:
                     - key: "columns.x_data"
                     - key: "columns.y_data"
                       header: "y amount"
-                      aggregation: 'sum'
+                      aggregation: "sum"
                     - key: "columns.measure"
                     - key: "props.text"
               traces:
@@ -163,7 +164,8 @@ dashboards:
                   order_by:
                     - query(x asc)
                   tests:
-                    - logic: assert_that(Double Simple Line.props.x[2]).is_equal_to(3)
+                    - assertions:
+                        - ">{ ${ref(Double Simple Line).props.x[2]} == 3 }"
                 - "ref(Simple Line)"
               layout:
                 title:

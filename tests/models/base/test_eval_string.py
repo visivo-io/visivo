@@ -11,6 +11,32 @@ class MockStringModel(BaseModel):
     eval: EvalString = Field(None, description="")
 
 
+def test_EvalString_get_references():
+    # Test with no references
+    eval_string = EvalString(">{ 2 + 2 == 4 }")
+    assert eval_string.get_references() == []
+
+    # Test with single reference
+    eval_string = EvalString(">{ ${ref(Name)} == 'Test' }")
+    assert eval_string.get_references() == ["Name"]
+
+    # Test with multiple references
+    eval_string = EvalString(">{ ${ref(Name1)} + ${ref(Name2)} == ${ref(Name3)} }")
+    assert eval_string.get_references() == ["Name1", "Name2", "Name3"]
+
+    # Test with duplicate references
+    eval_string = EvalString(">{ ${ref(Name1)} == ${ref(Name1)} }")
+    assert eval_string.get_references() == ["Name1", "Name1"]
+
+    # Test with references and other context strings
+    eval_string = EvalString(">{ ${ref(Name)} == ${project.name} }")
+    assert eval_string.get_references() == ["Name"]
+
+    # Test with nested properties
+    eval_string = EvalString(">{ ${ref(Name).props.value} == 10 }")
+    assert eval_string.get_references() == ["Name"]
+
+
 def test_EvalString_get_context_strings():
     context_string = EvalString(">{ }")
     assert context_string.get_context_strings() == []

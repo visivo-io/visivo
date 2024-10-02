@@ -38,8 +38,9 @@ class EvalString:
         )
 
     def get_references(self) -> List[str]:
-        references = map(lambda c: c.get_reference(), self.get_context_strings())
-        return [ref for sublist in references for ref in sublist]
+        return list(
+            filter(None, map(lambda c: c.get_reference(), self.get_context_strings()))
+        )
 
     def evaluate(
         self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None
