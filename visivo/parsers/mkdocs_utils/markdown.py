@@ -19,21 +19,22 @@ def find_refs(obj):
 
 
 def handle_allOf(attribute_property_object: dict, model_defs: dict):
+
     default = attribute_property_object.get("default", "None")
-    enum_model_key = find_refs(attribute_property_object)[0].split("/")[-1]
-    enum_model = model_defs.get(enum_model_key, {})
-    if not enum_model:
-        raise KeyError(f"Key {enum_model_key} was not found in $defs dictionary.")
-    if enum_model.get('type') != 'string':
-        enum_options = [ str(a) for a in  enum_model.get("enum")]
-    else:
-        enum_options = enum_model.get("enum")
-    try: 
+    model_key = find_refs(attribute_property_object)[0].split("/")[-1]
+    model = model_defs.get(model_key, {})
+    if not model:
+        raise KeyError(f"Key {model_key} was not found in $defs dictionary.")
+
+    if model.get('enum'):
+        if model.get('type') not in ['string', 'object']:
+            enum_options = [ str(a) for a in  model.get("enum")]
+        else:
+            enum_options = model.get("enum")
         type = "Enumerated - one of: " + ", ".join(enum_options)
-    except Exception as e:
-        print(enum_model)
-        raise Exception
-        
+    else:
+        type = model.get("type", "None")
+
     return type, default
 
 
@@ -94,7 +95,12 @@ def handle_attribute_properties(model_defs: dict, attribute_property_object: dic
 
     attribute_key_type = ".".join(list(attribute_property_object.keys()))
     if "allOf" in attribute_key_type:
-        type, default = handle_allOf(attribute_property_object, model_defs)
+        try:
+            type, default = handle_allOf(attribute_property_object, model_defs)
+        except Exception as e:
+            print(f"attribute_key_type: {attribute_key_type}")
+            print(f"attribute_property_object: {attribute_property_object}")
+            raise e
     elif "anyOf" in attribute_key_type:
         type, default = handle_anyOf(attribute_property_object)
     elif "const" in attribute_key_type:
@@ -194,11 +200,18 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
     pattern = r"'([^'#]+) (\#\(.*?\)!)'"
     processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
+    includes = "" 
+    if model_name.lower() in ['bar']:
+        includes = (
+            "{!" + f" include-markdown '" f"reference/props-docs/{model_name.lower()}.md' " + "!}" 
+        )
     full_doc = (
-        f"# {model_name}"
+        f"# {model_name} "
         + "\n"
+        + includes
         + model_md
         + "{% raw %}\n"
+        + "## Attributes\n"
         + "``` yaml\n"
         + processed_yaml_doc
         + "\n```\n\n"
