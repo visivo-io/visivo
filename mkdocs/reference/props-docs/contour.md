@@ -36,21 +36,39 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
                 1,1,10
                 2,1,15
                 3,1,20
+                4,1,25
+                5,1,30
                 1,2,5
                 2,2,10
                 3,2,15
+                4,2,20
+                5,2,25
                 1,3,0
                 2,3,5
                 3,3,10
+                4,3,15
+                5,3,20
+                1,4,5
+                2,4,10
+                3,4,15
+                4,4,20
+                5,4,25
+                1,5,10
+                2,5,15
+                3,5,20
+                4,5,25
+                5,5,30
         traces:
           - name: Simple Contour Plot
             model: ref(contour-data)
             props:
               type: contour
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              z: 
+                - query(x)
+                - query(y)
+                - query(z)
               colorscale: "Viridis"
+              ncontours: 20
         charts:
           - name: Simple Contour Chart
             traces:
@@ -84,12 +102,28 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
                 0,0,10
                 1,0,15
                 2,0,20
+                3,0,25
+                4,0,30
                 0,1,5
                 1,1,10
                 2,1,15
+                3,1,20
+                4,1,25
                 0,2,0
                 1,2,5
                 2,2,10
+                3,2,15
+                4,2,20
+                0,3,5
+                1,3,10
+                2,3,15
+                3,3,20
+                4,3,25
+                0,4,10
+                1,4,15
+                2,4,20
+                3,4,25
+                4,4,30
         traces:
           - name: Filled Contour Plot
             model: ref(contour-data-filled)
@@ -102,6 +136,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
               contours:
                 coloring: "heatmap"
                 showlines: true
+              ncontours: 25
         charts:
           - name: Filled Contour Chart
             traces:
@@ -132,21 +167,55 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
               - echo
               - |
                 x,y,z
-                -2,-2,0
-                -1,-2,1
-                0,-2,2
-                1,-2,3
-                2,-2,4
-                -2,-1,1
-                -1,-1,2
-                0,-1,3
-                1,-1,4
-                2,-1,5
-                -2,0,2
-                -1,0,3
-                0,0,4
-                1,0,5
-                2,0,6
+                -3,-3,0
+                -2,-3,1
+                -1,-3,2
+                0,-3,3
+                1,-3,4
+                2,-3,5
+                3,-3,6
+                -3,-2,1
+                -2,-2,2
+                -1,-2,3
+                0,-2,4
+                1,-2,5
+                2,-2,6
+                3,-2,7
+                -3,-1,2
+                -2,-1,3
+                -1,-1,4
+                0,-1,5
+                1,-1,6
+                2,-1,7
+                3,-1,8
+                -3,0,3
+                -2,0,4
+                -1,0,5
+                0,0,6
+                1,0,7
+                2,0,8
+                3,0,9
+                -3,1,4
+                -2,1,5
+                -1,1,6
+                0,1,7
+                1,1,8
+                2,1,9
+                3,1,10
+                -3,2,5
+                -2,2,6
+                -1,2,7
+                0,2,8
+                1,2,9
+                2,2,10
+                3,2,11
+                -3,3,6
+                -2,3,7
+                -1,3,8
+                0,3,9
+                1,3,10
+                2,3,11
+                3,3,12
         traces:
           - name: Contour Plot with Multiple Levels
             model: ref(contour-data-multi)
@@ -158,8 +227,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
               colorscale: "Jet"
               contours:
                 start: 0
-                end: 6
-                size: 1
+                end: 12
+                size: 0.5
+              ncontours: 24
         charts:
           - name: Contour Chart with Multiple Levels
             traces:

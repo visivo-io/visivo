@@ -1,0 +1,40 @@
+models:
+  - name: contour-data-filled
+    args:
+      - echo
+      - |
+        x,y,z
+        0,0,10
+        1,0,15
+        2,0,20
+        0,1,5
+        1,1,10
+        2,1,15
+        0,2,0
+        1,2,5
+        2,2,10
+traces:
+  - name: Filled Contour Plot
+    model: ref(contour-data-filled)
+    props:
+      type: contour
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      colorscale: "Earth"
+      contours:
+        coloring: "heatmap"
+        showlines: true
+charts:
+  - name: Filled Contour Chart
+    traces:
+      - ref(Filled Contour Plot)
+    layout:
+      title:
+        text: Filled Contour Plot<br><sub>Contour Plot with Filled Levels</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis"

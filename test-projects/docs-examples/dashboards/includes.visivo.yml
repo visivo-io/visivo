@@ -8,3 +8,5 @@ includes:
   - path: choropleth/dashboard.visivo.yml
   - path: cone/dashboard.visivo.yml
   - path: choroplethmapbox/dashboard.visivo.yml
+  - path: contour/dashboard.visivo.yml
+  - path: funnel/dashboard.visivo.yml

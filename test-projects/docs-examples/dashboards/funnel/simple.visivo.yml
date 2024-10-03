@@ -1,0 +1,35 @@
+models:
+  - name: funnel-data
+    args:
+      - echo
+      - |
+        stage,value
+        Leads,1000
+        Qualified Leads,750
+        Opportunities,400
+        Proposals,200
+        Closed Deals,100
+traces:
+  - name: Simple Funnel Plot
+    model: ref(funnel-data)
+    props:
+      type: funnel
+      y: query(stage)
+      x: query(value)
+      textinfo: "value+percent previous"
+      marker:
+        color: "#17becf"
+    order_by: 
+      - query(value desc)
+charts:
+  - name: Simple Funnel Chart
+    traces:
+      - ref(Simple Funnel Plot)
+    layout:
+      title:
+        text: Simple Funnel Chart<br><sub>Sales Funnel from Leads to Closed Deals</sub>
+      xaxis:
+        title:
+          text: "Stage"
+      margin: 
+        l: 100

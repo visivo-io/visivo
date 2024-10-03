@@ -1,0 +1,41 @@
+models:
+  - name: funnel-data-cohorts
+    args:
+      - echo
+      - |
+        stage,value,product
+        Awareness,5000,Product A
+        Interest,3000,Product A
+        Consideration,1500,Product A
+        Purchase,700,Product A
+        Awareness,4500,Product B
+        Interest,2800,Product B
+        Consideration,1200,Product B
+        Purchase,500,Product B
+        Awareness,3800,Product C
+        Interest,2200,Product C
+        Consideration,900,Product C
+        Purchase,300,Product C
+traces:
+  - name: Cohort Funnel Chart
+    model: ref(funnel-data-cohorts)
+    cohort_on: product
+    props:
+      type: funnel
+      y: query(stage)
+      x: query(value)
+      textinfo: "value+percent previous"
+      marker:
+        colorscale: "Viridis"
+    order_by: 
+      - query( product )
+      - query( value desc)
+charts:
+  - name: Funnel Chart with Cohorts
+    traces:
+      - ref(Cohort Funnel Chart)
+    layout:
+      title:
+        text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>
+      margin: 
+        l: 100

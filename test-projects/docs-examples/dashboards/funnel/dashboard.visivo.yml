@@ -1,0 +1,22 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "horizontal.visivo.yml"
+  - path: "custom-markers.visivo.yml"
+  - path: "cohort-funnel.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Funnel"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Funnel"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Funnel Chart)
+          - chart: ref(Horizontal Funnel Chart)
+      - height: medium
+        items:
+          - chart: ref(Funnel Chart with Custom Markers)
+          - chart: ref(Funnel Chart with Cohorts)

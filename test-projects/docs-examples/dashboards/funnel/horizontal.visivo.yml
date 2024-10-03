@@ -1,0 +1,32 @@
+models:
+  - name: funnel-data-horizontal
+    args:
+      - echo
+      - |
+        stage,value
+        Awareness,5000
+        Interest,3000
+        Consideration,1500
+        Conversion,700
+traces:
+  - name: Horizontal Funnel Chart Trace
+    model: ref(funnel-data-horizontal)
+    props:
+      type: funnel
+      orientation: v
+      x: query(stage)
+      y: query(value)
+      marker:
+        color: "#ff7f0e"
+    order_by: 
+      - query(value desc)
+charts:
+  - name: Horizontal Funnel Chart
+    traces:
+      - ref(Horizontal Funnel Chart Trace)
+    layout:
+      title:
+        text: Horizontal Funnel Chart<br><sub>Stages of User Journey</sub>
+      xaxis:
+        title:
+          text: "Stage"

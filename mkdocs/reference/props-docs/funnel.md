@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `funnel` trace type is used to create funnel charts, which visualize data across stages in a process. Funnel charts are often used in sales or marketing to show how data decreases as it passes through each stage (e.g., from leads to closed deals).
@@ -42,11 +41,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
             model: ref(funnel-data)
             props:
               type: funnel
-              x: query(stage)
-              y: query(value)
+              y: query(stage)
+              x: query(value)
               textinfo: "value+percent previous"
               marker:
                 color: "#17becf"
+            order_by: 
+              - query(value desc)
         charts:
           - name: Simple Funnel Chart
             traces:
@@ -57,14 +58,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
               xaxis:
                 title:
                   text: "Stage"
-              yaxis:
-                title:
-                  text: "Count"
+              margin: 
+                l: 100
         ```
 
     === "Horizontal Funnel Chart"
 
-        This example demonstrates a horizontal funnel chart, with stages represented along the y-axis:
+        This example demonstrates a horizontal funnel chart, with stages represented along the x-axis:
 
         ![](../../assets/example-charts/props/funnel/horizontal-funnel.png)
 
@@ -82,26 +82,25 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
                 Consideration,1500
                 Conversion,700
         traces:
-          - name: Horizontal Funnel Chart
+          - name: Horizontal Funnel Chart Trace
             model: ref(funnel-data-horizontal)
             props:
               type: funnel
-              orientation: h
-              y: query(stage)
-              x: query(value)
+              orientation: v
+              x: query(stage)
+              y: query(value)
               marker:
                 color: "#ff7f0e"
+            order_by: 
+              - query(value desc)
         charts:
           - name: Horizontal Funnel Chart
             traces:
-              - ref(Horizontal Funnel Chart)
+              - ref(Horizontal Funnel Chart Trace)
             layout:
               title:
                 text: Horizontal Funnel Chart<br><sub>Stages of User Journey</sub>
               xaxis:
-                title:
-                  text: "Users"
-              yaxis:
                 title:
                   text: "Stage"
         ```
@@ -131,11 +130,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
             model: ref(funnel-data-custom)
             props:
               type: funnel
-              x: query(stage)
-              y: query(value)
+              y: query(stage)
+              x: query(value)
               marker:
                 color: query(color)
-              textinfo: "value+percent total"
+              textinfo: "value+percent"
+              orientation: h
+            order_by: 
+              - query(value desc)
         charts:
           - name: Funnel Chart with Custom Markers
             traces:
@@ -146,9 +148,60 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
               xaxis:
                 title:
                   text: "Stage"
-              yaxis:
-                title:
-                  text: "Count"
         ```
+
+    === "Funnel Chart with Cohorts"
+
+        This example demonstrates a funnel chart using cohorts to compare the customer journey across different products:
+
+        ![](../../assets/example-charts/props/funnel/cohort-funnel.png)
+
+        Here's the code:
+
+        ```yaml
+        models:
+          - name: funnel-data-cohorts
+            args:
+              - echo
+              - |
+                stage,value,product
+                Awareness,5000,Product A
+                Interest,3000,Product A
+                Consideration,1500,Product A
+                Purchase,700,Product A
+                Awareness,4500,Product B
+                Interest,2800,Product B
+                Consideration,1200,Product B
+                Purchase,500,Product B
+                Awareness,3800,Product C
+                Interest,2200,Product C
+                Consideration,900,Product C
+                Purchase,300,Product C
+        traces:
+          - name: Cohort Funnel Chart
+            model: ref(funnel-data-cohorts)
+            cohort_on: product
+            props:
+              type: funnel
+              y: query(stage)
+              x: query(value)
+              textinfo: "value+percent previous"
+              marker:
+                colorscale: "Viridis"
+            order_by: 
+              - query( product )
+              - query( value desc)
+        charts:
+          - name: Funnel Chart with Cohorts
+            traces:
+              - ref(Cohort Funnel Chart)
+            layout:
+              title:
+                text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>
+              margin: 
+                l: 100
+        ```
+
+        This example uses the `cohort_on` attribute to create separate funnel charts for each product, allowing for easy comparison of the customer journey across different products.
 
 {% endraw %}
