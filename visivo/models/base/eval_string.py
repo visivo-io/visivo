@@ -42,6 +42,11 @@ class EvalString:
             filter(None, map(lambda c: c.get_reference(), self.get_context_strings()))
         )
 
+    def get_paths(self) -> List[str]:
+        return list(
+            filter(None, map(lambda c: c.get_path(), self.get_context_strings()))
+        )
+
     def evaluate(
         self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None
     ) -> Any:

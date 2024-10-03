@@ -2,11 +2,12 @@ from typing import Any
 
 import re
 
-from visivo.models.base.parent_model import ParentModel
+from visivo.models.dag import all_descendants_with_name
 
 INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w]*\s*}"
 INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w\]\[]*)\s*}"
 INLINE_PATH_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]]+?)\s*}"
+VALUE_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]\)\()]+?)\s*}"
 
 
 class ContextString:
@@ -22,6 +23,16 @@ class ContextString:
 
     def __str__(self):
         return self.value
+
+    def __eq__(self, other):
+        if isinstance(other, ContextString):
+            return re.findall(VALUE_REGEX, self.value) == re.findall(
+                VALUE_REGEX, other.value
+            )
+        return False
+
+    def __hash__(self):
+        return hash("".join(re.findall(VALUE_REGEX, self.value)))
 
     def get_reference(self) -> str:
         matches = re.findall(INLINE_REF_REGEX, self.value)
@@ -46,7 +57,7 @@ class ContextString:
 
     def get_item(self, dag: Any) -> Any:
         reference = self.get_reference()
-        items = ParentModel.all_descendants_with_name(reference, dag)
+        items = all_descendants_with_name(reference, dag)
         if len(items) == 0:
             raise ValueError(f"Invalid context string reference name: '{reference}'.")
         return items[0]

@@ -71,3 +71,20 @@ def test_ContextString_as_field():
 
     with pytest.raises(ValueError):
         MockStringModel(**{"ref": "{ ref(Name) }"})
+
+
+def test_ContextString_hash():
+    cs1 = ContextString("${ ref(Name) }")
+    cs2 = ContextString("${ ref(Name) }")
+    assert cs1.__hash__() == cs2.__hash__()
+
+    cs3 = ContextString("${ ref(OtherName) }")
+    assert cs1.__hash__() != cs3.__hash__()
+
+    cs4 = ContextString("${ref(Name)}")
+    cs5 = ContextString("${  ref(Name)  }")
+    assert cs4.__hash__() == cs5.__hash__()
+
+    cs6 = ContextString("${ project.name }")
+    cs7 = ContextString("${ project.id }")
+    assert cs6.__hash__() != cs7.__hash__()

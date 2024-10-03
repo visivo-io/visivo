@@ -1,6 +1,7 @@
 # supports more generic connections than the snowflake specific connector
 from visivo.models.alert import Alert
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.project import Project
 from visivo.models.test import Test
 from visivo.models.trace import Trace
@@ -55,7 +56,7 @@ class Runner:
         click.echo("")
         click.echo(test_run.summary())
 
-        alerts = ParentModel.all_descendants_of_type(type=Alert, dag=self.dag)
+        alerts = all_descendants_of_type(type=Alert, dag=self.dag)
 
         for alert in set(alerts):
             if alert.if_ and alert.if_.evaluate(

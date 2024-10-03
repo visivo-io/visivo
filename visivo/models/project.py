@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional
 from visivo.models.alert import Alert
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.destinations.destination import Destination
 
 from visivo.models.destinations.fields import DestinationField
@@ -99,13 +100,9 @@ class Project(NamedModel, ParentModel):
     @model_validator(mode="after")
     def validate_dag(self):
         dag = self.dag()
-        tables = ParentModel.all_descendants_of_type(
-            type=Table, dag=dag, from_node=self
-        )
+        tables = all_descendants_of_type(type=Table, dag=dag, from_node=self)
         for table in tables:
-            selectors = ParentModel.all_descendants_of_type(
-                type=Selector, dag=dag, from_node=table
-            )
+            selectors = all_descendants_of_type(type=Selector, dag=dag, from_node=table)
             if len(selectors) > 0 and selectors[0].type == SelectorType.multiple:
                 raise ValueError(
                     f"Table with name '{table.name}' has a selector with a 'multiple' type.  This is not permitted."

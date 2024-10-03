@@ -52,6 +52,9 @@ class Test(NamedModel, ParentModel):
     __test__ = False
 
     def child_items(self):
-        references = list(map(lambda a: a.get_references(), self.assertions))
-        references = [item for sublist in references for item in sublist]
-        return references
+        assertion_contexts = set()
+        for assertion in self.assertions:
+            assertion_contexts.update(assertion.get_context_strings())
+        if self.if_:
+            assertion_contexts.update(self.if_.get_context_strings())
+        return list(assertion_contexts)

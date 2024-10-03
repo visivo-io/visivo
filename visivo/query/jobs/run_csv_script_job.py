@@ -1,4 +1,5 @@
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.project import Project
 from visivo.query.jobs.job import (
@@ -35,7 +36,7 @@ def action(csv_script_model: CsvScriptModel, output_dir):
 
 
 def jobs(dag, output_dir: str, project: Project, name_filter: str):
-    csv_script_models = ParentModel.all_descendants_of_type(
+    csv_script_models = all_descendants_of_type(
         type=CsvScriptModel, dag=dag, from_node=project
     )
 

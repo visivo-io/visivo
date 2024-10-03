@@ -5,6 +5,15 @@ from abc import ABC, abstractmethod
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
 from pydantic_core import PydanticCustomError
+from visivo.models.dag import (
+    all_descendants,
+    all_descendants_of_type,
+    all_descendants_with_name,
+    all_descendants_with_path_match,
+    all_nodes_including_named_node_in_graph,
+    create_dag_dict,
+    show_dag_fig,
+)
 from visivo.models.sources.source import DefaultSource
 
 
@@ -38,11 +47,15 @@ class ParentModel(ABC):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
                 dag_item = item
-                if item is None or BaseModel.is_ref(item):
+                if (
+                    item is None
+                    or BaseModel.is_ref(item)
+                    or item.__class__.__name__ == "ContextString"
+                ):
                     continue
                 elif isinstance(item, DefaultSource):
                     name = root.defaults.source_name
-                    dag_item = self.__get_dereferenced_item(
+                    dag_item = self.__get_dereferenced_item_by_name(
                         name=name,
                         dag=dag,
                         root=root,
@@ -66,11 +79,19 @@ class ParentModel(ABC):
             if node_permit_list is None or item in node_permit_list:
                 if BaseModel.is_ref(item):
                     name = NamedModel.get_name(obj=item)
-                    dereferenced_item = self.__get_dereferenced_item(
+                    dereferenced_item = self.__get_dereferenced_item_by_name(
                         name=name,
                         dag=dag,
                         root=root,
                         item=item,
+                        parent_item=parent_item,
+                    )
+                    dag.add_edge(parent_item, dereferenced_item)
+                elif item.__class__.__name__ == "ContextString":
+                    dereferenced_item = self.__get_dereferenced_item_by_context_string(
+                        context_string=item,
+                        dag=dag,
+                        root=root,
                         parent_item=parent_item,
                     )
                     dag.add_edge(parent_item, dereferenced_item)
@@ -83,68 +104,16 @@ class ParentModel(ABC):
                         root=root,
                     )
 
-    @staticmethod
-    def all_descendants(dag, from_node=None, depth=None):
-        import networkx.algorithms.traversal.depth_first_search as dfs
-
-        return dfs.dfs_tree(dag, from_node, depth_limit=depth)
-
     def descendants(self):
-        return ParentModel.all_descendants(dag=self.dag(), from_node=self)
-
-    @staticmethod
-    def all_descendants_of_type(type, dag, from_node=None, depth=None):
-        if not depth:
-            depth = len(dag)
-
-        def find_type(item):
-            return isinstance(item, type)
-
-        return list(
-            filter(
-                find_type,
-                ParentModel.all_descendants(dag=dag, from_node=from_node, depth=depth),
-            )
-        )
+        return all_descendants(dag=self.dag(), from_node=self)
 
     def descendants_of_type(self, type, dag=None):
         if not dag:
             dag = self.dag()
-        return ParentModel.all_descendants_of_type(type=type, dag=dag, from_node=self)
-
-    @staticmethod
-    def all_descendants_with_name(name: str, dag, from_node=None):
-        def find_name(item):
-            return hasattr(item, "name") and item.name == name
-
-        return list(
-            filter(find_name, ParentModel.all_descendants(dag=dag, from_node=from_node))
-        )
-
-    def descendants_with_name(self, name: str):
-        ParentModel.all_descendants_with_name(name=name, dag=self.dag(), from_node=self)
-
-    @staticmethod
-    def all_nodes_including_named_node_in_graph(name: str, dag):
-        from networkx import descendants, ancestors
-
-        item = ParentModel.all_descendants_with_name(name=name, dag=dag)
-
-        if len(item) == 1:
-            item = item[0]
-        else:
-            raise click.ClickException(f"No item found with name: '{name}'.")
-
-        d = descendants(dag, item)
-        a = ancestors(dag, item)
-        items = d.union(a)
-        items.add(item)
-        return items
+        return all_descendants_of_type(type=type, dag=dag, from_node=self)
 
     def nodes_including_named_node_in_graph(self, name):
-        return ParentModel.all_nodes_including_named_node_in_graph(
-            name=name, dag=self.dag()
-        )
+        return all_nodes_including_named_node_in_graph(name=name, dag=self.dag())
 
     @staticmethod
     def filtered(pattern, objects) -> List:
@@ -154,114 +123,13 @@ class ParentModel(ABC):
         return list(filter(name_match, objects))
 
     def dag_dict(self):
-        dag = self.dag()
-        nodes = []
-        edges = []
+        return create_dag_dict(self.dag())
 
-        for node in dag.nodes():
-            node_data = {
-                "id": str(id(node)),
-                "name": node.name,
-                "path": node.path,
-                "type": type(node).__name__.lower(),
-            }
-            nodes.append(node_data)
+    def show_dag(self):
+        show_dag_fig(self.dag())
 
-        for edge in dag.edges():
-            edge_data = {"source": str(id(edge[0])), "target": str(id(edge[1]))}
-            edges.append(edge_data)
-
-        return {"nodes": nodes, "edges": edges}
-
-    def show_dag(self, dag=None):
-        dag = self.dag()
-
-        import plotly.graph_objects as go
-        from networkx import random_layout
-
-        pos = random_layout(dag)
-        edge_x = []
-        edge_y = []
-        edge_annotations = []
-
-        for edge in dag.edges():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            edge_x.append(x0)
-            edge_x.append(x1)
-            edge_x.append(None)
-            edge_y.append(y0)
-            edge_y.append(y1)
-            edge_y.append(None)
-            edge_annotations.append(
-                dict(
-                    ax=x0,
-                    ay=y0,
-                    axref="x",
-                    ayref="y",
-                    x=x1,
-                    y=y1,
-                    xref="x",
-                    yref="y",
-                    showarrow=True,
-                    arrowhead=2,
-                    arrowsize=1,
-                    arrowwidth=1,
-                    arrowcolor="#888",
-                )
-            )
-
-        edge_trace = go.Scatter(
-            x=edge_x,
-            y=edge_y,
-            line=dict(width=0.5, color="#888"),
-            hoverinfo="none",
-            mode="lines",
-        )
-
-        node_x = []
-        node_y = []
-        node_text = []
-        for node in dag.nodes():
-            x, y = pos[node]
-            node_x.append(x)
-            node_y.append(y)
-            node_text.append(str(node))
-
-        node_trace = go.Scatter(
-            x=node_x,
-            y=node_y,
-            mode="markers+text",
-            hoverinfo="text",
-            text=node_text,
-            marker=dict(
-                showscale=True,
-                colorscale="YlGnBu",
-                size=10,
-                colorbar=dict(
-                    thickness=15,
-                    title="Node Connections",
-                    xanchor="left",
-                    titleside="right",
-                ),
-            ),
-        )
-
-        fig = go.Figure(
-            data=[edge_trace, node_trace],
-            layout=go.Layout(
-                showlegend=False,
-                hovermode="closest",
-                margin=dict(b=20, l=5, r=5, t=40),
-                xaxis=dict(showgrid=False, zeroline=False),
-                yaxis=dict(showgrid=False, zeroline=False),
-                annotations=edge_annotations,
-            ),
-        )
-        fig.show()
-
-    def __get_dereferenced_item(self, name, dag, root, item, parent_item):
-        dereferenced_items = ParentModel.all_descendants_with_name(
+    def __get_dereferenced_item_by_name(self, name, dag, root, item, parent_item):
+        dereferenced_items = all_descendants_with_name(
             name=name, dag=dag, from_node=root
         )
         if len(dereferenced_items) == 1:
@@ -272,3 +140,30 @@ class ParentModel(ABC):
                 f'The reference "{item}" on item "{parent_item.id()}" does not point to an object.',
                 parent_item.model_dump(),
             )
+
+    def __get_dereferenced_item_by_context_string(
+        self, context_string, dag, root, parent_item
+    ):
+        if context_string.get_reference():
+            return self.__get_dereferenced_item_by_name(
+                item=context_string,
+                name=context_string.get_reference(),
+                dag=dag,
+                root=root,
+                parent_item=parent_item,
+            )
+        elif context_string.get_path():
+            path = context_string.get_path()
+            dereferenced_items = all_descendants_with_path_match(
+                path=path, dag=dag, from_node=root
+            )
+            dereferenced_items.sort(key=lambda x: len(x.path), reverse=True)
+
+            if len(dereferenced_items) > 0:
+                return dereferenced_items[0]
+            else:
+                raise PydanticCustomError(
+                    "bad_reference",
+                    f'The reference "{path}" on item "{parent_item.id()}" does not point to an object.',
+                    parent_item.model_dump(),
+                )

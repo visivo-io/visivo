@@ -9,6 +9,7 @@ from pydantic import (
 from typing_extensions import Annotated
 from typing import Optional, Union, NewType
 import re
+from visivo.models.base.context_string import VALUE_REGEX, ContextString
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
 STATEMENT_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$|^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
@@ -19,6 +20,11 @@ RefString = NewType(
     Annotated[Annotated[str, StringConstraints(pattern=REF_REGEX)], Tag("Ref")],
 )
 
+ContextStringType = NewType(
+    "ContextStringType",
+    Annotated[ContextString, Tag("Context")],
+)
+
 
 def generate_ref_field(class_to_discriminate):
     return NewType(
@@ -26,6 +32,7 @@ def generate_ref_field(class_to_discriminate):
         Annotated[
             Union[
                 RefString,
+                ContextStringType,
                 Annotated[class_to_discriminate, Tag(class_to_discriminate.__name__)],
             ],
             Discriminator(ModelStrDiscriminator(class_to_discriminate)),
@@ -41,9 +48,11 @@ class ModelStrDiscriminator:
         return self.class_name
 
     def __call__(self, value):
-        if isinstance(value, str):
+        if isinstance(value, str) and re.search(VALUE_REGEX, value):
+            return "Context"
+        elif isinstance(value, str):
             return "Ref"
-        if isinstance(value, (dict, BaseModel)):
+        elif isinstance(value, (dict, BaseModel)):
             return self.class_name
         else:
             return None
