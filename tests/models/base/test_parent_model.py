@@ -32,5 +32,3 @@ def test_Project_filter_trace():
     bobcat_trace = TraceFactory(name="bobcat")
     traces = [cat_trace, bobcat_trace]
     assert ParentModel.filtered(pattern="^cat", objects=traces) == [cat_trace]
-
-
