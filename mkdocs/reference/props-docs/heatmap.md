@@ -65,11 +65,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
                   text: "Y Axis"
         ```
 
-    === "Heatmap with Custom Colorscale"
+    === "Heatmap with Categorical Axis"
 
-        This example shows a `heatmap` plot with a custom colorscale, providing more control over the color mapping of values:
+        This example shows a `heatmap` plot with non-numeric x and y axis. 
 
-        ![](../../assets/example-charts/props/heatmap/custom-colorscale-heatmap.png)
+        ![](../../assets/example-charts/props/heatmap/categorical-heatmap.png)
 
         Here's the code:
 
@@ -80,15 +80,15 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
               - echo
               - |
                 x,y,z
-                1,1,0.1
-                1,2,0.2
-                1,3,0.3
-                2,1,0.4
-                2,2,0.5
-                2,3,0.6
-                3,1,0.7
-                3,2,0.8
-                3,3,0.9
+                Low,A,0.1
+                Low,B,0.2
+                Low,C,0.3
+                Medium,A,0.4
+                Medium,B,0.5
+                Medium,C,0.6
+                High,A,0.7
+                High,B,0.8
+                High,C,0.9
         traces:
           - name: Heatmap with Custom Colorscale
             model: ref(heatmap-data-custom)
@@ -97,29 +97,30 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
               x: query(x)
               y: query(y)
               z: query(z)
-              colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               zmin: 0
               zmax: 1
         charts:
-          - name: Heatmap Chart with Custom Colorscale
+          - name: Heatmap Chart with Categorical Axis
             traces:
               - ref(Heatmap with Custom Colorscale)
             layout:
               title:
-                text: Heatmap with Custom Colorscale<br><sub>Custom Colors for Data Values</sub>
+                text: Heatmap Chart with Categorical Axis<br><sub>Categorical Data</sub>
               xaxis:
                 title:
-                  text: "X Axis"
+                  text: "Priority Level"
+                type: "category"
               yaxis:
                 title:
-                  text: "Y Axis"
+                  text: "Category"
+                type: "category"
         ```
 
     === "Heatmap with Text Annotations"
 
         This example demonstrates a heatmap with text annotations, showing the data values on top of each heatmap cell:
 
-        ![](../../assets/example-charts/props/heatmap/heatmap-text-annotations.png)
+        ![](../../assets/example-charts/props/heatmap/text-annoations.png)
 
         Here's the code:
 

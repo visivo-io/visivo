@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "categorical.visivo.yml"
+  - path: "text-annotations.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Heatmap"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Heatmap"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Heatmap Chart)
+          - chart: ref(Heatmap Chart with Categorical Axis)
+      - height: medium
+        items:
+          - chart: ref(Heatmap Chart with Text Annotations)
+          - markdown: ""

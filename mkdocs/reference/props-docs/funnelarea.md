@@ -44,8 +44,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
               type: funnelarea
               labels: query(stage)
               values: query(value)
-              marker:
-                colorscale: "Blues"
         charts:
           - name: Simple Funnelarea Chart
             traces:
@@ -120,8 +118,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
               labels: query(stage)
               values: query(value)
               hoverinfo: "label+value+percent"
-              marker:
-                colorscale: "Viridis"
         charts:
           - name: Funnelarea Chart with Hover Info
             traces:

@@ -5,7 +5,7 @@ includes:
  # - path: visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml
   - path: ./aapl-stock.visivo.yml
 alerts: []
-targets:
+sources:
   - name: Example Target
     database: local.db
     type: sqlite

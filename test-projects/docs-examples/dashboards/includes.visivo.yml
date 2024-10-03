@@ -10,3 +10,5 @@ includes:
   - path: choroplethmapbox/dashboard.visivo.yml
   - path: contour/dashboard.visivo.yml
   - path: funnel/dashboard.visivo.yml
+  - path: funnelarea/dashboard.visivo.yml
+  - path: heatmap/dashboard.visivo.yml

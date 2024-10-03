@@ -1,0 +1,40 @@
+models:
+  - name: heatmap-data-annotations
+    args:
+      - echo
+      - |
+        x,y,z
+        Q1,2019,100
+        Q2,2019,150
+        Q3,2019,200
+        Q4,2019,250
+        Q1,2020,300
+        Q2,2020,350
+        Q3,2020,400
+        Q4,2020,450
+traces:
+  - name: Heatmap with Text Annotations
+    model: ref(heatmap-data-annotations)
+    props:
+      type: heatmap
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      text: query(z)
+      texttemplate: "%{text}"
+      textfont:
+        size: 12
+      colorscale: "Blues"
+charts:
+  - name: Heatmap Chart with Text Annotations
+    traces:
+      - ref(Heatmap with Text Annotations)
+    layout:
+      title:
+        text: Heatmap with Text Annotations<br><sub>Data Values Displayed on Each Cell</sub>
+      xaxis:
+        title:
+          text: "Quarter"
+      yaxis:
+        title:
+          text: "Year"
