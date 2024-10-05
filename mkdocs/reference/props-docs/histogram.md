@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `histogram` trace type is used to create histograms, which represent the distribution of numerical data by dividing the data into bins and counting the number of occurrences in each bin. Histograms are great for understanding data distribution, variability, and patterns.
@@ -64,6 +63,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
               yaxis:
                 title:
                   text: "Count"
+              bargap: 0.05
         ```
 
     === "Horizontal Histogram Plot"
@@ -87,6 +87,19 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
                 5
                 4
                 3
+                3
+                3
+                3
+                4
+                1
+                3
+                4
+                3
+                3
+                4
+                1
+                2
+                3
                 5
                 2
                 3
@@ -97,9 +110,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
             props:
               type: histogram
               y: query(value)
-              nbinsy: 5
+              nbinsy: 2
               marker:
                 color: "#ff7f0e"
+              orientation: h
         charts:
           - name: Horizontal Histogram Chart
             traces:
@@ -113,6 +127,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
               xaxis:
                 title:
                   text: "Count"
+              bargap: 0.05
         ```
 
     === "Stacked Histogram Plot"
@@ -140,28 +155,25 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
                 B,5
                 B,6
         traces:
-          - name: Histogram Group A
+          - name: Histogram Groups
             model: ref(histogram-data-stacked)
+            cohort_on: '"group"'
+            columns: 
+              color: |
+                case 
+                  when "group" = 'A' Then '#1f77b4' 
+                  when "group" = 'B' THEN '#ff7f0e' 
+                  else null 
+                end 
             props:
               type: histogram
               x: query(value)
-              name: "Group A"
               marker:
-                color: "#1f77b4"
-          - name: Histogram Group B
-            model: ref(histogram-data-stacked)
-            props:
-              type: histogram
-              x: query(value)
-              name: "Group B"
-              marker:
-                color: "#ff7f0e"
-              barmode: "stack"
+                color: column(color) 
         charts:
           - name: Stacked Histogram Chart
             traces:
-              - ref(Histogram Group A)
-              - ref(Histogram Group B)
+              - ref(Histogram Groups)
             layout:
               title:
                 text: Stacked Histogram Chart<br><sub>Data Distribution for Two Groups</sub>
@@ -171,6 +183,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
               yaxis:
                 title:
                   text: "Count"
+              barmode: "stack"
+              bargap: .05
         ```
 
 {% endraw %}

@@ -1,0 +1,39 @@
+models:
+  - name: histogram-data
+    args:
+      - echo
+      - |
+        value
+        10
+        20
+        15
+        10
+        5
+        25
+        30
+        15
+        20
+        10
+traces:
+  - name: Simple Histogram Plot
+    model: ref(histogram-data)
+    props:
+      type: histogram
+      x: query(value)
+      nbinsx: 5
+      marker:
+        color: "#17becf"
+charts:
+  - name: Simple Histogram Chart
+    traces:
+      - ref(Simple Histogram Plot)
+    layout:
+      title:
+        text: Simple Histogram Plot<br><sub>Data Distribution Across Bins</sub>
+      xaxis:
+        title:
+          text: "Value"
+      yaxis:
+        title:
+          text: "Count"
+      bargap: 0.05
