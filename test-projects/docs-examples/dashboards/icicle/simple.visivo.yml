@@ -1,0 +1,34 @@
+models:
+  - name: icicle-data
+    args:
+      - echo
+      - |
+        category,parent,value
+        A,,100
+        B,A,50
+        C,A,30
+        D,A,10
+        E,B,25
+        F,B,15
+traces:
+  - name: Simple Icicle Plot
+    model: ref(icicle-data)
+    props:
+      type: icicle
+      labels: query(category)
+      parents: query(parent)
+      values: query(value)
+      branchvalues: "total"
+      marker: 
+        colorscale: "Portland"
+      textposition: "middle center"
+      textfont: 
+        size: 18
+      
+charts:
+  - name: Simple Icicle Chart
+    traces:
+      - ref(Simple Icicle Plot)
+    layout:
+      title:
+        text: Simple Icicle Chart<br><sub>Hierarchical Data Breakdown</sub>

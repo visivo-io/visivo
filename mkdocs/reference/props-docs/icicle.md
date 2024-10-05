@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `icicle` trace type is used to create icicle charts, which are a variation of treemap charts but arranged vertically. Icicle charts are useful for visualizing hierarchical data, where each branch represents a part of the whole, and you can drill down into sub-categories.
@@ -35,7 +34,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
                 A,,100
                 B,A,50
                 C,A,30
-                D,A,20
+                D,A,10
                 E,B,25
                 F,B,15
         traces:
@@ -47,6 +46,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
               parents: query(parent)
               values: query(value)
               branchvalues: "total"
+              marker: 
+                colorscale: "Portland"
+              textposition: "middle center"
+              textfont: 
+                size: 18
         charts:
           - name: Simple Icicle Chart
             traces:
@@ -119,7 +123,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
                 E,B,25
                 F,B,15
         traces:
-          - name: Icicle Plot with Depth Limiting
+          - name: Icicle Plot with Depth Limiting Trace
             model: ref(icicle-data-depth)
             props:
               type: icicle
@@ -128,10 +132,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
               values: query(value)
               maxdepth: 2
               branchvalues: "total"
+              marker: 
+                colorscale: "YlOrRd"
         charts:
           - name: Icicle Plot with Depth Limiting
             traces:
-              - ref(Icicle Plot with Depth Limiting)
+              - ref(Icicle Plot with Depth Limiting Trace)
             layout:
               title:
                 text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>

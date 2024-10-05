@@ -13,3 +13,4 @@ includes:
   - path: funnelarea/dashboard.visivo.yml
   - path: heatmap/dashboard.visivo.yml
   - path: histogram/dashboard.visivo.yml
+  - path: icicle/dashboard.visivo.yml
