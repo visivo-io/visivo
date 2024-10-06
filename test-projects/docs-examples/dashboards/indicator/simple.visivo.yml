@@ -1,0 +1,33 @@
+models:
+  - name: indicator-data
+    args:
+      - echo
+      - |
+        value
+        75
+traces:
+  - name: Simple Numeric Indicator
+    model: ref(indicator-data)
+    columns:
+      val: value
+      sign: case when value > 0 then '<sup>+</sup>' else '<sup>-</sup>' end
+    props:
+      type: indicator
+      mode: "number"
+      value: column(val)[0]
+      number: 
+        suffix: '<sub>hrs</sub>'
+        prefix: column(sign)[0]
+        font: 
+          size: 100
+charts:
+  - name: Simple Numeric Indicator Chart
+    traces:
+      - ref(Simple Numeric Indicator)
+    layout:
+      title:
+        text: Simple Numeric Indicator<br><sub>Displaying a Single Value</sub>
+      margin: 
+        l: 0
+        r: 0
+        b: 50 
