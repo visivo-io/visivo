@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,135 @@
 
 
 <div><h1 id="treemap">Treemap</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>treemap</code> trace type is used to create treemap charts, which visualize hierarchical data through nested rectangles. Each branch of the hierarchy is represented as a rectangle, with smaller rectangles inside representing sub-branches. Treemaps are useful for visualizing part-to-whole relationships and comparing the size of different categories.</p>
+<p>You can customize the colors, labels, and hierarchy to represent your data effectively.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Hierarchical Data Visualization</strong>: Displaying nested data as a set of rectangles.</li>
+<li><strong>Part-to-Whole Relationships</strong>: Visualizing how different categories contribute to the whole.</li>
+<li><strong>Categorical Data</strong>: Showing categorical breakdowns with nested structures.</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Treemap Plot</label><label for="__tabbed_1_2">Treemap Plot with Custom Colors</label><label for="__tabbed_1_3">Treemap Plot with Custom Sizes</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>treemap</code> plot showing a hierarchy of categories:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/treemap/simple-treemap.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">labels,parents,values</span>
+<span class="w">        </span><span class="no">Total,,100</span>
+<span class="w">        </span><span class="no">A,Total,40</span>
+<span class="w">        </span><span class="no">B,Total,30</span>
+<span class="w">        </span><span class="no">C,Total,30</span>
+<span class="w">        </span><span class="no">D,A,10</span>
+<span class="w">        </span><span class="no">E,A,20</span>
+<span class="w">        </span><span class="no">F,B,10</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Treemap Plot</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(treemap-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(labels)</span>
+<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(parents)</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(values)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Treemap Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Treemap Plot)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Treemap Chart&lt;br&gt;&lt;sub&gt;Hierarchical Data Visualization&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>This example demonstrates a <code>treemap</code> plot where each category has custom colors:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/treemap/custom-colors-treemap.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap-data-colors</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">labels,parents,values,colors</span>
+<span class="w">        </span><span class="no">Total,,100,#1f77b4</span>
+<span class="w">        </span><span class="no">A,Total,40,#ff7f0e</span>
+<span class="w">        </span><span class="no">B,Total,30,#2ca02c</span>
+<span class="w">        </span><span class="no">C,Total,30,#d62728</span>
+<span class="w">        </span><span class="no">D,A,10,#9467bd</span>
+<span class="w">        </span><span class="no">E,A,20,#8c564b</span>
+<span class="w">        </span><span class="no">F,B,10,#e377c2</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Plot with Custom Colors</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(treemap-data-colors)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(labels)</span>
+<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(parents)</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(values)</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(colors)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Chart with Custom Colors</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Treemap Plot with Custom Colors)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Plot with Custom Colors&lt;br&gt;&lt;sub&gt;Custom Colors for Each Category&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Here's a <code>treemap</code> plot where the size of each segment is customized based on additional values:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/treemap/custom-sizes-treemap.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap-data-sizes</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">labels,parents,values,size</span>
+<span class="w">        </span><span class="no">Total,,100,1</span>
+<span class="w">        </span><span class="no">A,Total,40,2</span>
+<span class="w">        </span><span class="no">B,Total,30,3</span>
+<span class="w">        </span><span class="no">C,Total,30,4</span>
+<span class="w">        </span><span class="no">D,A,10,5</span>
+<span class="w">        </span><span class="no">E,A,20,6</span>
+<span class="w">        </span><span class="no">F,B,10,7</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Plot with Custom Sizes</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(treemap-data-sizes)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(labels)</span>
+<span class="w">      </span><span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(parents)</span>
+<span class="w">      </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(values)</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">sizes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(size)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Chart with Custom Sizes</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Treemap Plot with Custom Sizes)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Treemap Plot with Custom Sizes&lt;br&gt;&lt;sub&gt;Custom Sizes for Each Segment&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">branchvalues</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"remainder"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"total"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>treemap</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">branchvalues</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"remainder"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"total"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="s">'flaglist</span><span class="nv"> </span><span class="s">string.</span><span class="nv"> </span><span class="s">any</span><span class="nv"> </span><span class="s">combination</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">"branches",</span><span class="nv"> </span><span class="s">"leaves"</span><span class="nv"> </span><span class="s">joined</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">"+"</span>
 <span class="w"> </span><span class="s">'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(3)!</span>
@@ -5634,59 +5779,60 @@
 <span class="w">    </span><span class="nt">ypad</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(78)!</span>
 <span class="w">  </span><span class="nt">colors</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(79)!</span>
 <span class="w">  </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'colorscale'</span><span class="w"> </span><span class="c1">#(80)!</span>
-<span class="w">  </span><span class="nt">depthfade</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">true</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">false</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"reversed"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(81)!</span>
+<span class="w">  </span><span class="nt">cornerradius</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(81)!</span>
+<span class="w">  </span><span class="nt">depthfade</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">true</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">false</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"reversed"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(82)!</span>
 <span class="w">  </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(82)!</span>
-<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(83)!</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(83)!</span>
+<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">numbers</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(84)!</span>
 <span class="w">  </span><span class="nt">pad</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(84)!</span>
-<span class="w">    </span><span class="nt">l</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(85)!</span>
-<span class="w">    </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(86)!</span>
-<span class="w">    </span><span class="nt">t</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(87)!</span>
-<span class="w">  </span><span class="nt">reversescale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(88)!</span>
-<span class="w">  </span><span class="nt">showscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(89)!</span>
-<span class="nt">maxdepth</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(90)!</span>
-<span class="nt">meta</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(91)!</span>
-<span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(92)!</span>
+<span class="w">    </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(85)!</span>
+<span class="w">    </span><span class="nt">l</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(86)!</span>
+<span class="w">    </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(87)!</span>
+<span class="w">    </span><span class="nt">t</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(88)!</span>
+<span class="w">  </span><span class="nt">reversescale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(89)!</span>
+<span class="w">  </span><span class="nt">showscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(90)!</span>
+<span class="nt">maxdepth</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(91)!</span>
+<span class="nt">meta</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(92)!</span>
+<span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">between</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(93)!</span>
 <span class="nt">outsidetextfont</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color or array of colors</span>
-<span class="w">  </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(93)!</span>
+<span class="w">  </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(94)!</span>
 <span class="w">  </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number or array of numbers greater than or equal to 1</span>
-<span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(94)!</span>
+<span class="nt">parents</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(95)!</span>
 <span class="nt">pathbar</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">edgeshape</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"&amp;gt;"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"&amp;lt;"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"|"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"/"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">""</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(95)!</span>
-<span class="w">  </span><span class="nt">side</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"top"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(96)!</span>
+<span class="w">  </span><span class="nt">edgeshape</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"&amp;gt;"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"&amp;lt;"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"|"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"/"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">""</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(96)!</span>
+<span class="w">  </span><span class="nt">side</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"top"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(97)!</span>
 <span class="w">  </span><span class="nt">textfont</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color or array of colors</span>
-<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(97)!</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(98)!</span>
 <span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number or array of numbers greater than or equal to 1</span>
-<span class="w">  </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">12'</span><span class="w"> </span><span class="c1">#(98)!</span>
-<span class="w">  </span><span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(99)!</span>
+<span class="w">  </span><span class="nt">thickness</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">12'</span><span class="w"> </span><span class="c1">#(99)!</span>
+<span class="w">  </span><span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(100)!</span>
 <span class="nt">root</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(100)!</span>
-<span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(101)!</span>
-<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(102)!</span>
+<span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(101)!</span>
+<span class="nt">sort</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(102)!</span>
+<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(103)!</span>
 <span class="nt">textfont</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color or array of colors</span>
-<span class="w">  </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(103)!</span>
+<span class="w">  </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(104)!</span>
 <span class="w">  </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number or array of numbers greater than or equal to 1</span>
 <span class="nt">textinfo</span><span class="p">:</span><span class="w"> </span><span class="s">'flaglist</span><span class="nv"> </span><span class="s">string.</span><span class="nv"> </span><span class="s">any</span><span class="nv"> </span><span class="s">combination</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">"label",</span><span class="nv"> </span><span class="s">"text",</span><span class="nv"> </span><span class="s">"value",</span><span class="nv"> </span><span class="s">"current</span>
 <span class="w">  </span><span class="s">path",</span><span class="nv"> </span><span class="s">"percent</span><span class="nv"> </span><span class="s">root",</span><span class="nv"> </span><span class="s">"percent</span><span class="nv"> </span><span class="s">entry",</span><span class="nv"> </span><span class="s">"percent</span><span class="nv"> </span><span class="s">parent"</span><span class="nv"> </span><span class="s">joined</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">"+"</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">"none".</span>
-<span class="w"> </span><span class="s">'</span><span class="w"> </span><span class="c1">#(104)!</span>
+<span class="w"> </span><span class="s">'</span><span class="w"> </span><span class="c1">#(105)!</span>
 <span class="nt">textposition</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"top</span><span class="nv"> </span><span class="s">left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"top</span><span class="nv"> </span><span class="s">center"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"top</span><span class="nv"> </span><span class="s">right"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"middle</span>
 <span class="w">  </span><span class="s">left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"middle</span><span class="nv"> </span><span class="s">center"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"middle</span><span class="nv"> </span><span class="s">right"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom</span><span class="nv"> </span><span class="s">left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom</span><span class="nv"> </span><span class="s">center"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"bottom</span>
-<span class="w">  </span><span class="s">right"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(105)!</span>
-<span class="nt">texttemplate</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(106)!</span>
+<span class="w">  </span><span class="s">right"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(106)!</span>
+<span class="nt">texttemplate</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">array</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">strings'</span><span class="w"> </span><span class="c1">#(107)!</span>
 <span class="nt">tiling</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">flip</span><span class="p">:</span><span class="w"> </span><span class="s">'flaglist</span><span class="nv"> </span><span class="s">string.</span><span class="nv"> </span><span class="s">any</span><span class="nv"> </span><span class="s">combination</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">"x",</span><span class="nv"> </span><span class="s">"y"</span><span class="nv"> </span><span class="s">joined</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">"+"'</span><span class="w"> </span><span class="c1">#(107)!</span>
+<span class="w">  </span><span class="nt">flip</span><span class="p">:</span><span class="w"> </span><span class="s">'flaglist</span><span class="nv"> </span><span class="s">string.</span><span class="nv"> </span><span class="s">any</span><span class="nv"> </span><span class="s">combination</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">"x",</span><span class="nv"> </span><span class="s">"y"</span><span class="nv"> </span><span class="s">joined</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">a</span><span class="nv"> </span><span class="s">"+"'</span><span class="w"> </span><span class="c1">#(108)!</span>
 <span class="w">  </span><span class="nt">packing</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"squarify"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"binary"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"dice"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"slice"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"slice-dice"</span>
-<span class="w">    </span><span class="s">|</span><span class="nv"> </span><span class="s">"dice-slice"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(108)!</span>
-<span class="w">  </span><span class="nt">pad</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(109)!</span>
-<span class="w">  </span><span class="nt">squarifyratio</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(110)!</span>
+<span class="w">    </span><span class="s">|</span><span class="nv"> </span><span class="s">"dice-slice"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(109)!</span>
+<span class="w">  </span><span class="nt">pad</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">0'</span><span class="w"> </span><span class="c1">#(110)!</span>
+<span class="w">  </span><span class="nt">squarifyratio</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(111)!</span>
 <span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">treemap</span>
-<span class="nt">uirevision</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(111)!</span>
-<span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(112)!</span>
-<span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">true</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">false</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"legendonly"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(113)!</span>
+<span class="nt">uirevision</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(112)!</span>
+<span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(113)!</span>
+<span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">true</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">false</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"legendonly"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(114)!</span>
 </code></pre></div>
 <ol>
 <li>Determines how the items in <code>values</code> are summed. When set to "total", items in <code>values</code> are taken to be value of all its descendants. When set to "remainder", items in <code>values</code> corresponding to the root and the branches sectors are taken to be the extra part not part of the sum of the values at their leaves. </li>
@@ -5769,6 +5915,7 @@
 <li>Sets the amount of padding (in px) along the y direction. </li>
 <li>Sets the color of each sector of this trace. If not specified, the default trace color set is used to pick the sector colors. </li>
 <li>Sets the colorscale. Has an effect only if colors is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, <code>[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]</code>. To control the bounds of the colorscale in color space, use <code>marker.cmin</code> and <code>marker.cmax</code>. Alternatively, <code>colorscale</code> may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. </li>
+<li>Sets the maximum rounding of corners (in px).</li>
 <li>Determines if the sector colors are faded towards the background from the leaves up to the headers. This option is unavailable when a <code>colorscale</code> is present, defaults to false when <code>marker.colors</code> is set, but otherwise defaults to true. When set to "reversed", the fading direction is inverted, that is the top elements within hierarchy are drawn with fully saturated colors while the leaves are faded towards the background color. </li>
 <li>Sets the color of the line enclosing each sector. Defaults to the <code>paper_bgcolor</code> value. </li>
 <li>Sets the width (in px) of the line enclosing each sector. </li>

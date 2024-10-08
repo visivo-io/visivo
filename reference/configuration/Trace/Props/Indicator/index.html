@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,138 @@
 
 
 <div><h1 id="indicator">Indicator</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>indicator</code> trace type is used to create key performance indicator (KPI) visualizations, allowing you to display single or aggregated values in a gauge or numeric format. Indicators are great for showing metrics like progress, performance, or key values at a glance.</p>
+<p>You can customize the gauge, delta values, colors, and text annotations to represent your data effectively. Indicator plots are widely used in dashboards and reporting.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>KPI Dashboards</strong>: Displaying key metrics, progress, or performance indicators.</li>
+<li><strong>Gauges</strong>: Visualizing values as a gauge to track goals or targets.</li>
+<li><strong>Highlighting Change</strong>: Showing the difference between two points in time.</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Numeric Indicator</label><label for="__tabbed_1_2">Gauge Indicator</label><label for="__tabbed_1_3">Delta Indicator with Comparison</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>indicator</code> plot displaying a single numeric value:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/indicator/simple-indicator.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">value</span>
+<span class="w">        </span><span class="no">75</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Numeric Indicator</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(indicator-data)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">val</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">value</span>
+<span class="w">      </span><span class="nt">sign</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">case when value &gt; 0 then '&lt;sup&gt;+&lt;/sup&gt;' else '&lt;sup&gt;-&lt;/sup&gt;' end</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"number"</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(val)[0]</span>
+<span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">suffix</span><span class="p">:</span><span class="w"> </span><span class="s">'&lt;sub&gt;hrs&lt;/sub&gt;'</span>
+<span class="w">        </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(sign)[0]</span>
+<span class="w">        </span><span class="nt">font</span><span class="p">:</span><span class="w"> </span>
+<span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Numeric Indicator Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Numeric Indicator)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Numeric Indicator&lt;br&gt;&lt;sub&gt;Displaying a Single Value&lt;/sub&gt;</span>
+<span class="w">    </span><span class="nt">margin</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">l</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w"> </span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>This example shows a <code>gauge</code> indicator to represent a value and its progress toward a goal:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/indicator/gauge-indicator.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator-data-gauge</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">value</span>
+<span class="w">        </span><span class="no">65</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Gauge Indicator</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(indicator-data-gauge)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">val</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">value</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"gauge+number"</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(val)[0]</span>
+<span class="w">      </span><span class="nt">gauge</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">axis</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">100</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="nt">bar</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#17becf"</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Gauge Indicator Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Gauge Indicator)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Gauge Indicator&lt;br&gt;&lt;sub&gt;Progress Towards a Target&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>This example demonstrates an <code>indicator</code> plot with delta values, comparing the current value to a previous value:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/indicator/delta-indicator.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator-data-delta</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">sort,value</span>
+<span class="w">        </span><span class="no">3,85</span>
+<span class="w">        </span><span class="no">2,75</span>
+<span class="w">        </span><span class="no">1,65</span>
+<span class="w">        </span><span class="no">0,55</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Delta Indicator with Comparison</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(indicator-data-delta)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">val</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">value</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"number+delta"</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(val)[0]</span>
+<span class="w">      </span><span class="nt">delta</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">reference</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(val)[1]</span>
+<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(sort desc)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Delta Indicator with Comparison Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Delta Indicator with Comparison)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Delta Indicator with Comparison&lt;br&gt;&lt;sub&gt;Showing Change from Previous Value&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"center"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"right"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>indicator</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"left"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"center"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"right"</span><span class="nv"> </span><span class="s">)'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">delta</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">decreasing</span><span class="p">:</span>

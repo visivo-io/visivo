@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,68 @@
 
 
 <div><h1 id="mesh3d">Mesh3d</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>mesh3d</code> trace type is used to create 3D mesh plots, which visualize 3D surfaces defined by vertices and connections between them. Mesh plots are commonly used in 3D data visualization to represent geometric shapes, surfaces, and volumes.</p>
+<p>You can customize the colors, vertex positions, and opacity to represent 3D data and geometries effectively.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>3D Geometries</strong>: Visualizing surfaces and volumes in 3D space.</li>
+<li><strong>Scientific Visualization</strong>: Representing complex 3D data in fields like physics, engineering, and geology.</li>
+<li><strong>3D Surface Rendering</strong>: Displaying 3D surfaces from a set of points and connectivity information.</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="../Mesh3D/#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Mesh3D Plot</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>mesh3d</code> plot visualizing a 3D mesh structure with vertices and connections:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/mesh3d/simple-mesh3d.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mesh3d-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">idx,x,y,z,i,j,k,color</span>
+<span class="w">        </span><span class="no">0,0,0,0,0,1,2,#1f77b4</span>
+<span class="w">        </span><span class="no">1,1,0,2,0,2,3,#ff7f0e</span>
+<span class="w">        </span><span class="no">2,2,1,0,0,3,1,#2ca02c</span>
+<span class="w">        </span><span class="no">3,0,2,1,1,2,3,#9467bd</span>
+
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Mesh3D Plot</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(mesh3d-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mesh3d</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(x)</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(y)</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(z)</span>
+<span class="w">      </span><span class="nt">i</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(i)</span>
+<span class="w">      </span><span class="nt">j</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(j)</span>
+<span class="w">      </span><span class="nt">k</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(k)</span>
+<span class="w">      </span><span class="nt">facecolor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(color)</span>
+<span class="w">      </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( idx asc)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Mesh3D Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Mesh3D Plot)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Mesh3D Plot&lt;br&gt;&lt;sub&gt;3D Mesh Surface Visualization&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">alphahull</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>mesh3d</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">alphahull</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">cauto</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(3)!</span>
 <span class="nt">cmax</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(4)!</span>

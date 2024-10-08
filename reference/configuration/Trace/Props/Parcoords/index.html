@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,143 @@
 
 
 <div><h1 id="parcoords">Parcoords</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>parcoords</code> trace type is used to create parallel coordinates plots, which are useful for visualizing multi-dimensional numerical data. In parallel coordinates plots, each variable is represented as a vertical axis, and each data point is a line connecting its values across the different axes.</p>
+<p>You can customize the axis scaling, color mapping, and line properties to represent your data effectively.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Multivariate Data Analysis</strong>: Visualizing relationships between multiple variables.</li>
+<li><strong>Data Exploration</strong>: Exploring patterns and outliers in high-dimensional datasets.</li>
+<li><strong>Decision Making</strong>: Identifying optimal points or anomalies in multi-variable data.</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Parcoords Plot</label><label for="__tabbed_1_2">Parcoords with Custom Ranges</label><label for="__tabbed_1_3">Parcoords Plot with Custom Colorscale</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>parcoords</code> plot visualizing three numerical variables:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/parcoords/simple-parcoords.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">variable_1,variable_2,variable_3</span>
+<span class="w">        </span><span class="no">1,4,7</span>
+<span class="w">        </span><span class="no">2,5,8</span>
+<span class="w">        </span><span class="no">3,6,9</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Parcoords Plot</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(parcoords-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords</span>
+<span class="w">      </span><span class="nt">dimensions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">1"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_1)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">2"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_2)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">3"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_3)</span>
+<span class="w">      </span><span class="nt">line</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_3)</span>
+<span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Viridis"</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Parcoords Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Parcoords Plot)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Parcoords Plot&lt;br&gt;&lt;sub&gt;Parallel Coordinates with Three Variables&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>This example demonstrates a <code>parcoords</code> plot with custom axis ranges, allowing you to focus on specific data ranges:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/parcoords/custom-ranges-parcoords.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords-data-ranges</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">variable_1,variable_2,variable_3</span>
+<span class="w">        </span><span class="no">5,10,15</span>
+<span class="w">        </span><span class="no">10,20,25</span>
+<span class="w">        </span><span class="no">15,30,35</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Plot with Custom Ranges</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(parcoords-data-ranges)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords</span>
+<span class="w">      </span><span class="nt">dimensions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">1"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_1)</span>
+<span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">15</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">2"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_2)</span>
+<span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">30</span><span class="p p-Indicator">]</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">3"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_3)</span>
+<span class="w">          </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">15</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">35</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">line</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_3)</span>
+<span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Blues"</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Chart with Custom Ranges</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Parcoords Plot with Custom Ranges)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Plot with Custom Ranges&lt;br&gt;&lt;sub&gt;Custom Ranges for Each Variable&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Here's a <code>parcoords</code> plot with a custom colorscale for the lines, highlighting the variations across the third variable:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/parcoords/custom-colorscale-parcoords.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords-data-colorscale</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">variable_1,variable_2,variable_3</span>
+<span class="w">        </span><span class="no">1,2,3</span>
+<span class="w">        </span><span class="no">2,3,4</span>
+<span class="w">        </span><span class="no">3,4,5</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Plot with Custom Colorscale</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(parcoords-data-colorscale)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">parcoords</span>
+<span class="w">      </span><span class="nt">dimensions</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">1"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_1)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">2"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_2)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">"Variable</span><span class="nv"> </span><span class="s">3"</span>
+<span class="w">          </span><span class="nt">values</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_3)</span>
+<span class="w">      </span><span class="nt">line</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(variable_3)</span>
+<span class="w">        </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Jet"</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Chart with Custom Colorscale</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Parcoords Plot with Custom Colorscale)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Parcoords Plot with Custom Colorscale&lt;br&gt;&lt;sub&gt;Custom Colors for Line Based on Variable 3&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>parcoords</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">dimensions</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">constraintrange</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="w">  </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(3)!</span>

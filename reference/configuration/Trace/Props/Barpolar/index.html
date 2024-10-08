@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,195 @@
 
 
 <div><h1 id="barpolar">Barpolar</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>barpolar</code> trace type is used to create bar charts in polar coordinates. This is particularly useful for displaying data that is cyclical or directional in nature, such as wind directions, time-of-day activities, or any phenomena that repeats over a circular dimension.</p>
+<p>You have extensive control over the appearance of the bars through the <code>marker</code> and <code>insidetextfont</code> attributes. You can set colors, opacity, line styles, and more. The bars can be customized to start at a specific radial axis and extend to another, allowing for flexible representations.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Wind Rose Charts</strong>: Visualizing wind speed and direction distributions.</li>
+<li><strong>Circular Histograms</strong>: Displaying the frequency of events over a circular variable like time of day or compass direction.</li>
+<li><strong>Directional Data Representation</strong>: Showcasing data that has a directional component (e.g., animal migration patterns).</li>
+<li><strong>Cyclical Phenomena Visualization</strong>: Illustrating patterns that repeat over a cycle (e.g., seasonal sales data).</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Barpolar</label><label for="__tabbed_1_2">Wind Rose Chart</label><label for="__tabbed_1_3">Polar Bar with Custom Radial Range</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>barpolar</code> chart showing activities over different compass directions:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/barpolar/simple-barpolar.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">activity-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">direction,activity_level</span>
+<span class="w">        </span><span class="no">0,5</span>
+<span class="w">        </span><span class="no">45,10</span>
+<span class="w">        </span><span class="no">90,2</span>
+<span class="w">        </span><span class="no">135,8</span>
+<span class="w">        </span><span class="no">180,4</span>
+<span class="w">        </span><span class="no">225,6</span>
+<span class="w">        </span><span class="no">270,7</span>
+<span class="w">        </span><span class="no">315,3</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Activity Level by Direction</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(activity-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
+<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(activity_level)</span>
+<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(direction)</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#1f77b4"</span>
+<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(direction)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Activity Level Polar Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Activity Level by Direction)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">polar</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">radialaxis</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">"%"</span>
+<span class="w">          </span><span class="nt">tickangle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">360</span>
+<span class="w">          </span><span class="nt">tick0</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">          </span><span class="nt">dtick</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">        </span><span class="nt">angularaxis</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">rotation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">180</span>
+<span class="w">      </span><span class="nt">margin</span><span class="p">:</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">l</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">40</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Barpolar Chart&lt;br&gt;&lt;sub&gt;Activity Level by Direction&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>A wind rose chart is a common use of <code>barpolar</code> to display wind speed and direction frequencies:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/barpolar/wind-rose.png"></p>
+<p>Here's the updated code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">wind-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">cardinal_order,direction,speed,count</span>
+<span class="w">        </span><span class="no">1,N,0-1 m/s,2</span>
+<span class="w">        </span><span class="no">1,N,1-2 m/s,3</span>
+<span class="w">        </span><span class="no">1,N,2-3 m/s,5</span>
+<span class="w">        </span><span class="no">2,NE,0-1 m/s,1</span>
+<span class="w">        </span><span class="no">2,NE,1-2 m/s,4</span>
+<span class="w">        </span><span class="no">2,NE,2-3 m/s,6</span>
+<span class="w">        </span><span class="no">3,E,0-1 m/s,2</span>
+<span class="w">        </span><span class="no">3,E,1-2 m/s,5</span>
+<span class="w">        </span><span class="no">3,E,2-3 m/s,3</span>
+<span class="w">        </span><span class="no">4,SE,0-1 m/s,3</span>
+<span class="w">        </span><span class="no">4,SE,1-2 m/s,2</span>
+<span class="w">        </span><span class="no">4,SE,2-3 m/s,4</span>
+<span class="w">        </span><span class="no">5,S,0-1 m/s,4</span>
+<span class="w">        </span><span class="no">5,S,1-2 m/s,5</span>
+<span class="w">        </span><span class="no">5,S,2-3 m/s,2</span>
+<span class="w">        </span><span class="no">6,SW,0-1 m/s,2</span>
+<span class="w">        </span><span class="no">6,SW,1-2 m/s,3</span>
+<span class="w">        </span><span class="no">6,SW,2-3 m/s,5</span>
+<span class="w">        </span><span class="no">7,W,0-1 m/s,1</span>
+<span class="w">        </span><span class="no">7,W,1-2 m/s,4</span>
+<span class="w">        </span><span class="no">7,W,2-3 m/s,6</span>
+<span class="w">        </span><span class="no">8,NW,0-1 m/s,2</span>
+<span class="w">        </span><span class="no">8,NW,1-2 m/s,5</span>
+<span class="w">        </span><span class="no">8,NW,2-3 m/s,3</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Wind Rose</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(wind-data)</span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">bar_color</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span><span class="w"> </span>
+<span class="w">        </span><span class="no">CASE speed </span>
+<span class="w">          </span><span class="no">when '0-1 m/s' THEN '#1f77b4' </span>
+<span class="w">          </span><span class="no">when '1-2 m/s' then '#ff7f0e' </span>
+<span class="w">          </span><span class="no">when '2-3 m/s' then '#2ca02c' </span>
+<span class="w">        </span><span class="no">end </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
+<span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(count)</span>
+<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(direction)</span>
+<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(speed)</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(bar_color)</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.85</span>
+<span class="w">      </span><span class="nt">hoverinfo</span><span class="p">:</span><span class="w"> </span><span class="s">"theta+r+name"</span>
+<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(cardinal_order)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Wind Rose Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Wind Rose)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">polar</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">radialaxis</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">""</span>
+<span class="w">          </span><span class="nt">angle</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">angularaxis</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">direction</span><span class="p">:</span><span class="w"> </span><span class="s">"clockwise"</span>
+<span class="w">          </span><span class="nt">period</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+
+<span class="w">      </span><span class="nt">legend</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Wind</span><span class="nv"> </span><span class="s">Speed"</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Wind Rose Chart&lt;br&gt;&lt;sub&gt;Wind Speed Distribution by Direction&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>You can customize the radial range to represent data starting and ending at specific radial positions:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/barpolar/custom-radial.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom-radial-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">direction,radial_start,radial_end</span>
+<span class="w">        </span><span class="no">0,1,3</span>
+<span class="w">        </span><span class="no">60,2,5</span>
+<span class="w">        </span><span class="no">120,3,6</span>
+<span class="w">        </span><span class="no">180,1,4</span>
+<span class="w">        </span><span class="no">240,2,7</span>
+<span class="w">        </span><span class="no">300,3,5</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Custom Radial Barpolar</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(custom-radial-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
+<span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(direction)</span>
+<span class="w">      </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"#d62728"</span>
+<span class="w">      </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(direction)</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Custom Radial Barpolar Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Custom Radial Barpolar)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">polar</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">radialaxis</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Polar Bar with Custom Radial Range&lt;br&gt;&lt;sub&gt;Bars Starting and Ending at Custom Radial Positions&lt;/sub&gt;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">base</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>barpolar</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">base</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">dr</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(3)!</span>
 <span class="nt">dtheta</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(4)!</span>

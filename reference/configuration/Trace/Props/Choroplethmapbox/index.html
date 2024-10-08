@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,158 @@
 
 
 <div><h1 id="choroplethmapbox">Choroplethmapbox</h1>
+<h2 id="overview">Overview</h2>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>You need a mapbox api key to use choroplethmapbox traces.</p>
+</div>
+<p>The <code>choroplethmapbox</code> trace type is used to create choropleth maps on top of a Mapbox layer. It’s a more advanced form of the standard <code>choropleth</code> trace, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.</p>
+<p>With <code>choroplethmapbox</code>, you can visualize data across geographic regions on Mapbox maps, and customize the map's appearance using layers, color scales, and hover labels.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Geospatial Data Visualization</strong>: Displaying data on an interactive Mapbox map.</li>
+<li><strong>Thematic Mapping with Interactivity</strong>: Creating maps that can zoom, tilt, and rotate while visualizing variables like population or economic metrics.</li>
+<li><strong>Map Projections</strong>: Applying various Mapbox projections for advanced geographical data representation.</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="../ChoroplethMapbox/#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple ChoroplethMapbox Map</label><label for="__tabbed_1_2">ChoroplethMapbox with Custom Colorscale and Zoom</label><label for="__tabbed_1_3">Interactive ChoroplethMapbox with Hover Data</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>choroplethmapbox</code> map showing population density across different regions on a Mapbox layer:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/choroplethmapbox/simple-choroplethmapbox.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">country-population-data-mapbox</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">iso_alpha,population_density</span>
+<span class="w">        </span><span class="no">USA,36</span>
+<span class="w">        </span><span class="no">CAN,4</span>
+<span class="w">        </span><span class="no">RUS,9</span>
+<span class="w">        </span><span class="no">CHN,153</span>
+<span class="w">        </span><span class="no">IND,450</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple ChoroplethMapbox Map</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(country-population-data-mapbox</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmapbox</span>
+<span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(iso_alpha)</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(population_density)</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Blues"</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple ChoroplethMapbox Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple ChoroplethMapbox Map)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Population Density by Country on Mapbox&lt;br&gt;&lt;sub&gt;Data in Persons per Square Kilometer&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"carto-positron"</span>
+<span class="w">        </span><span class="nt">zoom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">        </span><span class="nt">center</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+<span class="w">          </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>This example shows a choropleth map on a Mapbox layer using a custom color scale, zoom, and center on Europe:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/choroplethmapbox/custom-colorscale-choroplethmapbox.png"></p>
+<p>Here's the code:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">european-gdp-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">iso_alpha,gdp</span>
+<span class="w">        </span><span class="no">FRA,2716</span>
+<span class="w">        </span><span class="no">DEU,3846</span>
+<span class="w">        </span><span class="no">ITA,2001</span>
+<span class="w">        </span><span class="no">ESP,1419</span>
+<span class="w">        </span><span class="no">GBR,2827</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ChoroplethMapbox with Custom Colorscale Trace</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(european-gdp-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmapbox</span>
+<span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(iso_alpha)</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(gdp)</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(255,245,240)"</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(252,146,114)"</span><span class="p p-Indicator">],</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rgb(165,15,21)"</span><span class="p p-Indicator">]]</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.75</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ChoroplethMapbox with Custom Colorscale</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(ChoroplethMapbox with Custom Colorscale Trace)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GDP by Country in Europe&lt;br&gt;&lt;sub&gt;Data in Billions of USD&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"carto-positron"</span>
+<span class="w">        </span><span class="nt">zoom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">        </span><span class="nt">center</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+<span class="w">          </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Here's a choropleth map on a Mapbox layer that includes hover information for each country:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/choroplethmapbox/choroplethmapbox-hover.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">covid-data-mapbox</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">iso_alpha,covid_cases,covid_deaths</span>
+<span class="w">        </span><span class="no">USA,33000000,600000</span>
+<span class="w">        </span><span class="no">BRA,20000000,550000</span>
+<span class="w">        </span><span class="no">IND,30000000,400000</span>
+<span class="w">        </span><span class="no">RUS,6000000,150000</span>
+<span class="w">        </span><span class="no">ZAF,2000000,60000</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Interactive ChoroplethMapbox with Hover Data Trace</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(covid-data-mapbox)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choroplethmapbox</span>
+<span class="w">      </span><span class="nt">geojson</span><span class="p">:</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(iso_alpha)</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(covid_cases)</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Reds"</span>
+<span class="w">      </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(covid_deaths)</span>
+<span class="w">      </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"Cases:</span><span class="nv"> </span><span class="s">%{z}&lt;br&gt;Deaths:</span><span class="nv"> </span><span class="s">%{text}"</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Interactive ChoroplethMapbox with Hover Data</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Interactive ChoroplethMapbox with Hover Data Trace)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">COVID-19 Cases by Country on Mapbox&lt;br&gt;&lt;sub&gt;Hover to See Deaths Data&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"carto-darkmatter"</span>
+<span class="w">        </span><span class="nt">zoom</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">        </span><span class="nt">center</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">          </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>choroplethmapbox</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">below</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">coloraxis</span><span class="p">:</span><span class="w"> </span><span class="s">'subplotid'</span><span class="w"> </span><span class="c1">#(3)!</span>
 <span class="nt">colorbar</span><span class="p">:</span>

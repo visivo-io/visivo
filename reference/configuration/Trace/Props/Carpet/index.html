@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,80 @@
 
 
 <div><h1 id="carpet">Carpet</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>carpet</code> trace type is used to create carpet plots, which can be useful for visualizing data across irregular spaces or non-grid-like arrangements. Carpet plots are <strong>commonly employed in complex datasets</strong> that span two independent variables, such as pressure and temperature or other bivariate datasets.</p>
+<p>Carpet traces provide you with control over the X and Y axes, as well as customization of the A and B axes (the independent variables). You can also use a variety of formatting options, including line, color, and axis ticks to enhance the visualization.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Distortion Analysis</strong>: Visualizing data across irregular spaces, such as in physics or engineering.</li>
+<li><strong>Bivariate Data Visualization</strong>: Displaying complex relationships between two independent variables.</li>
+<li><strong>Gridless Data Representation</strong>: Visualizing data that doesn't fit neatly into grid-like structures.</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Carpet Grid</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple(ish) <code>carpet</code> plot showing data across two independent variables (A and B):</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/carpet/carpet-example.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet-data-axes</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">a,b,x,y</span>
+<span class="w">        </span><span class="no">1,5,2,3</span>
+<span class="w">        </span><span class="no">2,6,3,4</span>
+<span class="w">        </span><span class="no">3,7,4,5</span>
+<span class="w">        </span><span class="no">4,8,5,6</span>
+<span class="w">        </span><span class="no">5,9,6,7</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Carpet Plot with Custom Axes</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(carpet-data-axes)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet</span>
+<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(a)</span>
+<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(b)</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(y)</span>
+<span class="w">      </span><span class="nt">aaxis</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Custom</span><span class="nv"> </span><span class="s">A</span><span class="nv"> </span><span class="s">Axis"</span>
+<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">"A-"</span>
+<span class="w">      </span><span class="nt">baxis</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Custom</span><span class="nv"> </span><span class="s">B</span><span class="nv"> </span><span class="s">Axis"</span>
+<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">"B-"</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Carpet Chart</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Carpet Plot with Custom Axes)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Carpet Plot with Custom Axes&lt;br&gt;&lt;sub&gt;With Customized A and B Axes&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">xaxis</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"X</span><span class="nv"> </span><span class="s">Axis"</span>
+<span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Y</span><span class="nv"> </span><span class="s">Axis"</span>
+<span class="w">      </span><span class="nt">margin</span><span class="p">:</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">70</span>
+<span class="w">        </span><span class="nt">l</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">70</span>
+<span class="w">        </span><span class="nt">t</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>carpet</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="s">'data</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">a0</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">aaxis</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">arraydtick</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">greater</span><span class="nv"> </span><span class="s">than</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">equal</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">1'</span><span class="w"> </span><span class="c1">#(3)!</span>

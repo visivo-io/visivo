@@ -5496,6 +5496,24 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Examples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5523,8 +5541,69 @@
 
 
 <div><h1 id="choropleth">Choropleth</h1>
+<h2 id="overview">Overview</h2>
+<p>The <code>choropleth</code> trace type is used to create choropleth maps, which represent data through color intensity across different geographic regions. This trace is commonly used to display data such as population density, election results, or any data that can be associated with geographic regions.</p>
+<p>The <code>choropleth</code> trace allows you to control the region coloring based on a variable, and you can customize the map's appearance using color scales, hover labels, and other styling options.</p>
+<div class="admonition tip">
+<p class="admonition-title">Common Uses</p>
+<ul>
+<li><strong>Geographic Data Visualization</strong>: Showing data distributions across countries, states, or other regions.</li>
+<li><strong>Density Mapping</strong>: Displaying population or other density metrics across regions.</li>
+<li><strong>Thematic Mapping</strong>: Creating maps that represent different data points based on a color gradient (e.g., GDP, COVID-19 cases).</li>
+</ul>
+</div>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<h2 id="examples">Examples</h2>
+<div class="admonition example">
+<p class="admonition-title">Common Configurations</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Choropleth Map</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Here's a simple <code>choropleth</code> map showing population density across different countries:</p>
+<p><img alt="" src="../../../../../assets/example-charts/props/choropleth/simple-choropleth.png"></p>
+<p>You can copy this code below to create this chart in your project:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">country-population-data</span>
+<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">country,population_density</span>
+<span class="w">        </span><span class="no">USA,38 </span>
+<span class="w">        </span><span class="no">BRA,25</span>
+<span class="w">        </span><span class="no">ARG,17</span>
+<span class="w">        </span><span class="no">UK,286</span>
+<span class="w">        </span><span class="no">CAN,4</span>
+<span class="w">        </span><span class="no">RUS,9</span>
+<span class="w">        </span><span class="no">CHN,153</span>
+<span class="w">        </span><span class="no">IND,450</span>
+<span class="w">        </span><span class="no">COD,48</span>
+<span class="nt">traces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Choropleth Map Trace</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(country-population-data)</span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">choropleth</span>
+<span class="w">      </span><span class="nt">locations</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(country)</span>
+<span class="w">      </span><span class="nt">z</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(population_density)</span>
+<span class="w">      </span><span class="nt">colorscale</span><span class="p">:</span><span class="w"> </span><span class="s">"Picnic"</span>
+<span class="nt">charts</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Choropleth Map</span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Choropleth Map Trace)</span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Population Density by Country&lt;br&gt;&lt;sub&gt;Data in Persons per Square Kilometer&lt;/sub&gt;</span>
+<span class="w">      </span><span class="nt">geo</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">showcoastlines</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">        </span><span class="nt">projection</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">"natural</span><span class="nv"> </span><span class="s">earth"</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
-<div class="highlight"><pre><span></span><code><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>choropleth</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
+</p><div class="highlight"><pre><span></span><code><span class="nt">autocolorscale</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(1)!</span>
 <span class="nt">coloraxis</span><span class="p">:</span><span class="w"> </span><span class="s">'subplotid'</span><span class="w"> </span><span class="c1">#(2)!</span>
 <span class="nt">colorbar</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color'</span><span class="w"> </span><span class="c1">#(3)!</span>
