@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `sunburst` trace type is used to create sunburst charts, which visualize hierarchical data in a circular format. Sunburst charts are useful for showing relationships between parts and the whole, with nested levels of data radiating outward from the center.
@@ -46,7 +45,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
               type: sunburst
               labels: query(labels)
               parents: query(parents)
-              values: query(values)
+              values: query("values")
         charts:
           - name: Simple Sunburst Chart
             traces:
@@ -85,7 +84,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
               type: sunburst
               labels: query(labels)
               parents: query(parents)
-              values: query(values)
+              values: query("values")
               marker:
                 colors: query(colors)
         charts:
@@ -126,9 +125,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
               type: sunburst
               labels: query(labels)
               parents: query(parents)
-              values: query(values)
+              values: query("values")
               marker:
-                sizes: query(size)
+                line:
+                  width: query(size)
+                  color: black
         charts:
           - name: Sunburst Chart with Custom Sizes
             traces:

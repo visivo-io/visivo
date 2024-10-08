@@ -1,0 +1,28 @@
+models:
+  - name: sunburst-data
+    args:
+      - echo
+      - |
+        labels,parents,values
+        Total,,100
+        A,Total,40
+        B,Total,30
+        C,Total,30
+        D,A,10
+        E,A,20
+        F,B,10
+traces:
+  - name: Simple Sunburst Plot
+    model: ref(sunburst-data)
+    props:
+      type: sunburst
+      labels: query(labels)
+      parents: query(parents)
+      values: query("values")
+charts:
+  - name: Simple Sunburst Chart
+    traces:
+      - ref(Simple Sunburst Plot)
+    layout:
+      title:
+        text: Simple Sunburst Chart<br><sub>Hierarchical Data Visualization</sub>

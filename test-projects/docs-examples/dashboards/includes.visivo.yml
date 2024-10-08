@@ -21,3 +21,4 @@ includes:
   - path: waterfall/dashboard.visivo.yml
   - path: volume/dashboard.visivo.yml
   - path: violin/dashboard.visivo.yml
+  - path: sunburst/dashboard.visivo.yml
