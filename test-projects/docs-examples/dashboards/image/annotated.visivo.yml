@@ -1,0 +1,26 @@
+models:
+  - name: image-data-annotated
+    args:
+      - echo
+      - |
+        z
+        [[1,0,0,1],[0,1,1,0],[0,0,1,1]]
+traces:
+  - name: Image Plot with Axis Annotations Trace
+    model: ref(image-data-annotated)
+    props:
+      type: image
+      z: query(z)
+charts:
+  - name: Image Plot with Axis Annotations
+    traces:
+      - ref(Image Plot with Axis Annotations Trace)
+    layout:
+      title:
+        text: Image Plot with Axis Annotations<br><sub>Image with Axes</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis"

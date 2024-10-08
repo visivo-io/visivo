@@ -1,0 +1,46 @@
+models:
+  - name: histogram-data-stacked
+    args:
+      - echo
+      - |
+        group,value
+        A,1
+        A,2
+        A,2
+        A,3
+        B,3
+        B,4
+        B,5
+        B,5
+        B,6
+traces:
+  - name: Histogram Groups
+    model: ref(histogram-data-stacked)
+    cohort_on: '"group"'
+    columns: 
+      color: |
+        case 
+          when "group" = 'A' Then '#1f77b4' 
+          when "group" = 'B' THEN '#ff7f0e' 
+          else null 
+        end 
+    props:
+      type: histogram
+      x: query(value)
+      marker:
+        color: column(color) 
+charts:
+  - name: Stacked Histogram Chart
+    traces:
+      - ref(Histogram Groups)
+    layout:
+      title:
+        text: Stacked Histogram Chart<br><sub>Data Distribution for Two Groups</sub>
+      xaxis:
+        title:
+          text: "Value"
+      yaxis:
+        title:
+          text: "Count"
+      barmode: "stack"
+      bargap: .05

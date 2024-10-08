@@ -1,0 +1,15 @@
+includes:
+  - path: "simple.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Mesh3D"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Mesh3D"
+          - markdown: ""
+            width: 5
+      - height: large
+        items:
+          - chart: ref(Simple Mesh3D Chart)
+          - markdown: ""

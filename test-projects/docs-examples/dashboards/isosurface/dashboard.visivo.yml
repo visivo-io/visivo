@@ -1,0 +1,16 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "complex-with-slice.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Isosurface"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Isosurface"
+          - markdown: ""
+            width: 5
+      - height: large
+        items:
+          - chart: ref(Complex With Slice Isosurface Chart)
+          - chart: ref(Simple Isosurface Chart)

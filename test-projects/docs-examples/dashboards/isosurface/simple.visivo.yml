@@ -1,0 +1,36 @@
+models:
+  - name: isosurface-data-simple
+    args:
+      - echo
+      - |
+        idx,x,y,z,value
+        0,0,0,1,1
+        1,0,1,1,2
+        2,0,0,0,3
+        3,0,1,0,4
+        4,1,0,1,5
+        5,1,1,1,6
+        6,1,0,0,7
+        7,1,1,0,8
+
+traces:
+  - name: Simple Isosurface Plot Trace
+    model: ref(isosurface-data-simple)
+    props:
+      type: isosurface
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      value: query(value)
+      isomin: 2 
+      isomax: 6 
+      colorscale: "Reds"
+    order_by: 
+      - query( idx asc )
+charts:
+  - name: Simple Isosurface Chart
+    traces:
+      - ref(Simple Isosurface Plot Trace)
+    layout:
+      title:
+        text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>

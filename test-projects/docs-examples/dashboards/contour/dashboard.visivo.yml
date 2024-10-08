@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "filled-contour.visivo.yml"
+  - path: "multi-level-contour.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Contour"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Contour"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Contour Chart)
+          - chart: ref(Filled Contour Chart)
+      - height: medium
+        items:
+          - chart: ref(Contour Chart with Multiple Levels)
+          - markdown: ""

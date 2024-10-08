@@ -1,0 +1,15 @@
+includes:
+  - path: "simple.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Volume"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Volume"
+          - markdown: ""
+            width: 5
+      - height: large
+        items:
+          - chart: ref(Simple Volume Chart)
+          - markdown: ""

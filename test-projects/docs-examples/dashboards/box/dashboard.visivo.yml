@@ -1,0 +1,20 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "monty-python-simple.visivo.yml"
+  - path: "proclamations.visivo.yml"
+dashboards:
+  - name: "Trace Props Examples: Box"
+    rows: 
+      - height: compact 
+        items:
+          - markdown: "# Box"
+          - markdown: ""
+            width: 5 
+      - height: medium 
+        items: 
+          - chart: ref(Sample Box Plot Chart)
+          - chart: ref(Rewards Distribution Box Plot)
+      - height: medium
+        items:
+          - chart: ref(Proclamations Box Plot with Outliers)
+          - markdown: ''

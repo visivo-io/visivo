@@ -1,0 +1,32 @@
+models:
+  - name: sunburst-data-sizes
+    args:
+      - echo
+      - |
+        labels,parents,values,size
+        Total,,100,1
+        A,Total,40,2
+        B,Total,30,3
+        C,Total,30,4
+        D,A,10,5
+        E,A,20,6
+        F,B,10,7
+traces:
+  - name: Sunburst Plot with Custom Sizes
+    model: ref(sunburst-data-sizes)
+    props:
+      type: sunburst
+      labels: query(labels)
+      parents: query(parents)
+      values: query("values")
+      marker:
+        line:
+          width: query(size)
+          color: black
+charts:
+  - name: Sunburst Chart with Custom Sizes
+    traces:
+      - ref(Sunburst Plot with Custom Sizes)
+    layout:
+      title:
+        text: Sunburst Plot with Custom Sizes<br><sub>Custom Sizes for Each Segment</sub>

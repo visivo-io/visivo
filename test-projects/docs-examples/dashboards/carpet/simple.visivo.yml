@@ -1,0 +1,45 @@
+models:
+  - name: carpet-data-axes
+    args:
+      - echo
+      - |
+        a,b,x,y
+        1,5,2,3
+        2,6,3,4
+        3,7,4,5
+        4,8,5,6
+        5,9,6,7
+traces:
+  - name: Carpet Plot with Custom Axes
+    model: ref(carpet-data-axes)
+    props:
+      type: carpet
+      a: query(a)
+      b: query(b)
+      y: query(y)
+      aaxis:
+        title:
+          text: "Custom A Axis"
+        tickprefix: "A-"
+      baxis:
+        title:
+          text: "Custom B Axis"
+        tickprefix: "B-"
+charts:
+  - name: Simple Carpet Chart
+    traces:
+      - ref(Carpet Plot with Custom Axes)
+    layout:
+      title:
+        text: Carpet Plot with Custom Axes<br><sub>With Customized A and B Axes</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis"
+      margin: 
+        b: 0
+        r: 70
+        l: 70
+        t: 50

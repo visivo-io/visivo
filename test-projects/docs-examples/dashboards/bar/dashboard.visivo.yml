@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "cohorts.visivo.yml"
+  - path: "horizontal-cohorts.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Bar"
+    rows:
+      - height: compact 
+        items:
+          - markdown: "# Bar"
+          - markdown: ""
+            width: 5 
+      - height: medium 
+        items: 
+          - chart: ref(Count Times Enemy Was Encountered)
+          - chart: ref(Count Times Enemy Was Encountered by Knight)
+      - height: medium
+        items: 
+          - markdown: ""
+          - chart: ref(Count Times Enemy Was Encountered by Knight H)

@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "gauge.visivo.yml"
+  - path: "delta.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Indicator"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Indicator"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Numeric Indicator Chart)
+          - chart: ref(Gauge Indicator Chart)
+      - height: medium
+        items:
+          - chart: ref(Delta Indicator with Comparison Chart)
+          - markdown: ""

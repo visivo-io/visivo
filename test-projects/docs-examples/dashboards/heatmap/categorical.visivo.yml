@@ -1,0 +1,40 @@
+models:
+  - name: heatmap-data-custom
+    args:
+      - echo
+      - |
+        x,y,z
+        Low,A,0.1
+        Low,B,0.2
+        Low,C,0.3
+        Medium,A,0.4
+        Medium,B,0.5
+        Medium,C,0.6
+        High,A,0.7
+        High,B,0.8
+        High,C,0.9
+traces:
+  - name: Heatmap with Custom Colorscale
+    model: ref(heatmap-data-custom)
+    props:
+      type: heatmap
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      zmin: 0
+      zmax: 1
+charts:
+  - name: Heatmap Chart with Categorical Axis
+    traces:
+      - ref(Heatmap with Custom Colorscale)
+    layout:
+      title:
+        text: Heatmap Chart with Categorical Axis<br><sub>Categorical Data</sub>
+      xaxis:
+        title:
+          text: "Priority Level"
+        type: "category"
+      yaxis:
+        title:
+          text: "Category"
+        type: "category"

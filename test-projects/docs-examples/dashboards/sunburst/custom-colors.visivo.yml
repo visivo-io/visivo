@@ -1,0 +1,30 @@
+models:
+  - name: sunburst-data-colors
+    args:
+      - echo
+      - |
+        labels,parents,values,colors
+        Total,,100,#1f77b4
+        A,Total,40,#ff7f0e
+        B,Total,30,#2ca02c
+        C,Total,30,#d62728
+        D,A,10,#9467bd
+        E,A,20,#8c564b
+        F,B,10,#e377c2
+traces:
+  - name: Sunburst Plot with Custom Colors
+    model: ref(sunburst-data-colors)
+    props:
+      type: sunburst
+      labels: query(labels)
+      parents: query(parents)
+      values: query("values")
+      marker:
+        colors: query(colors)
+charts:
+  - name: Sunburst Chart with Custom Colors
+    traces:
+      - ref(Sunburst Plot with Custom Colors)
+    layout:
+      title:
+        text: Sunburst Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>

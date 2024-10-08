@@ -1,0 +1,34 @@
+models:
+  - name: funnel-data-custom
+    args:
+      - echo
+      - |
+        stage,value,color
+        Leads,1200,"#1f77b4"
+        MQL,900,"#ff7f0e"
+        SQL,600,"#2ca02c"
+        Proposal,300,"#d62728"
+        Won,100,"#9467bd"
+traces:
+  - name: Custom Markers Funnel Chart
+    model: ref(funnel-data-custom)
+    props:
+      type: funnel
+      y: query(stage)
+      x: query(value)
+      marker:
+        color: query(color)
+      textinfo: "value+percent"
+      orientation: h
+    order_by: 
+      - query(value desc)
+charts:
+  - name: Funnel Chart with Custom Markers
+    traces:
+      - ref(Custom Markers Funnel Chart)
+    layout:
+      title:
+        text: Funnel Chart with Custom Markers<br><sub>Stages of the Sales Funnel</sub>
+      xaxis:
+        title:
+          text: "Stage"

@@ -1,0 +1,39 @@
+models:
+  - name: sample-data
+    args:
+      - echo
+      - |
+        category,value
+        A,23
+        A,15
+        A,18
+        A,30
+        A,28
+        B,40
+        B,35
+        B,31
+        B,25
+        B,29
+traces:
+  - name: Sample Box Plot
+    model: ref(sample-data)
+    props:
+      type: box
+      x: query(category)
+      y: query(value)
+      boxpoints: "all"
+      jitter: 1
+      pointpos: -1.1
+charts:
+  - name: Sample Box Plot Chart
+    traces:
+      - ref(Sample Box Plot)
+    layout:
+      title:
+        text: Simple Box Plot<br><sub>Distribution of Values by Category</sub>
+      xaxis:
+        title:
+          text: "Category"
+      yaxis:
+        title:
+          text: "Value"

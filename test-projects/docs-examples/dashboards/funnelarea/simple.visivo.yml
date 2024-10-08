@@ -1,0 +1,25 @@
+models:
+  - name: funnelarea-data
+    args:
+      - echo
+      - |
+        stage,value
+        Leads,1000
+        Qualified Leads,750
+        Opportunities,400
+        Proposals,200
+        Closed Deals,100
+traces:
+  - name: Simple Funnelarea Plot
+    model: ref(funnelarea-data)
+    props:
+      type: funnelarea
+      labels: query(stage)
+      values: query(value)
+charts:
+  - name: Simple Funnelarea Chart
+    traces:
+      - ref(Simple Funnelarea Plot)
+    layout:
+      title:
+        text: Simple Funnelarea Chart<br><sub>Proportional Sales Funnel</sub>

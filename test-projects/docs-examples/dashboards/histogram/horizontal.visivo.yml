@@ -1,0 +1,53 @@
+models:
+  - name: histogram-data-horizontal
+    args:
+      - echo
+      - |
+        value
+        1
+        3
+        2
+        5
+        4
+        3
+        3
+        3
+        3
+        4
+        1
+        3
+        4
+        3
+        3
+        4
+        1
+        2
+        3
+        5
+        2
+        3
+        4
+traces:
+  - name: Horizontal Histogram Plot
+    model: ref(histogram-data-horizontal)
+    props:
+      type: histogram
+      y: query(value)
+      nbinsy: 2
+      marker:
+        color: "#ff7f0e"
+      orientation: h
+charts:
+  - name: Horizontal Histogram Chart
+    traces:
+      - ref(Horizontal Histogram Plot)
+    layout:
+      title:
+        text: Horizontal Histogram Plot<br><sub>Data Distribution in a Horizontal Format</sub>
+      yaxis:
+        title:
+          text: "Value"
+      xaxis:
+        title:
+          text: "Count"
+      bargap: 0.05

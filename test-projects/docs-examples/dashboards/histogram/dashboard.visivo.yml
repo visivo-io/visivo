@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "horizontal.visivo.yml"
+  - path: "stacked.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Histogram"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Histogram"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Histogram Chart)
+          - chart: ref(Horizontal Histogram Chart)
+      - height: medium
+        items:
+          - chart: ref(Stacked Histogram Chart)
+          - markdown: ""

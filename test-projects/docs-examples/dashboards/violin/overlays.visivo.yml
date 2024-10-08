@@ -1,0 +1,33 @@
+models:
+  - name: violin-data-box
+    args:
+      - echo
+      - |
+        category,value
+        A,23
+        A,25
+        A,27
+        B,30
+        B,35
+        B,28
+traces:
+  - name: Violin Plot with Box
+    model: ref(violin-data-box)
+    cohort_on: category
+    props:
+      type: violin
+      y: query(category)
+      x: query(value)
+      orientation: h
+      box: 
+        visible: true
+      points: "all"
+      marker:
+        symbol: "cross-dot"
+charts:
+  - name: Violin Chart with Box
+    traces:
+      - ref(Violin Plot with Box)
+    layout:
+      title:
+        text: Horizontal Violin Plot with Box & Points<br><sub>Overlay a Box Plot and Points</sub>

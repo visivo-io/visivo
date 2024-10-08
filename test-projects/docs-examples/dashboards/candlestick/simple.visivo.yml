@@ -1,0 +1,37 @@
+models:
+  - name: stock-data
+    args:
+      - echo
+      - |
+        date,open,high,low,close
+        2024-01-01,100,105,95,102
+        2024-01-02,102,108,99,104
+        2024-01-03,104,110,100,108
+        2024-01-04,108,112,101,107
+        2024-01-05,107,109,98,103
+traces:
+  - name: Simple Candlestick Plot
+    model: ref(stock-data)
+    props:
+      type: candlestick
+      x: query(date)
+      open: query(open)
+      high: query(high)
+      low: query(low)
+      close: query(close)
+      
+charts:
+  - name: Simple Candlestick Chart
+    traces:
+      - ref(Simple Candlestick Plot)
+    layout:
+      title:
+        text: Simple Candlestick Chart<br><sub>Stock Price Movements</sub>
+      xaxis:
+        rangeslider:
+          visible: false
+        title:
+          text: "Date"
+      yaxis:
+        title:
+          text: "Price (USD)"
