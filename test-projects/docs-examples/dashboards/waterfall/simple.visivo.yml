@@ -1,0 +1,28 @@
+models:
+  - name: waterfall-data
+    args:
+      - echo
+      - |
+        idx,label,value
+        0,Starting,1000
+        1,Increase A,200
+        2,Decrease B,-150
+        3,Increase C,300
+        4,Ending,1350
+traces:
+  - name: Simple Waterfall Plot
+    model: ref(waterfall-data)
+    props:
+      type: waterfall
+      x: query(label)
+      y: query(value)
+      measure: ["initial", "relative", "relative", "relative", "total"]
+    order_by: 
+      - query( idx asc)
+charts:
+  - name: Simple Waterfall Chart
+    traces:
+      - ref(Simple Waterfall Plot)
+    layout:
+      title:
+        text: Simple Waterfall Plot<br><sub>Sequential Changes in Value</sub>

@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `violin` trace type is used to create violin plots, which visualize the distribution of numerical data. Violin plots combine aspects of box plots and density plots to show the distribution of the data, including its probability density. They are ideal for comparing distributions between different categories.
@@ -54,43 +53,48 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
                 text: Simple Violin Plot<br><sub>Distribution of Values by Category</sub>
         ```
 
-    === "Violin Plot with Custom Colors"
+    === "Violin Plot with Box Overlay"
 
-        This example demonstrates a `violin` plot with custom colors for each category:
+        This example demonstrates a `violin` plot with a box plot overlay and individual data points:
 
-        ![](../../assets/example-charts/props/violin/custom-colors-violin.png)
+        ![](../../assets/example-charts/props/violin/violin-with-box.png)
 
         Here's the code:
 
         ```yaml
         models:
-          - name: violin-data-colors
+          - name: violin-data-box
             args:
               - echo
               - |
-                category,value,color
-                A,23,#1f77b4
-                A,25,#1f77b4
-                A,27,#1f77b4
-                B,30,#ff7f0e
-                B,35,#ff7f0e
-                B,28,#ff7f0e
+                category,value
+                A,23
+                A,25
+                A,27
+                B,30
+                B,35
+                B,28
         traces:
-          - name: Violin Plot with Custom Colors
-            model: ref(violin-data-colors)
+          - name: Violin Plot with Box
+            model: ref(violin-data-box)
+            cohort_on: category
             props:
               type: violin
-              x: query(category)
-              y: query(value)
+              y: query(category)
+              x: query(value)
+              orientation: h
+              box: 
+                visible: true
+              points: "all"
               marker:
-                color: query(color)
+                symbol: "cross-dot"
         charts:
-          - name: Violin Chart with Custom Colors
+          - name: Violin Chart with Box
             traces:
-              - ref(Violin Plot with Custom Colors)
+              - ref(Violin Plot with Box)
             layout:
               title:
-                text: Violin Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
+                text: Violin Plot with Box Overlay<br><sub>Distribution with Box Plot and Data Points</sub>
         ```
 
     === "Violin Plot with Split Categories"
@@ -110,25 +114,48 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
                 category,sub_category,value
                 A,X,23
                 A,Y,25
+                A,Y,70
+                A,Y,15
                 A,X,27
+                A,X,13
+                A,X,21
+                A,X,81
                 B,X,30
+                B,X,35
+                B,X,4
                 B,Y,35
+                B,Y,6
+                B,Y,5
                 B,X,28
         traces:
-          - name: Violin Plot with Split Categories
+          - name: Violin Plot Category X
             model: ref(violin-data-split)
+            cohort_on: sub_category
             props:
               type: violin
+              side: positive
               x: query(category)
               y: query(value)
-              split: query(sub_category)
+            filters: 
+              - query( sub_category = 'X')
+          - name: Violin Plot Category Y
+            model: ref(violin-data-split)
+            cohort_on: sub_category
+            props:
+              type: violin
+              side: negative
+              x: query(category)
+              y: query(value)
+            filters: 
+              - query( sub_category = 'Y')
         charts:
           - name: Violin Chart with Split Categories
             traces:
-              - ref(Violin Plot with Split Categories)
+              - ref(Violin Plot Category Y)
+              - ref(Violin Plot Category X)
             layout:
               title:
-                text: Violin Plot with Split Categories<br><sub>Split Violin Plot for Different Subcategories</sub>
+                text: Violin Plot with Split Categories<br><sub>Side-by-Side Comparison of Distributions</sub>
         ```
 
 {% endraw %}

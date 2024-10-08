@@ -31,12 +31,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
             args:
               - echo
               - |
-                x,y,z,i,j,k
-                0,0,0,0,1,2
-                1,0,0,1,2,0
-                1,1,0,2,0,1
-                0,1,0,0,1,2
-                0,0,1,1,2,0
+                idx,x,y,z,i,j,k,color
+                0,0,0,0,0,1,2,#1f77b4
+                1,1,0,2,0,2,3,#ff7f0e
+                2,2,1,0,0,3,1,#2ca02c
+                3,0,2,1,1,2,3,#9467bd
+
         traces:
           - name: Simple Mesh3D Plot
             model: ref(mesh3d-data)
@@ -48,7 +48,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
               i: query(i)
               j: query(j)
               k: query(k)
+              facecolor: query(color)
               opacity: 0.7
+            order_by: 
+              - query( idx asc)
         charts:
           - name: Simple Mesh3D Chart
             traces:
@@ -56,88 +59,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
             layout:
               title:
                 text: Simple Mesh3D Plot<br><sub>3D Mesh Surface Visualization</sub>
-        ```
-
-    === "Mesh3D Plot with Custom Colors"
-
-        This example demonstrates a `mesh3d` plot with custom vertex colors to highlight the 3D structure:
-
-        ![](../../assets/example-charts/props/mesh3d/custom-colors-mesh3d.png)
-
-        Here's the code:
-
-        ```yaml
-        models:
-          - name: mesh3d-data-custom
-            args:
-              - echo
-              - |
-                x,y,z,i,j,k,color
-                0,0,0,0,1,2,#1f77b4
-                1,0,0,1,2,0,#ff7f0e
-                1,1,0,2,0,1,#2ca02c
-                0,1,0,0,1,2,#d62728
-                0,0,1,1,2,0,#9467bd
-        traces:
-          - name: Mesh3D Plot with Custom Colors
-            model: ref(mesh3d-data-custom)
-            props:
-              type: mesh3d
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              i: query(i)
-              j: query(j)
-              k: query(k)
-              facecolor: query(color)
-        charts:
-          - name: Mesh3D Chart with Custom Colors
-            traces:
-              - ref(Mesh3D Plot with Custom Colors)
-            layout:
-              title:
-                text: Mesh3D Plot with Custom Colors<br><sub>Colored 3D Surface Visualization</sub>
-        ```
-
-    === "Mesh3D Plot with Opacity"
-
-        This example shows a `mesh3d` plot with custom opacity to render a translucent mesh surface:
-
-        ![](../../assets/example-charts/props/mesh3d/mesh3d-opacity.png)
-
-        Here's the code:
-
-        ```yaml
-        models:
-          - name: mesh3d-data-opacity
-            args:
-              - echo
-              - |
-                x,y,z,i,j,k
-                0,0,0,0,1,2
-                1,0,0,1,2,0
-                1,1,0,2,0,1
-                0,1,0,0,1,2
-                0,0,1,1,2,0
-        traces:
-          - name: Mesh3D Plot with Opacity
-            model: ref(mesh3d-data-opacity)
-            props:
-              type: mesh3d
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              i: query(i)
-              j: query(j)
-              k: query(k)
-              opacity: 0.4
-        charts:
-          - name: Mesh3D Plot with Opacity
-            traces:
-              - ref(Mesh3D Plot with Opacity)
-            layout:
-              title:
-                text: Mesh3D Plot with Opacity<br><sub>Translucent 3D Mesh Surface</sub>
         ```
 
 {% endraw %}

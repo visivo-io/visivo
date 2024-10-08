@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `isosurface` trace type is used to create 3D isosurface visualizations, which represent a 3D volume using surfaces of constant values. Isosurfaces are commonly used in scientific visualization, such as fluid dynamics, medical imaging, or geospatial data, to show regions of interest within a 3D space.
@@ -27,18 +26,60 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
 
         ```yaml
         models:
-          - name: isosurface-data
+          - name: isosurface-data-simple
             args:
               - echo
               - |
-                x,y,z,value
-                1,1,1,10
-                2,2,2,15
-                3,3,3,20
-                4,4,4,25
-                5,5,5,30
+                idx,x,y,z,value
+                0,0,0,1,1
+                1,0,1,1,2
+                2,0,0,0,3
+                3,0,1,0,4
+                4,1,0,1,5
+                5,1,1,1,6
+                6,1,0,0,7
+                7,1,1,0,8
+
         traces:
-          - name: Simple Isosurface Plot
+          - name: Simple Isosurface Plot Trace
+            model: ref(isosurface-data-simple)
+            props:
+              type: isosurface
+              x: query(x)
+              y: query(y)
+              z: query(z)
+              value: query(value)
+              isomin: 2 
+              isomax: 6 
+              colorscale: "Reds"
+            order_by: 
+              - query( idx asc )
+        charts:
+          - name: Simple Isosurface Chart
+            traces:
+              - ref(Simple Isosurface Plot Trace)
+            layout:
+              title:
+                text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>
+        ```
+
+    === "Complex Isosurface Plot with Slice"
+
+        This example demonstrates a more complex `isosurface` plot with a slice and custom camera angle:
+
+        ![](../../assets/example-charts/props/isosurface/complex-with-slice-isosurface.png)
+
+        Here's the code:
+
+        ```yaml
+        models:
+          - name: isosurface-data
+            args:
+              - curl
+              - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
+
+        traces:
+          - name: Complex With Slice Isosurface Plot
             model: ref(isosurface-data)
             props:
               type: isosurface
@@ -46,97 +87,41 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
               y: query(y)
               z: query(z)
               value: query(value)
-              isomin: 10
-              isomax: 30
+              isomin: -100
+              isomax: 100
+              surface: 
+                show: true 
+                count: 1 
+                fill: .8
+              slices: 
+                z: 
+                  show: true
+                  locations: [-0.1]
+              caps: 
+                x: 
+                  show: false 
+                y: 
+                  show: false 
+                z: 
+                  show: false
+            order_by: 
+              - query(idx asc)
+
         charts:
-          - name: Simple Isosurface Chart
+          - name: Complex With Slice Isosurface Chart
             traces:
-              - ref(Simple Isosurface Plot)
+              - ref(Complex With Slice Isosurface Plot) 
             layout:
               title:
-                text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>
-        ```
-
-    === "Isosurface Plot with Custom Colors"
-
-        This example demonstrates an `isosurface` plot with a custom colorscale for the surface rendering:
-
-        ![](../../assets/example-charts/props/isosurface/custom-colors-isosurface.png)
-
-        Here's the code:
-
-        ```yaml
-        models:
-          - name: isosurface-data-custom
-            args:
-              - echo
-              - |
-                x,y,z,value
-                1,1,1,0.5
-                2,2,2,1.0
-                3,3,3,1.5
-                4,4,4,2.0
-                5,5,5,2.5
-        traces:
-          - name: Isosurface Plot with Custom Colors
-            model: ref(isosurface-data-custom)
-            props:
-              type: isosurface
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
-              colorscale: "Viridis"
-              isomin: 0.5
-              isomax: 2.5
-        charts:
-          - name: Isosurface Plot with Custom Colors
-            traces:
-              - ref(Isosurface Plot with Custom Colors)
-            layout:
-              title:
-                text: Isosurface Plot with Custom Colors<br><sub>Custom Colors for 3D Volume</sub>
-        ```
-
-    === "Isosurface Plot with Opacity"
-
-        This example shows an `isosurface` plot with varying opacity to give a translucent view of the 3D surface:
-
-        ![](../../assets/example-charts/props/isosurface/isosurface-opacity.png)
-
-        Here's the code:
-
-        ```yaml
-        models:
-          - name: isosurface-data-opacity
-            args:
-              - echo
-              - |
-                x,y,z,value
-                1,1,1,100
-                2,2,2,200
-                3,3,3,300
-                4,4,4,400
-                5,5,5,500
-        traces:
-          - name: Isosurface Plot with Opacity
-            model: ref(isosurface-data-opacity)
-            props:
-              type: isosurface
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
-              isomin: 100
-              isomax: 500
-              opacity: 0.6
-        charts:
-          - name: Isosurface Plot with Opacity
-            traces:
-              - ref(Isosurface Plot with Opacity)
-            layout:
-              title:
-                text: Isosurface Plot with Opacity<br><sub>Translucent 3D Surface Rendering</sub>
+                text: Complex With Slice Isosurface Plot<br><sub>3D Volume Visualization</sub>
+              margin: 
+                t: 50
+                b: 20
+              camera: 
+                eye: 
+                  x: 1.86
+                  y: 0.61
+                  z: 0.98
         ```
 
 {% endraw %}

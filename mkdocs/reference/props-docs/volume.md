@@ -27,111 +27,41 @@ _**Check out the [Attributes](../configuration/Trace/Props/Volume/#attributes) f
 
         ```yaml
         models:
-          - name: volume-data
+          - name: isosurface-data-simple
             args:
               - echo
               - |
-                x,y,z,value
-                0,0,0,1
-                0,1,0,2
-                0,0,1,3
-                1,1,1,4
-                1,0,1,5
+                idx,x,y,z,value
+                0,0,0,1,1
+                1,0,1,1,2
+                2,0,0,0,3
+                3,0,1,0,4
+                4,1,0,1,5
+                5,1,1,1,6
+                6,1,0,0,7
+                7,1,1,0,8
+
         traces:
-          - name: Simple Volume Plot
-            model: ref(volume-data)
+          - name: Simple Isosurface Plot Trace
+            model: ref(isosurface-data-simple)
             props:
-              type: volume
+              type: isosurface
               x: query(x)
               y: query(y)
               z: query(z)
               value: query(value)
+              isomin: 2 
+              isomax: 6 
+              colorscale: "Reds"
+            order_by: 
+              - query( idx asc )
         charts:
-          - name: Simple Volume Chart
+          - name: Simple Isosurface Chart
             traces:
-              - ref(Simple Volume Plot)
+              - ref(Simple Isosurface Plot Trace)
             layout:
               title:
-                text: Simple Volume Plot<br><sub>3D Volumetric Data</sub>
-        ```
-
-    === "Volume Plot with Custom Opacity"
-
-        This example demonstrates a `volume` plot where the opacity of the volume is customized based on the scalar field values:
-
-        ![](../../assets/example-charts/props/volume/custom-opacity-volume.png)
-
-        Here's the code:
-
-        ```yaml
-        models:
-          - name: volume-data-opacity
-            args:
-              - echo
-              - |
-                x,y,z,value
-                0,0,0,1
-                0,1,0,2
-                0,0,1,3
-                1,1,1,4
-                1,0,1,5
-        traces:
-          - name: Volume Plot with Custom Opacity
-            model: ref(volume-data-opacity)
-            props:
-              type: volume
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
-              opacity: 0.7
-        charts:
-          - name: Volume Chart with Custom Opacity
-            traces:
-              - ref(Volume Plot with Custom Opacity)
-            layout:
-              title:
-                text: Volume Plot with Custom Opacity<br><sub>Customized Transparency for Volume Data</sub>
-        ```
-
-    === "Volume Plot with Surface Levels"
-
-        Here's a `volume` plot where surface levels are added to highlight different levels within the volume:
-
-        ![](../../assets/example-charts/props/volume/surface-levels-volume.png)
-
-        Here's the code:
-
-        ```yaml
-        models:
-          - name: volume-data-surface
-            args:
-              - echo
-              - |
-                x,y,z,value
-                0,0,0,1
-                0,1,0,2
-                0,0,1,3
-                1,1,1,4
-                1,0,1,5
-        traces:
-          - name: Volume Plot with Surface Levels
-            model: ref(volume-data-surface)
-            props:
-              type: volume
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
-              surface:
-                count: 5
-        charts:
-          - name: Volume Chart with Surface Levels
-            traces:
-              - ref(Volume Plot with Surface Levels)
-            layout:
-              title:
-                text: Volume Plot with Surface Levels<br><sub>Surface Levels Highlighted in Volume</sub>
+                text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>
         ```
 
 {% endraw %}

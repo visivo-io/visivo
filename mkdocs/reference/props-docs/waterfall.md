@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `waterfall` trace type is used to create waterfall charts, which are useful for visualizing incremental changes in value over a series of categories or time. Waterfall charts are commonly used in financial and analytical contexts to show how sequential positive or negative values affect an initial value.
@@ -31,12 +30,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
             args:
               - echo
               - |
-                label,value
-                Starting,1000
-                Increase A,200
-                Decrease B,-150
-                Increase C,300
-                Ending,1350
+                idx,label,value
+                0,Starting,1000
+                1,Increase A,200
+                2,Decrease B,-150
+                3,Increase C,300
+                4,Ending,1350
         traces:
           - name: Simple Waterfall Plot
             model: ref(waterfall-data)
@@ -44,7 +43,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
               type: waterfall
               x: query(label)
               y: query(value)
-              measure: ["relative", "relative", "relative", "total"]
+              measure: ["initial", "relative", "relative", "relative", "total"]
+            order_by: 
+              - query( idx asc)
         charts:
           - name: Simple Waterfall Chart
             traces:
@@ -68,12 +69,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
             args:
               - echo
               - |
-                label,value,color
-                Starting,1000,#1f77b4
-                Increase A,200,#2ca02c
-                Decrease B,-150,#d62728
-                Increase C,300,#ff7f0e
-                Ending,1350,#9467bd
+                idx,label,value,color
+                0,Starting,1000,#1f77b4
+                1,Increase A,200,#2ca02c
+                2,Decrease B,-150,#d62728
+                3,Increase C,300,#ff7f0e
+                4,Ending,1350,#9467bd
         traces:
           - name: Waterfall Plot with Custom Colors
             model: ref(waterfall-data-colors)
@@ -81,9 +82,21 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
               type: waterfall
               x: query(label)
               y: query(value)
-              measure: ["relative", "relative", "relative", "total"]
-              marker:
-                color: query(color)
+              measure: ["initial", "relative", "relative", "relative", "total"]
+              increasing:
+                marker: 
+                  color: 'orange'
+              decreasing: 
+                marker: 
+                  color: 'purple'
+              totals: 
+                marker: 
+                  color: 'grey'
+                  line: 
+                    color: 'orange'
+                    width: 4
+            order_by: 
+              - query( idx asc)
         charts:
           - name: Waterfall Chart with Custom Colors
             traces:
@@ -93,11 +106,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
                 text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
         ```
 
-    === "Waterfall Plot with Connectors"
+    === "Financial Waterfall Plot"
 
-        Here's a `waterfall` plot where connectors are added between the bars, visually linking each stage of the incremental changes:
+        Here's a `waterfall` plot demonstrating a financial use case with connectors and custom formatting:
 
-        ![](../../assets/example-charts/props/waterfall/waterfall-with-connectors.png)
+        ![](../../assets/example-charts/props/waterfall/financial-waterfall.png)
 
         Here's the code:
 
@@ -107,31 +120,47 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
             args:
               - echo
               - |
-                label,value
-                Starting,1000
-                Increase A,200
-                Decrease B,-150
-                Increase C,300
-                Ending,1350
+                idx,quarter,half,value,mode
+                0,Q1,H1,1000,initial
+                1,Q2,H1,200,relative
+                2,Gross Profit,H1 Summary,0,total
+                3,Q3,H2,-150,relative
+                4,Q4,H2,300,relative
+                5,Gross Profit,FY2024,0,total
         traces:
           - name: Waterfall Plot with Connectors
             model: ref(waterfall-data-connectors)
             props:
               type: waterfall
-              x: query(label)
+              x: 
+                - query(half)
+                - query(quarter)
               y: query(value)
-              measure: ["relative", "relative", "relative", "total"]
+              measure: query(mode)
+              hovertemplate: "%{x}: %{y:$.2f}"
+              texttemplate: "%{delta:$.2f}"
+              textposition: "outside"
               connector:
                 line:
-                  color: "black"
-                  width: 2
+                  color: "orange"
+                  width: 5
+            order_by: 
+              - query( idx asc)
         charts:
           - name: Waterfall Chart with Connectors
             traces:
               - ref(Waterfall Plot with Connectors)
             layout:
               title:
-                text: Waterfall Plot with Connectors<br><sub>Visual Connections Between Stages</sub>
+                text: Financial Waterfall
+              margin: 
+                b: 50
+                t: 60
+              yaxis:
+                range: [0, 1600]
+                tickprefix: '$'
+                title: 
+                  text: "Millions ($)"
         ```
 
 {% endraw %}

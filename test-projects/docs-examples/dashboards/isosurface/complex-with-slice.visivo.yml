@@ -1,0 +1,51 @@
+models:
+  - name: isosurface-data
+    args:
+      - curl
+      - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
+
+
+traces:
+  - name: Complex With Slice Isosurface Plot
+    model: ref(isosurface-data)
+    props:
+      type: isosurface
+      x: query(x)
+      y: query(y)
+      z: query(z)
+      value: query(value)
+      isomin: -100
+      isomax: 100
+      surface: 
+        show: true 
+        count: 1 
+        fill: .8
+      slices: 
+        z: 
+          show: true
+          locations: [-0.1]
+      caps: 
+        x: 
+          show: false 
+        y: 
+          show: false 
+        z: 
+          show: false
+    order_by: 
+      - query(idx asc)
+
+charts:
+  - name: Complex With Slice Isosurface Chart
+    traces:
+      - ref(Complex With Slice Isosurface Plot) 
+    layout:
+      title:
+        text: Complex With Slice Isosurface Plot<br><sub>3D Volume Visualization</sub>
+      margin: 
+        t: 50
+        b: 20
+      camera: 
+        eye: 
+          x: 1.86
+          y: 0.61
+          z: 0.98

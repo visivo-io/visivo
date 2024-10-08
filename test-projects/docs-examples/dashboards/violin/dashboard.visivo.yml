@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "overlays.visivo.yml"
+  - path: "split-categories.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Violin"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Violin"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Violin Chart)
+          - chart: ref(Violin Chart with Box)
+      - height: medium
+        items:
+          - chart: ref(Violin Chart with Split Categories)
+          - markdown: ""
