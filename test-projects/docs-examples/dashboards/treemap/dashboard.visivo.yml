@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "custom-sizes.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Treemap"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Treemap"
+          - markdown: ""
+            width: 5
+      - height: large
+        items:
+          - chart: ref(Simple Treemap Chart)
+          - chart: ref(Treemap Chart with Custom Colors)
+      - height: large
+        items:
+          - chart: ref(Treemap Chart with Custom Tiling)
+          - markdown: ""

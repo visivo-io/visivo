@@ -1,0 +1,33 @@
+models:
+  - name: splom-data-colors
+    args:
+      - echo
+      - |
+        var1,var2,var3,category
+        1,2,3,A
+        2,3,4,B
+        3,4,5,A
+        4,5,6,B
+        5,6,7,A
+traces:
+  - name: Splom Plot with Custom Colors
+    model: ref(splom-data-colors)
+    props:
+      type: splom
+      dimensions:
+        - label: "Variable 1"
+          values: query(var1)
+        - label: "Variable 2"
+          values: query(var2)
+        - label: "Variable 3"
+          values: query(var3)
+      marker:
+        color: query(case when category = 'A' THEN 'red' else 'green' end)
+        size: 20
+charts:
+  - name: Splom Chart with Custom Colors
+    traces:
+      - ref(Splom Plot with Custom Colors)
+    layout:
+      title:
+        text: Splom Plot with Custom Colors<br><sub>Color-Coded Scatter Plot Matrix</sub>
