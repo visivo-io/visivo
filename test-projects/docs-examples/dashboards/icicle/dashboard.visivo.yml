@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "depth-limited.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Icicle"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Icicle"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Icicle Chart)
+          - chart: ref(Custom Colors Icicle Chart)
+      - height: medium
+        items:
+          - chart: ref(Icicle Plot with Depth Limiting)
+          - markdown: ""

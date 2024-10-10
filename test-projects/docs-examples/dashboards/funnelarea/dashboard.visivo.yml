@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "hover-info.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Funnelarea"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Funnelarea"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Funnelarea Chart)
+          - chart: ref(Funnelarea Chart with Custom Colors)
+      - height: medium
+        items:
+          - chart: ref(Funnelarea Chart with Hover Info)
+          - markdown: ""

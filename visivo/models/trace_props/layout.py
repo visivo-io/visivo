@@ -5601,6 +5601,10 @@ class Layout(LayoutBase):
 		None,
 		description=""" enumerated , one of ( "convert types" | "strict" )<br>Using "strict" a numeric string in trace data is not converted to a number. Using "convert types" a numeric string in trace data may be treated as a number during automatic axis `type` detection. This is the default value; however it could be overridden for individual axes. """
 	)
+	barcornerradius: Optional[float | constr(pattern= r"^\d+%$") | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+        "10%",
+        description=""" number or categorical coordinate string<br>Sets the rounding of bar corners. May be an integer number of pixels, or a percentage of bar width (as a string ending in %)"""
+    )
 	calendar: Optional[str]= Field(
 		None,
 		description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the default calendar system to use for interpreting and displaying dates throughout the plot. """

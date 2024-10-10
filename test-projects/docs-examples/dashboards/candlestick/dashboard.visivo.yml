@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "candlestick-plus-volume.visivo.yml"
+  - path: "colored-candlestick.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Candlestick"
+    rows: 
+      - height: compact 
+        items:
+          - markdown: "# Candlestick"
+          - markdown: ""
+            width: 5 
+      - height: medium 
+        items: 
+          - chart: ref(Simple Candlestick Chart)
+          - chart: ref(Candlestick Chart with Volume)
+      - height: medium 
+        items: 
+          - chart: ref(Candlestick with Custom Colors)
+          - markdown: ""

@@ -1,0 +1,26 @@
+models:
+  - name: violin-data
+    args:
+      - echo
+      - |
+        category,value
+        A,23
+        A,25
+        A,27
+        B,30
+        B,35
+        B,28
+traces:
+  - name: Simple Violin Plot
+    model: ref(violin-data)
+    props:
+      type: violin
+      x: query(category)
+      y: query(value)
+charts:
+  - name: Simple Violin Chart
+    traces:
+      - ref(Simple Violin Plot)
+    layout:
+      title:
+        text: Simple Violin Plot<br><sub>Distribution of Values by Category</sub>

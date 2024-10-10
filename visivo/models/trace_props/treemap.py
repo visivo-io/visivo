@@ -387,6 +387,10 @@ class TreemapMarker(TracePropsAttribute):
 		None,
 		description=""" colorscale<br>Sets the colorscale. Has an effect only if colors is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
 	)
+	cornerradius: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+        None,
+        description=""" number greater than or equal to 0<br>Sets the maximum rounding of corners (in px)."""
+    )
 	depthfade: Optional[str]= Field(
 		None,
 		description=""" enumerated , one of ( true | false | "reversed" )<br>Determines if the sector colors are faded towards the background from the leaves up to the headers. This option is unavailable when a `colorscale` is present, defaults to false when `marker.colors` is set, but otherwise defaults to true. When set to "reversed", the fading direction is inverted, that is the top elements within hierarchy are drawn with fully saturated colors while the leaves are faded towards the background color. """

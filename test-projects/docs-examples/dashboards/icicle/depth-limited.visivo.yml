@@ -1,0 +1,31 @@
+models:
+  - name: icicle-data-depth
+    args:
+      - echo
+      - |
+        category,parent,value
+        A,,100
+        B,A,50
+        C,A,30
+        D,A,20
+        E,B,25
+        F,B,15
+traces:
+  - name: Icicle Plot with Depth Limiting Trace
+    model: ref(icicle-data-depth)
+    props:
+      type: icicle
+      labels: query(category)
+      parents: query(parent)
+      values: query(value)
+      maxdepth: 2
+      branchvalues: "total"
+      marker: 
+        colorscale: "YlOrRd"
+charts:
+  - name: Icicle Plot with Depth Limiting
+    traces:
+      - ref(Icicle Plot with Depth Limiting Trace)
+    layout:
+      title:
+        text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>

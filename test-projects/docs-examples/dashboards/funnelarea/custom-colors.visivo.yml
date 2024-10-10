@@ -1,0 +1,27 @@
+models:
+  - name: funnelarea-data-custom
+    args:
+      - echo
+      - |
+        stage,value,color
+        Awareness,5000,"#1f77b4"
+        Interest,3000,"#ff7f0e"
+        Consideration,1500,"#2ca02c"
+        Decision,700,"#d62728"
+        Purchase,300,"#9467bd"
+traces:
+  - name: Custom Colors Funnelarea Plot
+    model: ref(funnelarea-data-custom)
+    props:
+      type: funnelarea
+      labels: query(stage)
+      values: query(value)
+      marker:
+        colors: query(color)
+charts:
+  - name: Funnelarea Chart with Custom Colors
+    traces:
+      - ref(Custom Colors Funnelarea Plot)
+    layout:
+      title:
+        text: Funnelarea Chart with Custom Colors<br><sub>User Journey</sub>

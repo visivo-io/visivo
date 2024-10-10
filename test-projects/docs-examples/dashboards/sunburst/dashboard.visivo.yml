@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "custom-sizes.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Sunburst"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Sunburst"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Sunburst Chart)
+          - chart: ref(Sunburst Chart with Custom Colors)
+      - height: medium
+        items:
+          - chart: ref(Sunburst Chart with Custom Sizes)
+          - markdown: ""

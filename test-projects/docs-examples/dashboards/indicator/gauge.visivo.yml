@@ -1,0 +1,28 @@
+models:
+  - name: indicator-data-gauge
+    args:
+      - echo
+      - |
+        value
+        65
+traces:
+  - name: Gauge Indicator
+    model: ref(indicator-data-gauge)
+    columns: 
+      val: value
+    props:
+      type: indicator
+      mode: "gauge+number"
+      value: column(val)[0]
+      gauge:
+        axis:
+          range: [0, 100]
+        bar:
+          color: "#17becf"
+charts:
+  - name: Gauge Indicator Chart
+    traces:
+      - ref(Gauge Indicator)
+    layout:
+      title:
+        text: Gauge Indicator<br><sub>Progress Towards a Target</sub>

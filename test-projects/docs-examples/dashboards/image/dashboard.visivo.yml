@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colorscale.visivo.yml"
+  - path: "annotated.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Image"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Image"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Image Chart)
+          - chart: ref(Image Plot with Custom Colorscale)
+      - height: medium
+        items:
+          - chart: ref(Image Plot with Axis Annotations)
+          - markdown: ""

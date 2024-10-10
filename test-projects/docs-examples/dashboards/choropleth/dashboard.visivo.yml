@@ -1,0 +1,15 @@
+includes:
+  - path: "simple.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Choropleth"
+    rows: 
+      - height: compact 
+        items:
+          - markdown: "# Choropleth"
+          - markdown: ""
+            width: 5 
+      - height: medium 
+        items: 
+          - chart: ref(Simple Choropleth Map)
+          - markdown: ""

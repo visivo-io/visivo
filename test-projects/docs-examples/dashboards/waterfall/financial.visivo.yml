@@ -1,0 +1,47 @@
+models:
+  - name: waterfall-data-connectors
+    args:
+      - echo
+      - |
+        idx,quarter,half,value,mode
+        0,Q1,H1,1000,initial
+        1,Q2,H1,200,relative
+        2,Gross Profit,H1 Summary,0,total
+        3,Q3,H2,-150,relative
+        4,Q4,H2,300,relative
+        5,Gross Profit,FY2024,0,total
+traces:
+  - name: Waterfall Plot with Connectors
+    model: ref(waterfall-data-connectors)
+    props:
+      type: waterfall
+      x: 
+        - query(half)
+        - query(quarter)
+      y: query(value)
+      measure: query(mode)
+      hovertemplate: "%{x}: %{y:$.2f}"
+      texttemplate: "%{delta:$.2f}"
+      textposition: "outside"
+      connector:
+        line:
+          color: "orange"
+          width: 5
+    order_by: 
+      - query( idx asc)
+charts:
+  - name: Waterfall Chart with Connectors
+    traces:
+      - ref(Waterfall Plot with Connectors)
+    layout:
+      title:
+        text: Financial Waterfall
+      margin: 
+        b: 50
+        t: 60
+      yaxis:
+        range: [0, 1600]
+        tickprefix: '$'
+        title: 
+          text: "Millions ($)"
+        

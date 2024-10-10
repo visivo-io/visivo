@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "financial.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Waterfall"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Waterfall"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Waterfall Chart)
+          - chart: ref(Waterfall Chart with Custom Colors)
+      - height: medium
+        items:
+          - chart: ref(Waterfall Chart with Connectors)
+          - markdown: ""

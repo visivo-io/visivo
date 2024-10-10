@@ -1,0 +1,30 @@
+models:
+  - name: icicle-data-custom
+    args:
+      - echo
+      - |
+        category,parent,value,color
+        A,,100,"#1f77b4"
+        B,A,50,"#ff7f0e"
+        C,A,30,"#2ca02c"
+        D,A,20,"#d62728"
+        E,B,25,"#9467bd"
+        F,B,15,"#8c564b"
+traces:
+  - name: Custom Colors Icicle Plot
+    model: ref(icicle-data-custom)
+    props:
+      type: icicle
+      labels: query(category)
+      parents: query(parent)
+      values: query(value)
+      marker:
+        colors: query(color)
+      branchvalues: "total"
+charts:
+  - name: Custom Colors Icicle Chart
+    traces:
+      - ref(Custom Colors Icicle Plot)
+    layout:
+      title:
+        text: Icicle Plot with Custom Colors<br><sub>Custom Coloring for Branches</sub>

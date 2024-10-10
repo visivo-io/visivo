@@ -1,0 +1,41 @@
+
+models:
+  - name: stock-data-colored
+    args:
+      - echo
+      - |
+        date,open,high,low,close
+        2024-01-01,100,105,95,102
+        2024-01-02,102,108,99,104
+        2024-01-03,104,110,100,108
+        2024-01-04,108,112,101,107
+        2024-01-05,107,109,98,103
+traces:
+  - name: Colored Candlestick Plot
+    model: ref(stock-data-colored)
+    props:
+      type: candlestick
+      x: query(date)
+      open: query(open)
+      high: query(high)
+      low: query(low)
+      close: query(close)
+      increasing:
+        line:
+          color: "#17becf"
+      decreasing:
+        line:
+          color: "#d62728"
+charts:
+  - name: Candlestick with Custom Colors
+    traces:
+      - ref(Colored Candlestick Plot)
+    layout:
+      title:
+        text: Colored Candlestick Chart<br><sub>Stock Price Movements with Custom Colors</sub>
+      xaxis:
+        title:
+          text: "Date"
+      yaxis:
+        title:
+          text: "Price (USD)"

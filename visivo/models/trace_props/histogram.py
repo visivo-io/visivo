@@ -529,6 +529,10 @@ class HistogramMarker(TracePropsAttribute):
 		None,
 		description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
 	)
+	cornerradius: Optional[float | constr(pattern= r"^\d+%$") | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+        None,
+        description=""" number or categorical coordinate string<br>Sets the rounding of bar corners. May be an integer number of pixels, or a percentage of bar width (as a string ending in %)"""
+    )
 	line: Optional[Line1]= Field(
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """

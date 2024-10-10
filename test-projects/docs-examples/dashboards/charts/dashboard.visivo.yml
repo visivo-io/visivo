@@ -1,0 +1,19 @@
+includes:
+  - path: "indicators-and-trends.visivo.yml"
+  - path: "duel-axis.visivo.yml"
+  - path: "single-trace.visivo.yml"
+
+dashboards:
+  - name: Chart Layout Examples
+    rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Chart Examples
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Big Number Over Line Chart)
+          - chart: ref(Single Trace Chart)
+          - chart: ref(Duel Axis)

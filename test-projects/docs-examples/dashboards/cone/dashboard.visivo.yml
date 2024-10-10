@@ -1,0 +1,16 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "wind-direction.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Cone"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Cone"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Cone Plot)
+          - chart: ref(Wind Direction Cone Plot)

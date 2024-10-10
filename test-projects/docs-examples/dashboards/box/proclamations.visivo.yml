@@ -1,0 +1,28 @@
+models:
+  - name: monty-python-quest-proclamations
+    args:
+      - curl
+      - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
+traces:
+  - name: Proclamations Box Plot
+    model: ref(monty-python-quest-proclamations)
+    cohort_on: "person"
+    props:
+      type: box
+      y: query(proclamations_made)
+      x: query(enemy_encountered) 
+
+charts:
+  - name: Proclamations Box Plot with Outliers
+    traces:
+      - ref(Proclamations Box Plot)
+    layout:
+      title:
+        text: Cohorted Box Plot<br><sub>Proclamations Made Across Quests by Enemy</sub>
+      xaxis:
+        title:
+          text: "Enemy"
+      boxmode: group
+      yaxis:
+        title:
+          text: "Proclamations Made"

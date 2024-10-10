@@ -1,0 +1,56 @@
+models:
+  - name: stock-data-with-volume
+    args:
+      - echo
+      - |
+        date,open,high,low,close,volume
+        2024-01-01,100,105,95,102,1000000
+        2024-01-02,102,108,99,104,1200000
+        2024-01-03,104,110,100,108,1500000
+        2024-01-04,108,112,101,107,1100000
+        2024-01-05,107,109,98,103,1300000
+traces:
+  - name: Candlestick Plot with Volume
+    model: ref(stock-data-with-volume)
+    props:
+      type: candlestick
+      x: query(date)
+      open: query(open)
+      high: query(high)
+      low: query(low)
+      close: query(close)
+  - name: Volume Trace
+    model: ref(stock-data-with-volume)
+    props:
+      type: bar
+      x: query(date)
+      y: query(volume)
+      yaxis: "y2"
+      marker:
+        opacity: .5
+        color: 'blue'
+charts:
+  - name: Candlestick Chart with Volume
+    traces:
+      - ref(Candlestick Plot with Volume)
+      - ref(Volume Trace)
+    layout:
+      showlegend: false
+
+      title:
+        text: Candlestick Chart with Volume<br><sub>Stock Price and Volume</sub>
+      xaxis:
+        title:
+          text: "Date"
+        rangeslider: 
+          visible: false
+      yaxis:
+        title:
+          text: "Price (USD)"
+
+      yaxis2:
+        title:
+          text: "Volume"
+        overlaying: "y"
+        side: "right"
+        range: [0, 10000000]

@@ -11,6 +11,7 @@ from .trace_props.layout import Layout
 
 class Chart(SelectorModel, NamedModel, ParentModel):
     """
+    ## Overview
     Charts enable you to combine one or more [traces](../Trace/) with [layout](./Layout/) configurations _(titles, axis labels, ect.)_. 
 
     !!! tip 
@@ -20,31 +21,183 @@ class Chart(SelectorModel, NamedModel, ParentModel):
   
     You can also configure interactivity in your charts by setting up a  [`selector`](../Selector/). 
 
-    ## Common Setups
+    ## Common Configurations
 
     ### Single Trace
 
-    This is the most common and simplest chart setup. You will use this when you want to display a single trace. Typically you will also 
-    want to configure chart and axis titles as well. 
-    ``` yaml
-    chart:
-      name: a-chart-name
-      traces:
-        - ref(a-trace-name)
-      layout:
-        title: 'Aggregated Fibonacci'
-        yaxis:
-          title: 'Widgets Sold' #Describe the data in your y axis
-        xaxis:
-          title: 'Week' #Describe the data in your x axis
-        stack: False
-    ```
+    This is the most common and simplest chart setup. You will use this when you want to display a single trace.
+    !!! example "Single Trace"
 
-    ### Duel Yaxis
+        ??? note "Code"
 
+            ``` yaml
+            models:
+              - name: Array of Numbers 
+                args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+
+            traces:
+              - name: Simple Scatter 
+                model: ref(Array of Numbers)
+                props: 
+                  type: scatter
+                  x: query( ln(numbers_column))
+                  y: query(numbers_column)
+                  mode: markers 
+                  marker:
+                    size: query( abs(sin(exp(numbers_column) - 5)*100) )
+                    opacity: query( abs(cos(exp(numbers_column) - 5)*100)/100 )
+                filters: 
+                  - query( numbers_column < 400 )
+                order_by: 
+                  - query(numbers_column)
+
+            charts:
+              - name: Single Trace Chart
+                traces: 
+                  - ref(Simple Scatter)
+                layout: 
+                  title: 
+                    text: "Single Trace"
+            ```
+        ![](../../../assets/example-charts/single-trace.png)
+    ### Duel Axis
+    When you want to display two different types of data on the same chart, duel axis can come in handy. 
+    !!! tip 
+
+        You can actually create a third, and fourth axis ([see plotly docs](https://plotly.com/javascript/multiple-axes/#multiple-y-axes)), however, we do not recommended using more than two yaxes. 
+    
+    Here's a working example that you can copy and paste into your project:
+    !!! example "Duel Y Axes"
+
+        ??? note "Code"
+
+            ``` yaml
+            models:
+              - name: Series of Numbers 
+                args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+
+            traces:
+              - name: Yaxis Trace
+                model: ref(Series of Numbers)
+                props: 
+                  type: bar 
+                  y: query(numbers_column)
+                  marker: 
+                    color: '#713B57'
+                    opacity: .7
+                order_by:
+                  - query(numbers_column)
+                    
+              - name: Yaxis2 Trace
+                model: ref(Series of Numbers)
+                props: 
+                  type: scatter
+                  y: query( (500 -  numbers_column) )
+                  yaxis: 'y2'
+                  line: 
+                    shape: spline 
+                    smoothing: .1
+                    color: orange
+                    
+                order_by:
+                  - query(numbers_column)
+
+            charts:
+              - name: Duel Axis
+                traces: 
+                  - ref(Yaxis2 Trace)
+                  - ref(Yaxis Trace)
+                layout: 
+                  title: 
+                    text: "Dual Axis"
+                  legend: 
+                    orientation: "h"
+                  yaxis: 
+                    title: 
+                      text: "yaxis title"
+                      font: 
+                        size: 18
+                        color: '#713B57'
+                  yaxis2: 
+                    title: 
+                      text: "yaxis2 title"
+                      font: 
+                        size: 18
+                        color: orange
+                    side: right 
+                    overlaying: 'y'
+                    anchor: 'y'
+                    showgrid: false 
+            
+            ```
+        ![](../../../assets/example-charts/duel-axis.png)
+        
     ### Position Traces with Domains
 
-    ### Single Select Traces
+    You can use domains to position traces on your chart. This is useful when you want to display multiple traces on your chart.
+    The `domain` attribute in the trace props enables you to position your traces relative to 0,0 coordinates of the chart. 
+
+    Here's some working examples that you can copy and paste into your project:
+    !!! example "Trend Line + Multiple Indicators"
+
+        ??? note "Code"
+
+            ``` yaml
+            models:
+              - name: Numbers From Remote CSV 
+                args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+
+            traces:
+              - name: Line Trace
+                model: ref(Numbers From Remote CSV)
+                props: 
+                  type: scatter    
+                  y: query(numbers_column)
+                  line:   
+                    shape: spline
+                    color: orange
+                    
+              - name: Average Value
+                model: ref(Numbers From Remote CSV)
+                columns: 
+                  avg_numbers_column: avg(numbers_column)
+                props: 
+                  type: indicator
+                  value: column(avg_numbers_column)[0]
+                  number: 
+                    font: 
+                      size: 35
+                    suffix: " avg"
+                  domain: 
+                    y: [0, .7]
+                    x: [.5, 1]
+
+              - name: Total Value
+                model: ref(Numbers From Remote CSV)
+                columns: 
+                  sum_numbers_column: sum(numbers_column)
+                props: 
+                  type: indicator
+                  value: column(sum_numbers_column)[0]
+                  number: 
+                    font: 
+                      size: 35
+                    suffix: " sum"
+                  domain: 
+                    y: [.5, 1]
+                    x: [.2, .5]
+            
+            charts:
+              - name: Big Number Over Line Chart
+                traces: 
+                  - ref(Average Value)
+                  - ref(Total Value)
+                  - ref(Line Trace)
+                layout: 
+                  title: 
+                    text: "Indicator + Scatter Plot"
+            ```
+        ![](../../../assets/example-charts/position-traces-with-domains.png)
     
     """
 

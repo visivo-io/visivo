@@ -1,0 +1,40 @@
+models:
+  - name: waterfall-data-colors
+    args:
+      - echo
+      - |
+        idx,label,value,color
+        0,Starting,1000,#1f77b4
+        1,Increase A,200,#2ca02c
+        2,Decrease B,-150,#d62728
+        3,Increase C,300,#ff7f0e
+        4,Ending,1350,#9467bd
+traces:
+  - name: Waterfall Plot with Custom Colors
+    model: ref(waterfall-data-colors)
+    props:
+      type: waterfall
+      x: query(label)
+      y: query(value)
+      measure: ["initial", "relative", "relative", "relative", "total"]
+      increasing:
+        marker: 
+          color: 'orange'
+      decreasing: 
+        marker: 
+          color: 'purple'
+      totals: 
+        marker: 
+          color: 'grey'
+          line: 
+            color: 'orange'
+            width: 4
+    order_by: 
+      - query( idx asc)
+charts:
+  - name: Waterfall Chart with Custom Colors
+    traces:
+      - ref(Waterfall Plot with Custom Colors)
+    layout:
+      title:
+        text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
