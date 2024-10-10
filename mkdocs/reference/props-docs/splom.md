@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `splom` trace type is used to create scatter plot matrices, which are useful for visualizing pairwise relationships between multiple variables. A scatter plot matrix shows scatter plots for each pair of variables, making it a great tool for exploring correlations and patterns in multi-dimensional data.
@@ -19,7 +18,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
 
     === "Simple Splom Plot"
 
-        Here's a simple `splom` plot showing pairwise scatter plots between three variables:
+        Here's a simple `splom` plot showing pairwise scatter plots between four variables:
 
         ![](../../assets/example-charts/props/splom/simple-splom.png)
 
@@ -29,35 +28,34 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
         models:
           - name: splom-data
             args:
-              - echo
-              - |
-                var1,var2,var3
-                1,2,3
-                2,3,4
-                3,4,5
-                4,5,6
-                5,6,7
+              - curl
+              - "-s"
+              - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
         traces:
           - name: Simple Splom Plot
             model: ref(splom-data)
+            cohort_on: species
             props:
               type: splom
               dimensions:
-                - label: "Variable 1"
-                  values: query(var1)
-                - label: "Variable 2"
-                  values: query(var2)
-                - label: "Variable 3"
-                  values: query(var3)
+                - label: "Sepal Length"
+                  values: query(sepal_length)
+                - label: "Sepal Width"
+                  values: query(sepal_width)
+                - label: "Petal Length"
+                  values: query(petal_length)
+                - label: "Petal Width"
+                  values: query(petal_width)
               diagonal:
                 visible: false
+              showupperhalf: false
         charts:
           - name: Simple Splom Chart
             traces:
               - ref(Simple Splom Plot)
             layout:
               title:
-                text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Three Variables</sub>
+                text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Four Variables & Three Cohorts</sub>
         ```
 
     === "Splom Plot with Custom Colors"
@@ -93,8 +91,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
                 - label: "Variable 3"
                   values: query(var3)
               marker:
-                color: query(category)
-                colorscale: "Viridis"
+                color: query(case when category = 'A' THEN 'red' else 'green' end)
+                size: 20
         charts:
           - name: Splom Chart with Custom Colors
             traces:

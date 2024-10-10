@@ -1,0 +1,34 @@
+models:
+  - name: treemap-data
+    args:
+      - echo
+      - |
+        labels,parents,values
+        Total,,100
+        A,Total,40
+        B,Total,30
+        C,Total,30
+        D,A,10
+        E,A,20
+        F,B,10
+traces:
+  - name: Simple Treemap Plot
+    model: ref(treemap-data)
+    props:
+      type: treemap
+      labels: query(labels)
+      parents: query(parents)
+      values: query("values")
+      marker: 
+        colorscale: Blackbody
+      textposition: "middle center"
+      texttemplate: "<b>%{label}</b>"
+      textfont:
+        size: 12
+charts:
+  - name: Simple Treemap Chart
+    traces:
+      - ref(Simple Treemap Plot)
+    layout:
+      title:
+        text: Simple Treemap Chart<br><sub>Hierarchical Data Visualization</sub>

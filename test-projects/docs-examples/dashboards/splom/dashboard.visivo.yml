@@ -1,0 +1,21 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "custom-sizes.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Splom"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Splom"
+          - markdown: ""
+            width: 5
+      - height: xlarge
+        items:
+          - chart: ref(Simple Splom Chart)
+          - chart: ref(Splom Chart with Custom Colors)
+      - height: large
+        items:
+          - chart: ref(Splom Chart with Custom Sizes)
+          - markdown: ""

@@ -1,4 +1,3 @@
-
 ## Overview
 
 The `treemap` trace type is used to create treemap charts, which visualize hierarchical data through nested rectangles. Each branch of the hierarchy is represented as a rectangle, with smaller rectangles inside representing sub-branches. Treemaps are useful for visualizing part-to-whole relationships and comparing the size of different categories.
@@ -46,7 +45,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
               type: treemap
               labels: query(labels)
               parents: query(parents)
-              values: query(values)
+              values: query("values")
+              marker: 
+                colorscale: Blackbody
+              textposition: "middle center"
+              texttemplate: "<b>%{label}</b>"
+              textfont:
+                size: 12
         charts:
           - name: Simple Treemap Chart
             traces:
@@ -85,9 +90,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
               type: treemap
               labels: query(labels)
               parents: query(parents)
-              values: query(values)
+              values: query("values")
               marker:
                 colors: query(colors)
+                line: 
+                  color: black
         charts:
           - name: Treemap Chart with Custom Colors
             traces:
@@ -97,45 +104,49 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
                 text: Treemap Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
         ```
 
-    === "Treemap Plot with Custom Sizes"
+    === "Treemap Plot with Custom Tiling"
 
-        Here's a `treemap` plot where the size of each segment is customized based on additional values:
+        Here's a `treemap` plot where the tiling algorithm is customized:
 
-        ![](../../assets/example-charts/props/treemap/custom-sizes-treemap.png)
+        ![](../../assets/example-charts/props/treemap/custom-tiling-treemap.png)
 
         Here's the code:
 
         ```yaml
         models:
-          - name: treemap-data-sizes
+          - name: treemap-data-tiling
             args:
               - echo
               - |
-                labels,parents,values,size
-                Total,,100,1
-                A,Total,40,2
-                B,Total,30,3
-                C,Total,30,4
-                D,A,10,5
-                E,A,20,6
-                F,B,10,7
+                labels,parents,values
+                Total,,100
+                A,Total,40
+                B,Total,30
+                C,Total,30
+                D,A,15
+                E,A,25
+                F,B,10
+                G,B,20
+                H,C,15
+                I,C,15
         traces:
-          - name: Treemap Plot with Custom Sizes
-            model: ref(treemap-data-sizes)
+          - name: Treemap Plot with Custom Tiling
+            model: ref(treemap-data-tiling)
             props:
               type: treemap
               labels: query(labels)
               parents: query(parents)
-              values: query(values)
-              marker:
-                sizes: query(size)
+              values: query("values")
+              tiling:
+                packing: binary
+                squarifyratio: 1.5
         charts:
-          - name: Treemap Chart with Custom Sizes
+          - name: Treemap Chart with Custom Tiling
             traces:
-              - ref(Treemap Plot with Custom Sizes)
+              - ref(Treemap Plot with Custom Tiling)
             layout:
               title:
-                text: Treemap Plot with Custom Sizes<br><sub>Custom Sizes for Each Segment</sub>
+                text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>
         ```
 
 {% endraw %}

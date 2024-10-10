@@ -1,0 +1,32 @@
+models:
+  - name: splom-data-sizes
+    args:
+      - echo
+      - |
+        var1,var2,var3,size
+        1,2,3,10
+        2,3,4,15
+        3,4,5,20
+        4,5,6,25
+        5,6,7,30
+traces:
+  - name: Splom Plot with Custom Sizes
+    model: ref(splom-data-sizes)
+    props:
+      type: splom
+      dimensions:
+        - label: "Variable 1"
+          values: query(var1)
+        - label: "Variable 2"
+          values: query(var2)
+        - label: "Variable 3"
+          values: query(var3)
+      marker:
+        size: query(size)
+charts:
+  - name: Splom Chart with Custom Sizes
+    traces:
+      - ref(Splom Plot with Custom Sizes)
+    layout:
+      title:
+        text: Splom Plot with Custom Sizes<br><sub>Scatter Plot Matrix with Custom Marker Sizes</sub>
