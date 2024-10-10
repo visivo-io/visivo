@@ -21,6 +21,12 @@ def test_ContextString_ref_name():
     context_string = ContextString("${ref(Name)}")
     assert context_string.get_reference() == "Name"
 
+    context_string = ContextString("${ref(Name).property }")
+    assert context_string.get_reference() == "Name"
+
+    context_string = ContextString("${ref(Name)}.property[1]")
+    assert context_string.get_reference() == "Name"
+
 
 def test_ContextString_get_path():
     context_string = ContextString("")

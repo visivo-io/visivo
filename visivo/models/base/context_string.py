@@ -4,8 +4,8 @@ import re
 
 from visivo.models.dag import all_descendants_with_name
 
-INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w]*\s*}"
-INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w\]\[]*)\s*}"
+INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w\[\]]*\s*}"
+INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w\[\]]*)\s*}"
 INLINE_PATH_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]]+?)\s*}"
 VALUE_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]\)\()]+?)\s*}"
 
