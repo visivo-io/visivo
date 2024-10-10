@@ -1,3 +1,4 @@
+from trace import Trace
 import click
 import requests
 import json
@@ -21,7 +22,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     project = parser.parse()
     serializer = Serializer(project=project)
     project_json = json.loads(
-        serializer.dereference().model_dump_json(exclude_none=True)
+        serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
     )
 
     body = {
@@ -50,7 +51,8 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         project_id = project_data["id"]
         project_url = project_data["url"]
 
-        for trace in project.trace_objs:
+        traces = project.descendants_of_type(type=Trace)
+        for trace in traces:
             url = f"{host}/api/files/"
 
             data_file = f"{output_dir}/{trace.name}/data.json"

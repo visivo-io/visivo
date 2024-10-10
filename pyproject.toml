@@ -37,6 +37,8 @@ python-dateutil = "^2.9.0.post0"
 pytest-mock = "^3.14.0"
 pymysql = "^1.1.0"
 assertpy = "^1.1"
+plotly = "^5.24.0"
+gravis = "^0.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.1"

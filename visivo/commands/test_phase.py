@@ -1,25 +1,24 @@
 import sys
-import click
 from visivo.logging.logger import Logger
+from visivo.models.test import Test
 from visivo.testing.runner import Runner
 from visivo.commands.compile_phase import compile_phase
 
 
-def test_phase(
-    output_dir: str, default_source: str, working_dir: str, alert_names: str
-):
+def test_phase(output_dir: str, default_source: str, working_dir: str):
     project = compile_phase(
         default_source=default_source, working_dir=working_dir, output_dir=output_dir
     )
     Logger.instance().debug("Testing project")
-    alerts = list(map(lambda an: project.find_alert(name=an), alert_names))
-    alerts = list(filter(None, alerts))
+
+    dag = project.dag()
+    tests = project.descendants_of_type(type=Test)
+
     test_runner = Runner(
-        traces=project.trace_objs,
+        tests=tests,
         project=project,
         output_dir=output_dir,
-        alerts=alerts,
-        default_source=default_source,
+        dag=dag,
     )
     if not test_runner.run().success:
         sys.exit(1)
