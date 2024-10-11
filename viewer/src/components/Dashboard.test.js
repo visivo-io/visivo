@@ -83,7 +83,9 @@ describe('shows/hides row based on selector in URL', () => {
     await waitFor(() => {
       expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
     });
-    expect(screen.queryByText("Option 1 Content")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Option 1 Content")).not.toBeInTheDocument();
+    });
   });
 
   test('show both options if both selected', async () => {
@@ -92,7 +94,9 @@ describe('shows/hides row based on selector in URL', () => {
     await waitFor(() => {
       expect(screen.getByText("Option 1 Content")).toBeInTheDocument();
     });
-    expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
+    });
   });
 });
 
@@ -114,7 +118,9 @@ describe('shows/hides item based on selector in URL', () => {
     await waitFor(() => {
       expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
     });
-    expect(screen.queryByText("Option 1 Content")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Option 1 Content")).not.toBeInTheDocument();
+    });
   });
 
   test('show both markdowns if both selected', async () => {
@@ -123,7 +129,9 @@ describe('shows/hides item based on selector in URL', () => {
     await waitFor(() => {
       expect(screen.getByText("Option 1 Content")).toBeInTheDocument();
     });
-    expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Option 2 Content")).toBeInTheDocument();
+    });
   });
 });
 

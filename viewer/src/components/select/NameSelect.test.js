@@ -1,9 +1,10 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
-import NameSelect, { generateNewSearchParams, getOptionsFromValues } from './NameSelect'
+import NameSelect, { generateNewSearchParam, getOptionsFromValues } from './NameSelect'
 import selectEvent from 'react-select-event'
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
 import { unstable_HistoryRouter as HistoryRouter } from 'react-router-dom';
+import { SearchParamsProvider } from '../../contexts/SearchParamsContext';
 
 
 test('renders without selector', async () => {
@@ -50,15 +51,18 @@ test('renders single select', async () => {
 
 test('renders with push to history', async () => {
   let history = createBrowserHistory();
-  render(<HistoryRouter history={history}>
-    <NameSelect
-      names={["name1", "name2"]}
-      showLabel
-      alwaysPushSelectionToUrl={true}
-      onVisible={() => { }}
-      selector={{ type: "single", name: "selector" }}
-      onChange={() => { }} />
-  </HistoryRouter>);
+  render(
+    <HistoryRouter history={history}>
+      <SearchParamsProvider>
+        <NameSelect
+          names={["name1", "name2"]}
+          showLabel
+          alwaysPushSelectionToUrl={true}
+          onVisible={() => { }}
+          selector={{ type: "single", name: "selector" }}
+          onChange={() => { }} />
+      </SearchParamsProvider>
+    </HistoryRouter>);
 
   const selectWrapper = screen.getByLabelText('Selector')
   await act(() => selectEvent.select(selectWrapper, 'name1'));
@@ -105,45 +109,37 @@ test('renders not visible', async () => {
   })
 });
 
-describe('generateNewSearchParams', () => {
+describe('generateNewSearchParam', () => {
   test('selects single choice', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
     const selectedOptions = { value: "selected", label: "selected" }
     const defaultOptions = { value: "default", label: "default" }
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
 
-    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "selected" }))
+    expect(newSearchParams).toEqual("selected")
   });
 
   test('selects nothing when equal to default', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
     const selectedOptions = { value: "default", label: "default" }
     const defaultOptions = { value: "default", label: "default" }
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
 
-    expect(newSearchParams).toEqual(new URLSearchParams({}))
+    expect(newSearchParams).toEqual(null)
   });
 
   test('selects multi choice', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
     const selectedOptions = [{ value: "selected", label: "selected" }]
     const defaultOptions = [{ value: "default", label: "default" }]
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
 
-    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "selected" }))
+    expect(newSearchParams).toEqual(["selected"])
   });
 
   test('selects no choices', async () => {
-    const name = "Component"
-    const previousSearchParams = new URLSearchParams({ "Component": "value" })
     const selectedOptions = []
     const defaultOptions = [{ value: "default", label: "default" }]
-    const newSearchParams = generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions)
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
 
-    expect(newSearchParams).toEqual(new URLSearchParams({ "Component": "NoCohorts" }))
+    expect(newSearchParams).toEqual("NoCohorts")
   });
 });
 
