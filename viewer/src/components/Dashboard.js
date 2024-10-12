@@ -54,6 +54,9 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const shouldShowNamedModel = (namedModel) => {
+        if (!namedModel.name) {
+            return true
+        }
         const selector = getSelectorByOptionName(project, namedModel.name)
         if (selector && searchParams.has(selector.name)) {
             const selectedNames = searchParams.get(selector.name).split(",")
@@ -68,7 +71,17 @@ const Dashboard = ({ project, dashboardName }) => {
         if (!shouldShowNamedModel(row)) {
             return null;
         }
-        const visibleItems = row.items.filter(item => shouldShowNamedModel(item));
+        const visibleItems = row.items.filter(item => {
+            let object;
+            if (item.chart) {
+                object = item.chart
+            } else if (item.table) {
+                object = item.table
+            } else if (item.selector) {
+                object = item.selector
+            }
+            return shouldShowNamedModel(object)
+        });
         const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
         const rowStyle = isColumn ? {} : getHeightStyle(row)
 
@@ -87,7 +100,7 @@ const Dashboard = ({ project, dashboardName }) => {
             >
                 {visibleItems.map((item, itemIndex) => (
                     <div
-                        key={`item-${rowIndex}-${itemIndex}`}
+                        key={`item-${rowIndex}-${itemIndex}-${item.chart?.name || item.table?.name || item.selector?.name}`}
                         style={{
                             gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
                             width: isColumn ? '100%' : 'auto'
