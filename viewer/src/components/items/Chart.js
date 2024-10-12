@@ -19,6 +19,9 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
     const selectedPlotData = useMemo(() => {
         return traceNamesInData(selectedCohortData).map((traceName) => {
             const trace = chart.traces.find((trace) => trace.name === traceName)
+            if (!trace) {
+                return []
+            }
             return Object.keys(selectedCohortData[traceName]).map((cohortName) => {
                 const chartData = chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
                 return chartData
