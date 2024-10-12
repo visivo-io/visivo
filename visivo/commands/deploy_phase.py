@@ -1,4 +1,4 @@
-from trace import Trace
+from visivo.models.trace import Trace
 import click
 import requests
 import json
