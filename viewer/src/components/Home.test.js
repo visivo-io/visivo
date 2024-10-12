@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import Home from './Home';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 const loadError = () => {
@@ -21,5 +21,7 @@ const router = createMemoryRouter(routes, {
 test('renders error message', async () => {
   render(<RouterProvider router={router} />);
 
-  expect(screen.getByText('Error Message')).toBeInTheDocument();
+  await waitFor(() => {
+    expect(screen.getByText('Error Message')).toBeInTheDocument();
+  });
 });

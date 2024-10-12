@@ -21,8 +21,6 @@ export const findAllSelectors = (project) => {
     return selectors
 };
 
-// Project.test.js
-
 export const getSelectorByOptionName = (project, name) => {
     const allSelectors = findAllSelectors(project);
     return allSelectors.find(selector =>

@@ -54,6 +54,9 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const shouldShowNamedModel = (namedModel) => {
+        if (!namedModel || !namedModel.name) {
+            return true
+        }
         const selector = getSelectorByOptionName(project, namedModel.name)
         if (selector && searchParams.has(selector.name)) {
             const selectedNames = searchParams.get(selector.name).split(",")
@@ -64,11 +67,26 @@ const Dashboard = ({ project, dashboardName }) => {
         return true
     }
 
+    const shouldShowItem = (item) => {
+        if (!shouldShowNamedModel(item)) {
+            return false
+        }
+        let object;
+        if (item.chart) {
+            object = item.chart
+        } else if (item.table) {
+            object = item.table
+        } else if (item.selector) {
+            object = item.selector
+        }
+        return shouldShowNamedModel(object)
+    }
+
     const renderRow = (row, rowIndex) => {
         if (!shouldShowNamedModel(row)) {
             return null;
         }
-        const visibleItems = row.items.filter(item => shouldShowNamedModel(item));
+        const visibleItems = row.items.filter(shouldShowItem);
         const totalWidth = visibleItems.reduce((sum, item) => sum + (item.width || 1), 0);
         const rowStyle = isColumn ? {} : getHeightStyle(row)
 
@@ -87,7 +105,7 @@ const Dashboard = ({ project, dashboardName }) => {
             >
                 {visibleItems.map((item, itemIndex) => (
                     <div
-                        key={`item-${rowIndex}-${itemIndex}`}
+                        key={`item-${rowIndex}-${itemIndex}-${item.chart?.path || item.table?.path || item.selector?.path}`}
                         style={{
                             gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
                             width: isColumn ? '100%' : 'auto'
@@ -103,7 +121,7 @@ const Dashboard = ({ project, dashboardName }) => {
     };
 
     const renderComponent = (item, row, itemIndex, rowIndex) => {
-        const items = row.items.filter(item => shouldShowNamedModel(item))
+        const items = row.items.filter(shouldShowItem)
         if (items.indexOf(item) < 0) {
             return null
         }

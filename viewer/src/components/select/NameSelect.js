@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useContext } from 'react'
 import Select from 'react-select'
-import { useSearchParams } from "react-router-dom";
+import SearchParamsContext from '../../contexts/SearchParamsContext'
 
 export const getOptionsFromValues = (valueArrayOrString) => {
     if (!valueArrayOrString) {
@@ -23,30 +23,24 @@ const getValuesFromOptions = (optionArrayOrObject) => {
     }
 }
 
-
-export const generateNewSearchParams = (previousSearchParams, name, selectedOptions, defaultOptions, alwaysPushSelectionToUrl) => {
-    const newSearchParams = new URLSearchParams(previousSearchParams.toString())
-    if (newSearchParams.has(name)) {
-        newSearchParams.delete(name)
-    }
+export const generateNewSearchParam = (selectedOptions, defaultOptions, alwaysPushSelectionToUrl) => {
     const selectedOptionsValues = getValuesFromOptions(selectedOptions)
 
     if (!alwaysPushSelectionToUrl) {
         const defaultOptionsValues = getValuesFromOptions(defaultOptions)
         if (selectedOptionsValues.length === defaultOptionsValues.length
             && defaultOptionsValues.every(dov => selectedOptionsValues.includes(dov))) {
-            return newSearchParams
+            return null
         }
     }
 
     if (Array.isArray(selectedOptions) && selectedOptions.length !== 0) {
-        newSearchParams.append(name, selectedOptionsValues)
+        return selectedOptionsValues
     } else if (Array.isArray(selectedOptions) && selectedOptions.length === 0) {
-        newSearchParams.append(name, "NoCohorts")
+        return "NoCohorts"
     } else {
-        newSearchParams.append(name, selectedOptions.value)
+        return selectedOptions.value
     }
-    return newSearchParams
 }
 
 const NameSelect = ({
@@ -59,7 +53,7 @@ const NameSelect = ({
     alwaysPushSelectionToUrl = false,
     onVisible = () => { }
 }) => {
-    let [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams, setStateSearchParam] = useContext(SearchParamsContext);
     let isMulti
     let name
     let visible
@@ -67,7 +61,7 @@ const NameSelect = ({
         isMulti = selector.type === "multiple"
         name = selector.name
         visible = selector.parent_name === parentName
-    } else { 
+    } else {
         isMulti = parentType === "table" ? false : true
         name = `${parentName} Selector`
         visible = true
@@ -85,28 +79,27 @@ const NameSelect = ({
     }, [JSON.stringify(options), isMulti])
 
     const onSelectChange = (selectedOptions) => {
-        setSearchParams((previousSearchParams) => {
-            return generateNewSearchParams(previousSearchParams, name, selectedOptions, defaultOptions, alwaysPushSelectionToUrl)
-        })
+        setStateSearchParam(name, generateNewSearchParam(selectedOptions, defaultOptions, alwaysPushSelectionToUrl))
     }
 
     // Set the default value if the selector is not in the url
     useEffect(() => {
         if (alwaysPushSelectionToUrl) {
-            setSearchParams((previousSearchParams) => {
-                const newSearchParams = new URLSearchParams(previousSearchParams);
-                if (!newSearchParams.has(name)) {
-                    if (Array.isArray(defaultOptions)) {
-                        newSearchParams.set(name, defaultOptions.map(option => option.value).join(','));
-                    } else if (defaultOptions) {
-                        newSearchParams.set(name, defaultOptions.value);
-                    }
+            const getDefaultSearchParam = () => {
+                if (Array.isArray(defaultOptions)) {
+                    return defaultOptions.map(option => option.value).join(',');
+                } else if (defaultOptions) {
+                    return defaultOptions.value;
+                } else {
+                    return null
                 }
-                return newSearchParams;
-            });
+            }
+            if (!searchParams.has(name)) {
+                setStateSearchParam(name, getDefaultSearchParam())
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [searchParams.toString(), JSON.stringify(defaultOptions)]);
 
     const selectedNames = useMemo(() => {
         if (searchParams.has(name) && searchParams.get(name).includes("NoCohorts")) {
