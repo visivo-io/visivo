@@ -54,7 +54,7 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const shouldShowNamedModel = (namedModel) => {
-        if (!namedModel.name) {
+        if (!namedModel || !namedModel.name) {
             return true
         }
         const selector = getSelectorByOptionName(project, namedModel.name)
@@ -68,6 +68,9 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const shouldShowItem = (item) => {
+        if (!shouldShowNamedModel(item)) {
+            return false
+        }
         let object;
         if (item.chart) {
             object = item.chart
