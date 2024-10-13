@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useMemo } from "react";
-import FetchTracesQueryContext from "../contexts/FetchTracesQueryContext";
+import QueryContext from "../contexts/QueryContext";
 import { useQuery } from '@tanstack/react-query';
 import { fetchTracesData } from "../queries/tracesData";
 
@@ -10,7 +10,7 @@ function filterObject(obj, keys) {
 }
 
 export const useTracesData = (projectId, traceNames) => {
-    const fetchTraceQuery = useContext(FetchTracesQueryContext);
+    const fetchTraceQuery = useContext(QueryContext);
     const [traceData, setTraceData] = useState(null);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps

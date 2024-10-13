@@ -63,9 +63,19 @@ def app_phase(output_dir, working_dir, default_source, name_filter, threads):
     def projects():
         project_json = get_project_json(output_dir, name_filter)
         return {
+            "id": "id",
             "project_json": project_json,
             "created_at": datetime.datetime.now().isoformat(),
         }
+
+    @app.route("/data/project_history.json")
+    def project_history():
+        return [
+            {
+                "id": "id",
+                "created_at": datetime.datetime.now().isoformat(),
+            }
+        ]
 
     @app.route("/data/dag.json")
     def dag():

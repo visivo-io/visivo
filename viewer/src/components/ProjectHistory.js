@@ -1,19 +1,27 @@
 
 import React from "react";
-import { useMatches } from 'react-router-dom';
-
+import { useRouteLoaderData } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query'
+import { fetchProjectHistoryQuery } from '../queries/project_history'
 
 const ProjectHistory = () => {
-    let matches = useMatches();
-    let match = matches.find((match) => Boolean(match.id === "project"))
+    let project = useRouteLoaderData('project')
 
-    if (!match || !match.data.created_at) {
+    const { data, isLoading, isError } = useQuery(fetchProjectHistoryQuery(project?.id))
+
+    if (!project || !project.id || isLoading || isError) {
         return null;
     }
 
     return (
         <span data-testid="project-history" className="mr-2">
-            {new Date(Date.parse(match.data.created_at)).toLocaleString()}
+            <select defaultValue={project.id}>
+                {data.map((history_project) => (
+                    <option key={history_project.id} value={history_project.id}>
+                        {new Date(Date.parse(history_project.created_at)).toLocaleString()}
+                    </option>
+                ))}
+            </select>
         </span>
     );
 }
