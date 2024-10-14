@@ -10,13 +10,13 @@ function filterObject(obj, keys) {
 }
 
 export const useTracesData = (projectId, traceNames) => {
-    const { fetchTraceQuery } = useContext(QueryContext);
+    const { fetchTracesQuery } = useContext(QueryContext);
     const [traceData, setTraceData] = useState(null);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(",")]);
 
-    const { data: traces } = useQuery(fetchTraceQuery(projectId, memoizedTraceNames));
+    const { data: traces } = useQuery(fetchTracesQuery(projectId, memoizedTraceNames));
 
     useEffect(() => {
         const waitForData = async () => {
