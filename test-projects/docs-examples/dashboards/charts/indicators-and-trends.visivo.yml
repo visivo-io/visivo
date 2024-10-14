@@ -1,6 +1,6 @@
 models:
   - name: Numbers From Remote CSV 
-    args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
 traces:
   - name: Line Trace
