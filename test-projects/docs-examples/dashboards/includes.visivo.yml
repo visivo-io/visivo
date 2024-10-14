@@ -24,3 +24,4 @@ includes:
   - path: sunburst/dashboard.visivo.yml
   - path: treemap/dashboard.visivo.yml
   - path: splom/dashboard.visivo.yml
+  - path: scatter/dashboard.visivo.yml
