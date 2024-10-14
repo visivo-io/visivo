@@ -10,7 +10,7 @@ function filterObject(obj, keys) {
 }
 
 export const useTracesData = (projectId, traceNames) => {
-    const fetchTraceQuery = useContext(QueryContext);
+    const { fetchTraceQuery } = useContext(QueryContext);
     const [traceData, setTraceData] = useState(null);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps

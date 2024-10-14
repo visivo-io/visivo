@@ -15,6 +15,10 @@ export const withProviders = ({ children, initialPath = '/' }) => {
         queryKey: ['trace', projectId, name],
         queryFn: () => [],
     })
+    const fetchProjectHistoryQuery = (projectId) => ({
+        queryKey: ['project_history', projectId],
+        queryFn: () => [{ id: 1, created_at: '2024-01-01' }],
+    })
 
     const queryClient = new QueryClient({
         defaultOptions: {
@@ -27,7 +31,7 @@ export const withProviders = ({ children, initialPath = '/' }) => {
     return (
         <MemoryRouter initialEntries={[initialPath]}>
             <SearchParamsProvider>
-                <QueryProvider value={fetchTraceQuery}>
+                <QueryProvider value={{ fetchTraceQuery, fetchProjectHistoryQuery }}>
                     <QueryClientProvider client={queryClient}>
                         <Routes>
                             <Route path={initialPath.split('?')[0]} element={children} />

@@ -1,23 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import ProjectHistory from './ProjectHistory';
-import * as projectHistoryApi from '../api/project_history';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
+import { QueryProvider } from '../contexts/QueryContext'
 const queryClient = new QueryClient()
 
 const loadProject = () => {
     return { created_at: "2024-08-07T13:07:34Z", id: "1" }
 }
-
-beforeEach(() => {
-    jest.spyOn(projectHistoryApi, "fetchProjectHistories").mockResolvedValue(
-        [
-            { id: "1", created_at: "2024-08-07T13:07:34Z" },
-            { id: "2", created_at: "2024-08-07T13:08:34Z" },
-        ]
-    )
-})
 
 const routes = [
     {
@@ -28,13 +18,24 @@ const routes = [
     },
 ];
 
+const fetchProjectHistoryQuery = (projectId) => ({
+    queryKey: ['project_history', projectId],
+    queryFn: () => [{ id: 1, created_at: '2024-01-01' }],
+})
+
 const router = createMemoryRouter(routes, {
     initialEntries: ["/project"],
     initialIndex: 0,
 });
 
 test('renders date', async () => {
-    render(<QueryClientProvider client={queryClient}><RouterProvider router={router} /></QueryClientProvider>);
+    render(
+        <QueryClientProvider client={queryClient}>
+            <QueryProvider value={{ fetchProjectHistoryQuery }}>
+                <RouterProvider router={router} />
+            </QueryProvider>
+        </QueryClientProvider>
+    );
 
     await waitFor(() => {
         expect(screen.getByTestId('project-history')).toBeInTheDocument();

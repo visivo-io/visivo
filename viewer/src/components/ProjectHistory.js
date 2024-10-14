@@ -1,11 +1,12 @@
 
-import React from "react";
+import React, { useContext } from "react";
 import { useRouteLoaderData } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query'
-import { fetchProjectHistoryQuery } from '../queries/project_history'
-
+import QueryContext from '../contexts/QueryContext'
 const ProjectHistory = () => {
     let project = useRouteLoaderData('project')
+
+    const { fetchProjectHistoryQuery } = useContext(QueryContext);
 
     const { data, isLoading, isError } = useQuery(fetchProjectHistoryQuery(project?.id))
 
