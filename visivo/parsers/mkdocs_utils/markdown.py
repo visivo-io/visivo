@@ -200,6 +200,10 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     nested_structure, details = _get_traceprop_nested_structure(
         model_defs, model_name, details=[]
     )
+    if model_name.lower() == 'scatter':
+        title = 'Scatter (line, area & scatter)'
+    else: 
+        title = model_name        
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
     pattern = r"'([^'#]+) (\#\(.*?\)!)'"
     processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
@@ -210,7 +214,7 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     else:
         includes = ""
     full_doc = (
-        f"# {model_name} "
+        f"# {title} "
         + "\n"
         + includes
         + model_md

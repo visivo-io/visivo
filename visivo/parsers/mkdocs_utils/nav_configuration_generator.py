@@ -272,3 +272,14 @@ def replace_using_path(object, path, new_value):
         else:
             raise ValueError("Invalid path or object structure")
     return object
+
+def get_using_path(object, path):
+    current = object
+    for step in path:
+        if isinstance(current, dict):
+            current = current[step]
+        elif isinstance(current, list):
+            current = current[int(step)]
+        else:
+            raise ValueError("Invalid path or object structure")
+    return current
