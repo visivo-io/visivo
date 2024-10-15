@@ -1,7 +1,11 @@
-
 ## Overview
 
 The `scatter` trace type is used to create scatter plots, which visualize data points based on two numerical variables. Scatter plots are widely used for analyzing relationships between variables, identifying trends, and detecting outliers.
+
+!!! note "Gotchas"
+
+    1. Scatter traces are also used to **generate area and line traces**.
+    2. The line connections of a scatter trace are determined by the `trace.order_by` attribute. Make sure to set that to get a deterministic trace for lines and area permutations. 
 
 You can customize the marker size, color, and add lines to connect the points to represent the data in various forms like scatter plots, line charts, and more.
 
@@ -17,7 +21,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
 {% raw %}
 !!! example "Common Configurations"
 
-    === "Simple Scatter Plot"
+    === "Simple Scatter"
 
         Here's a simple `scatter` plot showing data points on a 2D plane:
 
@@ -37,6 +41,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 3,15
                 4,25
                 5,30
+                1.5,5
+                2.5,22
+                3.5,9
+                4.5,21
+                5.5,15
+
         traces:
           - name: Simple Scatter Plot
             model: ref(scatter-data)
@@ -45,6 +55,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
               x: query(x)
               y: query(y)
               mode: "markers"
+              marker: 
+                size: 10
+            order_by: 
+              - query(x asc)
         charts:
           - name: Simple Scatter Chart
             traces:
@@ -54,7 +68,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 text: Simple Scatter Plot<br><sub>2D Data Points</sub>
         ```
 
-    === "Scatter Plot with Lines"
+    === "Lines"
 
         This example demonstrates a `scatter` plot with lines connecting the data points to show trends:
 
@@ -75,20 +89,37 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 4,15
                 5,12
         traces:
-          - name: Scatter Plot with Lines
+          - name: Markers and Line
             model: ref(scatter-data-lines)
             props:
               type: scatter
               x: query(x)
               y: query(y)
               mode: "lines+markers"
+            order_by: 
+              - query(x asc)
+          - name: Spline No Markers
+            model: ref(scatter-data-lines)
+            props:
+              type: scatter
+              x: query(x+3 - (x*x)/3)
+              y: query(y*1.5)
+              mode: "lines"
+              line: 
+                shape: spline
+                smoothing: .5 #Sets spline bend
+            order_by: 
+              - query(x+3 - (x*x)/3)
         charts:
           - name: Scatter Chart with Lines
             traces:
-              - ref(Scatter Plot with Lines)
+              - ref(Markers and Line)
+              - ref(Spline No Markers)
             layout:
               title:
                 text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
+              legend: 
+                orientation: h
         ```
 
     === "Scatter Plot with Custom Marker Sizes and Colors"
@@ -122,6 +153,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
               marker:
                 size: query(size)
                 color: query(color)
+            order_by: 
+              - query(x asc)
         charts:
           - name: Scatter Chart with Custom Markers
             traces:
@@ -129,6 +162,52 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
             layout:
               title:
                 text: Scatter Plot with Custom Markers<br><sub>Custom Sizes and Colors for Data Points</sub>
+        ```
+
+    === "Area Plot"
+
+        Here's a `scatter` plot used to create an area plot, filling the area under the line:
+
+        ![](../../assets/example-charts/props/scatter/area-plot.png)
+
+        Here's the code:
+
+        ```yaml
+        models:
+          - name: area-plot-data
+            args:
+              - echo
+              - |
+                x,y
+                1,5
+                2,7
+                3,10
+                4,8
+                5,12
+                6,9
+                7,11
+        traces:
+          - name: Area Plot
+            model: ref(area-plot-data)
+            props:
+              type: scatter
+              x: query(x)
+              y: query(y)
+              mode: "lines"
+              fill: "tozeroy"
+              fillcolor: "rgba(55, 126, 184, 0.2)"
+              line:
+                color: "rgb(55, 126, 184)"
+                width: 2
+            order_by: 
+              - query(x asc)
+        charts:
+          - name: Area Plot Chart
+            traces:
+              - ref(Area Plot)
+            layout:
+              title:
+                text: Area Plot<br><sub>Filled Area Under the Line</sub>
         ```
 
 {% endraw %}

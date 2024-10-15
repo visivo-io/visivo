@@ -2,6 +2,7 @@ models:
   - name: isosurface-data
     args:
       - curl
+      - "-s"
       - https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/fractal-cubic.csv
 
 

@@ -141,6 +141,8 @@ nav:
               - TraceColumns:
                   - reference/configuration/Trace/TraceColumns/index.md
               - Props:
+                  - Area: &id001
+                      - reference/configuration/Trace/Props/Scatter/index.md
                   - Bar:
                       - reference/configuration/Trace/Props/Bar/index.md
                   - Barpolar:
@@ -185,6 +187,7 @@ nav:
                       - reference/configuration/Trace/Props/Indicator/index.md
                   - Isosurface:
                       - reference/configuration/Trace/Props/Isosurface/index.md
+                  - Line: *id001
                   - Mesh3d:
                       - reference/configuration/Trace/Props/Mesh3d/index.md
                   - Ohlc:
@@ -197,8 +200,7 @@ nav:
                       - reference/configuration/Trace/Props/Pie/index.md
                   - Sankey:
                       - reference/configuration/Trace/Props/Sankey/index.md
-                  - Scatter:
-                      - reference/configuration/Trace/Props/Scatter/index.md
+                  - Scatter: *id001
                   - Scatter3d:
                       - reference/configuration/Trace/Props/Scatter3d/index.md
                   - Scattercarpet:
