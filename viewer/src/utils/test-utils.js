@@ -1,5 +1,5 @@
 import { MemoryRouter } from 'react-router-dom';
-import { FetchTracesQueryProvider } from '../contexts/FetchTracesQueryContext';
+import { QueryProvider } from '../contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Routes, Route } from 'react-router-dom'
 import { SearchParamsProvider } from '../contexts/SearchParamsContext';
@@ -11,9 +11,13 @@ export const TestComponent = () => {
 }
 
 export const withProviders = ({ children, initialPath = '/' }) => {
-    const fetchTraceQuery = (projectId, name) => ({
+    const fetchTracesQuery = (projectId, name) => ({
         queryKey: ['trace', projectId, name],
         queryFn: () => [],
+    })
+    const fetchProjectHistoryQuery = (projectId) => ({
+        queryKey: ['project_history', projectId],
+        queryFn: () => [{ id: 1, created_at: '2024-01-01' }],
     })
 
     const queryClient = new QueryClient({
@@ -27,13 +31,13 @@ export const withProviders = ({ children, initialPath = '/' }) => {
     return (
         <MemoryRouter initialEntries={[initialPath]}>
             <SearchParamsProvider>
-                <FetchTracesQueryProvider value={fetchTraceQuery}>
+                <QueryProvider value={{ fetchTracesQuery, fetchProjectHistoryQuery }}>
                     <QueryClientProvider client={queryClient}>
                         <Routes>
                             <Route path={initialPath.split('?')[0]} element={children} />
                         </Routes>
                     </QueryClientProvider>
-                </FetchTracesQueryProvider>
+                </QueryProvider>
             </SearchParamsProvider>
         </MemoryRouter>
     )

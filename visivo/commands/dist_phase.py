@@ -22,17 +22,20 @@ def dist_phase(output_dir, working_dir, dist_dir, default_source, name_filter, t
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
+    created_at = (datetime.datetime.now().isoformat(),)
     with open(f"{dist_dir}/data/project.json", "w") as f:
         f.write(
             json.dumps(
                 {
                     "project_json": project_json,
-                    "created_at": datetime.datetime.now().isoformat(),
+                    "created_at": created_at,
                 }
             )
         )
     with open(f"{dist_dir}/data/error.json", "w") as f:
         f.write(json.dumps({}))
+    with open(f"{dist_dir}/data/project_history.json", "w") as f:
+        f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
 
     trace_dirs = glob(f"{output_dir}/*/", recursive=True)
     for trace_dir in trace_dirs:

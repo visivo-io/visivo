@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useMemo } from "react";
-import FetchTracesQueryContext from "../contexts/FetchTracesQueryContext";
+import QueryContext from "../contexts/QueryContext";
 import { useQuery } from '@tanstack/react-query';
 import { fetchTracesData } from "../queries/tracesData";
 
@@ -10,13 +10,13 @@ function filterObject(obj, keys) {
 }
 
 export const useTracesData = (projectId, traceNames) => {
-    const fetchTraceQuery = useContext(FetchTracesQueryContext);
+    const { fetchTracesQuery } = useContext(QueryContext);
     const [traceData, setTraceData] = useState(null);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(",")]);
 
-    const { data: traces } = useQuery(fetchTraceQuery(projectId, memoizedTraceNames));
+    const { data: traces, isLoading } = useQuery(fetchTracesQuery(projectId, memoizedTraceNames));
 
     useEffect(() => {
         const waitForData = async () => {
@@ -26,7 +26,7 @@ export const useTracesData = (projectId, traceNames) => {
         if (traces) {
             waitForData();
         }
-    }, [traces, memoizedTraceNames]);
+    }, [isLoading, traces, memoizedTraceNames]);
 
     return traceData;
 };
