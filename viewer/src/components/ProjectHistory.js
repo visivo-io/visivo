@@ -15,11 +15,13 @@ const ProjectHistory = () => {
     const { data, isLoading, isError } = useQuery(fetchProjectHistoryQuery(project?.id))
 
     const onChange = (event) => {
-        let projectIdUrl = ""
+        let projectIdUrl = projectName
         if (project.id !== event.target.value) {
-            projectIdUrl = `/${event.target.value}`
+            projectIdUrl = `${event.target.value}`
         }
-        const url = `/${accountSlug}/${stageName}/${projectName}/${dashboardName}${projectIdUrl}`
+        const dashboardNameUrl = dashboardName ? `/${dashboardName}` : ""
+
+        const url = `/${accountSlug}/${stageName}/${projectIdUrl}${dashboardNameUrl}`
         navigate(url)
     }
 
