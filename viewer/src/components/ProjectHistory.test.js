@@ -18,9 +18,10 @@ const routes = [
     },
 ];
 
+let projects
 const fetchProjectHistoryQuery = (projectId) => ({
     queryKey: ['project_history', projectId],
-    queryFn: () => [{ id: 1, created_at: '2024-01-01' }],
+    queryFn: () => projects,
 })
 
 const router = createMemoryRouter(routes, {
@@ -29,6 +30,7 @@ const router = createMemoryRouter(routes, {
 });
 
 test('renders date', async () => {
+    projects = [{ id: 1, created_at: '2024-01-01' }]
     render(
         <QueryClientProvider client={queryClient}>
             <QueryProvider value={{ fetchProjectHistoryQuery }}>
@@ -39,6 +41,22 @@ test('renders date', async () => {
 
     await waitFor(() => {
         expect(screen.getByTestId('project-history')).toBeInTheDocument();
+    })
+    expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
+});
+
+test('renders date selection', async () => {
+    projects = [{ id: 1, created_at: '2024-01-01' }, { id: 2, created_at: '2024-01-02' }]
+    render(
+        <QueryClientProvider client={queryClient}>
+            <QueryProvider value={{ fetchProjectHistoryQuery }}>
+                <RouterProvider router={router} />
+            </QueryProvider>
+        </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+        expect(screen.getByTestId('project-history-select')).toBeInTheDocument();
     })
     expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
 });
