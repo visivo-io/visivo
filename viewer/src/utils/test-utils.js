@@ -11,7 +11,7 @@ export const TestComponent = () => {
 }
 
 export const withProviders = ({ children, initialPath = '/' }) => {
-    const fetchTraceQuery = (projectId, name) => ({
+    const fetchTracesQuery = (projectId, name) => ({
         queryKey: ['trace', projectId, name],
         queryFn: () => [],
     })
@@ -31,7 +31,7 @@ export const withProviders = ({ children, initialPath = '/' }) => {
     return (
         <MemoryRouter initialEntries={[initialPath]}>
             <SearchParamsProvider>
-                <QueryProvider value={{ fetchTraceQuery, fetchProjectHistoryQuery }}>
+                <QueryProvider value={{ fetchTracesQuery, fetchProjectHistoryQuery }}>
                     <QueryClientProvider client={queryClient}>
                         <Routes>
                             <Route path={initialPath.split('?')[0]} element={children} />

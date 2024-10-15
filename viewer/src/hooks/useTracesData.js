@@ -16,7 +16,7 @@ export const useTracesData = (projectId, traceNames) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(",")]);
 
-    const { data: traces } = useQuery(fetchTracesQuery(projectId, memoizedTraceNames));
+    const { data: traces, isLoading } = useQuery(fetchTracesQuery(projectId, memoizedTraceNames));
 
     useEffect(() => {
         const waitForData = async () => {
@@ -26,7 +26,7 @@ export const useTracesData = (projectId, traceNames) => {
         if (traces) {
             waitForData();
         }
-    }, [traces, memoizedTraceNames]);
+    }, [isLoading, traces, memoizedTraceNames]);
 
     return traceData;
 };
