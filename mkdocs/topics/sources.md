@@ -1,8 +1,21 @@
 # Source Overview
-Sources are data sources. They are databases that contain your data. This page describes some best practices how to set sources up. 
+Sources are connections to your data warehouses or databases. This page describes some best practices around setting up sources. 
 
 !!! tip
     There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/sources/PostgresqlSource/))
+
+## Supported Connectors 
+Sources are typically OLAP or OLTP SQL based data warehouses and databases. 
+
+We have pre-built connectors for the most popular databases; however, you can also connect to nosql data stores, API, script and document sources and through [CsvScriptModels](/../reference/configuration/Models/CsvScriptModel/).
+<div class="grid cards" markdown>
+
+- ![](../assets/source-logos/sqlite.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/SqliteSource/)
+- ![](../assets/source-logos/postgres.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/PostgresqlSource/)
+- ![](../assets/source-logos/snowflake.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/SnowflakeSource/)
+- ![](../assets/source-logos/mysql.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/MysqlSource/)
+
+</div>
 
 ## One Project Many Sources
 Visivo enables you to configure multiple sources in a single project. 

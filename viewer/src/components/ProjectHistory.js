@@ -1,19 +1,17 @@
 
 import React from "react";
-import { useMatches } from 'react-router-dom';
-
+import { useRouteLoaderData } from 'react-router-dom';
 
 const ProjectHistory = () => {
-    let matches = useMatches();
-    let match = matches.find((match) => Boolean(match.id === "project"))
+    let project = useRouteLoaderData('project')
 
-    if (!match || !match.data.created_at) {
+    if (!project || !project.id) {
         return null;
     }
 
     return (
-        <span data-testid="project-history" className="mr-2">
-            {new Date(Date.parse(match.data.created_at)).toLocaleString()}
+        <span className="mr-2" data-testid="project-history">
+            {new Date(Date.parse(project.created_at)).toLocaleString()}
         </span>
     );
 }

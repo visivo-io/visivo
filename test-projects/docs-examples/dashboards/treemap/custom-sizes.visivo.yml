@@ -1,0 +1,34 @@
+models:
+  - name: treemap-data-tiling
+    args:
+      - echo
+      - |
+        labels,parents,values
+        Total,,100
+        A,Total,40
+        B,Total,30
+        C,Total,30
+        D,A,15
+        E,A,25
+        F,B,10
+        G,B,20
+        H,C,15
+        I,C,15
+traces:
+  - name: Treemap Plot with Custom Tiling
+    model: ref(treemap-data-tiling)
+    props:
+      type: treemap
+      labels: query(labels)
+      parents: query(parents)
+      values: query("values")
+      tiling:
+        packing: binary
+        squarifyratio: 1.5
+charts:
+  - name: Treemap Chart with Custom Tiling
+    traces:
+      - ref(Treemap Plot with Custom Tiling)
+    layout:
+      title:
+        text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>

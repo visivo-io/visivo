@@ -22,3 +22,6 @@ includes:
   - path: volume/dashboard.visivo.yml
   - path: violin/dashboard.visivo.yml
   - path: sunburst/dashboard.visivo.yml
+  - path: treemap/dashboard.visivo.yml
+  - path: splom/dashboard.visivo.yml
+  - path: scatter/dashboard.visivo.yml

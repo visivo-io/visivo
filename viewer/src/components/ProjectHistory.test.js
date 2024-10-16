@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import ProjectHistory from './ProjectHistory';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+const queryClient = new QueryClient()
 
 const loadProject = () => {
-    return { created_at: "2024-08-07T13:07:34Z" }
+    return { created_at: "2024-08-07T13:07:34Z", id: "1" }
 }
 
 const routes = [
@@ -21,8 +23,14 @@ const router = createMemoryRouter(routes, {
 });
 
 test('renders date', async () => {
-    render(<RouterProvider router={router} />);
+    render(
+        <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+        </QueryClientProvider>
+    );
 
-    expect(screen.getByTestId('project-history')).toBeInTheDocument();
+    await waitFor(() => {
+        expect(screen.getByTestId('project-history')).toBeInTheDocument();
+    })
     expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
 });

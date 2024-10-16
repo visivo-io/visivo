@@ -1,0 +1,22 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "lines.visivo.yml"
+  - path: "custom-markers.visivo.yml"
+  - path: "area-plot.visivo.yml"
+
+dashboards:
+  - name: "Trace Props Examples: Scatter"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Scatter"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ref(Simple Scatter Chart)
+          - chart: ref(Scatter Chart with Lines)
+      - height: medium
+        items:
+          - chart: ref(Scatter Chart with Custom Markers)
+          - chart: ref(Area Plot Chart)

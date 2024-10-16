@@ -1,0 +1,31 @@
+models:
+  - name: scatter-data-custom
+    args:
+      - echo
+      - |
+        x,y,size,color
+        1,5,10,#1f77b4
+        2,10,15,#ff7f0e
+        3,8,20,#2ca02c
+        4,15,25,#d62728
+        5,12,30,#9467bd
+traces:
+  - name: Scatter Plot with Custom Markers
+    model: ref(scatter-data-custom)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: "markers"
+      marker:
+        size: query(size)
+        color: query(color)
+    order_by: 
+      - query(x asc)
+charts:
+  - name: Scatter Chart with Custom Markers
+    traces:
+      - ref(Scatter Plot with Custom Markers)
+    layout:
+      title:
+        text: Scatter Plot with Custom Markers<br><sub>Custom Sizes and Colors for Data Points</sub>
