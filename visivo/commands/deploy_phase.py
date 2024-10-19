@@ -1,6 +1,7 @@
 import click
 import requests
 import json
+import concurrent.futures
 from visivo.commands.utils import get_profile_file, get_profile_token
 from visivo.discovery.discover import Discover
 from visivo.logging.logger import Logger
@@ -50,26 +51,47 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         project_id = project_data["id"]
         project_url = project_data["url"]
 
-        for trace in project.trace_objs:
-            url = f"{host}/api/files/"
+        # Function to process each trace
+        def process_trace(trace):
+            try:
+                url = f"{host}/api/files/"
+                data_file = f"{output_dir}/{trace.name}/data.json"
+                with open(data_file, "rb") as f:
+                    files = {"file": f}
+                    response = requests.post(url, files=files, data={}, headers=form_headers)
+                if response.status_code != 201:
+                    raise click.ClickException(f"Trace '{trace.name}' data not uploaded")
+                Logger.instance().debug(f"Trace '{trace.name}' data uploaded")
 
-            data_file = f"{output_dir}/{trace.name}/data.json"
-            files = {"file": open(data_file, "rb")}
-            response = requests.post(url, files=files, data={}, headers=form_headers)
-            if response.status_code != 201:
-                raise click.ClickException(f"Trace '{trace.name}' data not uploaded")
-            Logger.instance().debug(f"Trace '{trace.name}' data uploaded")
-            url = f"{host}/api/traces/"
-            body = {
-                "name": trace.name,
-                "project_id": project_id,
-                "data_file_id": response.json()["id"],
-            }
-            response = requests.post(url, data=json.dumps(body), headers=json_headers)
-            if response.status_code != 201:
-                Logger.instance().debug(response.json())
-                raise click.ClickException(f"Trace '{trace.name}' not created")
-            Logger.instance().debug(f"Trace '{trace.name}' created")
+                data_file_id = response.json()["id"]
+
+                url = f"{host}/api/traces/"
+                body = {
+                    "name": trace.name,
+                    "project_id": project_id,
+                    "data_file_id": data_file_id,
+                }
+                response = requests.post(url, data=json.dumps(body), headers=json_headers)
+                if response.status_code != 201:
+                    Logger.instance().debug(response.json())
+                    raise click.ClickException(f"Trace '{trace.name}' not created")
+                Logger.instance().debug(f"Trace '{trace.name}' created")
+            except Exception as e:
+                Logger.instance().error(f"An error occurred while processing trace '{trace.name}': {e}")
+                raise
+
+        # Use ThreadPoolExecutor to process traces concurrently
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [executor.submit(process_trace, trace) for trace in project.trace_objs]
+
+            # Handle results and exceptions
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    Logger.instance().error(f"Exception raised during processing: {e}")
+                    raise click.ClickException(f"An error occurred during deployment: {e}")
+
         return project_url
     else:
         raise click.ClickException(f"There was an unexpected error: {response.content}")
