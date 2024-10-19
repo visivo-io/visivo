@@ -7,36 +7,42 @@ on:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.1.5
+    call: mint/git-clone 1.2.8
     with:
       repository: https://github.com/visivo-io/visivo.git
       preserve-git-dir: true
       ref: ${{ init.commit-sha }}
       github-access-token: ${{ github.token }}
 
+  - key: versions
+    use: code
+    run: cat .python-version | tee $MINT_VALUES/python
+    filter: [.python-version]
+
   - key: python
-    call: mint/install-python 1.1.0
+    call: mint/install-python 1.2.1
     with:
-      python-version: 3.10.0
+      python-version: ${{ tasks.versions.values.python }}
 
-  - key: Install-CLI-Dependencies
+  - key: cli-dependencies
     use: [code, python]
-    run: pip install poetry && poetry install --with dev && poetry run visivo
+    run: pip install poetry && poetry install --with dev --no-root
+    filter:
+      - poetry.lock
+      - pyproject.toml
 
-  - key: Generate-Schema
-    use: [Install-CLI-Dependencies]
+  - key: mkdocs
+    use: cli-dependencies
     run: |
-      poetry run pytest tests/parsers/test_schema_generator.py 
+      poetry install --with dev
+      poetry run pytest tests/parsers/test_schema_generator.py
       find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
-
-  - key: Generate-Configuration-Files
-    use: [Generate-Schema]
-    run: poetry run python mkdocs/src/write_mkdocs_markdown_files.py
-
-  - key: build-mkdocs
-    use: [Generate-Configuration-Files]
-    run: PYTHONPATH=$PWD poetry run mkdocs build 2>&1 | tee build_stdout.txt
+      poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+      PYTHONPATH=$PWD poetry run mkdocs build 2>&1 | tee build_stdout.txt
 
   - key: check-for-spelling-errors
-    use: [build-mkdocs]
+    use: mkdocs
     run: sh validate_mkdocs_build.sh
+    filter:
+      - build_stdout.txt
+      - validate_mkdocs_build.sh
