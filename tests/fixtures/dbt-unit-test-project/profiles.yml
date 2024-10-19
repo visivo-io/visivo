@@ -3,11 +3,11 @@ visivo_qa:
     ci:
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
       database: "{{env_var('DATABASE')}}"
-      password: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD') }}"
+      password: "{{ env_var('DB_PASSWORD') }}"
       role: PROD
       schema: DEFAULT
       threads: 16
       type: snowflake
-      user: "{{ env_var('CLI_UNIT_TESTING_SNOWFLAKE_USER') }}"
+      user: "{{ env_var('DB_USER') }}"
       warehouse: PROD
   target: ci
