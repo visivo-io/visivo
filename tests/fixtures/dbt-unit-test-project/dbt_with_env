@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [ ! -f .env ]; then
+    echo "Error: .env file not found in current directory" >&2
+    exit 1
+fi
+
+# Check if any arguments were provided
+if [ $# -eq 0 ]; then
+    echo "Error: No dbt command provided. Example usage: ./dbt_with_env run -s dbt_model+" >&2
+    echo "Usage: $0 <dbt command> [arguments...]" >&2
+    exit 1
+fi
+
+# Export environment variables
+export $(cat .env | xargs)
+
+# Run the provided dbt command with all arguments
+echo "Running: dbt $*"
+dbt "$@"
