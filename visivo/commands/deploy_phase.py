@@ -6,7 +6,7 @@ import asyncio
 import aiofiles
 import httpx
 from time import time
-#from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_fixed
 from visivo.commands.utils import get_profile_file, get_profile_token
 from visivo.discovery.discover import Discover
 from visivo.logging.logger import Logger
@@ -14,9 +14,9 @@ from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 
 # Limit concurrent uploads to avoid overloading the API
-semaphore = asyncio.Semaphore(30)
+semaphore = asyncio.Semaphore(50)
 
-# @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
 async def upload_trace_data(trace, output_dir, form_headers, host):
     """
     Asynchronously uploads trace data files.
@@ -38,7 +38,7 @@ async def upload_trace_data(trace, output_dir, form_headers, host):
         except Exception as e:
             Logger.instance().error(f"Failed to upload trace data for '{trace.name}': {repr(e)}")
             raise
-
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
 async def create_trace_record(trace, project_id, data_file_id, json_headers, host):
     """
     Asynchronously creates a trace record on the server.
