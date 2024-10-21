@@ -6,7 +6,7 @@ visivo_qa:
       password: "{{ env_var('DB_PASSWORD') }}"
       role: PROD
       schema: DEFAULT
-      threads: 16
+      threads: 8
       type: snowflake
       user: "{{ env_var('DB_USER') }}"
       warehouse: PROD
