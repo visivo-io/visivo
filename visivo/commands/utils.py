@@ -4,6 +4,30 @@ from pathlib import Path
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.utils import load_yaml_file
 
+def parse_project_file(working_dir, default_source):
+    from visivo.parsers.discover import Discover
+    from visivo.parsers.parser_factory import ParserFactory
+    from visivo.models.project import Project, Defaults
+
+    discover = Discover(working_directory=working_dir)
+    parser = ParserFactory().build(
+        project_file=discover.project_file, files=discover.files
+    )
+    project = None
+    try:
+        project = parser.parse()
+        if not project.defaults:
+            project.defaults = Defaults()
+        if default_source:
+            project.defaults.source_name = default_source
+    except yaml.YAMLError as e:
+        message = "\n"
+        if hasattr(e, "problem_mark"):
+            mark = e.problem_mark
+            message = f"\n Error position: line:{mark.line+1} column:{mark.column+1}\n"
+        raise click.ClickException(
+            f"There was an error parsing the yml file(s):{message} {e}"
+        )
 
 def get_profile_token(profile_file):
     profile_token = os.getenv("VISIVO_TOKEN")
