@@ -17,7 +17,7 @@ from visivo.parsers.parser_factory import ParserFactory
 semaphore = asyncio.Semaphore(50)
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-async def upload_trace_data(trace, output_dir, form_headers, host):
+async def upload_trace_data(trace, output_dir, form_headers, host, progress):
     """
     Asynchronously uploads trace data files.
     """
@@ -30,16 +30,20 @@ async def upload_trace_data(trace, output_dir, form_headers, host):
                     url = f"{host}/api/files/"
                     response = await client.post(url, files=files, headers=form_headers)
                     response.raise_for_status()
-                    Logger.instance().success(f"Trace '{trace.name}' data uploaded")
+                    progress['completed'] += 1
+                    Logger.instance().success(f"\tTrace '{trace.name}' data uploaded [{progress['completed']}/{progress['total']}]")
                     return response.json()["id"]
         except httpx.HTTPStatusError as e:
-            Logger.instance().error(f"HTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
+            Logger.instance().error(f"\tHTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
+            progress['failed'].append(f"Data upload for '{trace.name}': {repr(e)}")
             raise
         except Exception as e:
-            Logger.instance().error(f"Failed to upload trace data for '{trace.name}': {repr(e)}")
+            Logger.instance().error(f"\tFailed to upload trace data for '{trace.name}': {repr(e)}")
+            progress['failed'].append(f"Data upload for '{trace.name}': {repr(e)}")
             raise
+
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
-async def create_trace_record(trace, project_id, data_file_id, json_headers, host):
+async def create_trace_record(trace, project_id, data_file_id, json_headers, host, progress):
     """
     Asynchronously creates a trace record on the server.
     """
@@ -54,22 +58,28 @@ async def create_trace_record(trace, project_id, data_file_id, json_headers, hos
                 url = f"{host}/api/traces/"
                 response = await client.post(url, json=body, headers=json_headers)
                 response.raise_for_status()
-                Logger.instance().success(f"Trace '{trace.name}' created")
+                progress['completed'] += 1
+                Logger.instance().success(f"\tTrace '{trace.name}' created [{progress['completed']}/{progress['total']}]")
         except httpx.HTTPStatusError as e:
-            Logger.instance().error(f"HTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
+            Logger.instance().error(f"\tHTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
+            progress['failed'].append(f"Record creation for '{trace.name}': {repr(e)}")
             raise
         except Exception as e:
-            Logger.instance().error(f"Failed to create trace '{trace.name}': {repr(e)}")
+            Logger.instance().error(f"\tFailed to create trace '{trace.name}': {repr(e)}")
+            progress['failed'].append(f"Record creation for '{trace.name}': {repr(e)}")
             raise
 
 async def process_traces_async(traces, output_dir, project_id, form_headers, json_headers, host):
     """
     Coordinates the asynchronous upload of trace data files and the creation of trace records.
     """
+    total_operations = len(traces) * 2  # Each trace has a data upload and record creation
+    progress = {'completed': 0, 'total': total_operations, 'failed': []}
+
     tasks = []
     for trace in traces:
         # Upload data files concurrently
-        data_file_task = upload_trace_data(trace, output_dir, form_headers, host)
+        data_file_task = upload_trace_data(trace, output_dir, form_headers, host, progress)
         tasks.append(data_file_task)
 
     # Wait for all data uploads to complete and gather results
@@ -79,13 +89,15 @@ async def process_traces_async(traces, output_dir, project_id, form_headers, jso
     record_tasks = []
     for trace, data_file_id in zip(traces, data_file_ids):
         if isinstance(data_file_id, Exception):
-            Logger.instance().error(f"Skipping trace '{trace.name}' due to previous error uploading data.")
+            Logger.instance().error(f"\tSkipping trace '{trace.name}' due to previous error uploading data.")
             continue
-        record_task = create_trace_record(trace, project_id, data_file_id, json_headers, host)
+        record_task = create_trace_record(trace, project_id, data_file_id, json_headers, host, progress)
         record_tasks.append(record_task)
 
     # Execute the creation of trace records concurrently
     await asyncio.gather(*record_tasks, return_exceptions=True)
+
+    return progress['failed']
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     """
@@ -96,7 +108,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     Logger.instance().debug("Retrieving profile token...")
     profile_file = get_profile_file(home_directory=user_dir)
     profile_token = get_profile_token(profile_file)
-    Logger.instance().success(f"Found Profile token: {profile_file}")
+    Logger.instance().info(f"Found Profile token: {profile_file}")
 
     # Discover and parse project details
     Logger.instance().debug("Compiling project details...")
@@ -144,7 +156,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         # Async processing of trace uploads and record creations
         Logger.instance().info("Processing trace uploads and record creations...")
         process_traces_start_time = time()
-        asyncio.run(process_traces_async(
+        failed_operations = asyncio.run(process_traces_async(
             traces=project.trace_objs,
             output_dir=output_dir,
             project_id=project_id,
@@ -153,6 +165,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             host=host
         ))
         Logger.instance().info(f"Trace uploads and record creations completed in {time() - process_traces_start_time:.2f} seconds")
+        
+        if failed_operations:
+            Logger.instance().warning("The following operations failed:")
+            for failure in failed_operations:
+                Logger.instance().warning(f"\t{failure}")
+        
         Logger.instance().success(f"Deployment completed in {time() - deploy_start_time:.2f} seconds")
         return project_url
     else:
