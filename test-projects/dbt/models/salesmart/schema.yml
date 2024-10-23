@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: fact_transaction
+    description: production model of transaction
+    columns:
+      - name: product
+        description: PLEASE UPDATE DESCRIPTION
+
+      - name: amount
+        description: PLEASE UPDATE DESCRIPTION
+
+      - name: created_at
+        description: PLEASE UPDATE DESCRIPTION
+
+      - name: sales_rep
+        description: PLEASE UPDATE DESCRIPTION

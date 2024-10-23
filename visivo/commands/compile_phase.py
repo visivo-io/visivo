@@ -1,44 +1,22 @@
-import click
 import os
-import yaml
 import json
-from visivo.discovery.discover import Discover
-from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.base.parent_model import ParentModel
-from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
 from visivo.logging.logger import Logger
+from .utils import parse_project_file
 
 
 def compile_phase(
     default_source: str, working_dir: str, output_dir: str, name_filter: str = None
 ):
     Logger.instance().debug("Compiling project")
-    discover = Discover(working_directory=working_dir)
-    parser = ParserFactory().build(
-        project_file=discover.project_file, files=discover.files
-    )
-    project = None
-    try:
-        project = parser.parse()
-        if not project.defaults:
-            project.defaults = Defaults()
-        if default_source:
-            project.defaults.source_name = default_source
-    except yaml.YAMLError as e:
-        message = "\n"
-        if hasattr(e, "problem_mark"):
-            mark = e.problem_mark
-            message = f"\n Error position: line:{mark.line+1} column:{mark.column+1}\n"
-        raise click.ClickException(
-            f"There was an error parsing the yml file(s):{message} {e}"
-        )
+    project = parse_project_file(working_dir, default_source)
 
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
