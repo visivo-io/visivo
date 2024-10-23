@@ -29,18 +29,19 @@ def dbt_phase(working_dir, output_dir):
 
         sources = []
         for profile_name, profile_value in profiles.items():
-            for target_name, target_value in profile_value.outputs.items():
+            for target_name, target_value in profile_value["outputs"].items():
                 source = target_value
-                source["name"] = f"{profile_name}_{target_name}"
+                source["name"] = f"dbt_{profile_name}_{target_name}"
                 if "schema" in source:
                     source["db_schema"] = source.pop("schema")
                 if "user" in source:
                     source["username"] = source.pop("user")
                 if "type" in source and source["type"] == "snowflake":
-                    Logger.instance().warn(
+                    Logger.instance().info(
                         f"Configuring threads for snowflake is not supported.  Ignoring."
                     )
-                    source.pop("threads")
+                    if "threads" in source:
+                        source.pop("threads")
                 sources.append(source)
 
         output_file = f"{output_dir}/dbt.yml"
@@ -49,3 +50,5 @@ def dbt_phase(working_dir, output_dir):
 
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources}, file)
+
+        Logger.instance().info(f"Refreshed dbt models and sources.")
