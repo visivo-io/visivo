@@ -1,12 +1,14 @@
 import click
 from visivo.commands.options import (
     working_dir,
+    output_dir,
 )
 
 
 @click.command()
 @working_dir
-def dbt(working_dir):
+@output_dir
+def dbt(working_dir, output_dir):
     """
     Refreshes the dbt objects in the for use in Visivo.
     """
@@ -18,5 +20,6 @@ def dbt(working_dir):
 
     dbt_phase(
         working_dir=working_dir,
+        output_dir=output_dir,
     )
     Logger.instance().success(f"Refreshed dbt objects")

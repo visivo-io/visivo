@@ -1,4 +1,51 @@
-def dbt_phase(working_dir):
+def dbt_phase(working_dir, output_dir):
     from .utils import parse_project_file
 
-    project = parse_project_file(working_dir)
+    project = parse_project_file(working_dir, None)
+
+    dbt_properties = project.dbt
+    if dbt_properties:
+        from visivo.logging.logger import Logger
+
+        dbt_project_file = f"{working_dir}/dbt_project.yml"
+        if dbt_properties.dbt_project_yml_location:
+            dbt_project_file = f"{working_dir}/{dbt_properties.dbt_project_yml_location}/dbt_project.yml"
+        profiles_file = f"{working_dir}/profiles.yml"
+        if dbt_properties.profiles_yml_location:
+            profiles_file = (
+                f"{working_dir}/{dbt_properties.profiles_yml_location}/profiles.yml"
+            )
+
+        Logger.instance().debug(f"dbt_project_file: {dbt_project_file}")
+        Logger.instance().debug(f"profiles_file: {profiles_file}")
+
+        import yaml
+
+        with open(dbt_project_file, "r") as file:
+            dbt_project = yaml.safe_load(file)
+
+        with open(profiles_file, "r") as file:
+            profiles = yaml.safe_load(file)
+
+        sources = []
+        for profile_name, profile_value in profiles.items():
+            for target_name, target_value in profile_value.outputs.items():
+                source = target_value
+                source["name"] = f"{profile_name}_{target_name}"
+                if "schema" in source:
+                    source["db_schema"] = source.pop("schema")
+                if "user" in source:
+                    source["username"] = source.pop("user")
+                if "type" in source and source["type"] == "snowflake":
+                    Logger.instance().warn(
+                        f"Configuring threads for snowflake is not supported.  Ignoring."
+                    )
+                    source.pop("threads")
+                sources.append(source)
+
+        output_file = f"{output_dir}/dbt.yml"
+        if dbt_properties.output_file:
+            output_file = f"{working_dir}/{dbt_properties.output_file}"
+
+        with open(output_file, "w") as file:
+            yaml.dump({"sources": sources}, file)

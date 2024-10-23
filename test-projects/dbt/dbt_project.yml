@@ -5,7 +5,6 @@ config-version: 2
 
 profile: 'visivo_qa'
 
-
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
