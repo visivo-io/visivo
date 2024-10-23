@@ -1,10 +1,11 @@
 import click
 import requests
 import json
-import os
+import sys
 import asyncio
 import aiofiles
 import httpx
+import contextvars
 from time import time
 from tenacity import retry, stop_after_attempt, wait_fixed
 from visivo.commands.utils import get_profile_file, get_profile_token
@@ -15,12 +16,15 @@ from visivo.parsers.parser_factory import ParserFactory
 
 # Limit concurrent uploads to avoid overloading the API
 semaphore = asyncio.Semaphore(50)
+attempt = contextvars.ContextVar("attempt")
+MAX_ATTEMPTS = 3
 
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
 async def upload_trace_data(trace, output_dir, form_headers, host, progress):
     """
     Asynchronously uploads trace data files.
     """
+    attempt.set(attempt.get(0) + 1)
     async with semaphore:
         try:
             data_file = f"{output_dir}/{trace.name}/data.json"
@@ -34,15 +38,17 @@ async def upload_trace_data(trace, output_dir, form_headers, host, progress):
                     Logger.instance().success(f"\tTrace '{trace.name}' data uploaded [{progress['completed']}/{progress['total']}]")
                     return response.json()["id"]
         except httpx.HTTPStatusError as e:
-            Logger.instance().error(f"\tHTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
-            progress['failed'].append(f"Data upload for '{trace.name}': {repr(e)}")
+            Logger.instance().error(f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
+            if attempt.get() == MAX_ATTEMPTS:
+                progress['failed'].append(f"Data upload for '{trace.name}': {repr(e)}")
             raise
         except Exception as e:
-            Logger.instance().error(f"\tFailed to upload trace data for '{trace.name}': {repr(e)}")
-            progress['failed'].append(f"Data upload for '{trace.name}': {repr(e)}")
+            Logger.instance().error(f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload trace data for '{trace.name}': {repr(e)}")
+            if attempt.get() == MAX_ATTEMPTS:
+                progress['failed'].append(f"Data upload for '{trace.name}': {repr(e)}")
             raise
 
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
 async def create_trace_record(trace, project_id, data_file_id, json_headers, host, progress):
     """
     Asynchronously creates a trace record on the server.
@@ -61,12 +67,14 @@ async def create_trace_record(trace, project_id, data_file_id, json_headers, hos
                 progress['completed'] += 1
                 Logger.instance().success(f"\tTrace '{trace.name}' created [{progress['completed']}/{progress['total']}]")
         except httpx.HTTPStatusError as e:
-            Logger.instance().error(f"\tHTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
-            progress['failed'].append(f"Record creation for '{trace.name}': {repr(e)}")
+            Logger.instance().error(f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}")
+            if attempt.get() == MAX_ATTEMPTS:
+                progress['failed'].append(f"Record creation for '{trace.name}': {repr(e)}")
             raise
         except Exception as e:
-            Logger.instance().error(f"\tFailed to create trace '{trace.name}': {repr(e)}")
-            progress['failed'].append(f"Record creation for '{trace.name}': {repr(e)}")
+            Logger.instance().error(f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create trace '{trace.name}': {repr(e)}")
+            if attempt.get() == MAX_ATTEMPTS:
+                progress['failed'].append(f"Record creation for '{trace.name}': {repr(e)}")
             raise
 
 async def process_traces_async(traces, output_dir, project_id, form_headers, json_headers, host):
@@ -111,6 +119,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     Logger.instance().info(f"Found Profile token: {profile_file}")
 
     # Discover and parse project details
+    Logger.instance().info("")
     Logger.instance().debug("Compiling project details...")
     discover = Discover(working_directory=working_dir, home_directory=user_dir)
     parser = ParserFactory().build(
@@ -154,6 +163,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         project_url = project_data["url"]
 
         # Async processing of trace uploads and record creations
+        Logger.instance().info(f"")
         Logger.instance().info("Processing trace uploads and record creations...")
         process_traces_start_time = time()
         failed_operations = asyncio.run(process_traces_async(
@@ -167,10 +177,13 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         Logger.instance().info(f"Trace uploads and record creations completed in {time() - process_traces_start_time:.2f} seconds")
         
         if failed_operations:
-            Logger.instance().warning("The following operations failed:")
+            Logger.instance().info("")
+            Logger.instance().info("The following operations failed:")
             for failure in failed_operations:
-                Logger.instance().warning(f"\t{failure}")
-        
+                Logger.instance().error(f"\t{failure}")
+            Logger.instance().info("")
+            Logger.instance().info(f"Deployment failed in {time() - deploy_start_time:.2f} seconds")
+            sys.exit(1)
         Logger.instance().success(f"Deployment completed in {time() - deploy_start_time:.2f} seconds")
         return project_url
     else:
