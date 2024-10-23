@@ -1,0 +1,33 @@
+models:
+  - name: projects-gantt
+    args:
+      - echo 
+      - |
+        project,start_date,finish_date
+        Website Speed,2024-02-14,2024-03-07
+        Database Migration,2024-02-22,2024-03-05
+        Bug Fix,2024-02-12,2024-02-18
+        
+traces:
+  - name: Bar Project Durations
+    model: ref(projects-gantt)
+    props:
+      type: bar
+      x: query(finish_date )
+      y: query(project)
+      orientation: h
+      base: query(start_date)
+    order_by:
+      - query(project asc)
+
+charts:
+  - name: Project Durations Gantt Chart
+    traces:
+      - ref(Bar Project Durations)
+    layout:
+      title:
+        text: Project Duration Gantt Chart<br><sub>Visualizing the duration of each project over time</sub>
+      barmode: overlay
+      margin: 
+        l: 130
+      showlegend: false

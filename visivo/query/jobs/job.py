@@ -1,5 +1,4 @@
 from concurrent.futures import Future
-from typing import List
 from visivo.models.base.named_model import NamedModel
 from visivo.models.sources.source import Source
 import os
