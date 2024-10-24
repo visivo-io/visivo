@@ -16,7 +16,7 @@ def compile_phase(
     default_source: str, working_dir: str, output_dir: str, name_filter: str = None
 ):
     Logger.instance().debug("Compiling project")
-    project = parse_project_file(working_dir, default_source)
+    project = parse_project_file(working_dir, output_dir, default_source)
 
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:

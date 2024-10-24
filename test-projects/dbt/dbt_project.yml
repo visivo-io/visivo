@@ -1,9 +1,8 @@
-
-name: 'visivo_qa'
-version: '1.0.0'
+name: "visivo_qa"
+version: "1.0.0"
 config-version: 2
 
-profile: 'visivo_qa'
+profile: "visivo_profile"
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]
@@ -12,11 +11,10 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
-target-path: "target"  
-clean-targets:         
+target-path: "target"
+clean-targets:
   - "target"
   - "dbt_packages"
-
 
 models:
   visivo_qa:
@@ -26,4 +24,3 @@ models:
     salesmart:
       +materialized: table
       schema: salesmart
-

@@ -1,4 +1,4 @@
-visivo_qa:
+visivo_profile:
   outputs:
     ci:
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"

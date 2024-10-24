@@ -1,5 +1,6 @@
 import os
 import json
+from visivo.commands.dbt_phase import dbt_phase
 from visivo.commands.dbt import dbt
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
@@ -24,6 +25,7 @@ def test_dbt():
     temp_yml_file(
         dict={
             "profile_name": {
+                "target": "target_name",
                 "outputs": {
                     "target_name": {
                         "type": "snowflake",
@@ -36,21 +38,23 @@ def test_dbt():
                         "warehouse": "warehouse",
                         "role": "role",
                     }
-                }
+                },
             }
         },
         name="profiles.yml",
         output_dir=working_dir,
     )
     temp_yml_file(
-        dict={"target-path": "target"}, name="dbt_project.yml", output_dir=working_dir
+        dict={"target-path": "target", "profile": "profile_name"},
+        name="dbt_project.yml",
+        output_dir=working_dir,
     )
 
     temp_file(
         contents=json.dumps(
             {
                 "nodes": {
-                    "model.visivo_qa.fact_transaction": {
+                    "model.project_name.fact_transaction": {
                         "database": "RAW",
                         "schema": "salesmart",
                         "name": "fact_transaction",

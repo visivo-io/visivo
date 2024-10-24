@@ -5,13 +5,13 @@ from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.utils import load_yaml_file
 
 
-def parse_project_file(working_dir, default_source):
+def parse_project_file(working_dir, output_dir, default_source):
     from visivo.discovery.discover import Discover
     from visivo.parsers.parser_factory import ParserFactory
     from visivo.models.project import Defaults
     import yaml
 
-    discover = Discover(working_directory=working_dir)
+    discover = Discover(working_dir=working_dir, output_dir=output_dir)
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
     )
@@ -50,8 +50,8 @@ def get_profile_token(profile_file):
     return profile["token"]
 
 
-def get_profile_file(home_directory=os.path.expanduser("~")):
-    return Path(f"{home_directory}/.visivo/{PROFILE_FILE_NAME}")
+def get_profile_file(home_dir=os.path.expanduser("~")):
+    return Path(f"{home_dir}/.visivo/{PROFILE_FILE_NAME}")
 
 
 def create_file_database(url, output_dir: str):

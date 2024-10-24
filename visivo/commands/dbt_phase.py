@@ -21,7 +21,7 @@ def _generate_sources(profiles):
     return sources
 
 
-def _generate_models(manifest):
+def _generate_models(manifest, dbt_profile, dbt_target):
     models = []
     if "nodes" in manifest:
         for path, node in manifest["nodes"].items():
@@ -35,6 +35,7 @@ def _generate_models(manifest):
                 model = {
                     "name": f"dbt_{node['name']}",
                     "sql": "select * from " + ".".join(names),
+                    "source": f"ref('dbt_{dbt_profile}_{dbt_target}')",
                 }
 
                 models.append(model)
@@ -42,24 +43,33 @@ def _generate_models(manifest):
     return models
 
 
-def dbt_phase(working_dir, output_dir):
+def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
     from .utils import parse_project_file
+    import os
+    import click
 
-    project = parse_project_file(working_dir, None)
+    project = parse_project_file(working_dir, output_dir, None)
 
-    dbt_properties = project.dbt
-    if dbt_properties:
+    dbt = project.dbt
+    if dbt and dbt.enabled:
         from visivo.logging.logger import Logger
 
         dbt_root = working_dir
-        if dbt_properties.dbt_project_yml_location:
-            dbt_root = f"{working_dir}/{dbt_properties.dbt_project_yml_location}"
+        if dbt.dbt_project_yml_location:
+            dbt_root = f"{working_dir}/{dbt.dbt_project_yml_location}"
         dbt_project_file = f"{dbt_root}/dbt_project.yml"
+        if not os.path.exists(dbt_project_file):
+            raise click.ClickException(
+                f"dbt_project.yml file not found in {dbt_project_file}"
+            )
 
         profiles_file = f"{working_dir}/profiles.yml"
-        if dbt_properties.profiles_yml_location:
-            profiles_file = (
-                f"{working_dir}/{dbt_properties.profiles_yml_location}/profiles.yml"
+        if dbt.profiles_yml_location:
+            profiles_file = f"{working_dir}/{dbt.profiles_yml_location}/profiles.yml"
+
+        if not os.path.exists(profiles_file):
+            raise click.ClickException(
+                f"profiles.yml file not found in {profiles_file}"
             )
 
         Logger.instance().debug(f"Found dbt_project file: {dbt_project_file}")
@@ -74,19 +84,34 @@ def dbt_phase(working_dir, output_dir):
         with open(profiles_file, "r") as file:
             profiles = yaml.safe_load(file)
 
-        with open(
-            f"{dbt_root}/{dbt_project['target-path']}/manifest.json", "r"
-        ) as file:
+        if not dbt_profile and "profile" in dbt_project:
+            dbt_profile = dbt_project["profile"]
+
+        if dbt_profile not in profiles:
+            raise click.ClickException(
+                f"Profile '{dbt_profile}' not found in profiles.yml"
+            )
+        if not dbt_target:
+            dbt_target = profiles[dbt_profile]["target"]
+
+        manifest_file = f"{dbt_root}/{dbt_project['target-path']}/manifest.json"
+        if not os.path.exists(manifest_file):
+            raise click.ClickException(
+                f"Manifest file not found at '{manifest_file}'. You might need to run dbt."
+            )
+        with open(manifest_file, "r") as file:
             manifest = json.load(file)
 
         sources = _generate_sources(profiles)
-        models = _generate_models(manifest)
+        models = _generate_models(manifest, dbt_profile, dbt_target)
 
-        output_file = f"{output_dir}/dbt.yml"
-        if dbt_properties.output_file:
-            output_file = f"{working_dir}/{dbt_properties.output_file}"
+        output_file = dbt.get_output_file(
+            output_dir=output_dir, working_dir=working_dir
+        )
 
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources, "models": models}, file)
 
         Logger.instance().info(f"Refreshed dbt models and sources.")
+    else:
+        Logger.instance().info(f"dbt is not enabled.")
