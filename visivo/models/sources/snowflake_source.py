@@ -1,12 +1,12 @@
 from typing import Literal, Optional
-from visivo.models.sources.source import Source
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 import click
 from pydantic import Field
 
 SnowflakeType = Literal["snowflake"]
 
 
-class SnowflakeSource(Source):
+class SnowflakeSource(SqlalchemySource):
     """
     SnowflakeSources hold the connection information to Snowflake data sources.
 
@@ -41,35 +41,30 @@ class SnowflakeSource(Source):
         None,
         description="The access role that you want to use when running queries.",
     )
+    timezone: Optional[str] = Field(
+        None,
+        description="The timezone that you want to use by default when running queries.",
+    )
 
     type: SnowflakeType
+    connection_pool_size: Optional[int] = Field(
+        8, description="The pool size that is used for this connection."
+    )
 
-    def read_sql(self, query: str):
-        from pandas import DataFrame
+    def get_dialect(self):
+        return "snowflake"
 
-        with self.connect() as connection:
-            cursor = connection.cursor()
-            cursor.execute(query)
-            columns = [col[0] for col in cursor.description]
-            data = cursor.fetchall()
-            cursor.close()
+    def url(self):
+        from snowflake.sqlalchemy import URL
 
-        return DataFrame(data, columns=columns)
-
-    def get_connection(self):
-        import snowflake.connector
-
-        try:
-            return snowflake.connector.connect(
-                account=self.account,
-                user=self.username,
-                password=self.get_password(),
-                warehouse=self.warehouse,
-                database=self.database,
-                schema=self.db_schema,
-                role=self.role,
-            )
-        except Exception as err:
-            raise click.ClickException(
-                f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct."
-            )
+        url = URL(
+            user=self.username,
+            password=self.get_password(),
+            account=self.account,
+            database=self.database,
+            schema=self.db_schema,
+            warehouse=self.warehouse,
+            role=self.role,
+            timezone=self.timezone,
+        )
+        return url
