@@ -29,7 +29,7 @@ class SqlalchemySource(Source, ABC):
         from sqlalchemy import text
 
         try:
-            connection = self.get_engine().connect()
+            connection = self.get_engine().connect() #I wonder if creating mutltiple engines is part of the problem.
             if hasattr(self, "attach") and self.attach:
                 for attachment in self.attach:
                     connection.execute(
@@ -49,7 +49,9 @@ class SqlalchemySource(Source, ABC):
         if not self._engine:
             if hasattr(self, "connection_pool_size"):
                 self._engine = create_engine(
-                    self.url(), pool_size=self.connection_pool_size
+                    self.url(), 
+                    pool_size=self.connection_pool_size,
+                    max_overflow=0 # I was reading that this is set to 10 by default. This is likely the issue. 
                 )
             else:
                 self._engine = create_engine(self.url())
