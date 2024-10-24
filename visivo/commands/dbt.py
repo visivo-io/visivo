@@ -18,7 +18,7 @@ def dbt(working_dir, output_dir, dbt_profile, dbt_target):
     """
     from visivo.logging.logger import Logger
 
-    Logger.instance().debug("Refreshingdbt objects")
+    Logger.instance().debug("Refreshing dbt models and sources.")
 
     from visivo.commands.dbt_phase import dbt_phase
 
@@ -28,4 +28,4 @@ def dbt(working_dir, output_dir, dbt_profile, dbt_target):
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,
     )
-    Logger.instance().success(f"Refreshed dbt objects")
+    Logger.instance().success("Refreshed dbt models and sources.")

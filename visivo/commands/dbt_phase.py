@@ -35,7 +35,7 @@ def _generate_models(manifest, dbt_profile, dbt_target):
                 model = {
                     "name": f"dbt_{node['name']}",
                     "sql": "select * from " + ".".join(names),
-                    "source": f"ref('dbt_{dbt_profile}_{dbt_target}')",
+                    "source": f"ref(dbt_{dbt_profile}_{dbt_target})",
                 }
 
                 models.append(model)
@@ -75,14 +75,17 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         Logger.instance().debug(f"Found dbt_project file: {dbt_project_file}")
         Logger.instance().debug(f"Found profiles file: {profiles_file}")
 
-        import yaml
         import json
+        import ruamel.yaml
+
+        yaml = ruamel.yaml.YAML()
+        yaml.preserve_quotes = True
 
         with open(dbt_project_file, "r") as file:
-            dbt_project = yaml.safe_load(file)
+            dbt_project = yaml.load(file)
 
         with open(profiles_file, "r") as file:
-            profiles = yaml.safe_load(file)
+            profiles = yaml.load(file)
 
         if not dbt_profile and "profile" in dbt_project:
             dbt_profile = dbt_project["profile"]
@@ -112,6 +115,5 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources, "models": models}, file)
 
-        Logger.instance().info(f"Refreshed dbt models and sources.")
     else:
         Logger.instance().info(f"dbt is not enabled.")

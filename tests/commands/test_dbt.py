@@ -29,7 +29,7 @@ def test_dbt():
                 "outputs": {
                     "target_name": {
                         "type": "snowflake",
-                        "account": "account",
+                        "account": "{{env_var('ACCOUNT')}}",
                         "username": "username",
                         "password": "password",
                         "schema": "schema",
