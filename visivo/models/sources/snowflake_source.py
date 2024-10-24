@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
-import click
+from click import ClickException
 from pydantic import Field
 
 SnowflakeType = Literal["snowflake"]
@@ -42,7 +42,7 @@ class SnowflakeSource(SqlalchemySource):
         description="The access role that you want to use when running queries.",
     )
     timezone: Optional[str] = Field(
-        'America/Los_Angeles',
+        None,
         description="The timezone that you want to use by default when running queries.",
     )
 
@@ -56,15 +56,23 @@ class SnowflakeSource(SqlalchemySource):
 
     def url(self):
         from snowflake.sqlalchemy import URL
+        url_attributes = {
+            "user": self.username,
+            "password": self.get_password(),
+            "account": self.account,
+        }
+        # Optional attributes where if its not set the default value is used
+        if self.timezone:
+            url_attributes["timezone"] = self.timezone
+        if self.warehouse:
+            url_attributes["warehouse"] = self.warehouse
+        if self.role:
+            url_attributes["role"] = self.role
+        if self.database:
+            url_attributes["database"] = self.database
+        if self.db_schema:
+            url_attributes["schema"] = self.db_schema
 
-        url = URL(
-            user=self.username,
-            password=self.get_password(),
-            account=self.account,
-            database=self.database,
-            schema=self.db_schema,
-            warehouse=self.warehouse,
-            role=self.role,
-            timezone=self.timezone,
-        )
+        url = URL(**url_attributes)
+
         return url
