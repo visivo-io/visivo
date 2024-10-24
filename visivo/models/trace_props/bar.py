@@ -687,7 +687,7 @@ class Bar(TraceProps):
         None,
         description=""" string<br>Set several traces linked to the same position axis or matching axes to the same alignmentgroup. This controls whether bars compute their positional range dependently or independently. """,
     )
-    base: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
+    base: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" number or categorical coordinate string<br>Sets where the bar base is drawn (in position axis units). In "stack" or "relative" barmode, traces that set "base" will be excluded and drawn in "overlay" mode instead. """,
     )

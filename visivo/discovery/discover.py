@@ -38,7 +38,7 @@ class Discover:
     def __add_dbt(self, data):
         from visivo.models.dbt import Dbt
 
-        if "dbt" in data:
+        if "dbt" in data and data["dbt"]:
             dbt = Dbt(**data["dbt"])
             if dbt.enabled:
                 return dbt.get_output_file(

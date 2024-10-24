@@ -11,58 +11,100 @@ on:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.1.5
+    call: mint/git-clone 1.2.8
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
       github-access-token: ${{ github.token }}
 
+  - key: versions
+    use: code
+    run: |
+      cat .python-version | tee $MINT_VALUES/python
+      cat viewer/.nvmrc | sed 's/^v//' | tee $MINT_VALUES/node
+      cat test-projects/ror/.ruby-version | tee $MINT_VALUES/ruby
+    filter:
+      - .python-version
+      - viewer/.nvmrc
+      - test-projects/ror/.ruby-version
+
   - key: python
-    call: mint/install-python 1.1.0
+    call: mint/install-python 1.2.1
     with:
-      python-version: 3.10.0
+      python-version: ${{ tasks.versions.values.python }}
 
   - key: node
-    call: mint/install-node 1.0.5
+    call: mint/install-node 1.0.10
     with:
-      node-version: 20.0.0
+      node-version: ${{ tasks.versions.values.node }}
 
   - key: ruby
-    call: mint/install-ruby 1.0.9
+    call: mint/install-ruby 1.1.1
     with:
-      ruby-version: 3.2.2
+      ruby-version: ${{ tasks.versions.values.ruby }}
 
-  - key: pip-install-poetry
-    use: [python]
+  - key: poetry
+    use: python
     run: pip install poetry
 
-  - key: poetry-install
-    use: [code, pip-install-poetry]
-    run: poetry install --with dev
+  - key: cli-dependencies
+    use: [code, poetry]
+    run: poetry install --with dev --no-root
+    filter:
+      - poetry.lock
+      - pyproject.toml
 
   - key: visivo-install
-    use: [poetry-install]
-    run: poetry build && pip install dist/visivo-*-py3-none-any.whl
+    use: cli-dependencies
+    run: |
+      poetry install --with dev
+      poetry build
+      pip install dist/visivo-*-py3-none-any.whl
 
   - key: test-cli
-    use: [poetry-install]
+    use: cli-dependencies
     run: |
+      poetry install --with dev
       poetry run pytest --json-report
       curl -X POST -H "Content-Type: application/json" -d @.report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}
     env:
       STACKTRACE: true
 
-  - key: test-viewer
-    use: [code, node]
+  - key: yarn
+    use: node
+    run: npm install --global yarn
+
+  - key: node-modules
+    use: [code, yarn]
     run: |
       cd viewer
-      npm install --global yarn
-      yarn install 
-      yarn test
+      yarn install
+    filter:
+      - viewer/package.json
+      - viewer/yarn.lock
+
+  - key: viewer-test
+    use: node-modules
+    run: |
+      cd viewer
+      yarn test --json --testLocationInResults --outputFile jest.json
+    filter: [viewer]
+    outputs:
+      test-results:
+        - path: viewer/jest.json
+
+  - key: viewer-lint
+    use: node-modules
+    run: |
+      cd viewer
       yarn run lint --max-warnings=0
+    filter: [viewer]
+    outputs:
+      problems:
+        - matcher: eslint
 
   - key: test-snowflake
-    use: [visivo-install]
+    use: visivo-install
     run: |
       cd test-projects/integration
       visivo run -s remote-snowflake
@@ -71,9 +113,10 @@ tasks:
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+    filter: [test-projects/integration]
 
   - key: test-complex-project
-    use: [visivo-install]
+    use: visivo-install
     run: |
       cd test-projects/complex-project
       visivo run
@@ -82,6 +125,7 @@ tasks:
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
+    filter: [test-projects/complex-project]
 
   - key: postgres-packages
     run: |
@@ -105,6 +149,9 @@ tasks:
       PG_PASSWORD: postgres
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5434
+    filter:
+      - test-projects/integration
+      - tests/setup/populate_ci_postgres.sql
 
   - key: mysql-packages
     run: |
@@ -126,10 +173,24 @@ tasks:
     env:
       MYSQL_PASSWORD: mysql
       IS_MYSQL: true
+    filter:
+      - test-projects/integration
+      - tests/setup/populate_ci_mysql.sql
+
+  - key: gems
+    use: [ruby, code]
+    run: |
+      cd test-projects/ror
+      bundle install
+    filter:
+      - test-projects/ror/Gemfile
+      - test-projects/ror/Gemfile.lock
 
   - key: test-ruby-on-rails
-    use: [ruby, visivo-install]
+    use: [gems, visivo-install]
     run: |
-      cd test-projects/ror 
-      bundle install 
-      bundle exec rspec
+      cd test-projects/ror
+      bundle exec rspec --format json --out rspec.json --format progress
+    outputs:
+      test-results:
+        - path: test-projects/ror/rspec.json
