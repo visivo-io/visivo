@@ -40,7 +40,7 @@ class SqlalchemySource(Source, ABC):
             return connection
         except Exception as err:
             raise click.ClickException(
-                f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct. Full Error: {repr(err)}"
+                f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct. Full Error: {str(err)}"
             )
 
     def get_engine(self):

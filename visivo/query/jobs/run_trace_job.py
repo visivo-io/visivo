@@ -1,4 +1,3 @@
-from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
@@ -47,7 +46,7 @@ def action(trace, dag, output_dir):
                 details=f"Failed query for trace \033[4m{trace.name}\033[0m",
                 start_time=start_time,
                 full_path=trace_query_file,
-                error_msg=str(repr(e)),
+                error_msg=e.message,
             )
             return JobResult(success=False, message=failure_message)
 

@@ -21,6 +21,6 @@ def test_PostgresqlSource_bad_connection():
         source.read_sql("query")
 
     assert (
-        exc_info.value.message
-        == "Error connecting to source 'development'. Ensure the database is running and the connection properties are correct."
+        "Error connecting to source 'development'. Ensure the database is running and the connection properties are correct."
+        in exc_info.value.message
     )

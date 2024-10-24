@@ -42,7 +42,7 @@ class SnowflakeSource(SqlalchemySource):
         description="The access role that you want to use when running queries.",
     )
     timezone: Optional[str] = Field(
-        None,
+        'America/Los_Angeles',
         description="The timezone that you want to use by default when running queries.",
     )
 
