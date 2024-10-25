@@ -5,6 +5,20 @@ from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.utils import load_yaml_file
 
 
+def get_source_types():
+    from typing import get_args
+    from visivo.models.sources.sqlite_source import SqliteType
+    from visivo.models.sources.postgresql_source import PostgresqlType
+    from visivo.models.sources.mysql_source import MysqlType
+    from visivo.models.sources.snowflake_source import SnowflakeType
+
+    sqlite_type = get_args(SqliteType)[0]
+    postgresql_type = get_args(PostgresqlType)[0]
+    mysql_type = get_args(MysqlType)[0]
+    snowflake_type = get_args(SnowflakeType)[0]
+    return [postgresql_type, mysql_type, sqlite_type, snowflake_type]
+
+
 def parse_project_file(working_dir, output_dir, default_source):
     from visivo.discovery.discover import Discover
     from visivo.parsers.parser_factory import ParserFactory

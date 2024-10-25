@@ -4,9 +4,7 @@ import yaml
 import pytest
 import click
 from visivo.commands.dbt_phase import dbt_phase
-from visivo.commands.dbt import dbt
 from visivo.parsers.file_names import PROJECT_FILE_NAME
-from visivo.commands.utils import create_file_database
 from click.testing import CliRunner
 from tests.support.utils import temp_file, temp_yml_file, temp_folder
 from tests.factories.model_factories import DbtFactory, ProjectFactory
@@ -157,4 +155,44 @@ def test_dbt_with_missing_manifest():
         assert (
             exc_info.value.message
             == f"Manifest file not found at '{working_dir}/target/manifest.json'. You might need to run dbt."
+        )
+
+
+def test_dbt_with_unsupported_source_type():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir)
+    temp_yml_file(
+        dict={
+            "profile_name": {
+                "target": "target_name",
+                "outputs": {
+                    "target_name": {
+                        "type": "unsupported",
+                        "account": "{{env_var('ACCOUNT')}}",
+                        "username": "username",
+                        "password": "password",
+                        "schema": "schema",
+                        "database": "database",
+                        "threads": 8,
+                        "warehouse": "warehouse",
+                        "role": "role",
+                    }
+                },
+            }
+        },
+        name="profiles.yml",
+        output_dir=working_dir,
+    )
+    with pytest.raises(click.ClickException) as exc_info:
+        dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile="profile_name",
+            dbt_target="target_name",
+        )
+        assert (
+            exc_info.value.message
+            == f"Target type 'unsupported' is not supported.  Only ['postgresql', 'mysql', 'sqlite', 'snowflake'] are supported."
         )

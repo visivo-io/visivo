@@ -1,7 +1,9 @@
 def _generate_sources(profiles, dbt_target):
     from visivo.logging.logger import Logger
     import click
+    from visivo.commands.utils import get_source_types
 
+    source_types = get_source_types()
     sources = []
     target_found = False
     for profile_name, profile_value in profiles.items():
@@ -20,6 +22,10 @@ def _generate_sources(profiles, dbt_target):
                 )
                 if "threads" in source:
                     source.pop("threads")
+            if "type" in source and source["type"] not in source_types:
+                raise click.ClickException(
+                    f"Target type '{source['type']}' is not supported.  Only {source_types} are supported."
+                )
             sources.append(source)
 
     if not target_found:
