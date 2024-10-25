@@ -112,6 +112,9 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
             output_dir=output_dir, working_dir=working_dir
         )
 
+        output_dir_path = os.path.dirname(output_file)
+        if not os.path.exists(output_dir_path):
+            os.makedirs(output_dir_path)
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources, "models": models}, file)
 
