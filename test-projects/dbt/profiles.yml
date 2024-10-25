@@ -2,12 +2,12 @@ visivo_profile:
   outputs:
     ci:
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      database: "{{env_var('DATABASE')}}"
       password: "{{ env_var('DB_PASSWORD') }}"
+      user: "{{ env_var('DB_USERNAME') }}"
+      database: RAW
       role: PROD
       schema: DEFAULT
       threads: 8
       type: snowflake
-      user: "{{ env_var('DB_USER') }}"
       warehouse: PROD
   target: ci

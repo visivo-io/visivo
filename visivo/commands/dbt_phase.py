@@ -51,14 +51,23 @@ def _generate_models(manifest, dbt_profile, dbt_target):
 
 
 def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
-    from .utils import parse_project_file
     from visivo.logging.logger import Logger
+    from visivo.parsers.parser_factory import ParserFactory
+    from visivo.discovery.discover import Discover
+    from visivo.models.project import Dbt
     import os
     import click
 
-    project = parse_project_file(working_dir, output_dir, None)
+    discover = Discover(working_dir=working_dir, output_dir=output_dir)
+    parser = ParserFactory().build(
+        project_file=discover.project_file, files=discover.files
+    )
+    data = parser.merge_data_files()
+    if "dbt" in data and data["dbt"]:
+        dbt = Dbt(**data["dbt"])
+    else:
+        dbt = None
 
-    dbt = project.dbt
     if dbt and dbt.enabled:
         dbt_root = working_dir
         if dbt.dbt_project_yml_location:

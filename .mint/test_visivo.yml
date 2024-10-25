@@ -199,8 +199,7 @@ tasks:
     use: [code, poetry]
     run: |
       cd test-projects/dbt
-      poetry install --with dev --no-root
-      poetry run dbt_with_env run
+      poetry install --no-root
     filter:
       - test-projects/dbt/poetry.lock
       - test-projects/dbt/pyproject.toml
@@ -209,6 +208,12 @@ tasks:
     use: [dbt-dependencies, visivo-install]
     run: |
       cd test-projects/dbt
+      poetry run dbt run --profiles-dir .
       visivo run
     filter:
       - test-projects/dbt
+    env:
+      STACKTRACE: true
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      DB_USERNAME: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
+      DB_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
