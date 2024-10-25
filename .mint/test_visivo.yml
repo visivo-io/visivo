@@ -194,3 +194,21 @@ tasks:
     outputs:
       test-results:
         - path: test-projects/ror/rspec.json
+
+  - key: dbt-dependencies
+    use: [code, poetry]
+    run: |
+      cd test-projects/dbt
+      poetry install --with dev --no-root
+      poetry run dbt_with_env run
+    filter:
+      - test-projects/dbt/poetry.lock
+      - test-projects/dbt/pyproject.toml
+
+  - key: test-dbt
+    use: [dbt-dependencies, visivo-install]
+    run: |
+      cd test-projects/dbt
+      visivo run
+    filter:
+      - test-projects/dbt

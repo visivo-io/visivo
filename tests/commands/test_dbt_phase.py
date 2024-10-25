@@ -1,6 +1,8 @@
 import os
 import json
 import yaml
+import pytest
+import click
 from visivo.commands.dbt_phase import dbt_phase
 from visivo.commands.dbt import dbt
 from visivo.parsers.file_names import PROJECT_FILE_NAME
@@ -80,3 +82,79 @@ def test_dbt_with_defaults():
     with open(f"{output_dir}/dbt.yml", "r") as file:
         dbt_content = yaml.safe_load(file)
         assert dbt_content["models"][0]["source"] == "ref(dbt_profile_name_target_name)"
+
+
+def test_dbt_with_set_profile_and_target():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir)
+
+    dbt_phase(
+        working_dir=working_dir,
+        output_dir=output_dir,
+        dbt_profile="profile_name",
+        dbt_target="target_name",
+    )
+
+    assert os.path.exists(f"{output_dir}/dbt.yml")
+    with open(f"{output_dir}/dbt.yml", "r") as file:
+        dbt_content = yaml.safe_load(file)
+        assert dbt_content["models"][0]["source"] == "ref(dbt_profile_name_target_name)"
+
+
+def test_dbt_with_missing_profile():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir)
+
+    with pytest.raises(click.ClickException) as exc_info:
+        dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile="does_not_exist",
+            dbt_target=None,
+        )
+        assert (
+            exc_info.value.message
+            == f"Profile 'does_not_exist' not found in profiles.yml"
+        )
+
+
+def test_dbt_with_missing_target():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir)
+    with pytest.raises(click.ClickException) as exc_info:
+        dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile=None,
+            dbt_target="does_not_exist",
+        )
+        assert (
+            exc_info.value.message
+            == f"Target'does_not_exist' not found in profiles.yml"
+        )
+
+
+def test_dbt_with_missing_manifest():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir)
+    os.remove(f"{working_dir}/target/manifest.json")
+
+    with pytest.raises(click.ClickException) as exc_info:
+        dbt_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dbt_profile="profile_name",
+            dbt_target="target_name",
+        )
+        assert (
+            exc_info.value.message
+            == f"Manifest file not found at '{working_dir}/target/manifest.json'. You might need to run dbt."
+        )
