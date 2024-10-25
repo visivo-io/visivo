@@ -1,12 +1,12 @@
 from typing import Literal, Optional
-from visivo.models.sources.source import Source
-import click
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from click import ClickException
 from pydantic import Field
 
 SnowflakeType = Literal["snowflake"]
 
 
-class SnowflakeSource(Source):
+class SnowflakeSource(SqlalchemySource):
     """
     SnowflakeSources hold the connection information to Snowflake data sources.
 
@@ -41,35 +41,38 @@ class SnowflakeSource(Source):
         None,
         description="The access role that you want to use when running queries.",
     )
+    timezone: Optional[str] = Field(
+        None,
+        description="The timezone that you want to use by default when running queries.",
+    )
 
     type: SnowflakeType
+    connection_pool_size: Optional[int] = Field(
+        8, description="The pool size that is used for this connection."
+    )
 
-    def read_sql(self, query: str):
-        from pandas import DataFrame
+    def get_dialect(self):
+        return "snowflake"
 
-        with self.connect() as connection:
-            cursor = connection.cursor()
-            cursor.execute(query)
-            columns = [col[0] for col in cursor.description]
-            data = cursor.fetchall()
-            cursor.close()
+    def url(self):
+        from snowflake.sqlalchemy import URL
+        url_attributes = {
+            "user": self.username,
+            "password": self.get_password(),
+            "account": self.account,
+        }
+        # Optional attributes where if its not set the default value is used
+        if self.timezone:
+            url_attributes["timezone"] = self.timezone
+        if self.warehouse:
+            url_attributes["warehouse"] = self.warehouse
+        if self.role:
+            url_attributes["role"] = self.role
+        if self.database:
+            url_attributes["database"] = self.database
+        if self.db_schema:
+            url_attributes["schema"] = self.db_schema
 
-        return DataFrame(data, columns=columns)
+        url = URL(**url_attributes)
 
-    def get_connection(self):
-        import snowflake.connector
-
-        try:
-            return snowflake.connector.connect(
-                account=self.account,
-                user=self.username,
-                password=self.get_password(),
-                warehouse=self.warehouse,
-                database=self.database,
-                schema=self.db_schema,
-                role=self.role,
-            )
-        except Exception as err:
-            raise click.ClickException(
-                f"Error connecting to source '{self.name}'. Ensure the database is running and the connection properties are correct."
-            )
+        return url
