@@ -45,15 +45,22 @@ class SqlalchemySource(Source, ABC):
 
     def get_engine(self):
         from sqlalchemy import create_engine
+        from visivo.logging.logger import Logger
 
         if not self._engine:
-            if hasattr(self, "connection_pool_size"):
+            if hasattr(self, "connection_pool_size") and self.connection_pool_size > 1:
+                Logger.instance().debug(
+                    f"Creating engine for {self.name} with pooling size {self.connection_pool_size}."
+                )
                 self._engine = create_engine(
                     self.url(), 
                     pool_size=self.connection_pool_size,
                     max_overflow=0 # I was reading that this is set to 10 by default. This is likely the issue. 
                 )
             else:
-                self._engine = create_engine(self.url())
+                from sqlalchemy.pool import NullPool
+
+                Logger.instance().debug(f"Creating engine for {self.name}")
+                self._engine = create_engine(self.url(), poolclass=NullPool)
 
         return self._engine
