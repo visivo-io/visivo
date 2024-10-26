@@ -1,5 +1,4 @@
-def _generate_sources(profiles, dbt_target):
-    from visivo.logging.logger import Logger
+def _generate_sources(profiles, dbt_target, dbt_prefix):
     import click
     from visivo.commands.utils import get_source_types
 
@@ -11,17 +10,13 @@ def _generate_sources(profiles, dbt_target):
             if target_name == dbt_target:
                 target_found = True
             source = target_value
-            source["name"] = f"dbt_{profile_name}_{target_name}"
+            source["name"] = f"{dbt_prefix}{profile_name}_{target_name}"
             if "schema" in source:
                 source["db_schema"] = source.pop("schema")
             if "user" in source:
                 source["username"] = source.pop("user")
-            if "type" in source and source["type"] == "snowflake":
-                Logger.instance().info(
-                    f"Configuring threads for snowflake is not supported.  Ignoring."
-                )
-                if "threads" in source:
-                    source.pop("threads")
+            if "threads" in source:
+                source.pop("threads")
             if "type" in source and source["type"] not in source_types:
                 raise click.ClickException(
                     f"Target type '{source['type']}' is not supported.  Only {source_types} are supported."
@@ -34,7 +29,7 @@ def _generate_sources(profiles, dbt_target):
     return sources
 
 
-def _generate_models(manifest, dbt_profile, dbt_target):
+def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
     models = []
     if "nodes" in manifest:
         for path, node in manifest["nodes"].items():
@@ -48,7 +43,7 @@ def _generate_models(manifest, dbt_profile, dbt_target):
                 model = {
                     "name": f"dbt_{node['name']}",
                     "sql": "select * from " + ".".join(names),
-                    "source": f"ref(dbt_{dbt_profile}_{dbt_target})",
+                    "source": f"ref({dbt_prefix}{dbt_profile}_{dbt_target})",
                 }
 
                 models.append(model)
@@ -121,13 +116,13 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         manifest_file = f"{dbt_root}/{dbt_project['target-path']}/manifest.json"
         if not os.path.exists(manifest_file):
             raise click.ClickException(
-                f"Manifest file not found at '{manifest_file}'. You might need to run dbt."
+                f"Manifest file not found at '{manifest_file}'. You might need to 'dbt compile'."
             )
         with open(manifest_file, "r") as file:
             manifest = json.load(file)
 
-        sources = _generate_sources(profiles, dbt_target)
-        models = _generate_models(manifest, dbt_profile, dbt_target)
+        sources = _generate_sources(profiles, dbt_target, dbt.prefix)
+        models = _generate_models(manifest, dbt_profile, dbt_target, dbt.prefix)
 
         output_file = dbt.get_output_file(
             output_dir=output_dir, working_dir=working_dir
