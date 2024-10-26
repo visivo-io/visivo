@@ -11,11 +11,13 @@ from visivo.query.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
+    start_message,
 )
 from time import time
 
 
 def action(trace, dag, output_dir):
+    Logger.instance().info(start_message("Trace", trace))
     model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     if isinstance(model, CsvScriptModel):
         source = model.get_sqlite_source(output_dir=output_dir)

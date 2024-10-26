@@ -7,11 +7,14 @@ from visivo.query.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
+    start_message,
 )
 from time import time
+from visivo.logging.logger import Logger
 
 
 def action(local_merge_model: LocalMergeModel, output_dir, dag):
+    Logger.instance().info(start_message("LocalMergeModel", local_merge_model))
     try:
         start_time = time()
         local_merge_model.insert_dependent_models_to_sqlite(

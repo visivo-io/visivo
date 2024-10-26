@@ -56,7 +56,6 @@ class Runner:
                 if job.done() or job.running():
                     pass
                 else:
-                    Logger.instance().info(job.start_message())
                     job.set_future(executor.submit(job.action, **job.kwargs))
                     job.future.add_done_callback(self.job_callback)
 
