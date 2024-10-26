@@ -47,11 +47,12 @@ class Job:
     def set_future(self, future):
         self.future = future
 
-    def start_message(self):
-        return _format_message(
-            details=f"Running job for {self.__class__.__name__} \033[4m{self.item.name}\033[0m",
-            status="RUNNING",
-        )
+
+def start_message(cls_name, item):
+    return _format_message(
+        details=f"Running job for {cls_name} \033[4m{item.name}\033[0m",
+        status="RUNNING",
+    )
 
 
 def _format_message(details, status, full_path=None, error_msg=None):
