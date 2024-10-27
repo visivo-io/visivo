@@ -17,6 +17,9 @@ class CoreParser:
     def parse(self) -> Project:
         return self.__build_project()
 
+    def merge_data_files(self):
+        return self.__merged_project_data()
+
     def project_file_data(self):
         return load_yaml_file(self.project_file)
 

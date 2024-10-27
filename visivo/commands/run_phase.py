@@ -6,6 +6,8 @@ def run_phase(
     run_only_changed: bool = False,
     threads: int = 8,
     soft_failure=False,
+    dbt_profile: str = None,
+    dbt_target: str = None,
 ):
     from visivo.logging.logger import Logger
     from visivo.query.runner import Runner
@@ -16,6 +18,8 @@ def run_phase(
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter=name_filter,
+        dbt_profile=dbt_profile,
+        dbt_target=dbt_target,
     )
 
     source_details = (

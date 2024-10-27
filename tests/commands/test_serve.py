@@ -20,7 +20,7 @@ def test_serve():
     )
     working_dir = os.path.dirname(tmp)
 
-    app = app_phase(
+    app, project = app_phase(
         working_dir=working_dir,
         output_dir=output_dir,
         default_source="source",

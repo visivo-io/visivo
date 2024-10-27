@@ -1,0 +1,18 @@
+name: dbt_name
+
+dbt:
+  enabled: true
+
+dashboards:
+  - name: dashboard_name
+    rows:
+      - items:
+          - chart:
+              name: chart_name
+              traces:
+                - name: trace_name
+                  model: ref(dbt_fact_transaction)
+                  props:
+                    x: query(CREATED_AT)
+                    y: query(AMOUNT)
+                    type: bar

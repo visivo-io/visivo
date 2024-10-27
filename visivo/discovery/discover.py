@@ -7,13 +7,19 @@ from visivo.utils import load_yaml_file
 
 
 class Discover:
-    def __init__(self, working_directory: str, home_directory=os.path.expanduser("~")):
-        self.working_directory = working_directory
-        self.home_directory = home_directory
+    def __init__(
+        self,
+        working_dir: str,
+        output_dir: str,
+        home_dir=os.path.expanduser("~"),
+    ):
+        self.working_dir = working_dir
+        self.home_dir = home_dir
+        self.output_dir = output_dir
 
     @property
     def project_file(self):
-        return Path(self._get_any_project_file(self.working_directory))
+        return Path(self._get_any_project_file(self.working_dir))
 
     @property
     def files(self):
@@ -23,17 +29,31 @@ class Discover:
 
         self.__add_includes(files=files, file=self.project_file)
 
-        profile_file = get_profile_file(home_directory=self.home_directory)
+        profile_file = get_profile_file(home_dir=self.home_dir)
         if os.path.exists(profile_file):
             files.append(profile_file)
 
         return files
+
+    def __add_dbt(self, data):
+        from visivo.models.dbt import Dbt
+
+        if "dbt" in data and data["dbt"]:
+            dbt = Dbt(**data["dbt"])
+            if dbt.enabled:
+                return dbt.get_output_file(
+                    output_dir=self.output_dir, working_dir=self.working_dir
+                )
 
     def __add_includes(self, files, file):
         from visivo.models.include import Include
 
         data = load_yaml_file(file)
         base_path = os.path.dirname(file)
+
+        output_file = self.__add_dbt(data=data)
+        if output_file and os.path.exists(output_file):
+            files.append(Path(output_file))
 
         if "includes" in data:
             for include_data in data["includes"]:
@@ -60,7 +80,7 @@ class Discover:
     def __get_project_file_from_git(self, git_url):
         from git import Repo
 
-        deps_folder = f"{self.working_directory}/.visivo_cache"
+        deps_folder = f"{self.working_dir}/.visivo_cache"
         if not os.path.exists(deps_folder):
             os.makedirs(deps_folder)
         if "@" not in git_url:

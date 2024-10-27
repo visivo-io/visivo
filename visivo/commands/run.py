@@ -5,6 +5,8 @@ from visivo.commands.options import (
     source,
     name_filter,
     threads,
+    dbt_profile,
+    dbt_target,
 )
 
 
@@ -14,7 +16,9 @@ from visivo.commands.options import (
 @output_dir
 @name_filter
 @threads
-def run(output_dir, working_dir, source, name_filter, threads):
+@dbt_profile
+@dbt_target
+def run(output_dir, working_dir, source, name_filter, threads, dbt_profile, dbt_target):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory.
     """
@@ -31,5 +35,7 @@ def run(output_dir, working_dir, source, name_filter, threads):
         working_dir=working_dir,
         name_filter=name_filter,
         threads=threads,
+        dbt_profile=dbt_profile,
+        dbt_target=dbt_target,
     )
     Logger.instance().success("Done")

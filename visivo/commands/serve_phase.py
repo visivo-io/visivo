@@ -91,11 +91,11 @@ def app_phase(output_dir, working_dir, default_source, name_filter, threads):
             return send_from_directory(VIEWER_PATH, path)
         return send_from_directory(VIEWER_PATH, "index.html")
 
-    return app
+    return app, runner.project
 
 
 def serve_phase(output_dir, working_dir, default_source, name_filter, threads):
-    app = app_phase(
+    app, project = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=default_source,
@@ -124,6 +124,15 @@ def serve_phase(output_dir, working_dir, default_source, name_filter, threads):
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({"message": error_message}))
 
+    dbt_file = None
+    if project.dbt and project.dbt.enabled:
+        dbt_file = project.dbt.get_output_file(output_dir, working_dir)
+
+    def ignore(filename):
+        if not dbt_file:
+            return False
+        return filename in dbt_file
+
     server = Server(app.wsgi_app)
-    server.watch(f"**/*.yml", cli_changed)
+    server.watch(filepath="**/*.yml", func=cli_changed, ignore=ignore)
     return server
