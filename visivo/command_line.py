@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from visivo.logging.logger import Logger, TypeEnum
 from visivo.parsers.line_validation_error import LineValidationError
 
+from .commands.dbt import dbt
 from .commands.deploy import deploy
 from .commands.serve import serve
 from .commands.run import run
@@ -49,6 +50,7 @@ def visivo(env_file, profile, force_complete_property_loading):
 
 
 visivo.add_command(init)
+visivo.add_command(dbt)
 visivo.add_command(compile)
 visivo.add_command(run)
 visivo.add_command(serve)

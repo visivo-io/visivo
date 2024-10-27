@@ -6,7 +6,7 @@ defaults:
 includes:
   - path: coffee_trade/coffee_trade.visivo.yml
 
-targets:
+sources:
   - name: snowflake
     database: raw
     account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"

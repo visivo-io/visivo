@@ -153,14 +153,16 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     deploy_start_time = time()
     # Retrieve profile token for authentication
     Logger.instance().debug("Retrieving profile token...")
-    profile_file = get_profile_file(home_directory=user_dir)
+    profile_file = get_profile_file(home_dir=user_dir)
     profile_token = get_profile_token(profile_file)
     Logger.instance().info(f"Found Profile token: {profile_file}")
 
     # Discover and parse project details
     Logger.instance().info("")
     Logger.instance().debug("Compiling project details...")
-    discover = Discover(working_directory=working_dir, home_directory=user_dir)
+    discover = Discover(
+        working_dir=working_dir, home_dir=user_dir, output_dir=output_dir
+    )
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
     )
@@ -209,6 +211,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         Logger.instance().info(f"")
         Logger.instance().info("Processing trace uploads and record creations...")
         process_traces_start_time = time()
+
         traces = project.descendants_of_type(type=Trace)
         failed_operations = asyncio.run(
             process_traces_async(

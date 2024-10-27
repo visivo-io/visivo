@@ -13,7 +13,7 @@ from visivo.query.jobs.job import CachedFuture, Job, JobResult
 from visivo.query.jobs.run_csv_script_job import jobs as csv_script_jobs
 from visivo.query.jobs.run_trace_job import jobs as run_trace_jobs
 from visivo.query.jobs.run_local_merge_job import jobs as run_local_merge_jobs
-from visivo.query.source_job_tracker import SourceJobTracker
+from visivo.query.job_tracker import JobTracker
 
 warnings.filterwarnings("ignore")
 
@@ -40,28 +40,25 @@ class Runner:
 
     def run(self):
         complete = False
-        source_job_tracker = SourceJobTracker()
+        job_tracker = JobTracker()
         start_time = time()
         self.jobs = self._all_jobs()
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
             while True:
-                complete = self.update_job_queue(source_job_tracker)
+                complete = self.update_job_queue(job_tracker)
                 if complete:
                     break
 
                 try:
-                    job = source_job_tracker.get_next_job()
+                    job = job_tracker.get_next_job()
                 except queue.Empty:
                     continue
 
-                if job.done():
+                if job.done() or job.running():
                     pass
-                elif source_job_tracker.is_accepting_job(job):
-                    Logger.instance().info(job.start_message())
+                else:
                     job.set_future(executor.submit(job.action, **job.kwargs))
                     job.future.add_done_callback(self.job_callback)
-                else:
-                    source_job_tracker.return_to_queue(job)
 
         if len(self.errors) > 0 and self.soft_failure:
             Logger.instance().error(
@@ -75,7 +72,7 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(self, source_job_tracker: SourceJobTracker) -> bool:
+    def update_job_queue(self, job_tracker: JobTracker) -> bool:
         all_dependencies_completed = True
         for job in self.jobs:
             job_item_children = all_descendants(dag=self.dag, from_node=job.item)
@@ -87,7 +84,7 @@ class Runner:
             )
             incomplete_dependencies = list(
                 filter(
-                    lambda d: not source_job_tracker.is_job_name_done(d.name),
+                    lambda d: not job_tracker.is_job_name_done(d.name),
                     dependencies,
                 )
             )
@@ -95,14 +92,14 @@ class Runner:
             if not dependencies_completed:
                 all_dependencies_completed = False
 
-            if dependencies_completed and not source_job_tracker.is_job_name_enqueued(
+            if dependencies_completed and not job_tracker.is_job_name_enqueued(
                 job.name
             ):
                 if not job.output_changed and self.run_only_changed:
                     job.future = CachedFuture()
-                source_job_tracker.track_job(job)
+                job_tracker.track_job(job)
 
-        return all_dependencies_completed and source_job_tracker.empty()
+        return all_dependencies_completed and job_tracker.empty()
 
     def job_callback(self, future: Future):
         job_result: JobResult = future.result(timeout=1)

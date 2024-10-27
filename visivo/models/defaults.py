@@ -39,6 +39,10 @@ class Defaults(BaseModel):
         description="The name of a source defined elsewhere in the Visivo project.",
         alias="target_name",
     )
+    threads: Optional[int] = Field(
+        None,
+        description="The number of threads to use when running queries.",
+    )
 
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))

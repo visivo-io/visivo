@@ -6,7 +6,7 @@ from visivo.commands.utils import get_profile_file, get_profile_token
 
 
 def archive_phase(stage, host, user_dir):
-    profile_token = get_profile_token(get_profile_file(home_directory=user_dir))
+    profile_token = get_profile_token(get_profile_file(home_dir=user_dir))
 
     json_headers = {
         "content-type": "application/json",

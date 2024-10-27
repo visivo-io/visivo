@@ -12,12 +12,15 @@ from visivo.query.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
+    start_message,
 )
 from time import time
 
 
 def action(trace, dag, output_dir):
+    Logger.instance().info(start_message("Trace", trace))
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
+
     if isinstance(model, CsvScriptModel):
         source = model.get_sqlite_source(output_dir=output_dir)
     elif isinstance(model, LocalMergeModel):
@@ -42,11 +45,15 @@ def action(trace, dag, output_dir):
             )
             return JobResult(success=True, message=success_message)
         except Exception as e:
+            if hasattr(e, "message"):
+                message = e.message 
+            else:
+                message = repr(e)
             failure_message = format_message_failure(
                 details=f"Failed query for trace \033[4m{trace.name}\033[0m",
                 start_time=start_time,
                 full_path=trace_query_file,
-                error_msg=str(repr(e)),
+                error_msg=message,
             )
             return JobResult(success=False, message=failure_message)
 

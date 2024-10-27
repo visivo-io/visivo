@@ -1,5 +1,5 @@
 from pathlib import Path
-import yaml
+import ruamel.yaml
 import uuid
 import os
 
@@ -11,19 +11,16 @@ def temp_folder():
 def temp_file(name: str, contents: str, output_dir: str = temp_folder()):
     os.makedirs(output_dir, exist_ok=True)
     path = f"{output_dir}/{name}"
-    file = open(path, "w")
-    file.write(contents)
-    file.close()
+    with open(path, "w") as file:
+        file.write(contents)
     return Path(path)
 
 
-def temp_yml_file(dict, name=str(uuid.uuid1()) + ".yml"):
-    path = f"tmp/{str(uuid.uuid1())}/{name}"
-    folders = os.path.dirname(path)
-    os.makedirs(folders, exist_ok=True)
-
-    fp = open(path, "w")
-    fp.write(yaml.dump(dict))
-    fp.close()
-
+def temp_yml_file(dict, name=str(uuid.uuid1()) + ".yml", output_dir=temp_folder()):
+    yaml = ruamel.yaml.YAML()
+    yaml.preserve_quotes = True
+    os.makedirs(output_dir, exist_ok=True)
+    path = f"{output_dir}/{name}"
+    with open(path, "w") as file:
+        yaml.dump(dict, file)
     return Path(path)

@@ -20,6 +20,7 @@ from .trace import Trace
 from .sources.source import Source
 from .table import Table
 from .defaults import Defaults
+from .dbt import Dbt
 from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
@@ -30,6 +31,7 @@ class Project(NamedModel, ParentModel):
     model_config = ConfigDict(populate_by_name=True)
 
     defaults: Optional[Defaults] = None
+    dbt: Optional[Dbt] = None
     cli_version: Optional[str] = None
     includes: List[Include] = []
     destinations: List[DestinationField] = []

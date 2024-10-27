@@ -18,6 +18,7 @@ from visivo.models.trace_props.scatter import Scatter
 from visivo.models.trace_props.surface import Surface
 from visivo.models.row import Row, HeightEnum
 from visivo.query.jobs.job import Job
+from visivo.models.dbt import Dbt
 
 
 class DestinationFactory(factory.Factory):
@@ -263,6 +264,12 @@ class DashboardFactory(factory.Factory):
                 [factory.SubFactory(RowFactory, table_item=True) for _ in range(1)]
             )
         )
+
+
+class DbtFactory(factory.Factory):
+
+    class Meta:
+        model = Dbt
 
 
 class DefaultsFactory(factory.Factory):

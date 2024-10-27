@@ -1,3 +1,4 @@
+from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -7,11 +8,13 @@ from visivo.query.jobs.job import (
     JobResult,
     format_message_failure,
     format_message_success,
+    start_message,
 )
 from time import time
 
 
 def action(csv_script_model: CsvScriptModel, output_dir):
+    Logger.instance().info(start_message("CsvScriptModel", csv_script_model))
     try:
         start_time = time()
         csv_script_model.insert_csv_to_sqlite(output_dir=output_dir)

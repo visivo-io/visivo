@@ -4,8 +4,10 @@ def run_phase(
     working_dir: str,
     name_filter: str = None,
     run_only_changed: bool = False,
-    threads: int = 8,
+    threads: int = None,
     soft_failure=False,
+    dbt_profile: str = None,
+    dbt_target: str = None,
 ):
     from visivo.logging.logger import Logger
     from visivo.query.runner import Runner
@@ -16,7 +18,15 @@ def run_phase(
         working_dir=working_dir,
         output_dir=output_dir,
         name_filter=name_filter,
+        dbt_profile=dbt_profile,
+        dbt_target=dbt_target,
     )
+    if threads is None and project.defaults and project.defaults.threads:
+        threads = project.defaults.threads
+    elif threads is None:
+        threads = 8
+    else:
+        threads = int(threads)
 
     source_details = (
         "\n" if default_source == None else f" and default source {default_source}\n"

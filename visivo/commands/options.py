@@ -25,6 +25,26 @@ def output_dir(function):
     return function
 
 
+def dbt_profile(function):
+    click.option(
+        "-dp",
+        "--dbt-profile",
+        help="The dbt profile to use",
+        default=None,
+    )(function)
+    return function
+
+
+def dbt_target(function):
+    click.option(
+        "-dt",
+        "--dbt-target",
+        help="The dbt target to use",
+        default=None,
+    )(function)
+    return function
+
+
 def dist_dir(function):
     click.option(
         "-d",
@@ -112,6 +132,6 @@ def threads(function):
         "-th",
         "--threads",
         help="The max number of threads to use when running trace queries",
-        default=8,
+        default=None,
     )(function)
     return function
