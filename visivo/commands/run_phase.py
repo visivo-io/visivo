@@ -19,8 +19,10 @@ def run_phase(
     )
     if threads is None and project.defaults and project.defaults.threads:
         threads = project.defaults.threads
-    else:
+    elif threads is None:
         threads = 8
+    else:
+        threads = int(threads)
 
     source_details = (
         "\n" if default_source == None else f" and default source {default_source}\n"
