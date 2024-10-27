@@ -4,7 +4,7 @@ def run_phase(
     working_dir: str,
     name_filter: str = None,
     run_only_changed: bool = False,
-    threads: int = 8,
+    threads: int = None,
     soft_failure=False,
 ):
     from visivo.logging.logger import Logger
@@ -17,6 +17,10 @@ def run_phase(
         output_dir=output_dir,
         name_filter=name_filter,
     )
+    if threads is None and project.defaults and project.defaults.threads:
+        threads = project.defaults.threads
+    else:
+        threads = 8
 
     source_details = (
         "\n" if default_source == None else f" and default source {default_source}\n"

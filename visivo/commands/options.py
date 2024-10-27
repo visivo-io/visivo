@@ -119,6 +119,6 @@ def threads(function):
         "-th",
         "--threads",
         help="The max number of threads to use when running trace queries",
-        default=8,
+        default=None,
     )(function)
     return function

@@ -48,11 +48,11 @@ def test_run_with_model_ref():
     assert response.exit_code == 0
 
 
-def test_run_by_with_passing_new_default_source():
+def test_run_by_with_passing_new_defaults():
     output_dir = temp_folder()
 
     project = ProjectFactory(model_ref=True)
-    project.defaults = DefaultsFactory(source_name=project.sources[0].name)
+    project.defaults = DefaultsFactory(source_name=project.sources[0].name, threads=3)
 
     project.models[0].source = None
     alternate_source = SourceFactory()
@@ -71,6 +71,7 @@ def test_run_by_with_passing_new_default_source():
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
 
     assert "alternate-source" in response.output
+    assert "Running project across 3 threads" in response.output
     assert response.exit_code == 0
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     with open(f"{output_dir}/{trace.name}/query.sql") as f:
