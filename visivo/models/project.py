@@ -25,7 +25,7 @@ from pydantic import ConfigDict, Field, model_validator
 
 
 class Project(NamedModel, ParentModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
