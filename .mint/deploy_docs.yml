@@ -15,7 +15,7 @@ tasks:
       github-access-token: ${{ github.token }}
 
   - key: python
-    call: mint/install-python 1.1.5
+    call: mint/install-python 1.1.0
     with:
       python-version: 3.10.0
 
