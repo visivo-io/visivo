@@ -7,6 +7,9 @@ import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
 import { useSearchParams } from "react-router-dom";
 import { getSelectorByOptionName } from "../models/Project.js";
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
@@ -158,6 +161,8 @@ const Dashboard = ({ project, dashboardName }) => {
                     <Markdown
                         className={`grow-${item.width} p-2 prose max-w-none`}
                         key={`dashboardRow${rowIndex}Item${itemIndex}`}
+                        remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw, rehypeSanitize]}
                     >
                         {item.markdown}
                     </Markdown>
