@@ -61,6 +61,13 @@ dashboards:
     rows:
       - height: medium
         items:
+          - align: right
+            markdown: |
+              # Bigus Dicus
+              Lorem ipsum odor amet, consectetuer adipiscing elit. Volutpat primis laoreet, ridiculus in placerat facilisis laoreet. Montes semper quam litora condimentum maximus. Sollicitudin montes rhoncus sollicitudin mus et elit. Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+
+      - height: medium
+        items:
           - width: 1
             markdown: |
               ## Sub heading
