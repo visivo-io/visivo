@@ -149,11 +149,20 @@ const Dashboard = ({ project, dashboardName }) => {
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} >
             </Selector>
         } else if (item.markdown) {
-            return <Markdown
-                className={`grow-${item.width} p-2 m-auto prose`}
-                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
-                {item.markdown}
-            </Markdown>
+            const alignmentClass = item.align === 'right' ? 'text-right' : 
+                                  item.align === 'center' ? 'text-center' : 
+                                  'text-left';
+            
+            return (
+                <div className={`w-full flex ${alignmentClass}`}>
+                    <Markdown
+                        className={`grow-${item.width} p-2 prose max-w-none`}
+                        key={`dashboardRow${rowIndex}Item${itemIndex}`}
+                    >
+                        {item.markdown}
+                    </Markdown>
+                </div>
+            );
         }
         return null
     }

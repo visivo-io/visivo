@@ -21,6 +21,16 @@ def test_Item_both_chart_and_markdown():
     )
     assert error["type"] == "value_error"
 
+def test_Item_chart_and_align():
+    with pytest.raises(ValidationError) as exc_info:
+        Item(chart="ref(chart)", align="right")
+
+    error = exc_info.value.errors()[0]
+    assert (
+        "property can only be set when" in error["msg"]
+    )
+    assert error["type"] == "value_error"
+
 
 def test_Item_both_chart_and_table():
     with pytest.raises(ValidationError) as exc_info:
