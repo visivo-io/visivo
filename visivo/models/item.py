@@ -38,7 +38,7 @@ class Item(NamedModel, ParentModel):
         None, description="Markdown text to include in the dashboard."
     )
     align: Optional[Literal["left", "center", "right"]] = Field(
-        "left", 
+        None, 
         description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'."
     )
     chart: Optional[generate_ref_field(Chart)] = Field(
@@ -72,7 +72,9 @@ class Item(NamedModel, ParentModel):
     def validate_align_with_markdown(cls, data: any):
         align = data.get('align')
         markdown = data.get('markdown')
-        if align is not None and markdown is None:
+        if markdown is not None and align is None:
+            data['align'] = 'left'
+        elif align is not None and markdown is None:
             raise ValueError("The 'align' property can only be set when 'markdown' is present")
         return data
 
