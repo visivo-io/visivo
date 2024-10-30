@@ -12,5 +12,8 @@ export const fetchTracesData = async (traces) => {
         })
     )
 
-    return returnJson
+    return traces.reduce((orderedJson, trace) => {
+        orderedJson[trace.name] = returnJson[trace.name];
+        return orderedJson;
+    }, {});
 }
