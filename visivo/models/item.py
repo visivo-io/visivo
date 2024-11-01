@@ -3,7 +3,7 @@ from visivo.models.selector import Selector
 from .base.base_model import generate_ref_field
 from .base.parent_model import ParentModel
 from pydantic import Field
-from typing import Optional
+from typing import Optional, Literal
 from .chart import Chart
 from .table import Table
 from pydantic import model_validator
@@ -37,6 +37,10 @@ class Item(NamedModel, ParentModel):
     markdown: Optional[str] = Field(
         None, description="Markdown text to include in the dashboard."
     )
+    align: Optional[Literal["left", "center", "right"]] = Field(
+        None, 
+        description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'."
+    )
     chart: Optional[generate_ref_field(Chart)] = Field(
         None, description="A chart object defined inline or a ref() to a chart."
     )
@@ -61,6 +65,17 @@ class Item(NamedModel, ParentModel):
             raise ValueError(
                 'only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
             )
+        return data
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_align_with_markdown(cls, data: any):
+        align = data.get('align')
+        markdown = data.get('markdown')
+        if markdown is not None and align is None:
+            data['align'] = 'left'
+        elif align is not None and markdown is None:
+            raise ValueError("The 'align' property can only be set when 'markdown' is present")
         return data
 
     def child_items(self):

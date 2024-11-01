@@ -7,6 +7,9 @@ import useDimensions from "react-cool-dimensions";
 import { throwError } from "../api/utils.js";
 import { useSearchParams } from "react-router-dom";
 import { getSelectorByOptionName } from "../models/Project.js";
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 
 const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
@@ -149,11 +152,24 @@ const Dashboard = ({ project, dashboardName }) => {
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} >
             </Selector>
         } else if (item.markdown) {
-            return <Markdown
-                className={`grow-${item.width} p-2 m-auto prose`}
-                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
-                {item.markdown}
-            </Markdown>
+            const alignmentClass = item.align === 'right' ? 'text-right' : 
+                                  item.align === 'center' ? 'text-center' : 
+                                  'text-left';
+            
+            return (
+                <div className={`w-full flex ${alignmentClass}`} style={{ height: getHeight(row.height) }}>
+                    <div className="w-full overflow-y-auto" style={{ maxHeight: '100%' }}>
+                        <Markdown
+                            className={`grow-${item.width} p-2 prose max-w-none`}
+                            key={`dashboardRow${rowIndex}Item${itemIndex}`}
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                        >
+                            {item.markdown}
+                        </Markdown>
+                    </div>
+                </div>
+            );
         }
         return null
     }

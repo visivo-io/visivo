@@ -7,7 +7,7 @@ on:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.2.8
+    call: mint/git-clone 1.1.5
     with:
       repository: https://github.com/visivo-io/visivo.git
       preserve-git-dir: true
