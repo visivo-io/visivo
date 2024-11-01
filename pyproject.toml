@@ -42,7 +42,6 @@ httpx = "^0.27.2"
 aiofiles = "^24.1.0"
 tenacity = "^9.0.0"
 plotly = "^5.24.0"
-gravis = "^0.1.0"
 snowflake-sqlalchemy = "^1.6.1"
 
 [tool.poetry.group.dev.dependencies]
