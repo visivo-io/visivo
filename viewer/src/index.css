@@ -86,3 +86,33 @@ code {
   stroke: #333;
   stroke-width: 1.5px;
 }
+
+/* Add these rules after your existing styles */
+.text-right blockquote,
+.text-right ul,
+.text-right ol {
+    margin-left: auto;
+    margin-right: 0;
+    text-align: right;
+}
+
+.text-right blockquote {
+    border-left: none;
+    border-right: 4px solid #e5e7eb;
+    padding-left: 0;
+    padding-right: 1rem;
+}
+
+.text-right ul,
+.text-right ol {
+    padding-left: 0;
+    padding-right: 2.5em;
+    list-style-position: inside;
+    direction: ltr;
+}
+
+.text-right ul > li,
+.text-right ol > li {
+    direction: ltr;
+    text-align: right;
+}
