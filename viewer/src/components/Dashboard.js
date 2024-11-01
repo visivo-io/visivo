@@ -157,15 +157,17 @@ const Dashboard = ({ project, dashboardName }) => {
                                   'text-left';
             
             return (
-                <div className={`w-full flex ${alignmentClass}`}>
-                    <Markdown
-                        className={`grow-${item.width} p-2 prose max-w-none`}
-                        key={`dashboardRow${rowIndex}Item${itemIndex}`}
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeRaw, rehypeSanitize]}
-                    >
-                        {item.markdown}
-                    </Markdown>
+                <div className={`w-full flex ${alignmentClass}`} style={{ height: getHeight(row.height) }}>
+                    <div className="w-full overflow-y-auto" style={{ maxHeight: '100%' }}>
+                        <Markdown
+                            className={`grow-${item.width} p-2 prose max-w-none`}
+                            key={`dashboardRow${rowIndex}Item${itemIndex}`}
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                        >
+                            {item.markdown}
+                        </Markdown>
+                    </div>
                 </div>
             );
         }
