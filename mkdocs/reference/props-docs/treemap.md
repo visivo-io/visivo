@@ -11,6 +11,10 @@ You can customize the colors, labels, and hierarchy to represent your data effec
 
 _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) for the full set of configuration options**_
 
+!!! warning "Unexpected Behavior"
+
+    The terminal values of a `treemap` must be unique. In other words- if you create a treemap with multiple parent-child trees, the values must be unique across all squares that have no children.
+
 ## Examples
 
 {% raw %}
