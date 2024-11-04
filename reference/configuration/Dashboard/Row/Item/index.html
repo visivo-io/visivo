@@ -5670,6 +5670,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Markdown
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#attributes" class="md-nav__link">
     <span class="md-ellipsis">
       Attributes
@@ -5710,6 +5719,79 @@
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
 <span class="w">    </span><span class="nt">selector</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(selector-name)</span>
 </code></pre></div>
+<h2 id="markdown">Markdown</h2>
+<p>You can use markdown to add formatted text to your dashboard. Visivo markdown supports <a href="https://commonmark.org/help/">CommonMark</a> and <a href="https://github.github.com/gfm/">GitHub Flavored Markdown</a>. You can also 
+render raw HTML within your markdown.</p>
+<p>To control the alignment of markdown content, you can use the <code>align</code> and <code>justify</code> properties.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Horizontal Alignment (align)</label><label for="__tabbed_1_2">Vertical Distribution (justify)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Controls how text aligns horizontally within the container:</p>
+<p><code>align: left</code> (default)
+</p><div class="highlight"><pre><span></span><code>[Header     ]
+[Paragraph  ]
+[List       ]
+</code></pre></div>
+<p><code>align: center</code>
+</p><div class="highlight"><pre><span></span><code>[  Header   ]
+[ Paragraph ]
+[   List    ]
+</code></pre></div>
+<p><code>align: right</code>
+</p><div class="highlight"><pre><span></span><code>[     Header]
+[  Paragraph]
+[      List]
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>Controls how content blocks are distributed vertically in fixed-height containers:</p>
+<p><code>justify: start</code> (default)
+</p><div class="highlight"><pre><span></span><code>[Header     ]
+[Paragraph  ]
+[List       ]
+[           ]
+[           ]
+</code></pre></div>
+<p><code>justify: center</code>
+</p><div class="highlight"><pre><span></span><code>[           ]
+[Header     ]
+[Paragraph  ]
+[List       ]
+[           ]
+</code></pre></div>
+<p><code>justify: between</code>
+</p><div class="highlight"><pre><span></span><code>[Header     ]
+[           ]
+[Paragraph  ]
+[           ]
+[List       ]
+</code></pre></div>
+<p><code>justify: around</code>
+</p><div class="highlight"><pre><span></span><code>[           ]
+[Header     ]
+[           ]
+[Paragraph  ]
+[           ]
+[List       ]
+[           ]
+</code></pre></div>
+<p><code>justify: evenly</code>
+</p><div class="highlight"><pre><span></span><code>[           ]
+[Header     ]
+[Paragraph  ]
+[List       ]
+[           ]
+</code></pre></div>
+<p><code>justify: end</code>
+</p><div class="highlight"><pre><span></span><code>[           ]
+[           ]
+[Header     ]
+[Paragraph  ]
+[List       ]
+</code></pre></div>
+</div>
+</div>
+</div>
 <h2 id="attributes">Attributes</h2>
 <table>
 <thead>
@@ -5750,6 +5832,12 @@
 <td>string</td>
 <td>None</td>
 <td>Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'.</td>
+</tr>
+<tr>
+<td>justify</td>
+<td>string</td>
+<td>None</td>
+<td>Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'.</td>
 </tr>
 <tr>
 <td>chart</td>
