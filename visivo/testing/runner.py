@@ -1,9 +1,13 @@
 # supports more generic connections than the snowflake specific connector
+from visivo.models.alert import Alert
+from visivo.models.base.parent_model import ParentModel
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.project import Project
+from visivo.models.test import Test
 from visivo.models.trace import Trace
 from visivo.models.test_run import TestRun, TestFailure, TestSuccess
-from visivo.models.alert import Alert
-from typing import List
+from visivo.models.destinations.destination import Destination
+from typing import Any, List
 import json
 import click
 from datetime import datetime
@@ -16,64 +20,51 @@ warnings.filterwarnings("ignore")
 class Runner:
     def __init__(
         self,
-        traces: List[Trace],
+        tests: List[Test],
         project: Project,
         output_dir: str,
-        default_source: str = None,
-        alerts: List[Alert] = [],
+        dag: Any,
     ):
+        self.tests = tests
         self.project = project
-        self.traces = traces
-        self.default_source = default_source
         self.output_dir = output_dir
-        self.alerts = alerts
+        self.dag = dag
 
     def run(self):
-        import numpy
-        from assertpy import assert_that
-        import os
-
         test_run = TestRun()
-        for trace in self.traces:
-            if not trace.tests:
-                continue
-            for idx, test in enumerate(trace.tests):
-                data_file = f"{self.output_dir}/{trace.name}/data.json"
-                if not os.path.exists(data_file):
-                    raise click.ClickException(
-                        f"The trace '{trace.name}' doesn't have a data file present, please run 'visivo run'."
+        for test in self.tests:
+            for assertion in test.assertions:
+                try:
+                    passed = assertion.evaluate(
+                        dag=self.dag, project=self.project, output_dir=self.output_dir
                     )
-                with open(data_file) as f:
-                    trace_data = json.load(f)
-                    logic = test.logic
-                    try:
-                        if not any(k in logic for k in trace_data.keys()):
-                            raise click.ClickException(
-                                f"The test does not reference a valid data cohort.  Available cohorts: {', '.join(trace_data.keys())}"
-                            )
-                        for cohort in trace_data.keys():
-                            if cohort in logic:
-                                logic = logic.replace(cohort, f"trace_data['{cohort}']")
-                                cohort_keys = list(trace_data[cohort].keys())
-                                cohort_keys.sort(key=len, reverse=True)
-                                for key in cohort_keys:
-                                    logic = logic.replace(key, f"['{key}']")
-                        logic = logic.replace("].[", "][")
-                        eval(f"{logic}")
+                    if passed:
                         click.echo(click.style(".", fg="green"), nl=False)
-                        success = TestSuccess(test_id=f"{trace.name}.test[{idx}]")
+                        success = TestSuccess(test_id=test.path)
                         test_run.add_success(success=success)
-                    except Exception as e:
-                        failure = TestFailure(
-                            test_id=f"{trace.name}.test[{idx}]", message=str(e)
-                        )
+                    else:
                         click.echo(click.style("F", fg="red"), nl=False)
+                        failure = TestFailure(
+                            test_id=test.path, message=assertion.value
+                        )
                         test_run.add_failure(failure=failure)
+                except Exception as e:
+                    failure = TestFailure(test_id=test.path, message=str(e))
+                    click.echo(click.style("F", fg="red"), nl=False)
+                    test_run.add_failure(failure=failure)
         test_run.finished_at = datetime.now()
         click.echo("")
         click.echo(test_run.summary())
 
-        for alert in self.alerts:
-            alert.alert(test_run=test_run)
+        alerts = all_descendants_of_type(type=Alert, dag=self.dag)
+
+        for alert in set(alerts):
+            if alert.if_ and alert.if_.evaluate(
+                dag=self.dag,
+                project=self.project,
+                output_dir=self.output_dir,
+                test_run=test_run,
+            ):
+                alert.alert(test_run=test_run)
 
         return test_run

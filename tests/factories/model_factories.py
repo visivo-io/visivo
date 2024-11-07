@@ -1,5 +1,7 @@
 import factory
+from visivo.models.alert import Alert
 from visivo.models.defaults import Defaults
+from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
@@ -14,18 +16,28 @@ from visivo.models.project import Project
 from visivo.models.table import Table
 from visivo.models.trace_props.scatter import Scatter
 from visivo.models.trace_props.surface import Surface
-from visivo.models.alert import ConsoleAlert
 from visivo.models.row import Row, HeightEnum
 from visivo.query.jobs.job import Job
 from visivo.models.dbt import Dbt
 
 
+class DestinationFactory(factory.Factory):
+    class Meta:
+        model = ConsoleDestination
+
+    name = "destination"
+    type = "console"
+
+
 class AlertFactory(factory.Factory):
     class Meta:
-        model = ConsoleAlert
+        model = Alert
 
     name = "alert"
-    type = "console"
+    if_ = ">{ True }"
+    destinations = factory.List(
+        [factory.SubFactory(DestinationFactory) for _ in range(1)]
+    )
 
 
 class SnowflakeSourceFactory(factory.Factory):
@@ -168,6 +180,7 @@ class ItemFactory(factory.Factory):
     width = 1
     chart = factory.SubFactory(ChartFactory)
     table = None
+    name = "item"
 
     class Params:
         model_ref = factory.Trait(

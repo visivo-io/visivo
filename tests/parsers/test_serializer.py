@@ -1,4 +1,6 @@
+from visivo.models.chart import Chart
 from visivo.models.selector import Selector
+from visivo.models.trace import Trace
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
     DashboardFactory,
@@ -130,8 +132,8 @@ def test_Serializer_with_refs_does_not_change_original():
     project = ProjectFactory(chart_ref=True, charts=[chart], traces=[trace])
     project.dashboards[0].rows[0].items[0].chart = "ref(chart_name)"
     Serializer(project=project).dereference()
-    assert len(project.chart_objs) == 1
-    assert len(project.trace_objs) == 1
+    assert len(project.descendants_of_type(type=Chart)) == 1
+    assert len(project.descendants_of_type(type=Trace)) == 1
 
 
 def test_Serializer_with_item_selector():
@@ -150,7 +152,7 @@ def test_Serializer_with_item_selector():
             RowFactory(
                 items=[
                     ItemFactory(chart="ref(chart_name_1)"),
-                    ItemFactory(chart="ref(chart_name_2)"),
+                    ItemFactory(name="item_2", chart="ref(chart_name_2)"),
                 ]
             )
         ]

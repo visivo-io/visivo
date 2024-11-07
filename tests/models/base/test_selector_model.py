@@ -3,23 +3,23 @@ from visivo.models.base.selector_model import SelectorModel
 import pytest
 
 
-class TestSelectorModel(SelectorModel):
+class MockSelectorModel(SelectorModel):
     name: str
 
 
-def test_dumps_parent_name_when_selector_present():
-    model = TestSelectorModel(**{"name": "name", "selector": {"name": "selector"}})
+def test_dumps_parent_name():
+    model = MockSelectorModel(**{"name": "name", "selector": {"name": "selector"}})
     assert '"parent_name":"name"' in model.model_dump_json()
 
 
 def test_dumps_parent_name_when_selector_present():
-    model = TestSelectorModel(**{"name": "name"})
+    model = MockSelectorModel(**{"name": "name"})
     assert not '"parent_name":"name"' in model.model_dump_json()
 
 
 def test_options_under_object():
     with pytest.raises(ValidationError) as exc_info:
-        TestSelectorModel(
+        MockSelectorModel(
             **{
                 "name": "name",
                 "selector": {"name": "selector", "options": ["ref(option1)"]},

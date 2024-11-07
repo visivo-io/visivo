@@ -125,7 +125,10 @@ class Trace(NamedModel, ParentModel):
         props: TracePropsField = Field(Scatter(type="scatter"))
 
     def child_items(self):
-        return [self.model]
+        children = [self.model]
+        if self.tests:
+            children += self.tests
+        return children
 
     @model_validator(mode="before")
     @classmethod
