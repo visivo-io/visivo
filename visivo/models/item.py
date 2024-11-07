@@ -28,6 +28,93 @@ class Item(NamedModel, ParentModel):
       - width: 1
         selector: ref(selector-name)
     ```
+    ## Markdown
+    You can use markdown to add formatted text to your dashboard. Visivo markdown supports [CommonMark](https://commonmark.org/help/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). You can also 
+    render raw HTML within your markdown.
+
+    To control the alignment of markdown content, you can use the `align` and `justify` properties.
+    === "Horizontal Alignment (align)"
+        Controls how text aligns horizontally within the container:
+
+        `align: left` (default)
+        ```
+        [Header     ]
+        [Paragraph  ]
+        [List       ]
+        ```
+
+        `align: center`
+        ```
+        [  Header   ]
+        [ Paragraph ]
+        [   List    ]
+        ```
+
+        `align: right`
+        ```
+        [     Header]
+        [  Paragraph]
+        [      List]
+        ```
+
+    === "Vertical Distribution (justify)"
+        Controls how content blocks are distributed vertically in fixed-height containers:
+
+        `justify: start` (default)
+        ```
+        [Header     ]
+        [Paragraph  ]
+        [List       ]
+        [           ]
+        [           ]
+        ```
+
+        `justify: center`
+        ```
+        [           ]
+        [Header     ]
+        [Paragraph  ]
+        [List       ]
+        [           ]
+        ```
+
+        `justify: between`
+        ```
+        [Header     ]
+        [           ]
+        [Paragraph  ]
+        [           ]
+        [List       ]
+        ```
+
+        `justify: around`
+        ```
+        [           ]
+        [Header     ]
+        [           ]
+        [Paragraph  ]
+        [           ]
+        [List       ]
+        [           ]
+        ```
+
+        `justify: evenly`
+        ```
+        [           ]
+        [Header     ]
+        [Paragraph  ]
+        [List       ]
+        [           ]
+        ```
+
+        `justify: end`
+        ```
+        [           ]
+        [           ]
+        [Header     ]
+        [Paragraph  ]
+        [List       ]
+        ```
     """
 
     width: int = Field(
@@ -40,6 +127,10 @@ class Item(NamedModel, ParentModel):
     align: Optional[Literal["left", "center", "right"]] = Field(
         None, 
         description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'."
+    )
+    justify: Optional[Literal["start", "end", "center", "between", "around", "evenly"]] = Field(
+        None,
+        description="Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'."
     )
     chart: Optional[generate_ref_field(Chart)] = Field(
         None, description="A chart object defined inline or a ref() to a chart."
@@ -75,7 +166,18 @@ class Item(NamedModel, ParentModel):
         if markdown is not None and align is None:
             data['align'] = 'left'
         elif align is not None and markdown is None:
-            raise ValueError("The 'align' property can only be set when 'markdown' is present")
+            raise ValueError("The 'align' property can only be set when 'markdown' is present in the same item")
+        return data
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_justify_with_markdown(cls, data: any):
+        justify = data.get('justify')
+        markdown = data.get('markdown')
+        if markdown is not None and justify is None:
+            data['justify'] = 'start'
+        elif justify is not None and markdown is None:
+            raise ValueError("The 'justify' property can only be set when 'markdown' is present in the same item")
         return data
 
     def child_items(self):

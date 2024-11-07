@@ -1,5 +1,6 @@
 from visivo.logging.logger import Logger
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -18,15 +19,14 @@ from time import time
 
 def action(trace, dag, output_dir):
     Logger.instance().info(start_message("Trace", trace))
-    model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
+    model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
+
     if isinstance(model, CsvScriptModel):
         source = model.get_sqlite_source(output_dir=output_dir)
     elif isinstance(model, LocalMergeModel):
         source = model.get_sqlite_source(output_dir=output_dir, dag=dag)
     else:
-        source = ParentModel.all_descendants_of_type(
-            type=Source, dag=dag, from_node=model
-        )[0]
+        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
 
     trace_directory = f"{output_dir}/{trace.name}"
     trace_query_file = f"{trace_directory}/query.sql"
@@ -59,11 +59,11 @@ def action(trace, dag, output_dir):
 
 
 def _get_source(trace, dag, output_dir):
-    sources = ParentModel.all_descendants_of_type(type=Source, dag=dag, from_node=trace)
+    sources = all_descendants_of_type(type=Source, dag=dag, from_node=trace)
     if len(sources) == 1:
         return sources[0]
 
-    model = ParentModel.all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
+    model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     if isinstance(model, CsvScriptModel):
         return model.get_sqlite_source(output_dir)
     elif isinstance(model, LocalMergeModel):

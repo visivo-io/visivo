@@ -2,6 +2,7 @@ from typing import List
 from pydantic import Field
 from visivo.models.base.base_model import generate_ref_field
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.model import Model
 from visivo.models.sources.sqlite_source import Attachment, SqliteSource
@@ -65,9 +66,7 @@ class LocalMergeModel(Model, ParentModel):
             if isinstance(model, CsvScriptModel):
                 continue
             sqlite_source = self._get_sqlite_from_model(model, output_dir, dag)
-            source = ParentModel.all_descendants_of_type(
-                type=Source, dag=dag, from_node=model
-            )[0]
+            source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
             data_frame = source.read_sql(model.sql)
             engine = sqlite_source.get_engine()
             data_frame.to_sql("model", engine, if_exists="replace", index=False)
@@ -85,9 +84,7 @@ class LocalMergeModel(Model, ParentModel):
             )
 
     def _get_dereferenced_models(self, dag):
-        models = ParentModel.all_descendants_of_type(
-            type=Model, dag=dag, from_node=self
-        )
+        models = all_descendants_of_type(type=Model, dag=dag, from_node=self)
         return list(filter(lambda model: model is not self, models))
 
     def child_items(self):

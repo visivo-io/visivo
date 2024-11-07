@@ -1,3 +1,4 @@
+from visivo.models.trace import Trace
 import click
 import requests
 import json
@@ -168,7 +169,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     project = parser.parse()
     serializer = Serializer(project=project)
     project_json = json.loads(
-        serializer.dereference().model_dump_json(exclude_none=True)
+        serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
     )
     Logger.instance().success(
         f"Project Compiled in {time() - deploy_start_time:.2f} seconds"
@@ -210,9 +211,11 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         Logger.instance().info(f"")
         Logger.instance().info("Processing trace uploads and record creations...")
         process_traces_start_time = time()
+
+        traces = project.descendants_of_type(type=Trace)
         failed_operations = asyncio.run(
             process_traces_async(
-                traces=project.trace_objs,
+                traces=traces,
                 output_dir=output_dir,
                 project_id=project_id,
                 form_headers=form_headers,

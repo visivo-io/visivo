@@ -8,8 +8,8 @@ NAME_REGEX = r"^[a-zA-Z0-9\s'\"\-_]+$"
 
 class NamedModel(BaseModel):
     def id(self):
-        if self.name:
-            return self.name
+        if self.name is not None:
+            return str(self.name)
         else:
             return self.path
 

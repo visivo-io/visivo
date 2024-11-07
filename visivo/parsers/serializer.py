@@ -1,3 +1,4 @@
+from visivo.models.dag import all_descendants, all_descendants_of_type
 from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
 from ..models.project import Project
@@ -23,50 +24,48 @@ class Serializer:
             def replace_item_ref(item):
                 if item.chart or item.table:
                     if item.chart:
-                        item.chart = ParentModel.all_descendants_of_type(
+                        item.chart = all_descendants_of_type(
                             type=Chart, dag=dag, from_node=item
                         )[0]
                         component = item.chart
                     else:
-                        item.table = ParentModel.all_descendants_of_type(
+                        item.table = all_descendants_of_type(
                             type=Table, dag=dag, from_node=item
                         )[0]
                         component = item.table
 
-                    component.traces = ParentModel.all_descendants_of_type(
+                    component.traces = all_descendants_of_type(
                         type=Trace, dag=dag, from_node=component, depth=1
                     )
                     if component.selector:
-                        component.selector = ParentModel.all_descendants_of_type(
+                        component.selector = all_descendants_of_type(
                             type=Selector, dag=dag, from_node=component, depth=1
                         )[0]
-                        component.selector.options = (
-                            ParentModel.all_descendants_of_type(
-                                type=Trace,
-                                dag=dag,
-                                from_node=component.selector,
-                                depth=1,
-                            )
+                        component.selector.options = all_descendants_of_type(
+                            type=Trace,
+                            dag=dag,
+                            from_node=component.selector,
+                            depth=1,
                         )
                     for trace in component.traces:
-                        trace.model = ParentModel.all_descendants_of_type(
+                        trace.model = all_descendants_of_type(
                             type=Model, dag=dag, from_node=trace
                         )[0]
                         if hasattr(trace.model, "source"):
-                            trace.model.source = ParentModel.all_descendants_of_type(
+                            trace.model.source = all_descendants_of_type(
                                 type=Source, dag=dag, from_node=trace.model
                             )[0]
                         if hasattr(trace.model, "models"):
-                            trace.model.models = ParentModel.all_descendants_of_type(
+                            trace.model.models = all_descendants_of_type(
                                 type=Model, dag=dag, from_node=trace.model
                             )
                 if item.selector:
-                    item.selector = ParentModel.all_descendants_of_type(
+                    item.selector = all_descendants_of_type(
                         type=Selector, dag=dag, from_node=item, depth=1
                     )[0]
                     options = [
                         option
-                        for option in ParentModel.all_descendants(
+                        for option in all_descendants(
                             dag=dag, from_node=item.selector, depth=1
                         )
                         if not isinstance(option, Selector)

@@ -2,6 +2,7 @@ from typing import List
 import warnings
 from visivo.models.base.parent_model import ParentModel
 
+from visivo.models.dag import all_descendants
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
 from time import time
@@ -74,9 +75,7 @@ class Runner:
     def update_job_queue(self, job_tracker: JobTracker) -> bool:
         all_dependencies_completed = True
         for job in self.jobs:
-            job_item_children = ParentModel.all_descendants(
-                dag=self.dag, from_node=job.item
-            )
+            job_item_children = all_descendants(dag=self.dag, from_node=job.item)
             dependencies = list(
                 filter(
                     lambda j: job != j and job_item_children.has_node(j.item),

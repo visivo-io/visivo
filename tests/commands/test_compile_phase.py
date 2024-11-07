@@ -17,6 +17,7 @@ def test_filtered_dashboard():
     project = ProjectFactory(defaults=Defaults(source_name="source"))
     additional_dashboard = DashboardFactory(name="Other Dashboard")
     additional_dashboard.rows[0].name = "Additional Row"
+    additional_dashboard.rows[0].items[0].name = "Additional Item"
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
     additional_dashboard.rows[0].items[
         0

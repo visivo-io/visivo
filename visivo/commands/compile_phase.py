@@ -1,5 +1,9 @@
 import os
 import json
+
+from visivo.discovery.discover import Discover
+from visivo.models.dag import all_descendants_of_type
+from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
@@ -29,18 +33,19 @@ def compile_phase(
     os.makedirs(output_dir, exist_ok=True)
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
-        model = serializer.dereference().model_dump(mode="json", exclude_none=True)
-        fp.write(json.dumps(model))
+        fp.write(
+            serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
+        )
 
     dag = project.dag()
     for trace in project.filter_traces(name_filter=name_filter):
-        model = ParentModel.all_descendants_of_type(
+        model = all_descendants_of_type(
             type=Model, dag=dag, from_node=trace
         )[0]
         if isinstance(model, CsvScriptModel):
             source = model.get_sqlite_source(output_dir=output_dir)
         else:
-            source = ParentModel.all_descendants_of_type(
+            source = all_descendants_of_type(
                 type=Source, dag=dag, from_node=model
             )[0]
         tokenized_trace = TraceTokenizer(

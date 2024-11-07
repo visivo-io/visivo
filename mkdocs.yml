@@ -104,6 +104,8 @@ nav:
                   - reference/configuration/Dashboard/Row/index.md
                   - Item:
                       - reference/configuration/Dashboard/Row/Item/index.md
+          - Dbt:
+              - reference/configuration/Dbt/index.md
           - Defaults:
               - reference/configuration/Defaults/index.md
           - Include:
