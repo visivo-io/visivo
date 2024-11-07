@@ -34,9 +34,9 @@ class Runner:
         self.threads = threads
         self.soft_failure = soft_failure
         self.name_filter = name_filter
-        self.dag = project.dag()
+        self.project_dag = project.dag()
+        self.job_dag = None
         self.errors = []
-        self.jobs: List[Job] = []
 
     def run(self):
         complete = False
@@ -75,7 +75,9 @@ class Runner:
     def update_job_queue(self, job_tracker: JobTracker) -> bool:
         all_dependencies_completed = True
         for job in self.jobs:
-            job_item_children = all_descendants(dag=self.dag, from_node=job.item)
+            job_item_children = all_descendants(
+                dag=self.project_dag, from_node=job.item
+            )
             dependencies = list(
                 filter(
                     lambda j: job != j and job_item_children.has_node(j.item),
@@ -112,19 +114,19 @@ class Runner:
     def _all_jobs(self) -> List[Job]:
         jobs = []
         jobs = jobs + run_trace_jobs(
-            dag=self.dag,
+            dag=self.project_dag,
             output_dir=self.output_dir,
             project=self.project,
             name_filter=self.name_filter,
         )
         jobs = jobs + csv_script_jobs(
-            dag=self.dag,
+            dag=self.project_dag,
             output_dir=self.output_dir,
             project=self.project,
             name_filter=self.name_filter,
         )
         jobs = jobs + run_local_merge_jobs(
-            dag=self.dag,
+            dag=self.project_dag,
             output_dir=self.output_dir,
             project=self.project,
             name_filter=self.name_filter,
