@@ -132,3 +132,19 @@ class Runner:
             name_filter=self.name_filter,
         )
         return jobs
+
+    def run_jobs_from_terminal_nodes(self, project_dag: nx.DiGraph):
+        terminal_nodes = [n for n in project_dag.nodes() if project_dag.out_degree(n) == 0]
+        for node in terminal_nodes:
+            if isinstance(node, Trace):
+                job = Job(
+                    item=node,
+                    source=node.get_sqlite_source(self.output_dir, self.project_dag),
+                    action=action,
+                    trace=node,
+                    output_dir=self.output_dir,
+                    dag=self.project_dag,
+                )
+                job.future = CachedFuture()
+                self.job_callback(job.future)
+        return
