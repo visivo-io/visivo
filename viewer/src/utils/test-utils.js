@@ -10,10 +10,10 @@ export const TestComponent = () => {
     return <div>TEST COMPONENT</div>
 }
 
-export const withProviders = ({ children, initialPath = '/' }) => {
+export const withProviders = ({ children, initialPath = '/', traces = [] }) => {
     const fetchTracesQuery = (projectId, name) => ({
         queryKey: ['trace', projectId, name],
-        queryFn: () => [],
+        queryFn: () => traces,
     })
 
     const queryClient = new QueryClient({
