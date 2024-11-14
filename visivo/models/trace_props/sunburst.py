@@ -2,7 +2,7 @@
 from pydantic import Field, constr
 from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional 
+from typing import List, Literal, Optional, Any 
 
 
 class Domain10(TracePropsAttribute):
@@ -371,7 +371,7 @@ class SunburstMarker(TracePropsAttribute):
 		None,
 		description=""" data array<br>Sets the color of each sector of this trace. If not specified, the default trace color set is used to pick the sector colors. """
 	)
-	colorscale: Optional[str]= Field(
+	colorscale: Optional[Any]= Field(
 		None,
 		description=""" colorscale<br>Sets the colorscale. Has an effect only if colors is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
 	)
