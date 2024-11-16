@@ -3,16 +3,19 @@ import warnings
 from visivo.models.base.parent_model import ParentModel
 
 from visivo.models.dag import all_descendants
+from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor
 import queue
+from visivo.models.trace import Trace
 from visivo.query.jobs.job import CachedFuture, Job, JobResult
 
-from visivo.query.jobs.run_csv_script_job import jobs as csv_script_jobs
-from visivo.query.jobs.run_trace_job import jobs as run_trace_jobs
-from visivo.query.jobs.run_local_merge_job import jobs as run_local_merge_jobs
+from visivo.query.jobs.run_csv_script_job import job as csv_script_job
+from visivo.query.jobs.run_trace_job import job as trace_job
+from visivo.query.jobs.run_local_merge_job import job as local_merge_job
 from visivo.query.job_tracker import JobTracker
 
 warnings.filterwarnings("ignore")
@@ -35,14 +38,13 @@ class Runner:
         self.soft_failure = soft_failure
         self.name_filter = name_filter
         self.project_dag = project.dag()
-        self.job_dag = None
+        self.job_dag = self.project_dag.copy()
         self.errors = []
 
     def run(self):
         complete = False
         job_tracker = JobTracker()
         start_time = time()
-        self.jobs = self._all_jobs()
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
             while True:
                 complete = self.update_job_queue(job_tracker)
@@ -72,37 +74,6 @@ class Runner:
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
-    def update_job_queue(self, job_tracker: JobTracker) -> bool:
-        all_dependencies_completed = True
-        for job in self.jobs:
-            job_item_children = all_descendants(
-                dag=self.project_dag, from_node=job.item
-            )
-            dependencies = list(
-                filter(
-                    lambda j: job != j and job_item_children.has_node(j.item),
-                    self.jobs,
-                )
-            )
-            incomplete_dependencies = list(
-                filter(
-                    lambda d: not job_tracker.is_job_name_done(d.name),
-                    dependencies,
-                )
-            )
-            dependencies_completed = len(incomplete_dependencies) == 0
-            if not dependencies_completed:
-                all_dependencies_completed = False
-
-            if dependencies_completed and not job_tracker.is_job_name_enqueued(
-                job.name
-            ):
-                if not job.output_changed and self.run_only_changed:
-                    job.future = CachedFuture()
-                job_tracker.track_job(job)
-
-        return all_dependencies_completed and job_tracker.empty()
-
     def job_callback(self, future: Future):
         job_result: JobResult = future.result(timeout=1)
         if job_result.success:
@@ -111,40 +82,41 @@ class Runner:
             Logger.instance().error(str(job_result.message))
             self.errors.append(str(job_result.message))
 
-    def _all_jobs(self) -> List[Job]:
-        jobs = []
-        jobs = jobs + run_trace_jobs(
-            dag=self.project_dag,
-            output_dir=self.output_dir,
-            project=self.project,
-            name_filter=self.name_filter,
-        )
-        jobs = jobs + csv_script_jobs(
-            dag=self.project_dag,
-            output_dir=self.output_dir,
-            project=self.project,
-            name_filter=self.name_filter,
-        )
-        jobs = jobs + run_local_merge_jobs(
-            dag=self.project_dag,
-            output_dir=self.output_dir,
-            project=self.project,
-            name_filter=self.name_filter,
-        )
-        return jobs
+    def prune_job_dag(self):
+        terminal_nodes = [
+            n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
+        ]
+        removed_nodes = []
+        for terminal_node in terminal_nodes:
+            if terminal_node not in [job.item for job in self.jobs]:
+                terminal_nodes.remove(terminal_node)
+                removed_nodes.append(terminal_node)
+            if any(job.item == terminal_node and job.done() for job in self.jobs):
+                terminal_nodes.remove(terminal_node)
+                removed_nodes.append(terminal_node)
 
-    def run_jobs_from_terminal_nodes(self, project_dag: nx.DiGraph):
-        terminal_nodes = [n for n in project_dag.nodes() if project_dag.out_degree(n) == 0]
-        for node in terminal_nodes:
+        #    if not job.output_changed and self.run_only_changed:
+        #            job.future = CachedFuture()
+        #        job_tracker.track_job(job)
+        return filtered_dag
+
+    def create_jobs_from_dag(self, dag: nx.DiGraph):
+        jobs = []
+        for node in dag.nodes():
             if isinstance(node, Trace):
-                job = Job(
-                    item=node,
-                    source=node.get_sqlite_source(self.output_dir, self.project_dag),
-                    action=action,
-                    trace=node,
-                    output_dir=self.output_dir,
-                    dag=self.project_dag,
+                jobs.append(
+                    trace_job(
+                        trace=node, output_dir=self.output_dir, dag=self.project_dag
+                    )
                 )
-                job.future = CachedFuture()
-                self.job_callback(job.future)
-        return
+            if isinstance(node, CsvScriptModel):
+                jobs.append(
+                    csv_script_job(csv_script_model=node, output_dir=self.output_dir)
+                )
+            if isinstance(node, LocalMergeModel):
+                jobs.append(
+                    local_merge_job(
+                        trace=node, output_dir=self.output_dir, dag=self.project_dag
+                    )
+                )
+        return jobs

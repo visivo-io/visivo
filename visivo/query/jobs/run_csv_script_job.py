@@ -38,26 +38,11 @@ def action(csv_script_model: CsvScriptModel, output_dir):
         return JobResult(success=False, message=failure_message)
 
 
-def jobs(dag, output_dir: str, project: Project, name_filter: str):
-    csv_script_models = all_descendants_of_type(
-        type=CsvScriptModel, dag=dag, from_node=project
+def job(csv_script_model, output_dir: str):
+    return Job(
+        item=csv_script_model,
+        source=csv_script_model.get_sqlite_source(output_dir),
+        action=action,
+        csv_script_model=csv_script_model,
+        output_dir=output_dir,
     )
-
-    if name_filter:
-        included_nodes = project.nodes_including_named_node_in_graph(name=name_filter)
-    else:
-        included_nodes = project.descendants()
-    csv_script_models = set(csv_script_models).intersection(included_nodes)
-
-    jobs = []
-    for csv_script_model in csv_script_models:
-        jobs.append(
-            Job(
-                item=csv_script_model,
-                source=csv_script_model.get_sqlite_source(output_dir),
-                action=action,
-                csv_script_model=csv_script_model,
-                output_dir=output_dir,
-            )
-        )
-    return jobs

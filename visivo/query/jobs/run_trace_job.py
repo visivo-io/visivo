@@ -6,6 +6,7 @@ from visivo.models.models.model import Model
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.project import Project
 from visivo.models.sources.source import Source
+from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
 from visivo.query.jobs.job import (
     Job,
@@ -72,21 +73,14 @@ def _get_source(trace, dag, output_dir):
         return model.source
 
 
-def jobs(dag, output_dir: str, project: Project, name_filter: str):
-    jobs = []
-
-    traces = project.filter_traces(name_filter=name_filter)
-    for trace in traces:
-        source = _get_source(trace, dag, output_dir)
-        jobs.append(
-            Job(
-                item=trace,
-                output_changed=trace.changed,
-                source=source,
-                action=action,
-                trace=trace,
-                dag=dag,
-                output_dir=output_dir,
-            )
+def job(dag, output_dir: str, trace: Trace):
+    source = _get_source(trace, dag, output_dir)
+    return Job(
+            item=trace,
+            output_changed=trace.changed,
+            source=source,
+            action=action,
+            trace=trace,
+            dag=dag,
+            output_dir=output_dir,
         )
-    return jobs
