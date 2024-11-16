@@ -50,7 +50,7 @@ def test_Discover_includes_not_exists():
 
     assert (
         exc_info.value.message
-        == f'Invalid "include" in project. "{os.path.dirname(project_file)}/path/to/file/that/does/not/exist.yml" does not exist.'
+        == f'Invalid "include" in project. "{os.path.dirname(project_file)}/path/to/file/that/does/not/exist.yml" referenced in "{project_file}" does not exist.'
     )
 
 
