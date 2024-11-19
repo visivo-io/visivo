@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build & Deploy Docs Examples Site
 on:
   push:
     branches:
