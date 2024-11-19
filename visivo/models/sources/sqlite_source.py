@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field

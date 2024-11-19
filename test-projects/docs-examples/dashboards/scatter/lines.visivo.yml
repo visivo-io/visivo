@@ -41,3 +41,4 @@ charts:
         text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
       legend: 
         orientation: h
+      colorway: "High Contrast"

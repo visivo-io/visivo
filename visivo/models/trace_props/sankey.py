@@ -1,7 +1,7 @@
 from pydantic import Field, constr
 from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Any
 
 
 class Domain2(TracePropsAttribute):
@@ -102,7 +102,7 @@ class Colorscales1(TracePropsAttribute):
     cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None, description=""" number<br>Sets the lower bound of the color domain. """
     )
-    colorscale: Optional[str] = Field(
+    colorscale: Optional[Any] = Field(
         None,
         description=""" colorscale<br>Sets the colorscale. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `cmin` and `cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """,
     )
