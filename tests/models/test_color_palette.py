@@ -3,7 +3,7 @@ import pytest
 
 def test_default_palette():
     palette = ColorPalette()
-    assert palette.palette == "Warm Earth Tones"
+    assert palette.palette == "High Contrast"
 
 def test_custom_color_list():
     colors = ["#000000", "#FFFFFF", "#FF0000"]

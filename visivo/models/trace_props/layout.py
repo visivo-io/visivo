@@ -5623,14 +5623,14 @@ class Layout(LayoutBase):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 	colorway: Optional[List[str] | str] = Field(
-    "Warm Earth Tones",
-    description=""" string or list of colors<br>Sets the default trace colors. Can be either a list of colors or a string corresponding to a palette name."""
-	)
+    "High Contrast",
+    description="""string or list of colors<br>Sets the default trace colors. Can be either a list of colors or a string corresponding to a palette name."""
+)
 
 	@model_validator(mode='before')
 	@classmethod
 	def validate_colorway(cls, data: dict) -> dict:
-		v = data.get('colorway', "Warm Earth Tones")  # Also handle case where colorway isn't in data
+		v = data.get('colorway', "High Contrast")  # Also handle case where colorway isn't in data
 		
 		if v is None:
 			return data

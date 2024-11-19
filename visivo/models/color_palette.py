@@ -3,13 +3,13 @@ from pydantic import BaseModel, Field, model_validator
 
 class ColorPalette(BaseModel):
     palette: Union[List[str], str] = Field(
-        "Warm Earth Tones",
+        "High Contrast",
         description="""string or list of colors<br>Sets the default trace colors. Can be either a list of colors or a string corresponding to a palette name."""
     )
 
     PREDEFINED_PALETTES: ClassVar[Dict[str, List[str]]] = {
         "Warm Earth Tones": [
-            "#713B57", "#D25946", '#A05A4F', '#8C8A6B', '#BCAF9D',
+            "#713B57", "#D25946",'#8C8A6B', '#A05A4F', '#BCAF9D',
             '#D5C4A1', '#F5E1DA', '#BF616A', '#A3A5A9', '#2C2C2C'
         ],
         "Sunset Over Water": [
@@ -106,7 +106,7 @@ class ColorPalette(BaseModel):
         ],
         "High Contrast": [
             "#713B57", '#FFB400', '#003F91', "#D25946", '#1CA9C9',
-            '#FFFFFF', '#E63946', '#A8DADC', '#457B9D', '#2B2B2B'
+            '#999999', '#E63946', '#A8DADC', '#457B9D', '#2B2B2B'
         ],
         "High Contrast Earth": [
             "#713B57", '#F4A259', '#4A4A4A', '#FFDD87', "#D25946",

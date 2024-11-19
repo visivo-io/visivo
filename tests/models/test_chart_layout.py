@@ -9,7 +9,7 @@ def test_chart_default_colorway():
             "title": {"text": "Test Chart"}
         }
     )
-    assert chart.layout.colorway == ColorPalette.PREDEFINED_PALETTES["Warm Earth Tones"]
+    assert chart.layout.colorway == ColorPalette.PREDEFINED_PALETTES["High Contrast"]
 
 def test_chart_predefined_colorway():
     chart = ChartFactory(
