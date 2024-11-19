@@ -103,6 +103,14 @@ class ColorPalette(BaseModel):
         "Mint Dream Bold": [
             "#A7799E", '#70C1B3', '#A9E2D6', "#FFAD9B", '#98BFAB',
             '#4DA285', '#FFACA8', '#F38F8D', '#B3A19C', '#8E9D94', '#6B8B82'
+        ],
+        "High Contrast": [
+            "#713B57", '#FFB400', '#003F91', "#D25946", '#1CA9C9',
+            '#FFFFFF', '#E63946', '#A8DADC', '#457B9D', '#2B2B2B'
+        ],
+        "High Contrast Earth": [
+            "#713B57", '#F4A259', '#4A4A4A', '#FFDD87', "#D25946",
+            '#D9BF77', '#624D46', '#F1C27D', '#6E7B64', '#0B3954'
         ]
     }
 
