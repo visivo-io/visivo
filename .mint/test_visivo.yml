@@ -126,6 +126,16 @@ tasks:
       CLI_UNIT_TESTING_SNOWFLAKE_USER: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_USER }}
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
     filter: [test-projects/complex-project]
+  
+  - key: test-docs-examples-project
+    use: visivo-install
+    run: |
+      cd test-projects/docs-examples
+      visivo run
+      visivo test
+    env:
+      STACKTRACE: true
+    filter: [test-projects/docs-examples]
 
   - key: postgres-packages
     run: |
