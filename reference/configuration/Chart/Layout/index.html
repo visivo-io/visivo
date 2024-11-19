@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../../assets/favicon_io/favicon-32x32.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.43">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.44">
     
     
       
@@ -5900,7 +5900,7 @@
 <span class="w">  </span><span class="nt">diverging</span><span class="p">:</span><span class="w"> </span><span class="s">'colorscale'</span><span class="w"> </span><span class="c1">#(112)!</span>
 <span class="w">  </span><span class="nt">sequential</span><span class="p">:</span><span class="w"> </span><span class="s">'colorscale'</span><span class="w"> </span><span class="c1">#(113)!</span>
 <span class="w">  </span><span class="nt">sequentialminus</span><span class="p">:</span><span class="w"> </span><span class="s">'colorscale'</span><span class="w"> </span><span class="c1">#(114)!</span>
-<span class="nt">colorway</span><span class="p">:</span><span class="w"> </span><span class="s">'colorlist'</span><span class="w"> </span><span class="c1">#(115)!</span>
+<span class="nt">colorway</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">list</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">colors'</span><span class="w"> </span><span class="c1">#(115)!</span>
 <span class="nt">computed</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(116)!</span>
 <span class="nt">datarevision</span><span class="p">:</span><span class="w"> </span><span class="s">'number</span><span class="nv"> </span><span class="s">or</span><span class="nv"> </span><span class="s">categorical</span><span class="nv"> </span><span class="s">coordinate</span><span class="nv"> </span><span class="s">string'</span><span class="w"> </span><span class="c1">#(117)!</span>
 <span class="nt">dragmode</span><span class="p">:</span><span class="w"> </span><span class="s">'enumerated</span><span class="nv"> </span><span class="s">,</span><span class="nv"> </span><span class="s">one</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">(</span><span class="nv"> </span><span class="s">"zoom"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"pan"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"select"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"lasso"</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">"drawclosedpath"</span>
@@ -7410,7 +7410,7 @@
 <li>Sets the default diverging colorscale. Note that <code>autocolorscale</code> must be true for this attribute to work. </li>
 <li>Sets the default sequential colorscale for positive values. Note that <code>autocolorscale</code> must be true for this attribute to work. </li>
 <li>Sets the default sequential colorscale for negative values. Note that <code>autocolorscale</code> must be true for this attribute to work. </li>
-<li>Sets the default trace colors. </li>
+<li>Sets the default trace colors. Can be either a list of colors or a string corresponding to a palette name.</li>
 <li>Placeholder for exporting automargin-impacting values namely <code>margin.t</code>, <code>margin.b</code>, <code>margin.l</code> and <code>margin.r</code> in "full-json" mode. </li>
 <li>If provided, a changed value tells <code>Plotly.react</code> that one or more data arrays has changed. This way you can modify arrays in-place rather than making a complete new copy for an incremental change. If NOT provided, <code>Plotly.react</code> assumes that data arrays are being treated as immutable, thus any data array with a different identity from its predecessor contains new data. </li>
 <li>Determines the mode of drag interactions. "select" and "lasso" apply only to scatter traces with markers or text. "orbit" and "turntable" apply only to 3D scenes. </li>
