@@ -1,0 +1,53 @@
+models:
+  - name: emoji_data
+    args:
+      - echo
+      - |
+        x,y
+        1,2
+        2,4
+        3,8
+        4,6
+        5,10
+
+traces:
+  - name: emoji_trace
+    model: ref(emoji_data)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: markers
+      marker:
+        color: green
+    order_by: 
+      - query( x asc )
+
+charts:
+  - name: Emoji Points Example
+    traces:
+      - ${ref(emoji_trace)}
+    layout:
+      title:
+        text: Data Points with Emoji Annotations
+      annotations:
+        - x: 3
+          y: 8
+          text: "🔥"
+          showarrow: true
+          arrowhead: 2
+          hovertext: "Peak Performance"
+          ax: 20
+          ay: -30
+          font:
+            size: 16
+        - x: 4
+          y: 6
+          text: "📉"
+          showarrow: true
+          arrowhead: 2
+          hovertext: "Declining Trend"
+          ax: -20
+          ay: 30
+          font:
+            size: 16

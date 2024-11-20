@@ -1,0 +1,50 @@
+models:
+  - name: scatter_data_multiple
+    args:
+      - echo
+      - |
+        x,y
+        1,2
+        2,3
+        3,4
+        4,5
+        5,6
+
+traces:
+  - name: scatter_trace_multiple
+    model: ref(scatter_data_multiple)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: markers
+      marker:
+        color: green
+    order_by: 
+      - query( x asc )
+charts:
+  - name: Multiple Regions Example
+    traces:
+      - ${ref(scatter_trace_multiple)}
+    layout:
+      title:
+        text: Multiple Highlighted Regions
+      shapes:
+        - type: rect
+          x0: 1
+          x1: 2
+          y0: 2
+          y1: 3
+          line:
+            color: rgba(0, 0, 255, 1)
+            width: 2
+          fillcolor: rgba(0, 0, 255, 0.2)
+        - type: rect
+          x0: 4
+          x1: 5
+          y0: 5
+          y1: 6
+          line:
+            color: rgba(0, 255, 0, 1)
+            width: 2
+          fillcolor: rgba(0, 255, 0, 0.2)

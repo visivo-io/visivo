@@ -1,0 +1,42 @@
+models:
+  - name: line_data
+    args:
+      - echo
+      - |
+        x,y
+        1,5
+        2,8
+        3,6
+        4,10
+        5,12
+
+traces:
+  - name: line_trace
+    model: ref(line_data)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: lines
+      line:
+        color: blue
+    order_by: 
+      - query( x asc )
+
+charts:
+  - name: Threshold Line Example
+    traces:
+      - ${ref(line_trace)}
+    layout:
+      title:
+        text: Threshold Line Example
+      shapes:
+        - type: line
+          x0: 1
+          x1: 5
+          y0: 8
+          y1: 8
+          line:
+            color: red
+            width: 2
+            dash: dash

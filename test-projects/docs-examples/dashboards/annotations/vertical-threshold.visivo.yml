@@ -1,0 +1,42 @@
+models:
+  - name: vertical_threshold_data
+    args:
+      - echo
+      - |
+        x,y
+        1,2
+        2,4
+        3,8
+        4,6
+        5,10
+
+traces:
+  - name: vertical_line_trace
+    model: ref(vertical_threshold_data)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: lines
+      line:
+        color: green
+    order_by: 
+      - query( x asc )
+
+charts:
+  - name: Vertical Threshold Example
+    traces:
+      - ${ ref(vertical_line_trace) }
+    layout:
+      title:
+        text: Vertical Threshold Line Example
+      shapes:
+        - type: line
+          x0: 3
+          x1: 3
+          y0: 0
+          y1: 10
+          line:
+            color: orange
+            width: 2
+            dash: dot

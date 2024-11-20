@@ -1,0 +1,53 @@
+models:
+  - name: multiple_points_data
+    args:
+      - echo
+      - |
+        x,y
+        1,5
+        2,8
+        3,3
+        4,10
+        5,6
+
+traces:
+  - name: points_trace
+    model: ref(multiple_points_data)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: markers
+      marker:
+        color: green
+    order_by: 
+      - query( x asc )
+
+charts:
+  - name: Point Annotations Example
+    traces:
+      - ${ref(points_trace)}
+    layout:
+      title:
+        text: Multiple Points Annotation
+      annotations:
+        - x: 2
+          y: 8
+          text: "Peak"
+          showarrow: true
+          arrowhead: 2
+          ax: 10
+          ay: -40
+          font:
+            size: 12
+            color: blue
+        - x: 4
+          y: 10
+          text: "Outlier"
+          showarrow: true
+          arrowhead: 3
+          ax: -20
+          ay: 30
+          font:
+            size: 12
+            color: red
