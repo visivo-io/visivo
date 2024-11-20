@@ -1,7 +1,9 @@
+from visivo.models.project import Project
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.trace import Trace
 from ..factories.model_factories import (
     AlertFactory,
+    DashboardFactory,
     ProjectFactory,
 )
 
@@ -22,35 +24,45 @@ def test_TestQueryStringFactory_errors(capsys):
         },
         "model": {"sql": "select * from test_table", "source": "ref(source)"},
         "tests": [
-            {"logic": "assert_that(numpy.sum(trace.props.x)).is_equal_to(1)"},
             {
-                "logic": "assert_that(numpy.all(numpy.asarray(trace.props.x) < 7)).is_true()"
+                "name": "test1",
+                "assertions": [">{ sum( ${ ref(two_test_trace).props.x } ) == 1 }"],
+            },
+            {
+                "name": "test2",
+                "assertions": [">{ all( ${ ref(two_test_trace).props.x } ) < 7 }"],
             },
         ],
     }
     trace = Trace(**data)
-
     output_dir = temp_folder()
     folders = f"{output_dir}/two_test_trace"
-    data = {"trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
+    data = {
+        "two_test_trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}
+    }
     os.makedirs(folders, exist_ok=True)
     json_file = open(f"{folders}/data.json", "w")
     json_file.write(json.dumps(data))
     json_file.close()
 
     alert = AlertFactory()
-    project = ProjectFactory(traces=[trace], dashboards=[])
+    project = ProjectFactory(
+        traces=[trace], dashboards=[DashboardFactory()], alerts=[alert]
+    )
 
+    # Trigger set_path_on_named_models
+    project = Project(**project.model_dump(by_alias=True))
+    dag = project.dag()
     Runner(
-        traces=[trace],
+        tests=project.traces[0].tests,
         project=project,
         output_dir=output_dir,
-        alerts=[alert],
+        dag=dag,
     ).run()
     captured = capsys.readouterr()
     assert (
-        "two_test_trace.test[0]: Expected <21> to be equal to <1>, but was not."
+        "project.traces[0].tests[0]: >{ sum( ${ ref(two_test_trace).props.x } ) == 1 }"
         in captured.out
     )
-    assert "two_test_trace[1]:" not in captured.out
-    assert alert.called
+    assert "project.traces[0].tests[1]:" not in captured.out
+    assert project.alerts[0].destinations[0].called

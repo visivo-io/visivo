@@ -2,7 +2,7 @@
 from pydantic import Field, constr
 from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional 
+from typing import List, Literal, Optional, Any 
 
 
 class Domain11(TracePropsAttribute):

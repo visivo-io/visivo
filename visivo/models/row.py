@@ -1,4 +1,5 @@
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.named_model import NamedModel
 from visivo.models.base.selector_model import SelectorModel
 from .base.base_model import RefString
 from .base.parent_model import ParentModel

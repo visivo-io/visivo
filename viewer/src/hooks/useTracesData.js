@@ -21,7 +21,11 @@ export const useTracesData = (projectId, traceNames) => {
     useEffect(() => {
         const waitForData = async () => {
             const fetchedTracesData = await fetchTracesData(traces);
-            setTraceData(filterObject(fetchedTracesData, memoizedTraceNames));
+            const orderedTracesData = memoizedTraceNames.reduce((orderedJson, traceName) => {
+                orderedJson[traceName] = fetchedTracesData[traceName];
+                return orderedJson;
+            }, {});
+            setTraceData(filterObject(orderedTracesData, memoizedTraceNames));
         };
         if (traces) {
             waitForData();

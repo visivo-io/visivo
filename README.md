@@ -8,6 +8,12 @@ Please refer to https://docs.visivo.io for detailed instructions on how to use t
 pip install visivo
 ```
 
+If you want to install a preview version you can install from a beta tag:
+
+```
+python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1 --force-reinstall
+```
+
 # Development
 
 ## Viewer

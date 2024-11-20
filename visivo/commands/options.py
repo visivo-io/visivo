@@ -74,13 +74,6 @@ def source(function):
     return function
 
 
-def alert(function):
-    click.option("-a", "--alert", help="Name of the alert to use", multiple=True)(
-        function
-    )
-    return function
-
-
 def user_dir(function):
     click.option(
         "-u",
