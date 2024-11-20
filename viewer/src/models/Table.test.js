@@ -19,8 +19,8 @@ describe('tableColumnsWithDot', () => {
     };
     const result = tableColumnsWithDot(table, null, "cohort");
     expect(result).toEqual([
-      { accessorKey: 'name', header: 'Name' },
-      { accessorKey: 'age', header: 'Age' }
+      { accessorKey: 'name', header: 'Name', markdown: false },
+      { accessorKey: 'age', header: 'Age', markdown: false }
     ]);
   });
 
@@ -38,8 +38,8 @@ describe('tableColumnsWithDot', () => {
     };
     const result = tableColumnsWithDot(table, null, "cohort");
     expect(result).toEqual([
-      { accessorKey: 'name', header: 'name' },
-      { accessorKey: 'age', header: 'age' }
+      { accessorKey: 'name', header: 'name', markdown: false },
+      { accessorKey: 'age', header: 'age', markdown: false }
     ]);
   });
 
