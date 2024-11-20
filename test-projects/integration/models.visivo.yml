@@ -24,6 +24,16 @@ models:
         5,5
         6,8
 
+  - name: markdown-table-base
+    args: 
+      - echo
+      - | 
+        vanilla_text,markdown
+        plain,plain
+        **bold**,**bold**
+        <ins>[link](https://visivo.io/)</ins>,<ins>[link](https://visivo.io/)</ins>
+        # header,# header
+
   - name: processes
     table_name: processes
     args:
