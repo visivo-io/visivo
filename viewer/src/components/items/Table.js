@@ -91,6 +91,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         enableTopToolbar: true,
         enableFullScreenToggle: true,
         enableGrouping: true,
+        enableColumnDragging: false,
 
         muiPaginationProps: {
             rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000]

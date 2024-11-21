@@ -14,14 +14,19 @@ beforeEach(() => {
         trace_name: "traceName",
         columns: [
           {
-            header: "Widget Type",
-            key: "columns.x_data",
+            header: "Regular Column",
+            key: "columns.regular_data"
+          },
+          {
+            header: "Markdown Column",
+            key: "columns.markdown_data",
+            markdown: true
           }
         ]
       }
     ],
     rows_per_page: 50,
-    traces: [{ name: "traceName", columns: { x_data: "x" } }],
+    traces: [{ name: "traceName", columns: { regular_data: "regular", markdown_data: "markdown" } }],
     selector: { name: "selector", type: "single", parent_name: "name" }
   }
 });
@@ -30,9 +35,13 @@ test('renders table', async () => {
   const traceData = {
     "traceName": {
       "cohortName": {
-        "columns.x_data": [
-          "value 1",
-          "value 2",
+        "columns.regular_data": [
+          "plain text",
+          "more plain text"
+        ],
+        "columns.markdown_data": [
+          "**bold text**",
+          "# heading"
         ]
       }
     }
@@ -43,10 +52,12 @@ test('renders table', async () => {
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
   await waitFor(() => {
-    expect(screen.getByText('Widget Type')).toBeInTheDocument();
+    expect(screen.getByText('Regular Column')).toBeInTheDocument();
+    expect(screen.getByText('Markdown Column')).toBeInTheDocument();
   });
-  expect(screen.getByText('value 1')).toBeInTheDocument();
-  expect(screen.getByText('value 2')).toBeInTheDocument();
+
+  expect(screen.getByText('plain text')).toBeInTheDocument();
+  expect(screen.getByText('**bold text**')).toBeInTheDocument();
 });
 
 test('renders table when no data returned', async () => {
@@ -66,9 +77,13 @@ test('exports table data as CSV when export button is clicked', async () => {
   const traceData = {
     "traceName": {
       "cohortName": {
-        "columns.x_data": [
-          "value 1",
-          "value 2",
+        "columns.regular_data": [
+          "plain text",
+          "more plain text"
+        ],
+        "columns.markdown_data": [
+          "**bold text**",
+          "# heading"
         ]
       }
     }
@@ -89,4 +104,55 @@ test('exports table data as CSV when export button is clicked', async () => {
 
   expect(global.Blob).toHaveBeenCalledWith([expect.any(String)], { type: 'text/csv;charset=utf-8;' });
   expect(global.URL.createObjectURL).toHaveBeenCalled();
+});
+
+test('renders markdown formatted cells', async () => {
+  const traceData = {
+    "traceName": {
+      "cohortName": {
+        "columns.regular_data": [
+          "plain text",
+          "more plain text"
+        ],
+        "columns.markdown_data": [
+          "**bold text**",
+          "# heading"
+        ]
+      }
+    }
+  };
+  
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
+
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('Regular Column')).toBeInTheDocument();
+    expect(screen.getByText('Markdown Column')).toBeInTheDocument();
+  });
+
+  expect(screen.getByText('plain text')).toBeInTheDocument();
+  expect(screen.getByText('**bold text**')).toBeInTheDocument();
+});
+
+test('handles non-string values in markdown cells', async () => {
+  const traceData = {
+    "traceName": {
+      "cohortName": {
+        "columns.markdown_data": [
+          123,
+          null,
+          undefined
+        ]
+      }
+    }
+  };
+  
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
+
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('123')).toBeInTheDocument();
+  });
 });
