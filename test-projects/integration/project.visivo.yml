@@ -6,7 +6,7 @@ includes:
   - path: visivo-io/example-include.git@main
 
 defaults:
-  target_name: local-sqlite
+  source_name: local-sqlite
   alert_name: slack
 
 alerts:
@@ -113,6 +113,23 @@ dashboards:
               rows_per_page: 1000
           - width: 2
             chart: ref(indicator_chart)
+      - height: medium 
+        items: 
+          - table:
+              name: awesome-table-2
+              column_defs:
+                - trace_name: markdown-trace-base
+                  columns:
+                    - key: "columns.vanilla_text"
+                    - key: "columns.markdown"
+                      header: "Markdown"
+                      markdown: true
+              traces:
+                - model: ref(markdown-table-base)
+                  name: markdown-trace-base
+                  columns: 
+                    vanilla_text: vanilla_text
+                    markdown: markdown
 
   - name: Simple Dashboard
     rows:

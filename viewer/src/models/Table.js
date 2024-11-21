@@ -28,17 +28,20 @@ export const tableColumnsWithDot = (table, tableCohort, traceName) => {
     if (tableColumns) {
         columns = tableColumns.columns.map((column) => {
             const header = 'header' in column ? column.header : getHeaderFromKey(column.key)
-            const columnBase = { accessorKey: column.key, header }
+            const columnBase = { 
+                accessorKey: column.key, 
+                header,
+                markdown: column.markdown || false 
+            }
             if ('aggregation' in column){
-              const aggregation = {
-                aggregationFn: column.aggregation,
-                AggregatedCell: ({ cell }) => <div>{column.aggregation}: {cell.getValue()}</div>,
-              }
-              return {...columnBase, ...aggregation}
+                const aggregation = {
+                    aggregationFn: column.aggregation,
+                    AggregatedCell: ({ cell }) => <div>{column.aggregation}: {cell.getValue()}</div>,
+                }
+                return {...columnBase, ...aggregation}
             } else {
                 return columnBase
             }
-            
         })
     } else if (tableCohort) {
         columns = Object.keys(tableCohort).map((key) => {

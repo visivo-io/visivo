@@ -19,6 +19,10 @@ import {
 /* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { mkConfig, generateCsv } from "export-to-csv";
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
 
 const Table = ({ table, project, itemWidth, height, width }) => {
     const traceNames = table.traces.map((trace) => trace.name);
@@ -64,13 +68,30 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     
     
     const useTable = useMaterialReactTable({
-        columns: tableColumnsWithUnderscores(columns),
+        columns: tableColumnsWithUnderscores(columns).map(column => ({
+            ...column,
+            Cell: ({ cell }) => {
+                const value = cell.getValue();
+                if (column.markdown) { //&& typeof value === 'string' 
+                    return (
+                        <Markdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                        >
+                            {value}
+                        </Markdown>
+                    );
+                }
+                return value;
+            }
+        })),
         data: tableData,
         enableRowSelection: true,
         enableGlobalFilter: true,
         enableTopToolbar: true,
         enableFullScreenToggle: true,
         enableGrouping: true,
+        enableColumnDragging: false,
 
         muiPaginationProps: {
             rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000]
