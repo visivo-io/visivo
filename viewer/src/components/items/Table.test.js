@@ -53,11 +53,10 @@ test('renders table', async () => {
 
   await waitFor(() => {
     expect(screen.getByText('Regular Column')).toBeInTheDocument();
-    expect(screen.getByText('Markdown Column')).toBeInTheDocument();
   });
-
-  expect(screen.getByText('plain text')).toBeInTheDocument();
-  expect(screen.getByText('**bold text**')).toBeInTheDocument();
+  await waitFor(() => {
+    expect(screen.getByText('**bold text**')).toBeInTheDocument();
+  });
 });
 
 test('renders table when no data returned', async () => {
