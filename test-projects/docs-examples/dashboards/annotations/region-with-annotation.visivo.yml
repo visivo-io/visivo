@@ -1,0 +1,53 @@
+models:
+  - name: scatter_data_region_annotation
+    args:
+      - echo
+      - |
+        x,y
+        1,2
+        2,3
+        3,4
+        4,5
+        5,6
+
+traces:
+  - name: scatter_trace_region_annotation
+    model: ref(scatter_data_region_annotation)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: markers
+      marker:
+        color: purple
+    order_by: 
+      - query( x asc )
+
+charts:
+  - name: Region with Annotation Example
+    traces:
+      - ${ref(scatter_trace_region_annotation)}
+    layout:
+      title:
+        text: Highlighted Region with Annotation
+      shapes:
+        - type: rect
+          x0: 3
+          x1: 5
+          y0: 4
+          y1: 6
+          line:
+            color: rgba(255, 165, 0, 1)
+            width: 2
+          fillcolor: rgba(255, 165, 0, 0.2)
+      annotations:
+        - x: 4
+          y: 5
+          text: "Key Area"
+          showarrow: true
+          arrowhead: 2
+          ax: 0
+          ay: -40
+          font:
+            size: 12
+            color: black

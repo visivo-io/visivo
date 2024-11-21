@@ -1,0 +1,39 @@
+includes:
+  - path: "highlight-region.visivo.yml"
+  - path: "multiple-regions.visivo.yml"
+  - path: "region-with-annotation.visivo.yml"
+  - path: "threshold-line.visivo.yml"
+  - path: "vertical-threshold.visivo.yml"
+  - path: "threshold-with-annotation.visivo.yml"
+  - path: "point-annotations.visivo.yml"
+  - path: "emoji-points.visivo.yml"
+  - path: "emoji-threshold.visivo.yml"
+  - path: "emoji-region.visivo.yml"
+
+dashboards:
+  - name: "Annotation and Shape Examples"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Shapes and Annotations"
+            align: left
+      - height: medium
+        items:
+          - chart: ${ref(Highlight Region Example)}
+          - chart: ${ref(Multiple Regions Example)}
+      - height: medium
+        items:
+          - chart: ${ref(Region with Annotation Example)}
+          - chart: ${ref(Threshold Line Example)}
+      - height: medium
+        items:
+          - chart: ${ref(Vertical Threshold Example)}
+          - chart: ${ref(Threshold with Annotation Example)}
+      - height: medium
+        items:
+          - chart: ${ref(Point Annotations Example)}
+          - chart: ${ref(Emoji Points Example)}
+      - height: medium
+        items:
+          - chart: ${ref(Emoji Threshold Example)}
+          - chart: ${ref(Emoji Region Example)}

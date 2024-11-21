@@ -1,0 +1,53 @@
+models:
+  - name: region_emoji_data
+    args:
+      - echo
+      - |
+        x,y
+        1,2
+        2,4
+        3,6
+        4,8
+        5,10
+
+traces:
+  - name: region_emoji_trace
+    model: ref(region_emoji_data)
+    props:
+      type: scatter
+      x: query(x)
+      y: query(y)
+      mode: lines+markers
+      line:
+        color: purple
+    order_by: 
+      - query( x asc )
+
+charts:
+  - name: Emoji Region Example
+    traces:
+      - ${ref(region_emoji_trace)}
+    layout:
+      title:
+        text: Region with Emoji Annotations
+      shapes:
+        - type: rect
+          x0: 2
+          x1: 4
+          y0: 4
+          y1: 8
+          line:
+            color: rgba(255, 192, 0, 1)
+            width: 2
+          fillcolor: rgba(255, 192, 0, 0.2)
+      annotations:
+        - x: 3
+          y: 6
+          text: "🎯"
+          showarrow: true
+          arrowhead: 2
+          hovertext: "Target Zone"
+          ax: 0
+          ay: -40
+          font:
+            size: 16
