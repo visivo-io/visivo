@@ -2,7 +2,7 @@ from typing import List
 import warnings
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import all_descendants
+from visivo.models.dag import all_descendants, all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
@@ -39,7 +39,8 @@ class Runner:
         self.name_filter = name_filter
         self.project_dag = project.dag()
         self.job_dag = self.project_dag.copy()
-        self.errors = []
+        self.failed_job_results = []
+        self.successful_job_results = []
 
     def run(self):
         complete = False
@@ -47,13 +48,14 @@ class Runner:
         start_time = time()
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
             while True:
-                complete = self.update_job_queue(job_tracker)
-                if complete:
-                    break
+                added_job = self.update_job_queue(job_tracker)
 
                 try:
                     job = job_tracker.get_next_job()
                 except queue.Empty:
+                    # Do I need this?  It might be okay to exit the loop if no jobs were added
+                    if not added_job:
+                        break
                     continue
 
                 if job.done() or job.running():
@@ -78,45 +80,52 @@ class Runner:
         job_result: JobResult = future.result(timeout=1)
         if job_result.success:
             Logger.instance().success(str(job_result.message))
+            self.successful_job_results.append(job_result)
         else:
             Logger.instance().error(str(job_result.message))
-            self.errors.append(str(job_result.message))
+            self.failed_job_results.append(job_result)
 
-    def prune_job_dag(self):
+    def update_job_queue(self, job_tracker: JobTracker):
+        filtered_dag = self.job_dag.copy()
+        for node in filtered_dag.nodes():
+            if node in [result.item for result in self.successful_job_results]:
+                filtered_dag.remove_node(node)
+
+        failed_items = [result.item for result in self.failed_job_results]
+        for node in filtered_dag.nodes():
+            if node in failed_items:
+                filtered_dag.remove_node(node)
+            else:
+                descendants = all_descendants_of_type(
+                    type=ParentModel, dag=filtered_dag, from_node=node
+                )
+                if any(descendant in failed_items for descendant in descendants):
+                    Logger.instance().warning(
+                        f"Skipping job for {node} because it has a failed dependency"
+                    )
+                    filtered_dag.remove_node(node)
+
         terminal_nodes = [
-            n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
+            n for n in filtered_dag.nodes() if filtered_dag.out_degree(n) == 0
         ]
-        removed_nodes = []
+
         for terminal_node in terminal_nodes:
-            if terminal_node not in [job.item for job in self.jobs]:
-                terminal_nodes.remove(terminal_node)
-                removed_nodes.append(terminal_node)
-            if any(job.item == terminal_node and job.done() for job in self.jobs):
-                terminal_nodes.remove(terminal_node)
-                removed_nodes.append(terminal_node)
+            job = self.create_jobs_from_item(terminal_node)
+            if job:
+                if not job.output_changed and self.run_only_changed:
+                    job.future = CachedFuture()
+                job_tracker.track_job(job)
+            else:
+                filtered_dag.remove_node(terminal_node)
 
-        #    if not job.output_changed and self.run_only_changed:
-        #            job.future = CachedFuture()
-        #        job_tracker.track_job(job)
-        return filtered_dag
-
-    def create_jobs_from_dag(self, dag: nx.DiGraph):
-        jobs = []
-        for node in dag.nodes():
-            if isinstance(node, Trace):
-                jobs.append(
-                    trace_job(
-                        trace=node, output_dir=self.output_dir, dag=self.project_dag
-                    )
-                )
-            if isinstance(node, CsvScriptModel):
-                jobs.append(
-                    csv_script_job(csv_script_model=node, output_dir=self.output_dir)
-                )
-            if isinstance(node, LocalMergeModel):
-                jobs.append(
-                    local_merge_job(
-                        trace=node, output_dir=self.output_dir, dag=self.project_dag
-                    )
-                )
-        return jobs
+    def create_jobs_from_item(self, item: ParentModel):
+        if isinstance(item, Trace):
+            return trace_job(
+                trace=item, output_dir=self.output_dir, dag=self.project_dag
+            )
+        if isinstance(item, CsvScriptModel):
+            return csv_script_job(csv_script_model=item, output_dir=self.output_dir)
+        if isinstance(item, LocalMergeModel):
+            return local_merge_job(
+                trace=item, output_dir=self.output_dir, dag=self.project_dag
+            )

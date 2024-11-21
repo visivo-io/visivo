@@ -28,7 +28,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
                 output_dir=output_dir, dag=dag
             ).database,
         )
-        return JobResult(success=True, message=success_message)
+        return JobResult(item=local_merge_model, success=True, message=success_message)
     except Exception as e:
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
@@ -38,7 +38,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
             ).database,
             error_msg=str(repr(e)),
         )
-        return JobResult(success=False, message=failure_message)
+        return JobResult(item=local_merge_model, success=False, message=failure_message)
 
 
 def job(dag, output_dir: str, local_merge_model: LocalMergeModel):

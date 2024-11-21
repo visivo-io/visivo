@@ -44,10 +44,10 @@ def action(trace, dag, output_dir):
             Aggregator.aggregate_data_frame(
                 data_frame=data_frame, trace_dir=trace_directory
             )
-            return JobResult(success=True, message=success_message)
+            return JobResult(item=trace, success=True, message=success_message)
         except Exception as e:
             if hasattr(e, "message"):
-                message = e.message 
+                message = e.message
             else:
                 message = repr(e)
             failure_message = format_message_failure(
@@ -56,7 +56,7 @@ def action(trace, dag, output_dir):
                 full_path=trace_query_file,
                 error_msg=message,
             )
-            return JobResult(success=False, message=failure_message)
+            return JobResult(item=trace, success=False, message=failure_message)
 
 
 def _get_source(trace, dag, output_dir):
@@ -76,11 +76,11 @@ def _get_source(trace, dag, output_dir):
 def job(dag, output_dir: str, trace: Trace):
     source = _get_source(trace, dag, output_dir)
     return Job(
-            item=trace,
-            output_changed=trace.changed,
-            source=source,
-            action=action,
-            trace=trace,
-            dag=dag,
-            output_dir=output_dir,
-        )
+        item=trace,
+        output_changed=trace.changed,
+        source=source,
+        action=action,
+        trace=trace,
+        dag=dag,
+        output_dir=output_dir,
+    )
