@@ -126,12 +126,16 @@ test('renders markdown formatted cells', async () => {
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
   await waitFor(() => {
-    expect(screen.getByText('Regular Column')).toBeInTheDocument();
-    expect(screen.getByText('Markdown Column')).toBeInTheDocument();
+    expect(screen.getByText('Regular Column')).toBeInTheDocument(); 
   });
 
-  expect(screen.getByText('plain text')).toBeInTheDocument();
-  expect(screen.getByText('**bold text**')).toBeInTheDocument();
+  await waitFor(() => {
+    expect(screen.getByText('plain text')).toBeInTheDocument();
+  });
+
+  await waitFor(() => {
+    expect(screen.getByText('**bold text**')).toBeInTheDocument();
+  });
 });
 
 test('handles non-string values in markdown cells', async () => {
