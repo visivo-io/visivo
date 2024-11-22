@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visivo"
-version = "1.0.43"
+version = "1.0.44"
 description = "Visivo CLI for BI and visualizations as code"
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
@@ -62,6 +62,7 @@ pytest-json-report = "^1.5.0"
 mkdocs-video = "^1.5.0"
 mkdocs-include-markdown-plugin = "^6.2.2"
 pytest-httpx = "^0.32.0"
+pymdown-extensions = "^10.12"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

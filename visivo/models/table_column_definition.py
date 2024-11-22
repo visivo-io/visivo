@@ -49,6 +49,10 @@ class TableColumn(BaseModel):
         None, 
         description = "The aggregate function that will apply to the column when a user groups the table by a different column. Defaults to none."
     )
+    markdown: Optional[bool] = Field(
+        False,
+        description="If true, the column content will be rendered as markdown. Defaults to false."
+    )
 
 
 class TableColumnDefinition(BaseModel):

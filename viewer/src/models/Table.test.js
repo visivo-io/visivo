@@ -19,8 +19,8 @@ describe('tableColumnsWithDot', () => {
     };
     const result = tableColumnsWithDot(table, null, "cohort");
     expect(result).toEqual([
-      { accessorKey: 'name', header: 'Name' },
-      { accessorKey: 'age', header: 'Age' }
+      { accessorKey: 'name', header: 'Name', markdown: false },
+      { accessorKey: 'age', header: 'Age', markdown: false }
     ]);
   });
 
@@ -38,8 +38,8 @@ describe('tableColumnsWithDot', () => {
     };
     const result = tableColumnsWithDot(table, null, "cohort");
     expect(result).toEqual([
-      { accessorKey: 'name', header: 'name' },
-      { accessorKey: 'age', header: 'age' }
+      { accessorKey: 'name', header: 'name', markdown: false },
+      { accessorKey: 'age', header: 'age', markdown: false }
     ]);
   });
 
@@ -49,6 +49,25 @@ describe('tableColumnsWithDot', () => {
     };
     const result = tableColumnsWithDot(table, null);
     expect(result).toEqual([]);
+  });
+
+  it('should set markdown flag when specified in column definition', () => {
+    const table = {
+      column_defs: [
+        {
+          trace_name: "cohort",
+          columns: [
+            { key: 'text', header: 'Text', markdown: true },
+            { key: 'plain', header: 'Plain' }
+          ]
+        }
+      ]
+    };
+    const result = tableColumnsWithDot(table, null, "cohort");
+    expect(result).toEqual([
+      { accessorKey: 'text', header: 'Text', markdown: true },
+      { accessorKey: 'plain', header: 'Plain', markdown: false }
+    ]);
   });
 });
 
@@ -102,4 +121,23 @@ describe('tableDataFromCohortData', () => {
       { "columns_x_data": 6, "columns_y_data": -8 }
     ])
   })
+
+  test('handles markdown columns', async () => {
+    const columns = [
+      { header: "Markdown", accessorKey: "columns.markdown_text", markdown: true },
+      { header: "Plain", accessorKey: "columns.plain_text", markdown: false }
+    ]
+
+    const cohortData = {
+      "columns.markdown_text": ["**bold**", "# heading"],
+      "columns.plain_text": ["regular text", "more text"]
+    }
+
+    const tableData = tableDataFromCohortData(cohortData, columns)
+
+    expect(tableData).toEqual([
+      { "columns_markdown_text": "**bold**", "columns_plain_text": "regular text" },
+      { "columns_markdown_text": "# heading", "columns_plain_text": "more text" }
+    ])
+  });
 })

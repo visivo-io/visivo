@@ -25,3 +25,5 @@ includes:
   - path: treemap/dashboard.visivo.yml
   - path: splom/dashboard.visivo.yml
   - path: scatter/dashboard.visivo.yml
+  - path: layout/includes.visivo.yml
+  - path: annotations/dashboard.visivo.yml

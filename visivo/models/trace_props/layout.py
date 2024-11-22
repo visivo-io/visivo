@@ -1,8 +1,9 @@
 
-from pydantic import Field, constr
+from pydantic import Field, constr, model_validator
 from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
 from visivo.models.trace_props.trace_props import LayoutBase, TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional 
+from typing import List, Literal, Optional, Any 
+from visivo.models.color_palette import ColorPalette
 
 
 class Activeselection1(TracePropsAttribute):
@@ -493,7 +494,7 @@ class LayoutColoraxis(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	colorscale: Optional[str]= Field(
+	colorscale: Optional[Any]= Field(
 		None,
 		description=""" colorscale<br>Sets the colorscale. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `cmin` and `cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
 	)
@@ -5621,10 +5622,33 @@ class Layout(LayoutBase):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	colorway: Optional[str]= Field(
-		None,
-		description=""" colorlist<br>Sets the default trace colors. """
-	)
+	colorway: Optional[List[str] | str] = Field(
+    "High Contrast",
+    description="""string or list of colors<br>Sets the default trace colors. Can be either a list of colors or a string corresponding to a palette name."""
+)
+
+	@model_validator(mode='before')
+	@classmethod
+	def validate_colorway(cls, data: dict) -> dict:
+		v = data.get('colorway', "High Contrast")  # Also handle case where colorway isn't in data
+		
+		if v is None:
+			return data
+		
+		if isinstance(v, str):
+			if v not in ColorPalette.PREDEFINED_PALETTES:
+				raise ValueError(f"Invalid palette name. Choose from: {', '.join(ColorPalette.PREDEFINED_PALETTES.keys())}")
+			data['colorway'] = ColorPalette.PREDEFINED_PALETTES[v]
+			return data
+		
+		if isinstance(v, list):
+			for color in v:
+				if not isinstance(color, str):
+					raise ValueError("All colors must be strings")
+			return data
+			
+		raise ValueError("colorway must be either a palette name or list of colors")
+	
 	computed: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Placeholder for exporting automargin-impacting values namely `margin.t`, `margin.b`, `margin.l` and `margin.r` in "full-json" mode. """

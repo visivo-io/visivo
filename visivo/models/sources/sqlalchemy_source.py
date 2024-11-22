@@ -52,7 +52,7 @@ class SqlalchemySource(Source, ABC):
         if not self._engine:
             from sqlalchemy.pool import NullPool
 
-            Logger.instance().debug(f"Creating engine for {self.name}")
+            Logger.instance().debug(f"Creating engine for Source: {self.name}")
             self._engine = create_engine(self.url(), poolclass=NullPool)
 
         return self._engine
