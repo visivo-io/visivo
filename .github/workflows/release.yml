@@ -8,7 +8,7 @@ on:
 
 jobs:
   create-release:
-    name: "CreateRelease"
+    name: "Create Release"
     runs-on: "ubuntu-latest"
 
     steps:
@@ -40,7 +40,10 @@ jobs:
           git tag -d latest
           git push origin :refs/tags/latest
           git tag -a latest -m "Latest versioned release"
+          git config --global user.email "info@visivo.io"
+          git config --global user.name "Visivo"
           git push origin --tags
+
 
       - name: Create GitHub release
         run: |
