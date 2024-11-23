@@ -46,11 +46,8 @@ jobs:
         run: |
           gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes 
           gh release create "latest" -t "Latest versioned release" --latest=false --prerelease
-<<<<<<< Updated upstream
-=======
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
->>>>>>> Stashed changes
 
       - name: Publish
         id: publish
