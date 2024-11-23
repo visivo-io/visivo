@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -39,10 +41,11 @@ jobs:
           git config --global user.email "info@visivo.io"
           git config --global user.name "Visivo"
           git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin tag v${{ inputs.version }}
           git tag -d latest
           git push origin :refs/tags/latest
           git tag -a latest -m "Latest versioned release"
-          git push origin --tags
+          git push origin tag latest
 
 
       - name: Create GitHub release
