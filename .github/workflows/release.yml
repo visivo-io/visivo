@@ -7,8 +7,8 @@ on:
         required: true
 
 jobs:
-  tagged-release:
-    name: "Tagged Release"
+  create-release:
+    name: "CreateRelease"
     runs-on: "ubuntu-latest"
 
     steps:
@@ -42,6 +42,7 @@ jobs:
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "v${{ inputs.version }}"
           prerelease: false
         
       - uses: "marvinpinto/action-automatic-releases@latest"
