@@ -37,20 +37,15 @@ jobs:
       - name: Add and push tag
         run: |
           git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
-          git push origin "v${{ inputs.version }}"
+          git tag -d latest
+          git push origin :refs/tags/latest
+          git tag -a latest -m "Latest versioned release"
+          git push origin --tags
 
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "v${{ inputs.version }}"
-          prerelease: false
-        
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          prerelease: true
-          title: "Latest versioned release"
+      - name: Create GitHub release
+        run: |
+          gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes 
+          gh release create "latest" -t "Latest versioned release" --latest=false --prerelease
 
       - name: Publish
         id: publish
