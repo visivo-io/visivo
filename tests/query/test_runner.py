@@ -133,3 +133,11 @@ def test_runner_name_filter():
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+
+
+def test_create_job_dag():
+    project = ProjectFactory()
+
+    runner = Runner(project=project, output_dir=temp_folder())
+    job_dag = runner.create_job_dag()
+    assert len(job_dag.nodes()) > 0

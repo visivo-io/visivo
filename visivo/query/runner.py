@@ -1,6 +1,5 @@
-import threading
 import warnings
-from visivo.models.base.named_model import NamedModel
+
 from visivo.models.base.parent_model import ParentModel
 
 from visivo.models.dag import all_descendants, family_tree_contains_named_node
@@ -39,7 +38,7 @@ class Runner:
         self.soft_failure = soft_failure
         self.name_filter = name_filter
         self.project_dag = project.dag()
-        self.job_dag = self.project_dag.copy()
+        self.job_dag = self.create_job_dag()
         self.failed_job_results = []
         self.successful_job_results = []
 
@@ -85,6 +84,31 @@ class Runner:
             Logger.instance().error(str(job_result.message))
             self.failed_job_results.append(job_result)
 
+    def create_job_dag(self):
+        from networkx import DiGraph, ancestors
+
+        def is_job_node(node):
+            if self.name_filter and not family_tree_contains_named_node(
+                item=node, name=self.name_filter, dag=self.project_dag
+            ):
+                return False
+            job = self.create_jobs_from_item(node)
+            if not job:
+                return False
+            return True
+
+        dag = DiGraph()
+        dag.add_node(self)
+        sub_dag = DiGraph()
+        for node in self.project_dag.nodes():
+            if is_job_node(node):
+                sub_dag.add_node(node)
+                for ancestor in ancestors(self.project_dag, node):
+                    if ancestor in sub_dag.nodes():
+                        sub_dag.add_edge(ancestor, node)
+                        break
+        return sub_dag
+
     def update_job_queue(self, job_tracker: JobTracker):
         terminal_nodes = [
             n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
@@ -103,21 +127,12 @@ class Runner:
                 )
                 self.job_dag.remove_node(terminal_node)
                 continue
-            elif self.name_filter and not family_tree_contains_named_node(
-                item=terminal_node, name=self.name_filter, dag=self.project_dag
-            ):
-                self.job_dag.remove_node(terminal_node)
-                continue
 
             job = self.create_jobs_from_item(terminal_node)
-            if not job:
-                self.job_dag.remove_node(terminal_node)
-            elif not job_tracker.is_job_name_enqueued(job.name):
+            if not job_tracker.is_job_name_enqueued(job.name):
                 if not job.output_changed and self.run_only_changed:
                     job.future = CachedFuture()
                 job_tracker.track_job(job)
-            else:
-                pass
 
         return len(self.job_dag.nodes()) == 0
 
