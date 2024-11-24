@@ -6,7 +6,7 @@ from tests.support.utils import temp_folder
 from visivo.query.jobs.run_local_merge_job import job
 
 
-def test_jobs():
+def test_job():
     output_dir = temp_folder()
     project = ProjectFactory()
     lmm_model = LocalMergeModelFactory()

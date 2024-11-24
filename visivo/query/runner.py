@@ -1,9 +1,9 @@
-from typing import List
+import threading
 import warnings
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import all_descendants
+from visivo.models.dag import all_descendants, family_tree_contains_named_node
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
@@ -77,7 +77,7 @@ class Runner:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
     def job_callback(self, future: Future):
-        job_result: JobResult = future.result(timeout=1)
+        job_result: JobResult = future.result(timeout=0.01)
         if job_result.success:
             Logger.instance().success(str(job_result.message))
             self.successful_job_results.append(job_result)
@@ -86,10 +86,6 @@ class Runner:
             self.failed_job_results.append(job_result)
 
     def update_job_queue(self, job_tracker: JobTracker):
-        Logger.instance().info(
-            f"Updating job queue with {len(self.job_dag.nodes())} nodes"
-        )
-
         terminal_nodes = [
             n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
         ]
@@ -97,19 +93,21 @@ class Runner:
         failed_items = [result.item for result in self.failed_job_results]
         successful_items = [result.item for result in self.successful_job_results]
         for terminal_node in terminal_nodes:
-            if terminal_node in successful_items:
+            descendants = all_descendants(dag=self.project_dag, from_node=terminal_node)
+            if terminal_node in successful_items or terminal_node in failed_items:
                 self.job_dag.remove_node(terminal_node)
-            elif terminal_node in failed_items:
-                self.job_dag.remove_node(terminal_node)
-            else:
-                descendants = all_descendants(
-                    dag=self.project_dag, from_node=terminal_node
+                continue
+            elif any(descendant in failed_items for descendant in descendants):
+                Logger.instance().info(
+                    f"Skipping job for {terminal_node} because it has a failed dependency"
                 )
-                if any(descendant in failed_items for descendant in descendants):
-                    Logger.instance().warning(
-                        f"Skipping job for {terminal_node} because it has a failed dependency"
-                    )
-                    self.job_dag.remove_node(terminal_node)
+                self.job_dag.remove_node(terminal_node)
+                continue
+            elif self.name_filter and not family_tree_contains_named_node(
+                item=terminal_node, name=self.name_filter, dag=self.project_dag
+            ):
+                self.job_dag.remove_node(terminal_node)
+                continue
 
             job = self.create_jobs_from_item(terminal_node)
             if not job:
@@ -120,7 +118,6 @@ class Runner:
                 job_tracker.track_job(job)
             else:
                 pass
-                # breakpoint()
 
         return len(self.job_dag.nodes()) == 0
 
@@ -133,5 +130,5 @@ class Runner:
             return csv_script_job(csv_script_model=item, output_dir=self.output_dir)
         if isinstance(item, LocalMergeModel):
             return local_merge_job(
-                trace=item, output_dir=self.output_dir, dag=self.project_dag
+                local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )

@@ -13,6 +13,6 @@ def test_job():
     project.models.append(csv_model)
     csv_job = job(
         output_dir=output_dir,
-        csv_script_model=csv_job,
+        csv_script_model=csv_model,
     )
     assert csv_job.item == csv_model

@@ -140,6 +140,15 @@ def all_descendants_with_path_match(path: str, dag, from_node=None):
     return list(filter(path_match, all_descendants(dag=dag, from_node=from_node)))
 
 
+def family_tree_contains_named_node(item, name: str, dag):
+    from networkx import descendants, ancestors
+
+    d = descendants(dag, item)
+    a = ancestors(dag, item)
+    items = d.union(a)
+    return any(item.name == name for item in items)
+
+
 def all_nodes_including_named_node_in_graph(name: str, dag):
     from networkx import descendants, ancestors
     import click
