@@ -1,0 +1,18 @@
+name: Trigger Development Deployment
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  trigger-deployment:
+    name: "Trigger Deployment"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Trigger Core Deployment
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.CORE_DEPLOY_TOKEN }}
+          repository: visivo-io/core
+          event-type: visivo-merge

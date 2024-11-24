@@ -29,6 +29,4 @@ The local development environment is a basic Create React App setup.  You can te
 
 ## Generating a Release
 
-There is a script that will make the needed tags and trigger the builds.  Find the new number you want and use the `release_command_line` utility.  Example:
-
-`release_command_line 1.0.22`
+A release is created by running the action `Create Release`.  This will create a tag and trigger the deployment of the viewer. The input is without the `v` prefix. Example: `1.3.4`.

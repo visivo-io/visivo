@@ -1,37 +1,59 @@
 name: "Release"
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
 
 jobs:
-  tagged-release:
-    name: "Tagged Release"
+  create-release:
+    name: "Create release v${{ inputs.version }}"
     runs-on: "ubuntu-latest"
 
     steps:
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-        
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          prerelease: true
-          title: "Latest versioned release"
-      
       - name: Checkout
         uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
         with:
-          python-version: '3.10' 
- 
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
+      
+      - name: Build App
+        run: |
+          cd viewer && yarn install && yarn deploy && cd ..
+          poetry version ${{ inputs.version }}
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          author_name: Visivo
+          author_email: info@visivo.io
+          message: 'Build viewer for Python package'
+     
+      - name: Add and push tag
+        run: |
+          git config --global user.email "info@visivo.io"
+          git config --global user.name "Visivo"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin tag v${{ inputs.version }}
+          git tag -d latest
+          git push origin :refs/tags/latest
+          git tag -a latest -m "Latest versioned release"
+          git push origin tag latest
+
+
+      - name: Create GitHub release
+        run: |
+          gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes 
+          gh release create "latest" -t "Latest versioned release" --latest=false --prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish
         id: publish
