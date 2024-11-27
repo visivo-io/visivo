@@ -155,14 +155,24 @@ def test_dag_with_context_string():
     trace = TraceFactory()
     dashboard = DashboardFactory()
     dashboard.rows[0].items[0].chart.traces[0] = ContextString("${ project.traces[0] }")
+    trace.path = "project.traces[0]"
     project = ProjectFactory(
         traces=[trace],
         dashboards=[dashboard],
     )
-    trace.path = "project.traces[0]"
 
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 9
     assert project.descendants_of_type(type=Trace) == [project.traces[0]]
+
+
+def test_circular_references_Project_dag():
+    trace = TraceFactory(name="circular_trace")
+    trace.model = ContextString("${ project }")
+
+    with pytest.raises(ValueError) as exc_info:
+        ProjectFactory(traces=[trace], dashboards=[])
+
+    assert "Project contains a circular reference: " in str(exc_info.value)

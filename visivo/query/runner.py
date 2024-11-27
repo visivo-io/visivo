@@ -2,7 +2,11 @@ import warnings
 
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import all_descendants, family_tree_contains_named_node
+from visivo.models.dag import (
+    all_descendants,
+    family_tree_contains_named_node,
+    show_dag_fig,
+)
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
@@ -85,7 +89,7 @@ class Runner:
             self.failed_job_results.append(job_result)
 
     def create_job_dag(self):
-        from networkx import DiGraph, ancestors
+        from networkx import DiGraph
 
         def is_job_node(node):
             if self.name_filter and not family_tree_contains_named_node(
@@ -97,25 +101,36 @@ class Runner:
                 return False
             return True
 
-        dag = DiGraph()
-        dag.add_node(self)
-        sub_dag = DiGraph()
+        job_dag = DiGraph()
+        job_dag.add_node(self.project)
         for node in self.project_dag.nodes():
             if is_job_node(node):
-                sub_dag.add_node(node)
-                for ancestor in ancestors(self.project_dag, node):
-                    if ancestor in sub_dag.nodes():
-                        sub_dag.add_edge(ancestor, node)
-                        break
-        return sub_dag
+                job_dag.add_node(node)
+
+        def find_predecessor_in_graph(dag, root, current_node):
+            predecessors = self.project_dag.predecessors(current_node)
+            for predecessor in predecessors:
+                if predecessor in job_dag.nodes():
+                    job_dag.add_edge(predecessor, root)
+                else:
+                    find_predecessor_in_graph(dag, root, predecessor)
+
+        for node in job_dag.nodes():
+            find_predecessor_in_graph(job_dag, node, node)
+        return job_dag
 
     def update_job_queue(self, job_tracker: JobTracker):
         terminal_nodes = [
             n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
         ]
+        for node in self.job_dag.nodes():
+            Logger.instance().info(
+                f"Node {node} has out degree {self.job_dag.out_degree(node)}"
+            )
 
         failed_items = [result.item for result in self.failed_job_results]
         successful_items = [result.item for result in self.successful_job_results]
+
         for terminal_node in terminal_nodes:
             descendants = all_descendants(dag=self.project_dag, from_node=terminal_node)
             if terminal_node in successful_items or terminal_node in failed_items:
@@ -134,7 +149,7 @@ class Runner:
                     job.future = CachedFuture()
                 job_tracker.track_job(job)
 
-        return len(self.job_dag.nodes()) == 0
+        return len(self.job_dag.nodes()) == 1
 
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Trace):
