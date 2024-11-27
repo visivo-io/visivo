@@ -123,10 +123,6 @@ class Runner:
         terminal_nodes = [
             n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
         ]
-        for node in self.job_dag.nodes():
-            Logger.instance().info(
-                f"Node {node} has out degree {self.job_dag.out_degree(node)}"
-            )
 
         failed_items = [result.item for result in self.failed_job_results]
         successful_items = [result.item for result in self.successful_job_results]
