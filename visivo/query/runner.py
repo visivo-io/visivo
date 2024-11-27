@@ -2,11 +2,7 @@ import warnings
 
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import (
-    all_descendants,
-    family_tree_contains_named_node,
-    show_dag_fig,
-)
+from visivo.models.dag import all_descendants, family_tree_contains_named_node
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
