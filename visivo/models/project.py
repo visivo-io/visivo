@@ -1,7 +1,6 @@
-import re
 from typing import List, Optional
 from visivo.models.alert import Alert
-from visivo.models.dag import all_descendants_of_type
+from visivo.models.dag import all_descendants_of_type, show_dag_fig
 from visivo.models.destinations.destination import Destination
 
 from visivo.models.destinations.fields import DestinationField
@@ -101,7 +100,19 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_dag(self):
+        from networkx import simple_cycles, is_directed_acyclic_graph
+
         dag = self.dag()
+        if not is_directed_acyclic_graph(dag):
+            circular_references = list(simple_cycles(dag))
+            if len(circular_references) > 0:
+                circle = " -> ".join(
+                    list(map(lambda cr: cr.id(), circular_references[0]))
+                )
+                circle += f" -> {circular_references[0][0].id()}."
+                raise ValueError(f"Project contains a circular reference: {circle}")
+            raise ValueError("Project contains a circular reference.")
+
         tables = all_descendants_of_type(type=Table, dag=dag, from_node=self)
         for table in tables:
             selectors = all_descendants_of_type(type=Selector, dag=dag, from_node=table)

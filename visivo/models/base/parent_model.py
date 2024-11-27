@@ -1,5 +1,4 @@
 import re
-import click
 from typing import List
 from abc import ABC, abstractmethod
 from visivo.models.base.base_model import BaseModel
@@ -62,7 +61,10 @@ class ParentModel(ABC):
                         item=item,
                         parent_item=parent_item,
                     )
-                dag.add_edge(parent_item, dag_item)
+                if item.__class__.__name__ == "Test":
+                    dag.add_edge(root, dag_item)
+                else:
+                    dag.add_edge(parent_item, dag_item)
                 if isinstance(dag_item, ParentModel):
                     self.__build_dag(
                         items=dag_item.child_items(),

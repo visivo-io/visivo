@@ -1,3 +1,4 @@
+from networkx import is_directed_acyclic_graph
 from tests.factories.model_factories import (
     CsvScriptModelFactory,
     DashboardFactory,
@@ -7,6 +8,7 @@ from tests.factories.model_factories import (
     ProjectFactory,
     SourceFactory,
 )
+from visivo.models.dag import show_dag_fig
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
@@ -133,3 +135,14 @@ def test_runner_name_filter():
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+
+
+def test_create_job_dag():
+    model = CsvScriptModelFactory(name="model1")
+    trace = TraceFactory(name="trace1", model=model)
+    project = ProjectFactory(traces=[trace])
+
+    runner = Runner(project=project, output_dir=temp_folder())
+    job_dag = runner.create_job_dag()
+    assert len(job_dag.nodes()) == 4
+    assert is_directed_acyclic_graph(job_dag)

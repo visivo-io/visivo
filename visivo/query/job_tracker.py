@@ -41,7 +41,7 @@ class JobTracker:
 
     def get_next_job(self) -> Job:
         self.__update()
-        return self.job_queue.get(timeout=1)
+        return self.job_queue.get(timeout=0.01)
 
     def empty(self) -> bool:
         return self.job_queue.empty()

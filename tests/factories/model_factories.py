@@ -8,6 +8,7 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
+from visivo.models.test import Test
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
@@ -38,6 +39,13 @@ class AlertFactory(factory.Factory):
     destinations = factory.List(
         [factory.SubFactory(DestinationFactory) for _ in range(1)]
     )
+
+class TestFactory(factory.Factory):
+    class Meta:
+        model = Test
+
+    name = "test"
+    assertions = []
 
 
 class SnowflakeSourceFactory(factory.Factory):

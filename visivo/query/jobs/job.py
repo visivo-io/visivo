@@ -8,7 +8,8 @@ from termcolor import colored
 
 
 class JobResult:
-    def __init__(self, success: bool, message: str):
+    def __init__(self, item: NamedModel, success: bool, message: str):
+        self.item = item
         self.success = success
         self.message = message
 

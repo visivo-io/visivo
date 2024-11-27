@@ -1,11 +1,11 @@
 from visivo.logging.logger import Logger
-from visivo.models.base.parent_model import ParentModel
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.project import Project
 from visivo.models.sources.source import Source
+from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
 from visivo.query.jobs.job import (
     Job,
@@ -43,10 +43,10 @@ def action(trace, dag, output_dir):
             Aggregator.aggregate_data_frame(
                 data_frame=data_frame, trace_dir=trace_directory
             )
-            return JobResult(success=True, message=success_message)
+            return JobResult(item=trace, success=True, message=success_message)
         except Exception as e:
             if hasattr(e, "message"):
-                message = e.message 
+                message = e.message
             else:
                 message = repr(e)
             failure_message = format_message_failure(
@@ -55,7 +55,7 @@ def action(trace, dag, output_dir):
                 full_path=trace_query_file,
                 error_msg=message,
             )
-            return JobResult(success=False, message=failure_message)
+            return JobResult(item=trace, success=False, message=failure_message)
 
 
 def _get_source(trace, dag, output_dir):
@@ -72,21 +72,14 @@ def _get_source(trace, dag, output_dir):
         return model.source
 
 
-def jobs(dag, output_dir: str, project: Project, name_filter: str):
-    jobs = []
-
-    traces = project.filter_traces(name_filter=name_filter)
-    for trace in traces:
-        source = _get_source(trace, dag, output_dir)
-        jobs.append(
-            Job(
-                item=trace,
-                output_changed=trace.changed,
-                source=source,
-                action=action,
-                trace=trace,
-                dag=dag,
-                output_dir=output_dir,
-            )
-        )
-    return jobs
+def job(dag, output_dir: str, trace: Trace):
+    source = _get_source(trace, dag, output_dir)
+    return Job(
+        item=trace,
+        output_changed=trace.changed,
+        source=source,
+        action=action,
+        trace=trace,
+        dag=dag,
+        output_dir=output_dir,
+    )
