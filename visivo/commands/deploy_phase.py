@@ -1,3 +1,4 @@
+import os
 from visivo.models.trace import Trace
 import click
 import requests
@@ -171,6 +172,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     project_json = json.loads(
         serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
     )
+
+    project_json_file = os.path.join(output_dir, "deploy_project.json")
+    with open(project_json_file, "w") as file:
+        json.dump(project_json, file)
+
+    Logger.instance().info(f"Project JSON written to {project_json_file}")
     Logger.instance().success(
         f"Project Compiled in {time() - deploy_start_time:.2f} seconds"
     )
