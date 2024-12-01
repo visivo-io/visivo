@@ -21,7 +21,7 @@ def compile_phase(
     default_source: str,
     working_dir: str,
     output_dir: str,
-    name_filter: str = None,
+    dag_filter: str = None,
     dbt_profile: str = None,
     dbt_target: str = None,
 ):
