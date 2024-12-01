@@ -2,7 +2,11 @@ import warnings
 
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import all_descendants, family_tree_contains_named_node
+from visivo.models.dag import (
+    all_descendants,
+    family_tree_contains_named_node,
+    filter_dag,
+)
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
@@ -88,10 +92,6 @@ class Runner:
         from networkx import DiGraph
 
         def is_job_node(node):
-            if self.dag_filter and not family_tree_contains_named_node(
-                item=node, name=self.dag_filter, dag=self.project_dag
-            ):
-                return False
             job = self.create_jobs_from_item(node)
             if not job:
                 return False
@@ -99,7 +99,7 @@ class Runner:
 
         job_dag = DiGraph()
         job_dag.add_node(self.project)
-        for node in self.project_dag.nodes():
+        for node in filter_dag(self.project_dag, self.dag_filter).nodes():
             if is_job_node(node):
                 job_dag.add_node(node)
 

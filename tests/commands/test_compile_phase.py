@@ -38,7 +38,7 @@ def test_filtered_dashboard():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter="dashboard",
+        dag_filter="+dashboard+",
     )
     assert "Additional Trace" not in os.listdir(output_dir)
     assert "trace" in os.listdir(output_dir)
@@ -63,7 +63,7 @@ def test_compile_csv_script_model():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter="dashboard",
+        dag_filter="+dashboard+",
     )
     assert "trace" in os.listdir(output_dir)
     with open(f"{output_dir}/trace/query.sql") as f:
