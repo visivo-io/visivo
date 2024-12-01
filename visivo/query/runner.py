@@ -10,12 +10,14 @@ from visivo.logging.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor
 import queue
+from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.query.jobs.job import CachedFuture, Job, JobResult
 
 from visivo.query.jobs.run_csv_script_job import job as csv_script_job
 from visivo.query.jobs.run_trace_job import job as trace_job
 from visivo.query.jobs.run_local_merge_job import job as local_merge_job
+from visivo.query.jobs.run_source_connection_job import job as source_connection_job
 from visivo.query.job_tracker import JobTracker
 
 warnings.filterwarnings("ignore")
@@ -148,9 +150,12 @@ class Runner:
             return trace_job(
                 trace=item, output_dir=self.output_dir, dag=self.project_dag
             )
-        if isinstance(item, CsvScriptModel):
+        elif isinstance(item, CsvScriptModel):
             return csv_script_job(csv_script_model=item, output_dir=self.output_dir)
-        if isinstance(item, LocalMergeModel):
+        elif isinstance(item, LocalMergeModel):
             return local_merge_job(
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
+        elif isinstance(item, Source):
+            return source_connection_job(source=item)
+        return None

@@ -8,8 +8,6 @@ from tests.factories.model_factories import (
     ProjectFactory,
     SourceFactory,
 )
-from visivo.models.dag import show_dag_fig
-from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
@@ -144,5 +142,5 @@ def test_create_job_dag():
 
     runner = Runner(project=project, output_dir=temp_folder())
     job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 4
+    assert len(job_dag.nodes()) == 5
     assert is_directed_acyclic_graph(job_dag)
