@@ -1,3 +1,6 @@
+import io
+import os
+import sys
 from networkx import is_directed_acyclic_graph
 from tests.factories.model_factories import (
     CsvScriptModelFactory,
@@ -14,7 +17,6 @@ from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
-import os
 
 
 def test_Runner_trace_with_default():
@@ -131,10 +133,27 @@ def test_runner_dag_filter():
     with open(f"{output_dir}/Additional Trace/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from no_exist")
 
-    runner = Runner(project=project, output_dir=output_dir, dag_filter="dashboard")
+    runner = Runner(project=project, output_dir=output_dir, dag_filter="+dashboard+")
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+
+
+def test_runner_dag_filter_with_no_jobs():
+    output_dir = temp_folder()
+    project = ProjectFactory()
+
+    capturedOutput = io.StringIO()
+    sys.stdout = capturedOutput
+
+    runner = Runner(project=project, output_dir=output_dir, dag_filter="+dashboard")
+    runner.run()
+
+    sys.stdout = sys.__stdout__
+    assert (
+        "No jobs run. Ensure your filter contains nodes that are runnable."
+        in capturedOutput.getvalue()
+    )
 
 
 def test_create_job_dag():

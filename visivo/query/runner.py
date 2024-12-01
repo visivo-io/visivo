@@ -6,6 +6,7 @@ from visivo.models.dag import (
     all_descendants,
     family_tree_contains_named_node,
     filter_dag,
+    show_dag_fig,
 )
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
@@ -76,6 +77,14 @@ class Runner:
                 f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)"
             )
             exit(1)
+        elif (
+            len(self.successful_job_results) == 0
+            and len(self.failed_job_results) == 0
+            and self.dag_filter
+        ):
+            Logger.instance().error(
+                f"\nNo jobs run. Ensure your filter contains nodes that are runnable."
+            )
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
@@ -117,7 +126,9 @@ class Runner:
 
     def update_job_queue(self, job_tracker: JobTracker):
         terminal_nodes = [
-            n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
+            n
+            for n in self.job_dag.nodes()
+            if self.job_dag.out_degree(n) == 0 and n != self.project
         ]
 
         failed_items = [result.item for result in self.failed_job_results]
