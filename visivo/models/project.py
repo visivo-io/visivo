@@ -60,9 +60,9 @@ class Project(NamedModel, ParentModel):
             + self.dashboards
         )
 
-    def filter_traces(self, name_filter) -> List[Trace]:
-        if name_filter:
-            included_nodes = self.nodes_including_named_node_in_graph(name=name_filter)
+    def filter_traces(self, dag_filter) -> List[Trace]:
+        if dag_filter:
+            included_nodes = self.nodes_including_named_node_in_graph(name=dag_filter)
         else:
             included_nodes = self.descendants()
         return set(self.descendants_of_type(Trace)).intersection(included_nodes)

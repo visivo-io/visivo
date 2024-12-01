@@ -103,7 +103,7 @@ def test_runner_with_local_merge_model():
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
 
 
-def test_runner_name_filter():
+def test_runner_dag_filter():
     output_dir = temp_folder()
     project = ProjectFactory()
     source = SourceFactory(database=f"{output_dir}/test.sqlite")
@@ -131,7 +131,7 @@ def test_runner_name_filter():
     with open(f"{output_dir}/Additional Trace/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from no_exist")
 
-    runner = Runner(project=project, output_dir=output_dir, name_filter="dashboard")
+    runner = Runner(project=project, output_dir=output_dir, dag_filter="dashboard")
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")

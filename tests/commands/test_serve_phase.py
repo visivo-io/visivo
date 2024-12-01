@@ -21,5 +21,5 @@ def test_get_project_json():
     tmp = temp_file(contents=project.model_dump_json(), name="project.json")
     working_dir = os.path.dirname(tmp)
 
-    project_json = get_project_json(output_dir=working_dir, name_filter="dashboard")
+    project_json = get_project_json(output_dir=working_dir, dag_filter="dashboard")
     assert len(project_json["dashboards"]) == 1

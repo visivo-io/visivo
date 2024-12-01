@@ -3,7 +3,7 @@ import importlib.resources as resources
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
-def dist_phase(output_dir, working_dir, dist_dir, default_source, name_filter, threads):
+def dist_phase(output_dir, working_dir, dist_dir, default_source, dag_filter, threads):
     from visivo.commands.run_phase import run_phase
     import os
     import json
@@ -15,7 +15,7 @@ def dist_phase(output_dir, working_dir, dist_dir, default_source, name_filter, t
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=default_source,
-        name_filter=name_filter,
+        dag_filter=dag_filter,
         threads=threads,
     )
 

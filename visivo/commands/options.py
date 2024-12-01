@@ -55,11 +55,11 @@ def dist_dir(function):
     return function
 
 
-def name_filter(function):
+def dag_filter(function):
     click.option(
-        "-nf",
-        "--name-filter",
-        help="Run the command to only include the dag that includes the node with the given name",
+        "-df",
+        "--dag-filter",
+        help="Run the command with the given dag filter",
         default=None,
     )(function)
     return function

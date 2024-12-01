@@ -24,7 +24,7 @@ def test_serve():
         working_dir=working_dir,
         output_dir=output_dir,
         default_source="source",
-        name_filter=None,
+        dag_filter=None,
         threads=2,
     )
 

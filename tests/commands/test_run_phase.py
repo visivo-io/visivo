@@ -38,7 +38,7 @@ def test_run_phase():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        name_filter="dashboard",
+        dag_filter="dashboard",
     )
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")

@@ -29,14 +29,14 @@ class Runner:
         threads: int = 8,
         soft_failure=False,
         run_only_changed=False,
-        name_filter: str = None,
+        dag_filter: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
         self.run_only_changed = run_only_changed
         self.threads = threads
         self.soft_failure = soft_failure
-        self.name_filter = name_filter
+        self.dag_filter = dag_filter
         self.project_dag = project.dag()
         self.job_dag = self.create_job_dag()
         self.failed_job_results = []
@@ -88,8 +88,8 @@ class Runner:
         from networkx import DiGraph
 
         def is_job_node(node):
-            if self.name_filter and not family_tree_contains_named_node(
-                item=node, name=self.name_filter, dag=self.project_dag
+            if self.dag_filter and not family_tree_contains_named_node(
+                item=node, name=self.dag_filter, dag=self.project_dag
             ):
                 return False
             job = self.create_jobs_from_item(node)

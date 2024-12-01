@@ -38,16 +38,12 @@ def compile_phase(
         )
 
     dag = project.dag()
-    for trace in project.filter_traces(name_filter=name_filter):
-        model = all_descendants_of_type(
-            type=Model, dag=dag, from_node=trace
-        )[0]
+    for trace in project.filter_traces(dag_filter=dag_filter):
+        model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
         if isinstance(model, CsvScriptModel):
             source = model.get_sqlite_source(output_dir=output_dir)
         else:
-            source = all_descendants_of_type(
-                type=Source, dag=dag, from_node=model
-            )[0]
+            source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, source=source
         ).tokenize()
