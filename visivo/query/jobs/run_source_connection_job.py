@@ -18,15 +18,15 @@ def action(source_to_test: Source):
         success_message = format_message_success(
             details=f"Successful connection for source \033[4m{source_to_test.name}\033[0m",
             start_time=start_time,
-            full_path=source_to_test.name,
+            full_path=None,
         )
         return JobResult(item=source_to_test, success=True, message=success_message)
     except Exception as e:
         failure_message = format_message_failure(
             details=f"Failed connection for source \033[4m{source_to_test.name}\033[0m",
             start_time=start_time,
-            error_msg=f"Failed connection to host: {source_to_test.host}, port: {source_to_test.port}, user: {source_to_test.user}, database: {source_to_test.database}. {str(repr(e))}",
-            full_path=source_to_test.name,
+            error_msg=f"Failed connection to host: {source_to_test.host}, port: {source_to_test.port}, username: {source_to_test.username}, database: {source_to_test.database}. {str(repr(e))}",
+            full_path=None,
         )
         return JobResult(item=source_to_test, success=False, message=failure_message)
 
