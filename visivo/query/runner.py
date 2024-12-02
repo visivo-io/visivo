@@ -10,6 +10,8 @@ from visivo.models.dag import (
 )
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.models.model import Model
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
 from time import time
@@ -100,11 +102,16 @@ class Runner:
             self.failed_job_results.append(job_result)
 
     def create_job_dag(self):
-        from networkx import DiGraph
+        from networkx import DiGraph, ancestors as node_ancestors
 
         def is_job_node(node):
             job = self.create_jobs_from_item(node)
             if not job:
+                return False
+            elif isinstance(node, Source):
+                ancestors = node_ancestors(self.project_dag, node)
+                if any(isinstance(ancestor, SqlModel) for ancestor in ancestors):
+                    return True
                 return False
             return True
 
