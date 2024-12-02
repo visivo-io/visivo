@@ -6022,8 +6022,7 @@
                            overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
-  -nf, --name-filter TEXT  Run the command to only include the dag that
-                           includes the node with the given name
+  -df, --dag-filter TEXT   Run the command with the given dag filter
   -dp, --dbt-profile TEXT  The dbt profile to use
   -dt, --dbt-target TEXT   The dbt target to use
   --help                   Show this message and exit.
@@ -6061,16 +6060,15 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo dist [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
-                           overrides the default source in the project.
-  -w, --working-dir TEXT   Directory to run the command
-  -o, --output-dir TEXT    Directory to output results
-  -d, --dist-dir TEXT      Directory to output the distribution files
-  -nf, --name-filter TEXT  Run the command to only include the dag that
-                           includes the node with the given name
-  -th, --threads TEXT      The max number of threads to use when running trace
-                           queries
-  --help                   Show this message and exit.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT       Name of the default source connection to use. This
+                          overrides the default source in the project.
+  -w, --working-dir TEXT  Directory to run the command
+  -o, --output-dir TEXT   Directory to output results
+  -d, --dist-dir TEXT     Directory to output the distribution files
+  -df, --dag-filter TEXT  Run the command with the given dag filter
+  -th, --threads TEXT     The max number of threads to use when running trace
+                          queries
+  --help                  Show this message and exit.
 </code></pre></div>
 <h2 id="init">init</h2>
 <p>Enables a quick set up by writing your source &amp; api credentials to an env file.</p>
@@ -6090,8 +6088,7 @@ This folder can be statically deployed to any web server, hosting service, or bu
                            overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
-  -nf, --name-filter TEXT  Run the command to only include the dag that
-                           includes the node with the given name
+  -df, --dag-filter TEXT   Run the command with the given dag filter
   -th, --threads TEXT      The max number of threads to use when running trace
                            queries
   -dp, --dbt-profile TEXT  The dbt profile to use
@@ -6104,16 +6101,15 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo serve [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
-                           overrides the default source in the project.
-  -w, --working-dir TEXT   Directory to run the command
-  -o, --output-dir TEXT    Directory to output results
-  -nf, --name-filter TEXT  Run the command to only include the dag that
-                           includes the node with the given name
-  -p, --port INTEGER       What port to serve on
-  -th, --threads TEXT      The max number of threads to use when running trace
-                           queries
-  --help                   Show this message and exit.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT       Name of the default source connection to use. This
+                          overrides the default source in the project.
+  -w, --working-dir TEXT  Directory to run the command
+  -o, --output-dir TEXT   Directory to output results
+  -df, --dag-filter TEXT  Run the command with the given dag filter
+  -p, --port INTEGER      What port to serve on
+  -th, --threads TEXT     The max number of threads to use when running trace
+                          queries
+  --help                  Show this message and exit.
 </code></pre></div>
 <h2 id="test">test</h2>
 <p>Enables testing trace values to ensure that the charts that are being produced have the characteristics that you would expect.</p>
