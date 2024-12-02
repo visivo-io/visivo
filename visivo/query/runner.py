@@ -2,7 +2,12 @@ import warnings
 
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import all_descendants, family_tree_contains_named_node
+from visivo.models.dag import (
+    all_descendants,
+    family_tree_contains_named_node,
+    filter_dag,
+    show_dag_fig,
+)
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.project import Project
@@ -29,14 +34,14 @@ class Runner:
         threads: int = 8,
         soft_failure=False,
         run_only_changed=False,
-        name_filter: str = None,
+        dag_filter: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
         self.run_only_changed = run_only_changed
         self.threads = threads
         self.soft_failure = soft_failure
-        self.name_filter = name_filter
+        self.dag_filter = dag_filter
         self.project_dag = project.dag()
         self.job_dag = self.create_job_dag()
         self.failed_job_results = []
@@ -72,6 +77,14 @@ class Runner:
                 f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)"
             )
             exit(1)
+        elif (
+            len(self.successful_job_results) == 0
+            and len(self.failed_job_results) == 0
+            and self.dag_filter
+        ):
+            Logger.instance().error(
+                f"\nNo jobs run. Ensure your filter contains nodes that are runnable."
+            )
         else:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
@@ -88,10 +101,6 @@ class Runner:
         from networkx import DiGraph
 
         def is_job_node(node):
-            if self.name_filter and not family_tree_contains_named_node(
-                item=node, name=self.name_filter, dag=self.project_dag
-            ):
-                return False
             job = self.create_jobs_from_item(node)
             if not job:
                 return False
@@ -99,7 +108,7 @@ class Runner:
 
         job_dag = DiGraph()
         job_dag.add_node(self.project)
-        for node in self.project_dag.nodes():
+        for node in filter_dag(self.project_dag, self.dag_filter).nodes():
             if is_job_node(node):
                 job_dag.add_node(node)
 
@@ -117,7 +126,9 @@ class Runner:
 
     def update_job_queue(self, job_tracker: JobTracker):
         terminal_nodes = [
-            n for n in self.job_dag.nodes() if self.job_dag.out_degree(n) == 0
+            n
+            for n in self.job_dag.nodes()
+            if self.job_dag.out_degree(n) == 0 and n != self.project
         ]
 
         failed_items = [result.item for result in self.failed_job_results]
