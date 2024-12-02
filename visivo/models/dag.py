@@ -1,3 +1,6 @@
+import re
+
+
 def show_dag_fig(dag):
     import plotly.graph_objects as go
 
@@ -165,3 +168,54 @@ def all_nodes_including_named_node_in_graph(name: str, dag):
     items = d.union(a)
     items.add(item)
     return items
+
+
+def parse_filter_str(filter_str):
+    pattern = r"(?P<pre>\d*\+)?\s*(?P<name>[a-zA-Z0-9\s'\"\-_]+)\s*(?P<post>\+\d*)?"
+    match = re.search(pattern, filter_str)
+    if match:
+        pre = match.group("pre")
+        name = match.group("name")
+        post = match.group("post")
+        return pre, name, post
+    else:
+        re.search(pattern, filter_str)
+        return None, filter_str, None
+
+
+def filter_dag(dag, filter_str):
+    from networkx import subgraph, shortest_path_length, descendants, ancestors
+    import click
+
+    if not filter_str:
+        return dag
+
+    pre, name, post = parse_filter_str(filter_str)
+    item = all_descendants_with_name(name=name, dag=dag)
+    if len(item) == 1:
+        item = item[0]
+    else:
+        raise click.ClickException(f"No item found with name: '{name}'.")
+    pre_length = 0
+    post_length = 0
+    a = ancestors(dag, item)
+    d = descendants(dag, item)
+    if pre == "+":
+        pre_length = len(a)
+    elif pre:
+        pre_length = int(pre.replace("+", ""))
+    if post == "+":
+        post_length = len(d)
+    elif post:
+        post_length = int(post.replace("+", ""))
+
+    def matches_length_and_side(node):
+        return (
+            (node in a and shortest_path_length(dag, node, item) <= pre_length)
+            or (node in d and shortest_path_length(dag, item, node) <= post_length)
+            or node == item
+        )
+
+    filtered_nodes = [node for node in dag.nodes if matches_length_and_side(node)]
+
+    return subgraph(dag, filtered_nodes)

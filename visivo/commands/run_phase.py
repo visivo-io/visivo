@@ -2,7 +2,7 @@ def run_phase(
     default_source: str,
     output_dir: str,
     working_dir: str,
-    name_filter: str = None,
+    dag_filter: str = None,
     run_only_changed: bool = False,
     threads: int = None,
     soft_failure=False,
@@ -17,7 +17,7 @@ def run_phase(
         default_source=default_source,
         working_dir=working_dir,
         output_dir=output_dir,
-        name_filter=name_filter,
+        dag_filter=dag_filter,
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,
     )
@@ -39,7 +39,7 @@ def run_phase(
         threads=threads,
         soft_failure=soft_failure,
         run_only_changed=run_only_changed,
-        name_filter=name_filter,
+        dag_filter=dag_filter,
     )
     runner.run()
     return runner

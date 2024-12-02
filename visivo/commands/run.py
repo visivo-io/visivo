@@ -3,7 +3,7 @@ from visivo.commands.options import (
     output_dir,
     working_dir,
     source,
-    name_filter,
+    dag_filter,
     threads,
     dbt_profile,
     dbt_target,
@@ -14,19 +14,11 @@ from visivo.commands.options import (
 @source
 @working_dir
 @output_dir
-@name_filter
+@dag_filter
 @threads
 @dbt_profile
 @dbt_target
-def run(
-    output_dir,
-    working_dir,
-    source,
-    name_filter,
-    threads,
-    dbt_profile,
-    dbt_target,
-):
+(??)def run(output_dir, working_dir, source, name_filter, threads, dbt_profile, dbt_target):
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory.
     """
@@ -41,7 +33,7 @@ def run(
         default_source=source,
         output_dir=output_dir,
         working_dir=working_dir,
-        name_filter=name_filter,
+        dag_filter=dag_filter,
         threads=threads,
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,

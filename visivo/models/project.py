@@ -60,13 +60,6 @@ class Project(NamedModel, ParentModel):
             + self.dashboards
         )
 
-    def filter_traces(self, name_filter) -> List[Trace]:
-        if name_filter:
-            included_nodes = self.nodes_including_named_node_in_graph(name=name_filter)
-        else:
-            included_nodes = self.descendants()
-        return set(self.descendants_of_type(Trace)).intersection(included_nodes)
-
     @model_validator(mode="after")
     def validate_default_names(self):
         sources, alerts = (self.sources, self.alerts)
