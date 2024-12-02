@@ -163,3 +163,16 @@ def test_create_job_dag():
     job_dag = runner.create_job_dag()
     assert len(job_dag.nodes()) == 5
     assert is_directed_acyclic_graph(job_dag)
+
+
+def test_create_job_dag_with_non_referenced_source():
+    model = CsvScriptModelFactory(name="additional_model")
+    trace = TraceFactory(name="additional_trace", model=model)
+    source = SourceFactory(name="source")
+    additional_source = SourceFactory(name="non_referenced_source")
+    project = ProjectFactory(traces=[trace], sources=[source, additional_source])
+
+    runner = Runner(project=project, output_dir=temp_folder())
+    job_dag = runner.create_job_dag()
+    assert len(job_dag.nodes()) == 5
+    assert is_directed_acyclic_graph(job_dag)
