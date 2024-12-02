@@ -1,8 +1,8 @@
+from visivo.logging.logger import Logger
 from visivo.models.dag import all_descendants, all_descendants_of_type
 from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
-from ..models.project import Project
-from ..models.base.parent_model import ParentModel
+from visivo.models.project import Project
 from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.trace import Trace
@@ -24,10 +24,12 @@ class Serializer:
             def replace_item_ref(item):
                 if item.chart or item.table:
                     if item.chart:
-                        item.chart = all_descendants_of_type(
+                        chart = all_descendants_of_type(
                             type=Chart, dag=dag, from_node=item
                         )[0]
-                        component = item.chart
+                        Logger.instance().info(f"Chart replaced with {chart}")
+                        item.chart = chart
+                        component = chart
                     else:
                         item.table = all_descendants_of_type(
                             type=Table, dag=dag, from_node=item
