@@ -19,11 +19,13 @@ class Serializer:
         project.cli_version = version("visivo")
         dag = project.dag()
 
+        Logger.instance().info(f"Dereferencing project {project.name}")
         for dashboard in project.dashboards:
 
             def replace_item_ref(item):
                 if item.chart or item.table:
                     if item.chart:
+                        Logger.instance().info(f"Dereferencing chart {item.chart}")
                         chart = all_descendants_of_type(
                             type=Chart, dag=dag, from_node=item
                         )[0]
