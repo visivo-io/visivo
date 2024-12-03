@@ -75,15 +75,14 @@ class Runner:
                     job.set_future(executor.submit(job.action, **job.kwargs))
                     job.future.add_done_callback(self.job_callback)
 
-        if len(self.failed_job_results) > 0 and self.soft_failure:
+        if len(self.failed_job_results) > 0:
             Logger.instance().error(
-                f"\nRefresh failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
+                f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
             )
-        elif len(self.failed_job_results) > 0 and not self.soft_failure:
-            Logger.instance().error(
-                f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)"
-            )
-            exit(1)
+            for result in self.failed_job_results:
+                Logger.instance().error(str(result.message))
+            if not self.soft_failure:
+                exit(1)
         elif (
             len(self.successful_job_results) == 0
             and len(self.failed_job_results) == 0
@@ -96,7 +95,7 @@ class Runner:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
     def job_callback(self, future: Future):
-        job_result: JobResult = future.result(timeout=0.01)
+        job_result: JobResult = future.result(timeout=30)
         if job_result.success:
             Logger.instance().success(str(job_result.message))
             self.successful_job_results.append(job_result)
@@ -105,7 +104,7 @@ class Runner:
             self.failed_job_results.append(job_result)
 
     def create_job_dag(self):
-        from networkx import DiGraph, ancestors as node_ancestors, descendants
+        from networkx import DiGraph, ancestors as node_ancestors
 
         def is_job_node(node):
             job = self.create_jobs_from_item(node)
@@ -146,37 +145,26 @@ class Runner:
                 if self.job_tracking_dag.out_degree(n) == 0 and n != self.project
             ]
 
-            failed_items = [result.item for result in self.failed_job_results]
-            successful_items = [result.item for result in self.successful_job_results]
-
             for terminal_node in terminal_nodes:
                 descendants = node_descendants(self.job_dag, terminal_node)
-                if terminal_node.name == "Simple Volume Plot":
-                    Logger.instance().info(
-                        f"successful_items {list(map(lambda x: x.name, successful_items))}, failed_items {list(map(lambda x: x.name, failed_items))}, descendants {list(map(lambda x: x.name, descendants))}"
-                    )
-                if terminal_node in successful_items or terminal_node in failed_items:
-                    Logger.instance().info(f"Removing {terminal_node.name}")
+                if job_tracker.is_job_name_done(terminal_node.name):
                     self.job_tracking_dag.remove_node(terminal_node)
                     continue
-                elif any(descendant in failed_items for descendant in descendants):
+                elif any(
+                    job_tracker.is_job_name_failed(descendant.name)
+                    for descendant in descendants
+                ):
                     Logger.instance().info(
                         f"Skipping job for '{terminal_node.name}' because it has a failed dependency"
                     )
                     self.job_tracking_dag.remove_node(terminal_node)
-                    continue
-                elif not all(
-                    descendant in successful_items for descendant in descendants
-                ):
-                    Logger.instance().info(
-                        f"Skipping job for '{terminal_node.name}' because it has an unresolved dependency"
-                    )
                     continue
 
                 job = self.create_jobs_from_item(terminal_node)
                 if not job_tracker.is_job_name_enqueued(job.name):
                     if not job.output_changed and self.run_only_changed:
                         job.future = CachedFuture()
+                    # Logger.instance().info(f"Enqueuing job for {terminal_node.name}")
                     job_tracker.track_job(job)
 
             return len(self.job_tracking_dag.nodes()) == 1
