@@ -62,11 +62,12 @@ def _format_message(details, status, full_path=None, error_msg=None):
     details = textwrap.shorten(details, width=80, placeholder="(truncated)") + " "
     num_dots = total_width - len(details)
     dots = "." * num_dots
+    error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
     if not full_path:
-        return f"{details}{dots}[{status}]"
+        return f"{details}{dots}[{status}]{error_str}"
+
     current_directory = os.getcwd()
     relative_path = os.path.relpath(full_path, current_directory)
-    error_str = "" if error_msg == None else f"\n\t\033[2merror: {error_msg}\033[0m"
     action = ""
     if relative_path.endswith(".sql"):
         action = "query: "
@@ -74,8 +75,7 @@ def _format_message(details, status, full_path=None, error_msg=None):
         action = "database file: "
 
     return (
-        f"{details}{dots}[{status}]\n\t\033[2m{action}{relative_path}\033[0m"
-        + error_str
+        f"{details}{dots}[{status}]\n\t\033[2m{action}{relative_path}\033[0m{error_str}"
     )
 
 

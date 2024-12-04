@@ -10,18 +10,23 @@ from visivo.models.dag import (
 )
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.models.model import Model
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor
 import queue
+from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.query.jobs.job import CachedFuture, Job, JobResult
 
 from visivo.query.jobs.run_csv_script_job import job as csv_script_job
 from visivo.query.jobs.run_trace_job import job as trace_job
 from visivo.query.jobs.run_local_merge_job import job as local_merge_job
+from visivo.query.jobs.run_source_connection_job import job as source_connection_job
 from visivo.query.job_tracker import JobTracker
+from threading import Lock
 
 warnings.filterwarnings("ignore")
 
@@ -44,8 +49,10 @@ class Runner:
         self.dag_filter = dag_filter
         self.project_dag = project.dag()
         self.job_dag = self.create_job_dag()
+        self.job_tracking_dag = self.create_job_dag()
         self.failed_job_results = []
         self.successful_job_results = []
+        self.lock = Lock()
 
     def run(self):
         complete = False
@@ -68,15 +75,14 @@ class Runner:
                     job.set_future(executor.submit(job.action, **job.kwargs))
                     job.future.add_done_callback(self.job_callback)
 
-        if len(self.failed_job_results) > 0 and self.soft_failure:
+        if len(self.failed_job_results) > 0:
             Logger.instance().error(
-                f"\nRefresh failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
+                f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
             )
-        elif len(self.failed_job_results) > 0 and not self.soft_failure:
-            Logger.instance().error(
-                f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)"
-            )
-            exit(1)
+            for result in self.failed_job_results:
+                Logger.instance().error(str(result.message))
+            if not self.soft_failure:
+                exit(1)
         elif (
             len(self.successful_job_results) == 0
             and len(self.failed_job_results) == 0
@@ -89,7 +95,7 @@ class Runner:
             Logger.instance().info(f"\nRun finished in {round(time()-start_time, 2)}s")
 
     def job_callback(self, future: Future):
-        job_result: JobResult = future.result(timeout=0.01)
+        job_result: JobResult = future.result(timeout=30)
         if job_result.success:
             Logger.instance().success(str(job_result.message))
             self.successful_job_results.append(job_result)
@@ -98,11 +104,16 @@ class Runner:
             self.failed_job_results.append(job_result)
 
     def create_job_dag(self):
-        from networkx import DiGraph
+        from networkx import DiGraph, ancestors as node_ancestors
 
         def is_job_node(node):
             job = self.create_jobs_from_item(node)
             if not job:
+                return False
+            elif isinstance(node, Source):
+                ancestors = node_ancestors(self.project_dag, node)
+                if any(isinstance(ancestor, SqlModel) for ancestor in ancestors):
+                    return True
                 return False
             return True
 
@@ -125,43 +136,50 @@ class Runner:
         return job_dag
 
     def update_job_queue(self, job_tracker: JobTracker):
-        terminal_nodes = [
-            n
-            for n in self.job_dag.nodes()
-            if self.job_dag.out_degree(n) == 0 and n != self.project
-        ]
+        from networkx import descendants as node_descendants
 
-        failed_items = [result.item for result in self.failed_job_results]
-        successful_items = [result.item for result in self.successful_job_results]
+        with self.lock:
+            terminal_nodes = [
+                n
+                for n in self.job_tracking_dag.nodes()
+                if self.job_tracking_dag.out_degree(n) == 0 and n != self.project
+            ]
 
-        for terminal_node in terminal_nodes:
-            descendants = all_descendants(dag=self.project_dag, from_node=terminal_node)
-            if terminal_node in successful_items or terminal_node in failed_items:
-                self.job_dag.remove_node(terminal_node)
-                continue
-            elif any(descendant in failed_items for descendant in descendants):
-                Logger.instance().info(
-                    f"Skipping job for {terminal_node} because it has a failed dependency"
-                )
-                self.job_dag.remove_node(terminal_node)
-                continue
+            for terminal_node in terminal_nodes:
+                descendants = node_descendants(self.job_dag, terminal_node)
+                if job_tracker.is_job_name_done(terminal_node.name):
+                    self.job_tracking_dag.remove_node(terminal_node)
+                    continue
+                elif any(
+                    job_tracker.is_job_name_failed(descendant.name)
+                    for descendant in descendants
+                ):
+                    Logger.instance().info(
+                        f"Skipping job for '{terminal_node.name}' because it has a failed dependency"
+                    )
+                    self.job_tracking_dag.remove_node(terminal_node)
+                    continue
 
-            job = self.create_jobs_from_item(terminal_node)
-            if not job_tracker.is_job_name_enqueued(job.name):
-                if not job.output_changed and self.run_only_changed:
-                    job.future = CachedFuture()
-                job_tracker.track_job(job)
+                job = self.create_jobs_from_item(terminal_node)
+                if not job_tracker.is_job_name_enqueued(job.name):
+                    if not job.output_changed and self.run_only_changed:
+                        job.future = CachedFuture()
+                    # Logger.instance().info(f"Enqueuing job for {terminal_node.name}")
+                    job_tracker.track_job(job)
 
-        return len(self.job_dag.nodes()) == 1
+            return len(self.job_tracking_dag.nodes()) == 1
 
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Trace):
             return trace_job(
                 trace=item, output_dir=self.output_dir, dag=self.project_dag
             )
-        if isinstance(item, CsvScriptModel):
+        elif isinstance(item, CsvScriptModel):
             return csv_script_job(csv_script_model=item, output_dir=self.output_dir)
-        if isinstance(item, LocalMergeModel):
+        elif isinstance(item, LocalMergeModel):
             return local_merge_job(
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
+        elif isinstance(item, Source):
+            return source_connection_job(source=item)
+        return None

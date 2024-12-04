@@ -32,6 +32,15 @@ class JobTracker:
         self.__update()
         return job_name in set(map(lambda job: job.name, self.done))
 
+    def is_job_name_failed(self, job_name: str) -> bool:
+        self.__update()
+        failed_jobs = list(
+            filter(
+                lambda job: job.future and not job.future.result().success, self.done
+            )
+        )
+        return job_name in set(map(lambda job: job.name, failed_jobs))
+
     def is_done(self) -> bool:
         self.__update()
         return (len(self.running) + len(self.enqueued)) == 0
