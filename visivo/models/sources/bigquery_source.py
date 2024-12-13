@@ -1,6 +1,7 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
-from pydantic import Field
+from pydantic import Field, SecretStr
+import click
 
 BigQueryType = Literal["bigquery"]
 
@@ -29,11 +30,11 @@ class BigQuerySource(SqlalchemySource):
         description="The Google Cloud project ID that contains your BigQuery dataset."
     )
     
-    credentials_base64: str = Field(
+    credentials_base64: SecretStr = Field(
         description="The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the commmand line with `python -m base64 < credentials.json > encoded.txt`. ",
     )
 
-    dataset: Optional[str] = Field(
+    database: Optional[str] = Field(
         None,
         description="The default BigQuery dataset to use for queries.",
     )
@@ -48,11 +49,10 @@ class BigQuerySource(SqlalchemySource):
 
     def url(self):
         base_url = f"bigquery://{self.project}"
-        if self.dataset:
-            base_url += f"/{self.dataset}"
+        if self.database:
+            base_url += f"/{self.database}"
 
-        credentials = self.credentials_base64 if self.credentials_base64 else None
+        credentials = self.credentials_base64.get_secret_value() if self.credentials_base64 else None
         if not credentials:
             raise ValueError("Base64 Credentials are required for BigQuery sources. You can get your client_secrets.json file from the Google Cloud Console ([docs](https://cloud.google.com/bigquery/docs/authentication/end-user-installed#bigquery_auth_user_query-python)) and turn it into a base64 string with `python -m base64 < credentials.json > encoded.txt`.")
-        
         return f"{base_url}?credentials_base64={credentials}"

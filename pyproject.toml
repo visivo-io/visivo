@@ -43,6 +43,7 @@ aiofiles = "^24.1.0"
 tenacity = "^9.0.0"
 plotly = "^5.24.0"
 snowflake-sqlalchemy = "^1.6.1"
+sqlalchemy-bigquery = "^1.12.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

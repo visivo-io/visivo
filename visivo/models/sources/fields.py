@@ -5,6 +5,7 @@ from visivo.models.sources.mysql_source import MysqlSource
 from visivo.models.sources.postgresql_source import PostgresqlSource
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
+from visivo.models.sources.bigquery_source import BigQuerySource
 
 
 def get_model_discriminator_value(value: Any) -> str:
@@ -25,6 +26,7 @@ SourceField = Annotated[
         Annotated[PostgresqlSource, Tag("postgresql")],
         Annotated[MysqlSource, Tag("mysql")],
         Annotated[SnowflakeSource, Tag("snowflake")],
+        Annotated[BigQuerySource, Tag("bigquery")],
     ],
     Discriminator(get_model_discriminator_value),
 ]
@@ -36,6 +38,7 @@ SourceRefField = Annotated[
         Annotated[PostgresqlSource, Tag("postgresql")],
         Annotated[MysqlSource, Tag("mysql")],
         Annotated[SnowflakeSource, Tag("snowflake")],
+        Annotated[BigQuerySource, Tag("bigquery")],
     ],
     Discriminator(get_model_discriminator_value),
 ]

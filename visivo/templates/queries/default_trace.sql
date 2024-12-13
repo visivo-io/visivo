@@ -1,3 +1,17 @@
+{%- if source_type == "bigquery" %}
+    {%- set column_quotation = '`' %}
+{%- else %}
+    {%- set column_quotation = '"' %}
+{%- endif %}
+
+{%- macro format_column_alias(key) -%}
+    {%- if source_type == "bigquery" -%}
+        `{{ key.replace('.', '|') }}`
+    {%- else -%}
+        "{{ key }}"
+    {%- endif -%}
+{%- endmacro -%}
+
 WITH 
 base_query as (
     {{sql}}
@@ -5,18 +19,18 @@ base_query as (
 columnize_cohort_on as (
     SELECT 
         *,
-        {{cohort_on}} as "cohort_on"
+        {{cohort_on}} as {{column_quotation}}cohort_on{{column_quotation}}
     FROM base_query
 )
 SELECT 
     {%- if select_items is defined and (select_items) %}
         {%- for key, value in select_items.items() %}
-            {{ value }} as "{{ key }}", 
+            {{ value }} as {{ format_column_alias(key) }},
         {%- endfor %}
     {%- else %}
         *,
     {%- endif %}
-    "cohort_on"
+    {{column_quotation}}cohort_on{{column_quotation}}
 FROM columnize_cohort_on
 {%- if filter_by is defined and filter_by.vanilla|length > 0 %}
     WHERE
@@ -29,7 +43,7 @@ FROM columnize_cohort_on
     {%- for statement in groupby_statements %}
         {{statement}} {% if not loop.last %} , {% endif %}
     {%- endfor %}{% if groupby_statements is defined%},{% endif %}
-    "cohort_on"
+    {{column_quotation}}cohort_on{{column_quotation}}
 {%- endif %}
 {%- if filter_by is defined %}
     {%- if filter_by.aggregate|length > 0 %}
