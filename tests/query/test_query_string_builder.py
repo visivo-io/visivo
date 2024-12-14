@@ -9,7 +9,7 @@ from tests.factories.model_factories import SnowflakeSourceFactory
 
 def test_QueryStringBuilder_with_only_base_query():
     tokenized_trace = TokenizedTrace(
-        sql="select * from table", cohort_on="'value'", source="name"
+        sql="select * from table", cohort_on="'value'", source="name", source_type="snowflake"
     )
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert format_sql(query_string) == format_sql(
