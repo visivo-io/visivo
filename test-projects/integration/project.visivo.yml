@@ -49,7 +49,6 @@ sources:
     project: "{{env_var('BIGQUERY_PROJECT')}}"
     credentials_base64: "{{env_var('BIGQUERY_BASE64_CREDENTIALS')}}"
 
-
 charts:
   - name: indicator_chart
     traces:
