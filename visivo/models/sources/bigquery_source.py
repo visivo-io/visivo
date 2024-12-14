@@ -11,7 +11,10 @@ class BigQuerySource(SqlalchemySource):
 
     !!! info "BigQuery Authentication"
 
-        To authenticate BigQuery without logging into Google Cloud Console each time, you'll need to:
+        Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery 
+        without logging into Google Cloud Console each time and makes it easier to manage credentials in CI/CD pipelines.
+
+        However utilizing base64 encoding requires a few extra steps:
 
         1. Create a Google Cloud Service Account
             1. Go to the [Google Cloud Console](https://console.cloud.google.com)
