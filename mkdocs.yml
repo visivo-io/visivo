@@ -133,6 +133,8 @@ nav:
                   - reference/configuration/Sources/MysqlSource/index.md
               - SnowflakeSource:
                   - reference/configuration/Sources/SnowflakeSource/index.md
+              - BigQuerySource:
+                  - reference/configuration/Sources/BigQuerySource/index.md
           - Table:
               - reference/configuration/Table/index.md
               - TableColumnDefinition:

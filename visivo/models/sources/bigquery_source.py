@@ -1,14 +1,52 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field, SecretStr
-import click
 
 BigQueryType = Literal["bigquery"]
 
 
 class BigQuerySource(SqlalchemySource):
     """
-    BigQuerySources hold the connection information to Google BigQuery data sources.
+    BigQuerySources hold the connection information to Google BigQuery instances. 
+
+    !!! info "BigQuery Authentication"
+
+        To authenticate BigQuery without logging into Google Cloud Console each time, you'll need to:
+
+        1. Create a Google Cloud Service Account
+            1. Go to the [Google Cloud Console](https://console.cloud.google.com)
+            2. Select your project
+            3. Navigate to "IAM & Admin" > "Service Accounts"
+            4. Click "Create Service Account"
+            5. Give it a name and description
+            6. Grant it the "BigQuery Admin" role (or more restrictive custom role)
+            7. Click "Done"
+
+        2. Create and download credentials
+            1. Find your service account in the list
+            2. Click the three dots menu > "Manage keys"
+            3. Click "Add Key" > "Create new key"
+            4. Choose JSON format
+            5. Click "Create" - this downloads your credentials file
+
+        3. Convert credentials to base64
+            ```bash
+            # On Linux/Mac
+            python -m base64 < credentials.json > encoded.txt
+            
+            # On Windows PowerShell
+            [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("credentials.json")) > encoded.txt
+            ```
+
+        4. Use the contents of encoded.txt as your credentials_base64 value. You can store the single line key in your untracked env file and use the `{% raw %}{{ env_var('VAR_NAME') }}{% endraw %}` syntax to reference the environment variable in your Visivo config.
+
+        The service account needs at minimum the "BigQuery User" role to execute queries. 
+        For more restricted access, you can create a custom role with just the required permissions:
+
+        - bigquery.jobs.create
+        - bigquery.tables.get
+        - bigquery.tables.getData
+        - bigquery.tables.list
 
     !!! example
 
@@ -19,7 +57,7 @@ class BigQuerySource(SqlalchemySource):
                   - name: bigquery_source
                     type: bigquery
                     project: my-project-id
-                    dataset: my_dataset
+                    database: my_dataset
                     credentials_base64: {% raw %}{{ env_var('BIGQUERY_BASE64_ENCODED_CREDENTIALS') }}{% endraw %}
             ```
 
@@ -31,7 +69,7 @@ class BigQuerySource(SqlalchemySource):
     )
     
     credentials_base64: SecretStr = Field(
-        description="The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the commmand line with `python -m base64 < credentials.json > encoded.txt`. ",
+        description="The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the command line with `python -m base64 < credentials.json > encoded.txt`. ",
     )
 
     database: Optional[str] = Field(
