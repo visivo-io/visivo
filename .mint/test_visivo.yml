@@ -115,6 +115,17 @@ tasks:
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
     filter: [test-projects/integration]
 
+  - key: test-bigquery
+    use: visivo-install
+    run: |
+      cd test-projects/integration
+      visivo run -s remote-bigquery
+    env:
+      STACKTRACE: true
+      BIGQUERY_BASE64_CREDENTIALS: ${{ secrets.BIGQUERY_BASE64_CREDENTIALS }}
+      BIGQUERY_PROJECT: ${{ secrets.BIGQUERY_PROJECT }}
+    filter: [test-projects/integration]
+
   - key: test-complex-project
     use: visivo-install
     run: |

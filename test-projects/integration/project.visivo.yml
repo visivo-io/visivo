@@ -46,7 +46,7 @@ sources:
   - name: remote-bigquery
     type: bigquery
     database: test 
-    project: visivo-io-production
+    project: "{{env_var('BIGQUERY_PROJECT')}}"
     credentials_base64: "{{env_var('BIGQUERY_BASE64_CREDENTIALS')}}"
 
 
