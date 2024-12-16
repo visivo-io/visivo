@@ -21,5 +21,5 @@ def test_Source_password_json():
         "project": "project-project"
     }
     source = BigQuerySource(**data)
-
+    assert source.credentials_base64 is not None
     assert "**********" in source.model_dump_json()
