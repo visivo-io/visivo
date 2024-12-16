@@ -8,6 +8,7 @@ def test_TokenizedTrace_simple_data():
         "sql": "select * from table",
         "cohort_on": "query(x)",
         "source": "name",
+        "source_type": "bigquery",
     }
     trace = TokenizedTrace(**data)
     assert trace.sql == "select * from table"
@@ -32,6 +33,7 @@ def test_TokenizedTrace_invalid_order_by_input():
         "select_items": {"y": "sum(amount)", "x": "completed_at"},
         "order_by": {"no": "dicts allowed!"},
         "source": "name",
+        "source_type": "snowflake",
     }
     with pytest.raises(ValidationError) as exc_info:
         TokenizedTrace(**data)

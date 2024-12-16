@@ -26,11 +26,16 @@ class TraceTokenizer:
 
     def tokenize(self):
         cohort_on = self._get_cohort_on()
+        if self.source.type:
+            source_type = self.source.type
+        else: 
+            source_type = None
         data = {
             "sql": self.model.sql,
             "cohort_on": cohort_on,
             "select_items": self.select_items,
             "source": self.source.name,
+            "source_type": source_type,
         }
         if hasattr(self, "groupby_statements"):
             data.update({"groupby_statements": self.groupby_statements})

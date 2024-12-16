@@ -99,7 +99,7 @@ traces:
       type: scatter3d
       x: query(x)
       y: query(y)
-      z: query( -2*(x%2)*x + x + y*(y-3))
+      z: query( -2*(x/16)*x + x + y*(y-3))
     tests:
       - assertions:
           - ">{ ${ref(3d Line One).props.x[1]} == 2 }"
@@ -115,7 +115,7 @@ traces:
       type: scatter3d
       x: query(x)
       y: query(y)
-      z: query( (-3*(x%2)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y)
+      z: query( (-3*(x/16)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y)
 
   - name: Fibonacci Waterfall
     model: ref(waterfall_model)

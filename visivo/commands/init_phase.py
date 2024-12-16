@@ -11,6 +11,7 @@ from visivo.models.sources.postgresql_source import PostgresqlSource, Postgresql
 from visivo.models.sources.snowflake_source import SnowflakeSource, SnowflakeType
 from visivo.models.sources.sqlite_source import SqliteSource, SqliteType
 from visivo.models.sources.mysql_source import MysqlSource, MysqlType
+from visivo.models.sources.bigquery_source import BigQuerySource, BigQueryType
 from visivo.models.project import Project
 from visivo.models.dashboard import Dashboard
 from visivo.models.chart import Chart
@@ -38,6 +39,7 @@ def init_phase():
     postgresql_type = get_args(PostgresqlType)[0]
     mysql_type = get_args(MysqlType)[0]
     snowflake_type = get_args(SnowflakeType)[0]
+    bigquery_type = get_args(BigQueryType)[0]
     types = get_source_types()
 
     source_type = click.prompt("? Database type", type=click.Choice(types))
@@ -110,7 +112,21 @@ def init_phase():
             account=account,
             warehouse=warehouse,
         )
-
+    if source_type == bigquery_type:
+        project = click.prompt("? BigQuery project", type=str)
+        dataset = click.prompt("? BigQuery dataset", type=str)
+        credentials_base64 = click.prompt(
+            "? base64 encoded credentials", type=str, hide_input=True, confirmation_prompt=True
+        )
+        fp = open(f"{project_name}/.env", "w+")
+        fp.write(f"DB_PASSWORD={credentials_base64}")
+        fp.close()
+        source = BigQuerySource(
+            name="Example Source",
+            project=project,
+            dataset=dataset,
+            credentials_base64=credentials_base64,
+        )
     Logger.instance().debug("Generating project, gitignore & env files")
 
     model = SqlModel(name="Example Model", sql="select * from test_table")
