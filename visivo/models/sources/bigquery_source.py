@@ -13,7 +13,7 @@ class BigQuerySource(SqlalchemySource):
     !!! info "BigQuery Authentication"
         You can authenticate BigQuery in one of two ways: 
          1. Pass a base64 encoded service account key to the `credentials_base64` field.
-         2. Set the absolute file path to the credentials file in a enviornment variable named `GOOGLE_APPLICATION_CREDENTIALS`.
+         2. Set the absolute file path to the credentials file in a environment variable named `GOOGLE_APPLICATION_CREDENTIALS`.
 
         === "Base64 Encoded Credentials"
             Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery 
