@@ -5837,13 +5837,17 @@
 <p>BigQuerySources hold the connection information to Google BigQuery instances. </p>
 <div class="admonition info">
 <p class="admonition-title">BigQuery Authentication</p>
+<p>You can authenticate BigQuery in one of two ways: 
+ 1. Pass a base64 encoded service account key to the <code>credentials_base64</code> field.
+ 2. Set the absolute file path to the credentials file in a environment variable named <code>GOOGLE_APPLICATION_CREDENTIALS</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Base64 Encoded Credentials</label><label for="__tabbed_1_2"><code>GOOGLE_APPLICATION_CREDENTIALS</code> Environment Variable</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <p>Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery 
 without logging into Google Cloud Console each time and makes it easier to manage credentials in CI/CD pipelines.</p>
 <p>However utilizing base64 encoding requires a few extra steps:</p>
 <ol>
-<li>
-<p>Create a Google Cloud Service Account</p>
-<ol>
+<li>Create a Google Cloud Service Account<ol>
 <li>Go to the <a href="https://console.cloud.google.com">Google Cloud Console</a></li>
 <li>Select your project</li>
 <li>Navigate to "IAM &amp; Admin" &gt; "Service Accounts"</li>
@@ -5853,9 +5857,7 @@ without logging into Google Cloud Console each time and makes it easier to manag
 <li>Click "Done"</li>
 </ol>
 </li>
-<li>
-<p>Create and download credentials</p>
-<ol>
+<li>Create and download credentials<ol>
 <li>Find your service account in the list</li>
 <li>Click the three dots menu &gt; "Manage keys"</li>
 <li>Click "Add Key" &gt; "Create new key"</li>
@@ -5863,19 +5865,52 @@ without logging into Google Cloud Console each time and makes it easier to manag
 <li>Click "Create" - this downloads your credentials file</li>
 </ol>
 </li>
-<li>
-<p>Convert credentials to base64
-    </p><div class="highlight"><pre><span></span><code><span class="c1"># On Linux/Mac</span>
+<li>Convert credentials to base64
+    <div class="highlight"><pre><span></span><code><span class="c1"># On Linux/Mac</span>
 python<span class="w"> </span>-m<span class="w"> </span>base64<span class="w"> </span>&lt;<span class="w"> </span>credentials.json<span class="w"> </span>&gt;<span class="w"> </span>encoded.txt
 
 <span class="c1"># On Windows PowerShell</span>
 <span class="o">[</span>Convert<span class="o">]</span>::ToBase64String<span class="o">([</span>System.IO.File<span class="o">]</span>::ReadAllBytes<span class="o">(</span><span class="s2">"credentials.json"</span><span class="o">))</span><span class="w"> </span>&gt;<span class="w"> </span>encoded.txt
-</code></pre></div>
-</li>
-<li>
-<p>Use the contents of encoded.txt as your credentials_base64 value. You can store the single line key in your untracked env file and use the <code>{{ env_var('VAR_NAME') }}</code> syntax to reference the environment variable in your Visivo config.</p>
-</li>
+</code></pre></div></li>
+<li>Use the contents of encoded.txt as your credentials_base64 value. You can store the single line key in your untracked env file and use the <code>{{ env_var('VAR_NAME') }}</code> syntax to reference the environment variable in your Visivo config.</li>
 </ol>
+</div>
+<div class="tabbed-block">
+<p>If you use gcloud locally you probably have this environment variable configured already. </p>
+<p>Run <code>echo $GOOGLE_APPLICATION_CREDENTIALS</code> in your terminal. If it returns your crendetials then 
+you're all set. and can configure a BigQuerySource without the <code>credentials_base64</code> field.</p>
+<p>If you don't have the environment variable, follow these steps:</p>
+<ol>
+<li>Create a Google Cloud Service Account<ol>
+<li>Go to the <a href="https://console.cloud.google.com">Google Cloud Console</a></li>
+<li>Select your project</li>
+<li>Navigate to "IAM &amp; Admin" &gt; "Service Accounts"</li>
+<li>Click "Create Service Account"</li>
+<li>Give it a name and description</li>
+<li>Grant it the "BigQuery Admin" role (or more restrictive custom role)</li>
+<li>Click "Done"</li>
+</ol>
+</li>
+<li>Create and download credentials<ol>
+<li>Find your service account in the list</li>
+<li>Click the three dots menu &gt; "Manage keys"</li>
+<li>Click "Add Key" &gt; "Create new key"</li>
+<li>Choose JSON format</li>
+<li>Click "Create" - this downloads your credentials file</li>
+</ol>
+</li>
+<li>Set the environment variable
+    You can set the environment variable in your shell profile file. 
+    <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_APPLICATION_CREDENTIALS</span><span class="o">=</span><span class="s2">"/path/to/your/credentials.json"</span>
+</code></pre></div>
+    or in your untracked .env file.
+    <div class="highlight"><pre><span></span><code>GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/credentials.json
+</code></pre></div>
+This method is easier to manage and does not require any extra steps to authenticate.</li>
+</ol>
+</div>
+</div>
+</div>
 <p>The service account needs at minimum the "BigQuery User" role to execute queries. 
 For more restricted access, you can create a custom role with just the required permissions:</p>
 <ul>
@@ -5887,7 +5922,7 @@ For more restricted access, you can create a custom role with just the required 
 </div>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:1"><input checked id="__tabbed_2_1" name="__tabbed_2" type="radio"><div class="tabbed-labels"><label for="__tabbed_2_1">Simple</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nt">sources</span><span class="p">:</span>
@@ -5971,7 +6006,7 @@ For more restricted access, you can create a custom role with just the required 
 <td>credentials_base64</td>
 <td>string</td>
 <td>None</td>
-<td>The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the command line with <code>python -m base64 &lt; credentials.json &gt; encoded.txt</code>.</td>
+<td>The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the command line with <code>python -m base64 &lt; credentials.json &gt; encoded.txt</code>. Not required if GOOGLE_APPLICATION_CREDENTIALS environment variable is set.</td>
 </tr>
 <tr>
 <td>type</td>
