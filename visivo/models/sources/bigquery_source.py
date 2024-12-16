@@ -137,7 +137,7 @@ class BigQuerySource(SqlalchemySource):
                 "Authentication credentials not found. Either provide credentials_base64 or set GOOGLE_APPLICATION_CREDENTIALS environment variable."
             )
             
-        # Only append credentials to URL if using base64 method
+        # Only append credentials to URL if using base64 method 
         if credentials:
             base_url += f"?credentials_base64={credentials}"
             
