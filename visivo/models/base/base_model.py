@@ -9,7 +9,7 @@ from pydantic import (
 from typing_extensions import Annotated
 from typing import Optional, Union, NewType
 import re
-from visivo.models.base.context_string import VALUE_REGEX, ContextString
+from visivo.models.base.context_string import CONTEXT_STRING_VALUE_REGEX, ContextString
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
 STATEMENT_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$|^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
@@ -48,7 +48,7 @@ class ModelStrDiscriminator:
         return self.class_name
 
     def __call__(self, value):
-        if isinstance(value, str) and re.search(VALUE_REGEX, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
             return "Context"
         elif isinstance(value, str):
             return "Ref"

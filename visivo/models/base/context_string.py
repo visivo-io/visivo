@@ -7,7 +7,7 @@ from visivo.models.dag import all_descendants_with_name
 INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w\[\]]*\s*}"
 INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w\[\]]*)\s*}"
 INLINE_PATH_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]]+?)\s*}"
-VALUE_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]\)\()]+?)\s*}"
+CONTEXT_STRING_VALUE_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]\)\()]+?)\s*}"
 
 
 class ContextString:
@@ -26,13 +26,13 @@ class ContextString:
 
     def __eq__(self, other):
         if isinstance(other, ContextString):
-            return re.findall(VALUE_REGEX, self.value) == re.findall(
-                VALUE_REGEX, other.value
+            return re.findall(CONTEXT_STRING_VALUE_REGEX, self.value) == re.findall(
+                CONTEXT_STRING_VALUE_REGEX, other.value
             )
         return False
 
     def __hash__(self):
-        return hash("".join(re.findall(VALUE_REGEX, self.value)))
+        return hash("".join(re.findall(CONTEXT_STRING_VALUE_REGEX, self.value)))
 
     def get_reference(self) -> str:
         matches = re.findall(INLINE_REF_REGEX, self.value)
