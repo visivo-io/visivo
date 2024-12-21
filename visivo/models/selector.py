@@ -1,8 +1,11 @@
 from enum import Enum
-from typing import List
-from pydantic import ConfigDict, Field, PrivateAttr, model_serializer
+import re
+from typing import Any, List, NewType, Union
+from typing_extensions import Annotated
+from pydantic import ConfigDict, Discriminator, Field, PrivateAttr, model_serializer
 
-from visivo.models.base.base_model import BaseModel, RefString, generate_ref_field
+from visivo.models.base.base_model import BaseModel, ContextStringType, RefStringType
+from visivo.models.base.context_string import VALUE_REGEX
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 
@@ -12,17 +15,26 @@ class SelectorType(str, Enum):
     multiple = "multiple"
 
 
+def get_discriminator_value(value: Any) -> str:
+    if isinstance(value, str) and re.search(VALUE_REGEX, value):
+        return "Context"
+    elif isinstance(value, str):
+        return "Ref"
+    else:
+        return None
+
+
 class Selector(ParentModel, NamedModel, BaseModel):
     """
-    Selectors enable you to toggle between multiple different traces in your chart. 
-    
+    Selectors enable you to toggle between multiple different traces in your chart.
+
     !!! tip
         Selectors can also be used to add interactivity between charts different tables. You can read more about using [selectors to add interactivity here](../../../topics/interactivity).
 
-    You can configure selectors to be single select or multi-select. Single select is great if you only want to show a single trace at a time on the chart while the multi-select can be really useful for providing filtering capabilities. 
+    You can configure selectors to be single select or multi-select. Single select is great if you only want to show a single trace at a time on the chart while the multi-select can be really useful for providing filtering capabilities.
 
     ### Example
-    Here's how you might use selectors to create interactivity between two different charts. 
+    Here's how you might use selectors to create interactivity between two different charts.
     ``` yaml
     charts:
         - name: Chart One
@@ -42,7 +54,15 @@ class Selector(ParentModel, NamedModel, BaseModel):
     type: SelectorType = Field(
         SelectorType.multiple, description="Single or multiple selector"
     )
-    options: List[RefString] = Field(
+    options: List[
+        Annotated[
+            Union[
+                RefStringType,
+                ContextStringType,
+            ],
+            Discriminator(get_discriminator_value),
+        ]
+    ] = Field(
         [],
         description="Optional set of traces, items, or rows to create the choices list",
     )
@@ -59,7 +79,9 @@ class Selector(ParentModel, NamedModel, BaseModel):
             if isinstance(option, str):
                 model["options"].append(option)
             else:
-                model["options"].append({"name": option.name, "type": option.__class__.__name__.lower()})
+                model["options"].append(
+                    {"name": option.name, "type": option.__class__.__name__.lower()}
+                )
         if hasattr(self, "_parent_name"):
             model["parent_name"] = self._parent_name
         else:

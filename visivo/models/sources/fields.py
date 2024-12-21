@@ -1,6 +1,6 @@
 from typing import Annotated, Any, Union
 from pydantic import Discriminator, Tag
-from visivo.models.base.base_model import RefString
+from visivo.models.base.base_model import RefStringType
 from visivo.models.sources.mysql_source import MysqlSource
 from visivo.models.sources.postgresql_source import PostgresqlSource
 from visivo.models.sources.snowflake_source import SnowflakeSource
@@ -33,7 +33,7 @@ SourceField = Annotated[
 
 SourceRefField = Annotated[
     Union[
-        RefString,
+        RefStringType,
         Annotated[SqliteSource, Tag("sqlite")],
         Annotated[PostgresqlSource, Tag("postgresql")],
         Annotated[MysqlSource, Tag("mysql")],

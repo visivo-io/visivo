@@ -1,22 +1,21 @@
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.selector_model import SelectorModel
-from .base.base_model import RefString
 from .base.parent_model import ParentModel
 from pydantic import Field
-from typing import List, Optional
+from typing import List
 from enum import Enum
 from .item import Item
 
 
 class HeightEnum(str, Enum):
     compact = "compact"
-    xsmall= "xsmall"
+    xsmall = "xsmall"
     small = "small"
     medium = "medium"
     large = "large"
     xlarge = "xlarge"
-    xxlarge = 'xxlarge'
+    xxlarge = "xxlarge"
 
 
 class Row(NamedModel, ParentModel):
@@ -25,7 +24,7 @@ class Row(NamedModel, ParentModel):
 
     !!! tip
         You can set the height of a row using the `height` attribute on a row
-        
+
         ??? information "Row Height Options in Pixels"
 
             | Height | Pixels |

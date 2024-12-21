@@ -15,8 +15,8 @@ REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
 STATEMENT_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$|^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
 INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 
-RefString = NewType(
-    "RefString",
+RefStringType = NewType(
+    "RefStringType",
     Annotated[Annotated[str, StringConstraints(pattern=REF_REGEX)], Tag("Ref")],
 )
 
@@ -31,7 +31,7 @@ def generate_ref_field(class_to_discriminate):
         class_to_discriminate.__name__,
         Annotated[
             Union[
-                RefString,
+                RefStringType,
                 ContextStringType,
                 Annotated[class_to_discriminate, Tag(class_to_discriminate.__name__)],
             ],
