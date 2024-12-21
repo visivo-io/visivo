@@ -10,11 +10,14 @@ export const SearchParamsProvider = ({ children }) => {
     useEffect(() => {
         setSearchParams(new URLSearchParams(state))
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state])
+    }, [JSON.stringify(state)])
 
     const setStateSearchParam = (name, value) => {
         if (value === null) {
-            setState(previousState => { delete previousState[name]; return previousState })
+            setState(previousState => {
+                delete previousState[name];
+                return { ...previousState }
+            })
         } else {
             setState(previousState => ({ ...previousState, [name]: value }))
         }
