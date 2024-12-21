@@ -1,5 +1,6 @@
 from visivo.models.base.context_string import ContextString
 from visivo.models.models.model import Model
+from visivo.models.row import Row
 from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
 from visivo.models.test import Test
@@ -109,6 +110,19 @@ def test_ref_selector_row_item_Project_dag():
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 10
     assert selector in project.descendants_of_type(type=Selector)
+
+
+def test_context_selector_row_item_Project_dag():
+    row = RowFactory()
+    selector = SelectorFactory(name="row selector", options=["${ref(row)}"])
+    project = ProjectFactory(selectors=[selector])
+    project.dashboards[0].rows = [row]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 10
+    assert selector in project.descendants_of_type(type=Selector)
+    assert row in selector.descendants_of_type(type=Row, dag=dag)
 
 
 def test_invalid_ref_Project_dag():
