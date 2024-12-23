@@ -87,6 +87,39 @@ KEYWORDS = {
             "var_samp",
             "variance",
         },
+        "duckdb": {
+            "any_value",
+            "arbitrary",
+            "arg_max",
+            "arg_max_null",
+            "arg_min",
+            "arg_min_null",
+            "array_agg",
+            "avg",
+            "bit_and",
+            "bit_or",
+            "bit_xor",
+            "bitstring_agg",
+            "bool_and",
+            "bool_or",
+            "count",
+            "favg",
+            "first",
+            "fsum",
+            "geomean",
+            "histogram",
+            "histogram_exact",
+            "last",
+            "list",
+            "max",
+            "max_by",
+            "min",
+            "min_by",
+            "product",
+            "string_agg",
+            "sum"
+    },
+
     },
     "comparison": {
         "all": {">", "<", "=", ">=", "<=", "<>", "!=", "like", "in", "is"},
@@ -95,7 +128,8 @@ KEYWORDS = {
         "bigquery": {},
         "mysql": {},
         "sqlite": {},
-    },
+        "duckdb": {"ilike"},
+    }
 }
 
 
