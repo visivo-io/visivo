@@ -134,103 +134,103 @@ The configuration options for annotations are quite extensive; however, they are
     annotations:
       align: 'enumerated , one of ( "left" | "center" | "right" )' #(1)!
       arrowcolor: 'color' #(2)!
-      arrowhead: 'integer between or equal to 0 and 8' #(7)!
-      arrowside: 'flaglist string. any combination of "end", "start" joined with a "+" or "none".' #(8)!
-      arrowsize: 'number greater than or equal to 0.3' #(9)!
-      arrowwidth: 'number greater than or equal to 0.1' #(10)!
-      ax: 'number or categorical coordinate string' #(11)!
-      axref: 'enumerated , one of ( "pixel" | "/^x([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(12)!
-      ay: 'number or categorical coordinate string' #(13)!
-      ayref: 'enumerated , one of ( "pixel" | "/^y([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(14)!
-      bgcolor: 'color' #(15)!
-      bordercolor: 'color' #(16)!
-      borderpad: 'number greater than or equal to 0' #(17)!
-      borderwidth: 'number greater than or equal to 0' #(18)!
-      captureevents: 'boolean' #(19)!
-      clicktoshow: 'enumerated , one of ( false | "onoff" | "onout" )' #(20)!
+      arrowhead: 'integer between or equal to 0 and 8' #(3)!
+      arrowside: 'flaglist string. any combination of "end", "start" joined with a "+" or "none".' #(4)!
+      arrowsize: 'number greater than or equal to 0.3' #(5)!
+      arrowwidth: 'number greater than or equal to 0.1' #(6)!
+      ax: 'number or categorical coordinate string' #(7)!
+      axref: 'enumerated , one of ( "pixel" | "/^x([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(8)!
+      ay: 'number or categorical coordinate string' #(9)!
+      ayref: 'enumerated , one of ( "pixel" | "/^y([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(10)!
+      bgcolor: 'color' #(11)!
+      bordercolor: 'color' #(12)!
+      borderpad: 'number greater than or equal to 0' #(13)!
+      borderwidth: 'number greater than or equal to 0' #(14)!
+      captureevents: 'boolean' #(15)!
+      clicktoshow: 'enumerated , one of ( false | "onoff" | "onout" )' #(16)!
       font:
         color: color
-        family: 'string' #(21)!
+        family: 'string' #(17)!
         size: number greater than or equal to 1
-      height: 'number greater than or equal to 1' #(22)!
+      height: 'number greater than or equal to 1' #(18)!
       hoverlabel:
-        bgcolor: 'color' #(23)!
-        bordercolor: 'color' #(24)!
+        bgcolor: 'color' #(19)!
+        bordercolor: 'color' #(20)!
         font:
           color: color
-          family: 'string' #(25)!
+          family: 'string' #(21)!
           size: number greater than or equal to 1
-      hovertext: 'string' #(26)!
-      name: 'string' #(27)!
-      opacity: 'number between or equal to 0 and 1' #(28)!
-      showarrow: 'boolean' #(29)!
-      standoff: 'number greater than or equal to 0' #(30)!
-      startarrowhead: 'integer between or equal to 0 and 8' #(31)!
-      startarrowsize: 'number greater than or equal to 0.3' #(32)!
-      startstandoff: 'number greater than or equal to 0' #(33)!
-      templateitemname: 'string' #(34)!
-      text: 'string' #(35)!
-      textangle: 'angle' #(36)!
-      valign: 'enumerated , one of ( "top" | "middle" | "bottom" )' #(37)!
-      visible: 'boolean' #(38)!
-      width: 'number greater than or equal to 1' #(39)!
-      x: 'number or categorical coordinate string' #(40)!
-      xanchor: 'enumerated , one of ( "auto" | "left" | "center" | "right" )' #(41)!
-      xclick: 'number or categorical coordinate string' #(42)!
-      xref: 'enumerated , one of ( "paper" | "/^x([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(43)!
-      xshift: 'number' #(44)!
-      y: 'number or categorical coordinate string' #(45)!
-      yanchor: 'enumerated , one of ( "auto" | "top" | "middle" | "bottom" )' #(46)!
-      yclick: 'number or categorical coordinate string' #(47)!
-      yref: 'enumerated , one of ( "paper" | "/^y([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(48)!
-      yshift: 'number' #(49)!
+      hovertext: 'string' #(22)!
+      name: 'string' #(23)!
+      opacity: 'number between or equal to 0 and 1' #(24)!
+      showarrow: 'boolean' #(25)!
+      standoff: 'number greater than or equal to 0' #(26)!
+      startarrowhead: 'integer between or equal to 0 and 8' #(27)!
+      startarrowsize: 'number greater than or equal to 0.3' #(28)!
+      startstandoff: 'number greater than or equal to 0' #(29)!
+      templateitemname: 'string' #(30)!
+      text: 'string' #(31)!
+      textangle: 'angle' #(32)!
+      valign: 'enumerated , one of ( "top" | "middle" | "bottom" )' #(33)!
+      visible: 'boolean' #(34)!
+      width: 'number greater than or equal to 1' #(35)!
+      x: 'number or categorical coordinate string' #(36)!
+      xanchor: 'enumerated , one of ( "auto" | "left" | "center" | "right" )' #(37)!
+      xclick: 'number or categorical coordinate string' #(38)!
+      xref: 'enumerated , one of ( "paper" | "/^x([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(39)!
+      xshift: 'number' #(40)!
+      y: 'number or categorical coordinate string' #(41)!
+      yanchor: 'enumerated , one of ( "auto" | "top" | "middle" | "bottom" ) #(42)!
+      yclick: 'number or categorical coordinate string' #(43)!
+      yref: 'enumerated , one of ( "paper" | "/^y([2-9]|[1-9][0-9]+)?( domain)?$/" )' #(44)!
+      yshift: 'number' #(45)!
     ```
 
-    1.  HTML tags) or if an explicit width is set to override the text width. 
+    1. HTML tags or if an explicit width is set to override the text width. 
     2. Sets the color of the annotation arrow. 
-    7. Sets the end annotation arrow head style. 
-    8. Sets the annotation arrow head position. 
-    9. Sets the size of the end annotation arrow head, relative to `arrowwidth`. A value of 1 (default) gives a head about 3x as wide as the line. 
-    10. Sets the width (in px) of annotation arrow line. 
-    11. Sets the x component of the arrow tail about the arrow head. If `axref` is `pixel`, a positive (negative) component corresponds to an arrow pointing from right to left (left to right). If `axref` is not `pixel` and is exactly the same as `xref`, this is an absolute value on that axis, like `x`, specified in the same coordinates as `xref`. 
-    12. Indicates in what coordinates the tail of the annotation (ax,ay) is specified. If set to a x axis id (e.g. "x" or "x2"), the `x` position refers to a x coordinate. If set to "paper", the `x` position refers to the distance from the left of the plotting area in normalized coordinates where "0" ("1") corresponds to the left (right). If set to a x axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., "x2 domain" refers to the domain of the second x axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis. In order for absolute positioning of the arrow to work, "axref" must be exactly the same as "xref", otherwise "axref" will revert to "pixel" (explained next). For relative positioning, "axref" can be set to "pixel", in which case the "ax" value is specified in pixels relative to "x". Absolute positioning is useful for trendline annotations which should continue to indicate the correct trend when zoomed. Relative positioning is useful for specifying the text offset for an annotated point. 
-    13. Sets the y component of the arrow tail about the arrow head. If `ayref` is `pixel`, a positive (negative) component corresponds to an arrow pointing from bottom to top (top to bottom). If `ayref` is not `pixel` and is exactly the same as `yref`, this is an absolute value on that axis, like `y`, specified in the same coordinates as `yref`. 
-    14. Indicates in what coordinates the tail of the annotation (ax,ay) is specified. If set to a y axis id (e.g. "y" or "y2"), the `y` position refers to a y coordinate. If set to "paper", the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where "0" ("1") corresponds to the bottom (top). If set to a y axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., "y2 domain" refers to the domain of the second y axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis. In order for absolute positioning of the arrow to work, "ayref" must be exactly the same as "yref", otherwise "ayref" will revert to "pixel" (explained next). For relative positioning, "ayref" can be set to "pixel", in which case the "ay" value is specified in pixels relative to "y". Absolute positioning is useful for trendline annotations which should continue to indicate the correct trend when zoomed. Relative positioning is useful for specifying the text offset for an annotated point. 
-    15. Sets the background color of the annotation. 
-    16. Sets the color of the border enclosing the annotation `text`. 
-    17. Sets the padding (in px) between the `text` and the enclosing border. 
-    18. Sets the width (in px) of the border enclosing the annotation `text`. 
-    19. Determines whether the annotation text box captures mouse move and click events, or allows those events to pass through to data points in the plot that may be behind the annotation. By default `captureevents` is "false" unless `hovertext` is provided. If you use the event `plotly_clickannotation` without `hovertext` you must explicitly enable `captureevents`. 
-    20. Makes this annotation respond to clicks on the plot. If you click a data point that exactly matches the `x` and `y` values of this annotation, and it is hidden (visible: false), it will appear. In "onoff" mode, you must click the same point again to make it disappear, so if you click multiple points, you can show multiple annotations. In "onout" mode, a click anywhere else in the plot (on another data point or not) will hide this annotation. If you need to show/hide this annotation in response to different `x` or `y` values, you can set `xclick` and/or `yclick`. This is useful for example to label the side of a bar. To label markers though, `standoff` is preferred over `xclick` and `yclick`. 
+    3. Sets the end annotation arrow head style. 
+    4. Sets the annotation arrow head position. 
+    5. Sets the size of the end annotation arrow head, relative to `arrowwidth`. A value of 1 (default) gives a head about 3x as wide as the line. 
+    6. Sets the width (in px) of annotation arrow line. 
+    7. Sets the x component of the arrow tail about the arrow head. If `axref` is `pixel`, a positive (negative) component corresponds to an arrow pointing from right to left (left to right). If `axref` is not `pixel` and is exactly the same as `xref`, this is an absolute value on that axis, like `x`, specified in the same coordinates as `xref`. 
+    8. Indicates in what coordinates the tail of the annotation (ax,ay) is specified. If set to a x axis id (e.g. "x" or "x2"), the `x` position refers to a x coordinate. If set to "paper", the `x` position refers to the distance from the left of the plotting area in normalized coordinates where "0" ("1") corresponds to the left (right). If set to a x axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., "x2 domain" refers to the domain of the second x axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis. In order for absolute positioning of the arrow to work, "axref" must be exactly the same as "xref", otherwise "axref" will revert to "pixel" (explained next). For relative positioning, "axref" can be set to "pixel", in which case the "ax" value is specified in pixels relative to "x". Absolute positioning is useful for trendline annotations which should continue to indicate the correct trend when zoomed. Relative positioning is useful for specifying the text offset for an annotated point. 
+    9. Sets the y component of the arrow tail about the arrow head. If `ayref` is `pixel`, a positive (negative) component corresponds to an arrow pointing from bottom to top (top to bottom). If `ayref` is not `pixel` and is exactly the same as `yref`, this is an absolute value on that axis, like `y`, specified in the same coordinates as `yref`. 
+    10. Indicates in what coordinates the tail of the annotation (ax,ay) is specified. If set to a y axis id (e.g. "y" or "y2"), the `y` position refers to a y coordinate. If set to "paper", the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where "0" ("1") corresponds to the bottom (top). If set to a y axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., "y2 domain" refers to the domain of the second y axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis. In order for absolute positioning of the arrow to work, "ayref" must be exactly the same as "yref", otherwise "ayref" will revert to "pixel" (explained next). For relative positioning, "ayref" can be set to "pixel", in which case the "ay" value is specified in pixels relative to "y". Absolute positioning is useful for trendline annotations which should continue to indicate the correct trend when zoomed. Relative positioning is useful for specifying the text offset for an annotated point. 
+    11. Sets the background color of the annotation. 
+    12. Sets the color of the border enclosing the annotation `text`. 
+    13. Sets the padding (in px) between the `text` and the enclosing border. 
+    14. Sets the width (in px) of the border enclosing the annotation `text`. 
+    15. Determines whether the annotation text box captures mouse move and click events, or allows those events to pass through to data points in the plot that may be behind the annotation. By default `captureevents` is "false" unless `hovertext` is provided. If you use the event `plotly_clickannotation` without `hovertext` you must explicitly enable `captureevents`. 
+    16. Makes this annotation respond to clicks on the plot. If you click a data point that exactly matches the `x` and `y` values of this annotation, and it is hidden (visible: false), it will appear. In "onoff" mode, you must click the same point again to make it disappear, so if you click multiple points, you can show multiple annotations. In "onout" mode, a click anywhere else in the plot (on another data point or not) will hide this annotation. If you need to show/hide this annotation in response to different `x` or `y` values, you can set `xclick` and/or `yclick`. This is useful for example to label the side of a bar. To label markers though, `standoff` is preferred over `xclick` and `yclick`. 
+    17. HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". 
+    18. Sets an explicit height for the text box. null (default) lets the text set the box height. Taller text will be clipped. 
+    19. Sets the background color of the hover label. By default uses the annotation's `bgcolor` made opaque, or white if it was transparent. 
+    20. Sets the border color of the hover label. By default uses either dark grey or white, for maximum contrast with `hoverlabel.bgcolor`. 
     21. HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". 
-    22. Sets an explicit height for the text box. null (default) lets the text set the box height. Taller text will be clipped. 
-    23. Sets the background color of the hover label. By default uses the annotation's `bgcolor` made opaque, or white if it was transparent. 
-    24. Sets the border color of the hover label. By default uses either dark grey or white, for maximum contrast with `hoverlabel.bgcolor`. 
-    25. HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". 
-    26. Sets text to appear when hovering over this annotation. If omitted or blank, no hover label will appear. 
-    27. When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. 
-    28. Sets the opacity of the annotation (text + arrow). 
-    29. Determines whether or not the annotation is drawn with an arrow. If "true", `text` is placed near the arrow's tail. If "false", `text` lines up with the `x` and `y` provided. 
-    30. Sets a distance, in pixels, to move the end arrowhead away from the position it is pointing at, for example to point at the edge of a marker independent of zoom. Note that this shortens the arrow from the `ax` / `ay` vector, in contrast to `xshift` / `yshift` which moves everything by this amount. 
-    31. Sets the start annotation arrow head style. 
-    32. Sets the size of the start annotation arrow head, relative to `arrowwidth`. A value of 1 (default) gives a head about 3x as wide as the line. 
-    33. Sets a distance, in pixels, to move the start arrowhead away from the position it is pointing at, for example to point at the edge of a marker independent of zoom. Note that this shortens the arrow from the `ax` / `ay` vector, in contrast to `xshift` / `yshift` which moves everything by this amount. 
-    34. Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. 
-    35. ), bold (<b></b>), italics (<i></i>), hyperlinks (<a href='...'></a>). Tags <em>, <sup>, <sub> <span> are also supported. 
-    36. Sets the angle at which the `text` is drawn with respect to the horizontal. 
-    37. Sets the vertical alignment of the `text` within the box. Has an effect only if an explicit height is set to override the text height. 
-    38. Determines whether or not this annotation is visible. 
-    39.  to start a new line. 
-    40. Sets the annotation's x position. If the axis `type` is "log", then you must take the log of your desired range. If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. 
-    41. Sets the text box's horizontal position anchor This anchor binds the `x` position to the "left", "center" or "right" of the annotation. For example, if `x` is set to 1, `xref` to "paper" and `xanchor` to "right" then the right-most portion of the annotation lines up with the right-most edge of the plotting area. If "auto", the anchor is equivalent to "center" for data-referenced annotations or if there is an arrow, whereas for paper-referenced with no arrow, the anchor picked corresponds to the closest side. 
-    42. Toggle this annotation when clicking a data point whose `x` value is `xclick` rather than the annotation's `x` value. 
-    43. Sets the annotation's x coordinate axis. If set to a x axis id (e.g. "x" or "x2"), the `x` position refers to a x coordinate. If set to "paper", the `x` position refers to the distance from the left of the plotting area in normalized coordinates where "0" ("1") corresponds to the left (right). If set to a x axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., "x2 domain" refers to the domain of the second x axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis. 
-    44. Shifts the position of the whole annotation and arrow to the right (positive) or left (negative) by this many pixels. 
-    45. Sets the annotation's y position. If the axis `type` is "log", then you must take the log of your desired range. If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. 
-    46. Sets the text box's vertical position anchor This anchor binds the `y` position to the "top", "middle" or "bottom" of the annotation. For example, if `y` is set to 1, `yref` to "paper" and `yanchor` to "top" then the top-most portion of the annotation lines up with the top-most edge of the plotting area. If "auto", the anchor is equivalent to "middle" for data-referenced annotations or if there is an arrow, whereas for paper-referenced with no arrow, the anchor picked corresponds to the closest side. 
-    47. Toggle this annotation when clicking a data point whose `y` value is `yclick` rather than the annotation's `y` value. 
-    48. Sets the annotation's y coordinate axis. If set to a y axis id (e.g. "y" or "y2"), the `y` position refers to a y coordinate. If set to "paper", the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where "0" ("1") corresponds to the bottom (top). If set to a y axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., "y2 domain" refers to the domain of the second y axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis. 
-    49. Shifts the position of the whole annotation and arrow up (positive) or down (negative) by this many pixels.
+    22. Sets text to appear when hovering over this annotation. If omitted or blank, no hover label will appear. 
+    23. When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. 
+    24. Sets the opacity of the annotation (text + arrow). 
+    25. Determines whether or not the annotation is drawn with an arrow. If "true", `text` is placed near the arrow's tail. If "false", `text` lines up with the `x` and `y` provided. 
+    26. Sets a distance, in pixels, to move the end arrowhead away from the position it is pointing at, for example to point at the edge of a marker independent of zoom. Note that this shortens the arrow from the `ax` / `ay` vector, in contrast to `xshift` / `yshift` which moves everything by this amount. 
+    27. Sets the start annotation arrow head style. 
+    28. Sets the size of the start annotation arrow head, relative to `arrowwidth`. A value of 1 (default) gives a head about 3x as wide as the line. 
+    29. Sets a distance, in pixels, to move the start arrowhead away from the position it is pointing at, for example to point at the edge of a marker independent of zoom. Note that this shortens the arrow from the `ax` / `ay` vector, in contrast to `xshift` / `yshift` which moves everything by this amount. 
+    30. Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. 
+    31. ), bold (<b></b>), italics (<i></i>), hyperlinks (<a href='...'></a>). Tags <em>, <sup>, <sub> <span> are also supported. 
+    32. Sets the angle at which the `text` is drawn with respect to the horizontal. 
+    33. Sets the vertical alignment of the `text` within the box. Has an effect only if an explicit height is set to override the text height. 
+    34. Determines whether or not this annotation is visible. 
+    35.  to start a new line. 
+    36. Sets the annotation's x position. If the axis `type` is "log", then you must take the log of your desired range. If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. 
+    37. Sets the text box's horizontal position anchor This anchor binds the `x` position to the "left", "center" or "right" of the annotation. For example, if `x` is set to 1, `xref` to "paper" and `xanchor` to "right" then the right-most portion of the annotation lines up with the right-most edge of the plotting area. If "auto", the anchor is equivalent to "center" for data-referenced annotations or if there is an arrow, whereas for paper-referenced with no arrow, the anchor picked corresponds to the closest side. 
+    38. Toggle this annotation when clicking a data point whose `x` value is `xclick` rather than the annotation's `x` value. 
+    39. Sets the annotation's x coordinate axis. If set to a x axis id (e.g. "x" or "x2"), the `x` position refers to a x coordinate. If set to "paper", the `x` position refers to the distance from the left of the plotting area in normalized coordinates where "0" ("1") corresponds to the left (right). If set to a x axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., "x2 domain" refers to the domain of the second x axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis. 
+    40. Shifts the position of the whole annotation and arrow to the right (positive) or left (negative) by this many pixels. 
+    41. Sets the annotation's y position. If the axis `type` is "log", then you must take the log of your desired range. If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. 
+    42. Sets the text box's vertical position anchor This anchor binds the `y` position to the "top", "middle" or "bottom" of the annotation. For example, if `y` is set to 1, `yref` to "paper" and `yanchor` to "top" then the top-most portion of the annotation lines up with the top-most edge of the plotting area. If "auto", the anchor is equivalent to "middle" for data-referenced annotations or if there is an arrow, whereas for paper-referenced with no arrow, the anchor picked corresponds to the closest side. 
+    43. Toggle this annotation when clicking a data point whose `y` value is `yclick` rather than the annotation's `y` value. 
+    44. Sets the annotation's y coordinate axis. If set to a y axis id (e.g. "y" or "y2"), the `y` position refers to a y coordinate. If set to "paper", the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where "0" ("1") corresponds to the bottom (top). If set to a y axis ID followed by "domain" (separated by a space), the position behaves like for "paper", but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., "y2 domain" refers to the domain of the second y axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis. 
+    45. Shifts the position of the whole annotation and arrow up (positive) or down (negative) by this many pixels.
 
 {% endraw %}
 ---
