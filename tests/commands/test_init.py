@@ -99,3 +99,48 @@ def test_init_with_snowflake():
     assert (
         "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
     )
+
+
+def test_init_with_bigquery():
+    tmp = temp_folder()
+
+    response = runner.invoke(
+        init,
+        input=f"{tmp}\n"
+        + "bigquery\n"
+        + "project\n"
+        + "database\n"
+        + "credentials_base64\n"
+        + "credentials_base64\n"
+        + "token\n",
+    )
+    print(response.output)
+    assert f"Created project in '{tmp}'" in response.output
+    assert response.exit_code == 0
+    assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=credentials_base64"
+    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget\n.visivo_cache"
+    assert os.path.exists(f"{tmp}/project.visivo.yml")
+    assert "project" in Path(f"{tmp}/project.visivo.yml").read_text()
+    assert "bigquery" in Path(f"{tmp}/project.visivo.yml").read_text()
+    assert (
+        "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
+    )
+
+
+def test_init_with_duckdb():
+    tmp = temp_folder()
+
+    response = runner.invoke(
+        init,
+        input=f"{tmp}\n"
+        + "duckdb\n"
+        + f"{tmp}/local.db\n"
+        + "token\n",
+    )
+    assert f"Created project in '{tmp}'" in response.output
+    assert response.exit_code == 0
+    assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=EXAMPLE_password_l0cation"
+    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget\n.visivo_cache"
+    assert os.path.exists(f"{tmp}/project.visivo.yml")
+    assert os.path.exists(f"{tmp}/local.db")
+    assert "duckdb" in Path(f"{tmp}/project.visivo.yml").read_text()

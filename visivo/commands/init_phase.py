@@ -24,6 +24,7 @@ from visivo.models.trace_props.scatter import Scatter
 from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.commands.utils import get_source_types
+from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 
 
 def init_phase():
@@ -40,6 +41,7 @@ def init_phase():
     mysql_type = get_args(MysqlType)[0]
     snowflake_type = get_args(SnowflakeType)[0]
     bigquery_type = get_args(BigQueryType)[0]
+    duckdb_type = get_args(DuckdbType)[0]
     types = get_source_types()
 
     source_type = click.prompt("? Database type", type=click.Choice(types))
@@ -124,9 +126,22 @@ def init_phase():
         source = BigQuerySource(
             name="Example Source",
             project=project,
-            dataset=dataset,
+            database=dataset,
+            type=source_type,
             credentials_base64=credentials_base64,
         )
+    if source_type == duckdb_type:
+        database = click.prompt("? Database file path", type=str, default=f"{project_name}/local.db")
+        source = DuckdbSource(
+            name="Example Source",
+            database=database,
+            type=source_type,
+        )
+        create_file_database(source.url(), project_name)
+        source.database = "local.db"
+        fp = open(f"{project_name}/.env", "w+")
+        fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
+        fp.close()
     Logger.instance().debug("Generating project, gitignore & env files")
 
     model = SqlModel(name="Example Model", sql="select * from test_table")
