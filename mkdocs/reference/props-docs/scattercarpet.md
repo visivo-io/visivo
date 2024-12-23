@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scattercarpet` trace type is used to create scatter plots on a 2D carpet axis, which allows for more complex and non-linear grids. This trace type is useful for visualizing relationships between variables when the x and y axes are not evenly spaced, such as in polar or distortion grids.
@@ -132,3 +136,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         ```
 
 {% endraw %}
+<!--end-->

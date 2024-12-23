@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `cone` trace type is used to create 3D cone plots, which are useful for visualizing vector fields or directional data in three-dimensional space. Each cone represents a vector, with its position, size, and orientation conveying information about the vector's magnitude and direction.
@@ -126,3 +131,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
         ```
 
 {% endraw %}
+<!--end-->

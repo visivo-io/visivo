@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `contourcarpet` trace type is used to create contour plots over a carpet plot. It combines the advantages of contour plots with the flexible grid system of carpet plots. This trace is useful for visualizing 3D data on non-uniform or irregular grids, often seen in engineering, physics, or other technical applications.
@@ -193,3 +197,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
         ```
 
 {% endraw %}
+<!--end-->

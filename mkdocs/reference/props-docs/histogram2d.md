@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `histogram2d` trace type is used to create 2D histograms, where data is binned along both the x and y axes, producing a heatmap-like visualization. This allows you to visualize the relationship between two numerical variables by counting how many data points fall into each bin.
@@ -164,3 +168,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
         ```
 
 {% endraw %}
+<!--end-->

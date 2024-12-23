@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `pie` trace type is used to create pie charts, which are circular charts divided into sectors representing proportions of a whole. Each sector’s arc length is proportional to the quantity it represents. Pie charts are great for visualizing part-to-whole relationships.
@@ -123,3 +127,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         ```
 
 {% endraw %}
+<!--end-->

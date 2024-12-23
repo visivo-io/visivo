@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+--- 
+<!--start-->
 ## Overview
 
 The `ohlc` trace type is used to create OHLC (Open, High, Low, Close) charts, which are commonly used to visualize stock market data or financial data over time. OHLC charts represent price movements for a given period using vertical bars for high and low prices, and tick marks for open and close prices.
@@ -190,3 +194,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
         ```
 
 {% endraw %}
+<!--end-->

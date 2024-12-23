@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scattergeo` trace type is used to create scatter plots on a geographic map. This type of plot is ideal for visualizing data points with geographic coordinates, allowing for the exploration of patterns, distributions, or trends over geographical areas.
@@ -138,3 +142,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
         ```
 
 {% endraw %}
+<!--end-->

@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `contour` trace type is used to create contour plots, which are useful for visualizing three-dimensional data in two dimensions. Contour plots are often used to represent things like elevation, temperature, or pressure distributions. The trace uses a matrix of Z values and optional X and Y coordinates to create a continuous representation of the data.
@@ -246,3 +250,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
         ```
 
 {% endraw %}
+<!--end-->

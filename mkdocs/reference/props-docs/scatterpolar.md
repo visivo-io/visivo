@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scatterpolar` trace type is used to create scatter plots on polar coordinates, which is ideal for visualizing data in a circular format. This type of plot allows data to be represented using angles and radial distances, making it useful for cyclic or directional data.
@@ -132,3 +136,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
         ```
 
 {% endraw %}
+<!--end-->

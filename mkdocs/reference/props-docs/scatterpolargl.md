@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scatterpolargl` trace type is used to create scatter plots on polar coordinates using WebGL rendering. This allows for high-performance plotting of large datasets in polar coordinates, ideal for scenarios where a large number of data points need to be visualized with speed and efficiency.
@@ -132,3 +136,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
         ```
 
 {% endraw %}
+<!--end-->

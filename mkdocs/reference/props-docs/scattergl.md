@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scattergl` trace type is used to create scatter plots with WebGL rendering, making it ideal for handling large datasets and providing high-performance rendering of millions of data points. It supports the same features as `scatter`, including markers and lines, but with optimized rendering for better performance.
@@ -132,3 +136,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
         ```
 
 {% endraw %}
+<!--end-->

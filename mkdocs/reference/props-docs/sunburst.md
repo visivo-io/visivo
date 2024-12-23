@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `sunburst` trace type is used to create sunburst charts, which visualize hierarchical data in a circular format. Sunburst charts are useful for showing relationships between parts and the whole, with nested levels of data radiating outward from the center.
@@ -140,3 +145,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
         ```
 
 {% endraw %}
+<!--end-->

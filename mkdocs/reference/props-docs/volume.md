@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `volume` trace type is used to create 3D volume plots, which visualize 3D volumetric data. Volume plots are useful for representing datasets where the values at each (x, y, z) point in a grid represent a density or scalar field, such as medical imaging, fluid dynamics, and other scientific data.
@@ -65,3 +69,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Volume/#attributes) f
         ```
 
 {% endraw %}
+<!--end-->

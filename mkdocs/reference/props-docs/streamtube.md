@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `streamtube` trace type is used to create 3D streamtube plots, which visualize flow or vector field data in three dimensions. Streamtubes are ideal for visualizing the behavior of fluid flow, electromagnetic fields, or any vector data where the direction and magnitude of flow are important.
@@ -138,3 +142,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
         ```
 
 {% endraw %}
+<!--end-->

@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `choropleth` trace type is used to create choropleth maps, which represent data through color intensity across different geographic regions. This trace is commonly used to display data such as population density, election results, or any data that can be associated with geographic regions.
@@ -65,3 +69,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Choropleth/#attribute
 
 
 {% endraw %}
+<!--end-->

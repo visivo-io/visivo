@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 The bar trace type is used to display data as bars. 
 
@@ -121,3 +126,4 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         ```
 
 {% endraw %}
+<!--end-->

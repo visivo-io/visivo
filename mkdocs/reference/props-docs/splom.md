@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `splom` trace type is used to create scatter plot matrices, which are useful for visualizing pairwise relationships between multiple variables. A scatter plot matrix shows scatter plots for each pair of variables, making it a great tool for exploring correlations and patterns in multi-dimensional data.
@@ -146,3 +151,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
         ```
 
 {% endraw %}
+<!--end-->

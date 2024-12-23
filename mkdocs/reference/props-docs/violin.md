@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `violin` trace type is used to create violin plots, which visualize the distribution of numerical data. Violin plots combine aspects of box plots and density plots to show the distribution of the data, including its probability density. They are ideal for comparing distributions between different categories.
@@ -159,3 +164,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
         ```
 
 {% endraw %}
+<!--end-->

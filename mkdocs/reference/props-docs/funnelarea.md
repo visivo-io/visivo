@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `funnelarea` trace type is used to create funnel area charts, which are similar to funnel charts but are represented as a circular area instead of a linear progression. Funnel area charts are useful for comparing stages in a process with proportional sizes. Each stage is represented as a sector of a circle, and its size represents the magnitude of the data.
@@ -128,3 +132,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
         ```
 
 {% endraw %}
+<!--end-->

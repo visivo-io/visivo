@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `parcoords` trace type is used to create parallel coordinates plots, which are useful for visualizing multi-dimensional numerical data. In parallel coordinates plots, each variable is represented as a vertical axis, and each data point is a line connecting its values across the different axes.
@@ -147,3 +151,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
         ```
 
 {% endraw %}
+<!--end-->
