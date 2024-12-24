@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `barpolar` trace type is used to create bar charts in polar coordinates. This is particularly useful for displaying data that is cyclical or directional in nature, such as wind directions, time-of-day activities, or any phenomena that repeats over a circular dimension.
@@ -200,3 +204,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
         ```
 
 {% endraw %}
+<!--end-->

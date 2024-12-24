@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 !!! danger 
@@ -163,3 +167,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         ```
 
 {% endraw %}
+<!--end-->

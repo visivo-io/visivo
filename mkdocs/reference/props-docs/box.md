@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `box` trace type is used to display data as a box plot, which shows the distribution of data based on their quartiles, medians, and potential outliers. It's useful for statistical visualizations, as it highlights data spread and central tendency while accounting for variability.
@@ -146,3 +150,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
         ```
 
 {% endraw %}
+<!--end-->

@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `mesh3d` trace type is used to create 3D mesh plots, which visualize 3D surfaces defined by vertices and connections between them. Mesh plots are commonly used in 3D data visualization to represent geometric shapes, surfaces, and volumes.
@@ -62,3 +66,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
         ```
 
 {% endraw %}
+<!--end-->

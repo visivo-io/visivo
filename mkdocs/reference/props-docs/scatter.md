@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scatter` trace type is used to create scatter plots, which visualize data points based on two numerical variables. Scatter plots are widely used for analyzing relationships between variables, identifying trends, and detecting outliers.
@@ -211,3 +216,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
         ```
 
 {% endraw %}
+<!--end-->

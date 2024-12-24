@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `sankey` trace type is used to create Sankey diagrams, which visualize the flow of quantities between different nodes (or categories). Sankey diagrams are commonly used to show the transfer of resources or values, with the width of the flow lines being proportional to the size of the flow.
@@ -137,3 +141,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
         ```
 
 {% endraw %}
+<!--end-->

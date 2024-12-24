@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `histogram` trace type is used to create histograms, which represent the distribution of numerical data by dividing the data into bins and counting the number of occurrences in each bin. Histograms are great for understanding data distribution, variability, and patterns.
@@ -188,3 +193,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
         ```
 
 {% endraw %}
+<!--end-->

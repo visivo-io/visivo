@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `treemap` trace type is used to create treemap charts, which visualize hierarchical data through nested rectangles. Each branch of the hierarchy is represented as a rectangle, with smaller rectangles inside representing sub-branches. Treemaps are useful for visualizing part-to-whole relationships and comparing the size of different categories.
@@ -154,3 +159,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
         ```
 
 {% endraw %}
+<!--end-->

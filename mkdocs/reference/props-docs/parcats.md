@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `parcats` trace type is used to create parallel categories diagrams, which are useful for visualizing categorical data across multiple dimensions. It allows you to see how data flows through different categories and compare the distribution of values across them.
@@ -144,3 +148,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
         ```
 
 {% endraw %}
+<!--end-->

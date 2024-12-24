@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `waterfall` trace type is used to create waterfall charts, which are useful for visualizing incremental changes in value over a series of categories or time. Waterfall charts are commonly used in financial and analytical contexts to show how sequential positive or negative values affect an initial value.
@@ -164,3 +169,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
         ```
 
 {% endraw %}
+<!--end-->

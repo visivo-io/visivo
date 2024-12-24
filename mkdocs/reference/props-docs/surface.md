@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `surface` trace type is used to create 3D surface plots, which visualize 3D data on a continuous surface. Surface plots are ideal for visualizing the relationship between three variables, often showing the interaction of two independent variables on a dependent variable. These plots are useful for understanding the shape of the data in three dimensions.
@@ -147,3 +151,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
         ```
 
 {% endraw %}
+<!--end-->

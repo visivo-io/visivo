@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scattermapbox` trace type is used to create scatter plots on a Mapbox map. This is ideal for visualizing geospatial data with the added customization and interactivity that Mapbox provides, including satellite imagery and street maps. 
@@ -139,3 +143,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
         ```
 
 {% endraw %}
+<!--end-->

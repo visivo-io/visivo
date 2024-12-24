@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `densitymapbox` trace type is used to create density maps on a Mapbox layer. This is commonly used to visualize the density of points in a geographical area. Density maps can help in identifying hotspots or areas with a higher concentration of data points.
@@ -156,3 +160,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
         ```
 
 {% endraw %}
+<!--end-->

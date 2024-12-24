@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `isosurface` trace type is used to create 3D isosurface visualizations, which represent a 3D volume using surfaces of constant values. Isosurfaces are commonly used in scientific visualization, such as fluid dynamics, medical imaging, or geospatial data, to show regions of interest within a 3D space.
@@ -125,3 +130,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
         ```
 
 {% endraw %}
+<!--end-->

@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scatterternary` trace type is used to create scatter plots on ternary plots, which are used for visualizing proportions that sum to a constant, such as in chemistry or economics where three components are involved. Ternary plots are useful for showing the relationship between three variables that are interdependent.
@@ -132,3 +136,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
         ```
 
 {% endraw %}
+<!--end-->
