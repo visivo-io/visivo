@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `indicator` trace type is used to create key performance indicator (KPI) visualizations, allowing you to display single or aggregated values in a gauge or numeric format. Indicators are great for showing metrics like progress, performance, or key values at a glance.
@@ -141,3 +146,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
         ```
 
 {% endraw %}
+<!--end-->

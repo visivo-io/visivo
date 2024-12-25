@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `funnel` trace type is used to create funnel charts, which visualize data across stages in a process. Funnel charts are often used in sales or marketing to show how data decreases as it passes through each stage (e.g., from leads to closed deals).
@@ -205,3 +210,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
         This example uses the `cohort_on` attribute to create separate funnel charts for each product, allowing for easy comparison of the customer journey across different products.
 
 {% endraw %}
+<!--end-->

@@ -1,5 +1,6 @@
 from visivo.models.base.context_string import ContextString
 from visivo.models.models.model import Model
+from visivo.models.row import Row
 from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
 from visivo.models.test import Test
@@ -65,6 +66,34 @@ def test_ref_table_Project_dag():
     assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
 
 
+def test_context_model_Project_dag():
+    project = ProjectFactory(model_ref=True)
+    model = project.models[0]
+    model.path = "project.models[0]"
+    trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
+    trace.model = ContextString("${ project.models[0] }")
+
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 9
+    assert model in trace.descendants_of_type(type=Model, dag=dag)
+
+
+def test_context_source_Project_dag():
+    project = ProjectFactory()
+    source = project.sources[0]
+    source.path = "project.sources[0]"
+    model = project.dashboards[0].rows[0].items[0].chart.traces[0].model
+    model.source = ContextString("${ project.sources[0] }")
+
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 9
+    assert source in model.descendants_of_type(type=Source, dag=dag)
+
+
 def test_ref_selector_Project_dag():
     project = ProjectFactory(table_ref=True)
     item = ItemFactory()
@@ -109,6 +138,19 @@ def test_ref_selector_row_item_Project_dag():
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 10
     assert selector in project.descendants_of_type(type=Selector)
+
+
+def test_context_selector_row_item_Project_dag():
+    row = RowFactory()
+    selector = SelectorFactory(name="row selector", options=["${ref(row)}"])
+    project = ProjectFactory(selectors=[selector])
+    project.dashboards[0].rows = [row]
+    dag = project.dag()
+
+    assert networkx.is_directed_acyclic_graph(dag)
+    assert len(project.descendants()) == 10
+    assert selector in project.descendants_of_type(type=Selector)
+    assert row in selector.descendants_of_type(type=Row, dag=dag)
 
 
 def test_invalid_ref_Project_dag():

@@ -1,6 +1,8 @@
+import re
 from typing import Annotated, Any, Union
 from pydantic import Discriminator, Tag
-from visivo.models.base.base_model import RefString
+from visivo.models.base.base_model import ContextStringType, RefStringType
+from visivo.models.base.context_string import CONTEXT_STRING_VALUE_REGEX
 from visivo.models.sources.mysql_source import MysqlSource
 from visivo.models.sources.postgresql_source import PostgresqlSource
 from visivo.models.sources.snowflake_source import SnowflakeSource
@@ -10,9 +12,11 @@ from visivo.models.sources.duckdb_source import DuckdbSource
 
 
 def get_model_discriminator_value(value: Any) -> str:
-    if isinstance(value, str):
+    if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+        return "Context"
+    elif isinstance(value, str):
         return "Ref"
-    if isinstance(value, dict):
+    elif isinstance(value, dict):
         if "type" in value:
             return value["type"]
     if hasattr(value, "type"):
@@ -35,7 +39,8 @@ SourceField = Annotated[
 
 SourceRefField = Annotated[
     Union[
-        RefString,
+        RefStringType,
+        ContextStringType,
         Annotated[SqliteSource, Tag("sqlite")],
         Annotated[PostgresqlSource, Tag("postgresql")],
         Annotated[MysqlSource, Tag("mysql")],

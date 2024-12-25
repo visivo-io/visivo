@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scattersmith` trace type is used to create scatter plots on a Smith chart, which is typically used in electrical engineering to represent complex impedance and reflection coefficients in transmission lines. It allows for plotting data in terms of complex numbers, making it ideal for analyzing electrical circuits.
@@ -129,3 +133,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
         ```
 
 {% endraw %}
+<!--end-->

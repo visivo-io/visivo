@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `scatter3d` trace type is used to create 3D scatter plots, which visualize data points based on three numerical variables (x, y, and z axes). 3D scatter plots are useful for exploring relationships between three variables and detecting patterns or outliers in higher-dimensional data.
@@ -135,3 +139,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
         ```
 
 {% endraw %}
+<!--end-->

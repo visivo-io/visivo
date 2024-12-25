@@ -1,27 +1,31 @@
+import re
 from typing import Any, Union
 from typing_extensions import Annotated
 from pydantic import Discriminator, Tag
-from visivo.models.base.base_model import RefString
+from visivo.models.base.base_model import ContextStringType, RefStringType
+from visivo.models.base.context_string import CONTEXT_STRING_VALUE_REGEX
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
 
 
 def get_model_discriminator_value(value: Any) -> str:
-    if isinstance(value, str):
+    if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+        return "Context"
+    elif isinstance(value, str):
         return "Ref"
-    if isinstance(value, dict):
+    elif isinstance(value, dict):
         if "args" in value:
             return "CsvScript"
-        if "models" in value:
+        elif "models" in value:
             return "LocalMerge"
-        if "sql" in value:
+        elif "sql" in value:
             return "Sql"
-    if hasattr(value, "args"):
+    elif hasattr(value, "args"):
         return "CsvScript"
-    if hasattr(value, "models"):
+    elif hasattr(value, "models"):
         return "LocalMerge"
-    if hasattr(value, "sql"):
+    elif hasattr(value, "sql"):
         return "Sql"
 
     return None
@@ -38,7 +42,8 @@ ModelField = Annotated[
 
 ModelRefField = Annotated[
     Union[
-        RefString,
+        RefStringType,
+        ContextStringType,
         Annotated[SqlModel, Tag("Sql")],
         Annotated[CsvScriptModel, Tag("CsvScript")],
         Annotated[LocalMergeModel, Tag("LocalMerge")],

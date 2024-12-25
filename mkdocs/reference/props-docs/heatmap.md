@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `heatmap` trace type is used to create heatmaps, which represent data using a grid where values are mapped to colors. Heatmaps are commonly used to visualize matrix-like data, such as correlations, intensity, or frequency distributions.
@@ -168,3 +172,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
         ```
 
 {% endraw %}
+<!--end-->

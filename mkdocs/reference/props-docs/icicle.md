@@ -1,3 +1,8 @@
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `icicle` trace type is used to create icicle charts, which are a variation of treemap charts but arranged vertically. Icicle charts are useful for visualizing hierarchical data, where each branch represents a part of the whole, and you can drill down into sub-categories.
@@ -142,5 +147,5 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
               title:
                 text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>
         ```
-
 {% endraw %}
+<!--end-->

@@ -40,10 +40,12 @@ class AlertFactory(factory.Factory):
         [factory.SubFactory(DestinationFactory) for _ in range(1)]
     )
 
+
 class TestFactory(factory.Factory):
     class Meta:
         model = Test
 
+    __test__ = False
     name = "test"
     assertions = []
 

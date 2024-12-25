@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start--> 
 ## Overview
 
 The `candlestick` trace type is commonly used in financial analysis to visualize the price movements of a stock or asset over time. It requires open, high, low, and close (OHLC) data and is useful for tracking the performance of a stock or identifying market trends.
@@ -184,3 +188,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
         ```
 
 {% endraw %}
+<!--end-->

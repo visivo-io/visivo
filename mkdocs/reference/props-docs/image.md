@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `image` trace type is used to display raster images in a plot. This is particularly useful for visualizing images as data or overlaying images on other plot types. The image trace allows for the rendering of pixel data in a 2D grid.
@@ -124,3 +128,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
         ```
 
 {% endraw %}
+<!--end-->

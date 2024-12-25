@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `carpet` trace type is used to create carpet plots, which can be useful for visualizing data across irregular spaces or non-grid-like arrangements. Carpet plots are **commonly employed in complex datasets** that span two independent variables, such as pressure and temperature or other bivariate datasets.
@@ -75,3 +79,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Carpet/#attributes) f
         ```
 
 {% endraw %}
+<!--end-->

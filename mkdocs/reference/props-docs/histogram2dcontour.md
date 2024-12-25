@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `histogram2dcontour` trace type is used to create 2D contour plots that represent the density of data points across two dimensions. Similar to a 2D histogram, this plot type bins data along the x and y axes but visualizes the density using contour lines instead of filled colors. 
@@ -167,3 +171,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
         ```
 
 {% endraw %}
+<!--end-->

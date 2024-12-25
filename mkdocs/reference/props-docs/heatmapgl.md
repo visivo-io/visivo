@@ -1,4 +1,8 @@
-
+---
+search:
+  exclude: true
+---
+<!--start-->
 ## Overview
 
 The `heatmapgl` trace type is similar to the regular `heatmap` but is rendered using WebGL for faster and more performant rendering of large datasets. This trace type is ideal for heatmaps with many data points, as it leverages GPU acceleration.
@@ -172,3 +176,4 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
         ```
 
 {% endraw %}
+<!--end-->
