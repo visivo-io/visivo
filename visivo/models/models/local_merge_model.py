@@ -70,9 +70,7 @@ class LocalMergeModel(Model, ParentModel):
             source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
             data_frame = source.read_sql(model.sql)
             engine = duckdb_source.get_engine()
-            # DuckDB uses a different API for writing DataFrames
-            engine.execute("CREATE TABLE IF NOT EXISTS model AS SELECT * FROM data_frame")
-            engine.close()
+            data_frame.to_sql("model", engine, if_exists="replace", index=False) # TODO: Replace with pure duckdb read/write
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):
