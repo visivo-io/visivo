@@ -22,9 +22,9 @@ def action(trace, dag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
 
     if isinstance(model, CsvScriptModel):
-        source = model.get_sqlite_source(output_dir=output_dir)
+        source = model.get_duckdb_source(output_dir=output_dir)
     elif isinstance(model, LocalMergeModel):
-        source = model.get_sqlite_source(output_dir=output_dir, dag=dag)
+        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
     else:
         source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
 
@@ -65,9 +65,9 @@ def _get_source(trace, dag, output_dir):
 
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     if isinstance(model, CsvScriptModel):
-        return model.get_sqlite_source(output_dir)
+        return model.get_duckdb_source(output_dir)
     elif isinstance(model, LocalMergeModel):
-        return model.get_sqlite_source(output_dir, dag)
+        return model.get_duckdb_source(output_dir, dag)
     else:
         return model.source
 

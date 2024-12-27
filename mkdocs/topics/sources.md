@@ -15,6 +15,7 @@ We have pre-built connectors for the most popular databases; however, you can al
 - ![](../assets/source-logos/snowflake.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/SnowflakeSource/)
 - ![](../assets/source-logos/mysql.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/MysqlSource/)
 - ![](../assets/source-logos/bigquery.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/BigQuerySource/)
+- ![](../assets/source-logos/duckdb.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/DuckdbSource/)
 </div>
 
 ## One Project Many Sources

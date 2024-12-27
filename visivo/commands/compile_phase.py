@@ -44,7 +44,7 @@ def compile_phase(
     for trace in traces:
         model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
         if isinstance(model, CsvScriptModel):
-            source = model.get_sqlite_source(output_dir=output_dir)
+            source = model.get_duckdb_source(output_dir=output_dir)
         else:
             source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
         tokenized_trace = TraceTokenizer(
