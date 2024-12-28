@@ -1,6 +1,7 @@
 from visivo.models.trace import Trace
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
+from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
@@ -26,7 +27,9 @@ class TraceTokenizer:
 
     def tokenize(self):
         cohort_on = self._get_cohort_on()
-        if self.source.type:
+        if isinstance(self.model, LocalMergeModel):
+            source_type = 'duckdb'
+        elif self.source.type:
             source_type = self.source.type
         else: 
             source_type = None
