@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../PostgresqlSource/">
+        <link rel="prev" href="../BigQuerySource/">
       
       
-        <link rel="next" href="../SnowflakeSource/">
+        <link rel="next" href="DuckdbAttachment/">
       
       
       <link rel="icon" href="../../../../assets/favicon_io/favicon-32x32.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>MysqlSource - Visivo Docs</title>
+        <title>DuckdbSource - Visivo Docs</title>
       
     
     
@@ -195,7 +195,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mysqlsource" class="md-skip">
+        <a href="#duckdbsource" class="md-skip">
           Skip to content
         </a>
       
@@ -230,7 +230,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              MysqlSource
+              DuckdbSource
             
           </span>
         </div>
@@ -2006,8 +2006,6 @@
                 
   
   
-    
-  
   
   
     
@@ -2022,16 +2020,16 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_3" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../MysqlSource/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2043,7 +2041,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_2_10_3">
             <span class="md-nav__icon md-icon"></span>
             MysqlSource
@@ -2176,6 +2174,8 @@
                 
   
   
+    
+  
   
   
     
@@ -2192,16 +2192,16 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_6" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../DuckdbSource/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   <span class="md-ellipsis">
@@ -2212,13 +2212,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_4_2_10_6" id="__nav_4_2_10_6_label" tabindex="0">
+              <label class="md-nav__link md-nav__link--active" for="__nav_4_2_10_6" id="__nav_4_2_10_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_2_10_6">
             <span class="md-nav__icon md-icon"></span>
             DuckdbSource
@@ -2254,7 +2254,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../DuckdbSource/DuckdbAttachment/" class="md-nav__link ">
+            <a href="DuckdbAttachment/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -5954,19 +5954,17 @@
   
 
 
-<div><h1 id="mysqlsource">MysqlSource</h1>
-<p>MysqlSources hold the connection information to MySQL data sources.</p>
+<div><h1 id="duckdbsource">DuckdbSource</h1>
+<p>DuckdbSources hold the connection information to DuckDB data sources.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:1"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><span class="w">    </span><span class="nt">sources</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mysql_source</span>
-<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mysql</span>
-<span class="w">        </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">database</span>
-<span class="w">        </span><span class="nt">username</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var('MYSQL_USER')</span><span class="w"> </span><span class="p p-Indicator">}}</span>
-<span class="w">        </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">env_var('MYSQL_PASSWORD')</span><span class="w"> </span><span class="p p-Indicator">}}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">duckdb_source</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">duckdb</span>
+<span class="w">        </span><span class="nt">database</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">local/file/database.db</span>
 <span class="w">        </span><span class="nt">connection_pool_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 </code></pre></div>
 </div>
@@ -6047,6 +6045,12 @@
 <td>integer</td>
 <td>1</td>
 <td>The pool size that is used for this connection.</td>
+</tr>
+<tr>
+<td>attach</td>
+<td>Any of: <a href="https://docs.visivo.io/reference/configuration/Sources/DuckdbSource/DuckdbAttachment/">DuckdbAttachment</a>, array</td>
+<td>None</td>
+<td>List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.</td>
 </tr>
 </tbody>
 </table></div>
