@@ -17,7 +17,7 @@ def test_CsvScriptModel_insert_data():
     model = CsvScriptModelFactory()
     output_dir = temp_folder()
     os.makedirs(output_dir, exist_ok=True)
-    model.insert_csv_to_sqlite(output_dir)
+    model.insert_csv_to_duckdb(output_dir)
     assert model.name == "model"
 
 
@@ -27,7 +27,7 @@ def test_CsvScriptModel_insert_data_bad_csv():
     output_dir = temp_folder()
     os.makedirs(output_dir, exist_ok=True)
     with pytest.raises(click.ClickException) as exc_info:
-        model.insert_csv_to_sqlite(output_dir)
+        model.insert_csv_to_duckdb(output_dir)
 
     assert (
         exc_info.value.message

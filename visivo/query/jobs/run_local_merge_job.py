@@ -18,13 +18,13 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
     Logger.instance().info(start_message("LocalMergeModel", local_merge_model))
     try:
         start_time = time()
-        local_merge_model.insert_dependent_models_to_sqlite(
+        local_merge_model.insert_dependent_models_to_duckdb(
             output_dir=output_dir, dag=dag
         )
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_sqlite_source(
+            full_path=local_merge_model.get_duckdb_source(
                 output_dir=output_dir, dag=dag
             ).database,
         )
@@ -33,7 +33,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_sqlite_source(
+            full_path=local_merge_model.get_duckdb_source(
                 output_dir=output_dir, dag=dag
             ).database,
             error_msg=str(repr(e)),
@@ -44,7 +44,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
 def job(dag, output_dir: str, local_merge_model: LocalMergeModel):
     return Job(
         item=local_merge_model,
-        source=local_merge_model.get_sqlite_source(output_dir=output_dir, dag=dag),
+        source=local_merge_model.get_duckdb_source(output_dir=output_dir, dag=dag),
         action=action,
         local_merge_model=local_merge_model,
         output_dir=output_dir,

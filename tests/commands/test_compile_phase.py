@@ -51,7 +51,7 @@ def test_compile_csv_script_model():
     model = CsvScriptModelFactory(name="csv_script_model")
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = model
     create_file_database(
-        url=model.get_sqlite_source(output_dir).url(), output_dir=output_dir
+        url=model.get_duckdb_source(output_dir).url(), output_dir=output_dir
     )
 
     tmp = temp_yml_file(

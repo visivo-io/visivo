@@ -11,12 +11,16 @@ def get_source_types():
     from visivo.models.sources.postgresql_source import PostgresqlType
     from visivo.models.sources.mysql_source import MysqlType
     from visivo.models.sources.snowflake_source import SnowflakeType
+    from visivo.models.sources.bigquery_source import BigQueryType
+    from visivo.models.sources.duckdb_source import DuckdbType
 
     sqlite_type = get_args(SqliteType)[0]
     postgresql_type = get_args(PostgresqlType)[0]
     mysql_type = get_args(MysqlType)[0]
     snowflake_type = get_args(SnowflakeType)[0]
-    return [postgresql_type, mysql_type, sqlite_type, snowflake_type]
+    bigquery_type = get_args(BigQueryType)[0]
+    duckdb_type = get_args(DuckdbType)[0]
+    return [postgresql_type, mysql_type, sqlite_type, snowflake_type, bigquery_type, duckdb_type]
 
 
 def parse_project_file(working_dir, output_dir, default_source):

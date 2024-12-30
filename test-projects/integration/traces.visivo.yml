@@ -122,7 +122,7 @@ traces:
     cohort_on: query( year)
     columns:
       x_data: category
-      y_data: cast( replace(thousands_dollars, ',', '') as float ) * cast(sign as float)
+      y_data: try_cast( replace(thousands_dollars, ',', '') as float ) * try_cast(sign as float)
       measure: waterfall
     props:
       type: waterfall

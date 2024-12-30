@@ -72,7 +72,7 @@ def test_runner_with_csv_script_model():
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
-    assert os.path.exists(f"{output_dir}/{model.name}.sqlite")
+    assert os.path.exists(f"{output_dir}/{model.name}.duckdb")
 
 
 def test_runner_with_local_merge_model():

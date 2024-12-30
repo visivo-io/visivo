@@ -5,7 +5,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.model import Model
-from visivo.models.sources.sqlite_source import Attachment, SqliteSource
+from visivo.models.sources.duckdb_source import DuckdbAttachment, DuckdbSource
 import os
 
 from visivo.models.sources.source import Source
@@ -17,7 +17,8 @@ class LocalMergeModel(Model, ParentModel):
 
     !!! note
 
-        Any joining is done in a local SQLite database. It is not designed for large datasets.
+        Any joining is done in a local DuckDB database. While more efficient than SQLite, 
+        it's still primarily designed for medium-sized datasets.
 
     !!! example {% raw %}
 
@@ -43,44 +44,44 @@ class LocalMergeModel(Model, ParentModel):
         description="A model object defined inline or a ref() to a model."
     )
 
-    def get_sqlite_source(self, output_dir, dag) -> SqliteSource:
+    def get_duckdb_source(self, output_dir, dag) -> DuckdbSource:
         attach = list(
             map(
-                lambda model: Attachment(
+                lambda model: DuckdbAttachment(
                     schema_name=model.name,
-                    source=self._get_sqlite_from_model(model, output_dir, dag),
+                    source=self._get_duckdb_from_model(model, output_dir, dag),
                 ),
                 self._get_dereferenced_models(dag),
             )
         )
 
-        return SqliteSource(
+        return DuckdbSource(
             name=f"model_{self.name}_generated_source",
             database="",
-            type="sqlite",
+            type="duckdb",
             attach=attach,
         )
 
-    def insert_dependent_models_to_sqlite(self, output_dir, dag):
+    def insert_dependent_models_to_duckdb(self, output_dir, dag):
         for model in self._get_dereferenced_models(dag):
             if isinstance(model, CsvScriptModel):
                 continue
-            sqlite_source = self._get_sqlite_from_model(model, output_dir, dag)
+            duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
             source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
             data_frame = source.read_sql(model.sql)
-            engine = sqlite_source.get_engine()
-            data_frame.to_sql("model", engine, if_exists="replace", index=False)
+            engine = duckdb_source.get_engine()
+            data_frame.to_sql("model", engine, if_exists="replace", index=False) # TODO: Replace with pure duckdb read/write
 
-    def _get_sqlite_from_model(self, model, output_dir, dag) -> SqliteSource:
+    def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):
-            return model.get_sqlite_source(output_dir=output_dir)
+            return model.get_duckdb_source(output_dir=output_dir)
         elif isinstance(model, LocalMergeModel):
-            return model.get_sqlite_source(output_dir=output_dir, dag=dag)
+            return model.get_duckdb_source(output_dir=output_dir, dag=dag)
         else:
-            return SqliteSource(
+            return DuckdbSource(
                 name=f"model_{model.name}_generated_source",
-                database=f"{output_dir}/{model.name}.sqlite",
-                type="sqlite",
+                database=f"{output_dir}/{model.name}.duckdb",
+                type="duckdb",
             )
 
     def _get_dereferenced_models(self, dag):
