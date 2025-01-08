@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Optional
-from pydantic import Field, model_validator
+from pydantic import Field, field_serializer, model_validator
 
 from visivo.models.alert import Alert
 from visivo.models.base.base_model import BaseModel
@@ -48,6 +48,13 @@ class Test(NamedModel, ParentModel):
     if_: Optional[EvalString] = Field(None, alias="if")
     on_failure: OnFailureEnum = Field(OnFailureEnum.exit)
     assertions: List[EvalString] = Field(None)
+
+    @model_validator(mode="before")
+    def rename_if(cls, values):
+        if "if_" in values:
+            values["if"] = values["if_"]
+            del values["if_"]
+        return values
 
     __test__ = False
 

@@ -76,7 +76,7 @@ def evaluate_expression(
             ):
                 trace_data = get_object_from_data(current_object)
                 current_object = merge_dicts(
-                    current_object.model_dump(by_alias=True), trace_data
+                    current_object.model_dump(), trace_data
                 )
             if isinstance(current_object, dict):
                 value = current_object[node.attr]
