@@ -15,8 +15,15 @@ class JobResult:
 
 
 class CachedFuture:
+    def __init__(self, item: NamedModel, message: str):
+        self.item = item
+        self.message = message
+
     def done(self):
         return True
+
+    def result(self):
+        return JobResult(item=self.item, success=True, message=self.message)
 
 
 class Job:

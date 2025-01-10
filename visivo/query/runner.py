@@ -163,8 +163,9 @@ class Runner:
                 job = self.create_jobs_from_item(terminal_node)
                 if not job_tracker.is_job_name_enqueued(job.name):
                     if not job.output_changed and self.run_only_changed:
-                        job.future = CachedFuture()
-                    # Logger.instance().info(f"Enqueuing job for {terminal_node.name}")
+                        job.future = CachedFuture(
+                            job.item, f"Skipping job for {job.item}"
+                        )
                     job_tracker.track_job(job)
 
             return len(self.job_tracking_dag.nodes()) == 1
