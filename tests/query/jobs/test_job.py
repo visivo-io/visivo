@@ -1,7 +1,12 @@
 import os
 from time import time
 from tests.support.utils import temp_file
-from visivo.query.jobs.job import format_message_failure, format_message_success
+from visivo.query.jobs.job import (
+    CachedFuture,
+    JobResult,
+    format_message_failure,
+    format_message_success,
+)
 
 
 def test_runner_message_success():
@@ -34,3 +39,12 @@ def test_runner_message_failure():
     )
     assert "FAILURE" in message
     assert "error: You did something wrong." in message
+
+
+def test_cached_future():
+    item = "Test Item"
+    message = "Test Message"
+
+    cached_future = CachedFuture(item=item, message=message)
+    assert cached_future.done()
+    assert cached_future.result().success
