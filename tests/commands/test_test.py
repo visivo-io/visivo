@@ -35,7 +35,7 @@ def test_test_failure():
     ]
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json(by_alias=True)), name=PROJECT_FILE_NAME
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
     data = {"trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
@@ -57,7 +57,7 @@ def test_test_alert():
     project = ProjectFactory(alerts=[alert])
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json(by_alias=True)), name=PROJECT_FILE_NAME
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
     response = runner.invoke(

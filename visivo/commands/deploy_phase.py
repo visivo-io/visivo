@@ -169,7 +169,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     project = parser.parse()
     serializer = Serializer(project=project)
     project_json = json.loads(
-        serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
+        serializer.dereference().model_dump_json(exclude_none=True)
     )
     Logger.instance().success(
         f"Project Compiled in {time() - deploy_start_time:.2f} seconds"

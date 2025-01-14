@@ -51,7 +51,7 @@ def test_TestQueryStringFactory_errors(capsys):
     )
 
     # Trigger set_path_on_named_models
-    project = Project(**project.model_dump(by_alias=True))
+    project = Project(**project.model_dump())
     dag = project.dag()
     Runner(
         tests=project.traces[0].tests,
