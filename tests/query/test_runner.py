@@ -176,3 +176,33 @@ def test_create_job_dag_with_non_referenced_source():
     job_dag = runner.create_job_dag()
     assert len(job_dag.nodes()) == 5
     assert is_directed_acyclic_graph(job_dag)
+
+
+def test_runner_with_local_merge_and_csv_model():
+    output_dir = temp_folder()
+    
+    csv_model = CsvScriptModelFactory(
+        name="csv_model",
+        args=["echo", "x,y\n1,2\n3,4\n5,6"]
+    )
+    
+    local_merge_model = LocalMergeModelFactory(
+        name="local_merge_model",
+        sql="SELECT * FROM csv_model.model",
+        models=[csv_model]
+    )
+    
+    trace = TraceFactory(name="trace1", model=local_merge_model)
+    project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
+    
+    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+        fp.write("SELECT x, y, 'values' as cohort_on FROM csv_model.model")
+    
+    runner = Runner(project=project, output_dir=output_dir)
+    runner.run()
+    
+    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/csv_model.duckdb")
+    assert os.path.exists(f"{output_dir}/local_merge_model.duckdb")

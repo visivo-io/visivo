@@ -65,12 +65,15 @@ class LocalMergeModel(Model, ParentModel):
     def insert_dependent_models_to_duckdb(self, output_dir, dag):
         for model in self._get_dereferenced_models(dag):
             if isinstance(model, CsvScriptModel):
-                continue
-            duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
-            source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
-            data_frame = source.read_sql(model.sql)
-            engine = duckdb_source.get_engine()
-            data_frame.to_sql("model", engine, if_exists="replace", index=False) # TODO: Replace with pure duckdb read/write
+                continue  # CsvScriptModels are handled by their own job
+            elif isinstance(model, LocalMergeModel):
+                continue 
+            else: 
+                duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
+                source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
+                data_frame = source.read_sql(model.sql)
+                engine = duckdb_source.get_engine()
+                data_frame.to_sql("model", engine, if_exists="replace", index=False)
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):
