@@ -206,3 +206,43 @@ def test_runner_with_local_merge_and_csv_model():
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
     assert os.path.exists(f"{output_dir}/csv_model.duckdb")
     assert os.path.exists(f"{output_dir}/local_merge_model.duckdb")
+
+
+def test_runner_with_nested_local_merge_models():
+    output_dir = temp_folder()
+    
+    # Create a base CSV model
+    csv_model = CsvScriptModelFactory(
+        name="csv_model",
+        args=["echo", "x,y\n1,2\n3,4\n5,6"]
+    )
+    
+    # Create inner local merge model that uses the CSV model
+    inner_merge_model = LocalMergeModelFactory(
+        name="inner_merge_model",
+        sql="SELECT x, y FROM csv_model.model",
+        models=[csv_model]
+    )
+    
+    # Create outer local merge model that uses the inner merge model
+    outer_merge_model = LocalMergeModelFactory(
+        name="outer_merge_model",
+        sql="SELECT x, y FROM inner_merge_model.model",
+        models=[inner_merge_model]
+    )
+    
+    trace = TraceFactory(name="trace1", model=outer_merge_model)
+    project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
+    
+    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+        fp.write("SELECT x, y, 'values' as cohort_on FROM outer_merge_model.model")
+    
+    runner = Runner(project=project, output_dir=output_dir)
+    runner.run()
+    
+    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/csv_model.duckdb")
+    assert os.path.exists(f"{output_dir}/inner_merge_model.duckdb")
+    assert os.path.exists(f"{output_dir}/outer_merge_model.duckdb")
