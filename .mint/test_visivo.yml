@@ -64,9 +64,9 @@ tasks:
   - key: test-cli
     use: cli-dependencies
     run: |
+      trap 'curl -X POST -H "Content-Type: application/json" -d @.report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}' EXIT
       poetry install --with dev
       poetry run pytest --json-report
-      curl -X POST -H "Content-Type: application/json" -d @.report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}
     env:
       STACKTRACE: true
 
