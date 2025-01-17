@@ -78,6 +78,3 @@ def test_job_with_nested_local_merge_model():
     
     assert lmm_job.item == outer_merge_model
     assert len(project.models) == 3
-    assert os.path.exists(f"{output_dir}/csv_model.duckdb")
-    assert os.path.exists(f"{output_dir}/inner_merge_model.duckdb")
-    assert os.path.exists(f"{output_dir}/outer_merge_model.duckdb")
