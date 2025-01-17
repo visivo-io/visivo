@@ -71,14 +71,20 @@ class LocalMergeModel(Model, ParentModel):
                 # Execute the inner merge model's SQL and persist it
                 duckdb_source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
                 data_frame = duckdb_source.read_sql(model.sql)
-                engine = duckdb_source.get_engine()
-                data_frame.to_sql("model", engine, if_exists="replace", index=False)
+                try: 
+                    engine = duckdb_source.get_engine()
+                    data_frame.to_sql("model", engine, if_exists="replace", index=False)
+                finally:
+                    engine.dispose()
             else:
                 duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
                 source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
                 data_frame = source.read_sql(model.sql)
                 engine = duckdb_source.get_engine()
-                data_frame.to_sql("model", engine, if_exists="replace", index=False)
+                try:
+                    data_frame.to_sql("model", engine, if_exists="replace", index=False)
+                finally:
+                    engine.dispose()
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):

@@ -123,8 +123,11 @@ class CsvScriptModel(Model):
         try:
             csv = io.StringIO(process.stdout.read().decode())
             data_frame = pandas.read_csv(csv)
+            data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
         except:
             raise click.ClickException(
                 f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
-        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
+        finally:
+            engine.dispose()
+        
