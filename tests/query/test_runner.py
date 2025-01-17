@@ -235,8 +235,29 @@ def test_runner_with_nested_local_merge_models():
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
     
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
+    trace_query_sql = """
+        WITH 
+    base_query as (
+        SELECT x, y FROM inner_merge_model.model
+    ),
+    columnize_cohort_on as (
+        SELECT 
+            *,
+            'trace' as "cohort_on"
+        FROM base_query
+    )
+    SELECT
+                x as "props.x",
+                y as "props.y",
+        "cohort_on"
+    FROM columnize_cohort_on
+        GROUP BY
+            y  , 
+            x ,
+        "cohort_on" 
+    """
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
-        fp.write("SELECT x, y, 'values' as cohort_on FROM outer_merge_model.model")
+        fp.write(trace_query_sql)
     
     runner = Runner(project=project, output_dir=output_dir)
     runner.run()

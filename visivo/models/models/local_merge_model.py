@@ -57,18 +57,23 @@ class LocalMergeModel(Model, ParentModel):
 
         return DuckdbSource(
             name=f"model_{self.name}_generated_source",
-            database="",
+            database=f"{output_dir}/{self.name}.duckdb",
             type="duckdb",
             attach=attach,
         )
 
     def insert_dependent_models_to_duckdb(self, output_dir, dag):
         for model in self._get_dereferenced_models(dag):
+            from sqlalchemy import text
             if isinstance(model, CsvScriptModel):
                 continue  # CsvScriptModels are handled by their own job
             elif isinstance(model, LocalMergeModel):
-                continue 
-            else: 
+                # Execute the inner merge model's SQL and persist it
+                duckdb_source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
+                with duckdb_source.connect() as connection:
+                    query = text(model.sql)
+                    connection.execute(f"CREATE OR REPLACE TABLE {model.name}.model AS {query};")
+            else:
                 duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
                 source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
                 data_frame = source.read_sql(model.sql)
