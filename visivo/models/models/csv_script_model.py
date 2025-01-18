@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
 from visivo.models.sources.duckdb_source import DuckdbSource
@@ -102,7 +102,10 @@ class CsvScriptModel(Model):
     args: List[str] = Field(
         description="An array of the variables that build your command to run."
     )
-
+    changed: Optional[bool] = Field(
+        True,
+        description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the CsvScriptModel should be re-run",
+    )
     @property
     def sql(self):
         return f"select * from {self.table_name}"

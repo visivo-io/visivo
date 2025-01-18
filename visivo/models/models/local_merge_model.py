@@ -64,7 +64,6 @@ class LocalMergeModel(Model, ParentModel):
 
     def insert_dependent_models_to_duckdb(self, output_dir, dag):
         for model in self._get_dereferenced_models(dag):
-            from sqlalchemy import text
             if isinstance(model, CsvScriptModel):
                 continue  # CsvScriptModels are handled by their own job
             elif isinstance(model, LocalMergeModel):
