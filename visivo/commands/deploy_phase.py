@@ -17,7 +17,8 @@ from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 
 # Limit concurrent uploads to avoid overloading the API
-semaphore = asyncio.Semaphore(50)
+semaphore_1 = asyncio.Semaphore(1)
+semaphore_50 = asyncio.Semaphore(50)
 attempt = contextvars.ContextVar("attempt")
 MAX_ATTEMPTS = 3
 
@@ -30,7 +31,7 @@ async def create_trace_files(batch, form_headers, host, progress):
     files = list(map(lambda trace: {"filename": f"{trace.name}.json"}, batch))
     url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
-    async with semaphore:
+    async with semaphore_1:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(url, json=files, headers=form_headers)
@@ -42,15 +43,11 @@ async def create_trace_files(batch, form_headers, host, progress):
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(f"Trace data file creation: {repr(e)}")
             raise
         except Exception as e:
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(f"Trace data file creation: {repr(e)}")
             raise
 
 
@@ -62,7 +59,7 @@ async def finish_trace_files(batch_ids, form_headers, host, progress):
     url = f"{host}/api/files/direct/finish/"
     attempt.set(attempt.get(0) + 1)
     ids = list(map(lambda id: {"id": id}, batch_ids))
-    async with semaphore:
+    async with semaphore_1:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(url, json=ids, headers=form_headers)
@@ -75,15 +72,11 @@ async def finish_trace_files(batch_ids, form_headers, host, progress):
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(f"Trace data file creation: {repr(e)}")
             raise
         except Exception as e:
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(f"Trace data file creation: {repr(e)}")
             raise
 
 
@@ -94,7 +87,7 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
     """
     attempt.set(attempt.get(0) + 1)
     trace_name = data_file_upload["name"].split(".")[0]
-    async with semaphore:
+    async with semaphore_50:
         try:
             data_file = f"{output_dir}/{trace_name}/data.json"
             async with httpx.AsyncClient(timeout=60) as client:
@@ -113,57 +106,48 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace '{trace_name}': {repr(e)} - Response: {e.response.text}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(f"Data upload for '{trace_name}': {repr(e)}")
             raise
         except Exception as e:
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload trace data for '{trace_name}': {repr(e)}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(f"Data upload for '{trace_name}': {repr(e)}")
             raise
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def create_trace_record(
-    trace, project_id, data_file_id, json_headers, host, progress
-):
+async def create_trace_records(batch, project_id, json_headers, host, progress):
     """
     Asynchronously creates a trace record on the server.
     """
-    async with semaphore:
-        try:
-            body = {
-                "name": trace.name,
+    body = list(
+        map(
+            lambda data_file_upload: {
+                "name": data_file_upload["name"].split(".")[0],
                 "project_id": project_id,
-                "data_file_id": data_file_id,
-            }
+                "data_file_id": data_file_upload["id"],
+            },
+            batch,
+        )
+    )
+    async with semaphore_1:
+        try:
             async with httpx.AsyncClient(timeout=60) as client:
                 url = f"{host}/api/traces/"
                 response = await client.post(url, json=body, headers=json_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
-                    f"\tTrace '{trace.name}' created [{progress['completed']}/{progress['total']}]"
+                    f"\t{len(batch)} traces created [{progress['completed']}/{progress['total']}]"
                 )
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace '{trace.name}': {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {len(batch)} traces: {repr(e)} - Response: {e.response.text}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(
-                    f"Record creation for '{trace.name}': {repr(e)}"
-                )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create trace '{trace.name}': {repr(e)}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} traces: {repr(e)}"
             )
-            if attempt.get() == MAX_ATTEMPTS:
-                progress["failed"].append(
-                    f"Record creation for '{trace.name}': {repr(e)}"
-                )
             raise
 
 
@@ -174,13 +158,11 @@ async def process_traces_async(
     Coordinates the asynchronous upload of trace data files and the creation of trace records.
     """
     batch_size = 50
-    total_operations = (
-        len(traces) * 2
-    )  # Each trace has a data upload and record creation
+    total_operations = len(traces)  # Each trace has a data upload
 
     # For each batch upload
-    total_operations += 2 * math.ceil(len(traces) / batch_size)
-    progress = {"completed": 0, "total": total_operations, "failed": []}
+    total_operations += 3 * math.ceil(len(traces) / batch_size)
+    progress = {"completed": 0, "total": total_operations}
 
     tasks = []
     for i in range(0, len(traces), batch_size):
@@ -216,22 +198,14 @@ async def process_traces_async(
     await asyncio.gather(*tasks, return_exceptions=True)
 
     # Prepare to create trace records based on successful uploads
-    record_tasks = []
-    for trace, data_file_id in zip(traces, data_file_ids):
-        if isinstance(data_file_id, Exception):
-            Logger.instance().error(
-                f"\tSkipping trace '{trace.name}' due to previous error uploading data."
-            )
-            continue
-        record_task = create_trace_record(
-            trace, project_id, data_file_id, json_headers, host, progress
-        )
-        record_tasks.append(record_task)
+    tasks = []
+    for i in range(0, len(traces), batch_size):
+        batch = data_file_uploads[i : i + batch_size]
+        task = create_trace_records(batch, project_id, json_headers, host, progress)
+        tasks.append(task)
 
     # Execute the creation of trace records concurrently
-    await asyncio.gather(*record_tasks, return_exceptions=True)
-
-    return progress["failed"]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host):
@@ -301,7 +275,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         process_traces_start_time = time()
 
         traces = project.descendants_of_type(type=Trace)
-        failed_operations = asyncio.run(
+        asyncio.run(
             process_traces_async(
                 traces=traces,
                 output_dir=output_dir,
@@ -315,19 +289,20 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             f"Trace uploads and record creations completed in {time() - process_traces_start_time:.2f} seconds"
         )
 
-        if failed_operations:
-            Logger.instance().info("")
-            Logger.instance().info("The following operations failed:")
-            for failure in failed_operations:
-                Logger.instance().error(f"\t{failure}")
-            Logger.instance().info("")
+        # Deploy the project
+        url = f"{host}/api/projects/{project_id}/"
+        response = requests.put(
+            url, data=json.dumps({"deploy_finished_at": "now"}), headers=json_headers
+        )
+        if response.status_code == 200:
+            Logger.instance().success(
+                f"Deployment completed in {time() - deploy_start_time:.2f} seconds"
+            )
+        else:
             Logger.instance().info(
                 f"Deployment failed in {time() - deploy_start_time:.2f} seconds"
             )
             sys.exit(1)
-        Logger.instance().success(
-            f"Deployment completed in {time() - deploy_start_time:.2f} seconds"
-        )
         return project_url
     else:
         Logger.instance().info(

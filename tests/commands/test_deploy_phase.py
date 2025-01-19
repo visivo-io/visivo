@@ -100,11 +100,6 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         url="http://host/api/traces/",
         status_code=201,
     )
-    httpx_mock.add_response(
-        method="POST",
-        url="http://host/api/traces/",
-        status_code=201,
-    )
     requests_mock.post(
         "http://host/api/projects/",
         json={"name": "name", "id": "id", "url": "/url"},
@@ -124,4 +119,4 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     assert "Processing trace uploads and record creations..." in stdout
     assert "Deployment completed in" in stdout
     assert stdout.count("Skipping") == 0
-    assert stdout.count("[4/4]") == 1
+    assert stdout.count("[5/5]") == 1
