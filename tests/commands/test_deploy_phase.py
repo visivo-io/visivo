@@ -50,12 +50,12 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     project = ProjectFactory()
     data_file_starts = [
         {
-            "filename": "trace.json",
-            "id": "id2",
-            "upload_url": "http://google/upload/id2",
+            "name": "trace.json",
+            "id": "id1",
+            "upload_url": "http://google/upload/id1",
         },
         {
-            "filename": "trace-two.json",
+            "name": "trace-two.json",
             "id": "id2",
             "upload_url": "http://google/upload/id2",
         },
@@ -81,12 +81,12 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         json=data_file_starts,
     )
     httpx_mock.add_response(
-        method="POST",
+        method="PUT",
         url="http://google/upload/id1",
         status_code=200,
     )
     httpx_mock.add_response(
-        method="POST",
+        method="PUT",
         url="http://google/upload/id2",
         status_code=200,
     )
@@ -95,7 +95,6 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         url="http://host/api/files/direct/finish/",
         status_code=204,
     )
-
     httpx_mock.add_response(
         method="POST",
         url="http://host/api/traces/",

@@ -35,9 +35,7 @@ async def create_trace_files(batch, form_headers, host, progress):
                 response = await client.post(url, json=files, headers=form_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
-                Logger.instance().success(
-                    f"\t{len(batch)} trace data files created."
-                )
+                Logger.instance().success(f"\t{len(batch)} trace data files created.")
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
@@ -54,22 +52,22 @@ async def create_trace_files(batch, form_headers, host, progress):
                 progress["failed"].append(f"Trace data file creation: {repr(e)}")
             raise
 
+
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def finish_trace_files(trace_start_responses, form_headers, host, progress):
+async def finish_trace_files(batch_ids, form_headers, host, progress):
     """
     Asynchronously uploads trace data files.
     """
-    files = list(map(lambda trace_start_response: {"id": trace_start_response["id"]}, trace_start_responses))
     url = f"{host}/api/files/direct/finish/"
     attempt.set(attempt.get(0) + 1)
     async with semaphore:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
-                response = await client.post(url, json=files, headers=form_headers)
+                response = await client.post(url, json=batch_ids, headers=form_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
-                    f"\t{len(trace_start_responses)} trace data files finished [{progress['completed']}/{progress['total']}]"
+                    f"\t{len(batch_ids)} trace data files finished [{progress['completed']}/{progress['total']}]"
                 )
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
@@ -86,6 +84,7 @@ async def finish_trace_files(trace_start_responses, form_headers, host, progress
                 progress["failed"].append(f"Trace data file creation: {repr(e)}")
             raise
 
+
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
 async def upload_trace_data(data_file_upload, output_dir, form_headers, host, progress):
     """
@@ -95,7 +94,7 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
     trace_name = data_file_upload["name"].split(".")[0]
     async with semaphore:
         try:
-            data_file = f"{output_dir}/{data_file_upload['name']}"
+            data_file = f"{output_dir}/{trace_name}/data.json"
             async with httpx.AsyncClient(timeout=60) as client:
                 async with aiofiles.open(data_file, "rb") as f:
                     files = {
@@ -105,8 +104,11 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
                             "application/json",
                         )
                     }
-                    url = f"{host}/api/files/"
-                    response = await client.post(url, files=files, headers=form_headers)
+                    response = await client.put(
+                        data_file_upload["upload_url"],
+                        files=files,
+                        headers=form_headers,
+                    )
                     response.raise_for_status()
                     progress["completed"] += 1
                     Logger.instance().success(
@@ -192,6 +194,7 @@ async def process_traces_async(
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     data_file_uploads = [item for sublist in data_file_ids for item in sublist]
 
+    tasks = []
     for data_file_upload in data_file_uploads:
         # Upload data files concurrently
         data_file_task = upload_trace_data(
@@ -203,6 +206,16 @@ async def process_traces_async(
     await asyncio.gather(*tasks, return_exceptions=True)
 
     data_file_ids = [item["id"] for item in data_file_uploads]
+
+    tasks = []
+    for i in range(0, len(data_file_ids), batch_size):
+        batch = data_file_ids[i : i + batch_size]
+        create_trace_files_task = finish_trace_files(
+            batch, form_headers, host, progress
+        )
+        tasks.append(create_trace_files_task)
+
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     # Prepare to create trace records based on successful uploads
     record_tasks = []
