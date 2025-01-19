@@ -1,6 +1,7 @@
 from visivo.models.trace import Trace
 import click
 import requests
+import math
 import json
 import sys
 import asyncio
@@ -60,10 +61,11 @@ async def finish_trace_files(batch_ids, form_headers, host, progress):
     """
     url = f"{host}/api/files/direct/finish/"
     attempt.set(attempt.get(0) + 1)
+    ids = list(map(lambda id: {"id": id}, batch_ids))
     async with semaphore:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
-                response = await client.post(url, json=batch_ids, headers=form_headers)
+                response = await client.post(url, json=ids, headers=form_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
@@ -97,16 +99,9 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
             data_file = f"{output_dir}/{trace_name}/data.json"
             async with httpx.AsyncClient(timeout=60) as client:
                 async with aiofiles.open(data_file, "rb") as f:
-                    files = {
-                        "file": (
-                            data_file_upload["name"],
-                            await f.read(),
-                            "application/json",
-                        )
-                    }
                     response = await client.put(
                         data_file_upload["upload_url"],
-                        files=files,
+                        data=f,
                         headers=form_headers,
                     )
                     response.raise_for_status()
@@ -178,13 +173,16 @@ async def process_traces_async(
     """
     Coordinates the asynchronous upload of trace data files and the creation of trace records.
     """
+    batch_size = 50
     total_operations = (
         len(traces) * 2
     )  # Each trace has a data upload and record creation
+
+    # For each batch upload
+    total_operations += 2 * math.ceil(len(traces) / batch_size)
     progress = {"completed": 0, "total": total_operations, "failed": []}
 
     tasks = []
-    batch_size = 50
     for i in range(0, len(traces), batch_size):
         batch = traces[i : i + batch_size]
         create_trace_files_task = create_trace_files(
