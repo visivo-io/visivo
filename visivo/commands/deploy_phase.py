@@ -46,7 +46,7 @@ async def create_trace_files(batch, form_headers, host, progress):
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create trace data files: {repr(e)}"
             )
             raise
 
@@ -68,14 +68,15 @@ async def finish_trace_files(batch_ids, form_headers, host, progress):
                 Logger.instance().success(
                     f"\t{len(batch_ids)} trace data files finished [{progress['completed']}/{progress['total']}]"
                 )
+                return "finished"
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while finishing trace data files: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to finish trace data files: {repr(e)}"
             )
             raise
 
@@ -102,6 +103,7 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
                     Logger.instance().success(
                         f"\tTrace '{trace_name}' data uploaded [{progress['completed']}/{progress['total']}]"
                     )
+                    return "uploaded"
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace '{trace_name}': {repr(e)} - Response: {e.response.text}"
@@ -139,6 +141,7 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
                 Logger.instance().success(
                     f"\t{len(batch)} traces created [{progress['completed']}/{progress['total']}]"
                 )
+                return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
                 f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {len(batch)} traces: {repr(e)} - Response: {e.response.text}"
@@ -172,6 +175,9 @@ async def process_traces_async(
         )
         tasks.append(create_trace_files_task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
+        raise click.ClickException("Failed to create trace data files.")
+
     data_file_uploads = [item for sublist in data_file_ids for item in sublist]
 
     tasks = []
@@ -183,7 +189,9 @@ async def process_traces_async(
         tasks.append(data_file_task)
 
     # Wait for all data uploads to complete and gather results
-    await asyncio.gather(*tasks, return_exceptions=True)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to upload trace data.")
 
     data_file_ids = [item["id"] for item in data_file_uploads]
 
@@ -195,7 +203,9 @@ async def process_traces_async(
         )
         tasks.append(create_trace_files_task)
 
-    await asyncio.gather(*tasks, return_exceptions=True)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to finish trace data files.")
 
     # Prepare to create trace records based on successful uploads
     tasks = []
@@ -205,7 +215,9 @@ async def process_traces_async(
         tasks.append(task)
 
     # Execute the creation of trace records concurrently
-    await asyncio.gather(*tasks, return_exceptions=True)
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to create trace records.")
 
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host):

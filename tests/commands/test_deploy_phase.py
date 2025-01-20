@@ -1,5 +1,7 @@
 import os
 import json
+
+import click
 from tests.factories.model_factories import ProjectFactory, TraceFactory
 from tests.support.utils import temp_file, temp_folder, temp_yml_file
 from visivo.commands.deploy_phase import deploy_phase
@@ -25,7 +27,7 @@ def test_deploy_upload_trace_data_failure(requests_mock, capsys):
         status_code=201,
     )
 
-    with raises(SystemExit) as exc_info:
+    with raises(click.ClickException) as exc_info:
         url = deploy_phase(
             stage="stage",
             working_dir=working_dir,
@@ -37,12 +39,10 @@ def test_deploy_upload_trace_data_failure(requests_mock, capsys):
     stdout = captured.out
     assert "Uploading project information..." in stdout
     assert "Project uploaded in" in stdout
-    assert "[Attempt 2/3] Failed to upload trace data for 'trace-two'" in stdout
-    assert "[Attempt 2/3] Failed to upload trace data for 'trace'" in stdout
+    assert "[Attempt 1/3] Failed to create trace data files" in stdout
+    assert "[Attempt 2/3] Failed to create trace data files" in stdout
+    assert "[Attempt 3/3] Failed to create trace data files" in stdout
     assert "Processing trace uploads and record creations..." in stdout
-    assert "Deployment failed in" in stdout
-    assert stdout.count("Skipping") == 2
-    assert stdout.count("Data upload for 'trace") == 2
 
 
 def test_deploy_success(requests_mock, httpx_mock, capsys):
@@ -98,12 +98,18 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     httpx_mock.add_response(
         method="POST",
         url="http://host/api/traces/",
+        json=[{"id": "id1"}, {"id": "id2"}],
         status_code=201,
     )
     requests_mock.post(
         "http://host/api/projects/",
         json={"name": "name", "id": "id", "url": "/url"},
         status_code=201,
+    )
+    requests_mock.put(
+        "http://host/api/projects/id/",
+        json={"deploy_finished_at": "now"},
+        status_code=200,
     )
 
     url = deploy_phase(
