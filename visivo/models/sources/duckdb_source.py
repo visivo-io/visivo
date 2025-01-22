@@ -77,6 +77,9 @@ class DuckdbSource(Source):
     def connect(self):
         return DuckDBConnection(source=self)
 
+    def get_dialect(self):
+        return "duckdb"
+
 class DuckDBConnection:
     def __init__(self, source: DuckdbSource):
         self.source = source

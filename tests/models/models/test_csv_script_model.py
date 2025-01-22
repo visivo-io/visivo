@@ -28,7 +28,7 @@ def test_CsvScriptModel_insert_data_bad_csv():
     os.makedirs(output_dir, exist_ok=True)
     with pytest.raises(click.ClickException) as exc_info:
         model.insert_csv_to_duckdb(output_dir)
-
+    print(exc_info.value.message)
     assert (
         exc_info.value.message
         == f"Error parsing csv output of model model's command. Verify command's output and try again."

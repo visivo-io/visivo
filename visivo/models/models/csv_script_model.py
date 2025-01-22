@@ -132,6 +132,6 @@ class CsvScriptModel(Model):
                 connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
         except Exception as e:
             raise click.ClickException(
-                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again. Error: {str(e)}"
+                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
         
