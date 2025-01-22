@@ -122,15 +122,16 @@ class CsvScriptModel(Model):
         import subprocess
 
         process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
-        engine = self.get_duckdb_source(output_dir).get_engine()
         try:
-            csv = io.StringIO(process.stdout.read().decode())
-            data_frame = pandas.read_csv(csv)
-            data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
-        except:
+            source = self.get_duckdb_source(output_dir)
+            with source.connect() as connection:
+                csv = io.StringIO(process.stdout.read().decode())
+                data_frame = pandas.read_csv(csv)
+                connection.execute(f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM data_frame")
+                connection.execute(f"DELETE FROM {self.table_name}")
+                connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
+        except Exception as e:
             raise click.ClickException(
-                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
+                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again. Error: {str(e)}"
             )
-        finally:
-            engine.dispose()
         

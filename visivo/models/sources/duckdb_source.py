@@ -1,7 +1,9 @@
 from typing import Literal, Optional, List
 from visivo.models.base.base_model import BaseModel
-from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import Source
 from pydantic import Field
+import duckdb
+import click
 
 DuckdbType = Literal["duckdb"]
 
@@ -12,7 +14,7 @@ class DuckdbAttachment(BaseModel):
         description="Local Duckdb database source to attach in the connection that will be available in the base SQL query.",
     )
 
-class DuckdbSource(SqlalchemySource):
+class DuckdbSource(Source):
     """
     DuckdbSources hold the connection information to DuckDB data sources.
 
@@ -42,5 +44,50 @@ class DuckdbSource(SqlalchemySource):
         description="List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.",
     )
 
-    def get_dialect(self):
-        return "duckdb"
+    _connection: Optional[duckdb.DuckDBPyConnection] = None
+
+    def get_connection(self):
+        try:
+            if not self._connection:
+                self._connection = duckdb.connect(self.database)
+                
+                if self.attach:
+                    for attachment in self.attach:
+                        self._connection.execute(
+                            f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name}"
+                        )
+            
+            return self._connection
+
+        except Exception as err:
+            raise click.ClickException(
+                f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
+            )
+
+    def read_sql(self, query: str):
+        try:
+            with self.connect() as connection:
+                result = connection.execute(query).fetchdf()
+                return result
+        except Exception as err:
+            raise click.ClickException(
+                f"Error executing query on source '{self.name}': {str(err)}"
+            )
+
+    def connect(self):
+        return DuckDBConnection(source=self)
+
+class DuckDBConnection:
+    def __init__(self, source: DuckdbSource):
+        self.source = source
+        self.conn = None
+
+    def __enter__(self):
+        self.conn = self.source.get_connection()
+        return self.conn
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+            self.source._connection = None
