@@ -147,6 +147,16 @@ tasks:
     env:
       STACKTRACE: true
     filter: [test-projects/docs-examples]
+  
+  - key: test-duckdb
+    use: visivo-install
+    run: |
+      cd test-projects/integration
+      visivo run -s local-duckdb
+      visivo test -s local-duckdb
+    env:
+      STACKTRACE: true
+    filter: [test-projects/integration]
 
   - key: postgres-packages
     run: |
