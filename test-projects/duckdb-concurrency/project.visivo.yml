@@ -1,0 +1,45 @@
+path: project
+name: duckdb-concurrency
+defaults:
+  source_name: Example Source
+includes: []
+destinations: []
+alerts: []
+sources:
+- name: Example Source
+  database: local.db
+  type: duckdb
+
+models:
+  - name: duck-db-model
+    sql: select * from test_table
+
+traces:
+  #{% for i in range(100) %}
+  - name: "trace-{{i}}"
+    model: ${ref(duck-db-model)}
+    props:
+      type: bar 
+      x: query(x*{{i}})
+      y: query(y*{{i}})
+  #{% endfor %}
+tables: []
+charts: []
+selectors: []
+dashboards:
+- name: Example Dashboard
+  rows:
+  - height: medium
+    items:
+    - width: 1
+      chart:
+        name: Example Chart
+        traces:
+        - name: Example Trace
+          model:
+            name: Example Model
+            sql: select * from test_table
+          props:
+            type: scatter
+            x: query(x)
+            y: query(y)

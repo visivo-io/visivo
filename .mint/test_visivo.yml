@@ -148,6 +148,16 @@ tasks:
       STACKTRACE: true
     filter: [test-projects/docs-examples]
   
+  - key: test-duckdb-concurrency
+    use: visivo-install
+    run: |
+      cd test-projects/duckdb-concurrency
+      visivo run
+      visivo test
+    env:
+      STACKTRACE: true
+    filter: [test-projects/duckdb-concurrency]
+
   - key: test-duckdb
     use: visivo-install
     run: |
