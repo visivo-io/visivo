@@ -6,6 +6,7 @@ from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.model import Model
 from visivo.models.sources.duckdb_source import DuckdbAttachment, DuckdbSource
+import click
 import os
 
 from visivo.models.sources.source import Source
@@ -62,17 +63,12 @@ class LocalMergeModel(Model, ParentModel):
             attach=attach,
         )
 
-    def insert_dependent_models_to_duckdb(self, output_dir, dag):
+    def _insert_dependent_models_to_duckdb(self, output_dir, dag):
         for model in self._get_dereferenced_models(dag):
             if isinstance(model, CsvScriptModel):
-                continue  # CsvScriptModels are handled by their own job
+                continue  # CsvScriptModels are attached from their existing duckdb file. 
             elif isinstance(model, LocalMergeModel):
-                # Execute the inner merge model's SQL and persist it
-                duckdb_source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-                data_frame = duckdb_source.read_sql(model.sql)
-                with duckdb_source.connect() as connection:
-                    connection.execute("DROP TABLE IF EXISTS model")
-                    connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+                continue # LocalMergeModels are attached from their existing duckdb file. 
             else:
                 duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
                 source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
@@ -80,6 +76,18 @@ class LocalMergeModel(Model, ParentModel):
                 with duckdb_source.connect() as connection:
                     connection.execute("DROP TABLE IF EXISTS model")
                     connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+
+    def insert_duckdb_data(self, output_dir, dag):
+        try:
+            self._insert_dependent_models_to_duckdb(output_dir, dag)
+        except Exception as e:
+            raise click.ClickException(f"Failed to insert dependent models to duckdb for model {self.name}. Error: {str(e)}")
+
+        duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
+        data_frame = duckdb_source.read_sql(self.sql)
+        with duckdb_source.connect() as connection:
+            connection.execute("DROP TABLE IF EXISTS model")
+            connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):

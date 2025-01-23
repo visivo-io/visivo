@@ -78,7 +78,7 @@ def _format_message(details, status, full_path=None, error_msg=None):
     action = ""
     if relative_path.endswith(".sql"):
         action = "query: "
-    elif relative_path.endswith(".sqlite"):
+    elif relative_path.endswith(".duckdb"):
         action = "database file: "
 
     return (
