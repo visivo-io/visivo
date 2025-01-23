@@ -98,8 +98,6 @@ def handle_attribute_properties(model_defs: dict, attribute_property_object: dic
         try:
             type, default = handle_allOf(attribute_property_object, model_defs)
         except Exception as e:
-            print(f"attribute_key_type: {attribute_key_type}")
-            print(f"attribute_property_object: {attribute_property_object}")
             raise e
     elif "anyOf" in attribute_key_type:
         type, default = handle_anyOf(attribute_property_object)

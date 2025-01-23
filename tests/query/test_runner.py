@@ -86,7 +86,9 @@ def test_runner_with_local_merge_model():
     create_file_database(url=source2.url(), output_dir=output_dir)
 
     model = LocalMergeModelFactory(
-        name="local_merge_model", models=[sub_model1, sub_model2]
+        name="local_merge_model", 
+        sql="select t1.x as x, t2.y as y, 'values' as 'cohort_on' from model1.model t1 JOIN model2.model t2 on t1.x=t2.x",
+        models=[sub_model1, sub_model2]
     )
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
@@ -94,7 +96,7 @@ def test_runner_with_local_merge_model():
     os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
         fp.write(
-            "select t1.x as x, t2.y as y, 'values' as 'cohort_on' from model1.model t1 JOIN model2.model t2 on t1.x=t2.x"
+            "SELECT * FROM local_merge_model.model"
         )
 
     runner = Runner(project=project, output_dir=output_dir)

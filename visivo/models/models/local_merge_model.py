@@ -83,9 +83,9 @@ class LocalMergeModel(Model, ParentModel):
         except Exception as e:
             raise click.ClickException(f"Failed to insert dependent models to duckdb for model {self.name}. Error: {str(e)}")
 
-        duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
-        data_frame = duckdb_source.read_sql(self.sql)
+        duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)    
         with duckdb_source.connect() as connection:
+            data_frame = connection.execute(self.sql).fetchdf()
             connection.execute("DROP TABLE IF EXISTS model")
             connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
 

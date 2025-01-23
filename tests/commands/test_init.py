@@ -87,7 +87,6 @@ def test_init_with_snowflake():
         + "password\n"
         + "token\n",
     )
-    print(response.output)
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=password"
@@ -114,7 +113,6 @@ def test_init_with_bigquery():
         + "credentials_base64\n"
         + "token\n",
     )
-    print(response.output)
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=credentials_base64"
