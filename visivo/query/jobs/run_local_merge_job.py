@@ -18,7 +18,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
     Logger.instance().info(start_message("LocalMergeModel", local_merge_model))
     try:
         start_time = time()
-        local_merge_model.insert_dependent_models_to_duckdb(
+        local_merge_model.insert_duckdb_data(
             output_dir=output_dir, dag=dag
         )
         success_message = format_message_success(

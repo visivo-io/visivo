@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
 from visivo.models.sources.duckdb_source import DuckdbSource
@@ -102,7 +102,10 @@ class CsvScriptModel(Model):
     args: List[str] = Field(
         description="An array of the variables that build your command to run."
     )
-
+    changed: Optional[bool] = Field(
+        True,
+        description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the CsvScriptModel should be re-run",
+    )
     @property
     def sql(self):
         return f"select * from {self.table_name}"
@@ -119,12 +122,16 @@ class CsvScriptModel(Model):
         import subprocess
 
         process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
-        engine = self.get_duckdb_source(output_dir).get_engine()
         try:
-            csv = io.StringIO(process.stdout.read().decode())
-            data_frame = pandas.read_csv(csv)
-        except:
+            source = self.get_duckdb_source(output_dir)
+            with source.connect() as connection:
+                csv = io.StringIO(process.stdout.read().decode())
+                data_frame = pandas.read_csv(csv)
+                connection.execute(f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM data_frame")
+                connection.execute(f"DELETE FROM {self.table_name}")
+                connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
+        except Exception as e:
             raise click.ClickException(
                 f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
             )
-        data_frame.to_sql(self.table_name, engine, if_exists="replace", index=False)
+        
