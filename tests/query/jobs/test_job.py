@@ -11,7 +11,7 @@ from visivo.query.jobs.job import (
 
 def test_runner_message_success():
     details = "Testing Details"
-    full_path = temp_file("test.sqlite", "file")
+    full_path = temp_file("test.duckdb", "file")
 
     message = format_message_success(
         details=details, start_time=time(), full_path=full_path

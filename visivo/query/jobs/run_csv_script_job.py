@@ -43,6 +43,7 @@ def job(csv_script_model, output_dir: str):
         item=csv_script_model,
         source=csv_script_model.get_duckdb_source(output_dir),
         action=action,
+        output_changed=csv_script_model.changed,
         csv_script_model=csv_script_model,
         output_dir=output_dir,
     )

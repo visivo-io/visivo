@@ -5,6 +5,7 @@ from visivo.discovery.discover import Discover
 from visivo.models.dag import all_descendants_of_type, filter_dag
 from visivo.models.defaults import Defaults
 from visivo.models.models.csv_script_model import CsvScriptModel
+from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.base.parent_model import ParentModel
@@ -35,7 +36,7 @@ def compile_phase(
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
         fp.write(
-            serializer.dereference().model_dump_json(exclude_none=True, by_alias=True)
+            serializer.dereference().model_dump_json(exclude_none=True)
         )
 
     dag = project.dag()
@@ -45,6 +46,8 @@ def compile_phase(
         model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
         if isinstance(model, CsvScriptModel):
             source = model.get_duckdb_source(output_dir=output_dir)
+        elif isinstance(model, LocalMergeModel):
+            source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
         else:
             source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
         tokenized_trace = TraceTokenizer(

@@ -39,7 +39,7 @@ def test_insert_dependent_models_successfully_inserts_to_duckdb(mocker):
         ],
     )
 
-    local_merge_model.insert_dependent_models_to_duckdb(
+    local_merge_model._insert_dependent_models_to_duckdb(
         output_dir, local_merge_model.dag()
     )
 

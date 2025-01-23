@@ -140,7 +140,6 @@ def test_example_in_docs_read_json_file():
         + f"'{path}'"
         + ")['accounts'] %}{{ accounts }}"
     )
-    print(path)
     rendered = render_yaml(template)
 
     assert rendered == "['Acme Co', 'Knights of Ni LTD']"
