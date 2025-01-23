@@ -43,20 +43,19 @@ class DuckdbSource(Source):
         description="List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.",
     )
 
-    _connection: Optional[duckdb.DuckDBPyConnection] = None
 
     def get_connection(self, read_only: bool = False):
         try:
-            if not self._connection:
-                self._connection = duckdb.connect(self.database, read_only=read_only)
-                
-                if self.attach:
-                    for attachment in self.attach:
-                        self._connection.execute(
-                            f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name}"
-                        )
             
-            return self._connection
+            connection = duckdb.connect(self.database, read_only=read_only)
+            
+            if self.attach:
+                for attachment in self.attach:
+                    connection.execute(
+                        f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name}"
+                    )
+            
+            return connection 
 
         except Exception as err:
             raise click.ClickException(
@@ -93,4 +92,3 @@ class DuckDBConnection:
         if self.conn:
             self.conn.close()
             self.conn = None
-            self.source._connection = None
