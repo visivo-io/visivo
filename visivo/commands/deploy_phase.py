@@ -17,7 +17,7 @@ from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 
 # Limit concurrent uploads to avoid overloading the API
-semaphore_1 = asyncio.Semaphore(1)
+semaphore_3 = asyncio.Semaphore(3)
 semaphore_50 = asyncio.Semaphore(50)
 attempt = contextvars.ContextVar("attempt")
 MAX_ATTEMPTS = 3
@@ -31,7 +31,7 @@ async def create_trace_files(batch, form_headers, host, progress):
     files = list(map(lambda trace: {"filename": f"{trace.name}.json"}, batch))
     url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
-    async with semaphore_1:
+    async with semaphore_3:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(url, json=files, headers=form_headers)
@@ -59,7 +59,7 @@ async def finish_trace_files(batch_ids, form_headers, host, progress):
     url = f"{host}/api/files/direct/finish/"
     attempt.set(attempt.get(0) + 1)
     ids = list(map(lambda id: {"id": id}, batch_ids))
-    async with semaphore_1:
+    async with semaphore_3:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 response = await client.post(url, json=ids, headers=form_headers)
@@ -131,7 +131,7 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
             batch,
         )
     )
-    async with semaphore_1:
+    async with semaphore_3:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 url = f"{host}/api/traces/"
@@ -160,7 +160,7 @@ async def process_traces_async(
     """
     Coordinates the asynchronous upload of trace data files and the creation of trace records.
     """
-    batch_size = 50
+    batch_size = 20
     total_operations = len(traces)  # Each trace has a data upload
 
     # For each batch upload
