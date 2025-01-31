@@ -1,18 +1,34 @@
+import os
+import yaml
 import click
+from visivo.logging.logger import Logger
 
-from visivo.commands.options import host
 
-
-@click.command()
-@host
-def login(host):
+def login_phase(host, user_dir):
     """
-    Guides the user to create or store the token in ~/.visivo/profile.yml.
+    Handles the prompt logic and writes the token into ~/.visivo/profile.yml.
     """
-    from visivo.logging.logger import Logger
+    try:
+        Logger.instance().success("Initialized")
+        create_token = click.confirm(
+            "Do you already have a Visivo token?", default=False
+        )
 
-    Logger.instance().debug("Starting login process...")
-    from visivo.commands.login_phase import login_phase
+        if not create_token:
+            click.echo(f"\nVisit {host}/profile/settings to create your token.\n")
+            return
 
-    login_phase(host)
-    Logger.instance().success("Login process completed.")
+        token = click.prompt("Please paste your Visivo token", type=str)
+
+        visivo_dir = os.path.join(user_dir, ".visivo")
+        profile_file = os.path.join(visivo_dir, "profile.yml")
+
+        os.makedirs(visivo_dir, exist_ok=True)
+
+        with open(profile_file, "w") as f:
+            yaml.dump({"token": token}, f, default_flow_style=False)
+
+        click.echo(f"\nToken saved successfully to {profile_file}.")
+
+    except Exception as e:
+        raise click.ClickException(f"Error during login process: {str(e)}")
