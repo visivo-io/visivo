@@ -3,7 +3,7 @@ import re
 import os
 from visivo.logging.logger import Logger
 import json
-from flask import Flask, current_app, send_from_directory
+from flask import Flask, current_app, send_from_directory, request, jsonify
 from livereload import Server
 from .run_phase import run_phase
 import datetime
@@ -50,6 +50,51 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
         threads=threads,
     )
     write_dag(project=runner.project, output_dir=output_dir)
+
+    @app.route("/api/query/<project_id>", methods=["POST"])
+    def execute_query(project_id):
+        try:
+            data = request.get_json()
+            if not data or "query" not in data:
+                return jsonify({"message": "No query provided"}), 400
+
+            query = data["query"]
+            
+            # Get the appropriate source based on the query context
+            source = None
+            if runner.project.defaults and runner.project.defaults.source_name:
+                # Find source by name from defaults
+                source = next(
+                    (s for s in runner.project.sources if s.name == runner.project.defaults.source_name),
+                    None
+                )
+            
+            if not source and runner.project.sources:
+                # Fallback to first source if no default
+                source = runner.project.sources[0]
+                
+            if not source:
+                return jsonify({"message": "No source configured"}), 400
+
+            # Execute the query using read_sql
+            result = source.read_sql(query)
+            
+            # Transform the result into the expected format
+            if result is None or result.empty:
+                return jsonify({"columns": [], "rows": []}), 200
+
+            # Result is a pandas DataFrame
+            columns = list(result.columns)
+            rows = result.to_dict('records')
+
+            return jsonify({
+                "columns": columns,
+                "rows": rows
+            }), 200
+
+        except Exception as e:
+            Logger.instance().error(f"Query execution error: {str(e)}")
+            return jsonify({"message": str(e)}), 500
 
     @app.route("/data/error.json")
     def error():
