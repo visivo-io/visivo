@@ -54,6 +54,7 @@ class TraceTokenizer:
         if self.trace.name:
             cohort_on = cohort_on or f"'{self.trace.name}'"
         cohort_on = cohort_on or DEFAULT_COHORT_ON
+        # TODO Replace with query string
         de_query = extract_value_from_function(cohort_on, "query")
         return de_query if de_query else cohort_on
 
