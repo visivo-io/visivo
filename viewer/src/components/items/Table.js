@@ -25,10 +25,8 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 
 const Table = ({ table, project, itemWidth, height, width }) => {
-    console.log('Table props:', { table, project, itemWidth, height, width });
     const traceNames = table.traces.map((trace) => trace.name);
     const tracesData = useTracesData(project.id, traceNames);
-    console.log('Table tracesData:', tracesData);
     const [selectedTableCohort, setSelectedTableCohort] = useState(null);
     const [columns, setColumns] = useState([]);
     const [tableData, setTableData] = useState([]);

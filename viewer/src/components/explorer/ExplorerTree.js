@@ -1,68 +1,80 @@
 import React from 'react';
-import { TreeView, TreeItem } from '@mui/lab';
-import { Typography, IconButton, Tooltip } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import StorageIcon from '@mui/icons-material/Storage';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
-const ExplorerTree = ({ data, type, onItemClick }) => {
-  const getIcon = () => {
+const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
+  const validData = React.useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return data.filter(item => item && typeof item === 'object' && item.name);
+  }, [data]);
+
+  const getIcon = React.useCallback(() => {
     switch (type) {
       case 'sources':
-        return <StorageIcon fontSize="small" />;
+        return <StorageIcon className="w-4 h-4 text-gray-500" />;
       case 'models':
-        return <TableChartIcon fontSize="small" />;
+        return <TableChartIcon className="w-4 h-4 text-gray-500" />;
       case 'traces':
-        return <TimelineIcon fontSize="small" />;
+        return <TimelineIcon className="w-4 h-4 text-gray-500" />;
       default:
         return null;
     }
-  };
+  }, [type]);
 
-  const handleCopyName = (e, name) => {
+  const handleCopyName = React.useCallback((e, name) => {
     e.stopPropagation();
     navigator.clipboard.writeText(name);
-  };
+  }, []);
 
-  const renderTree = (nodes) => (
-    <TreeItem
-      key={nodes.id}
-      nodeId={nodes.id}
-      onClick={() => onItemClick(nodes)}
-      label={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {getIcon()}
-          <Typography variant="body2">{nodes.name}</Typography>
-          <Tooltip title="Copy name">
-            <IconButton
-              size="small"
-              onClick={(e) => handleCopyName(e, nodes.name)}
-              sx={{ ml: 'auto' }}
-            >
-              <ContentCopyIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+  const renderTreeItem = React.useCallback((node) => {
+    if (!node || !node.id || !node.name) return null;
+
+    return (
+      <li key={node.id} className="mb-1">
+        <div
+          className="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 cursor-pointer group"
+          onClick={() => onItemClick(node)}
+        >
+          <div className="flex items-center flex-1 min-w-0">
+            {getIcon()}
+            <span className="ml-3 text-sm font-medium truncate">{node.name}</span>
+          </div>
+          <button
+            onClick={(e) => handleCopyName(e, node.name)}
+            className="relative inline-flex items-center p-1 text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-none opacity-0 group-hover:opacity-100"
+          >
+            <ContentCopyIcon className="w-4 h-4" />
+            <span className="sr-only">Copy name</span>
+          </button>
         </div>
-      }
-    >
-      {Array.isArray(nodes.children)
-        ? nodes.children.map((node) => renderTree(node))
-        : null}
-    </TreeItem>
-  );
+        {Array.isArray(node.children) && node.children.length > 0 && (
+          <ul className="pl-6 mt-1">
+            {node.children
+              .filter(child => child && child.id && child.name)
+              .map(child => renderTreeItem(child))}
+          </ul>
+        )}
+      </li>
+    );
+  }, [getIcon, handleCopyName, onItemClick]);
+
+  if (!validData.length) {
+    return (
+      <div className="p-4 text-sm text-gray-500 text-center">
+        No items to display
+      </div>
+    );
+  }
 
   return (
-    <TreeView
-      defaultCollapseIcon={<ExpandMoreIcon />}
-      defaultExpandIcon={<ChevronRightIcon />}
-      sx={{ flexGrow: 1, maxWidth: '100%', overflowY: 'auto' }}
-    >
-      {data.map((item) => renderTree(item))}
-    </TreeView>
+    <div className="overflow-y-auto h-full">
+      <ul className="space-y-1">
+        {validData.map(item => renderTreeItem(item))}
+      </ul>
+    </div>
   );
-};
+});
 
 export default ExplorerTree; 

@@ -51,6 +51,14 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
     )
     write_dag(project=runner.project, output_dir=output_dir)
 
+    @app.route("/data/explorer.json")
+    def explorer():
+        if os.path.exists(f"{output_dir}/explorer.json"):
+            with open(f"{output_dir}/explorer.json", "r") as f:
+                return json.load(f)
+        else:
+            return json.dumps({})
+
     @app.route("/api/query/<project_id>", methods=["POST"])
     def execute_query(project_id):
         try:
@@ -180,4 +188,5 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads):
 
     server = Server(app.wsgi_app)
     server.watch(filepath="**/*.yml", func=cli_changed, ignore=ignore)
+    server.watch(filepath=f"{output_dir}/explorer.json", func=cli_changed)
     return server

@@ -19,6 +19,37 @@ from .utils import parse_project_file
 from .dbt_phase import dbt_phase
 
 
+def flatten_project_objects(project):
+    """
+    Traverse the project structure and collect all sources, models, and traces
+    into flat lists at the top level.
+    """
+    flattened = {
+        'sources': [],
+        'models': [],
+        'traces': []
+    }
+    
+    def collect_objects(obj):
+        if hasattr(obj, 'sources'):
+            flattened['sources'].extend(obj.sources)
+        if hasattr(obj, 'models'):
+            flattened['models'].extend(obj.models)
+        if hasattr(obj, 'traces'):
+            flattened['traces'].extend(obj.traces)
+            
+        # Recursively traverse nested objects
+        for attr_name, attr_value in obj.__dict__.items():
+            if isinstance(attr_value, (list, tuple)):
+                for item in attr_value:
+                    if isinstance(item, ParentModel):
+                        collect_objects(item)
+            elif isinstance(attr_value, ParentModel):
+                collect_objects(attr_value)
+    
+    collect_objects(project)
+    return flattened
+
 def compile_phase(
     default_source: str,
     working_dir: str,
@@ -31,13 +62,21 @@ def compile_phase(
 
     Logger.instance().debug("Compiling project")
     project = parse_project_file(working_dir, output_dir, default_source)
-
+    
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Write the original project.json
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
         fp.write(
             serializer.dereference().model_dump_json(exclude_none=True)
         )
+    
+    # Write the flattened explorer.json for the QueryExplorer
+    with open(f"{output_dir}/explorer.json", "w") as fp:
+        serializer = Serializer(project=project)
+        explorer_data = serializer.create_flattened_project()
+        json.dump(explorer_data, fp)
 
     dag = project.dag()
     filtered_dag = filter_dag(dag, dag_filter)
