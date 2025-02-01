@@ -13,7 +13,5 @@ def aggregate(output_dir, json_file):
 
     Logger.instance().debug("Aggregating")
 
-    from visivo.query.runner import Runner
-
     Aggregator.aggregate(trace_dir=output_dir, json_file=json_file)
     Logger.instance().success("Done")
