@@ -1,3 +1,6 @@
+import re
+from visivo.models.base.base_model import STATEMENT_REGEX
+from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX, QueryString
 from visivo.models.trace_props.bar import Bar
 from visivo.models.trace_props.barpolar import Barpolar
 from visivo.models.trace_props.box import Box
@@ -44,8 +47,9 @@ from visivo.models.trace_props.treemap import Treemap
 from visivo.models.trace_props.violin import Violin
 from visivo.models.trace_props.volume import Volume
 from visivo.models.trace_props.waterfall import Waterfall
-from typing import Union, Annotated
-from pydantic import Field
+from typing import Any, Union, Annotated
+from pydantic import Discriminator, Field, Tag, constr
+
 
 TracePropsFieldUnion = Union[
     Bar,

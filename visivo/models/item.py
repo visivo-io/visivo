@@ -29,7 +29,7 @@ class Item(NamedModel, ParentModel):
         selector: ref(selector-name)
     ```
     ## Markdown
-    You can use markdown to add formatted text to your dashboard. Visivo markdown supports [CommonMark](https://commonmark.org/help/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). You can also 
+    You can use markdown to add formatted text to your dashboard. Visivo markdown supports [CommonMark](https://commonmark.org/help/) and [GitHub Flavored Markdown](https://github.github.com/gfm/). You can also
     render raw HTML within your markdown.
 
     To control the alignment of markdown content, you can use the `align` and `justify` properties.
@@ -125,12 +125,14 @@ class Item(NamedModel, ParentModel):
         None, description="Markdown text to include in the dashboard."
     )
     align: Optional[Literal["left", "center", "right"]] = Field(
-        None, 
-        description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'."
-    )
-    justify: Optional[Literal["start", "end", "center", "between", "around", "evenly"]] = Field(
         None,
-        description="Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'."
+        description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'.",
+    )
+    justify: Optional[
+        Literal["start", "end", "center", "between", "around", "evenly"]
+    ] = Field(
+        None,
+        description="Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'.",
     )
     chart: Optional[generate_ref_field(Chart)] = Field(
         None, description="A chart object defined inline or a ref() to a chart."
@@ -158,26 +160,30 @@ class Item(NamedModel, ParentModel):
             )
         return data
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def validate_align_with_markdown(cls, data: any):
-        align = data.get('align')
-        markdown = data.get('markdown')
+        align = data.get("align")
+        markdown = data.get("markdown")
         if markdown is not None and align is None:
-            data['align'] = 'left'
+            data["align"] = "left"
         elif align is not None and markdown is None:
-            raise ValueError("The 'align' property can only be set when 'markdown' is present in the same item")
+            raise ValueError(
+                "The 'align' property can only be set when 'markdown' is present in the same item"
+            )
         return data
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def validate_justify_with_markdown(cls, data: any):
-        justify = data.get('justify')
-        markdown = data.get('markdown')
+        justify = data.get("justify")
+        markdown = data.get("markdown")
         if markdown is not None and justify is None:
-            data['justify'] = 'start'
+            data["justify"] = "start"
         elif justify is not None and markdown is None:
-            raise ValueError("The 'justify' property can only be set when 'markdown' is present in the same item")
+            raise ValueError(
+                "The 'justify' property can only be set when 'markdown' is present in the same item"
+            )
         return data
 
     def child_items(self):
