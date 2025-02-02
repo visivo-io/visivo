@@ -67,11 +67,19 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
                 return jsonify({"message": "No query provided"}), 400
 
             query = data["query"]
+            source_name = data.get("source")  # Get source name from request
             
-            # Get the appropriate source based on the query context
+            # Get the appropriate source based on the request
             source = None
-            if runner.project.defaults and runner.project.defaults.source_name:
-                # Find source by name from defaults
+            if source_name:
+                # First try to find the explicitly requested source
+                source = next(
+                    (s for s in runner.project.sources if s.name == source_name),
+                    None
+                )
+            
+            if not source and runner.project.defaults and runner.project.defaults.source_name:
+                # If no explicit source found, try the default
                 source = next(
                     (s for s in runner.project.sources if s.name == runner.project.defaults.source_name),
                     None
@@ -83,6 +91,8 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
                 
             if not source:
                 return jsonify({"message": "No source configured"}), 400
+
+            Logger.instance().info(f"Executing query with source: {source.name}")
 
             # Execute the query using read_sql
             result = source.read_sql(query)

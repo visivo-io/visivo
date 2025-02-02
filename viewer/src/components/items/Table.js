@@ -25,8 +25,9 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 
 const Table = ({ table, project, itemWidth, height, width }) => {
-    const traceNames = table.traces.map((trace) => trace.name);
-    const tracesData = useTracesData(project.id, traceNames);
+    const isDirectQueryResult = table.traces[0]?.data !== undefined;
+    // Always call the hook, but with empty array if it's a direct query
+    const tracesData = useTracesData(project.id, isDirectQueryResult ? [] : table.traces.map((trace) => trace.name));
     const [selectedTableCohort, setSelectedTableCohort] = useState(null);
     const [columns, setColumns] = useState([]);
     const [tableData, setTableData] = useState([]);
@@ -41,7 +42,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         if (selectedTableCohort && tracesData) {
             // Handle trace-based queries
             setColumns(tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName));
-        } else if (table.traces[0]?.data) {
+        } else if (isDirectQueryResult) {
             // Handle direct query results
             const directQueryColumns = Object.keys(table.traces[0].data[0] || {}).map(key => ({
                 accessorKey: key,
@@ -51,20 +52,20 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             }));
             setColumns(directQueryColumns);
         }
-    }, [selectedTableCohort, tracesData, table]);
+    }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
 
     useEffect(() => {
         if (selectedTableCohort && columns) {
             // Handle trace-based queries
             setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
-        } else if (table.traces[0]?.data) {
+        } else if (isDirectQueryResult) {
             // Handle direct query results
             setTableData(table.traces[0].data.map((row, index) => ({
                 id: index,
                 ...row
             })));
         }
-    }, [selectedTableCohort, columns, table.traces]);
+    }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
 
     const handleExportData = () => {
         const csv = generateCsv(csvConfig)(tableData); 
@@ -120,8 +121,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         },
     });
 
-    // Only show loading state if we're waiting for trace data and there's no direct query data
-    if (!tracesData && !table.traces[0]?.data) {
+    // Only show loading state if we're waiting for trace data and this isn't a direct query result
+    if (!isDirectQueryResult && !tracesData) {
         return <Loading text={table.name} width={itemWidth} />;
     }
 
@@ -172,7 +173,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                                 onClick={handleExportData} 
                                 startIcon={<FileDownloadIcon />}
                             />
-                            {tracesData && (
+                            {!isDirectQueryResult && tracesData && (
                                 <CohortSelect
                                     tracesData={tracesData}
                                     onChange={onSelectedCohortChange}

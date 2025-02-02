@@ -1,31 +1,23 @@
-const executeQuery = async (query, projectId, sourceName) => {
-  try {
-    console.log('Executing query:', { query, projectId, sourceName });
-    const response = await fetch(`/api/query/${projectId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query, source: sourceName }),
-    });
+export const executeQuery = async (query, projectId, sourceName) => {
+  const response = await fetch(`/api/query/${projectId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query,
+      source: sourceName
+    }),
+  });
 
-    console.log('Query response status:', response.status);
-    if (!response.ok) {
-      const error = await response.json();
-      console.error('Query error response:', error);
-      throw new Error(error.message || 'Failed to execute query');
-    }
-
-    const data = await response.json();
-    console.log('Query response data:', data);
-    return {
-      columns: data.columns || [],
-      data: data.rows || []
-    };
-  } catch (error) {
-    console.error('Error executing query:', error);
-    throw error;
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to execute query');
   }
-};
 
-export { executeQuery }; 
+  const data = await response.json();
+  return {
+    columns: data.columns,
+    data: data.rows
+  };
+}; 
