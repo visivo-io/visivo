@@ -1,3 +1,5 @@
+from visivo.models.base.context_string import ContextString
+from visivo.models.base.query_string import QueryString
 from visivo.models.trace import Trace
 from tests.factories.model_factories import TraceFactory
 from pydantic import ValidationError
@@ -116,3 +118,17 @@ def test_Trace_with_columns_without_props():
     }
     trace = Trace(**data)
     assert trace.name == "development"
+
+
+def test_Trace_with_columns_and_props_as_query_string_props():
+    data = {
+        "name": "development",
+        "columns": {"x_data": "?{x}"},
+        "props": {"type": "scatter", "x": "${ columns.x_data }", "y": "?{ y }"},
+        "model": {"sql": "select * from table"},
+    }
+    trace = Trace(**data)
+    assert trace.name == "development"
+    assert isinstance(trace.columns.x_data, QueryString)
+    assert isinstance(trace.props.x, ContextString)
+    assert isinstance(trace.props.y, QueryString)

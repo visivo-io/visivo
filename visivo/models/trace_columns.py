@@ -141,10 +141,8 @@ class TraceColumns(BaseModel):
     @classmethod
     def validate_unique_item_types(cls, data: any):
         for field_name, field_value in data.items():
-            if not isinstance(field_value, str) or re.search(
+            if isinstance(field_value, str) and re.match(
                 QUERY_STRING_VALUE_REGEX, field_value
             ):
-                raise ValueError(
-                    f"Field '{field_name}' in TraceColumns must be a QueryString."
-                )
+                data[field_name] = QueryString(field_value)
         return data
