@@ -51,23 +51,6 @@ from typing import Any, Union, Annotated
 from pydantic import Discriminator, Field, Tag, constr
 
 
-def get_model_discriminator_value(value: Any) -> str:
-    if isinstance(value, str) and re.search(QUERY_STRING_VALUE_REGEX, value):
-        return "Query"
-    elif isinstance(value, str):
-        return "Statement"
-
-    return None
-
-
-ArrayField = Annotated[
-    Union[
-        Annotated[QueryString, Tag("Query")],
-        Annotated[constr(pattern=STATEMENT_REGEX), Tag("Statement")],
-    ],
-    Discriminator(get_model_discriminator_value),
-]
-
 TracePropsFieldUnion = Union[
     Bar,
     Barpolar,

@@ -1,6 +1,7 @@
 
 from pydantic import Field, constr
 from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
+from visivo.models.trace_props.prop_fields import ArrayField
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any 
 
@@ -829,7 +830,7 @@ class Scatter(TraceProps):
 		None,
 		description=""" number or categorical coordinate string<br>Alternate to `x`. Builds a linear space of x coordinates. Use with `dx` where `x0` is the starting coordinate and `dx` the step. """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	x: Optional[ArrayField | List]= Field(
 		None,
 		description=""" data array<br>Sets the x coordinates. """
 	)
@@ -861,7 +862,7 @@ class Scatter(TraceProps):
 		None,
 		description=""" number or categorical coordinate string<br>Alternate to `y`. Builds a linear space of y coordinates. Use with `dy` where `y0` is the starting coordinate and `dy` the step. """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	y: Optional[ArrayField | List]= Field(
 		None,
 		description=""" data array<br>Sets the y coordinates. """
 	)
