@@ -74,6 +74,7 @@ const QueryExplorer = () => {
   const [queryStats, setQueryStats] = useState(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedSource, setSelectedSource] = useState(null);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
@@ -117,6 +118,10 @@ const QueryExplorer = () => {
         const data = await fetchExplorer();
         if (data) {
           setExplorerData(data);
+          // Set initial selected source to the first available source
+          if (data.sources && data.sources.length > 0) {
+            setSelectedSource(data.sources[0]);
+          }
         }
       } catch (err) {
         console.error('Error loading explorer data:', err);
@@ -132,20 +137,7 @@ const QueryExplorer = () => {
     const data = [];
 
     switch (selectedTab) {
-      case 0: // Sources
-        if (explorerData.sources) {
-          const sourceItems = explorerData.sources
-            .filter(source => source && typeof source === 'object' && source.name)
-            .map((source, index) => ({
-              id: `source-${source.name}-${index}`,
-              name: source.name,
-              type: 'source',
-              config: source
-            }));
-          data.push(...sourceItems);
-        }
-        break;
-      case 1: // Models
+      case 0: // Models
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
@@ -158,7 +150,7 @@ const QueryExplorer = () => {
           data.push(...modelItems);
         }
         break;
-      case 2: // Traces
+      case 1: // Traces
         if (explorerData.traces) {
           const traceItems = explorerData.traces
             .filter(trace => trace && typeof trace === 'object' && trace.name)
@@ -193,11 +185,21 @@ const QueryExplorer = () => {
 
   const handleItemClick = (item) => {
     let newQuery = '';
+    let newSource = selectedSource;
+
     switch (item.type) {
-      case 'source':
-        newQuery = `SELECT * FROM ${item.name} LIMIT 10;`;
-        break;
       case 'model':
+        if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
+          // For these types, we'll create a DuckDB source
+          newSource = {
+            name: 'duckdb',
+            type: 'duckdb',
+            config: { path: 'output_dir' }
+          };
+        } else if (item.config.source) {
+          // If model has a specific source, use it
+          newSource = item.config.source;
+        }
         newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
         break;
       case 'trace':
@@ -207,7 +209,9 @@ const QueryExplorer = () => {
         newQuery = '';
         break;
     }
+    console.log('Setting new source:', newSource);
     setQuery(newQuery);
+    setSelectedSource(newSource);
   };
 
   const executeQueryWithStats = async (queryString) => {
@@ -215,13 +219,15 @@ const QueryExplorer = () => {
     const timestamp = new Date();
     
     try {
-      const queryResults = await executeQuery(queryString, project.id);
+      console.log('Executing query with source:', selectedSource);
+      const queryResults = await executeQuery(queryString, project.id, selectedSource?.name);
       const endTime = performance.now();
       const executionTime = ((endTime - startTime) / 1000).toFixed(2); // Convert to seconds
       
       setQueryStats({
         timestamp: timestamp,
-        executionTime: executionTime
+        executionTime: executionTime,
+        source: selectedSource?.name
       });
       
       return queryResults;
@@ -285,10 +291,10 @@ const QueryExplorer = () => {
                   }`}
                   onClick={() => handleTabChange(0)}
                 >
-                  Sources
+                  Models
                 </button>
               </li>
-              <li className="mr-2">
+              <li>
                 <button
                   className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
                     selectedTab === 1
@@ -296,18 +302,6 @@ const QueryExplorer = () => {
                       : 'hover:text-gray-600 hover:border-gray-300'
                   }`}
                   onClick={() => handleTabChange(1)}
-                >
-                  Models
-                </button>
-              </li>
-              <li>
-                <button
-                  className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
-                    selectedTab === 2
-                      ? 'text-blue-600 border-blue-600'
-                      : 'hover:text-gray-600 hover:border-gray-300'
-                  }`}
-                  onClick={() => handleTabChange(2)}
                 >
                   Traces
                 </button>
@@ -326,10 +320,10 @@ const QueryExplorer = () => {
         <RightPanel id="right-panel">
           <Panel style={{ flex: splitRatio }}>
             <div className="flex justify-between items-center mb-4">
-              <div className="flex-1 flex items-center justify-between min-w-0">
+              <div className="flex-1 flex items-center justify-between min-w-0 relative">
                 <h2 className="text-lg font-semibold">SQL Query</h2>
                 {error && (
-                  <div className="mx-4 flex-1 px-4 py-2 text-sm text-red-800 rounded-lg bg-red-50">
+                  <div className="absolute left-32 right-32 px-4 py-2 text-sm text-red-800 rounded-lg bg-red-50 shadow-lg z-10 flex items-center justify-between">
                     {error}
                     <button
                       type="button"
@@ -343,11 +337,29 @@ const QueryExplorer = () => {
                     </button>
                   </div>
                 )}
+                <div className="flex items-center gap-1.5 mx-4">
+                  {explorerData?.sources?.map((source) => (
+                    <button
+                      key={source.name}
+                      onClick={() => {
+                        console.log('Source button clicked:', source);
+                        setSelectedSource(source);
+                      }}
+                      className={`px-2 py-1 text-xs font-medium rounded-md ${
+                        selectedSource?.name === source.name
+                          ? 'bg-[#D25946] text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {source.name}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="button"
                   className={`text-white ${
                     isLoading ? 'bg-[#A06C86]' : 'bg-[#713B57] hover:bg-[#5A2E46]'
-                  } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none ml-4`}
+                  } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none`}
                   onClick={handleRunQuery}
                   disabled={isLoading}
                 >
@@ -414,6 +426,7 @@ const QueryExplorer = () => {
                       await Promise.resolve();
 
                       try {
+                        console.log('Command handler executing query with source:', selectedSource);
                         const queryResults = await executeQueryWithStats(currentValue);
                         const formattedResults = {
                           name: 'Query Results',
@@ -467,7 +480,12 @@ const QueryExplorer = () => {
               <h2 className="text-lg font-semibold">Results</h2>
               {queryStats && (
                 <div className="text-sm text-gray-600 font-medium">
-                  {`Last Run at ${queryStats.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${queryStats.executionTime}s`}
+                  {queryStats && (
+                    <>
+                      {`Last Run at ${queryStats.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${queryStats.executionTime}s`}
+                      {queryStats.source && ` • Source: ${queryStats.source}`}
+                    </>
+                  )}
                 </div>
               )}
             </div>

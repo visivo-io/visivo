@@ -1,12 +1,12 @@
-const executeQuery = async (query, projectId) => {
+const executeQuery = async (query, projectId, sourceName) => {
   try {
-    console.log('Executing query:', { query, projectId });
+    console.log('Executing query:', { query, projectId, sourceName });
     const response = await fetch(`/api/query/${projectId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, source: sourceName }),
     });
 
     console.log('Query response status:', response.status);
