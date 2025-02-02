@@ -236,9 +236,9 @@ const QueryExplorer = () => {
     }
   };
 
-  const handleRunQuery = async () => {
-    console.log('handleRunQuery called with query:', query);
-    if (!query?.trim()) {
+  // Shared function for executing queries
+  const executeQueryAndUpdateState = async (queryString) => {
+    if (!queryString?.trim()) {
       setError('Please enter a query');
       return;
     }
@@ -246,9 +246,11 @@ const QueryExplorer = () => {
     setIsLoading(true);
     setError(null);
     setResults(null);
+    setQuery(queryString);
 
     try {
-      const queryResults = await executeQueryWithStats(query);
+      console.log('Executing query with current source:', selectedSource);
+      const queryResults = await executeQueryWithStats(queryString);
       const formattedResults = {
         name: 'Query Results',
         traces: [{
@@ -274,6 +276,8 @@ const QueryExplorer = () => {
       setIsLoading(false);
     }
   };
+
+  const handleRunQuery = () => executeQueryAndUpdateState(query);
 
   return (
     <Container>
@@ -407,54 +411,7 @@ const QueryExplorer = () => {
                   // Add command
                   editor.addCommand(
                     monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                    async () => {
-                      const currentValue = editor.getValue();
-                      
-                      if (!currentValue?.trim()) {
-                        setError('Please enter a query');
-                        return;
-                      }
-
-                      // Set all states before starting the query
-                      await Promise.resolve(); // Ensure state updates are processed
-                      setQuery(currentValue);
-                      setIsLoading(true);
-                      setError(null);
-                      setResults(null);
-
-                      // Wait for loading state to be applied
-                      await Promise.resolve();
-
-                      try {
-                        console.log('Command handler executing query with source:', selectedSource);
-                        const queryResults = await executeQueryWithStats(currentValue);
-                        const formattedResults = {
-                          name: 'Query Results',
-                          traces: [{
-                            name: 'results',
-                            props: {},
-                            data: queryResults.data.map((row, index) => ({
-                              id: index,
-                              ...row
-                            })),
-                            columns: queryResults.columns.map(col => ({
-                              header: col,
-                              key: col,
-                              accessorKey: col,
-                              markdown: false
-                            }))
-                          }]
-                        };
-                        
-                        // Ensure states are updated in sequence
-                        await Promise.resolve();
-                        setResults(formattedResults);
-                      } catch (err) {
-                        setError(err.message || 'Failed to execute query');
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }
+                    () => executeQueryAndUpdateState(editor.getValue())
                   );
 
                   // Return cleanup for resize handler
