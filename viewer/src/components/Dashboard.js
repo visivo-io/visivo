@@ -11,7 +11,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 
-const Dashboard = ({ project, dashboardName, isPreview = false, previewWidth = 1200, previewHeight = 800 }) => {
+const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
