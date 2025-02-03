@@ -114,6 +114,21 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
             Logger.instance().error(f"Query execution error: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
+    @app.route("/api/trace/<trace_name>/query", methods=["GET"])
+    def get_trace_query(trace_name):
+        try:
+            query_file_path = f"{output_dir}/{trace_name}/query.sql"
+            if not os.path.exists(query_file_path):
+                return jsonify({"message": f"Query file not found for trace: {trace_name}"}), 404
+                
+            with open(query_file_path, 'r') as f:
+                query_contents = f.read()
+                
+            return jsonify({"query": query_contents}), 200
+        except Exception as e:
+            Logger.instance().error(f"Error reading trace query: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
     @app.route("/data/error.json")
     def error():
         if os.path.exists(f"{output_dir}/error.json"):

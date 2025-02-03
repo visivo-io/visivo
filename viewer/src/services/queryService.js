@@ -15,9 +15,21 @@ export const executeQuery = async (query, projectId, sourceName) => {
     throw new Error(error.message || 'Failed to execute query');
   }
 
-  const data = await response.json();
+  const result = await response.json();
   return {
-    columns: data.columns,
-    data: data.rows
+    columns: result.columns,
+    data: result.rows
   };
+};
+
+export const fetchTraceQuery = async (traceName) => {
+  const response = await fetch(`/api/trace/${traceName}/query`);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to fetch trace query');
+  }
+
+  const result = await response.json();
+  return result.query;
 }; 

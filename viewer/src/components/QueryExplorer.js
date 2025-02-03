@@ -4,7 +4,7 @@ import MonacoEditor from '@monaco-editor/react';
 import ExplorerTree from './explorer/ExplorerTree';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import Table from './items/Table';
-import { executeQuery } from '../services/queryService';
+import { executeQuery, fetchTraceQuery } from '../services/queryService';
 import { fetchExplorer } from '../api/project';
 import tw from "tailwind-styled-components";
 
@@ -194,36 +194,48 @@ const QueryExplorer = () => {
     }
   };
 
-  const handleItemClick = (item) => {
+  const handleItemClick = async (item) => {
     let newQuery = '';
     let newSource = selectedSource;
 
-    switch (item.type) {
-      case 'model':
-        if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
-          // For these types, find the DuckDB source from available sources
-          newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
-        } else if (item.config.source) {
-          // If model has a specific source, find matching source from available sources
-          newSource = explorerData?.sources?.find(s => s.name === item.config.source.name) || selectedSource;
-        } else {
-          // Default to first available source if none specified
-          newSource = explorerData?.sources?.[0] || selectedSource;
-        }
-        newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
-        break;
-      case 'trace':
-        newQuery = `WITH trace AS (SELECT * FROM ${item.name})\nSELECT * FROM trace LIMIT 10;`;
-        break;
-      default:
-        newQuery = '';
-        break;
-    }
-    
-    setQuery(newQuery);
-    if (newSource) {
-      setSelectedSource(newSource);
-      console.log('Setting new source:', newSource);
+    try {
+      switch (item.type) {
+        case 'model':
+          if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
+            // For these types, find the DuckDB source from available sources
+            newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
+          } else if (item.config.source) {
+            // If model has a specific source, find matching source from available sources
+            newSource = explorerData?.sources?.find(s => s.name === item.config.source.name) || selectedSource;
+          } else {
+            // Default to first available source if none specified
+            newSource = explorerData?.sources?.[0] || selectedSource;
+          }
+          newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
+          break;
+        case 'trace':
+          try {
+            // Fetch the trace query from the backend
+            newQuery = await fetchTraceQuery(item.name);
+          } catch (err) {
+            console.error('Failed to fetch trace query:', err);
+            setError(`Failed to fetch trace query: ${err.message}`);
+            return;
+          }
+          break;
+        default:
+          newQuery = '';
+          break;
+      }
+      
+      setQuery(newQuery);
+      if (newSource) {
+        setSelectedSource(newSource);
+        console.log('Setting new source:', newSource);
+      }
+    } catch (err) {
+      console.error('Error in handleItemClick:', err);
+      setError(err.message || 'Failed to process item click');
     }
   };
 
