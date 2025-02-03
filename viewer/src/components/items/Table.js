@@ -45,9 +45,10 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         } else if (isDirectQueryResult) {
             // Handle direct query results
             const directQueryColumns = Object.keys(table.traces[0].data[0] || {}).map(key => ({
-                accessorKey: key,
-                header: key,
-                key: key,
+                id: key, // Unique identifier for the column
+                header: key, // Display name
+                accessorKey: key.replace(/\./g, '___'), // Replace dots with a safe separator
+                enableGrouping: false, // Disable grouping for these columns
                 markdown: false
             }));
             setColumns(directQueryColumns);
@@ -60,10 +61,17 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
         } else if (isDirectQueryResult) {
             // Handle direct query results
-            setTableData(table.traces[0].data.map((row, index) => ({
-                id: index,
-                ...row
-            })));
+            setTableData(table.traces[0].data.map((row, index) => {
+                const transformedRow = {};
+                Object.entries(row).forEach(([key, value]) => {
+                    // Replace dots with underscores in the keys
+                    transformedRow[key.replace(/\./g, '___')] = value;
+                });
+                return {
+                    id: index,
+                    ...transformedRow
+                };
+            }));
         }
     }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
 
@@ -109,6 +117,17 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         enableFullScreenToggle: true,
         enableGrouping: true,
         enableColumnDragging: false,
+        enableStickyHeader: true,
+        muiTableContainerProps: {
+            sx: { maxHeight: '100%' }
+        },
+        muiTableHeadProps: {
+            sx: {
+                '& tr': {
+                    backgroundColor: 'white',
+                }
+            }
+        },
         muiPaginationProps: {
             rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000]
         },
