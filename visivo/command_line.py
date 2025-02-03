@@ -3,6 +3,7 @@ import os
 import importlib
 from dotenv import load_dotenv
 from pydantic import ValidationError
+
 from visivo.logging.logger import Logger, TypeEnum
 from visivo.parsers.line_validation_error import LineValidationError
 
@@ -16,6 +17,7 @@ from .commands.init import init
 from .commands.test import test
 from .commands.aggregate import aggregate
 from .commands.archive import archive
+from .commands.login import login
 
 
 @click.group()
@@ -59,6 +61,7 @@ visivo.add_command(dist)
 visivo.add_command(test)
 visivo.add_command(aggregate)
 visivo.add_command(archive)
+visivo.add_command(login)
 
 
 def load_env(env_file):
