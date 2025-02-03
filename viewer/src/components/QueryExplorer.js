@@ -75,6 +75,8 @@ const QueryExplorer = () => {
   const [splitRatio, setSplitRatio] = useState(0.5);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedSource, setSelectedSource] = useState(null);
+  const editorRef = React.useRef(null);
+  const monacoRef = React.useRef(null);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
@@ -247,8 +249,8 @@ const QueryExplorer = () => {
     }
   };
 
-  // Shared function for executing queries
-  const executeQueryAndUpdateState = async (queryString) => {
+  // Wrap executeQueryAndUpdateState in useCallback
+  const executeQueryAndUpdateState = React.useCallback(async (queryString) => {
     if (!queryString?.trim()) {
       setError('Please enter a query');
       return;
@@ -286,9 +288,27 @@ const QueryExplorer = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedSource, executeQueryWithStats]);
 
   const handleRunQuery = () => executeQueryAndUpdateState(query);
+
+  // Add this useEffect hook to track source changes
+  useEffect(() => {
+    console.log('Selected source changed:', selectedSource);
+  }, [selectedSource]);
+
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current) {
+      // Remove existing Cmd+Enter command if it exists
+      editorRef.current.getModel()?.deltaDecorations([], []);
+      
+      // Add the command with current selectedSource in its closure
+      editorRef.current.addCommand(
+        monacoRef.current.KeyMod.CtrlCmd | monacoRef.current.KeyCode.Enter,
+        () => executeQueryAndUpdateState(editorRef.current.getValue())
+      );
+    }
+  }, [selectedSource, executeQueryAndUpdateState]);
 
   return (
     <Container>
@@ -413,18 +433,16 @@ const QueryExplorer = () => {
                 onMount={(editor, monaco) => {
                   editor.setValue(query || '');
                   
+                  // Store editor and monaco instance in refs
+                  editorRef.current = editor;
+                  monacoRef.current = monaco;
+                  
                   // Add resize handler
                   const resizeHandler = () => {
                     editor.layout();
                   };
                   window.addEventListener('resize', resizeHandler);
                   
-                  // Add command
-                  editor.addCommand(
-                    monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                    () => executeQueryAndUpdateState(editor.getValue())
-                  );
-
                   // Return cleanup for resize handler
                   editor.onDidDispose(() => {
                     window.removeEventListener('resize', resizeHandler);
