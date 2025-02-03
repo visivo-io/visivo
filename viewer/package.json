@@ -27,6 +27,7 @@
     "dagre-d3": "^0.6.4",
     "export-to-csv": "^1.4.0",
     "flowbite-react": "^0.10.2",
+    "html2canvas": "^1.4.1",
     "jest-canvas-mock": "^2.4.0",
     "js-cookie": "^3.0.1",
     "js-yaml": "^4.1.0",

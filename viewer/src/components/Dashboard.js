@@ -11,7 +11,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 
-const Dashboard = ({ project, dashboardName }) => {
+const Dashboard = ({ project, dashboardName, isPreview = false, previewWidth = 1200, previewHeight = 800 }) => {
     const [searchParams] = useSearchParams();
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
@@ -146,11 +146,11 @@ const Dashboard = ({ project, dashboardName }) => {
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.selector) {
             return <Selector
-                selector={item.selector}
-                project={project}
-                itemWidth={item.width}
-                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
-            </Selector>
+                    selector={item.selector}
+                    project={project}
+                    itemWidth={item.width}
+                    key={`dashboardRow${rowIndex}Item${itemIndex}`} >
+                </Selector>
         } else if (item.markdown) {
             const alignmentClass = item.align === 'right' ? 'text-right' : 
                                   item.align === 'center' ? 'text-center' : 
