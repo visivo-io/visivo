@@ -118,9 +118,18 @@ const QueryExplorer = () => {
         const data = await fetchExplorer();
         if (data) {
           setExplorerData(data);
-          // Set initial selected source to the first available source
+          // Set initial selected source based on default_source or first available source
           if (data.sources && data.sources.length > 0) {
-            setSelectedSource(data.sources[0]);
+            if (data.default_source) {
+              const defaultSource = data.sources.find(s => s.name === data.default_source);
+              if (defaultSource) {
+                setSelectedSource(defaultSource);
+              } else {
+                setSelectedSource(data.sources[0]);
+              }
+            } else {
+              setSelectedSource(data.sources[0]);
+            }
           }
         }
       } catch (err) {
@@ -190,15 +199,14 @@ const QueryExplorer = () => {
     switch (item.type) {
       case 'model':
         if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
-          // For these types, we'll create a DuckDB source
-          newSource = {
-            name: 'duckdb',
-            type: 'duckdb',
-            config: { path: 'output_dir' }
-          };
+          // For these types, find the DuckDB source from available sources
+          newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
         } else if (item.config.source) {
-          // If model has a specific source, use it
-          newSource = item.config.source;
+          // If model has a specific source, find matching source from available sources
+          newSource = explorerData?.sources?.find(s => s.name === item.config.source.name) || selectedSource;
+        } else {
+          // Default to first available source if none specified
+          newSource = explorerData?.sources?.[0] || selectedSource;
         }
         newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
         break;
@@ -209,9 +217,12 @@ const QueryExplorer = () => {
         newQuery = '';
         break;
     }
-    console.log('Setting new source:', newSource);
+    
     setQuery(newQuery);
-    setSelectedSource(newSource);
+    if (newSource) {
+      setSelectedSource(newSource);
+      console.log('Setting new source:', newSource);
+    }
   };
 
   const executeQueryWithStats = async (queryString) => {
@@ -315,7 +326,7 @@ const QueryExplorer = () => {
           <div className="mt-4 flex-1 min-h-0">
             <ExplorerTree
               data={treeData}
-              type={selectedTab === 0 ? 'sources' : selectedTab === 1 ? 'models' : 'traces'}
+              type={selectedTab === 0 ? 'models' : 'traces'}
               onItemClick={handleItemClick}
             />
           </div>

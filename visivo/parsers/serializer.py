@@ -59,6 +59,10 @@ class Serializer:
             "selectors": all_selectors
         }
 
+        # Add default source name if it exists
+        if project.defaults and project.defaults.source_name:
+            flattened["default_source"] = project.defaults.source_name
+
         return flattened
 
     def dereference(self) -> Project:

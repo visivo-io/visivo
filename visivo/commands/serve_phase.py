@@ -198,5 +198,4 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads):
 
     server = Server(app.wsgi_app)
     server.watch(filepath="**/*.yml", func=cli_changed, ignore=ignore)
-    server.watch(filepath=f"{output_dir}/explorer.json", func=cli_changed)
     return server
