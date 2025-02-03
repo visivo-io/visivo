@@ -12,6 +12,13 @@ includes:
 
 dashboards:
   - name: "Annotation and Shape Examples"
+    description: "Annotations are cool!"
+    tags: 
+      - "chart feature"
+    level: L0
+
+      
+
     rows:
       - height: compact
         items:
