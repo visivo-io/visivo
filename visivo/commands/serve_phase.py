@@ -9,7 +9,6 @@ from .run_phase import run_phase
 import datetime
 import importlib.resources as resources
 import base64
-from urllib.parse import unquote
 
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
