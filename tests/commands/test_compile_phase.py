@@ -119,3 +119,149 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
     assert "trace" in os.listdir(output_dir)
     with open(f"{output_dir}/trace/query.sql") as f:
         assert outer_merge_model.name in f.read()
+
+def test_flatten_project_objects():
+    """Test the new flatten_project_objects function"""
+    project = ProjectFactory()
+    
+    # Add some additional objects to make the test more comprehensive
+    additional_dashboard = DashboardFactory(
+        name="Other Dashboard",
+        level="L1",
+        tags=["important", "metrics"],
+        description="A test dashboard"
+    )
+    project.dashboards.append(additional_dashboard)
+    
+    # Ensure all models have proper source references
+    source = project.sources[0]
+    for dashboard in project.dashboards:
+        for row in dashboard.rows:
+            for item in row.items:
+                if item.chart:
+                    for trace in item.chart.traces:
+                        if trace.model:
+                            trace.model.source = source
+    
+    # Add models to the project's top-level models list
+    model_count = 0
+    for dashboard in project.dashboards:
+        for row in dashboard.rows:
+            for item in row.items:
+                if item.chart and item.chart.traces:
+                    for trace in item.chart.traces:
+                        if trace.model:
+                            project.models.append(trace.model)
+                            model_count += 1
+    
+    from visivo.commands.compile_phase import flatten_project_objects
+    flattened = flatten_project_objects(project)
+    
+    # Verify we have all the expected keys
+    assert set(flattened.keys()) == {'sources', 'models', 'traces'}
+    
+    # Verify we collected all sources
+    assert len(flattened['sources']) == len(project.sources)
+    
+    # Verify model count matches
+    assert len(flattened['models']) == model_count
+
+def test_explorer_json_creation():
+    """Test that explorer.json is created with flattened project structure"""
+    output_dir = temp_folder()
+    project = ProjectFactory(defaults=Defaults(source_name="source"))
+    
+    # Add a dashboard with new fields and ensure unique row names
+    dashboard = DashboardFactory(
+        name="Test Dashboard",
+        level="L2",
+        tags=["test", "example"],
+        description="A test dashboard with new fields"
+    )
+    
+    # Ensure unique row, item, chart, trace, model, and selector names in the new dashboard
+    for i, row in enumerate(dashboard.rows):
+        row.name = f"test_row_{i}"
+        for j, item in enumerate(row.items):
+            item.name = f"test_item_{i}_{j}"
+            if item.chart:
+                item.chart.name = f"test_chart_{i}_{j}"
+                if item.chart.selector:
+                    item.chart.selector.name = f"test_selector_{i}_{j}"
+                for k, trace in enumerate(item.chart.traces):
+                    trace.name = f"test_trace_{i}_{j}_{k}"
+                    if trace.model:
+                        trace.model.name = f"test_model_{i}_{j}_{k}"
+    
+    # Also ensure unique row, item, chart, trace, model, and selector names in the original dashboard
+    for i, row in enumerate(project.dashboards[0].rows):
+        row.name = f"original_row_{i}"
+        for j, item in enumerate(row.items):
+            item.name = f"original_item_{i}_{j}"
+            if item.chart:
+                item.chart.name = f"original_chart_{i}_{j}"
+                if item.chart.selector:
+                    item.chart.selector.name = f"original_selector_{i}_{j}"
+                for k, trace in enumerate(item.chart.traces):
+                    trace.name = f"original_trace_{i}_{j}_{k}"
+                    if trace.model:
+                        trace.model.name = f"original_model_{i}_{j}_{k}"
+    
+    project.dashboards.append(dashboard)
+    
+    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
+    
+    tmp = temp_yml_file(
+        dict=json.loads(project.model_dump_json()),
+        name=PROJECT_FILE_NAME
+    )
+    working_dir = os.path.dirname(tmp)
+    
+    compile_phase(
+        default_source="source",
+        working_dir=working_dir,
+        output_dir=output_dir,
+        dag_filter=None
+    )
+    
+    # Verify explorer.json was created
+    assert os.path.exists(f"{output_dir}/explorer.json")
+    
+    # Read and verify contents
+    with open(f"{output_dir}/explorer.json") as f:
+        explorer_data = json.load(f)
+        
+    assert "sources" in explorer_data
+    assert "models" in explorer_data
+    assert "traces" in explorer_data
+    assert "default_source" in explorer_data
+    assert explorer_data["default_source"] == "source"
+
+def test_dashboard_new_fields():
+    """Test the new dashboard fields (level, tags, description)"""
+    project = ProjectFactory()
+    
+    # Create a dashboard with all new fields
+    dashboard = DashboardFactory(
+        name="Test Dashboard",
+        level="L0",
+        tags=["critical", "production"],
+        description="A critical dashboard for production metrics"
+    )
+    project.dashboards.append(dashboard)
+    
+    # Verify the new fields were set correctly
+    assert dashboard.level == "L0"
+    assert "critical" in dashboard.tags
+    assert "production" in dashboard.tags
+    assert dashboard.description == "A critical dashboard for production metrics"
+    
+    # Test invalid level
+    from pydantic import ValidationError
+    import pytest
+    
+    with pytest.raises(ValidationError):
+        DashboardFactory(
+            name="Invalid Dashboard",
+            level="L5"  # Invalid level
+        )
