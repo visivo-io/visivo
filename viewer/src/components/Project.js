@@ -103,6 +103,11 @@ function Project(props) {
       }
     });
 
+    // Sort dashboards alphabetically within each level
+    Object.keys(levels).forEach(level => {
+      levels[level].sort((a, b) => a.name.localeCompare(b.name));
+    });
+
     return Object.fromEntries(
       Object.entries(levels).filter(([_, dashboards]) => dashboards.length > 0)
     );
@@ -114,43 +119,39 @@ function Project(props) {
 
   const renderDashboardList = () => {
     return (
-      <Container>
-        <div className="max-w-7xl mx-auto py-8">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <Heading>Dashboards</Heading>
-            </div>
-            <div className="text-sm text-gray-500">
-              {filteredDashboards.length} dashboard{filteredDashboards.length !== 1 ? 's' : ''}
-            </div>
-          </div>
-          
+      <Container className="min-h-screen">
+        <div className="max-w-[2000px] w-full mx-auto pt-1 px-4 sm:px-6 h-full">
           <FilterBar
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             selectedTags={selectedTags}
             setSelectedTags={setSelectedTags}
             availableTags={availableTags}
+            totalCount={filteredDashboards.length}
           />
 
-          {Object.entries(dashboardsByLevel).map(([level, dashboards]) => (
-            <DashboardSection
-              key={level}
-              title={level === 'unassigned' ? 'Other Dashboards' : `Level ${level} Dashboards`}
-              dashboards={dashboards.map(dashboard => ({
-                ...dashboard,
-                thumbnail: thumbnails[dashboard.name]
-              }))}
-            />
-          ))}
+          <div className="flex-1 w-full">
+            {Object.entries(dashboardsByLevel).map(([level, dashboards]) => (
+              <DashboardSection
+                key={level}
+                title={level === 'unassigned' ? 'Unassigned Dashboards' : `${level} Dashboards`}
+                dashboards={dashboards.map(dashboard => ({
+                  ...dashboard,
+                  thumbnail: thumbnails[dashboard.name]
+                }))}
+                searchTerm={searchTerm}
+                hasLevels={Object.keys(dashboardsByLevel).some(key => key.startsWith('L'))}
+              />
+            ))}
 
-          {filteredDashboards.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
-              <HiTemplate className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-semibold text-gray-900">No dashboards found</h3>
-              <p className="mt-1 text-sm text-gray-500">No dashboards match your search criteria.</p>
-            </div>
-          )}
+            {filteredDashboards.length === 0 && (
+              <div className="w-full text-center py-8 bg-white rounded-lg shadow-sm border border-gray-200">
+                <HiTemplate className="mx-auto h-10 w-10 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No dashboards found</h3>
+                <p className="mt-1 text-sm text-gray-500">No dashboards match your search criteria.</p>
+              </div>
+            )}
+          </div>
 
           {/* Hidden thumbnail generator */}
           {isGeneratingThumbnails && thumbnailQueue[0] && (

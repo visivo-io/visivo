@@ -5,6 +5,7 @@ includes:
 
 dashboards:
   - name: "Trace Props Examples: Funnelarea"
+    description: An awesome description
     rows:
       - height: compact
         items:
