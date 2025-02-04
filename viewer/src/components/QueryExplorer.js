@@ -239,7 +239,7 @@ const QueryExplorer = () => {
     }
   };
 
-  const executeQueryWithStats = async (queryString) => {
+  const executeQueryWithStats = React.useCallback(async (queryString) => {
     const startTime = performance.now();
     const timestamp = new Date();
     
@@ -259,7 +259,7 @@ const QueryExplorer = () => {
     } catch (err) {
       throw err;
     }
-  };
+  }, [selectedSource, project.id, setQueryStats]);
 
   // Wrap executeQueryAndUpdateState in useCallback
   const executeQueryAndUpdateState = React.useCallback(async (queryString) => {
@@ -300,7 +300,7 @@ const QueryExplorer = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSource, executeQueryWithStats]);
+  }, [executeQueryWithStats, setError, setIsLoading, setResults, setQuery, selectedSource]);
 
   const handleRunQuery = () => executeQueryAndUpdateState(query);
 
