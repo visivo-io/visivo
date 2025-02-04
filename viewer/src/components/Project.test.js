@@ -29,7 +29,7 @@ test('renders dashboard names without dashboard name param', async () => {
     </Routes>
   </MemoryRouter>)
 
-  const text = await screen.findByText(/dashboard/);
+  const text = await screen.findByRole('heading', { name: /dashboard/i, level: 3 });
   expect(text).toBeInTheDocument();
 })
 
