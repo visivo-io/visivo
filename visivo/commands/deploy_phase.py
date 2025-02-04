@@ -95,7 +95,7 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
                 async with aiofiles.open(data_file, "rb") as f:
                     response = await client.put(
                         data_file_upload["upload_url"],
-                        data=f,
+                        content=await f.read(),
                         headers=form_headers,
                     )
                     response.raise_for_status()
