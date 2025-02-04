@@ -20,6 +20,13 @@ def dist_phase(output_dir, working_dir, dist_dir, default_source, dag_filter, th
     )
 
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
+    
+    # Copy dashboard thumbnails if they exist
+    thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
+    if os.path.exists(thumbnail_dir):
+        dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboard-thumbnails")
+        shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
+
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
     created_at = (datetime.datetime.now().isoformat(),)

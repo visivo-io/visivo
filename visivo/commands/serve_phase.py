@@ -3,11 +3,13 @@ import re
 import os
 from visivo.logging.logger import Logger
 import json
-from flask import Flask, current_app, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, Response
 from livereload import Server
 from .run_phase import run_phase
 import datetime
 import importlib.resources as resources
+import base64
+from urllib.parse import unquote
 
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
@@ -41,6 +43,10 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
         static_url_path="/data",
     )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+    # Ensure thumbnail directory exists
+    thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
+    os.makedirs(thumbnail_dir, exist_ok=True)
 
     runner = run_phase(
         output_dir=output_dir,
@@ -168,6 +174,57 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
         if re.match(regex, path):
             return send_from_directory(VIEWER_PATH, path)
         return send_from_directory(VIEWER_PATH, "index.html")
+
+    def sanitize_filename(name):
+        """Replace special characters with double underscores for safe filenames"""
+        return re.sub(r'[^a-zA-Z0-9]', '_', name)
+
+    @app.route("/api/thumbnails/<dashboard_name>", methods=["GET"])
+    def get_thumbnail(dashboard_name):
+        try:
+            safe_name = sanitize_filename(dashboard_name)
+            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.jpg")
+            
+            if not os.path.exists(thumbnail_path):
+                # Return a 404 response directly without logging
+                return Response(status=404)
+
+            with open(thumbnail_path, "rb") as f:
+                thumbnail_data = f.read()
+                thumbnail_b64 = base64.b64encode(thumbnail_data).decode('utf-8')
+                return jsonify({
+                    "thumbnail": f"data:image/jpeg;base64,{thumbnail_b64}",
+                    "updated_at": datetime.datetime.fromtimestamp(os.path.getmtime(thumbnail_path)).isoformat()
+                })
+        except Exception as e:
+            Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/thumbnails/<dashboard_name>", methods=["POST"])
+    def save_thumbnail(dashboard_name):
+        try:
+            safe_name = sanitize_filename(dashboard_name)
+            data = request.get_json()
+            if not data or "thumbnail" not in data:
+                return jsonify({"message": "No thumbnail data provided"}), 400
+
+            # Extract base64 data
+            thumbnail_data = data["thumbnail"].split(",")[1]
+            thumbnail_bytes = base64.b64decode(thumbnail_data)
+
+            # Save thumbnail using safe name
+            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.jpg")
+            
+            with open(thumbnail_path, "wb") as f:
+                f.write(thumbnail_bytes)
+
+            return jsonify({
+                "message": "Thumbnail saved successfully",
+                "updated_at": datetime.datetime.now().isoformat()
+            })
+        except Exception as e:
+            Logger.instance().error(f"Error saving thumbnail: {str(e)}")
+            return jsonify({"message": str(e)}), 500
 
     return app, runner.project
 

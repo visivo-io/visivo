@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Dashboard from "./Dashboard";
 import Loading from "./Loading";
-import Heading from "./styled/Heading";
 import { Container } from "./styled/Container";
 import { HiTemplate } from 'react-icons/hi';
 import DashboardThumbnail from './thumbnail/DashboardThumbnail';
@@ -18,31 +17,40 @@ function Project(props) {
   // Reset scroll position when dashboard changes
   useEffect(() => {
     window.scrollTo(0, 0);
+    
+    // If we're viewing a dashboard, generate a new thumbnail
+    if (props.dashboardName) {
+      setThumbnailQueue(prev => [...prev, props.dashboardName]);
+    }
   }, [props.dashboardName]);
 
-  // Initialize thumbnail generation queue
+  // Load existing thumbnails from API
   useEffect(() => {
-    if (props.dashboards && props.dashboards.length > 0 && thumbnailQueue.length === 0) {
-      const dashboardsToGenerate = props.dashboards
-        .filter(d => !thumbnails[d.name])
-        .sort((a, b) => {
-          // First sort by level
-          const levelOrder = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4, undefined: 5 };
-          const levelDiff = (levelOrder[a.level] || levelOrder.undefined) - (levelOrder[b.level] || levelOrder.undefined);
-          
-          // If same level, sort alphabetically
-          if (levelDiff === 0) {
-            return a.name.localeCompare(b.name);
-          }
-          return levelDiff;
-        })
-        .map(d => d.name);
-
-      if (dashboardsToGenerate.length > 0) {
-        setThumbnailQueue(dashboardsToGenerate);
-      }
+    if (props.dashboards && props.dashboards.length > 0) {
+      props.dashboards.forEach(dashboard => {
+        const safeName = dashboard.name.replace(/[^a-zA-Z0-9]/g, '__');
+        fetch(`/api/thumbnails/${safeName}`)
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            }
+            throw new Error('Thumbnail not found');
+          })
+          .then(data => {
+            setThumbnails(prev => ({
+              ...prev,
+              [dashboard.name]: data.thumbnail
+            }));
+          })
+          .catch(() => {
+            // If thumbnail doesn't exist, add to generation queue
+            setThumbnailQueue(prev => 
+              prev.includes(dashboard.name) ? prev : [...prev, dashboard.name]
+            );
+          });
+      });
     }
-  }, [props.dashboards, thumbnails, thumbnailQueue]);
+  }, [props.dashboards]);
 
   // Process thumbnail queue with delay
   useEffect(() => {
@@ -54,11 +62,30 @@ function Project(props) {
     }
   }, [thumbnailQueue, isGeneratingThumbnails, props.dashboards]);
 
-  const handleThumbnailGenerated = (dashboardName, thumbnail) => {
-    setThumbnails(prev => ({
-      ...prev,
-      [dashboardName]: thumbnail
-    }));
+  const handleThumbnailGenerated = async (dashboardName, thumbnail) => {
+    // Save thumbnail to API
+    try {
+      const safeName = dashboardName.replace(/[^a-zA-Z0-9]/g, '__');
+      const response = await fetch(`/api/thumbnails/${safeName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ thumbnail })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save thumbnail');
+      }
+
+      setThumbnails(prev => ({
+        ...prev,
+        [dashboardName]: thumbnail
+      }));
+    } catch (error) {
+      console.error('Error saving thumbnail:', error);
+    }
+
     setIsGeneratingThumbnails(false);
     setThumbnailQueue(prev => prev.filter(name => name !== dashboardName));
   };
