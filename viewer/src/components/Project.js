@@ -1,236 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Link } from 'react-router-dom';
 import Dashboard from "./Dashboard";
 import Loading from "./Loading";
 import Heading from "./styled/Heading";
 import { Container } from "./styled/Container";
-import { TextInput, Badge, Card, Tooltip } from 'flowbite-react';
-import { HiSearch, HiTemplate } from 'react-icons/hi';
-import html2canvas from 'html2canvas';
-
-// Thumbnail generation component
-function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
-  const containerRef = React.useRef();
-  const ASPECT_RATIO = 16/10;
-
-  useEffect(() => {
-    const generateThumbnail = async () => {
-      if (containerRef.current) {
-        try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const canvas = await html2canvas(containerRef.current, {
-            scale: 1,
-            logging: false,
-            width: 1200,
-            height: 1200 / ASPECT_RATIO,
-            backgroundColor: '#ffffff',
-            useCORS: true,
-            onclone: (clonedDoc) => {
-              const clonedElement = clonedDoc.querySelector('.preview-container');
-              if (clonedElement) {
-                clonedElement.style.width = '1200px';
-                clonedElement.style.height = `${1200 / ASPECT_RATIO}px`;
-                clonedElement.style.transform = 'none';
-                clonedElement.style.display = 'flex';
-                clonedElement.style.flexDirection = 'column';
-                clonedElement.style.alignItems = 'stretch';
-                
-                // Ensure all rows are positioned at the top
-                const rows = clonedElement.querySelectorAll('.dashboard-row');
-                rows.forEach(row => {
-                  row.style.marginTop = '0';
-                  row.style.marginBottom = '8px';
-                });
-
-                // Resize any Plotly charts
-                Array.from(clonedElement.getElementsByClassName('js-plotly-plot')).forEach(plot => {
-                  if (window.Plotly) {
-                    window.Plotly.Plots.resize(plot);
-                  }
-                });
-              }
-            }
-          });
-
-          const tempCanvas = document.createElement('canvas');
-          const TARGET_WIDTH = 800;
-          tempCanvas.width = TARGET_WIDTH;
-          tempCanvas.height = TARGET_WIDTH / ASPECT_RATIO;
-          const ctx = tempCanvas.getContext('2d');
-          
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          
-          ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
-          
-          const thumbnail = tempCanvas.toDataURL('image/jpeg', 0.95);
-          onThumbnailGenerated(dashboard.name, thumbnail);
-        } catch (error) {
-          console.error('Error generating thumbnail:', error);
-        }
-      }
-    };
-
-    generateThumbnail();
-  }, [dashboard, onThumbnailGenerated, ASPECT_RATIO]);
-
-  return (
-    <div 
-      style={{ 
-        position: 'absolute',
-        left: '-9999px',
-        width: '1200px',
-        height: `${1200 / ASPECT_RATIO}px`,
-        overflow: 'hidden',
-        backgroundColor: '#ffffff',
-      }}
-    >
-      <div 
-        ref={containerRef} 
-        className="preview-container" 
-        style={{ 
-          width: '1200px',
-          height: `${1200 / ASPECT_RATIO}px`,
-          overflow: 'hidden',
-          backgroundColor: '#ffffff',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'stretch'
-        }}
-      >
-        <Dashboard 
-          project={project} 
-          dashboardName={dashboard.name}
-          isPreview={true}
-          previewWidth={1200}
-          previewHeight={1200 / ASPECT_RATIO}
-        />
-      </div>
-    </div>
-  );
-}
-
-function DashboardCard({ dashboard, thumbnail }) {
-  return (
-    <Link to={dashboard.name} className="block h-full">
-      <div className="h-full bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-200">
-        <div className="aspect-[16/10] rounded-t-lg overflow-hidden relative">
-          {thumbnail ? (
-            <div className="w-full h-full">
-              <img 
-                src={thumbnail} 
-                alt={`Preview of ${dashboard.name}`}
-                className="w-full h-full object-contain mix-blend-multiply"
-                loading="lazy"
-              />
-            </div>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <HiTemplate className="w-12 h-12 text-white/500" />
-            </div>
-          )}
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent">
-            <h3 className="text-lg font-semibold text-white line-clamp-1">
-              {dashboard.name}
-            </h3>
-          </div>
-        </div>
-        
-        <div className="p-4">
-          {dashboard.description && (
-            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-              {dashboard.description}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {dashboard.type && (
-              <Badge color="purple" size="sm" className="flex-shrink-0">
-                {dashboard.type}
-              </Badge>
-            )}
-            {dashboard.level && (
-              <Badge color="info" size="sm" className="flex-shrink-0">
-                Level {dashboard.level}
-              </Badge>
-            )}
-            {dashboard.tags && dashboard.tags.map(tag => (
-              <Badge key={tag} color="gray" size="sm" className="flex-shrink-0">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function DashboardSection({ title, dashboards }) {
-  if (!dashboards || dashboards.length === 0) return null;
-  
-  return (
-    <div className="mb-12">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 pb-2 border-b border-gray-200">{title}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {dashboards.map((dashboard) => (
-          <DashboardCard 
-            key={dashboard.name} 
-            dashboard={dashboard} 
-            thumbnail={dashboard.thumbnail}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FilterBar({ searchTerm, setSearchTerm, selectedTags, setSelectedTags, availableTags }) {
-  return (
-    <div className="mb-8">
-      <div className="space-y-4">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-            <HiSearch className="h-4 w-4 text-gray-500" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search dashboards..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
-          />
-        </div>
-        {availableTags.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filter by tags
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {availableTags.map(tag => (
-                <Badge
-                  key={tag}
-                  color={selectedTags.includes(tag) ? "info" : "gray"}
-                  className="cursor-pointer transform transition-all duration-200 hover:scale-105"
-                  onClick={() => {
-                    setSelectedTags(prev =>
-                      prev.includes(tag)
-                        ? prev.filter(t => t !== tag)
-                        : [...prev, tag]
-                    );
-                  }}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+import { HiTemplate } from 'react-icons/hi';
+import DashboardThumbnail from './thumbnail/DashboardThumbnail';
+import DashboardSection from './dashboard/DashboardSection';
+import FilterBar from './dashboard/FilterBar';
 
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -246,47 +22,45 @@ function Project(props) {
 
   // Initialize thumbnail generation queue
   useEffect(() => {
-    if (props.dashboards && props.dashboards.length > 0) {
+    if (props.dashboards && props.dashboards.length > 0 && thumbnailQueue.length === 0) {
       const dashboardsToGenerate = props.dashboards
         .filter(d => !thumbnails[d.name])
+        .sort((a, b) => {
+          // First sort by level
+          const levelOrder = { L0: 0, L1: 1, L2: 2, L3: 3, L4: 4, undefined: 5 };
+          const levelDiff = (levelOrder[a.level] || levelOrder.undefined) - (levelOrder[b.level] || levelOrder.undefined);
+          
+          // If same level, sort alphabetically
+          if (levelDiff === 0) {
+            return a.name.localeCompare(b.name);
+          }
+          return levelDiff;
+        })
         .map(d => d.name);
-      setThumbnailQueue(dashboardsToGenerate);
+
+      if (dashboardsToGenerate.length > 0) {
+        setThumbnailQueue(dashboardsToGenerate);
+      }
     }
-  }, [props.dashboards, thumbnails]);
+  }, [props.dashboards, thumbnails, thumbnailQueue]);
 
   // Process thumbnail queue with delay
   useEffect(() => {
-    let timeoutId;
-    
-    const processNextThumbnail = () => {
-      if (thumbnailQueue.length > 0 && !isGeneratingThumbnails) {
+    if (thumbnailQueue.length > 0 && !isGeneratingThumbnails) {
+      const currentDashboard = props.dashboards.find(d => d.name === thumbnailQueue[0]);
+      if (currentDashboard) {
         setIsGeneratingThumbnails(true);
-        // Add a small delay between generations
-        timeoutId = setTimeout(() => {
-          const currentDashboard = props.dashboards.find(d => d.name === thumbnailQueue[0]);
-          if (currentDashboard) {
-            setThumbnailQueue(prev => prev.slice(1));
-          }
-        }, 500); // 500ms delay between thumbnails
       }
-    };
-
-    processNextThumbnail();
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
+    }
   }, [thumbnailQueue, isGeneratingThumbnails, props.dashboards]);
 
   const handleThumbnailGenerated = (dashboardName, thumbnail) => {
-    console.log('Thumbnail generated for:', dashboardName); // Debug log
     setThumbnails(prev => ({
       ...prev,
       [dashboardName]: thumbnail
     }));
     setIsGeneratingThumbnails(false);
+    setThumbnailQueue(prev => prev.filter(name => name !== dashboardName));
   };
 
   const availableTags = useMemo(() => {

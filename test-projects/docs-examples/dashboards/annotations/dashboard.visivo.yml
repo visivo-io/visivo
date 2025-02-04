@@ -17,8 +17,6 @@ dashboards:
       - "chart feature"
     level: L0
 
-      
-
     rows:
       - height: compact
         items:

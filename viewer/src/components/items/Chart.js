@@ -1,14 +1,22 @@
 import Loading from "../Loading";
 import Menu from "./Menu"
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useImperativeHandle, useEffect } from "react";
 import CohortSelect from "../select/CohortSelect";
 import { traceNamesInData, chartDataFromCohortData } from "../../models/Trace";
 import { useTracesData } from "../../hooks/useTracesData";
 import MenuItem from "../styled/MenuItem";
 import { ItemContainer } from "./ItemContainer";
 
-const Chart = ({ chart, project, itemWidth, height, width }) => {
+const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
+    const [isLoading, setIsLoading] = useState(true);
+    const plotRef = useRef(null);
+
+    // Expose loading state through ref
+    useImperativeHandle(ref, () => ({
+        isLoading
+    }), [isLoading]);
+
     const traceNames = chart.traces.map((trace) => trace.name)
     const tracesData = useTracesData(project.id, traceNames)
     const [hovering, setHovering] = useState(false)
@@ -27,15 +35,14 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                 return chartData
             })
         }).flat();
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [JSON.stringify(selectedCohortData), JSON.stringify(chart.traces)]);
+    }, [selectedCohortData, chart.traces]);
 
     if (!tracesData) {
         return <Loading text={chart.name} width={itemWidth} />
     }
 
     const onSelectedCohortChange = (changedSelectedTracesData) => {
+        setIsLoading(true);
         setSelectedCohortData(changedSelectedTracesData)
     }
 
@@ -62,9 +69,13 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
                 layout={{ ...layout, height, width }}
                 useResizeHandler={true}
                 config={{ displayModeBar: false }}
+                ref={plotRef}
+                onAfterPlot={() => {
+                    setIsLoading(false);
+                }}
             />
         </ItemContainer>
     );
-}
+});
 
 export default Chart;
