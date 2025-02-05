@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -40,8 +40,12 @@ class Defaults(BaseModel):
         alias="target_name",
     )
     threads: Optional[int] = Field(
-        None,
+        8,
         description="The number of threads to use when running queries.",
+    )
+    thumbnail_mode: Literal['none', 'missing', 'all'] = Field(
+        'missing',
+        description="Mode for thumbnail generation: 'none' to disable, 'missing' to generate only missing thumbnails, 'all' to generate all thumbnails"
     )
 
     def __hash__(self):

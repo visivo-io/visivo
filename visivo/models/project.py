@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Literal
 from visivo.models.alert import Alert
 from visivo.models.dag import all_descendants_of_type, show_dag_fig
 from visivo.models.destinations.destination import Destination

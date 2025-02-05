@@ -8,6 +8,7 @@ def run_phase(
     soft_failure=False,
     dbt_profile: str = None,
     dbt_target: str = None,
+    thumbnail_mode: str = None,
 ):
     from visivo.logging.logger import Logger
     from visivo.query.runner import Runner
@@ -21,10 +22,13 @@ def run_phase(
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,
     )
+
+    # Initialize project defaults if not present
+    if thumbnail_mode is None  and project.defaults and project.defaults.thumbnail_mode:
+        thumbnail_mode = project.defaults.thumbnail_mode
+
     if threads is None and project.defaults and project.defaults.threads:
         threads = project.defaults.threads
-    elif threads is None:
-        threads = 8
     else:
         threads = int(threads)
 
@@ -40,6 +44,7 @@ def run_phase(
         soft_failure=soft_failure,
         run_only_changed=run_only_changed,
         dag_filter=dag_filter,
+        thumbnail_mode=thumbnail_mode,
     )
     runner.run()
     return runner

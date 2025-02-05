@@ -2,15 +2,15 @@ import click
 import re
 import os
 from visivo.logging.logger import Logger
+from visivo.utils import sanitize_filename
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response
 from livereload import Server
 from .run_phase import run_phase
 import datetime
-import importlib.resources as resources
+from visivo.utils import VIEWER_PATH
 import base64
 
-VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
 def write_dag(project, output_dir):
@@ -35,7 +35,7 @@ def get_project_json(output_dir, dag_filter=None):
     return project_json
 
 
-def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
+def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode):
     app = Flask(
         __name__,
         static_folder=output_dir,
@@ -53,6 +53,7 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
         default_source=default_source,
         dag_filter=dag_filter,
         threads=threads,
+        thumbnail_mode=thumbnail_mode,
     )
     write_dag(project=runner.project, output_dir=output_dir)
 
@@ -174,15 +175,12 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
             return send_from_directory(VIEWER_PATH, path)
         return send_from_directory(VIEWER_PATH, "index.html")
 
-    def sanitize_filename(name):
-        """Replace special characters with double underscores for safe filenames"""
-        return re.sub(r'[^a-zA-Z0-9]', '_', name)
 
     @app.route("/api/thumbnails/<dashboard_name>", methods=["GET"])
     def get_thumbnail(dashboard_name):
         try:
             safe_name = sanitize_filename(dashboard_name)
-            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.jpg")
+            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.png")
             
             if not os.path.exists(thumbnail_path):
                 # Return a 404 response directly without logging
@@ -192,7 +190,7 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
                 thumbnail_data = f.read()
                 thumbnail_b64 = base64.b64encode(thumbnail_data).decode('utf-8')
                 return jsonify({
-                    "thumbnail": f"data:image/jpeg;base64,{thumbnail_b64}",
+                    "thumbnail": f"data:image/png;base64,{thumbnail_b64}",
                     "updated_at": datetime.datetime.fromtimestamp(os.path.getmtime(thumbnail_path)).isoformat()
                 })
         except Exception as e:
@@ -212,7 +210,7 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
             thumbnail_bytes = base64.b64decode(thumbnail_data)
 
             # Save thumbnail using safe name
-            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.jpg")
+            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.png")
             
             with open(thumbnail_path, "wb") as f:
                 f.write(thumbnail_bytes)
@@ -228,13 +226,14 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads):
     return app, runner.project
 
 
-def serve_phase(output_dir, working_dir, default_source, dag_filter, threads):
+def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode):
     app, project = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=default_source,
         dag_filter=dag_filter,
         threads=threads,
+        thumbnail_mode=thumbnail_mode,
     )
 
     def cli_changed():  # TODO: Include changes to cmd models
@@ -247,6 +246,7 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads):
                 run_only_changed=True,
                 threads=threads,
                 soft_failure=True,
+                thumbnail_mode=thumbnail_mode,
             )
             write_dag(project=runner.project, output_dir=output_dir)
             Logger.instance().info("Files changed. Reloading . . .")

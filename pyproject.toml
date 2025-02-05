@@ -45,6 +45,7 @@ plotly = "^5.24.0"
 snowflake-sqlalchemy = "^1.6.1"
 sqlalchemy-bigquery = "^1.12.0"
 duckdb-engine = "^0.14.0"
+playwright = "^1.50.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

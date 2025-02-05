@@ -60,7 +60,7 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
           
           ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
           
-          const thumbnail = tempCanvas.toDataURL('image/jpeg', 0.95);
+          const thumbnail = tempCanvas.toDataURL('image/png', 0.95);
           onThumbnailGenerated(dashboard.name, thumbnail);
         } catch (error) {
           console.error(`[Thumbnail] Error generating for ${dashboard.name}:`, error);

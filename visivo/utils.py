@@ -6,7 +6,13 @@ import re
 import click
 from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
+import importlib.resources as resources
 
+VIEWER_PATH = resources.files("visivo") / "viewer"
+
+def sanitize_filename(name):
+    """Replace special characters with double underscores for safe filenames"""
+    return re.sub(r'[^a-zA-Z0-9]', '_', name)
 
 def yml_to_dict(relative_path):
     with open(relative_path, "r") as file:
