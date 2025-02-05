@@ -189,10 +189,11 @@ class Runner:
         elif isinstance(item, Source):
             return source_connection_job(source=item)
         elif isinstance(item, Dashboard):
-            return thumbnail_job(
-                dashboard=item,
-                project=self.project,
-                output_dir=self.output_dir,
-                thumbnail_mode=self.thumbnail_mode
-            )
+            if self.thumbnail_mode != 'none':
+                return thumbnail_job(
+                    dashboard=item,
+                    project=self.project,
+                    output_dir=self.output_dir,
+                    thumbnail_mode=self.thumbnail_mode
+                )
         return None
