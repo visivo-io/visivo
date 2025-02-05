@@ -5,7 +5,7 @@ import { HiTemplate } from 'react-icons/hi';
 
 function DashboardCard({ dashboard, thumbnail }) {
   return (
-    <Link to={dashboard.name} className="block h-full">
+    <Link to={encodeURIComponent(dashboard.name)} className="block h-full">
       <div className="h-full bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
         <div className="aspect-[16/10] rounded-t-md overflow-hidden relative bg-gray-50">
           {thumbnail ? (

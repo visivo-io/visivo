@@ -28,7 +28,7 @@ function Project(props) {
   useEffect(() => {
     if (props.dashboards && props.dashboards.length > 0) {
       props.dashboards.forEach(dashboard => {
-        const safeName = dashboard.name.replace(/[^a-zA-Z0-9]/g, '__');
+        const safeName = dashboard.name.replace(/[^a-zA-Z0-9]/g, '_');
         fetch(`/api/thumbnails/${safeName}`)
           .then(response => {
             if (response.ok) {
@@ -65,7 +65,7 @@ function Project(props) {
   const handleThumbnailGenerated = async (dashboardName, thumbnail) => {
     // Save thumbnail to API
     try {
-      const safeName = dashboardName.replace(/[^a-zA-Z0-9]/g, '__');
+      const safeName = dashboardName.replace(/[^a-zA-Z0-9]/g, '_');
       const response = await fetch(`/api/thumbnails/${safeName}`, {
         method: 'POST',
         headers: {
