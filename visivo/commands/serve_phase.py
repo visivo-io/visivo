@@ -12,12 +12,6 @@ from visivo.utils import VIEWER_PATH
 import base64
 
 
-
-def write_dag(project, output_dir):
-    with open(f"{output_dir}/dag.json", "w") as fp:
-        fp.write(json.dumps(project.dag_dict()))
-
-
 def get_project_json(output_dir, dag_filter=None):
     project_json = ""
     with open(f"{output_dir}/project.json", "r") as f:
@@ -55,7 +49,6 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thum
         threads=threads,
         thumbnail_mode=thumbnail_mode,
     )
-    write_dag(project=runner.project, output_dir=output_dir)
 
     @app.route("/data/explorer.json")
     def explorer():
@@ -248,7 +241,6 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, th
                 soft_failure=True,
                 thumbnail_mode=thumbnail_mode,
             )
-            write_dag(project=runner.project, output_dir=output_dir)
             Logger.instance().info("Files changed. Reloading . . .")
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({}))

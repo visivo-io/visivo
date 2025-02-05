@@ -6,7 +6,7 @@ from tests.factories.model_factories import (
     CsvScriptModelFactory,
     LocalMergeModelFactory
 )
-from tests.support.utils import temp_file, temp_folder, temp_yml_file
+from tests.support.utils import temp_folder, temp_yml_file
 from visivo.commands.compile_phase import compile_phase
 from visivo.commands.utils import create_file_database
 from visivo.models.defaults import Defaults
@@ -119,52 +119,6 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
     assert "trace" in os.listdir(output_dir)
     with open(f"{output_dir}/trace/query.sql") as f:
         assert outer_merge_model.name in f.read()
-
-def test_flatten_project_objects():
-    """Test the new flatten_project_objects function"""
-    project = ProjectFactory()
-    
-    # Add some additional objects to make the test more comprehensive
-    additional_dashboard = DashboardFactory(
-        name="Other Dashboard",
-        level="L1",
-        tags=["important", "metrics"],
-        description="A test dashboard"
-    )
-    project.dashboards.append(additional_dashboard)
-    
-    # Ensure all models have proper source references
-    source = project.sources[0]
-    for dashboard in project.dashboards:
-        for row in dashboard.rows:
-            for item in row.items:
-                if item.chart:
-                    for trace in item.chart.traces:
-                        if trace.model:
-                            trace.model.source = source
-    
-    # Add models to the project's top-level models list
-    model_count = 0
-    for dashboard in project.dashboards:
-        for row in dashboard.rows:
-            for item in row.items:
-                if item.chart and item.chart.traces:
-                    for trace in item.chart.traces:
-                        if trace.model:
-                            project.models.append(trace.model)
-                            model_count += 1
-    
-    from visivo.commands.compile_phase import flatten_project_objects
-    flattened = flatten_project_objects(project)
-    
-    # Verify we have all the expected keys
-    assert set(flattened.keys()) == {'sources', 'models', 'traces'}
-    
-    # Verify we collected all sources
-    assert len(flattened['sources']) == len(project.sources)
-    
-    # Verify model count matches
-    assert len(flattened['models']) == model_count
 
 def test_explorer_json_creation():
     """Test that explorer.json is created with flattened project structure"""

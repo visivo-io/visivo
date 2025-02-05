@@ -1,6 +1,4 @@
-import importlib.resources as resources
-
-VIEWER_PATH = resources.files("visivo") / "viewer"
+from visivo.utils import VIEWER_PATH
 
 
 def dist_phase(output_dir, working_dir, dist_dir, default_source, dag_filter, threads):
