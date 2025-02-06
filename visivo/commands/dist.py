@@ -10,16 +10,15 @@ from visivo.commands.options import (
 
 
 @click.command()
-@source
-@working_dir
+
 @output_dir
 @dist_dir
-@dag_filter
-@threads
-def dist(output_dir, working_dir, dist_dir, source, dag_filter, threads):
+def dist(output_dir, dist_dir):
     """
     Creates a distributable version of this dashboard and stores it in a 'dist' folder.
     This folder can be statically deployed to any web server, hosting service, or bucket storage.
+
+    Note: Make sure to run `visivo run` before running `visivo dist`. 
     """
     from visivo.logging.logger import Logger
 
@@ -29,10 +28,6 @@ def dist(output_dir, working_dir, dist_dir, source, dag_filter, threads):
 
     dist_phase(
         output_dir=output_dir,
-        working_dir=working_dir,
         dist_dir=dist_dir,
-        default_source=source,
-        dag_filter=dag_filter,
-        threads=threads,
     )
-    Logger.instance().success(f"Created dist folder")
+    Logger.instance().success(f"Created dist folder: {dist_dir}")
