@@ -51,7 +51,6 @@ tasks:
     use: [python, node]
     run: |
       pip install playwright
-      playwright install install-deps
       playwright install chromium
 
   - key: cli-dependencies
