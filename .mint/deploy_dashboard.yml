@@ -26,17 +26,24 @@ tasks:
   - key: github-cli
     call: github/install-cli 1.0.1
 
+  - key: install-playwright
+    use: [python]
+    run: |
+      pip install playwright
+      playwright install install-deps
+      playwright install chromium
+
   - key: install-visivo
     use: [python]
     run: pip install git+https://github.com/visivo-io/visivo.git@${{ init.head-ref }}
 
   - key: run-visivo
     if: ${{ init.deploy }}
-    use: [install-visivo, code]
+    use: [install-visivo, code, install-playwright]
     run: |
       cd test-projects/integration
       visivo --version
-      visivo run
+      visivo run --thumbnail-mode all
 
   - key: deploy-ci-stage
     if: ${{ init.deploy }}
