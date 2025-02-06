@@ -89,6 +89,7 @@ def action(
             if "BrowserType.launch: Executable doesn't exist" in str(e):
                 Logger.instance().info("Missing playwright chromium browser. Running a one time install...")
                 import subprocess #PR question: Is this the best way to do this? It works, but feels meh
+                subprocess.run(["playwright", "install-deps"], check=True)
                 subprocess.run(["playwright", "install", "chromium"], check=True)
                 # Retry with newly installed browser
                 thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
