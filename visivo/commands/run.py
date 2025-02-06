@@ -53,7 +53,7 @@ def run(
     )
 
     # Create temporary server for thumbnail generation if needed
-    if thumbnail_mode and thumbnail_mode != 'none':  # Use a default port for run command
+    if thumbnail_mode != 'none': 
         server_url = f"http://localhost:{port}"
         
         # Create and configure server & callbacks
@@ -90,7 +90,7 @@ def run(
             thumbnail_mode=thumbnail_mode,
             skip_compile=skip_compile,
             project=project,
-            
+
         )
 
     Logger.instance().success("Done")

@@ -1,7 +1,6 @@
-from typing import List, Optional, Literal
+from typing import List, Optional
 from visivo.models.alert import Alert
-from visivo.models.dag import all_descendants_of_type, show_dag_fig
-from visivo.models.destinations.destination import Destination
+from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
@@ -16,7 +15,6 @@ from .base.parent_model import ParentModel
 from .dashboard import Dashboard
 from .chart import Chart
 from .trace import Trace
-from .sources.source import Source
 from .table import Table
 from .defaults import Defaults
 from .dbt import Dbt
