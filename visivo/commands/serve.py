@@ -20,7 +20,6 @@ def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_
     """
     start_time = time()
     from visivo.commands.serve_phase import serve_phase
-    from visivo.commands.run_phase import run_phase
     from visivo.commands.parse_project_phase import parse_project_phase
     from visivo.logging.logger import Logger
     
@@ -46,21 +45,15 @@ def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_
         server_url=server_url,
     )
     
-    try:
-        # Start serving with hot reload
-        serve_duration = time() - start_time
-        Logger.instance().info(f"Initial build completed in {round(serve_duration, 2)}s")
-        Logger.instance().info(f"Server running at {server_url}")
-        
-        # Start the server with file watching
-        server.serve(
-            host="0.0.0.0",
-            port=port,
-            on_change_callback=on_project_change,
-            on_server_ready=on_server_ready
-        )
-    except KeyboardInterrupt:
-        Logger.instance().info("\nShutting down server...")
-    except Exception as e:
-        Logger.instance().error(f"Server error: {str(e)}")
-        raise
+    # Start serving with hot reload
+    serve_duration = time() - start_time
+    Logger.instance().info(f"Initial build completed in {round(serve_duration, 2)}s")
+    Logger.instance().info(f"Server running at {server_url}")
+    
+    # Start the server with file watching
+    server.serve(
+        host="0.0.0.0",
+        port=port,
+        on_change_callback=on_project_change,
+        on_server_ready=on_server_ready
+    )

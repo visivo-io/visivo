@@ -4,6 +4,8 @@ from visivo.server.hot_reload_server import HotReloadServer
 from visivo.server.flask_app import flask_app
 from visivo.commands.run_phase import run_phase
 import json
+import os
+import traceback
 
     
 def serve_phase(
@@ -38,6 +40,7 @@ def serve_phase(
                 thumbnail_mode=thumbnail_mode,
                 skip_compile=False,  # Always recompile on changes
                 project=None,  # Don't reuse project instance
+                server_url=server_url,
             )
             Logger.instance().success("File Change Data Refresh Complete.") 
             Logger.instance().info("View your project at: " + server_url)
@@ -45,25 +48,35 @@ def serve_phase(
                 error_file.write(json.dumps({}))
         except Exception as e:
             error_message = str(e)
+            if os.environ.get('STACKTRACE'):
+                error_message = f"{str(e)}\n{traceback.format_exc()}"
             Logger.instance().error(error_message)
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({"message": error_message}))
 
     def on_server_ready():
         """Run initialization jobs after server starts"""
-        Logger.instance().info("Running initial project build...")
-        run_phase(
-            output_dir=output_dir,
-            working_dir=working_dir,
-            default_source=default_source,
-            dag_filter=dag_filter,
-            threads=threads,
-            thumbnail_mode=thumbnail_mode,
-            skip_compile=skip_compile,
-            project=project,
-        )
-        Logger.instance().success("Initial Data Refresh Complete.") 
-        Logger.instance().info("View your project at: " + server_url)
+        try:
+            Logger.instance().info("Running initial project build...")
+            run_phase(
+                output_dir=output_dir,
+                working_dir=working_dir,
+                default_source=default_source,
+                dag_filter=dag_filter,
+                threads=threads,
+                thumbnail_mode=thumbnail_mode,
+                skip_compile=skip_compile,
+                project=project,
+                server_url=server_url,
+            )
+            Logger.instance().success("Initial Data Refresh Complete.") 
+            Logger.instance().info("View your project at: " + server_url)
+        except Exception as e:
+            error_message = str(e)
+            if os.environ.get('STACKTRACE'):
+                error_message = f"{str(e)}\n{traceback.format_exc()}"
+            Logger.instance().error(error_message)
+            raise
 
     # Create ignore patterns for dbt files if needed
     ignore_patterns = []

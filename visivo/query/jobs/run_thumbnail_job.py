@@ -22,7 +22,7 @@ def get_thumbnail_path(dashboard_name: str, output_dir: str):
     return os.path.join(thumbnail_dir, f"{safe_name}.png")
 
 
-def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int):
+def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int, server_url: str):
     from playwright.sync_api import sync_playwright
     thumbnail_path = get_thumbnail_path(dashboard.name, output_dir)
 
@@ -30,28 +30,35 @@ def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int):
         browser = p.chromium.launch()
         context = browser.new_context(viewport={'width': 1200, 'height': 750})
         page = context.new_page()
-
+        # URL encode the dashboard name to handle special characters
+        from urllib.parse import quote
+        encoded_dashboard_name = quote(dashboard.name)
         # Navigate to dashboard
-        page.goto(f"file://{output_dir}/index.html#{dashboard.name}")
+        page.goto(f"{server_url}/{encoded_dashboard_name}")
         
         # Wait for dashboard to load and render
         page.wait_for_selector(".dashboard-row", timeout=timeout_ms)
-        page.wait_for_timeout(1000)  # Additional wait for animations
+        page.wait_for_timeout(1000)  #TODO: Replace this with a wait based on the actual item loading
         
         # Take screenshot
         page.screenshot(
             timeout=timeout_ms,
             path=thumbnail_path,
             type='png',
-            quality=80,
-            full_page=True
+            full_page=False
         )
         
         browser.close()
     return thumbnail_path
 
 
-def action(dashboard: Dashboard, output_dir: str, thumbnail_mode: str, timeout_ms: int = 30000):
+def action(
+        dashboard: Dashboard, 
+        output_dir: str, 
+        thumbnail_mode: str, 
+        timeout_ms: int = 30000, 
+        server_url: str = None
+    ):
     Logger.instance().info(start_message("Dashboard", dashboard))
     start_time = time()
     
@@ -68,14 +75,14 @@ def action(dashboard: Dashboard, output_dir: str, thumbnail_mode: str, timeout_m
             return JobResult(item=dashboard, success=True, message=success_message)
 
         try:
-            thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms)
+            thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
         except Exception as e:
             if "BrowserType.launch: Executable doesn't exist" in str(e):
                 Logger.instance().info("Installing Playwright browser...")
                 import subprocess #PR question: Is this the best way to do this? It works, but feels meh
                 subprocess.run(["playwright", "install", "chromium"], check=True)
                 # Retry with newly installed browser
-                thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms)
+                thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
             else:
                 raise ClickException(f"Error generating thumbnail for dashboard {dashboard.name}: {str(e)}")
 
@@ -96,7 +103,13 @@ def action(dashboard: Dashboard, output_dir: str, thumbnail_mode: str, timeout_m
         return JobResult(item=dashboard, success=False, message=failure_message)
 
 
-def job(dashboard: Dashboard, project: Project, output_dir: str, thumbnail_mode: str = None) -> Job:
+def job(
+    dashboard: Dashboard, 
+    project: Project, 
+    output_dir: str, 
+    thumbnail_mode: str = None, 
+    server_url: str = None
+    ) -> Job:
     return Job(
         item=dashboard,
         source=None,  # Thumbnails don't need a source
@@ -104,4 +117,5 @@ def job(dashboard: Dashboard, project: Project, output_dir: str, thumbnail_mode:
         dashboard=dashboard,
         output_dir=output_dir,
         thumbnail_mode=thumbnail_mode or 'missing',
+        server_url=server_url,
     ) 

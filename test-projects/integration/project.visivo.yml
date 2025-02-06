@@ -67,7 +67,7 @@ charts:
       width: 500
       height: 500
 dashboards:
-  - name: Table
+  - name: Tabling around 2
     rows:
       - height: compact
         items:

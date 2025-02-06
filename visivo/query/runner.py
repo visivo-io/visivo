@@ -42,6 +42,7 @@ class Runner:
         run_only_changed=False,
         dag_filter: str = None,
         thumbnail_mode: str = None, #Set in project defaults
+        server_url: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -50,13 +51,14 @@ class Runner:
         self.soft_failure = soft_failure
         self.dag_filter = dag_filter
         self.thumbnail_mode = thumbnail_mode
+        self.server_url = server_url
         self.project_dag = project.dag()
         self.job_dag = self.create_job_dag()
         self.job_tracking_dag = self.create_job_dag()
         self.failed_job_results = []
         self.successful_job_results = []
         self.lock = Lock()
-
+        
     def run(self):
         complete = False
         job_tracker = JobTracker()
@@ -190,10 +192,13 @@ class Runner:
             return source_connection_job(source=item)
         elif isinstance(item, Dashboard):
             if self.thumbnail_mode != 'none':
+                if self.server_url is None:
+                    raise Exception("Cannot generate thumbnails, no server URL is provided. A running server is required to generate thumbnails.")
                 return thumbnail_job(
                     dashboard=item,
                     project=self.project,
                     output_dir=self.output_dir,
-                    thumbnail_mode=self.thumbnail_mode
+                    thumbnail_mode=self.thumbnail_mode,
+                    server_url=self.server_url,
                 )
         return None

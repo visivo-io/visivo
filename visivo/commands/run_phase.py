@@ -13,12 +13,14 @@ def run_phase(
     thumbnail_mode: str = None,
     skip_compile: bool = False,
     project: Project = None,
+    server_url: str = None,
 ):
     from visivo.logging.logger import Logger
     from visivo.query.runner import Runner
     from time import time
     
-    
+    if not server_url and thumbnail_mode == "all":
+        raise Exception("Thumbnail mode is set to 'all', but no server URL is provided. A running server is required to generate thumbnails.")
     #Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
     if project and skip_compile:
         if os.environ.get("STACKTRACE"):
@@ -70,6 +72,7 @@ def run_phase(
         run_only_changed=run_only_changed,
         dag_filter=dag_filter,
         thumbnail_mode=thumbnail_mode,
+        server_url=server_url,
     )
     runner.run()
     return runner

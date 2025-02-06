@@ -7,7 +7,6 @@ from visivo.commands.run_phase import run_phase
 from visivo.commands.utils import create_file_database
 from visivo.models.defaults import Defaults
 from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
-from visivo.query.runner import Runner
 from unittest.mock import ANY
 
 
