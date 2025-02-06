@@ -1,5 +1,6 @@
 import click
 from time import time
+import json
 
 from .options import dag_filter, output_dir, working_dir, source, port, threads, thumbnail_mode, skip_compile
 
@@ -21,16 +22,19 @@ def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_
     from visivo.commands.serve_phase import serve_phase
     from visivo.commands.run_phase import run_phase
     from visivo.commands.parse_project_phase import parse_project_phase
-
     from visivo.logging.logger import Logger
+    
     server_url = f"http://localhost:{port}"
 
+    # Parse project first
     project = parse_project_phase(
         working_dir=working_dir,
         output_dir=output_dir,
         default_source=source,
     )
-    runner = run_phase( #moving out of app phase and into serve.py
+
+    # Create and configure server & callbacks
+    server, on_project_change, on_server_ready = serve_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=source,
@@ -39,19 +43,28 @@ def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_
         thumbnail_mode=thumbnail_mode,
         skip_compile=skip_compile,
         project=project,
+        server_url=server_url,
     )
 
-    server = serve_phase(
-        output_dir=output_dir,
-        working_dir=working_dir,
-        default_source=source,
-        dag_filter=dag_filter,
-        threads=threads,
-        thumbnail_mode=thumbnail_mode, #need to keep to past to cli_changed run_phase
-        skip_compile=skip_compile, #To remove 
-        project=project,
-    )
-    serve_duration = time() - start_time    
-    Logger.instance().info(f"Serving project at {server_url}")
-    server.serve(host="0.0.0.0", port=port)
-    Logger.instance().info(f"Serve + Run excecution time: {round(serve_duration, 2)}s")
+    
+    # Start server first so it's available for thumbnail generation
+    Logger.instance().info(f"Starting server at {server_url}")
+    
+    try:
+        # Start serving with hot reload
+        serve_duration = time() - start_time
+        Logger.instance().info(f"Initial build completed in {round(serve_duration, 2)}s")
+        Logger.instance().info(f"Server running at {server_url}")
+        
+        # Start the server with file watching
+        server.serve(
+            host="0.0.0.0",
+            port=port,
+            on_change_callback=on_project_change,
+            on_server_ready=on_server_ready
+        )
+    except KeyboardInterrupt:
+        Logger.instance().info("\nShutting down server...")
+    except Exception as e:
+        Logger.instance().error(f"Server error: {str(e)}")
+        raise

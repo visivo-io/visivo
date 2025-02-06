@@ -6,7 +6,7 @@ includes:
   - path: visivo-io/example-include.git@main
 
 defaults:
-  source_name: local-sqlite
+  source_name: local-duckdb
   alert_name: slack
 
 alerts:
@@ -72,7 +72,7 @@ dashboards:
       - height: compact
         items:
           - markdown: |
-              # Text!
+              # Text! and stuff
             align: left
             justify: between
       - height: small

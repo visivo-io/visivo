@@ -4,12 +4,12 @@ includes:
   - path: "hover-info.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Funnelarea" 
+  - name: "Trace Props Examples: Funnelarea"  
     description: An awesome description  
     rows:
       - height: compact
         items:
-          - markdown: "# Funnelarea"
+          - markdown: "# Funnelarea chart"
           - markdown: ""
             width: 5
       - height: medium
