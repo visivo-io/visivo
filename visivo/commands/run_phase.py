@@ -16,7 +16,7 @@ def run_phase(
     from time import time
     
     
-
+    #Replace compile phase with parse project phase if skip_compile is True
     if skip_compile:
         from visivo.commands.parse_project_phase import parse_project_phase
         Logger.instance().info("Parsing project...")

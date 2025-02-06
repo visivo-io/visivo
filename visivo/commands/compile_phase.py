@@ -37,14 +37,15 @@ def compile_phase(
 ):
     # Track dbt phase
     dbt_start = time()
+    Logger.instance().debug("    Running dbt phase...")
     dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
     dbt_duration = time() - dbt_start
     if os.environ.get("STACKTRACE"):
         Logger.instance().info(f"dbt phase completed in {round(dbt_duration, 2)}s")
 
-
     # Track parse project
     parse_start = time()
+    Logger.instance().debug("    Running parse project phase...")
     project = parse_project_phase(working_dir, output_dir, default_source)
     parse_duration = time() - parse_start
     if os.environ.get("STACKTRACE"):
@@ -58,6 +59,7 @@ def compile_phase(
 
     # Track artifacts writing
     artifacts_start = time()
+    Logger.instance().debug("    Writing artifacts...")
     write_dag(project=project, output_dir=output_dir)
     
     # Write the original project.json
@@ -78,6 +80,7 @@ def compile_phase(
 
     # Track trace query writing
     traces_start = time()
+    Logger.instance().debug("    Writing trace queries...")
     dag = project.dag()
     filtered_dag = filter_dag(dag, dag_filter)
     traces = all_descendants_of_type(type=Trace, dag=filtered_dag)
