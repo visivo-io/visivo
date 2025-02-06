@@ -34,6 +34,17 @@ def flask_app(output_dir, dag_filter, project):
 
         return project_json
 
+    @app.route("/data/<trace_name>/data.json")
+    def serve_trace_data(trace_name):
+        try:
+            trace_dir = os.path.join(output_dir, trace_name)
+            if not os.path.exists(trace_dir):
+                return jsonify({"message": f"Trace directory not found: {trace_name}"}), 404
+            return send_from_directory(trace_dir, "data.json")
+        except Exception as e:
+            Logger.instance().error(f"Error serving trace data: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
     @app.route("/data/explorer.json")
     def explorer():
         if os.path.exists(f"{output_dir}/explorer.json"):

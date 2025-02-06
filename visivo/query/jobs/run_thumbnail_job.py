@@ -22,7 +22,7 @@ def get_thumbnail_path(dashboard_name: str, output_dir: str):
 
 
 def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int, server_url: str):
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import sync_playwright, TimeoutError
     thumbnail_path = get_thumbnail_path(dashboard.name, output_dir)
 
     with sync_playwright() as p:
@@ -35,17 +35,24 @@ def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int, s
         # Navigate to dashboard
         page.goto(f"{server_url}/{encoded_dashboard_name}")
         
-        # Wait for dashboard to load and render
-        page.wait_for_selector(".dashboard-row", timeout=timeout_ms)
-        page.wait_for_timeout(1000)  #TODO: Replace this with a wait based on the actual item loading
-        
-        # Take screenshot
-        page.screenshot(
-            timeout=timeout_ms,
-            path=thumbnail_path,
-            type='png',
-            full_page=False
-        )
+        try:
+            # Wait for dashboard to load and render
+            page.wait_for_selector(".dashboard-row", timeout=timeout_ms)
+            page.wait_for_timeout(1000)  #TODO: Replace this with a wait based on the actual item loading
+            
+            # Take screenshot
+            page.screenshot(
+                timeout=timeout_ms,
+                path=thumbnail_path,
+                type='png',
+                full_page=False
+            )
+        except TimeoutError as e:
+            browser.close()
+            raise Exception(f"Timeout waiting for dashboard to load: {str(e)}")
+        except Exception as e:
+            browser.close()
+            raise e
         
         browser.close()
     return thumbnail_path
@@ -110,7 +117,8 @@ def job(
     project: Project, 
     output_dir: str, 
     thumbnail_mode: str = None, 
-    server_url: str = None
+    server_url: str = None,
+    timeout_ms: int = 30000
     ) -> Job:
     return Job(
         item=dashboard,
@@ -120,4 +128,5 @@ def job(
         output_dir=output_dir,
         thumbnail_mode=thumbnail_mode or 'missing',
         server_url=server_url,
+        timeout_ms=timeout_ms,
     ) 

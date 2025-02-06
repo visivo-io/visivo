@@ -53,7 +53,8 @@ def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir):
     assert "already exists" in result.message
 
 def test_thumbnail_job_handles_browser_errors(test_project, dashboard, output_dir, server_url):
-    # Create a dashboard that will cause browser errors
+    # Create a dashboard that will cause browser errors by having empty rows
+    # This will cause a timeout waiting for .dashboard-row selector
     dashboard.rows = []
     
     job_instance = job(
@@ -61,7 +62,8 @@ def test_thumbnail_job_handles_browser_errors(test_project, dashboard, output_di
         dashboard=dashboard,
         output_dir=output_dir,
         thumbnail_mode='all',
-        server_url=server_url
+        server_url=server_url,
+        timeout_ms=1  # Set a very short timeout to ensure we get a timeout error
     )
     
     result = job_instance.action(**job_instance.kwargs)

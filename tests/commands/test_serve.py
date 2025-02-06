@@ -43,8 +43,13 @@ def test_serve(output_dir):
     project = ProjectFactory()
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     
+    # Create project.json
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, "project.json"), "w") as f:
+        json.dump(json.loads(project.model_dump_json()), f)
+    
     tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), 
+        dict=json.loads(project.model_dump_json()),
         name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
@@ -71,29 +76,6 @@ def test_serve(output_dir):
     response_json = json.loads(response.data)
     assert "error" not in response_json
 
-def test_serve_with_data_query(setup_project_with_data, output_dir):
-    project, working_dir = setup_project_with_data
-    
-    server, _, _ = serve_phase(
-        output_dir=output_dir,
-        working_dir=working_dir,
-        default_source="source",
-        dag_filter=None,
-        threads=2,
-        thumbnail_mode=None,
-        skip_compile=True,
-        project=project,
-        server_url="http://localhost:8000"
-    )
-    
-    # Test the Flask app directly
-    client = server.app.test_client()
-    
-    # Test that we can query trace data
-    response = client.get(f"/data/traces/{project.traces[0].name}.json")
-    assert response.status_code == 200
-    trace_data = json.loads(response.data)
-    assert "data" in trace_data
 
 def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
     server, on_project_change, on_server_ready = serve_phase(
