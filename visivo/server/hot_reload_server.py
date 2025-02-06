@@ -54,10 +54,11 @@ class HotReloadServer:
             log = logging.getLogger('socketio')
             log.setLevel(logging.ERROR)
 
-    def start_file_watcher(self, callback):
+    def start_file_watcher(self, callback, one_shot=False):
         """Start watching for file changes"""
         def wrapped_callback():
-            callback()
+            # Pass one_shot context to the callback
+            callback(one_shot=one_shot)
             # Notify clients to refresh after callback completes
             self.socketio.emit('reload')
             
@@ -84,8 +85,20 @@ class HotReloadServer:
         self.server_thread.start()
         Logger.instance().debug(f"Started server on {host}:{port}")
 
-    def serve(self, host: str, port: int, on_change_callback=None, on_server_ready=None):
-        """Start both the server and file watcher"""
+    def serve(self, host: str, port: int, 
+              on_change_callback=None, 
+              on_server_ready=None, 
+              one_shot=False
+        ):
+        """Start both the server and file watcher
+        
+        Args:
+            host: Host to bind to
+            port: Port to listen on
+            on_change_callback: Callback for file changes
+            on_server_ready: Callback to run after server starts
+            one_shot: If True, server will shut down after on_server_ready callback completes
+        """
         try:
             # Add route for client-side reload script
             @self.app.route('/hot-reload.js')
@@ -103,14 +116,18 @@ class HotReloadServer:
             
             # Run initialization callback if provided
             if on_server_ready:
-                on_server_ready()
+                # Pass one_shot context to the callback
+                on_server_ready(one_shot=one_shot)
+                if one_shot:
+                    self.stop()
+                    return
             
-            # Start the file watcher if callback provided
-            if on_change_callback:
-                self.start_file_watcher(on_change_callback)
+            # Start the file watcher if callback provided and not in one_shot mode
+            if on_change_callback and not one_shot:
+                self.start_file_watcher(on_change_callback, one_shot=one_shot)
             
-            # Keep the main thread alive
-            while not self.stop_event.is_set():
+            # Keep the main thread alive if not in one_shot mode
+            while not one_shot and not self.stop_event.is_set():
                 time.sleep(1)
                 
         except KeyboardInterrupt:

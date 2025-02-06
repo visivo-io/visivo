@@ -26,7 +26,7 @@ def serve_phase(
         project=project,
     )
 
-    def on_project_change():
+    def on_project_change(one_shot=False):
         try:
             Logger.instance().info("Server has detected changes to the project. Re-running project...")
             run_phase(
@@ -42,8 +42,11 @@ def serve_phase(
                 project=None,  # Don't reuse project instance
                 server_url=server_url,
             )
-            Logger.instance().success("File Change Data Refresh Complete.") 
-            Logger.instance().info("View your project at: " + server_url)
+            if one_shot:
+                Logger.instance().success("Closing server...")
+            else:
+                Logger.instance().success("File Change Data Refresh Complete.") 
+                Logger.instance().info("View your project at: " + server_url)
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({}))
         except Exception as e:
@@ -54,10 +57,13 @@ def serve_phase(
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({"message": error_message}))
 
-    def on_server_ready():
+    def on_server_ready(one_shot=False):
         """Run initialization jobs after server starts"""
         try:
-            Logger.instance().info("Running initial project build...")
+            if one_shot:
+                Logger.instance().info("Running project build...")
+            else:
+                Logger.instance().info("Running initial project build...")
             run_phase(
                 output_dir=output_dir,
                 working_dir=working_dir,
@@ -69,8 +75,11 @@ def serve_phase(
                 project=project,
                 server_url=server_url,
             )
-            Logger.instance().success("Initial Data Refresh Complete.") 
-            Logger.instance().info("View your project at: " + server_url)
+            if one_shot:
+                Logger.instance().info("Closing server...")
+            else:
+                Logger.instance().success("Initial Data Refresh Complete.") 
+                Logger.instance().info("View your project at: " + server_url)
         except Exception as e:
             error_message = str(e)
             if os.environ.get('STACKTRACE'):

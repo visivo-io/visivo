@@ -12,7 +12,6 @@ from visivo.logging.logger import Logger
 from visivo.utils import sanitize_filename
 from time import time
 from click import ClickException
-from visivo.utils import VIEWER_PATH
 
 
 def get_thumbnail_path(dashboard_name: str, output_dir: str):
@@ -78,7 +77,7 @@ def action(
             thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
         except Exception as e:
             if "BrowserType.launch: Executable doesn't exist" in str(e):
-                Logger.instance().info("Installing Playwright browser...")
+                Logger.instance().info("Missing playwright chromium browser. Running a one time install...")
                 import subprocess #PR question: Is this the best way to do this? It works, but feels meh
                 subprocess.run(["playwright", "install", "chromium"], check=True)
                 # Retry with newly installed browser
