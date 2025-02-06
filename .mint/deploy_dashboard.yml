@@ -30,7 +30,7 @@ tasks:
     use: [python]
     run: |
       pip install playwright
-      playwright install chromium
+      playwright install webkit
 
   - key: install-visivo
     use: [python]

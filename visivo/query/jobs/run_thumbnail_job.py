@@ -26,7 +26,7 @@ def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int, s
     thumbnail_path = get_thumbnail_path(dashboard.name, output_dir)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.webkit.launch()
         context = browser.new_context(viewport={'width': 1200, 'height': 750})
         page = context.new_page()
         # URL encode the dashboard name to handle special characters
@@ -87,10 +87,9 @@ def action(
             thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
         except Exception as e:
             if "BrowserType.launch: Executable doesn't exist" in str(e):
-                Logger.instance().info("Missing playwright chromium browser. Running a one time install...")
+                Logger.instance().info("Missing playwright webkit browser. Running a one time install...")
                 import subprocess #PR question: Is this the best way to do this? It works, but feels meh
-                subprocess.run(["playwright", "install-deps"], check=True)
-                subprocess.run(["playwright", "install", "chromium"], check=True)
+                subprocess.run(["playwright", "install", "webkit"], check=True)
                 # Retry with newly installed browser
                 thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
             else:
