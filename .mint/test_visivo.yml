@@ -145,7 +145,7 @@ tasks:
     filter: [test-projects/complex-project]
   
   - key: test-docs-examples-project
-    use: visivo-install
+    use: [visivo-install, install-playwright]
     run: |
       cd test-projects/docs-examples
       visivo run
