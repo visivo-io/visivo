@@ -9,7 +9,7 @@ dashboards:
     rows:
       - height: compact
         items:
-          - markdown: "# Funnelarea chart"
+          - markdown: "# Funnelarea"
           - markdown: ""
             width: 5
       - height: medium
