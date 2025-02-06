@@ -146,3 +146,13 @@ def thumbnail_mode(function):
         default=None,
     )(function)
     return function
+
+def skip_compile(function):
+    click.option(
+        "-sc",
+        "--skip-compile",
+        help="Skips the compile phase. This is useful if you have already compiled just want to run or serve.",
+        is_flag=True,
+        default=False,
+    )(function)
+    return function

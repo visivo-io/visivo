@@ -7,6 +7,7 @@ from visivo.commands.options import (
     threads,
     dbt_profile,
     dbt_target,
+    skip_compile,
     thumbnail_mode,
 )
 
@@ -19,9 +20,11 @@ from visivo.commands.options import (
 @threads
 @dbt_profile
 @dbt_target
-def run(output_dir, working_dir, source, dag_filter, threads, dbt_profile, dbt_target, thumbnail_mode):
+@skip_compile
+@thumbnail_mode
+def run(output_dir, working_dir, source, dag_filter, threads, dbt_profile, dbt_target, thumbnail_mode, skip_compile):
     """
-    Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory.
+    Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.
     """
 
     from visivo.logging.logger import Logger
@@ -37,6 +40,7 @@ def run(output_dir, working_dir, source, dag_filter, threads, dbt_profile, dbt_t
         dbt_profile=dbt_profile,
         dbt_target=dbt_target,
         thumbnail_mode=thumbnail_mode,
+        skip_compile=skip_compile,
     )
 
     Logger.instance().success("Done")

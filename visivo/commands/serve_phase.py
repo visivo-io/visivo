@@ -29,17 +29,14 @@ def get_project_json(output_dir, dag_filter=None):
     return project_json
 
 
-def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode):
+def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode, skip_compile):
     app = Flask(
         __name__,
         static_folder=output_dir,
         static_url_path="/data",
     )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-
-    # Ensure thumbnail directory exists
     thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
-    os.makedirs(thumbnail_dir, exist_ok=True)
 
     runner = run_phase(
         output_dir=output_dir,
@@ -48,6 +45,7 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thum
         dag_filter=dag_filter,
         threads=threads,
         thumbnail_mode=thumbnail_mode,
+        skip_compile=skip_compile,
     )
 
     @app.route("/data/explorer.json")
@@ -219,7 +217,7 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thum
     return app, runner.project
 
 
-def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode):
+def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode, skip_compile):
     app, project = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
@@ -227,6 +225,7 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, th
         dag_filter=dag_filter,
         threads=threads,
         thumbnail_mode=thumbnail_mode,
+        skip_compile=skip_compile,
     )
 
     def cli_changed():  # TODO: Include changes to cmd models
@@ -240,6 +239,7 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, th
                 threads=threads,
                 soft_failure=True,
                 thumbnail_mode=thumbnail_mode,
+                skip_compile=False,
             )
             Logger.instance().info("Files changed. Reloading . . .")
             with open(f"{output_dir}/error.json", "w") as error_file:

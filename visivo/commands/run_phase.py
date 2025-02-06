@@ -9,22 +9,37 @@ def run_phase(
     dbt_profile: str = None,
     dbt_target: str = None,
     thumbnail_mode: str = None,
+    skip_compile: bool = False,
 ):
     from visivo.logging.logger import Logger
     from visivo.query.runner import Runner
-    from visivo.commands.compile_phase import compile_phase
+    from time import time
+    
+    
 
-    project = compile_phase(
-        default_source=default_source,
-        working_dir=working_dir,
-        output_dir=output_dir,
-        dag_filter=dag_filter,
-        dbt_profile=dbt_profile,
-        dbt_target=dbt_target,
-    )
+    if skip_compile:
+        from visivo.commands.parse_project_phase import parse_project_phase
+        Logger.instance().info("Parsing project...")
+        start_time = time()
+        project = parse_project_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            default_source=default_source,
+        )
+        Logger.instance().info(f"Parsing project took {round(time() - start_time, 2)}s")
+    else: 
+        from visivo.commands.compile_phase import compile_phase
+        project = compile_phase(
+            default_source=default_source,
+            working_dir=working_dir,
+            output_dir=output_dir,
+            dag_filter=dag_filter,
+            dbt_profile=dbt_profile,
+            dbt_target=dbt_target,
+        )
 
     # Initialize project defaults if not present
-    if thumbnail_mode is None  and project.defaults and project.defaults.thumbnail_mode:
+    if thumbnail_mode is None and project.defaults and project.defaults.thumbnail_mode:
         thumbnail_mode = project.defaults.thumbnail_mode
 
     if threads is None and project.defaults and project.defaults.threads:
