@@ -35,6 +35,7 @@ tasks:
   - key: install-visivo
     use: [python]
     run: pip install git+https://github.com/visivo-io/visivo.git@${{ init.head-ref }}
+    filter: [visivo]
 
   - key: run-visivo
     if: ${{ init.deploy }}

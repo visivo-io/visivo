@@ -46,16 +46,13 @@ def compile_phase(
         Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
 
     # Track parse project
-    if project is None:
-        parse_start = time()
-        Logger.instance().debug("    Running parse project phase...")
-        project = parse_project_phase(working_dir, output_dir, default_source)
-        parse_duration = round(time() - parse_start, 2)
-        if os.environ.get("STACKTRACE"):
-            Logger.instance().info(f"Project parsing completed in {parse_duration}s")
-    else:
-        Logger.instance().info("Using provided project")
-        parse_duration = 'Skipped'
+    parse_start = time()
+    Logger.instance().debug("    Running parse project phase...")
+    project = parse_project_phase(working_dir, output_dir, default_source)
+    parse_duration = round(time() - parse_start, 2)
+    if os.environ.get("STACKTRACE"):
+        Logger.instance().info(f"Project parsing completed in {parse_duration}s")
+ 
     
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
