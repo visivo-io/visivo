@@ -1,3 +1,5 @@
+from visivo.models.project import Project
+import os 
 def run_phase(
     default_source: str,
     output_dir: str,
@@ -10,14 +12,20 @@ def run_phase(
     dbt_target: str = None,
     thumbnail_mode: str = None,
     skip_compile: bool = False,
+    project: Project = None,
 ):
     from visivo.logging.logger import Logger
     from visivo.query.runner import Runner
     from time import time
     
     
-    #Replace compile phase with parse project phase if skip_compile is True
-    if skip_compile:
+    #Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
+    if project and skip_compile:
+        if os.environ.get("STACKTRACE"):
+            Logger.instance().info(f"Using provided project {project.name}. skip_compile is {skip_compile}")
+        else:
+            Logger.instance().debug("Using provided project")
+    elif project is None and skip_compile:
         from visivo.commands.parse_project_phase import parse_project_phase
         Logger.instance().info("Parsing project...")
         start_time = time()
@@ -29,6 +37,7 @@ def run_phase(
         Logger.instance().info(f"Parsing project took {round(time() - start_time, 2)}s")
     else: 
         from visivo.commands.compile_phase import compile_phase
+
         project = compile_phase(
             default_source=default_source,
             working_dir=working_dir,
@@ -36,6 +45,7 @@ def run_phase(
             dag_filter=dag_filter,
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
+            project=project, # Passing the project to save on re-parsing if it's available.
         )
 
     # Initialize project defaults if not present

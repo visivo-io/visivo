@@ -1,5 +1,5 @@
 from time import time
-import_start = time()
+compile_import_start = time()
 from visivo.logging.logger import Logger
 Logger.instance().debug("Compiling project...")
 import os
@@ -11,6 +11,7 @@ from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.trace import Trace
+from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
@@ -18,9 +19,9 @@ from visivo.query.query_writer import QueryWriter
 
 from .parse_project_phase import parse_project_phase
 from .dbt_phase import dbt_phase
-import_duration = time() - import_start
+import_duration = round(time() - compile_import_start, 2)
 if os.environ.get("STACKTRACE"):
-    Logger.instance().info(f"Compile Import completed in {round(import_duration, 2)}s")
+    Logger.instance().info(f"Compile Import completed in {import_duration}s")
 
 
 def write_dag(project, output_dir):
@@ -34,22 +35,27 @@ def compile_phase(
     dag_filter: str = None,
     dbt_profile: str = None,
     dbt_target: str = None,
+    project: Project = None,
 ):
     # Track dbt phase
     dbt_start = time()
     Logger.instance().debug("    Running dbt phase...")
     dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
-    dbt_duration = time() - dbt_start
+    dbt_duration = round(time() - dbt_start, 2)
     if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"dbt phase completed in {round(dbt_duration, 2)}s")
+        Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
 
     # Track parse project
-    parse_start = time()
-    Logger.instance().debug("    Running parse project phase...")
-    project = parse_project_phase(working_dir, output_dir, default_source)
-    parse_duration = time() - parse_start
-    if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"Project parsing completed in {round(parse_duration, 2)}s")
+    if project is None:
+        parse_start = time()
+        Logger.instance().debug("    Running parse project phase...")
+        project = parse_project_phase(working_dir, output_dir, default_source)
+        parse_duration = round(time() - parse_start, 2)
+        if os.environ.get("STACKTRACE"):
+            Logger.instance().info(f"Project parsing completed in {parse_duration}s")
+    else:
+        Logger.instance().info("Using provided project")
+        parse_duration = 'Skipped'
     
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -74,9 +80,9 @@ def compile_phase(
         serializer = Serializer(project=project)
         explorer_data = serializer.create_flattened_project()
         json.dump(explorer_data, fp)
-    artifacts_duration = time() - artifacts_start
+    artifacts_duration = round(time() - artifacts_start, 2)
     if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"Project artifacts written in {round(artifacts_duration, 2)}s")
+        Logger.instance().info(f"Project artifacts written in {artifacts_duration}s")
 
     # Track trace query writing
     traces_start = time()
@@ -99,18 +105,18 @@ def compile_phase(
         QueryWriter(
             trace=trace, query_string=query_string, output_dir=output_dir
         ).write()
-    traces_duration = time() - traces_start
+    traces_duration = round(time() - traces_start, 2)
     if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"Trace queries written in {round(traces_duration, 2)}s")
+        Logger.instance().info(f"Trace queries written in {traces_duration}s")
 
-    total_duration = time() - import_start
+    total_duration = round(time() - compile_import_start, 2)
     Logger.instance().success(
-        f"Compile completed in {round(total_duration, 2)}s "
-        f"(imports: {round(import_duration, 2)}s, "
-        f"dbt: {round(dbt_duration, 2)}s, "
-        f"parse: {round(parse_duration, 2)}s, "
-        f"artifacts: {round(artifacts_duration, 2)}s, "
-        f"traces: {round(traces_duration, 2)}s)"
+        f"Compile completed in {total_duration}s "
+        f"(imports: {import_duration}s, "
+        f"dbt: {dbt_duration}s, "
+        f"parse: {parse_duration}s, "
+        f"artifacts: {artifacts_duration}s, "
+        f"traces: {traces_duration}s)"
     )
     
     return project

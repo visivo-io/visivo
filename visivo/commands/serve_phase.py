@@ -17,7 +17,7 @@ def get_project_json(output_dir, dag_filter=None):
     with open(f"{output_dir}/project.json", "r") as f:
         project_json = json.load(f)
 
-    if dag_filter:
+    if dag_filter: # TODO: I'm actually not sure why this works. It seems to be combination of our old name filter and the new dag filter. 
         dashboards = [d for d in project_json["dashboards"] if d["name"] == dag_filter]
         if len(dashboards) == 1:
             project_json["dashboards"] = dashboards
@@ -29,7 +29,7 @@ def get_project_json(output_dir, dag_filter=None):
     return project_json
 
 
-def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode, skip_compile):
+def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode, skip_compile, project):
     app = Flask(
         __name__,
         static_folder=output_dir,
@@ -37,16 +37,6 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thum
     )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
-
-    runner = run_phase(
-        output_dir=output_dir,
-        working_dir=working_dir,
-        default_source=default_source,
-        dag_filter=dag_filter,
-        threads=threads,
-        thumbnail_mode=thumbnail_mode,
-        skip_compile=skip_compile,
-    )
 
     @app.route("/data/explorer.json")
     def explorer():
@@ -71,20 +61,20 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thum
             if source_name:
                 # First try to find the explicitly requested source
                 source = next(
-                    (s for s in runner.project.sources if s.name == source_name),
+                    (s for s in project.sources if s.name == source_name),
                     None
                 )
             
-            if not source and runner.project.defaults and runner.project.defaults.source_name:
+            if not source and project.defaults and project.defaults.source_name:
                 # If no explicit source found, try the default
                 source = next(
-                    (s for s in runner.project.sources if s.name == runner.project.defaults.source_name),
+                    (s for s in project.sources if s.name == project.defaults.source_name),
                     None
                 )
             
-            if not source and runner.project.sources:
+            if not source and project.sources:
                 # Fallback to first source if no default
-                source = runner.project.sources[0]
+                source = project.sources[0]
                 
             if not source:
                 return jsonify({"message": "No source configured"}), 400
@@ -214,11 +204,11 @@ def app_phase(output_dir, working_dir, default_source, dag_filter, threads, thum
             Logger.instance().error(f"Error saving thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    return app, runner.project
+    return app
 
 
-def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode, skip_compile):
-    app, project = app_phase(
+def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, thumbnail_mode, skip_compile, project):
+    app = app_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=default_source,
@@ -226,10 +216,12 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, th
         threads=threads,
         thumbnail_mode=thumbnail_mode,
         skip_compile=skip_compile,
+        project=project,
     )
 
     def cli_changed():  # TODO: Include changes to cmd models
         try:
+            Logger.instance().info("Server has detected changes to the project. Re-running project. . .")
             runner = run_phase(
                 output_dir=output_dir,
                 working_dir=working_dir,
@@ -241,7 +233,7 @@ def serve_phase(output_dir, working_dir, default_source, dag_filter, threads, th
                 thumbnail_mode=thumbnail_mode,
                 skip_compile=False,
             )
-            Logger.instance().info("Files changed. Reloading . . .")
+            Logger.instance().success("Project has Re-run successfully")
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({}))
         except Exception as e:
