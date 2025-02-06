@@ -33,7 +33,7 @@ def test_Runner_trace_with_default():
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
-    runner = Runner(project=project, output_dir=output_dir)
+    runner = Runner(project=project, output_dir=output_dir, server_url="http://localhost:8000")
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
@@ -133,7 +133,13 @@ def test_runner_dag_filter():
     with open(f"{output_dir}/Additional Trace/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from no_exist")
 
-    runner = Runner(project=project, output_dir=output_dir, dag_filter="+dashboard+")
+    runner = Runner(
+        project=project, 
+        output_dir=output_dir, 
+        dag_filter="+dashboard+", 
+        thumbnail_mode="none", 
+        server_url="http://localhost:8000"
+    )
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
@@ -146,7 +152,13 @@ def test_runner_dag_filter_with_no_jobs():
     capturedOutput = io.StringIO()
     sys.stdout = capturedOutput
 
-    runner = Runner(project=project, output_dir=output_dir, dag_filter="+dashboard")
+    runner = Runner(
+        project=project, 
+        output_dir=output_dir, 
+        dag_filter="+dashboard", 
+        thumbnail_mode="none", 
+        server_url="http://localhost:8000"
+    )
     runner.run()
 
     sys.stdout = sys.__stdout__
@@ -161,9 +173,9 @@ def test_create_job_dag():
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(traces=[trace])
 
-    runner = Runner(project=project, output_dir=temp_folder())
+    runner = Runner(project=project, output_dir=temp_folder(), server_url="http://localhost:8000")
     job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 5
+    assert len(job_dag.nodes()) == 6
     assert is_directed_acyclic_graph(job_dag)
 
 
@@ -174,9 +186,9 @@ def test_create_job_dag_with_non_referenced_source():
     additional_source = SourceFactory(name="non_referenced_source")
     project = ProjectFactory(traces=[trace], sources=[source, additional_source])
 
-    runner = Runner(project=project, output_dir=temp_folder())
+    runner = Runner(project=project, output_dir=temp_folder(),server_url="http://localhost:8000")
     job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 5
+    assert len(job_dag.nodes()) == 6
     assert is_directed_acyclic_graph(job_dag)
 
 

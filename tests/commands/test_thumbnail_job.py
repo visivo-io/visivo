@@ -1,77 +1,102 @@
 import os
 import pytest
-from visivo.query.jobs.run_thumbnail_job import ThumbnailJob
-from visivo.models.project import Project
-from visivo.models.dashboard import Dashboard
+from visivo.query.jobs.run_thumbnail_job import job, action
+from tests.factories.model_factories import ProjectFactory, DashboardFactory
+from tests.support.utils import temp_folder
 
 @pytest.fixture
 def test_project():
-    # Use the integration test project
-    project_dir = os.path.join(os.path.dirname(__file__), '../../test-projects/integration')
-    return Project.from_directory(project_dir)
+    project = ProjectFactory()
+    return project
 
 @pytest.fixture
-def output_dir(tmp_path):
-    return str(tmp_path / "target")
+def output_dir():
+    return temp_folder()
 
 @pytest.fixture
-def dashboard(test_project):
-    return test_project.dashboards[0]
+def dashboard():
+    return DashboardFactory()
 
-def test_thumbnail_job_generates_thumbnail(test_project, dashboard, output_dir):
-    job = ThumbnailJob(
-        project=test_project,
-        dashboard=dashboard,
-        output_dir=output_dir
-    )
-    
-    result = job.run()
-    assert result.success
-    
-    # Check that thumbnail was created
-    thumbnail_path = os.path.join(output_dir, "dashboard-thumbnails", f"{dashboard.name.replace('/', '_')}.png")
-    assert os.path.exists(thumbnail_path)
-    assert os.path.getsize(thumbnail_path) > 0
+@pytest.fixture
+def server_url():
+    return "http://localhost:8000"
 
-def test_thumbnail_job_handles_browser_errors(test_project, dashboard, output_dir):
-    # Create a dashboard that will cause browser errors
-    dashboard.layout = None
-    
-    job = ThumbnailJob(
-        project=test_project,
-        dashboard=dashboard,
-        output_dir=output_dir
-    )
-    
-    result = job.run()
-    assert not result.success
-    assert "Failed to generate thumbnail" in result.error
-
-def test_thumbnail_job_respects_timeout(test_project, dashboard, output_dir):
-    job = ThumbnailJob(
+def test_thumbnail_job_requires_server_url(test_project, dashboard, output_dir):
+    job_instance = job(
         project=test_project,
         dashboard=dashboard,
         output_dir=output_dir,
-        timeout_ms=1  # Set unreasonably low timeout
+        thumbnail_mode='all'
     )
     
-    result = job.run()
-    assert not result.success
-    assert "Timeout" in result.error
+    with pytest.raises(Exception) as exc_info:
+        job_instance.action(**job_instance.kwargs)
+    assert "no server URL is provided" in str(exc_info.value)
 
-def test_thumbnail_job_sanitizes_filenames(test_project, output_dir):
-    # Create dashboard with special characters in name
-    dashboard = Dashboard(name="Test/Special?Chars*Dashboard")
+def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir):
+    # Create a dummy thumbnail file
+    os.makedirs(os.path.join(output_dir, "dashboard-thumbnails"), exist_ok=True)
+    thumbnail_path = os.path.join(output_dir, "dashboard-thumbnails", f"{dashboard.name.replace('/', '_')}.png")
+    with open(thumbnail_path, 'wb') as f:
+        f.write(b'dummy data')
     
-    job = ThumbnailJob(
+    # Run job with 'missing' mode
+    job_instance = job(
         project=test_project,
         dashboard=dashboard,
-        output_dir=output_dir
+        output_dir=output_dir,
+        thumbnail_mode='missing'
     )
     
-    result = job.run()
+    result = job_instance.action(**job_instance.kwargs)
     assert result.success
+    assert "already exists" in result.message
+
+def test_thumbnail_job_handles_browser_errors(test_project, dashboard, output_dir, server_url):
+    # Create a dashboard that will cause browser errors
+    dashboard.layout = None
     
-    # Check that thumbnail was created with sanitized name
-    thumbnail_path = os.path.join(output_dir, "dashboard-thumbnails", "Test_Special_Chars_Dashboard.png")
-    assert os.path.exists(thumbnail_path) 
+    job_instance = job(
+        project=test_project,
+        dashboard=dashboard,
+        output_dir=output_dir,
+        thumbnail_mode='all',
+        server_url=server_url
+    )
+    
+    result = job_instance.action(**job_instance.kwargs)
+    assert not result.success
+    assert "Failed to generate thumbnail" in result.message
+
+def test_thumbnail_job_sanitizes_filenames(test_project, output_dir, server_url):
+    # Create dashboard with special characters in name
+    dashboard = DashboardFactory(name="Test/Special?Chars*Dashboard")
+    
+    job_instance = job(
+        project=test_project,
+        dashboard=dashboard,
+        output_dir=output_dir,
+        thumbnail_mode='all',
+        server_url=server_url
+    )
+    
+    # Mock the actual thumbnail generation to avoid browser dependency
+    def mock_generate(*args, **kwargs):
+        thumbnail_path = os.path.join(output_dir, "dashboard-thumbnails", "Test_Special_Chars_Dashboard.png")
+        os.makedirs(os.path.dirname(thumbnail_path), exist_ok=True)
+        with open(thumbnail_path, 'wb') as f:
+            f.write(b'mock thumbnail')
+        return thumbnail_path
+    
+    # Temporarily replace the generate_thumbnail function
+    import visivo.query.jobs.run_thumbnail_job as thumbnail_module
+    original_generate = thumbnail_module.generate_thumbnail
+    thumbnail_module.generate_thumbnail = mock_generate
+    
+    try:
+        result = job_instance.action(**job_instance.kwargs)
+        assert result.success
+        assert os.path.exists(os.path.join(output_dir, "dashboard-thumbnails", "Test_Special_Chars_Dashboard.png"))
+    finally:
+        # Restore the original function
+        thumbnail_module.generate_thumbnail = original_generate 

@@ -37,7 +37,7 @@ class Runner:
         self,
         project: Project,
         output_dir: str,
-        threads: None, #Set in project defaults
+        threads: int = 8, #Set in project defaults, but also set here for
         soft_failure=False,
         run_only_changed=False,
         dag_filter: str = None,

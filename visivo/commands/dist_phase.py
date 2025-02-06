@@ -14,7 +14,7 @@ def dist_phase(output_dir, dist_dir):
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
     
     # Copy dashboard thumbnails if they exist, otherwise create an empty folder
-    try: 
+    try:
         thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
         if os.path.exists(thumbnail_dir):
             dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboard-thumbnails")
@@ -25,12 +25,10 @@ def dist_phase(output_dir, dist_dir):
         created_at = (datetime.datetime.now().isoformat(),)
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
-                json.dumps(
-                    {
-                        "project_json": project_json,
-                        "created_at": created_at,
-                    }
-                )
+                json.dumps({
+                    "project_json": project_json,
+                    "created_at": created_at,
+                    })
             )
         with open(f"{dist_dir}/data/error.json", "w") as f:
             f.write(json.dumps({}))
