@@ -6,6 +6,7 @@ import time
 from visivo.logging.logger import Logger
 import os
 from flask_socketio import SocketIO
+import logging
 
 class ProjectChangeHandler(FileSystemEventHandler):
     def __init__(self, callback, ignore_patterns=None):
@@ -40,6 +41,18 @@ class HotReloadServer:
         self.server_thread = None
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        
+        # Configure Flask logging based on STACKTRACE
+        if not os.environ.get('STACKTRACE'):
+            # Suppress Flask logging
+            log = logging.getLogger('werkzeug')
+            log.setLevel(logging.ERROR)
+            
+            # Suppress Flask-SocketIO logging
+            log = logging.getLogger('engineio')
+            log.setLevel(logging.ERROR)
+            log = logging.getLogger('socketio')
+            log.setLevel(logging.ERROR)
 
     def start_file_watcher(self, callback):
         """Start watching for file changes"""
@@ -57,7 +70,15 @@ class HotReloadServer:
     def run_server(self, host: str, port: int):
         """Run the Flask server in a separate thread"""
         def run():
-            self.socketio.run(self.app, host=host, port=port, use_reloader=False, allow_unsafe_werkzeug=True)
+            self.socketio.run(
+                self.app, 
+                host=host, 
+                port=port, 
+                use_reloader=False, 
+                allow_unsafe_werkzeug=True,
+                debug=bool(os.environ.get('STACKTRACE')),
+                log_output=bool(os.environ.get('STACKTRACE'))
+            )
 
         self.server_thread = Thread(target=run, daemon=True)
         self.server_thread.start()

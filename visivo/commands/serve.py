@@ -45,10 +45,6 @@ def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_
         project=project,
         server_url=server_url,
     )
-
-    
-    # Start server first so it's available for thumbnail generation
-    Logger.instance().info(f"Starting server at {server_url}")
     
     try:
         # Start serving with hot reload

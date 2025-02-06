@@ -17,7 +17,7 @@ def serve_phase(
         project, 
         server_url
     ):
-    
+
     app = flask_app(
         output_dir=output_dir,
         dag_filter=dag_filter,
@@ -39,7 +39,8 @@ def serve_phase(
                 skip_compile=False,  # Always recompile on changes
                 project=None,  # Don't reuse project instance
             )
-            Logger.instance().success("Intial Data Refresh Complete. View your project at: " + server_url)
+            Logger.instance().success("File Change Data Refresh Complete.") 
+            Logger.instance().info("View your project at: " + server_url)
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({}))
         except Exception as e:
@@ -61,7 +62,8 @@ def serve_phase(
             skip_compile=skip_compile,
             project=project,
         )
-        Logger.instance().success("Intial Data Refresh Complete. View your project at: " + server_url)
+        Logger.instance().success("Initial Data Refresh Complete.") 
+        Logger.instance().info("View your project at: " + server_url)
 
     # Create ignore patterns for dbt files if needed
     ignore_patterns = []
