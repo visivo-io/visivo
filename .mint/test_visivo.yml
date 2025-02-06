@@ -51,7 +51,7 @@ tasks:
     use: [python, node]
     run: |
       pip install playwright
-      playwright install webkit
+      python -m playwright install webkit --with-deps
 
   - key: cli-dependencies
     use: [code, poetry]
