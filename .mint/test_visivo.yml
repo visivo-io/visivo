@@ -255,6 +255,7 @@ tasks:
     run: |
       cd test-projects/dbt
       poetry run dbt run --profiles-dir .
+      visivo compile
       visivo run
     filter:
       - test-projects/dbt
