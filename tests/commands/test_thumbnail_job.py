@@ -29,9 +29,9 @@ def test_thumbnail_job_requires_server_url(test_project, dashboard, output_dir):
         thumbnail_mode='all'
     )
     
-    with pytest.raises(Exception) as exc_info:
-        job_instance.action(**job_instance.kwargs)
-    assert "no server URL is provided" in str(exc_info.value)
+    result = job_instance.action(**job_instance.kwargs)
+    assert not result.success
+    assert "no server URL is provided" in result.message
 
 def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir):
     # Create a dummy thumbnail file
@@ -54,7 +54,7 @@ def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir):
 
 def test_thumbnail_job_handles_browser_errors(test_project, dashboard, output_dir, server_url):
     # Create a dashboard that will cause browser errors
-    dashboard.layout = None
+    dashboard.rows = []
     
     job_instance = job(
         project=test_project,

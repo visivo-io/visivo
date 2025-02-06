@@ -73,6 +73,9 @@ def action(
             )
             return JobResult(item=dashboard, success=True, message=success_message)
 
+        if not server_url:
+            raise Exception("Cannot generate thumbnail when no server URL is provided")
+
         try:
             thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
         except Exception as e:
