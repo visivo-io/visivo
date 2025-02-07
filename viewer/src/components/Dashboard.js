@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import Chart from './items/Chart.js'
 import Table from './items/Table.js'
 import Selector from './items/Selector.js'
@@ -27,7 +27,7 @@ const Dashboard = ({ project, dashboardName }) => {
         throwError(`Dashboard with name ${dashboardName} not found.`, 404);
     }
 
-    const shouldShowNamedModel = (namedModel) => {
+    const shouldShowNamedModel = useMemo(() => (namedModel) => {
         if (!namedModel || !namedModel.name) {
             return true
         }
@@ -39,9 +39,9 @@ const Dashboard = ({ project, dashboardName }) => {
             }
         }
         return true
-    }
+    }, [project, searchParams]);
 
-    const shouldShowItem = (item) => {
+    const shouldShowItem = useMemo(() => (item) => {
         if (!shouldShowNamedModel(item)) {
             return false
         }
@@ -54,7 +54,7 @@ const Dashboard = ({ project, dashboardName }) => {
             object = item.selector
         }
         return shouldShowNamedModel(object)
-    }
+    }, [shouldShowNamedModel]);
 
     // Organize items in loading order (top-to-bottom, left-to-right)
     const orderedItems = useMemo(() => {
@@ -71,7 +71,7 @@ const Dashboard = ({ project, dashboardName }) => {
                     priority: rowIndex * 1000 + colIndex // Priority based on position
                 }))
         ).sort((a, b) => a.priority - b.priority);
-    }, [dashboard, searchParams]); // Include searchParams as it affects shouldShowItem
+    }, [dashboard, shouldShowItem]); // shouldShowItem includes all necessary dependencies
 
     // Group ordered items by row for rendering
     const rowsWithPriority = useMemo(() => {
