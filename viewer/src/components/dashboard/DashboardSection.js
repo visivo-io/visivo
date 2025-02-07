@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
@@ -12,6 +12,39 @@ const levelDescriptions = {
   unassigned: "These dashboards are not yet organized into levels of importance."
 };
 
+export const organizeDashboardsByLevel = (dashboards) => {
+  if (!dashboards?.length) return {};
+
+  // Initialize levels
+  const levels = {
+    L0: [],
+    L1: [],
+    L2: [],
+    L3: [],
+    L4: [],
+    unassigned: []
+  };
+
+  // Sort dashboards into levels
+  dashboards.forEach(dashboard => {
+    if (!dashboard.level) {
+      levels.unassigned.push(dashboard);
+    } else {
+      levels[dashboard.level].push(dashboard);
+    }
+  });
+
+  // Sort each level alphabetically
+  Object.keys(levels).forEach(level => {
+    levels[level].sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  // Filter out empty levels
+  return Object.fromEntries(
+    Object.entries(levels).filter(([_, dashboards]) => dashboards.length > 0)
+  );
+};
+
 function DashboardSection({ title, dashboards, searchTerm, hasLevels }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
@@ -20,11 +53,16 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels }) {
   
   // Modify title if it's unassigned and there are no levels
   const displayTitle = level === 'unassigned' && !hasLevels ? 'Dashboards' : title;
+
+  // Sort dashboards alphabetically within the section
+  const sortedDashboards = useMemo(() => {
+    return [...dashboards].sort((a, b) => a.name.localeCompare(b.name));
+  }, [dashboards]);
   
   // Expand section if there's a search term and it matches any dashboard
   useEffect(() => {
     if (searchTerm && searchTerm.length > 0) {
-      const hasMatch = dashboards.some(dashboard => 
+      const hasMatch = sortedDashboards.some(dashboard => 
         dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dashboard.description && dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -32,7 +70,7 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels }) {
         setIsCollapsed(false);
       }
     }
-  }, [searchTerm, dashboards]);
+  }, [searchTerm, sortedDashboards]);
 
   if (!dashboards || dashboards.length === 0) return null;
   
@@ -65,13 +103,16 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels }) {
       <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-8 gap-3 transition-all duration-200 ${
         isCollapsed ? 'hidden' : ''
       }`}>
-        {dashboards.map((dashboard) => (
-          <DashboardCard 
-            key={dashboard.name} 
-            dashboard={dashboard} 
-            thumbnail={dashboard.thumbnail}
-          />
-        ))}
+        <div className={`col-span-full w-full flex flex-wrap gap-3 ${level === 'unassigned' ? 'justify-start' : 'justify-center'}`}>
+          {sortedDashboards.map((dashboard) => (
+            <div key={dashboard.name} className="w-full sm:w-[calc(33.333%-0.5rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)] 2xl:w-[calc(16.666%-0.833rem)] 3xl:w-[calc(12.5%-0.875rem)]">
+              <DashboardCard 
+                dashboard={dashboard} 
+                thumbnail={dashboard.thumbnail}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
