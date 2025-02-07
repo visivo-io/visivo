@@ -3,92 +3,31 @@ import Dashboard from "./Dashboard";
 import Loading from "./Loading";
 import { Container } from "./styled/Container";
 import { HiTemplate } from 'react-icons/hi';
-import DashboardThumbnail from './thumbnail/DashboardThumbnail';
 import DashboardSection from './dashboard/DashboardSection';
 import FilterBar from './dashboard/FilterBar';
+import { fetchDashboardThumbnails } from '../services/thumbnailService';
 
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [thumbnails, setThumbnails] = useState({});
-  const [thumbnailQueue, setThumbnailQueue] = useState([]);
-  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
 
   // Reset scroll position when dashboard changes
   useEffect(() => {
     window.scrollTo(0, 0);
-    
-    // If we're viewing a dashboard, generate a new thumbnail
-    if (props.dashboardName) {
-      setThumbnailQueue(prev => [...prev, props.dashboardName]);
-    }
   }, [props.dashboardName]);
 
   // Load existing thumbnails from API
   useEffect(() => {
     if (props.dashboards && props.dashboards.length > 0) {
-      props.dashboards.forEach(dashboard => {
-        const safeName = dashboard.name.replace(/[^a-zA-Z0-9]/g, '_');
-        fetch(`/api/thumbnails/${safeName}`)
-          .then(response => {
-            if (response.ok) {
-              return response.json();
-            }
-            throw new Error('Thumbnail not found');
-          })
-          .then(data => {
-            setThumbnails(prev => ({
-              ...prev,
-              [dashboard.name]: data.thumbnail
-            }));
-          })
-          .catch(() => {
-            // If thumbnail doesn't exist, add to generation queue
-            setThumbnailQueue(prev => 
-              prev.includes(dashboard.name) ? prev : [...prev, dashboard.name]
-            );
-          });
+      fetchDashboardThumbnails(props.dashboards, (dashboardName, thumbnail) => {
+        setThumbnails(prev => ({
+          ...prev,
+          [dashboardName]: thumbnail
+        }));
       });
     }
   }, [props.dashboards]);
-
-  // Process thumbnail queue with delay
-  useEffect(() => {
-    if (thumbnailQueue.length > 0 && !isGeneratingThumbnails) {
-      const currentDashboard = props.dashboards.find(d => d.name === thumbnailQueue[0]);
-      if (currentDashboard) {
-        setIsGeneratingThumbnails(true);
-      }
-    }
-  }, [thumbnailQueue, isGeneratingThumbnails, props.dashboards]);
-
-  const handleThumbnailGenerated = async (dashboardName, thumbnail) => {
-    // Save thumbnail to API
-    try {
-      const safeName = dashboardName.replace(/[^a-zA-Z0-9]/g, '_');
-      const response = await fetch(`/api/thumbnails/${safeName}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ thumbnail })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save thumbnail');
-      }
-
-      setThumbnails(prev => ({
-        ...prev,
-        [dashboardName]: thumbnail
-      }));
-    } catch (error) {
-      console.error('Error saving thumbnail:', error);
-    }
-
-    setIsGeneratingThumbnails(false);
-    setThumbnailQueue(prev => prev.filter(name => name !== dashboardName));
-  };
 
   const availableTags = useMemo(() => {
     if (!props.dashboards) return [];
@@ -179,15 +118,6 @@ function Project(props) {
               </div>
             )}
           </div>
-
-          {/* Hidden thumbnail generator */}
-          {isGeneratingThumbnails && thumbnailQueue[0] && (
-            <DashboardThumbnail
-              dashboard={props.dashboards.find(d => d.name === thumbnailQueue[0])}
-              project={props.project}
-              onThumbnailGenerated={handleThumbnailGenerated}
-            />
-          )}
         </div>
       </Container>
     );

@@ -11,53 +11,13 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 
-const Dashboard = ({ project, dashboardName, isPreview = false, previewWidth = 1200, previewHeight = 800, chartRefs, onChartsLoaded }) => {
+const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
             observe();
         },
     });
-
-    // Initialize chart refs once when dashboard is mounted
-    useEffect(() => {
-        if (chartRefs) {
-            chartRefs.current = [];
-            // Pre-create refs for all charts
-            const dashboard = project.project_json.dashboards.find(d => d.name === dashboardName);
-            if (dashboard) {
-                dashboard.rows.forEach(row => {
-                    row.items.forEach(item => {
-                        if (item.chart) {
-                            chartRefs.current.push(React.createRef());
-                        }
-                    });
-                });
-            }
-        }
-    }, [dashboardName, project, chartRefs]);
-
-    // Track loading state of all charts
-    useEffect(() => {
-        if (chartRefs?.current?.length > 0) {
-            const checkCharts = () => {
-                const loadingStates = chartRefs.current.map(ref => ref?.current?.isLoading);
-                
-                // Only proceed if all refs are initialized
-                if (loadingStates.some(state => state === undefined)) {
-                    return;
-                }
-
-                const allLoaded = loadingStates.every(state => state === false);
-                if (allLoaded && onChartsLoaded) {
-                    onChartsLoaded();
-                }
-            };
-
-            const interval = setInterval(checkCharts, 100);
-            return () => clearInterval(interval);
-        }
-    }, [chartRefs, onChartsLoaded, dashboardName]);
 
     const widthBreakpoint = 1024;
     const isColumn = width < widthBreakpoint;
@@ -169,21 +129,12 @@ const Dashboard = ({ project, dashboardName, isPreview = false, previewWidth = 1
             return null
         }
         if (item.chart) {
-            // Get the ref for this chart's position
-            const chartIndex = dashboard.rows.slice(0, rowIndex).reduce((count, r) => 
-                count + r.items.filter(i => i.chart).length, 0
-            ) + items.slice(0, itemIndex).filter(i => i.chart).length;
-            
-            const chartRef = chartRefs?.current[chartIndex];
-            
             return <Chart
-                ref={chartRef}
                 chart={item.chart}
                 project={project}
                 height={getHeight(row.height) - 8}
                 width={getWidth(items, item)}
                 itemWidth={item.width}
-                isPreview={isPreview}
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.table) {
             return <Table

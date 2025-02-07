@@ -197,30 +197,4 @@ def flask_app(output_dir, dag_filter, project):
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/thumbnails/<dashboard_name>", methods=["POST"])
-    def save_thumbnail(dashboard_name):
-        try:
-            safe_name = sanitize_filename(dashboard_name)
-            data = request.get_json()
-            if not data or "thumbnail" not in data:
-                return jsonify({"message": "No thumbnail data provided"}), 400
-
-            # Extract base64 data
-            thumbnail_data = data["thumbnail"].split(",")[1]
-            thumbnail_bytes = base64.b64decode(thumbnail_data)
-
-            # Save thumbnail using safe name
-            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.png")
-            
-            with open(thumbnail_path, "wb") as f:
-                f.write(thumbnail_bytes)
-
-            return jsonify({
-                "message": "Thumbnail saved successfully",
-                "updated_at": datetime.datetime.now().isoformat()
-            })
-        except Exception as e:
-            Logger.instance().error(f"Error saving thumbnail: {str(e)}")
-            return jsonify({"message": str(e)}), 500
-
     return app

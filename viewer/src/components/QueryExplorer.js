@@ -5,7 +5,7 @@ import ExplorerTree from './explorer/ExplorerTree';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import Table from './items/Table';
 import { executeQuery, fetchTraceQuery } from '../services/queryService';
-import { fetchExplorer } from '../api/project';
+import { fetchExplorer } from '../api/explorer';
 import tw from "tailwind-styled-components";
 
 const Container = tw.div`
