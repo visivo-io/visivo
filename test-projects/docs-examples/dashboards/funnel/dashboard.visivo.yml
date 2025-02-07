@@ -6,6 +6,8 @@ includes:
 
 dashboards:
   - name: "Trace Props Examples: Funnel"
+    tags: 
+      - Funnel
     rows:
       - height: compact
         items:

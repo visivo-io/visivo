@@ -17,27 +17,48 @@ function Project(props) {
     window.scrollTo(0, 0);
   }, [props.dashboardName]);
 
+  // Combine internal and external dashboards
+  const allDashboards = useMemo(() => {
+    if (!props.project?.project_json) return [];
+
+    const internalDashboards = props.dashboards.map(dashboard => ({
+      ...dashboard,
+      isExternal: false
+    }));
+
+    const externalDashboards = props.project.project_json.view?.external_dashboards?.map(dashboard => ({
+      name: dashboard.name,
+      description: dashboard.description,
+      tags: dashboard.tags || [],
+      level: dashboard.level,
+      href: dashboard.href,
+      isExternal: true
+    })) || [];
+
+    return [...internalDashboards, ...externalDashboards];
+  }, [props.dashboards, props.project?.project_json]);
+
   const availableTags = useMemo(() => {
-    if (!props.dashboards) return [];
+    if (!allDashboards.length) return [];
     const tagSet = new Set();
-    props.dashboards.forEach(dashboard => {
+    allDashboards.forEach(dashboard => {
       if (dashboard.tags) {
         dashboard.tags.forEach(tag => tagSet.add(tag));
       }
     });
     return Array.from(tagSet);
-  }, [props.dashboards]);
+  }, [allDashboards]);
 
   const filteredDashboards = useMemo(() => {
-    if (!props.dashboards) return [];
-    return props.dashboards.filter(dashboard => {
+    if (!allDashboards.length) return [];
+    return allDashboards.filter(dashboard => {
       const matchesSearch = dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dashboard.description && dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesTags = selectedTags.length === 0 ||
         (dashboard.tags && selectedTags.every(tag => dashboard.tags.includes(tag)));
       return matchesSearch && matchesTags;
     });
-  }, [props.dashboards, searchTerm, selectedTags]);
+  }, [allDashboards, searchTerm, selectedTags]);
 
   const dashboardsByLevel = useMemo(() => 
     organizeDashboardsByLevel(filteredDashboards),
@@ -84,6 +105,7 @@ function Project(props) {
                 }))}
                 searchTerm={searchTerm}
                 hasLevels={Object.keys(dashboardsByLevel).some(key => key.startsWith('L'))}
+                projectView={props.project?.project_json?.view}
               />
             ))}
 

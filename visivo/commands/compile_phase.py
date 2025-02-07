@@ -4,6 +4,7 @@ from visivo.logging.logger import Logger
 Logger.instance().debug("Compiling project...")
 import os
 import json
+from visivo.utils import get_thumbnail_dir
 
 from visivo.models.dag import all_descendants_of_type, filter_dag
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -57,7 +58,7 @@ def compile_phase(
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     # Ensure thumbnail directory exists
-    thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
+    thumbnail_dir = get_thumbnail_dir(output_dir)
     os.makedirs(thumbnail_dir, exist_ok=True)
 
     # Track artifacts writing

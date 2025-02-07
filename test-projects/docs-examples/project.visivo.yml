@@ -1,5 +1,15 @@
 path: project
 name: docs-examples
+view: 
+  level:
+    L0: 
+      description: custom description
+      name: Custom Level
+  external_dashboards: 
+    - name: "Monty Python Data"
+      tags: 
+        - "Staging Data"
+      href: "https://docs.google.com/spreadsheets/d/1qYwJuOCGw7AoiK5i2LOBABiSuO_w7g_PN0FKd0FkGeg/edit?gid=0#gid=0"
 defaults:
   source_name: Example Source
 includes:

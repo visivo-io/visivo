@@ -10,6 +10,9 @@ import importlib.resources as resources
 
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
+def get_thumbnail_dir(output_dir):
+    return os.path.join(output_dir, "dashboard-thumbnails")
+
 def sanitize_filename(name):
     """Replace special characters with double underscores for safe filenames"""
     return re.sub(r'[^a-zA-Z0-9]', '_', name)

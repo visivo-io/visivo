@@ -9,14 +9,14 @@ from visivo.query.jobs.job import (
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
-from visivo.utils import sanitize_filename
+from visivo.utils import sanitize_filename, get_thumbnail_dir
 from time import time
 from click import ClickException
 
 
 def get_thumbnail_path(dashboard_name: str, output_dir: str):
     safe_name = sanitize_filename(dashboard_name)
-    thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
+    thumbnail_dir = get_thumbnail_dir(output_dir)
     os.makedirs(thumbnail_dir, exist_ok=True)
     return os.path.join(thumbnail_dir, f"{safe_name}.png")
 

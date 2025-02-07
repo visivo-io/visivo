@@ -5,7 +5,7 @@ includes:
 
 dashboards:
   - name: "Trace Props Examples: Bar"
-    level: L1
+    level: L0
     tags: 
       - "Trace Functionality"
     rows:

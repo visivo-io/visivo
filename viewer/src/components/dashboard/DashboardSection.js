@@ -3,7 +3,8 @@ import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
 
-const levelDescriptions = {
+// Default level descriptions if not provided by project view
+const defaultLevelDescriptions = {
   L0: "The most important dashboards and metrics for the organization.",
   L1: "The most important dashboards & metrics for a department.",
   L2: "Individual department focused drill downs or sub-department metrics.",
@@ -12,7 +13,7 @@ const levelDescriptions = {
   unassigned: "These dashboards are not yet organized into levels of importance."
 };
 
-export const organizeDashboardsByLevel = (dashboards) => {
+export const organizeDashboardsByLevel = (dashboards, projectView) => {
   if (!dashboards?.length) return {};
 
   // Initialize levels
@@ -25,7 +26,7 @@ export const organizeDashboardsByLevel = (dashboards) => {
     unassigned: []
   };
 
-  // Sort dashboards into levels
+  // Sort all dashboards into levels
   dashboards.forEach(dashboard => {
     if (!dashboard.level) {
       levels.unassigned.push(dashboard);
@@ -45,14 +46,19 @@ export const organizeDashboardsByLevel = (dashboards) => {
   );
 };
 
-function DashboardSection({ title, dashboards, searchTerm, hasLevels }) {
+function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectView }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   // Determine the level from the title
   const level = title.startsWith('L') ? title.split(' ')[0] : 'unassigned';
   
-  // Modify title if it's unassigned and there are no levels
-  const displayTitle = level === 'unassigned' && !hasLevels ? 'Dashboards' : title;
+  // Get custom level description and name if available
+  const levelCustomization = projectView?.level?.[level];
+  const levelDescription = levelCustomization?.description || defaultLevelDescriptions[level];
+  
+  // Modify title if it's unassigned and there are no levels, or use custom name if available
+  const displayTitle = level === 'unassigned' && !hasLevels ? 'Dashboards' : 
+    levelCustomization?.name || title;
 
   // Sort dashboards alphabetically within the section
   const sortedDashboards = useMemo(() => {
@@ -92,7 +98,7 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels }) {
           <span className="ml-3 text-sm text-gray-500">({dashboards.length})</span>
         </div>
         <Tooltip
-          content={levelDescriptions[level]}
+          content={levelDescription}
           placement="right"
           className="max-w-xs"
           trigger="hover"

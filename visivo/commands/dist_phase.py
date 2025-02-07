@@ -8,14 +8,14 @@ def dist_phase(output_dir, dist_dir):
     import shutil
     from glob import glob
     import datetime
-
+    from visivo.utils import get_thumbnail_dir
     Logger.instance().info("Creating distribution for project in folder...")
 
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
     
     # Copy dashboard thumbnails if they exist, otherwise create an empty folder
     try:
-        thumbnail_dir = os.path.join(output_dir, "dashboard-thumbnails")
+        thumbnail_dir = get_thumbnail_dir(output_dir)
         if os.path.exists(thumbnail_dir):
             dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboard-thumbnails")
             shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
