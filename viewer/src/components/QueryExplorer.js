@@ -7,6 +7,8 @@ import Table from './items/Table';
 import { executeQuery, fetchTraceQuery } from '../services/queryService';
 import { fetchExplorer } from '../api/explorer';
 import tw from "tailwind-styled-components";
+import TopNav from './TopNav';
+import Breadcrumbs from './Breadcrumbs';
 
 const Container = tw.div`
   h-screen
@@ -324,181 +326,191 @@ const QueryExplorer = () => {
 
   return (
     <Container>
-      <MainContent>
-        <LeftPanel>
-          <h2 className="text-lg font-semibold mb-4">Explorer</h2>
-          <div className="border-b border-gray-200">
-            <ul className="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500">
-              <li className="mr-2">
-                <button
-                  className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
-                    selectedTab === 0
-                      ? 'text-blue-600 border-blue-600'
-                      : 'hover:text-gray-600 hover:border-gray-300'
-                  }`}
-                  onClick={() => handleTabChange(0)}
-                >
-                  Models
-                </button>
-              </li>
-              <li>
-                <button
-                  className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
-                    selectedTab === 1
-                      ? 'text-blue-600 border-blue-600'
-                      : 'hover:text-gray-600 hover:border-gray-300'
-                  }`}
-                  onClick={() => handleTabChange(1)}
-                >
-                  Traces
-                </button>
-              </li>
-            </ul>
-          </div>
-          <div className="mt-4 flex-1 min-h-0">
-            <ExplorerTree
-              data={treeData}
-              type={selectedTab === 0 ? 'models' : 'traces'}
-              onItemClick={handleItemClick}
-            />
-          </div>
-        </LeftPanel>
-
-        <RightPanel id="right-panel">
-          <Panel style={{ flex: splitRatio }}>
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex-1 flex items-center justify-between min-w-0 relative">
-                <h2 className="text-lg font-semibold">SQL Query</h2>
-                {error && (
-                  <div className="absolute left-32 right-32 px-4 py-2 text-sm text-red-800 rounded-lg bg-red-50 shadow-lg z-10 flex items-center justify-between">
-                    {error}
-                    <button
-                      type="button"
-                      className="ml-2 inline-flex items-center"
-                      onClick={() => setError(null)}
-                    >
-                      <span className="sr-only">Dismiss</span>
-                      <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                      </svg>
-                    </button>
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 mx-4">
-                  {explorerData?.sources?.map((source) => (
-                    <button
-                      key={source.name}
-                      onClick={() => {
-                        console.log('Source button clicked:', source);
-                        setSelectedSource(source);
-                      }}
-                      className={`px-2 py-1 text-xs font-medium rounded-md ${
-                        selectedSource?.name === source.name
-                          ? 'bg-[#D25946] text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {source.name}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={`text-white ${
-                    isLoading ? 'bg-[#A06C86]' : 'bg-[#713B57] hover:bg-[#5A2E46]'
-                  } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none`}
-                  onClick={handleRunQuery}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                      Running...
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <PlayArrowIcon className="mr-2" />
-                      Run Query
-                    </div>
-                  )}
-                </button>
-              </div>
+      <div className="flex flex-col h-full">
+        <div className="flex-none">
+          <TopNav />
+          <div className="mx-2">
+            <div className="flex flex-row justify-between items-center whitespace-nowrap">
+              <Breadcrumbs />
             </div>
-            <div className="flex-1 min-h-0 bg-[#1E1E1E] rounded-md ring-1 ring-gray-700/10 overflow-hidden">
-              <MonacoEditor
-                height="100%"
-                language="sql"
-                theme="vs-dark"
-                value={query}
-                onChange={handleEditorChange}
-                options={{
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  fontSize: 14,
-                  readOnly: isLoading,
-                  automaticLayout: true,
-                  quickSuggestions: true,
-                  wordWrap: 'on',
-                  padding: { top: 16, bottom: 8 },
-                  fixedOverflowWidgets: true
-                }}
-                onMount={(editor, monaco) => {
-                  editor.setValue(query || '');
-                  
-                  // Store editor and monaco instance in refs
-                  editorRef.current = editor;
-                  monacoRef.current = monaco;
-                  
-                  // Add resize handler
-                  const resizeHandler = () => {
-                    editor.layout();
-                  };
-                  window.addEventListener('resize', resizeHandler);
-                  
-                  // Return cleanup for resize handler
-                  editor.onDidDispose(() => {
-                    window.removeEventListener('resize', resizeHandler);
-                  });
-                }}
+          </div>
+        </div>
+        <MainContent>
+          <LeftPanel>
+            <h2 className="text-lg font-semibold mb-4">Explorer</h2>
+            <div className="border-b border-gray-200">
+              <ul className="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500">
+                <li className="mr-2">
+                  <button
+                    className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
+                      selectedTab === 0
+                        ? 'text-blue-600 border-blue-600'
+                        : 'hover:text-gray-600 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleTabChange(0)}
+                  >
+                    Models
+                  </button>
+                </li>
+                <li>
+                  <button
+                    className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
+                      selectedTab === 1
+                        ? 'text-blue-600 border-blue-600'
+                        : 'hover:text-gray-600 hover:border-gray-300'
+                    }`}
+                    onClick={() => handleTabChange(1)}
+                  >
+                    Traces
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div className="mt-4 flex-1 min-h-0">
+              <ExplorerTree
+                data={treeData}
+                type={selectedTab === 0 ? 'models' : 'traces'}
+                onItemClick={handleItemClick}
               />
             </div>
-          </Panel>
+          </LeftPanel>
 
-          <div
-            className={`h-1 bg-gray-200 hover:bg-gray-300 cursor-ns-resize flex items-center justify-center group ${
-              isDragging ? 'bg-gray-400' : ''
-            }`}
-            onMouseDown={handleMouseDown}
-          >
-            <div className="w-8 h-1 bg-gray-400 group-hover:bg-gray-500 rounded-full"></div>
-          </div>
-
-          <Panel style={{ flex: 1 - splitRatio }}>
-            <div className="flex justify-between items-center mb-4 w-full">
-              <h2 className="text-lg font-semibold">Results</h2>
-              {queryStats && (
-                <div className="text-sm text-gray-600 font-medium">
-                  {queryStats && (
-                    <>
-                      {`Last Run at ${queryStats.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${queryStats.executionTime}s`}
-                      {queryStats.source && ` • Source: ${queryStats.source}`}
-                    </>
+          <RightPanel id="right-panel">
+            <Panel style={{ flex: splitRatio }}>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex-1 flex items-center justify-between min-w-0 relative">
+                  <h2 className="text-lg font-semibold">SQL Query</h2>
+                  {error && (
+                    <div className="absolute left-32 right-32 px-4 py-2 text-sm text-red-800 rounded-lg bg-red-50 shadow-lg z-10 flex items-center justify-between">
+                      {error}
+                      <button
+                        type="button"
+                        className="ml-2 inline-flex items-center"
+                        onClick={() => setError(null)}
+                      >
+                        <span className="sr-only">Dismiss</span>
+                        <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                        </svg>
+                      </button>
+                    </div>
                   )}
+                  <div className="flex items-center gap-1.5 mx-4">
+                    {explorerData?.sources?.map((source) => (
+                      <button
+                        key={source.name}
+                        onClick={() => {
+                          console.log('Source button clicked:', source);
+                          setSelectedSource(source);
+                        }}
+                        className={`px-2 py-1 text-xs font-medium rounded-md ${
+                          selectedSource?.name === source.name
+                            ? 'bg-[#D25946] text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {source.name}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={`text-white ${
+                      isLoading ? 'bg-[#A06C86]' : 'bg-[#713B57] hover:bg-[#5A2E46]'
+                    } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none`}
+                    onClick={handleRunQuery}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                        Running...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <PlayArrowIcon className="mr-2" />
+                        Run Query
+                      </div>
+                    )}
+                  </button>
                 </div>
-              )}
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              {results && (
-                <Table
-                  table={results}
-                  project={project}
+              </div>
+              <div className="flex-1 min-h-0 bg-[#1E1E1E] rounded-md ring-1 ring-gray-700/10 overflow-hidden">
+                <MonacoEditor
                   height="100%"
+                  language="sql"
+                  theme="vs-dark"
+                  value={query}
+                  onChange={handleEditorChange}
+                  options={{
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    fontSize: 14,
+                    readOnly: isLoading,
+                    automaticLayout: true,
+                    quickSuggestions: true,
+                    wordWrap: 'on',
+                    padding: { top: 16, bottom: 8 },
+                    fixedOverflowWidgets: true
+                  }}
+                  onMount={(editor, monaco) => {
+                    editor.setValue(query || '');
+                    
+                    // Store editor and monaco instance in refs
+                    editorRef.current = editor;
+                    monacoRef.current = monaco;
+                    
+                    // Add resize handler
+                    const resizeHandler = () => {
+                      editor.layout();
+                    };
+                    window.addEventListener('resize', resizeHandler);
+                    
+                    // Return cleanup for resize handler
+                    editor.onDidDispose(() => {
+                      window.removeEventListener('resize', resizeHandler);
+                    });
+                  }}
                 />
-              )}
+              </div>
+            </Panel>
+
+            <div
+              className={`h-1 bg-gray-200 hover:bg-gray-300 cursor-ns-resize flex items-center justify-center group ${
+                isDragging ? 'bg-gray-400' : ''
+              }`}
+              onMouseDown={handleMouseDown}
+            >
+              <div className="w-8 h-1 bg-gray-400 group-hover:bg-gray-500 rounded-full"></div>
             </div>
-          </Panel>
-        </RightPanel>
-      </MainContent>
+
+            <Panel style={{ flex: 1 - splitRatio }}>
+              <div className="flex justify-between items-center mb-4 w-full">
+                <h2 className="text-lg font-semibold">Results</h2>
+                {queryStats && (
+                  <div className="text-sm text-gray-600 font-medium">
+                    {queryStats && (
+                      <>
+                        {`Last Run at ${queryStats.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${queryStats.executionTime}s`}
+                        {queryStats.source && ` • Source: ${queryStats.source}`}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-h-0 overflow-auto">
+                {results && (
+                  <Table
+                    table={results}
+                    project={project}
+                    height="100%"
+                  />
+                )}
+              </div>
+            </Panel>
+          </RightPanel>
+        </MainContent>
+      </div>
     </Container>
   );
 };

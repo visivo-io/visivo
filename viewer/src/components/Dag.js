@@ -63,10 +63,13 @@ const Dag = () => {
         after: 0,
     });
 
-    const dag = useMemo(() => filterDag(dagModel, state.nodeName, state.before, state.after), [dagModel, state.nodeName, state.before, state.after]);
+    const dag = useMemo(() => 
+        filterDag(dagModel, state.nodeName, state.before, state.after),
+        [dagModel, state.nodeName, state.before, state.after]
+    );
 
     useEffect(() => {
-        if (!dag || !svgRef.current) return;
+        if (!svgRef.current || !dag) return;
 
         const svg = d3.select(svgRef.current);
         const g = new dagreD3.graphlib.Graph().setGraph({
@@ -76,6 +79,8 @@ const Dag = () => {
             marginx: 20,
             marginy: 20
         });
+
+        svg.selectAll('*').remove();
 
         dag.nodes.forEach(node => {
             g.setNode(node.id, {
@@ -92,18 +97,15 @@ const Dag = () => {
         dag.edges.forEach(edge => {
             g.setEdge(edge.source, edge.target, {
                 label: "",
-                curve: d3.curveBasis  // This will make the edges curved
+                curve: d3.curveBasis
             });
         });
-
-        svg.selectAll('*').remove();
 
         const svgGroup = svg.append('g');
         const render = new dagreD3.render();
 
         render(svgGroup, g);
 
-        // Add click event to nodes
         svgGroup.selectAll("g.node")
             .on("click", function (event, nodeId) {
                 const node = g.node(nodeId);
@@ -118,26 +120,22 @@ const Dag = () => {
                 render(svgGroup, g);
             });
 
-        // Calculate scale to fit the graph within the SVG
         const svgWidth = svg.node().getBoundingClientRect().width;
         const svgHeight = svg.node().getBoundingClientRect().height;
         const graphWidth = g.graph().width;
         const graphHeight = g.graph().height;
-        const scale = Math.min(svgWidth / graphWidth, svgHeight / graphHeight) * 0.9; // 0.9 to add some padding
+        const scale = Math.min(svgWidth / graphWidth, svgHeight / graphHeight) * 0.9;
 
-        // Center the graph
         const xCenterOffset = (svgWidth - graphWidth * scale) / 2;
         const yCenterOffset = (svgHeight - graphHeight * scale) / 2;
 
         svgGroup.attr('transform', `translate(${xCenterOffset}, ${yCenterOffset}) scale(${scale})`);
 
-        // Add zoom behavior
         const zoom = d3.zoom().on('zoom', (event) => {
             svgGroup.attr('transform', event.transform);
         });
         svg.call(zoom);
 
-        // Initial zoom to fit
         svg.call(zoom.transform, d3.zoomIdentity.translate(xCenterOffset, yCenterOffset).scale(scale));
     }, [dag]);
 
@@ -173,9 +171,9 @@ const Dag = () => {
                     }}
                 />
             </div>
-            <svg ref={svgRef} height={800}></svg>
+            <svg ref={svgRef} height={800} width="100%"></svg>
         </Container>
-    )
+    );
 };
 
-export default Dag
+export default Dag;
