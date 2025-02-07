@@ -33,7 +33,7 @@ class Chart(SelectorModel, NamedModel, ParentModel):
             ``` yaml
             models:
               - name: Array of Numbers 
-                args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+                args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
             traces:
               - name: Simple Scatter 
@@ -74,7 +74,7 @@ class Chart(SelectorModel, NamedModel, ParentModel):
             ``` yaml
             models:
               - name: Series of Numbers 
-                args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+                args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
             traces:
               - name: Yaxis Trace
@@ -145,7 +145,7 @@ class Chart(SelectorModel, NamedModel, ParentModel):
             ``` yaml
             models:
               - name: Numbers From Remote CSV 
-                args: ["curl","https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+                args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
 
             traces:
               - name: Line Trace

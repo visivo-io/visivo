@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from 'flowbite-react';
 import logo from '../images/logo.png';
 
 const TopNav = () => {
