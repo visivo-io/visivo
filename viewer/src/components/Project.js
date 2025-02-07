@@ -7,6 +7,39 @@ import DashboardSection from './dashboard/DashboardSection';
 import FilterBar from './dashboard/FilterBar';
 import { fetchDashboardThumbnails } from '../services/thumbnailService';
 
+const organizeDashboardsByLevel = (dashboards) => {
+  if (!dashboards?.length) return {};
+
+  // Initialize levels
+  const levels = {
+    L0: [],
+    L1: [],
+    L2: [],
+    L3: [],
+    L4: [],
+    unassigned: []
+  };
+
+  // Sort dashboards into levels
+  dashboards.forEach(dashboard => {
+    if (!dashboard.level) {
+      levels.unassigned.push(dashboard);
+    } else {
+      levels[dashboard.level].push(dashboard);
+    }
+  });
+
+  // Sort each level alphabetically
+  Object.keys(levels).forEach(level => {
+    levels[level].sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  // Filter out empty levels
+  return Object.fromEntries(
+    Object.entries(levels).filter(([_, dashboards]) => dashboards.length > 0)
+  );
+};
+
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
@@ -17,17 +50,22 @@ function Project(props) {
     window.scrollTo(0, 0);
   }, [props.dashboardName]);
 
+  const dashboardsByLevel = useMemo(() => 
+    organizeDashboardsByLevel(props.dashboards),
+    [props.dashboards]
+  );
+
   // Load existing thumbnails from API
   useEffect(() => {
-    if (props.dashboards && props.dashboards.length > 0) {
-      fetchDashboardThumbnails(props.dashboards, (dashboardName, thumbnail) => {
+    if (Object.keys(dashboardsByLevel).length > 0) {
+      fetchDashboardThumbnails(dashboardsByLevel, (dashboardName, thumbnail) => {
         setThumbnails(prev => ({
           ...prev,
           [dashboardName]: thumbnail
         }));
       });
     }
-  }, [props.dashboards]);
+  }, [dashboardsByLevel]);
 
   const availableTags = useMemo(() => {
     if (!props.dashboards) return [];
@@ -50,34 +88,6 @@ function Project(props) {
       return matchesSearch && matchesTags;
     });
   }, [props.dashboards, searchTerm, selectedTags]);
-
-  const dashboardsByLevel = useMemo(() => {
-    const levels = {
-      L0: [],
-      L1: [],
-      L2: [],
-      L3: [],
-      L4: [],
-      unassigned: []
-    };
-
-    filteredDashboards.forEach(dashboard => {
-      if (!dashboard.level) {
-        levels.unassigned.push(dashboard);
-      } else {
-        levels[dashboard.level].push(dashboard);
-      }
-    });
-
-    // Sort dashboards alphabetically within each level
-    Object.keys(levels).forEach(level => {
-      levels[level].sort((a, b) => a.name.localeCompare(b.name));
-    });
-
-    return Object.fromEntries(
-      Object.entries(levels).filter(([_, dashboards]) => dashboards.length > 0)
-    );
-  }, [filteredDashboards]);
 
   const renderLoading = () => {
     return <Loading />;

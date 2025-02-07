@@ -19,17 +19,23 @@ export const fetchDashboardThumbnail = async (dashboardName) => {
     }
 };
 
-export const fetchDashboardThumbnails = (dashboards, onThumbnailLoaded) => {
-    if (!dashboards || dashboards.length === 0) {
+export const fetchDashboardThumbnails = (dashboardsByLevel, onThumbnailLoaded) => {
+    if (!dashboardsByLevel || Object.keys(dashboardsByLevel).length === 0) {
         return;
     }
 
-    dashboards.forEach(dashboard => {
-        fetchDashboardThumbnail(dashboard.name)
-            .then(thumbnail => {
-                if (thumbnail) {
-                    onThumbnailLoaded(dashboard.name, thumbnail);
-                }
+    // Process each level in the order they appear in the object
+    Object.values(dashboardsByLevel).forEach(dashboards => {
+        if (dashboards?.length) {
+            // Process each dashboard in the level (already sorted)
+            dashboards.forEach(dashboard => {
+                fetchDashboardThumbnail(dashboard.name)
+                    .then(thumbnail => {
+                        if (thumbnail) {
+                            onThumbnailLoaded(dashboard.name, thumbnail);
+                        }
+                    });
             });
+        }
     });
-}
+};
