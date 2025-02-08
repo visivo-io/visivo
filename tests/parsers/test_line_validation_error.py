@@ -10,7 +10,7 @@ from visivo.parsers.line_validation_error import LineValidationError
 from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 
 
-class TestMissing(BaseModel):
+class Missing(BaseModel):
     model_config = ConfigDict(extra="forbid")
     required: str
     other_required: str
@@ -26,7 +26,7 @@ def test_found_line_number():
     )
     with pytest.raises(ValidationError) as exc_info:
         with open(file, "r") as stream:
-            TestMissing(**yaml.safe_load(stream))
+            Missing(**yaml.safe_load(stream))
 
     line_validation_error = LineValidationError(
         validation_error=exc_info.value, files=[file]
@@ -45,7 +45,7 @@ def test_found_int_line_number():
     )
     with pytest.raises(ValidationError) as exc_info:
         with open(file, "r") as stream:
-            TestMissing(**yaml.safe_load(stream))
+            Missing(**yaml.safe_load(stream))
 
     line_validation_error = LineValidationError(
         validation_error=exc_info.value, files=[file]
@@ -66,7 +66,7 @@ def test_extra_input_no_found_line_number():
     )
     with pytest.raises(ValidationError) as exc_info:
         with open(file, "r") as stream:
-            TestMissing(**yaml.safe_load(stream))
+            Missing(**yaml.safe_load(stream))
 
     line_validation_error = LineValidationError(
         validation_error=exc_info.value, files=[file]

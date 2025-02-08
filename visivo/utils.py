@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import click
+from visivo.models.base.query_string import QueryString
 from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 import importlib.resources as resources
@@ -79,6 +80,8 @@ def error_if_true(bool: bool, message: str):
 
 
 def extract_value_from_function(function_text, function_name):
+    if isinstance(function_text, QueryString):
+        return function_text.get_value()
     if function_text is None:
         return None
     pattern = r"{}\((.+)\)".format(re.escape(function_name))

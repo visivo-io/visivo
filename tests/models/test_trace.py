@@ -124,7 +124,12 @@ def test_Trace_with_columns_and_props_as_query_string_props():
     data = {
         "name": "development",
         "columns": {"x_data": "?{x}"},
-        "props": {"type": "scatter", "x": "${ columns.x_data }", "y": "?{ y }"},
+        "props": {
+            "type": "scatter",
+            "x": "${ columns.x_data }",
+            "y": "?{ y }",
+            "x0": "${ columns.x_data[0] }",
+        },
         "model": {"sql": "select * from table"},
     }
     trace = Trace(**data)
@@ -132,3 +137,4 @@ def test_Trace_with_columns_and_props_as_query_string_props():
     assert isinstance(trace.columns.x_data, QueryString)
     assert isinstance(trace.props.x, ContextString)
     assert isinstance(trace.props.y, QueryString)
+    assert isinstance(trace.props.x0, ContextString)
