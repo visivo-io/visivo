@@ -1,17 +1,18 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useContext } from "react";
 import Dashboard from "./Dashboard";
 import Loading from "./Loading";
 import { Container } from "./styled/Container";
 import { HiTemplate } from 'react-icons/hi';
 import DashboardSection, { organizeDashboardsByLevel } from './dashboard/DashboardSection';
 import FilterBar from './dashboard/FilterBar';
-import { fetchDashboardThumbnails } from '../services/thumbnailService';
+import QueryContext from "../contexts/QueryContext";
+import { fetchDashboardThumbnail } from "../queries/dashboardThumbnails";
 
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [thumbnails, setThumbnails] = useState({});
-
+  const { fetchDashboardsQuery } = useContext(QueryContext);
   // Reset scroll position when dashboard changes
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -60,7 +61,7 @@ function Project(props) {
     });
   }, [allDashboards, searchTerm, selectedTags]);
 
-  const dashboardsByLevel = useMemo(() => 
+  const dashboardsByLevel = useMemo(() =>
     organizeDashboardsByLevel(filteredDashboards),
     [filteredDashboards]
   );
@@ -68,14 +69,19 @@ function Project(props) {
   // Load existing thumbnails from API
   useEffect(() => {
     if (Object.keys(dashboardsByLevel).length > 0) {
-      fetchDashboardThumbnails(dashboardsByLevel, (dashboardName, thumbnail) => {
-        setThumbnails(prev => ({
-          ...prev,
-          [dashboardName]: thumbnail
-        }));
-      });
+      const dashboards = Object.values(dashboardsByLevel).flat();
+      dashboards.forEach(dashboard => {
+        fetchDashboardsQuery(props.project.project_id, dashboard.name).then(dashboard => {
+          fetchDashboardThumbnail(dashboard).then(thumbnail => {
+            setThumbnails(prev => ({
+              ...prev,
+              [dashboard.name]: thumbnail
+            }));
+          })
+        })
+      })
     }
-  }, [dashboardsByLevel]);
+  }, [dashboardsByLevel, props.project.project_id, fetchDashboardsQuery]);
 
   const renderLoading = () => {
     return <Loading />;

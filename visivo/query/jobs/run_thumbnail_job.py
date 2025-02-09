@@ -1,3 +1,4 @@
+import hashlib
 import os
 from visivo.query.jobs.job import (
     Job,

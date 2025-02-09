@@ -9,6 +9,7 @@ from visivo.utils import VIEWER_PATH
 import base64
 from visivo.logging.logger import Logger
 
+
 def flask_app(output_dir, dag_filter, project):
     app = Flask(
         __name__,
@@ -17,15 +18,18 @@ def flask_app(output_dir, dag_filter, project):
     )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     thumbnail_dir = get_thumbnail_dir(output_dir)
-    
 
     def get_project_json(output_dir, dag_filter=None):
         project_json = ""
         with open(f"{output_dir}/project.json", "r") as f:
             project_json = json.load(f)
 
-        if dag_filter: # TODO: I'm actually not sure why this works. It seems to be combination of our old name filter and the new dag filter. 
-            dashboards = [d for d in project_json["dashboards"] if d["name"] == dag_filter]
+        if (
+            dag_filter
+        ):  # TODO: I'm actually not sure why this works. It seems to be combination of our old name filter and the new dag filter.
+            dashboards = [
+                d for d in project_json["dashboards"] if d["name"] == dag_filter
+            ]
             if len(dashboards) == 1:
                 project_json["dashboards"] = dashboards
             else:
@@ -40,7 +44,10 @@ def flask_app(output_dir, dag_filter, project):
         try:
             trace_dir = os.path.join(output_dir, trace_name)
             if not os.path.exists(trace_dir):
-                return jsonify({"message": f"Trace directory not found: {trace_name}"}), 404
+                return (
+                    jsonify({"message": f"Trace directory not found: {trace_name}"}),
+                    404,
+                )
             return send_from_directory(trace_dir, "data.json")
         except Exception as e:
             Logger.instance().error(f"Error serving trace data: {str(e)}")
@@ -63,27 +70,30 @@ def flask_app(output_dir, dag_filter, project):
 
             query = data["query"]
             source_name = data.get("source")  # Get source name from request
-            
+
             # Get the appropriate source based on the request
             source = None
             if source_name:
                 # First try to find the explicitly requested source
                 source = next(
-                    (s for s in project.sources if s.name == source_name),
-                    None
+                    (s for s in project.sources if s.name == source_name), None
                 )
-            
+
             if not source and project.defaults and project.defaults.source_name:
                 # If no explicit source found, try the default
                 source = next(
-                    (s for s in project.sources if s.name == project.defaults.source_name),
-                    None
+                    (
+                        s
+                        for s in project.sources
+                        if s.name == project.defaults.source_name
+                    ),
+                    None,
                 )
-            
+
             if not source and project.sources:
                 # Fallback to first source if no default
                 source = project.sources[0]
-                
+
             if not source:
                 return jsonify({"message": "No source configured"}), 400
 
@@ -91,19 +101,16 @@ def flask_app(output_dir, dag_filter, project):
 
             # Execute the query using read_sql
             result = source.read_sql(query)
-            
+
             # Transform the result into the expected format
             if result is None or result.empty:
                 return jsonify({"columns": [], "rows": []}), 200
 
             # Result is a pandas DataFrame
             columns = list(result.columns)
-            rows = result.to_dict('records')
+            rows = result.to_dict("records")
 
-            return jsonify({
-                "columns": columns,
-                "rows": rows
-            }), 200
+            return jsonify({"columns": columns, "rows": rows}), 200
 
         except Exception as e:
             Logger.instance().error(f"Query execution error: {str(e)}")
@@ -114,11 +121,16 @@ def flask_app(output_dir, dag_filter, project):
         try:
             query_file_path = f"{output_dir}/{trace_name}/query.sql"
             if not os.path.exists(query_file_path):
-                return jsonify({"message": f"Query file not found for trace: {trace_name}"}), 404
-                
-            with open(query_file_path, 'r') as f:
+                return (
+                    jsonify(
+                        {"message": f"Query file not found for trace: {trace_name}"}
+                    ),
+                    404,
+                )
+
+            with open(query_file_path, "r") as f:
                 query_contents = f.read()
-                
+
             return jsonify({"query": query_contents}), 200
         except Exception as e:
             Logger.instance().error(f"Error reading trace query: {str(e)}")
@@ -162,38 +174,30 @@ def flask_app(output_dir, dag_filter, project):
         regex = r"\S*(\.png|\.ico|\.js|\.css|\.webmanifest|\.js\.map|\.css\.map)$"
         if re.match(regex, path):
             return send_from_directory(VIEWER_PATH, path)
-        
+
         # For HTML responses, read the file and inject our scripts
-        with open(os.path.join(VIEWER_PATH, "index.html"), 'r') as f:
+        with open(os.path.join(VIEWER_PATH, "index.html"), "r") as f:
             html = f.read()
-        
+
         # Add socket.io client and our hot reload script
         scripts = """
             <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
             <script src="/hot-reload.js"></script>
         """
-        html = html.replace('</head>', f'{scripts}</head>')
-        
+        html = html.replace("</head>", f"{scripts}</head>")
+
         return html
 
-
-    @app.route("/api/thumbnails/<dashboard_name>", methods=["GET"])
-    def get_thumbnail(dashboard_name):
+    @app.route("/data/<dashboard_name_hash>/thumbnail.png", methods=["GET"])
+    def get_thumbnail(dashboard_name_hash):
         try:
-            safe_name = sanitize_filename(dashboard_name)
-            thumbnail_path = os.path.join(thumbnail_dir, f"{safe_name}.png")
-            
+            thumbnail_path = os.path.join(thumbnail_dir, f"{dashboard_name_hash}.png")
+
             if not os.path.exists(thumbnail_path):
                 # Return a 404 response directly without logging
                 return Response(status=404)
 
-            with open(thumbnail_path, "rb") as f:
-                thumbnail_data = f.read()
-                thumbnail_b64 = base64.b64encode(thumbnail_data).decode('utf-8')
-                return jsonify({
-                    "thumbnail": f"data:image/png;base64,{thumbnail_b64}",
-                    "updated_at": datetime.datetime.fromtimestamp(os.path.getmtime(thumbnail_path)).isoformat()
-                })
+            return send_from_directory(thumbnail_dir, f"{dashboard_name_hash}.png")
         except Exception as e:
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500

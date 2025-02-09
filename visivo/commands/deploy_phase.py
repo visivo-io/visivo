@@ -161,7 +161,7 @@ async def create_thumbnail_files(thumbnails, form_headers, host, progress):
     """
     Asynchronously creates thumbnail file records.
     """
-    url = f"{host}/api/thumbnails/direct/start/"
+    url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
     async with semaphore_3:
         try:
