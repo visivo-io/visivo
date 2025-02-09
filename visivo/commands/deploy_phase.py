@@ -91,41 +91,12 @@ async def upload_trace_data(data_file_upload, output_dir, form_headers, host, pr
     async with semaphore_50:
         try:
             data_file = f"{output_dir}/{trace_name}/data.json"
-            # Add protocol and host to upload_url if it's a relative path
-            upload_url = data_file_upload["upload_url"]
-            if not upload_url.startswith(("http://", "https://")):
-                # For local development, the API returns relative paths
-                # We need to prepend the host
-                if host.startswith(("http://", "https://")):
-                    # Remove any trailing slash from host
-                    host = host.rstrip('/')
-                    upload_url = f"{host}{upload_url}"
-                else:
-                    Logger.instance().error(
-                        f"Neither upload URL ({upload_url}) nor host ({host}) has a protocol."
-                    )
-                    raise ValueError("Missing protocol in both upload URL and host")
-
-            # For local development, we need to handle CSRF
-            request_headers = form_headers.copy()
-            if "localhost" in host or "127.0.0.1" in host:
-                # Get CSRF token from the API first
-                async with httpx.AsyncClient(timeout=60) as client:
-                    csrf_response = await client.get(f"{host}/api/csrf/")
-                    if csrf_response.status_code == 200:
-                        csrf_token = csrf_response.cookies.get("csrftoken")
-                        if csrf_token:
-                            request_headers["X-CSRFToken"] = csrf_token
-                            # Also need to include the cookie
-                            request_headers["Cookie"] = f"csrftoken={csrf_token}"
-
-            Logger.instance().debug(f"\tUploading to URL: {upload_url}")
             async with httpx.AsyncClient(timeout=60) as client:
                 async with aiofiles.open(data_file, "rb") as f:
                     response = await client.put(
-                        upload_url,
+                        data_file_upload["upload_url"],
                         content=await f.read(),
-                        headers=request_headers,
+                        headers=form_headers,
                     )
                     response.raise_for_status()
                     progress["completed"] += 1
