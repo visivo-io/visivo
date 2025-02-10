@@ -2,8 +2,10 @@ path: project
 name: docs-examples
 view: 
   levels:
-    - title: L0 
-      description: The Most Important dashboards
+    - title: Chart Configuration
+      description: Visuals that illustrate chart based configuration.
+    - title: Trace Type Gallery
+      description: Visuals that show all of the different things you can do with our 20+ trace types. 
       
   external_dashboards: 
     - name: "Monty Python Data"

@@ -3,7 +3,7 @@ import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
 
-// Default levels if not provided by project view
+// Default levels if not provided by project view - used only for indices that don't have definitions
 const defaultLevels = [
   {
     title: "Organization",
@@ -30,32 +30,88 @@ const defaultLevels = [
 export const organizeDashboardsByLevel = (dashboards, projectView) => {
   if (!dashboards?.length) return {};
 
-  const levels = projectView?.levels || defaultLevels;
+  console.log('Full Project View:', projectView);
+  const configuredLevels = projectView?.levels || [];
+  console.log('Configured Levels:', configuredLevels);
   
   // Initialize levels object with indices as keys
   const leveledDashboards = {
     unassigned: []
   };
   
-  levels.forEach((_, index) => {
-    leveledDashboards[index] = [];
-  });
+  // Initialize arrays for all possible indices
+  const maxIndex = Math.max(
+    defaultLevels.length - 1,
+    configuredLevels.length - 1,
+    ...dashboards.map(d => typeof d.level === 'number' ? d.level : -1)
+  );
+  
+  console.log('Max Index:', maxIndex);
+  
+  for (let i = 0; i <= maxIndex; i++) {
+    leveledDashboards[i] = [];
+  }
 
   // Sort all dashboards into levels
   dashboards.forEach(dashboard => {
-    if (!dashboard.level) {
+    console.log('\nProcessing dashboard:', dashboard.name);
+    console.log('Dashboard level:', dashboard.level, '(type:', typeof dashboard.level, ')');
+    
+    if (dashboard.level === undefined || dashboard.level === null) {
+      console.log('No level specified, adding to unassigned');
       leveledDashboards.unassigned.push(dashboard);
-    } else {
-      // Handle both string and number level references
-      const levelIndex = typeof dashboard.level === 'number' 
-        ? dashboard.level 
-        : levels.findIndex(l => l.title === dashboard.level);
+      return;
+    }
+
+    let levelIndex = -1;
+    
+    if (typeof dashboard.level === 'string') {
+      // Try to match by title in configured levels
+      const titleIndex = configuredLevels.findIndex(l => 
+        l.title.toLowerCase() === dashboard.level.toLowerCase()
+      );
+      console.log('Title match attempt:', { 
+        dashboardLevel: dashboard.level, 
+        configuredTitles: configuredLevels.map(l => l.title),
+        titleMatchIndex: titleIndex 
+      });
       
-      if (levelIndex >= 0 && levelIndex < levels.length) {
-        leveledDashboards[levelIndex].push(dashboard);
-      } else {
-        leveledDashboards.unassigned.push(dashboard);
+      // Try to parse as number
+      let numericLevel = Number(dashboard.level);
+      
+      // If not a direct number, check if it's in the format "L{number}"
+      if (isNaN(numericLevel) && dashboard.level.match(/^L\d+$/i)) {
+        numericLevel = Number(dashboard.level.substring(1));
       }
+      
+      console.log('Numeric parse attempt:', { 
+        dashboardLevel: dashboard.level, 
+        parsedNumber: numericLevel,
+        isValidNumber: !isNaN(numericLevel)
+      });
+      
+      // Use title match if found, otherwise use numeric if valid
+      if (titleIndex !== -1) {
+        console.log('Using title match:', titleIndex);
+        levelIndex = titleIndex;
+      } else if (!isNaN(numericLevel)) {
+        // If no configured levels, any valid number is acceptable
+        levelIndex = numericLevel;
+        console.log('Using parsed number:', numericLevel);
+      }
+    } else if (typeof dashboard.level === 'number') {
+      // Direct numeric index - if no configured levels, any number is valid
+      levelIndex = dashboard.level;
+      console.log('Using direct numeric index:', dashboard.level);
+    }
+    
+    // Add to appropriate level if index is valid and within maxIndex
+    if (levelIndex >= 0 && levelIndex <= maxIndex) {
+      console.log('Adding to level:', levelIndex);
+      leveledDashboards[levelIndex].push(dashboard);
+    } else {
+      console.log('Level out of range, adding to unassigned');
+      leveledDashboards.unassigned.push(dashboard);
     }
   });
 
@@ -64,20 +120,34 @@ export const organizeDashboardsByLevel = (dashboards, projectView) => {
     leveledDashboards[level].sort((a, b) => a.name.localeCompare(b.name));
   });
 
-  // Filter out empty levels
-  return Object.fromEntries(
-    Object.entries(leveledDashboards).filter(([_, dashboards]) => dashboards.length > 0)
-  );
+  // Filter out empty levels and ensure they're ordered by index
+  const entries = Object.entries(leveledDashboards)
+    .filter(([_, dashboards]) => dashboards.length > 0)
+    .sort(([a], [b]) => {
+      // Keep unassigned at the end
+      if (a === 'unassigned') return 1;
+      if (b === 'unassigned') return -1;
+      return parseInt(a) - parseInt(b);
+    });
+  
+  const result = Object.fromEntries(entries);
+  console.log('\nFinal organized dashboards:', result);
+  return result;
 };
 
 function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectView }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  const levels = projectView?.levels || defaultLevels;
+  const configuredLevels = projectView?.levels || [];
   
   // Get level info based on title
   const levelIndex = title === 'unassigned' ? 'unassigned' : parseInt(title);
-  const level = levelIndex === 'unassigned' ? null : levels[levelIndex];
+  
+  // Get level info, first from configured levels, then fall back to default if needed
+  let level = null;
+  if (levelIndex !== 'unassigned') {
+    level = configuredLevels[levelIndex] || defaultLevels[levelIndex];
+  }
   
   // Get level title and description
   const levelTitle = level?.title || 'Unassigned';
