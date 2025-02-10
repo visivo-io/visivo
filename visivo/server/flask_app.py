@@ -1,7 +1,7 @@
 import click
 import re
 import os
-from visivo.utils import sanitize_filename, get_thumbnail_dir
+from visivo.utils import sanitize_filename, get_dashboards_dir
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
@@ -17,7 +17,7 @@ def flask_app(output_dir, dag_filter, project):
         static_url_path="/data",
     )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    thumbnail_dir = get_thumbnail_dir(output_dir)
+    thumbnail_dir = get_dashboards_dir(output_dir)
 
     def get_project_json(output_dir, dag_filter=None):
         project_json = ""

@@ -12,7 +12,7 @@ import importlib.resources as resources
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
 
-def get_thumbnail_dir(output_dir):
+def get_dashboards_dir(output_dir):
     return os.path.join(output_dir, "dashboards")
 
 

@@ -1,10 +1,12 @@
 from time import time
+
 compile_import_start = time()
 from visivo.logging.logger import Logger
+
 Logger.instance().debug("Compiling project...")
 import os
 import json
-from visivo.utils import get_thumbnail_dir
+from visivo.utils import get_dashboards_dir
 
 from visivo.models.dag import all_descendants_of_type, filter_dag
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -20,6 +22,7 @@ from visivo.query.query_writer import QueryWriter
 
 from .parse_project_phase import parse_project_phase
 from .dbt_phase import dbt_phase
+
 import_duration = round(time() - compile_import_start, 2)
 if os.environ.get("STACKTRACE"):
     Logger.instance().info(f"Compile Import completed in {import_duration}s")
@@ -28,6 +31,7 @@ if os.environ.get("STACKTRACE"):
 def write_dag(project, output_dir):
     with open(f"{output_dir}/dag.json", "w") as fp:
         fp.write(json.dumps(project.dag_dict()))
+
 
 def compile_phase(
     default_source: str,
@@ -53,26 +57,23 @@ def compile_phase(
     parse_duration = round(time() - parse_start, 2)
     if os.environ.get("STACKTRACE"):
         Logger.instance().info(f"Project parsing completed in {parse_duration}s")
- 
-    
+
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     # Ensure thumbnail directory exists
-    thumbnail_dir = get_thumbnail_dir(output_dir)
+    thumbnail_dir = get_dashboards_dir(output_dir)
     os.makedirs(thumbnail_dir, exist_ok=True)
 
     # Track artifacts writing
     artifacts_start = time()
     Logger.instance().debug("    Writing artifacts...")
     write_dag(project=project, output_dir=output_dir)
-    
+
     # Write the original project.json
     with open(f"{output_dir}/project.json", "w") as fp:
         serializer = Serializer(project=project)
-        fp.write(
-            serializer.dereference().model_dump_json(exclude_none=True)
-        )
-    
+        fp.write(serializer.dereference().model_dump_json(exclude_none=True))
+
     # Write the flattened explorer.json for the QueryExplorer
     with open(f"{output_dir}/explorer.json", "w") as fp:
         serializer = Serializer(project=project)
@@ -116,5 +117,5 @@ def compile_phase(
         f"artifacts: {artifacts_duration}s, "
         f"traces: {traces_duration}s)"
     )
-    
+
     return project

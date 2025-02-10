@@ -1,3 +1,4 @@
+from visivo.models.dashboard import Dashboard
 from visivo.models.trace import Trace
 import click
 import requests
@@ -16,7 +17,7 @@ from visivo.discovery.discover import Discover
 from visivo.logging.logger import Logger
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
-from visivo.utils import get_thumbnail_dir
+from visivo.utils import get_dashboards_dir, sanitize_filename
 
 # Limit concurrent uploads to avoid overloading the API
 semaphore_3 = asyncio.Semaphore(3)
@@ -26,11 +27,11 @@ MAX_ATTEMPTS = 3
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def create_trace_files(batch, form_headers, host, progress):
+async def start_files(file_names, form_headers, host, progress):
     """
     Asynchronously uploads trace data files.
     """
-    files = list(map(lambda trace: {"filename": f"{trace.name}.json"}, batch))
+    files = list(map(lambda file_name: {"filename": file_name}, file_names))
     url = f"{host}/api/files/direct/start/"
     attempt.set(attempt.get(0) + 1)
     async with semaphore_3:
@@ -39,28 +40,28 @@ async def create_trace_files(batch, form_headers, host, progress):
                 response = await client.post(url, json=files, headers=form_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
-                Logger.instance().success(f"\t{len(batch)} trace data files created.")
+                Logger.instance().success(f"\t{len(file_names)} files created.")
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace data files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating files: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create trace data files: {repr(e)}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create files: {repr(e)}"
             )
             raise
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def finish_trace_files(batch_ids, form_headers, host, progress):
+async def finish_files(file_ids, form_headers, host, progress):
     """
     Asynchronously uploads trace data files.
     """
     url = f"{host}/api/files/direct/finish/"
     attempt.set(attempt.get(0) + 1)
-    ids = list(map(lambda id: {"id": id}, batch_ids))
+    ids = list(map(lambda id: {"id": id}, file_ids))
     async with semaphore_3:
         try:
             async with httpx.AsyncClient(timeout=60) as client:
@@ -68,52 +69,51 @@ async def finish_trace_files(batch_ids, form_headers, host, progress):
                 response.raise_for_status()
                 progress["completed"] += 1
                 Logger.instance().success(
-                    f"\t{len(batch_ids)} trace data files finished [{progress['completed']}/{progress['total']}]"
+                    f"\t{len(file_ids)} files finished [{progress['completed']}/{progress['total']}]"
                 )
                 return "finished"
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while finishing trace data files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while finishing files: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to finish trace data files: {repr(e)}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to finish files: {repr(e)}"
             )
             raise
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def upload_trace_data(data_file_upload, output_dir, form_headers, host, progress):
+async def upload_file(name, upload_url, file_name, output_dir, form_headers, progress):
     """
     Asynchronously uploads trace data files.
     """
     attempt.set(attempt.get(0) + 1)
-    trace_name = data_file_upload["name"].split(".")[0]
     async with semaphore_50:
         try:
-            data_file = f"{output_dir}/{trace_name}/data.json"
+            data_file = f"{output_dir}/{file_name}"
             async with httpx.AsyncClient(timeout=60) as client:
                 async with aiofiles.open(data_file, "rb") as f:
                     response = await client.put(
-                        data_file_upload["upload_url"],
+                        upload_url,
                         content=await f.read(),
                         headers=form_headers,
                     )
                     response.raise_for_status()
                     progress["completed"] += 1
                     Logger.instance().success(
-                        f"\tTrace '{trace_name}' data uploaded [{progress['completed']}/{progress['total']}]"
+                        f"\t'{name}' data uploaded [{progress['completed']}/{progress['total']}]"
                     )
                     return "uploaded"
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating trace '{trace_name}': {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating '{name}': {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload trace data for '{trace_name}': {repr(e)}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload data for '{name}': {repr(e)}"
             )
             raise
 
@@ -156,117 +156,6 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
             raise
 
 
-@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def create_thumbnail_files(thumbnails, form_headers, host, progress):
-    """
-    Asynchronously creates thumbnail file records.
-    """
-    url = f"{host}/api/files/direct/start/"
-    attempt.set(attempt.get(0) + 1)
-    async with semaphore_3:
-        try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                response = await client.post(url, json=thumbnails, headers=form_headers)
-                response.raise_for_status()
-                progress["completed"] += 1
-                Logger.instance().success(f"\t{len(thumbnails)} thumbnail files created.")
-                return response.json()
-        except httpx.HTTPStatusError as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating thumbnail files: {repr(e)} - Response: {e.response.text}"
-            )
-            raise
-        except Exception as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create thumbnail files: {repr(e)}"
-            )
-            raise
-
-
-@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def upload_thumbnail(thumbnail_data, thumbnail_path, form_headers, host, progress):
-    """
-    Asynchronously uploads a thumbnail file.
-    """
-    attempt.set(attempt.get(0) + 1)
-    async with semaphore_50:
-        try:
-            upload_url = thumbnail_data["upload_url"]
-            if not upload_url.startswith(("http://", "https://")):
-                if host.startswith(("http://", "https://")):
-                    host = host.rstrip('/')
-                    upload_url = f"{host}{upload_url}"
-                else:
-                    Logger.instance().error(
-                        f"Neither upload URL ({upload_url}) nor host ({host}) has a protocol."
-                    )
-                    raise ValueError("Missing protocol in both upload URL and host")
-
-            request_headers = form_headers.copy()
-            if "localhost" in host or "127.0.0.1" in host:
-                async with httpx.AsyncClient(timeout=60) as client:
-                    csrf_response = await client.get(f"{host}/api/csrf/")
-                    if csrf_response.status_code == 200:
-                        csrf_token = csrf_response.cookies.get("csrftoken")
-                        if csrf_token:
-                            request_headers["X-CSRFToken"] = csrf_token
-                            request_headers["Cookie"] = f"csrftoken={csrf_token}"
-
-            async with httpx.AsyncClient(timeout=60) as client:
-                async with aiofiles.open(thumbnail_path, "rb") as f:
-                    response = await client.put(
-                        upload_url,
-                        content=await f.read(),
-                        headers=request_headers,
-                    )
-                    response.raise_for_status()
-                    progress["completed"] += 1
-                    Logger.instance().success(
-                        f"\tThumbnail uploaded [{progress['completed']}/{progress['total']}]"
-                    )
-                    return thumbnail_data["id"]
-        except httpx.HTTPStatusError as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while uploading thumbnail: {repr(e)} - Response: {e.response.text}"
-            )
-            raise
-        except Exception as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload thumbnail: {repr(e)}"
-            )
-            raise
-
-
-@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def finish_thumbnail_files(batch_ids, form_headers, host, progress):
-    """
-    Asynchronously finishes thumbnail file uploads.
-    """
-    url = f"{host}/api/thumbnails/direct/finish/"
-    attempt.set(attempt.get(0) + 1)
-    ids = list(map(lambda id: {"id": id}, batch_ids))
-    async with semaphore_3:
-        try:
-            async with httpx.AsyncClient(timeout=60) as client:
-                response = await client.post(url, json=ids, headers=form_headers)
-                response.raise_for_status()
-                progress["completed"] += 1
-                Logger.instance().success(
-                    f"\t{len(batch_ids)} thumbnail files finished [{progress['completed']}/{progress['total']}]"
-                )
-                return "finished"
-        except httpx.HTTPStatusError as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while finishing thumbnail files: {repr(e)} - Response: {e.response.text}"
-            )
-            raise
-        except Exception as e:
-            Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to finish thumbnail files: {repr(e)}"
-            )
-            raise
-
-
 async def process_traces_async(
     traces, output_dir, project_id, form_headers, json_headers, host
 ):
@@ -283,9 +172,7 @@ async def process_traces_async(
     tasks = []
     for i in range(0, len(traces), batch_size):
         batch = traces[i : i + batch_size]
-        create_trace_files_task = create_trace_files(
-            batch, form_headers, host, progress
-        )
+        create_trace_files_task = start_files(batch, form_headers, host, progress)
         tasks.append(create_trace_files_task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
@@ -296,8 +183,15 @@ async def process_traces_async(
     tasks = []
     for data_file_upload in data_file_uploads:
         # Upload data files concurrently
-        data_file_task = upload_trace_data(
-            data_file_upload, output_dir, form_headers, host, progress
+        trace_name = data_file_upload["name"].split(".")[0]
+        data_file_task = upload_file(
+            trace_name,
+            data_file_upload["upload_url"],
+            f"{trace_name}/data.json",
+            output_dir,
+            form_headers,
+            host,
+            progress,
         )
         tasks.append(data_file_task)
 
@@ -311,9 +205,7 @@ async def process_traces_async(
     tasks = []
     for i in range(0, len(data_file_ids), batch_size):
         batch = data_file_ids[i : i + batch_size]
-        create_trace_files_task = finish_trace_files(
-            batch, form_headers, host, progress
-        )
+        create_trace_files_task = finish_files(batch, form_headers, host, progress)
         tasks.append(create_trace_files_task)
 
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
@@ -333,51 +225,58 @@ async def process_traces_async(
         raise click.ClickException("Failed to create trace records.")
 
 
-async def process_thumbnails_async(output_dir, project_id, stage_id, form_headers, host):
+async def process_dashboards_async(
+    dashboards, output_dir, project_id, stage_id, form_headers, host
+):
     """
     Coordinates the asynchronous upload of thumbnail files.
     """
-    thumbnail_dir = get_thumbnail_dir(output_dir)
-    if not os.path.exists(thumbnail_dir):
-        Logger.instance().debug(f"No thumbnails directory found at {thumbnail_dir}")
+    dashboards_dir = get_dashboards_dir(output_dir)
+    if not os.path.exists(dashboards_dir):
+        Logger.instance().debug(f"No dashboards directory found at {dashboards_dir}")
         return
 
     # Get all PNG files from the thumbnail directory
-    thumbnail_files = [f for f in os.listdir(thumbnail_dir) if f.endswith('.png')]
+    thumbnail_files = [f for f in os.listdir(dashboards_dir) if f.endswith(".png")]
     if not thumbnail_files:
         Logger.instance().debug("No thumbnails found to upload")
         return
 
-    batch_size = 20
     total_operations = len(thumbnail_files)  # Each thumbnail has a data upload
     total_operations += 2  # For create and finish operations
     progress = {"completed": 0, "total": total_operations}
 
     # Prepare thumbnail data for creation
-    thumbnail_requests = []
-    for filename in thumbnail_files:
-        dashboard_name = filename[:-4]  # Remove .png extension
-        thumbnail_requests.append({
-            "filename": filename,
-            "project_id": project_id,
-            "stage_id": stage_id,
-            "dashboard_name": dashboard_name
-        })
+    file_names = []
+    for dashboard in dashboards:
+        sanitized_name = sanitize_filename(dashboard.name)
+        file_names.append(f"{sanitized_name}.png")
 
     # Create thumbnail files
-    thumbnail_response = await create_thumbnail_files(thumbnail_requests, form_headers, host, progress)
-    
-    # Upload thumbnails
+    create_thumbnail_files_task = await start_files(
+        file_names, form_headers, host, progress
+    )
+
     tasks = []
-    for data, filename in zip(thumbnail_response, thumbnail_files):
-        thumbnail_path = os.path.join(thumbnail_dir, filename)
-        upload_task = upload_thumbnail(data, thumbnail_path, form_headers, host, progress)
-        tasks.append(upload_task)
+    tasks.append(create_thumbnail_files_task)
+    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
+        raise click.ClickException("Failed to create thumbnail files.")
+
+    data_file_uploads = [item for sublist in data_file_ids for item in sublist]
+
+    tasks = []
+    for data_file_upload in data_file_uploads:
+        # Upload data files concurrently
+        data_file_task = upload_file(
+            data_file_upload, output_dir, form_headers, host, progress
+        )
+        tasks.append(data_file_task)
 
     uploaded_ids = await asyncio.gather(*tasks)
-    
+
     # Finish the upload process
-    await finish_thumbnail_files(uploaded_ids, form_headers, host, progress)
+    await finish_files(uploaded_ids, form_headers, host, progress)
 
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host):
@@ -463,11 +362,13 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         )
 
         # Process thumbnails
-        Logger.instance().info("Processing thumbnail uploads...")
+        Logger.instance().info("Processing dashboard uploads...")
         process_thumbnails_start_time = time()
-        
+        dashboards = project.descendants_of_type(type=Dashboard)
+
         asyncio.run(
-            process_thumbnails_async(
+            process_dashboards_async(
+                dashboards=dashboards,
                 output_dir=output_dir,
                 project_id=project_id,
                 stage_id=stage_id,

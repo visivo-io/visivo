@@ -2,20 +2,22 @@ from visivo.utils import VIEWER_PATH
 from visivo.logging.logger import Logger
 import traceback
 
+
 def dist_phase(output_dir, dist_dir):
     import os
     import json
     import shutil
     from glob import glob
     import datetime
-    from visivo.utils import get_thumbnail_dir
+    from visivo.utils import get_dashboards_dir
+
     Logger.instance().info("Creating distribution for project in folder...")
 
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
-    
+
     # Copy dashboard thumbnails if they exist, otherwise create an empty folder
     try:
-        thumbnail_dir = get_thumbnail_dir(output_dir)
+        thumbnail_dir = get_dashboards_dir(output_dir)
         if os.path.exists(thumbnail_dir):
             dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboard-thumbnails")
             shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
@@ -25,10 +27,12 @@ def dist_phase(output_dir, dist_dir):
         created_at = (datetime.datetime.now().isoformat(),)
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
-                json.dumps({
-                    "project_json": project_json,
-                    "created_at": created_at,
-                    })
+                json.dumps(
+                    {
+                        "project_json": project_json,
+                        "created_at": created_at,
+                    }
+                )
             )
         with open(f"{dist_dir}/data/error.json", "w") as f:
             f.write(json.dumps({}))
@@ -47,8 +51,10 @@ def dist_phase(output_dir, dist_dir):
 
         shutil.copytree(VIEWER_PATH, dist_dir, dirs_exist_ok=True)
     except Exception as e:
-        Logger.instance().error(f"Error creating dist. Try running `visivo run` to ensure your project is up to date.")
+        Logger.instance().error(
+            f"Error creating dist. Try running `visivo run` to ensure your project is up to date."
+        )
         Logger.instance().error(f"Message: {e}, set STACKTRACE=true to see full error")
-        if os.environ.get('STACKTRACE'):
+        if os.environ.get("STACKTRACE"):
             Logger.instance().error(f"{traceback.format_exc()}")
             raise e
