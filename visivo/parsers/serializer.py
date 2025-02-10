@@ -56,7 +56,8 @@ class Serializer:
             "traces": all_traces,
             "charts": all_charts,
             "tables": all_tables,
-            "selectors": all_selectors
+            "selectors": all_selectors,
+            "view": project.view.model_dump(exclude_none=True, mode="json") if project.view else None,
         }
 
         # Add default source name if it exists
@@ -68,6 +69,7 @@ class Serializer:
     def dereference(self) -> Project:
         project = self.project.model_copy(deep=True)
         project.cli_version = version("visivo")
+        project.view = self.project.view
         dag = project.dag()
 
         for dashboard in project.dashboards:
