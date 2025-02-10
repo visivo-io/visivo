@@ -1,21 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
 
 function DashboardCard({ dashboard, thumbnail }) {
+  const [imageUrl, setImageUrl] = useState(null);
+
+  useEffect(() => {
+    if (thumbnail instanceof Blob) {
+      const url = URL.createObjectURL(thumbnail);
+      setImageUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [thumbnail]);
+
   const CardContent = () => (
     <div className="h-full bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
       <div className="aspect-[16/10] rounded-t-md overflow-hidden relative bg-gray-50">
-        {thumbnail ? (
-          <div className="w-full h-full">
-            <img 
-              src={thumbnail} 
-              alt={`Preview of ${dashboard.name}`}
-              className="w-full h-full object-cover mix-blend-multiply"
-              loading="lazy"
-            />
-          </div>
+        {imageUrl ? (
+          <img 
+            src={imageUrl}
+            alt={`Preview of ${dashboard.name}`}
+            className="w-full h-full object-cover mix-blend-multiply"
+            loading="lazy"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <HiTemplate className="w-8 h-8 text-primary-300" />
@@ -23,15 +31,8 @@ function DashboardCard({ dashboard, thumbnail }) {
         )}
         <div className="absolute top-0 left-0 right-0 p-1.5 bg-gradient-to-b from-black/50 to-transparent">
           <div className="flex flex-wrap gap-1 justify-end">
-            {dashboard.type && (
-              <Badge color="purple" size="xs" className="flex-shrink-0 bg-primary-500 text-[10px]">
-                {dashboard.type}
-              </Badge>
-            )}
-            {dashboard.tags && dashboard.tags.map(tag => (
-              <Badge key={tag} color="gray" size="xs" className="flex-shrink-0 text-[10px]">
-                {tag}
-              </Badge>
+            {dashboard.tags?.map(tag => (
+              <Badge key={tag} color="gray" size="xs" className="flex-shrink-0 text-[10px]">{tag}</Badge>
             ))}
           </div>
         </div>
@@ -49,13 +50,9 @@ function DashboardCard({ dashboard, thumbnail }) {
       </div>
       
       <div className="p-2">
-        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-0">
-          {dashboard.name}
-        </h3>
+        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-0">{dashboard.name}</h3>
         {dashboard.description && (
-          <p className="text-xs text-gray-600 line-clamp-1 group-hover:line-clamp-none transition-all duration-200">
-            {dashboard.description}
-          </p>
+          <p className="text-xs text-gray-600 line-clamp-1">{dashboard.description}</p>
         )}
       </div>
     </div>

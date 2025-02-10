@@ -14,6 +14,7 @@ function Project(props) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [thumbnails, setThumbnails] = useState({});
   const { fetchDashboardsQuery } = useContext(QueryContext);
+
   // Reset scroll position when dashboard changes
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -39,6 +40,28 @@ function Project(props) {
 
     return [...internalDashboards, ...externalDashboards];
   }, [props.dashboards, props.project?.project_json]);
+
+  // Load thumbnails only when dashboards change
+  useEffect(() => {
+    if (allDashboards.length > 0) {
+      const dashboardNames = allDashboards.map(d => d.name);
+      const query = fetchDashboardsQuery(props.project.project_id, dashboardNames);
+      query.queryFn().then(dashboardsData => {
+        Promise.all(
+          dashboardsData.map(async dashboardData => {
+            if (dashboardData) {
+              const thumbnail = await fetchDashboardThumbnail(dashboardData);
+              return [dashboardData.name, thumbnail];
+            }
+            return null;
+          })
+        ).then(results => {
+          const newThumbnails = Object.fromEntries(results.filter(Boolean));
+          setThumbnails(newThumbnails);
+        });
+      });
+    }
+  }, [allDashboards, props.project.project_id, fetchDashboardsQuery]);
 
   const availableTags = useMemo(() => {
     if (!allDashboards.length) return [];
@@ -66,30 +89,6 @@ function Project(props) {
     organizeDashboardsByLevel(filteredDashboards),
     [filteredDashboards]
   );
-
-  // Load existing thumbnails from API
-  useEffect(() => {
-    if (Object.keys(dashboardsByLevel).length > 0) {
-      const dashboards = Object.values(dashboardsByLevel).flat();
-      const dashboardNames = dashboards.map(d => d.name);
-      
-      const query = fetchDashboardsQuery(props.project.project_id, dashboardNames);
-      const queryFn = query.queryFn;
-      queryFn().then(dashboardsData => {
-        // Process all dashboards' thumbnails at once
-        dashboardsData.forEach(dashboardData => {
-          if (dashboardData) {
-            fetchDashboardThumbnail(dashboardData).then(thumbnail => {
-              setThumbnails(prev => ({
-                ...prev,
-                [dashboardData.name]: thumbnail
-              }));
-            });
-          }
-        });
-      });
-    }
-  }, [dashboardsByLevel, props.project.project_id, fetchDashboardsQuery]);
 
   const renderLoading = () => {
     return <Loading />;
