@@ -8,7 +8,7 @@ traces:
   - name: Count Enemy Encountered
     model: ref(monty-python-quests)
     props:
-      type: bar 
+      type: bar
       x: query(enemy_encountered)
       y: query( count(*) )
       text: query( count(*) )

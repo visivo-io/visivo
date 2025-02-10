@@ -13,7 +13,8 @@ function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const { fetchDashboardsQuery } = useContext(QueryContext);
-
+  console.log('Project Json:', props.project?.project_json);
+  console.log('Project Json View:', props.project?.project_json?.view);
   // Reset scroll position when dashboard changes
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -100,8 +101,8 @@ function Project(props) {
   }, [allDashboards, searchTerm, selectedTags]);
 
   const dashboardsByLevel = useMemo(() =>
-    organizeDashboardsByLevel(filteredDashboards),
-    [filteredDashboards]
+    organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.view),
+    [filteredDashboards, props.project?.project_json?.view]
   );
 
   const renderLoading = () => {
@@ -125,7 +126,7 @@ function Project(props) {
             {Object.entries(dashboardsByLevel).map(([level, dashboards]) => (
               <DashboardSection
                 key={level}
-                title={level === 'unassigned' ? 'Unassigned Dashboards' : `${level} Dashboards`}
+                title={level}
                 dashboards={dashboards.map(dashboard => ({
                   ...dashboard,
                   thumbnail: thumbnails[dashboard.name]

@@ -3,6 +3,11 @@ import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
 
+function mergeLists(left, right) {
+  return [...left, ...right.slice(-left.length)];
+}
+
+
 // Default levels if not provided by project view - used only for indices that don't have definitions
 const defaultLevels = [
   {
@@ -26,12 +31,15 @@ const defaultLevels = [
     description: "Operational dashboards that are used to accomplish specific tasks."
   }
 ];
+export const getLevels = (projectView) => {
+  return mergeLists(projectView?.levels || [], defaultLevels);
+}
 
 export const organizeDashboardsByLevel = (dashboards, projectView) => {
   if (!dashboards?.length) return {};
 
   console.log('Full Project View:', projectView);
-  const configuredLevels = projectView?.levels || [];
+  const configuredLevels = getLevels(projectView);
   console.log('Configured Levels:', configuredLevels);
   
   // Initialize levels object with indices as keys
@@ -136,6 +144,7 @@ export const organizeDashboardsByLevel = (dashboards, projectView) => {
 };
 
 function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectView }) {
+  console.log('Project View:', projectView);
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   const configuredLevels = projectView?.levels || [];
