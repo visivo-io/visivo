@@ -100,7 +100,7 @@ function Project(props) {
     });
   }, [allDashboards, searchTerm, selectedTags]);
 
-  const dashboardsByLevel = useMemo(() =>
+  const dashboardsByLevel = useMemo(() => 
     organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.view),
     [filteredDashboards, props.project?.project_json?.view]
   );
