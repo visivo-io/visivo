@@ -6,7 +6,7 @@ includes:
 dashboards:
   - name: "Trace Props Examples: Funnelarea"  
     description: An awesome description  
-    level: L1
+    level: 1
     tags: 
       - Funnel
       - Area

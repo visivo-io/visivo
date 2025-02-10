@@ -15,7 +15,7 @@ dashboards:
     description: "Annotations are cool! They are so cool that Im going to write a decently long description"
     tags: 
       - "chart feature"
-    level: L0
+    level: 0
 
     rows:
       - height: compact

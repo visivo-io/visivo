@@ -1,10 +1,10 @@
 path: project
 name: docs-examples
 view: 
-  level:
-    L0: 
-      description: custom description
-      name: Custom Level
+  levels:
+    - title: L0 
+      description: The Most Important dashboards
+      
   external_dashboards: 
     - name: "Monty Python Data"
       tags: 

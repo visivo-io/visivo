@@ -1,11 +1,11 @@
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 from pydantic import BaseModel, Field, HttpUrl
-from .dashboard import DashboardLevel
 
-class LevelCustomization(BaseModel):
-    """Customization for a dashboard level including name and description"""
-    description: str = Field(..., description="Custom description for this level")
-    name: Optional[str] = Field(None, description="Custom display name for this level")
+class Level(BaseModel):
+    """Represents a dashboard level with title and description"""
+    
+    title: str = Field(..., description="Display title for this level")
+    description: str = Field(..., description="Description of this level's purpose")
 
 class ExternalDashboard(BaseModel):
     """
@@ -15,18 +15,22 @@ class ExternalDashboard(BaseModel):
     href: HttpUrl = Field(..., description="URL to the external dashboard")
     description: Optional[str] = Field(None, description="Optional description of the dashboard")
     image: Optional[str] = Field(None, description="Optional path to dashboard thumbnail image")
-    level: Optional[DashboardLevel] = Field(None, description="Optional importance level of the dashboard")
+    level: Optional[Union[int, str]] = Field(None, description="Optional importance level of the dashboard (index or title)")
     tags: List[str] = Field(default_factory=list, description="Optional tags for the dashboard")
 
 class View(BaseModel):
     """
     Configuration for dashboard views and external dashboard links
     """
-    level: Dict[str, Union[LevelCustomization, str]] = Field(
-        default_factory=dict,
-        description="Custom names and descriptions for dashboard levels",
+    
+    levels: List[Level] = Field(
+        default_factory=list,
+        description="Ordered list of dashboard levels with titles and descriptions",
         json_schema_extra={
-            "examples": {"L0": {"description": "Overview", "name": "Overview"}}
+            "examples": [
+                {"title": "Overview", "description": "The most important dashboards and metrics for the organization"},
+                {"title": "Department", "description": "The most important dashboards & metrics for a department"}
+            ]
         }
     )
     external_dashboards: List[ExternalDashboard] = Field(
@@ -34,29 +38,16 @@ class View(BaseModel):
         description="List of external dashboard links to include"
     )
 
-    def validate_levels(self):
-        """Validate that all level keys are valid DashboardLevel values"""
-        valid_levels = set(DashboardLevel.__members__.keys())
-        level_dict = {}
-        
-        for key, value in self.level.items():
-            # Skip special keys like 'path'
-            if key in ['path']:
-                continue
-                
-            if key not in valid_levels:
-                raise ValueError(f"Invalid level key: {key}. Must be one of {valid_levels}")
-            
-            # Ensure the value is a LevelCustomization
-            if not isinstance(value, LevelCustomization):
-                raise ValueError(f"Value for level {key} must be a LevelCustomization object")
-            
-            level_dict[key] = value
-            
-        # Update self.level to only contain valid dashboard levels
-        self.level = level_dict
+    def get_level_by_title(self, title: str) -> Optional[int]:
+        """Get the index of a level by its title"""
+        for i, level in enumerate(self.levels):
+            if level.title == title:
+                return i
+        return None
 
-    def model_post_init(self, __context):
-        """Validate levels after initialization"""
-        super().model_post_init(__context)
-        self.validate_levels() 
+    def get_level_by_index_or_title(self, level: Union[int, str]) -> Optional[int]:
+        """Convert a level reference (index or title) to an index"""
+        if isinstance(level, int):
+            return level if 0 <= level < len(self.levels) else None
+        return self.get_level_by_title(level)
+

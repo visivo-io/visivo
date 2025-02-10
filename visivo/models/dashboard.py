@@ -2,18 +2,7 @@ from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from pydantic import Field
 from .row import Row
-from .trace import Trace
-from .chart import Chart
-from .table import Table
-from typing import List, Optional, Literal
-from enum import Enum
-
-class DashboardLevel(str, Enum):
-    L0 = "L0"
-    L1 = "L1"
-    L2 = "L2"
-    L3 = "L3"
-    L4 = "L4"
+from typing import List, Optional, Union
 
 class Dashboard(NamedModel, ParentModel):
     """
@@ -86,7 +75,10 @@ class Dashboard(NamedModel, ParentModel):
         return self.rows
 
     rows: List[Row] = Field([], description="A list of `Row` objects")
-    level: Optional[DashboardLevel] = Field(None, description="The importance level of the dashboard (L0-L4)")
+    level: Optional[Union[int, str]] = Field(
+        None, 
+        description="The importance level of the dashboard (either an index number or level title)"
+    )
     tags: List[str] = Field(default_factory=list, description="A list of tags associated with the dashboard")
     description: Optional[str] = Field(None, description="A description of the dashboard's purpose and contents")
 

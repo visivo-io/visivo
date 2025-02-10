@@ -3,62 +3,88 @@ import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
 
-// Default level descriptions if not provided by project view
-const defaultLevelDescriptions = {
-  L0: "The most important dashboards and metrics for the organization.",
-  L1: "The most important dashboards & metrics for a department.",
-  L2: "Individual department focused drill downs or sub-department metrics.",
-  L3: "Dashboards that track an individual or small groups metrics.",
-  L4: "Operational dashboards that are used to accomplish specific tasks.",
-  unassigned: "These dashboards are not yet organized into levels of importance."
-};
+// Default levels if not provided by project view
+const defaultLevels = [
+  {
+    title: "Organization",
+    description: "The most important dashboards and metrics for the organization."
+  },
+  {
+    title: "Department",
+    description: "The most important dashboards & metrics for a department."
+  },
+  {
+    title: "Team",
+    description: "Individual department focused drill downs or sub-department metrics."
+  },
+  {
+    title: "Individual",
+    description: "Dashboards that track an individual or small groups metrics."
+  },
+  {
+    title: "Operational",
+    description: "Operational dashboards that are used to accomplish specific tasks."
+  }
+];
 
 export const organizeDashboardsByLevel = (dashboards, projectView) => {
   if (!dashboards?.length) return {};
 
-  // Initialize levels
-  const levels = {
-    L0: [],
-    L1: [],
-    L2: [],
-    L3: [],
-    L4: [],
+  const levels = projectView?.levels || defaultLevels;
+  
+  // Initialize levels object with indices as keys
+  const leveledDashboards = {
     unassigned: []
   };
+  
+  levels.forEach((_, index) => {
+    leveledDashboards[index] = [];
+  });
 
   // Sort all dashboards into levels
   dashboards.forEach(dashboard => {
     if (!dashboard.level) {
-      levels.unassigned.push(dashboard);
+      leveledDashboards.unassigned.push(dashboard);
     } else {
-      levels[dashboard.level].push(dashboard);
+      // Handle both string and number level references
+      const levelIndex = typeof dashboard.level === 'number' 
+        ? dashboard.level 
+        : levels.findIndex(l => l.title === dashboard.level);
+      
+      if (levelIndex >= 0 && levelIndex < levels.length) {
+        leveledDashboards[levelIndex].push(dashboard);
+      } else {
+        leveledDashboards.unassigned.push(dashboard);
+      }
     }
   });
 
   // Sort each level alphabetically
-  Object.keys(levels).forEach(level => {
-    levels[level].sort((a, b) => a.name.localeCompare(b.name));
+  Object.keys(leveledDashboards).forEach(level => {
+    leveledDashboards[level].sort((a, b) => a.name.localeCompare(b.name));
   });
 
   // Filter out empty levels
   return Object.fromEntries(
-    Object.entries(levels).filter(([_, dashboards]) => dashboards.length > 0)
+    Object.entries(leveledDashboards).filter(([_, dashboards]) => dashboards.length > 0)
   );
 };
 
 function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectView }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  // Determine the level from the title
-  const level = title.startsWith('L') ? title.split(' ')[0] : 'unassigned';
+  const levels = projectView?.levels || defaultLevels;
   
-  // Get custom level description and name if available
-  const levelCustomization = projectView?.level?.[level];
-  const levelDescription = levelCustomization?.description || defaultLevelDescriptions[level];
+  // Get level info based on title
+  const levelIndex = title === 'unassigned' ? 'unassigned' : parseInt(title);
+  const level = levelIndex === 'unassigned' ? null : levels[levelIndex];
   
-  // Modify title if it's unassigned and there are no levels, or use custom name if available
-  const displayTitle = level === 'unassigned' && !hasLevels ? 'Dashboards' : 
-    levelCustomization?.name || title;
+  // Get level title and description
+  const levelTitle = level?.title || 'Unassigned';
+  const levelDescription = level?.description || "These dashboards are not yet organized into levels of importance.";
+  
+  // Modify title if it's unassigned and there are no levels
+  const displayTitle = levelIndex === 'unassigned' && !hasLevels ? 'Dashboards' : levelTitle;
 
   // Sort dashboards alphabetically within the section
   const sortedDashboards = useMemo(() => {
@@ -109,7 +135,7 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectVie
       <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-8 gap-3 transition-all duration-200 ${
         isCollapsed ? 'hidden' : ''
       }`}>
-        <div className={`col-span-full w-full flex flex-wrap gap-3 ${level === 'unassigned' ? 'justify-start' : 'justify-center'}`}>
+        <div className={`col-span-full w-full flex flex-wrap gap-3 ${levelIndex === 'unassigned' ? 'justify-start' : 'justify-center'}`}>
           {sortedDashboards.map((dashboard) => (
             <div key={dashboard.name} className="w-full sm:w-[calc(33.333%-0.5rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)] 2xl:w-[calc(16.666%-0.833rem)] 3xl:w-[calc(12.5%-0.875rem)]">
               <DashboardCard 
