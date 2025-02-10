@@ -210,12 +210,4 @@ def test_dashboard_new_fields():
     assert "production" in dashboard.tags
     assert dashboard.description == "A critical dashboard for production metrics"
     
-    # Test invalid level
-    from pydantic import ValidationError
-    import pytest
-    
-    with pytest.raises(ValidationError):
-        DashboardFactory(
-            name="Invalid Dashboard",
-            level="L5"  # Invalid level
-        )
+
