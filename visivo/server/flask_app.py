@@ -1,14 +1,12 @@
 import click
 import re
 import os
-from visivo.utils import sanitize_filename, get_dashboards_dir
+from visivo.utils import get_dashboards_dir
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
 from visivo.utils import VIEWER_PATH
-import base64
 from visivo.logging.logger import Logger
-from flask_cors import CORS
 
 
 def flask_app(output_dir, dag_filter, project):
@@ -17,8 +15,7 @@ def flask_app(output_dir, dag_filter, project):
         static_folder=output_dir,
         static_url_path="/data",
     )
-    # Enable CORS for local development
-    CORS(app)
+    
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     thumbnail_dir = get_dashboards_dir(output_dir)
 

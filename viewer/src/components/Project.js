@@ -12,7 +12,6 @@ import { useQuery } from '@tanstack/react-query';
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [thumbnails, setThumbnails] = useState({});
   const { fetchDashboardsQuery } = useContext(QueryContext);
 
   // Reset scroll position when dashboard changes
@@ -41,27 +40,42 @@ function Project(props) {
     return [...internalDashboards, ...externalDashboards];
   }, [props.dashboards, props.project?.project_json]);
 
-  // Load thumbnails only when dashboards change
-  useEffect(() => {
-    if (allDashboards.length > 0) {
-      const dashboardNames = allDashboards.map(d => d.name);
-      const query = fetchDashboardsQuery(props.project.project_id, dashboardNames);
-      query.queryFn().then(dashboardsData => {
-        Promise.all(
+  // Use React Query to handle thumbnail loading
+  const projectId = props.project?.id || props.project?.project_id;
+  const { data: thumbnails = {} } = useQuery({
+    queryKey: ['dashboards', projectId],
+    queryFn: async () => {
+      if (!projectId || allDashboards.length === 0) {
+        return {};
+      }
+
+      try {
+        const dashboardNames = allDashboards.map(d => d.name);
+        const query = fetchDashboardsQuery(projectId, dashboardNames);
+        const dashboardsData = await query.queryFn();
+
+        const results = await Promise.all(
           dashboardsData.map(async dashboardData => {
             if (dashboardData) {
-              const thumbnail = await fetchDashboardThumbnail(dashboardData);
-              return [dashboardData.name, thumbnail];
+              try {
+                const thumbnail = await fetchDashboardThumbnail(dashboardData);
+                return [dashboardData.name, thumbnail];
+              } catch (e) {
+                return null;
+              }
             }
             return null;
           })
-        ).then(results => {
-          const newThumbnails = Object.fromEntries(results.filter(Boolean));
-          setThumbnails(newThumbnails);
-        });
-      });
-    }
-  }, [allDashboards, props.project.project_id, fetchDashboardsQuery]);
+        );
+
+        return Object.fromEntries(results.filter(Boolean));
+      } catch (e) {
+        throw e;
+      }
+    },
+    enabled: Boolean(projectId) && allDashboards.length > 0,
+    staleTime: Infinity
+  });
 
   const availableTags = useMemo(() => {
     if (!allDashboards.length) return [];
