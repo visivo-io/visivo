@@ -8,6 +8,7 @@ import datetime
 from visivo.utils import VIEWER_PATH
 import base64
 from visivo.logging.logger import Logger
+from flask_cors import CORS
 
 
 def flask_app(output_dir, dag_filter, project):
@@ -16,6 +17,8 @@ def flask_app(output_dir, dag_filter, project):
         static_folder=output_dir,
         static_url_path="/data",
     )
+    # Enable CORS for local development
+    CORS(app)
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     thumbnail_dir = get_dashboards_dir(output_dir)
 
@@ -188,16 +191,16 @@ def flask_app(output_dir, dag_filter, project):
 
         return html
 
-    @app.route("/data/<dashboard_name_hash>/thumbnail.png", methods=["GET"])
+    @app.route("/data/dashboards/<dashboard_name_hash>.png")
     def get_thumbnail(dashboard_name_hash):
         try:
-            thumbnail_path = os.path.join(thumbnail_dir, f"{dashboard_name_hash}.png")
-
-            if not os.path.exists(thumbnail_path):
-                # Return a 404 response directly without logging
+            # Since static_url_path="/data" maps to output_dir, we can use send_from_directory with output_dir
+            thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
+            if not os.path.exists(os.path.join(output_dir, thumbnail_path)):
+                Logger.instance().debug(f"Thumbnail not found at path: {thumbnail_path}")
                 return Response(status=404)
 
-            return send_from_directory(thumbnail_dir, f"{dashboard_name_hash}.png")
+            return send_from_directory(output_dir, thumbnail_path)
         except Exception as e:
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500

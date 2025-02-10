@@ -7,6 +7,7 @@ import DashboardSection, { organizeDashboardsByLevel } from './dashboard/Dashboa
 import FilterBar from './dashboard/FilterBar';
 import QueryContext from "../contexts/QueryContext";
 import { fetchDashboardThumbnail } from "../queries/dashboardThumbnails";
+import { useQuery } from '@tanstack/react-query';
 
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,16 +71,23 @@ function Project(props) {
   useEffect(() => {
     if (Object.keys(dashboardsByLevel).length > 0) {
       const dashboards = Object.values(dashboardsByLevel).flat();
-      dashboards.forEach(dashboard => {
-        fetchDashboardsQuery(props.project.project_id, dashboard.name).then(dashboard => {
-          fetchDashboardThumbnail(dashboard).then(thumbnail => {
-            setThumbnails(prev => ({
-              ...prev,
-              [dashboard.name]: thumbnail
-            }));
-          })
-        })
-      })
+      const dashboardNames = dashboards.map(d => d.name);
+      
+      const query = fetchDashboardsQuery(props.project.project_id, dashboardNames);
+      const queryFn = query.queryFn;
+      queryFn().then(dashboardsData => {
+        // Process all dashboards' thumbnails at once
+        dashboardsData.forEach(dashboardData => {
+          if (dashboardData) {
+            fetchDashboardThumbnail(dashboardData).then(thumbnail => {
+              setThumbnails(prev => ({
+                ...prev,
+                [dashboardData.name]: thumbnail
+              }));
+            });
+          }
+        });
+      });
     }
   }, [dashboardsByLevel, props.project.project_id, fetchDashboardsQuery]);
 
