@@ -4,6 +4,7 @@ import pytest
 from visivo.query.jobs.run_thumbnail_job import job, action
 from tests.factories.model_factories import ProjectFactory, DashboardFactory
 from tests.support.utils import temp_folder
+from visivo.utils import sanitize_filename
 
 
 @pytest.fixture
@@ -40,11 +41,11 @@ def test_thumbnail_job_requires_server_url(test_project, dashboard, output_dir):
     assert "no server URL is provided" in result.message
 
 
-def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir):
+def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir, server_url):
     # Create a dummy thumbnail file
     os.makedirs(os.path.join(output_dir, "dashboards"), exist_ok=True)
-    hash = hashlib.sha256(dashboard.name.encode()).hexdigest()
-    thumbnail_path = os.path.join(output_dir, "dashboards", f"{hash}.png")
+    sanitized_name = sanitize_filename(dashboard.name)
+    thumbnail_path = os.path.join(output_dir, "dashboards", f"{sanitized_name}.png")
     with open(thumbnail_path, "wb") as f:
         f.write(b"dummy data")
 
@@ -54,6 +55,7 @@ def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir):
         dashboard=dashboard,
         output_dir=output_dir,
         thumbnail_mode="missing",
+        server_url=server_url,
     )
 
     result = job_instance.action(**job_instance.kwargs)

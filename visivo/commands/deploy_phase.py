@@ -27,7 +27,7 @@ MAX_ATTEMPTS = 3
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def start_files(file_names, form_headers, host, progress):
+async def start_files(file_names, description, form_headers, host, progress):
     """
     Asynchronously uploads trace data files.
     """
@@ -36,20 +36,22 @@ async def start_files(file_names, form_headers, host, progress):
     attempt.set(attempt.get(0) + 1)
     async with semaphore_3:
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(url, json=files, headers=form_headers)
                 response.raise_for_status()
                 progress["completed"] += 1
-                Logger.instance().success(f"\t{len(file_names)} files created.")
+                Logger.instance().success(
+                    f"\t{len(file_names)} {description} files created. [{progress['completed']}/{progress['total']}]"
+                )
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {description} files: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create files: {repr(e)}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {description} files: {repr(e)}"
             )
             raise
 
@@ -93,7 +95,7 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
     async with semaphore_50:
         try:
             data_file = f"{output_dir}/{file_name}"
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=30) as client:
                 async with aiofiles.open(data_file, "rb") as f:
                     response = await client.put(
                         upload_url,
@@ -156,6 +158,46 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
             raise
 
 
+@retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
+async def create_dashboard_records(
+    dashboards, project_id, json_headers, host, progress
+):
+    """
+    Asynchronously creates a trace record on the server.
+    """
+    body = list(
+        map(
+            lambda data_file_upload: {
+                "name": data_file_upload["name"].split(".")[0],
+                "project_id": project_id,
+                "thumbnail_file_id": data_file_upload["id"],
+            },
+            dashboards,
+        )
+    )
+    async with semaphore_3:
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                url = f"{host}/api/dashboards/"
+                response = await client.post(url, json=body, headers=json_headers)
+                response.raise_for_status()
+                progress["completed"] += 1
+                Logger.instance().success(
+                    f"\t{len(dashboards)} dashboards created [{progress['completed']}/{progress['total']}]"
+                )
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {len(dashboards)} dashboards: {repr(e)} - Response: {e.response.text}"
+            )
+            raise
+        except Exception as e:
+            Logger.instance().error(
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(dashboards)} dashboards: {repr(e)}"
+            )
+            raise
+
+
 async def process_traces_async(
     traces, output_dir, project_id, form_headers, json_headers, host
 ):
@@ -171,8 +213,11 @@ async def process_traces_async(
 
     tasks = []
     for i in range(0, len(traces), batch_size):
-        batch = traces[i : i + batch_size]
-        create_trace_files_task = start_files(batch, form_headers, host, progress)
+        traces_batch = traces[i : i + batch_size]
+        traces_batch_file_names = list(map(lambda trace: trace.name, traces_batch))
+        create_trace_files_task = start_files(
+            traces_batch_file_names, "trace", form_headers, host, progress
+        )
         tasks.append(create_trace_files_task)
     data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
@@ -190,7 +235,6 @@ async def process_traces_async(
             f"{trace_name}/data.json",
             output_dir,
             form_headers,
-            host,
             progress,
         )
         tasks.append(data_file_task)
@@ -226,7 +270,7 @@ async def process_traces_async(
 
 
 async def process_dashboards_async(
-    dashboards, output_dir, project_id, stage_id, form_headers, host
+    dashboards, output_dir, project_id, form_headers, json_headers, host
 ):
     """
     Coordinates the asynchronous upload of thumbnail files.
@@ -276,7 +320,21 @@ async def process_dashboards_async(
     uploaded_ids = await asyncio.gather(*tasks)
 
     # Finish the upload process
-    await finish_files(uploaded_ids, form_headers, host, progress)
+    tasks = []
+    tasks.append(await finish_files(uploaded_ids, form_headers, host, progress))
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to finish trace data files.")
+
+    tasks = []
+    tasks.append(
+        create_dashboard_records(dashboards, project_id, json_headers, host, progress)
+    )
+
+    # Execute the creation of trace records concurrently
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to create trace records.")
 
 
 def deploy_phase(working_dir, user_dir, output_dir, stage, host):
@@ -339,7 +397,6 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         project_data = response.json()
         project_id = project_data["id"]
         project_url = project_data["url"]
-        stage_id = project_data["stage_id"]  # Assuming the API returns the stage_id
 
         # Process traces
         Logger.instance().info(f"")
@@ -371,8 +428,8 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
                 dashboards=dashboards,
                 output_dir=output_dir,
                 project_id=project_id,
-                stage_id=stage_id,
                 form_headers=form_headers,
+                json_headers=json_headers,
                 host=host,
             )
         )

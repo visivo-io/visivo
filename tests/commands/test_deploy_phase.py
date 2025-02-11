@@ -39,9 +39,9 @@ def test_deploy_upload_trace_data_failure(requests_mock, capsys):
     stdout = captured.out
     assert "Uploading project information..." in stdout
     assert "Project uploaded in" in stdout
-    assert "[Attempt 1/3] Failed to create trace data files" in stdout
-    assert "[Attempt 2/3] Failed to create trace data files" in stdout
-    assert "[Attempt 3/3] Failed to create trace data files" in stdout
+    assert "[Attempt 1/3] Failed to create trace files" in stdout
+    assert "[Attempt 2/3] Failed to create trace files" in stdout
+    assert "[Attempt 3/3] Failed to create trace files" in stdout
     assert "Processing trace uploads and record creations..." in stdout
 
 
