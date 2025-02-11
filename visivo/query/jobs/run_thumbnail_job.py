@@ -46,7 +46,7 @@ def generate_thumbnail(
             () => {
                 // First check if any plots are rendered
                 const plots = document.querySelectorAll('.js-plotly-plot');
-                if (plots.length === 0) return { loaded: false, total: 0, loaded_count: 0, states: [], message: 'No plots found' };
+                if (plots.length === 0) return { loaded: true, total: 0, loaded_count: 0, states: [], message: 'No plots found' };
                 
                 // Then check their loading states
                 const chartStates = Array.from(plots).map(plot => {
@@ -84,6 +84,8 @@ def generate_thumbnail(
                 for chart in initial_state['states']:
                     Logger.instance().info(f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}")
             
+            # Wait for 100ms to ensure the page is fully loaded
+            page.wait_for_timeout(100)
             # Wait for all charts to finish loading
             page.wait_for_function("""
                 () => {
