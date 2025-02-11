@@ -22,7 +22,7 @@ const fetchTraces = () => {
 }
 
 const mockQueryContext = {
-  fetchDashboardsQuery: jest.fn()
+  fetchDashboardQuery: jest.fn()
 };
 
 // Create a new QueryClient instance for each test

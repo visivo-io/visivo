@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const { fetchDashboardsQuery } = useContext(QueryContext);
+  const { fetchDashboardQuery } = useContext(QueryContext);
 
   // Reset scroll position when dashboard changes
   useEffect(() => {
@@ -35,11 +35,10 @@ function Project(props) {
 
       try {
         const dashboardNames = allDashboards.map(d => d.name);
-        const query = fetchDashboardsQuery(projectId, dashboardNames);
-        const dashboardsData = await query.queryFn();
-
         const results = await Promise.all(
-          dashboardsData.map(async dashboardData => {
+          dashboardNames.map(async dashboardName=> {
+            const query = fetchDashboardQuery(projectId, dashboardName);
+            const dashboardData = await query.queryFn();
             if (dashboardData) {
               try {
                 if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {

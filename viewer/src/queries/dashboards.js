@@ -1,14 +1,12 @@
-export const fetchDashboardsQuery = (projectId, names) => ({
-    queryKey: ['dashboards', projectId, names],
+export const fetchDashboardQuery = (projectId, name) => ({
+    queryKey: ['dashboard', projectId, name],
     queryFn: async () => {
-        return names.map((name) => {
-            const hash = require('md5')(name);
+        const hash = require('md5')(name);
 
-            return {
-                "name": name,
-                "id": name,
-                "signed_thumbnail_file_url": `/data/dashboards/${hash}.png`,
-            }
-        })
+        return {
+            "name": name,
+            "id": name,
+            "signed_thumbnail_file_url": `/data/dashboards/${hash}.png`,
+        }
     }
 })
