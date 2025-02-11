@@ -131,6 +131,12 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         json=[{"id": "id1"}, {"id": "id2"}],
         status_code=201,
     )
+    httpx_mock.add_response(
+        method="POST",
+        url="http://host/api/dashboards/",
+        json=[{"id": "id3"}],
+        status_code=201,
+    )
     requests_mock.post(
         "http://host/api/projects/",
         json={"name": "name", "id": "id", "url": "/url"},
