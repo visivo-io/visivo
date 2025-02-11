@@ -44,8 +44,8 @@ def test_thumbnail_job_requires_server_url(test_project, dashboard, output_dir):
 def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir, server_url):
     # Create a dummy thumbnail file
     os.makedirs(os.path.join(output_dir, "dashboards"), exist_ok=True)
-    sanitized_name = sanitize_filename(dashboard.name)
-    thumbnail_path = os.path.join(output_dir, "dashboards", f"{sanitized_name}.png")
+    hash = hashlib.md5(dashboard.name.encode()).hexdigest()
+    thumbnail_path = os.path.join(output_dir, "dashboards", f"{hash}.png")
     with open(thumbnail_path, "wb") as f:
         f.write(b"dummy data")
 
