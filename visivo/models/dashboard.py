@@ -1,10 +1,10 @@
-from .base.named_model import NamedModel
+from visivo.models.dashboards.base_dashboard import BaseDashboard
 from .base.parent_model import ParentModel
 from pydantic import Field
 from .row import Row
-from typing import List, Optional, Union
+from typing import List, Literal
 
-class Dashboard(NamedModel, ParentModel):
+class Dashboard(BaseDashboard, ParentModel):
     """
     Dashboards are lists of [rows](./Row/) that enable you to build your dashboard grid. 
 
@@ -73,14 +73,10 @@ class Dashboard(NamedModel, ParentModel):
 
     def child_items(self):
         return self.rows
-
+  
     rows: List[Row] = Field([], description="A list of `Row` objects")
-    level: Optional[Union[int, str]] = Field(
-        None, 
-        description="The importance level of the dashboard (either an index number or level title)"
-    )
-    tags: List[str] = Field(default_factory=list, description="A list of tags associated with the dashboard")
-    description: Optional[str] = Field(None, description="A description of the dashboard's purpose and contents")
+
+    type: Literal["internal"] = Field("internal", description="The type of dashboard (always 'internal')")
 
     def for_each_item(self, function):
         for row in self.rows:
