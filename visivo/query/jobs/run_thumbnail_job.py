@@ -1,4 +1,3 @@
-import hashlib
 import os
 from visivo.query.jobs.job import (
     Job,
@@ -37,21 +36,80 @@ def generate_thumbnail(
         from urllib.parse import quote
 
         encoded_dashboard_name = quote(dashboard.name)
+        navigate_to = f"{server_url}/{encoded_dashboard_name}"
         # Navigate to dashboard
-        page.goto(f"{server_url}/{encoded_dashboard_name}")
+        if os.environ.get("STACKTRACE"):
+            Logger.instance().info(f"   Navigating to {navigate_to}")
+        page.goto(navigate_to)
+
+        check_loading = """
+            () => {
+                // First check if any plots are rendered
+                const plots = document.querySelectorAll('.js-plotly-plot');
+                if (plots.length === 0) return { loaded: false, total: 0, loaded_count: 0, states: [], message: 'No plots found' };
+                
+                // Then check their loading states
+                const chartStates = Array.from(plots).map(plot => {
+                    // Get the parent chart component
+                    const chartComponent = plot.closest('[data-testid^="chart_"]');
+                    const testId = chartComponent ? chartComponent.getAttribute('data-testid') : 'unknown';
+                    
+                    // Check if the plot has rendered its content
+                    const hasPlotContent = plot.querySelector('.plot-container');
+                    const isLoaded = hasPlotContent !== null;
+                    
+                    return {
+                        testid: testId,
+                        isLoaded: isLoaded,
+                        hasPlotContent: hasPlotContent !== null
+                    };
+                });
+                
+                const loadedCount = chartStates.filter(s => s.isLoaded).length;
+                
+                return {
+                    loaded: loadedCount === plots.length,
+                    total: plots.length,
+                    loaded_count: loadedCount,
+                    states: chartStates,
+                    message: 'Checking plot loading states'
+                };
+            }
+        """
 
         try:
-            # Wait for dashboard to load and render
-            page.wait_for_selector(".dashboard-row", timeout=timeout_ms)
-            page.wait_for_timeout(
-                1000
-            )  # TODO: Replace this with a wait based on the actual item loading
-
+            if os.environ.get("STACKTRACE"):
+                initial_state = page.evaluate(check_loading)
+                Logger.instance().info(f"Initial chart states: Total: {initial_state['total']}, Loaded: {initial_state['loaded_count']}")
+                for chart in initial_state['states']:
+                    Logger.instance().info(f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}")
+            
+            # Wait for all charts to finish loading
+            page.wait_for_function("""
+                () => {
+                    const state = (%s)();
+                    return state.loaded;
+                }
+            """ % check_loading, timeout=timeout_ms)
+            
+            # Log final state before screenshot
+            if os.environ.get("STACKTRACE"):
+                final_state = page.evaluate(check_loading)
+                Logger.instance().info(f"Final chart states: Total: {final_state['total']}, Loaded: {final_state['loaded_count']}")
+            
             # Take screenshot
             page.screenshot(
                 timeout=timeout_ms, path=thumbnail_path, type="png", full_page=False
             )
         except TimeoutError as e:
+            # Get final state of charts before failing
+            error_state = page.evaluate(check_loading)
+            Logger.instance().error(
+                f"Timeout waiting for charts to load. "
+                f"Total charts: {error_state['total']}, "
+                f"Loaded: {error_state['loaded_count']}. "
+                f"Chart states: {error_state['states']}"
+            )
             browser.close()
             raise Exception(f"Timeout waiting for dashboard to load: {str(e)}")
         except Exception as e:
@@ -131,7 +189,7 @@ def job(
     output_dir: str,
     thumbnail_mode: str = None,
     server_url: str = None,
-    timeout_ms: int = 30000,
+    timeout_ms: int = 10000,
 ) -> Job:
     return Job(
         item=dashboard,
