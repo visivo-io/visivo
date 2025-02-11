@@ -317,13 +317,18 @@ async def process_dashboards_async(
         file_names, "thumbnail", form_headers, host, progress
     )
 
-    data_file_ids = await asyncio.gather(
+    thumbnail_file_uploads_nested = await asyncio.gather(
         create_thumbnail_files_task, return_exceptions=True
     )
-    if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
+    if any(
+        isinstance(data_file_id, Exception)
+        for data_file_id in thumbnail_file_uploads_nested
+    ):
         raise click.ClickException("Failed to create thumbnail files.")
 
-    thumbnail_file_uploads = [item for sublist in data_file_ids for item in sublist]
+    thumbnail_file_uploads = [
+        item for sublist in thumbnail_file_uploads_nested for item in sublist
+    ]
 
     tasks = []
     for thumbnail_file_upload in thumbnail_file_uploads:
@@ -347,7 +352,8 @@ async def process_dashboards_async(
         )
         tasks.append(data_file_task)
 
-    uploaded_ids = await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks)
+    uploaded_ids = [item["id"] for item in thumbnail_file_uploads]
 
     # Finish the upload process
     tasks = []
