@@ -2,7 +2,6 @@ from visivo.models.chart import Chart
 from visivo.models.selector import Selector
 from visivo.models.trace import Trace
 from visivo.models.table import Table
-from visivo.models.view import View, Level
 from visivo.parsers.serializer import Serializer
 from tests.factories.model_factories import (
     DashboardFactory,
@@ -229,12 +228,6 @@ def test_create_flattened_project():
     dashboard.rows[0].items[0].chart = chart
     project.dashboards.append(dashboard)
     
-    # Add a view with levels
-    project.view = View(levels=[
-        Level(title="Level 1", description="First level"),
-        Level(title="Level 2", description="Second level")
-    ])
-    
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()
     
@@ -248,7 +241,6 @@ def test_create_flattened_project():
     assert "charts" in flattened
     assert "tables" in flattened
     assert "selectors" in flattened
-    assert "view" in flattened
     
     # Verify content
     assert flattened["name"] == project.name
@@ -256,10 +248,6 @@ def test_create_flattened_project():
     assert any(m["name"] == "test_model" for m in flattened["models"])
     assert any(t["name"] == "test_trace" for t in flattened["traces"])
     assert any(c["name"] == "test_chart" for c in flattened["charts"])
-    assert flattened["view"] is not None
-    assert len(flattened["view"]["levels"]) == 2
-    assert flattened["view"]["levels"][0]["title"] == "Level 1"
-    assert flattened["view"]["levels"][1]["title"] == "Level 2"
 
 
 def test_create_flattened_project_with_default_source():

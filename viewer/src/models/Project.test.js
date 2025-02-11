@@ -6,6 +6,7 @@ describe('Project functions', () => {
             selectors: [{ name: 'selector1' }],
             dashboards: [
                 {
+                    type: 'internal',
                     rows: [
                         {
                             items: [

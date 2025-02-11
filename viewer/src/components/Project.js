@@ -23,7 +23,6 @@ function Project(props) {
   const allDashboards = props.dashboards;
 
   const internalDashboards = allDashboards.filter(dashboard => dashboard.type === 'internal');
-  const externalDashboards = allDashboards.filter(dashboard => dashboard.type === 'external');
 
   // Use React Query to handle thumbnail loading
   const projectId = props.project?.id || props.project?.project_id;
@@ -43,8 +42,6 @@ function Project(props) {
           dashboardsData.map(async dashboardData => {
             if (dashboardData) {
               try {
-                console.log('dashboardData', dashboardData);
-                console.log(internalDashboards.map(d => d.name).includes(dashboardData.name));
                 if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {
                   const thumbnail = await fetchDashboardThumbnail(dashboardData);
                   return [dashboardData.name, thumbnail];
