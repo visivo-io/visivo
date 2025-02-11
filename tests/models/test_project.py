@@ -1,5 +1,6 @@
 from visivo.models.project import Project
 from visivo.models.item import Item
+from pydantic import HttpUrl
 from ..factories.model_factories import (
     AlertFactory,
     TraceFactory,
@@ -7,8 +8,10 @@ from ..factories.model_factories import (
     ChartFactory,
     DashboardFactory,
     RowFactory,
+    ExternalDashboardFactory,
 )
 from pydantic import ValidationError
+
 import pytest
 
 
@@ -17,6 +20,26 @@ def test_Project_simple_data():
     project = Project(**data)
     assert project.name == "development"
 
+def test_Project_dashboard_parsing():
+    external_dashboard = ExternalDashboardFactory(href="https://example.com")
+    
+    ref = "ref(trace_name)"
+    chart = ChartFactory(traces=[ref])
+    source = SourceFactory()
+    item = Item(chart=chart)
+    trace = TraceFactory(name="trace_name")
+    row = RowFactory(items=[item])
+    dashboard = DashboardFactory(rows=[row])
+
+    data = {"name": "development", "traces": [trace], "dashboards": [external_dashboard, dashboard], "sources": [source]}
+    project = Project(**data)
+    assert project.dashboards[0].type == "external"
+    assert project.dashboards[0].href == HttpUrl("https://example.com")
+    assert project.dashboards[1].type == "internal"
+    assert hasattr(project.dashboards[1], "rows")
+    assert not( hasattr(project.dashboards[0], "rows"))
+    
+    
 
 def test_Project_validate_project_trace_refs():
     ref = "ref(trace_name)"

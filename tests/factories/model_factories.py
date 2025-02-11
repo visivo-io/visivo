@@ -12,6 +12,7 @@ from visivo.models.test import Test
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
+from visivo.models.dashboards.external_dashboard import ExternalDashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
 from visivo.models.table import Table
@@ -240,9 +241,15 @@ class RowFactory(factory.Factory):
         )
 
 
+class ExternalDashboardFactory(factory.Factory):
+    class Meta:
+        model = ExternalDashboard
+
+    name = "external_dashboard"
+    href = "https://example.com"
+
 class DashboardFactory(factory.Factory):
     name = "dashboard"
-
     class Meta:
         model = Dashboard
 
