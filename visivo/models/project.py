@@ -9,7 +9,6 @@ from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
-from visivo.models.view import View
 
 from .base.parent_model import ParentModel
 from visivo.models.dashboards.fields import DashboardField
@@ -44,7 +43,7 @@ class Project(NamedModel, ParentModel):
     charts: List[Chart] = []
     selectors: List[Selector] = []
     dashboards: List[DashboardField] = []
-    view: Optional[View] = Field(None, description="Configuration for dashboard views and external links")
+
 
     def child_items(self):
         return (

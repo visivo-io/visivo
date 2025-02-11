@@ -2,7 +2,7 @@ import { organizeDashboardsByLevel } from './DashboardSection';
 
 describe('organizeDashboardsByLevel', () => {
   // Test data setup
-  const projectView = {
+  const projectDefaults = {
     levels: [
       {
         title: "Chart Configuration",
@@ -25,7 +25,7 @@ describe('organizeDashboardsByLevel', () => {
   ];
 
   it('should combine project levels with defaults', () => {
-    const result = organizeDashboardsByLevel(dashboards, projectView);
+    const result = organizeDashboardsByLevel(dashboards, projectDefaults);
     
     // Should have levels 0, 1, 3, 4, and unassigned
     expect(Object.keys(result)).toEqual(['0', '1', '3', '4', 'unassigned']);
@@ -63,7 +63,7 @@ describe('organizeDashboardsByLevel', () => {
   });
 
   it('should handle empty dashboards array', () => {
-    const result = organizeDashboardsByLevel([], projectView);
+    const result = organizeDashboardsByLevel([], projectDefaults);
     expect(result).toEqual({});
   });
 
@@ -72,7 +72,7 @@ describe('organizeDashboardsByLevel', () => {
       { name: "High Level Dashboard", level: 10 }
     ];
     
-    const result = organizeDashboardsByLevel(dashboardsWithHighLevel, projectView);
+    const result = organizeDashboardsByLevel(dashboardsWithHighLevel, projectDefaults);
     
     // Should create level 10 with generic title
     expect(result['10'].map(d => d.name)).toEqual(['High Level Dashboard']);
@@ -85,7 +85,7 @@ describe('organizeDashboardsByLevel', () => {
       { name: "Dashboard 3", level: "Chart Configuration" }
     ];
     
-    const result = organizeDashboardsByLevel(dashboardsWithMixedCase, projectView);
+    const result = organizeDashboardsByLevel(dashboardsWithMixedCase, projectDefaults);
     
     // All should be in level 0 (Chart Configuration)
     expect(result['0'].map(d => d.name).sort()).toEqual([
@@ -102,7 +102,7 @@ describe('organizeDashboardsByLevel', () => {
       { name: "Dashboard L5", level: "L5" }
     ];
     
-    const result = organizeDashboardsByLevel(dashboardsWithLFormat, projectView);
+    const result = organizeDashboardsByLevel(dashboardsWithLFormat, projectDefaults);
     
     // Should map to correct numeric levels
     expect(result['0'].map(d => d.name)).toEqual(['Dashboard L0']);

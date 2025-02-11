@@ -13,33 +13,17 @@ function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const { fetchDashboardsQuery } = useContext(QueryContext);
-  console.log('Project Json:', props.project?.project_json);
-  console.log('Project Json View:', props.project?.project_json?.view);
+
   // Reset scroll position when dashboard changes
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [props.dashboardName]);
 
   // Combine internal and external dashboards
-  const allDashboards = useMemo(() => {
-    if (!props.project?.project_json) return [];
+  const allDashboards = props.dashboards;
 
-    const internalDashboards = props.dashboards.map(dashboard => ({
-      ...dashboard,
-      isExternal: false
-    }));
-
-    const externalDashboards = props.project.project_json.view?.external_dashboards?.map(dashboard => ({
-      name: dashboard.name,
-      description: dashboard.description,
-      tags: dashboard.tags || [],
-      level: dashboard.level,
-      href: dashboard.href,
-      isExternal: true
-    })) || [];
-
-    return [...internalDashboards, ...externalDashboards];
-  }, [props.dashboards, props.project?.project_json]);
+  const internalDashboards = allDashboards.filter(dashboard => dashboard.type === 'internal');
+  const externalDashboards = allDashboards.filter(dashboard => dashboard.type === 'external');
 
   // Use React Query to handle thumbnail loading
   const projectId = props.project?.id || props.project?.project_id;
@@ -59,8 +43,14 @@ function Project(props) {
           dashboardsData.map(async dashboardData => {
             if (dashboardData) {
               try {
-                const thumbnail = await fetchDashboardThumbnail(dashboardData);
-                return [dashboardData.name, thumbnail];
+                console.log('dashboardData', dashboardData);
+                console.log(internalDashboards.map(d => d.name).includes(dashboardData.name));
+                if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {
+                  const thumbnail = await fetchDashboardThumbnail(dashboardData);
+                  return [dashboardData.name, thumbnail];
+                } else {
+                  return [dashboardData.name, null];
+                }
               } catch (e) {
                 return null;
               }
@@ -101,8 +91,8 @@ function Project(props) {
   }, [allDashboards, searchTerm, selectedTags]);
 
   const dashboardsByLevel = useMemo(() => 
-    organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.view),
-    [filteredDashboards, props.project?.project_json?.view]
+    organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.defaults),
+    [filteredDashboards, props.project?.project_json?.defaults]
   );
 
   const renderLoading = () => {
@@ -132,8 +122,8 @@ function Project(props) {
                   thumbnail: thumbnails[dashboard.name]
                 }))}
                 searchTerm={searchTerm}
-                hasLevels={Object.keys(dashboardsByLevel).some(key => key.startsWith('L'))}
-                projectView={props.project?.project_json?.view}
+                hasLevels={dashboardsByLevel.length > 0}
+                projectDefaults={props.project?.project_json?.defaults}
               />
             ))}
 

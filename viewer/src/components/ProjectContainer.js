@@ -16,6 +16,8 @@ function ProjectContainer() {
         description: dashboard.description,
         tags: dashboard.tags || [],
         level: dashboard.level,
+        type: dashboard.type,
+        href: dashboard.href || null,
         path: ""
       }
     });

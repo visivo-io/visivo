@@ -31,14 +31,14 @@ const defaultLevels = [
     description: "Operational dashboards that are used to accomplish specific tasks."
   }
 ];
-export const getLevels = (projectView) => {
-  return mergeLists(projectView?.levels || [], defaultLevels);
+export const getLevels = (projectDefaults) => {
+  return mergeLists(projectDefaults?.levels || [], defaultLevels);
 }
 
-export const organizeDashboardsByLevel = (dashboards, projectView) => {
+export const organizeDashboardsByLevel = (dashboards, projectDefaults) => {
   if (!dashboards?.length) return {};
 
-  const configuredLevels = getLevels(projectView);
+  const configuredLevels = getLevels(projectDefaults);
   
   // Initialize levels object with indices as keys
   const leveledDashboards = {
@@ -121,10 +121,10 @@ export const organizeDashboardsByLevel = (dashboards, projectView) => {
   return Object.fromEntries(entries);
 };
 
-function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectView }) {
+function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectDefaults }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
-  const configuredLevels = projectView?.levels || [];
+  const configuredLevels = projectDefaults?.levels || [];
   
   // Get level info based on title
   const levelIndex = title === 'unassigned' ? 'unassigned' : parseInt(title);
@@ -161,7 +161,6 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectVie
   }, [searchTerm, sortedDashboards]);
 
   if (!dashboards || dashboards.length === 0) return null;
-  
   return (
     <div className="mb-6">
       <div 
@@ -193,13 +192,15 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectVie
       }`}>
         <div className={`col-span-full w-full flex flex-wrap gap-3 ${levelIndex === 'unassigned' ? 'justify-start' : 'justify-center'}`}>
           {sortedDashboards.map((dashboard) => (
+            
             <div key={dashboard.name} className="w-full sm:w-[calc(33.333%-0.5rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)] 2xl:w-[calc(16.666%-0.833rem)] 3xl:w-[calc(12.5%-0.875rem)]">
               <DashboardCard 
                 dashboard={dashboard} 
-                thumbnail={dashboard.thumbnail}
+                thumbnail={dashboard.thumbnail || null}
               />
             </div>
           ))}
+          
         </div>
       </div>
     </div>

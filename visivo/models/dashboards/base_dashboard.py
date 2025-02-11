@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
 
@@ -10,4 +10,7 @@ class BaseDashboard(NamedModel):
     )
     tags: List[str] = Field(default_factory=list, description="A list of tags associated with the dashboard")
     description: Optional[str] = Field(None, description="A description of the dashboard's purpose and contents")
-    type: str = Field(..., description="The type of dashboard (internal or external)") 
+    type: Literal["internal", "external"] = Field(..., description="The type of dashboard (internal or external)")
+
+    def for_each_item(self, function):
+        pass

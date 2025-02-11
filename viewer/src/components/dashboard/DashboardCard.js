@@ -37,7 +37,7 @@ function DashboardCard({ dashboard, thumbnail }) {
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-t from-black/20 to-transparent" />
-        {dashboard.isExternal && (
+        {dashboard.type === 'external' && (
           <div className="absolute bottom-0 left-0 p-1.5">
             <Badge color="blue" size="xs" className="flex-shrink-0 text-[10px] flex items-center gap-1 group/badge">
               <HiExternalLink className="w-3 h-3" />
@@ -58,7 +58,7 @@ function DashboardCard({ dashboard, thumbnail }) {
     </div>
   );
 
-  return dashboard.isExternal ? (
+  return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">
       <CardContent />
     </a>
