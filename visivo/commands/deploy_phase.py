@@ -95,12 +95,17 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
     async with semaphore_50:
         try:
             data_file = f"{output_dir}/{file_name}"
+            additional_headers = {}
+            if "localhost" in upload_url:
+                additional_headers["Content-Disposition"] = (
+                    f"inline;filename={file_name}"
+                )
             async with httpx.AsyncClient(timeout=30) as client:
                 async with aiofiles.open(data_file, "rb") as f:
                     response = await client.put(
                         upload_url,
                         content=await f.read(),
-                        headers=form_headers,
+                        headers={**form_headers, **additional_headers},
                     )
                     response.raise_for_status()
                     progress["completed"] += 1
@@ -258,7 +263,9 @@ async def process_traces_async(
     tasks = []
     for i in range(0, len(data_file_ids), batch_size):
         batch = data_file_ids[i : i + batch_size]
-        create_trace_files_task = finish_files(batch, "trace", form_headers, host, progress)
+        create_trace_files_task = finish_files(
+            batch, "trace", form_headers, host, progress
+        )
         tasks.append(create_trace_files_task)
 
     response_items = await asyncio.gather(*tasks, return_exceptions=True)

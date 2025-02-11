@@ -30,7 +30,7 @@ def test_deploy_upload_trace_data_failure(requests_mock, capsys):
     )
 
     with raises(click.ClickException) as exc_info:
-        url = deploy_phase(
+        deploy_phase(
             stage="stage",
             working_dir=working_dir,
             user_dir=working_dir,
