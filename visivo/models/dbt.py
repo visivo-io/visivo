@@ -47,8 +47,8 @@ class Dbt(BaseModel):
         description="Location for the profiles.yml file relative to the working directory.  Defaults to the current working directory.",
     )
     prefix: str = Field(
-        "dbt_",
-        description="Prefix for the dbt models and sources. Defaults to 'dbt_'.",
+        "",
+        description="Prefix for the dbt models and sources. Defaults to no prefix. You may want to add one if the dbt model names are in conflict with other models in your project.",
     )
 
     def get_output_file(self, output_dir: str, working_dir: str):

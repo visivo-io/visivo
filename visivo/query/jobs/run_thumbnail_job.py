@@ -84,8 +84,7 @@ def generate_thumbnail(
                 for chart in initial_state['states']:
                     Logger.instance().info(f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}")
             
-            # Wait for 100ms to ensure the page is fully loaded
-            page.wait_for_timeout(100)
+            
             # Wait for all charts to finish loading
             page.wait_for_function("""
                 () => {
@@ -93,7 +92,8 @@ def generate_thumbnail(
                     return state.loaded;
                 }
             """ % check_loading, timeout=timeout_ms)
-            
+            # Wait for 350ms to ensure the page is fully loaded
+            page.wait_for_timeout(350)
             # Log final state before screenshot
             if os.environ.get("STACKTRACE"):
                 final_state = page.evaluate(check_loading)

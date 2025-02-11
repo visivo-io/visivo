@@ -1,3 +1,5 @@
+from visivo.logging.logger import Logger
+
 def _generate_sources(profiles, dbt_target, dbt_prefix):
     import click
     from visivo.commands.utils import get_source_types
@@ -11,6 +13,10 @@ def _generate_sources(profiles, dbt_target, dbt_prefix):
                 target_found = True
             source = target_value
             source["name"] = f"{dbt_prefix}{profile_name}_{target_name}"
+            if "path" in source and source.get('type') == 'duckdb':
+                source["database"] = source.pop("path")
+            if "dbname" in source:
+                source["database"] = source.pop("dbname")
             if "schema" in source:
                 source["db_schema"] = source.pop("schema")
             if "user" in source:
@@ -41,7 +47,7 @@ def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
                     names.append(node["schema"])
                 names.append(node["name"])
                 model = {
-                    "name": f"dbt_{node['name']}",
+                    "name": f"{dbt_prefix}{node['name']}",
                     "sql": "select * from " + ".".join(names),
                     "source": f"ref({dbt_prefix}{dbt_profile}_{dbt_target})",
                 }
@@ -112,7 +118,7 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
             )
         if not dbt_target:
             dbt_target = profiles[dbt_profile]["target"]
-
+        
         manifest_file = f"{dbt_root}/{dbt_project['target-path']}/manifest.json"
         if not os.path.exists(manifest_file):
             raise click.ClickException(
@@ -133,6 +139,11 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
             os.makedirs(output_dir_path)
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources, "models": models}, file)
-
+        
+        models_written = ', '.join([model['name'] for model in models])
+        relative_output_file = os.path.relpath(output_file, working_dir)
+        Logger.instance().info(f"dbt base visivo models written to {relative_output_file}: {models_written}")
+        sources_written = ', '.join([source['name'] for source in sources])
+        Logger.instance().info(f"dbt base visivo sources written to {relative_output_file}: {sources_written}")
     else:
         Logger.instance().debug(f"dbt is not enabled.")
