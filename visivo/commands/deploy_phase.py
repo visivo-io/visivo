@@ -160,15 +160,15 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
 async def create_dashboard_records(
-    dashboards, project_id, json_headers, host, progress
+    dashboards, thumbnail_file_uploads, project_id, json_headers, host, progress
 ):
     """
     Asynchronously creates a trace record on the server.
     """
     body = list(
         map(
-            lambda data_file_upload: {
-                "name": data_file_upload["name"].split(".")[0],
+            lambda dashboard: {
+                "name": dashboard.name,
                 "project_id": project_id,
                 "thumbnail_file_id": data_file_upload["id"],
             },
@@ -297,13 +297,13 @@ async def process_dashboards_async(
         file_names.append(f"{sanitized_name}.png")
 
     # Create thumbnail files
-    create_thumbnail_files_task = await start_files(
-        file_names, form_headers, host, progress
+    create_thumbnail_files_task = start_files(
+        file_names, "thumbnail", form_headers, host, progress
     )
 
-    tasks = []
-    tasks.append(create_thumbnail_files_task)
-    data_file_ids = await asyncio.gather(*tasks, return_exceptions=True)
+    data_file_ids = await asyncio.gather(
+        create_thumbnail_files_task, return_exceptions=True
+    )
     if any(isinstance(data_file_id, Exception) for data_file_id in data_file_ids):
         raise click.ClickException("Failed to create thumbnail files.")
 
@@ -312,8 +312,22 @@ async def process_dashboards_async(
     tasks = []
     for data_file_upload in data_file_uploads:
         # Upload data files concurrently
+        file_name = data_file_upload["name"]
+        dashboard = next(
+            (
+                dashboard
+                for dashboard in dashboards
+                if sanitize_filename(dashboard.name) == file_name.split(".")[0]
+            ),
+            None,
+        )
         data_file_task = upload_file(
-            data_file_upload, output_dir, form_headers, host, progress
+            dashboard.name,
+            data_file_upload["upload_url"],
+            f"dashboards/{file_name}",
+            output_dir,
+            form_headers,
+            progress,
         )
         tasks.append(data_file_task)
 
@@ -321,7 +335,7 @@ async def process_dashboards_async(
 
     # Finish the upload process
     tasks = []
-    tasks.append(await finish_files(uploaded_ids, form_headers, host, progress))
+    tasks.append(finish_files(uploaded_ids, form_headers, host, progress))
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
     if any(isinstance(item, Exception) for item in response_items):
         raise click.ClickException("Failed to finish trace data files.")

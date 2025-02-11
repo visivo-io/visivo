@@ -9,6 +9,8 @@ from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
 from pytest import raises
 
+from visivo.utils import sanitize_filename
+
 
 def test_deploy_upload_trace_data_failure(requests_mock, capsys):
     output_dir = temp_folder()
@@ -60,6 +62,14 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
             "upload_url": "http://google/upload/id2",
         },
     ]
+    sanitized_name = sanitize_filename(project.dashboards[0].name)
+    thumbnail_file_starts = [
+        {
+            "name": f"{sanitized_name}.png",
+            "id": "id3",
+            "upload_url": "http://google/upload/id3",
+        },
+    ]
 
     # create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     project.traces.append(TraceFactory(name="trace-two", model="ref(model)"))
@@ -68,6 +78,11 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         os.makedirs(os.path.dirname(data_file), exist_ok=True)
         with open(data_file, "w") as f:
             json.dump({trace: {"x": [1, 2, 3], "y": [1, 2, 3]}}, f)
+
+    os.makedirs(os.path.join(output_dir, "dashboards"), exist_ok=True)
+    thumbnail_path = os.path.join(output_dir, "dashboards", f"{sanitized_name}.png")
+    with open(thumbnail_path, "wb") as f:
+        f.write(b"dummy data")
 
     tmp = temp_yml_file(
         dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
@@ -81,6 +96,11 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         json=data_file_starts,
     )
     httpx_mock.add_response(
+        method="POST",
+        url="http://host/api/files/direct/start/",
+        json=thumbnail_file_starts,
+    )
+    httpx_mock.add_response(
         method="PUT",
         url="http://google/upload/id1",
         status_code=200,
@@ -89,6 +109,16 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
         method="PUT",
         url="http://google/upload/id2",
         status_code=200,
+    )
+    httpx_mock.add_response(
+        method="PUT",
+        url="http://google/upload/id3",
+        status_code=200,
+    )
+    httpx_mock.add_response(
+        method="POST",
+        url="http://host/api/files/direct/finish/",
+        status_code=204,
     )
     httpx_mock.add_response(
         method="POST",
