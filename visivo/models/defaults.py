@@ -1,6 +1,11 @@
-from typing import Optional
+from typing import Optional, Literal, List
 from pydantic import BaseModel, ConfigDict, Field
 
+class Level(BaseModel):
+    """Represents a dashboard level with title and description"""
+    
+    title: str = Field(..., description="Display title for this level")
+    description: str = Field(..., description="Description of this level's purpose")
 
 class Defaults(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
@@ -40,9 +45,22 @@ class Defaults(BaseModel):
         alias="target_name",
     )
     threads: Optional[int] = Field(
-        None,
+        8,
         description="The number of threads to use when running queries.",
     )
-
+    thumbnail_mode: Literal['none', 'missing', 'all'] = Field(
+        'missing',
+        description="Mode for thumbnail generation: 'none' to disable, 'missing' to generate only missing thumbnails, 'all' to generate all thumbnails"
+    )
+    levels: List[Level] = Field(
+        default_factory=list,
+        description="Enables you to customize the project level view of your dashboards. Ordered list of dashboard levels with titles and descriptions",
+        json_schema_extra={
+            "examples": [
+                {"title": "Overview", "description": "The most important dashboards and metrics for the organization"},
+                {"title": "Department", "description": "The most important dashboards & metrics for a department"}
+            ]
+        }
+    )
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))

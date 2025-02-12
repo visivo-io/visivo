@@ -1,9 +1,13 @@
+from time import time
+start_time = time()
+from visivo.logging.logger import Logger, TypeEnum
+Logger.instance().info("Starting Visivo...")
 import click
 import os
 import importlib
 from dotenv import load_dotenv
 from pydantic import ValidationError
-from visivo.logging.logger import Logger, TypeEnum
+
 from visivo.parsers.line_validation_error import LineValidationError
 
 from .commands.dbt import dbt
@@ -70,6 +74,7 @@ def load_env(env_file):
 def safe_visivo():
     try:
         visivo(standalone_mode=False)
+        Logger.instance().info(f"Visivo execution time: {round(time() - start_time, 2)}s")
     except (ValidationError, LineValidationError) as e:
         Logger.instance().error(str(e))
         exit(1)

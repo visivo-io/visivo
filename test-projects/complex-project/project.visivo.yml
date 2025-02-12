@@ -1,7 +1,8 @@
 name: coffee_facts
 
 defaults:
-  target_name: snowflake
+  source_name: snowflake
+  thumbnail_mode: none
 
 includes:
   - path: coffee_trade/coffee_trade.visivo.yml

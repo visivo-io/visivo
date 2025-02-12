@@ -1,8 +1,4 @@
-from visivo.models.base.parent_model import ParentModel
-from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.local_merge_model import LocalMergeModel
-from visivo.models.models.model import Model
-from visivo.models.project import Project
 from visivo.query.jobs.job import (
     Job,
     JobResult,
@@ -48,5 +44,5 @@ def job(dag, output_dir: str, local_merge_model: LocalMergeModel):
         action=action,
         local_merge_model=local_merge_model,
         output_dir=output_dir,
-        dag=dag,
+        dag=dag, #PR question: Why are we passing the dag here to local merge, trace models but not csv script models? It seems like it gets what it needs from the source pass no?
     )

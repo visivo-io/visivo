@@ -1,12 +1,16 @@
 name: project
-targets:
+
+defaults: 
+  thumbnail_mode: none
+
+sources:
   - name: development 
     database: db/development.sqlite3
     type: sqlite
 
 models:
   - name: accounts_per_week
-    target: ref(development)
+    source: ref(development)
     sql: |
                     SELECT 
                       count(*) as account_count, 

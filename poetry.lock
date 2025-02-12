@@ -101,6 +101,17 @@ html5lib = ["html5lib"]
 lxml = ["lxml"]
 
 [[package]]
+name = "bidict"
+version = "0.23.1"
+description = "The bidirectional mapping library for Python."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "bidict-0.23.1-py3-none-any.whl", hash = "sha256:5dae8d4d79b552a71cbabc7deb25dfe8ce710b17ff41711e13010ead2abfc3e5"},
+    {file = "bidict-0.23.1.tar.gz", hash = "sha256:03069d763bc387bbd20e7d49914e75fc4132a41937fa3405417e1a5a2d006d71"},
+]
+
+[[package]]
 name = "blinker"
 version = "1.9.0"
 description = "Fast, simple object-to-object and broadcast signaling"
@@ -723,6 +734,24 @@ Werkzeug = ">=2.3.7"
 [package.extras]
 async = ["asgiref (>=3.2)"]
 dotenv = ["python-dotenv"]
+
+[[package]]
+name = "flask-socketio"
+version = "5.5.1"
+description = "Socket.IO integration for Flask applications"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "Flask_SocketIO-5.5.1-py3-none-any.whl", hash = "sha256:35a50166db44d055f68021d6ec32cb96f1f925cd82de4504314be79139ea846f"},
+    {file = "flask_socketio-5.5.1.tar.gz", hash = "sha256:d946c944a1074ccad8e99485a6f5c79bc5789e3ea4df0bb9c864939586c51ec4"},
+]
+
+[package.dependencies]
+Flask = ">=0.9"
+python-socketio = ">=5.12.0"
+
+[package.extras]
+docs = ["sphinx"]
 
 [[package]]
 name = "fonttools"
@@ -1447,20 +1476,6 @@ files = [
     {file = "kiwisolver-1.4.7-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:0c6c43471bc764fad4bc99c5c2d6d16a676b1abf844ca7c8702bdae92df01ee0"},
     {file = "kiwisolver-1.4.7.tar.gz", hash = "sha256:9893ff81bd7107f7b685d3017cc6583daadb4fc26e4a888350df530e41980a60"},
 ]
-
-[[package]]
-name = "livereload"
-version = "2.7.0"
-description = "Python LiveReload is an awesome tool for web developers"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "livereload-2.7.0-py3-none-any.whl", hash = "sha256:19bee55aff51d5ade6ede0dc709189a0f904d3b906d3ea71641ed548acff3246"},
-    {file = "livereload-2.7.0.tar.gz", hash = "sha256:f4ba199ef93248902841e298670eebfe1aa9e148e19b343bc57dbf1b74de0513"},
-]
-
-[package.dependencies]
-tornado = "*"
 
 [[package]]
 name = "log-symbols"
@@ -2249,6 +2264,26 @@ test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=8.3.2)", "pytest-
 type = ["mypy (>=1.11.2)"]
 
 [[package]]
+name = "playwright"
+version = "1.50.0"
+description = "A high-level API to automate web browsers"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "playwright-1.50.0-py3-none-macosx_10_13_x86_64.whl", hash = "sha256:f36d754a6c5bd9bf7f14e8f57a2aea6fd08f39ca4c8476481b9c83e299531148"},
+    {file = "playwright-1.50.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:40f274384591dfd27f2b014596250b2250c843ed1f7f4ef5d2960ecb91b4961e"},
+    {file = "playwright-1.50.0-py3-none-macosx_11_0_universal2.whl", hash = "sha256:9922ef9bcd316995f01e220acffd2d37a463b4ad10fd73e388add03841dfa230"},
+    {file = "playwright-1.50.0-py3-none-manylinux1_x86_64.whl", hash = "sha256:8fc628c492d12b13d1f347137b2ac6c04f98197ff0985ef0403a9a9ee0d39131"},
+    {file = "playwright-1.50.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ffcff35f72db2689a79007aee78f1b0621a22e6e3d6c1f58aaa9ac805bf4497c"},
+    {file = "playwright-1.50.0-py3-none-win32.whl", hash = "sha256:3b906f4d351260016a8c5cc1e003bb341651ae682f62213b50168ed581c7558a"},
+    {file = "playwright-1.50.0-py3-none-win_amd64.whl", hash = "sha256:1859423da82de631704d5e3d88602d755462b0906824c1debe140979397d2e8d"},
+]
+
+[package.dependencies]
+greenlet = ">=3.1.1,<4.0.0"
+pyee = ">=12,<13"
+
+[[package]]
 name = "plotly"
 version = "5.24.1"
 description = "An open-source, interactive data visualization library for Python"
@@ -2590,6 +2625,23 @@ files = [
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
+name = "pyee"
+version = "12.1.1"
+description = "A rough port of Node.js's EventEmitter to Python with a few tricks of its own"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "pyee-12.1.1-py3-none-any.whl", hash = "sha256:18a19c650556bb6b32b406d7f017c8f513aceed1ef7ca618fb65de7bd2d347ef"},
+    {file = "pyee-12.1.1.tar.gz", hash = "sha256:bbc33c09e2ff827f74191e3e5bbc6be7da02f627b7ec30d86f5ce1a6fb2424a3"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[package.extras]
+dev = ["black", "build", "flake8", "flake8-black", "isort", "jupyter-console", "mkdocs", "mkdocs-include-markdown-plugin", "mkdocstrings[python]", "pytest", "pytest-asyncio", "pytest-trio", "sphinx", "toml", "tox", "trio", "trio", "trio-typing", "twine", "twisted", "validate-pyproject[all]"]
+
+[[package]]
 name = "pygments"
 version = "2.18.0"
 description = "Pygments is a syntax highlighting package written in Python."
@@ -2819,6 +2871,45 @@ files = [
 
 [package.extras]
 cli = ["click (>=5.0)"]
+
+[[package]]
+name = "python-engineio"
+version = "4.11.2"
+description = "Engine.IO server and client for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "python_engineio-4.11.2-py3-none-any.whl", hash = "sha256:f0971ac4c65accc489154fe12efd88f53ca8caf04754c46a66e85f5102ef22ad"},
+    {file = "python_engineio-4.11.2.tar.gz", hash = "sha256:145bb0daceb904b4bb2d3eb2d93f7dbb7bb87a6a0c4f20a94cc8654dec977129"},
+]
+
+[package.dependencies]
+simple-websocket = ">=0.10.0"
+
+[package.extras]
+asyncio-client = ["aiohttp (>=3.4)"]
+client = ["requests (>=2.21.0)", "websocket-client (>=0.54.0)"]
+docs = ["sphinx"]
+
+[[package]]
+name = "python-socketio"
+version = "5.12.1"
+description = "Socket.IO server and client for Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python_socketio-5.12.1-py3-none-any.whl", hash = "sha256:24a0ea7cfff0e021eb28c68edbf7914ee4111bdf030b95e4d250c4dc9af7a386"},
+    {file = "python_socketio-5.12.1.tar.gz", hash = "sha256:0299ff1f470b676c09c1bfab1dead25405077d227b2c13cf217a34dadc68ba9c"},
+]
+
+[package.dependencies]
+bidict = ">=0.21.0"
+python-engineio = ">=4.11.0"
+
+[package.extras]
+asyncio-client = ["aiohttp (>=3.4)"]
+client = ["requests (>=2.21.0)", "websocket-client (>=0.54.0)"]
+docs = ["sphinx"]
 
 [[package]]
 name = "pytz"
@@ -3145,6 +3236,24 @@ files = [
 docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-hoverxref (<2)", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (==0.8.3)", "sphinx-reredirects", "sphinxcontrib-towncrier"]
 testing = ["build[virtualenv]", "filelock (>=3.4.0)", "flake8-2020", "ini2toml[lite] (>=0.9)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pip (>=19.1)", "pip-run (>=8.8)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-mypy (>=0.9.1)", "pytest-perf", "pytest-ruff", "pytest-timeout", "pytest-xdist", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel"]
 testing-integration = ["build[virtualenv]", "filelock (>=3.4.0)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.2.0)", "pytest", "pytest-enabler", "pytest-xdist", "tomli", "virtualenv (>=13.0.0)", "wheel"]
+
+[[package]]
+name = "simple-websocket"
+version = "1.1.0"
+description = "Simple WebSocket server and client for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "simple_websocket-1.1.0-py3-none-any.whl", hash = "sha256:4af6069630a38ed6c561010f0e11a5bc0d4ca569b36306eb257cd9a192497c8c"},
+    {file = "simple_websocket-1.1.0.tar.gz", hash = "sha256:7939234e7aa067c534abdab3a9ed933ec9ce4691b0713c78acb195560aa52ae4"},
+]
+
+[package.dependencies]
+wsproto = "*"
+
+[package.extras]
+dev = ["flake8", "pytest", "pytest-cov", "tox"]
+docs = ["sphinx"]
 
 [[package]]
 name = "six"
@@ -3636,7 +3745,21 @@ MarkupSafe = ">=2.1.1"
 [package.extras]
 watchdog = ["watchdog (>=2.3)"]
 
+[[package]]
+name = "wsproto"
+version = "1.2.0"
+description = "WebSockets state-machine based protocol implementation"
+optional = false
+python-versions = ">=3.7.0"
+files = [
+    {file = "wsproto-1.2.0-py3-none-any.whl", hash = "sha256:b9acddd652b585d75b20477888c56642fdade28bdfd3579aa24a4d2c037dd736"},
+    {file = "wsproto-1.2.0.tar.gz", hash = "sha256:ad565f26ecb92588a3e43bc3d96164de84cd9902482b130d0ddbaa9664a85065"},
+]
+
+[package.dependencies]
+h11 = ">=0.9.0,<1"
+
 [metadata]
 lock-version = "2.0"
 python-versions = " >=3.10,<3.13"
-content-hash = "40288f11406e7cf4f7094854cba42f450ad0004cc479965898c6e172529f0794"
+content-hash = "262e4320e86763fd7ba78f1d3b2b960cf713d254baa0b700d40918fd1359dbac"

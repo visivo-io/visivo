@@ -1,7 +1,6 @@
 from typing import List, Optional
 from visivo.models.alert import Alert
-from visivo.models.dag import all_descendants_of_type, show_dag_fig
-from visivo.models.destinations.destination import Destination
+from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
@@ -11,12 +10,10 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
 
-
 from .base.parent_model import ParentModel
-from .dashboard import Dashboard
+from visivo.models.dashboards.fields import DashboardField
 from .chart import Chart
 from .trace import Trace
-from .sources.source import Source
 from .table import Table
 from .defaults import Defaults
 from .dbt import Dbt
@@ -45,7 +42,8 @@ class Project(NamedModel, ParentModel):
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
-    dashboards: List[Dashboard] = []
+    dashboards: List[DashboardField] = []
+
 
     def child_items(self):
         return (

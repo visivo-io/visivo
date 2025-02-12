@@ -1,9 +1,9 @@
+import React from 'react';
 
-import tw from "tailwind-styled-components"
-
-export const Container = tw.aside`
-   flex
-   flex-col
-   max-w-6xl
-   m-auto
-`;
+export function Container({ children, className = '' }) {
+  return (
+    <div className={`w-full flex flex-col ${className}`}>
+      {children}
+    </div>
+  );
+}

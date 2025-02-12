@@ -1,3 +1,4 @@
+import hashlib
 import yaml
 import json
 import os
@@ -6,6 +7,18 @@ import re
 import click
 from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
+import importlib.resources as resources
+
+VIEWER_PATH = resources.files("visivo") / "viewer"
+
+
+def get_dashboards_dir(output_dir):
+    return os.path.join(output_dir, "dashboards")
+
+
+def sanitize_filename(name):
+    """Generate a hash of the name for safe filenames"""
+    return hashlib.md5(name.encode()).hexdigest()
 
 
 def yml_to_dict(relative_path):
@@ -122,6 +135,7 @@ def nested_dict_from_dotted_keys(flat_dict):
         else:
             d[parts[-1]] = value
     return nested_dict
+
 
 def combine_dict_properties(input_dict):
     combined = {}

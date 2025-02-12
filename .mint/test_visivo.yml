@@ -46,6 +46,12 @@ tasks:
   - key: poetry
     use: python
     run: pip install poetry
+  
+  - key: install-playwright
+    use: [python, node]
+    run: |
+      pip install playwright
+      python -m playwright install webkit --with-deps
 
   - key: cli-dependencies
     use: [code, poetry]
@@ -62,7 +68,7 @@ tasks:
       pip install dist/visivo-*-py3-none-any.whl
 
   - key: test-cli
-    use: cli-dependencies
+    use: [cli-dependencies, install-playwright]
     run: |
       trap 'curl -X POST -H "Content-Type: application/json" -d @.report.json ${{ secrets.PYTEST_RESULTS_WEBHOOK }}' EXIT
       poetry install --with dev
@@ -139,7 +145,7 @@ tasks:
     filter: [test-projects/complex-project]
   
   - key: test-docs-examples-project
-    use: visivo-install
+    use: [visivo-install, install-playwright]
     run: |
       cd test-projects/docs-examples
       visivo run
@@ -249,6 +255,7 @@ tasks:
     run: |
       cd test-projects/dbt
       poetry run dbt run --profiles-dir .
+      visivo compile
       visivo run
     filter:
       - test-projects/dbt

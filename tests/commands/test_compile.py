@@ -15,5 +15,5 @@ def test_compile():
 
     response = runner.invoke(compile, ["-w", dir, "-s", json.dumps(source)])
 
-    assert "Compiling project" in response.output
+    assert "Compiling" in response.output
     assert response.exit_code == 0

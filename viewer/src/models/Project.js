@@ -4,19 +4,21 @@ export const findAllSelectors = (project) => {
         selectors.push(...project.project_json.selectors)
     }
     project.project_json.dashboards.forEach((dashboard) => {
-        dashboard.rows.forEach((row) => {
-            row.items.forEach((item) => {
-                if (item.selector) {
-                    selectors.push(item.selector)
-                }
-                if (item.chart && item.chart.selector) {
-                    selectors.push(item.chart.selector)
-                }
-                if (item.table && item.table.selector) {
-                    selectors.push(item.table.selector)
-                }
+        if (dashboard.type === 'internal') {
+            dashboard.rows.forEach((row) => {
+                row.items.forEach((item) => {
+                    if (item.selector) {
+                        selectors.push(item.selector)
+                    }
+                    if (item.chart && item.chart.selector) {
+                        selectors.push(item.chart.selector)
+                    }
+                    if (item.table && item.table.selector) {
+                        selectors.push(item.table.selector)
+                    }
+                })
             })
-        })
+        }
     })
     return selectors
 };

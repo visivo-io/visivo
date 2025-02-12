@@ -25,8 +25,9 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 
 const Table = ({ table, project, itemWidth, height, width }) => {
-    const traceNames = table.traces.map((trace) => trace.name);
-    const tracesData = useTracesData(project.id, traceNames);
+    const isDirectQueryResult = table.traces[0]?.data !== undefined;
+    // Always call the hook, but with empty array if it's a direct query
+    const tracesData = useTracesData(project.id, isDirectQueryResult ? [] : table.traces.map((trace) => trace.name));
     const [selectedTableCohort, setSelectedTableCohort] = useState(null);
     const [columns, setColumns] = useState([]);
     const [tableData, setTableData] = useState([]);
@@ -39,15 +40,40 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
     useEffect(() => {
         if (selectedTableCohort && tracesData) {
+            // Handle trace-based queries
             setColumns(tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName));
+        } else if (isDirectQueryResult) {
+            // Handle direct query results
+            const directQueryColumns = Object.keys(table.traces[0].data[0] || {}).map(key => ({
+                id: key, // Unique identifier for the column
+                header: key, // Display name
+                accessorKey: key.replace(/\./g, '___'), // Replace dots with a safe separator
+                enableGrouping: false, // Disable grouping for these columns
+                markdown: false
+            }));
+            setColumns(directQueryColumns);
         }
-    }, [selectedTableCohort, tracesData, table]);
+    }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
 
     useEffect(() => {
         if (selectedTableCohort && columns) {
+            // Handle trace-based queries
             setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
+        } else if (isDirectQueryResult) {
+            // Handle direct query results
+            setTableData(table.traces[0].data.map((row, index) => {
+                const transformedRow = {};
+                Object.entries(row).forEach(([key, value]) => {
+                    // Replace dots with underscores in the keys
+                    transformedRow[key.replace(/\./g, '___')] = value;
+                });
+                return {
+                    id: index,
+                    ...transformedRow
+                };
+            }));
         }
-    }, [selectedTableCohort, columns]);
+    }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
 
     const handleExportData = () => {
         const csv = generateCsv(csvConfig)(tableData); 
@@ -66,13 +92,12 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         document.body.removeChild(link);
     };
     
-    
     const useTable = useMaterialReactTable({
         columns: tableColumnsWithUnderscores(columns).map(column => ({
             ...column,
             Cell: ({ cell }) => {
                 const value = cell.getValue();
-                if (column.markdown) { //&& typeof value === 'string' 
+                if (column.markdown) {
                     return (
                         <Markdown
                             remarkPlugins={[remarkGfm]}
@@ -92,11 +117,20 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         enableFullScreenToggle: true,
         enableGrouping: true,
         enableColumnDragging: false,
-
+        enableStickyHeader: true,
+        muiTableContainerProps: {
+            sx: { maxHeight: '100%' }
+        },
+        muiTableHeadProps: {
+            sx: {
+                '& tr': {
+                    backgroundColor: 'white',
+                }
+            }
+        },
         muiPaginationProps: {
             rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000]
-          },
-        
+        },
         initialState: { 
             showGlobalFilter: true, 
             density: "compact", 
@@ -106,7 +140,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         },
     });
 
-    if (!tracesData) {
+    // Only show loading state if we're waiting for trace data and this isn't a direct query result
+    if (!isDirectQueryResult && !tracesData) {
         return <Loading text={table.name} width={itemWidth} />;
     }
 
@@ -129,43 +164,45 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         <ThemeProvider theme={tableTheme}>
             <ItemContainer>
                 <Box>
-                <Box
-                    sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between', // Separates the left and right containers
-                        backgroundColor: 'inherit',
-                        borderRadius: '4px',
-                        gap: '6px',
-                        alignItems: 'center',
-                        padding: '11px 11px',
-                        flexWrap: 'wrap', // Allows wrapping if screen size is small
-                        '@media max-width: 768px': {
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            backgroundColor: 'inherit',
+                            borderRadius: '4px',
+                            gap: '6px',
+                            alignItems: 'center',
+                            padding: '11px 11px',
+                            flexWrap: 'wrap',
+                            '@media max-width: 768px': {
                                 flexDirection: 'column',
                             },
-                    }}
-                >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <MRT_GlobalFilterTextField table={useTable} />
-                    </Box>
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <MRT_GlobalFilterTextField table={useTable} />
+                        </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <MRT_ToggleFiltersButton table={useTable} />
-                        <MRT_ShowHideColumnsButton table={useTable} />
-                        <MRT_ToggleDensePaddingButton table={useTable} />
-                        <Button 
-                            aria-label="DownloadCsv" 
-                            onClick={handleExportData} 
-                            startIcon={<FileDownloadIcon />}
-                        ></Button>
-                        <CohortSelect
-                            tracesData={tracesData}
-                            onChange={onSelectedCohortChange}
-                            selector={table.selector}
-                            parentName={table.name}
-                            parentType="table"
-                        />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <MRT_ToggleFiltersButton table={useTable} />
+                            <MRT_ShowHideColumnsButton table={useTable} />
+                            <MRT_ToggleDensePaddingButton table={useTable} />
+                            <Button 
+                                aria-label="DownloadCsv" 
+                                onClick={handleExportData} 
+                                startIcon={<FileDownloadIcon />}
+                            />
+                            {!isDirectQueryResult && tracesData && (
+                                <CohortSelect
+                                    tracesData={tracesData}
+                                    onChange={onSelectedCohortChange}
+                                    selector={table.selector}
+                                    parentName={table.name}
+                                    parentType="table"
+                                />
+                            )}
+                        </Box>
                     </Box>
-                </Box>
 
                     <MRT_TableContainer table={useTable} sx={{ width: width, maxHeight: `${height - 120}px` }} />
                     

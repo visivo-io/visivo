@@ -10,7 +10,7 @@ from visivo.models.dag import (
 )
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
-from visivo.models.models.model import Model
+from visivo.models.dashboard import Dashboard
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
@@ -25,6 +25,7 @@ from visivo.query.jobs.run_csv_script_job import job as csv_script_job
 from visivo.query.jobs.run_trace_job import job as trace_job
 from visivo.query.jobs.run_local_merge_job import job as local_merge_job
 from visivo.query.jobs.run_source_connection_job import job as source_connection_job
+from visivo.query.jobs.run_thumbnail_job import job as thumbnail_job
 from visivo.query.job_tracker import JobTracker
 from threading import Lock
 
@@ -36,10 +37,12 @@ class Runner:
         self,
         project: Project,
         output_dir: str,
-        threads: int = 8,
+        threads: int = 8, #Set in project defaults, but also set here for
         soft_failure=False,
         run_only_changed=False,
         dag_filter: str = None,
+        thumbnail_mode: str = None, #Set in project defaults
+        server_url: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -47,13 +50,15 @@ class Runner:
         self.threads = threads
         self.soft_failure = soft_failure
         self.dag_filter = dag_filter
+        self.thumbnail_mode = thumbnail_mode
+        self.server_url = server_url
         self.project_dag = project.dag()
         self.job_dag = self.create_job_dag()
         self.job_tracking_dag = self.create_job_dag()
         self.failed_job_results = []
         self.successful_job_results = []
         self.lock = Lock()
-
+        
     def run(self):
         complete = False
         job_tracker = JobTracker()
@@ -76,8 +81,10 @@ class Runner:
                     job.future.add_done_callback(self.job_callback)
 
         if len(self.failed_job_results) > 0:
+            Logger.instance().info('')
+            Logger.instance().info('')
             Logger.instance().error(
-                f"\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
+                f"\n\nRun failed in {round(time()-start_time, 2)}s with {len(self.failed_job_results)} query error(s)."
             )
             for result in self.failed_job_results:
                 Logger.instance().error(str(result.message))
@@ -183,4 +190,15 @@ class Runner:
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item)
+        elif isinstance(item, Dashboard):
+            if self.thumbnail_mode != 'none':
+                if self.server_url is None:
+                    raise Exception("Cannot generate thumbnails, no server URL is provided. A running server is required to generate thumbnails.")
+                return thumbnail_job(
+                    dashboard=item,
+                    project=self.project,
+                    output_dir=self.output_dir,
+                    thumbnail_mode=self.thumbnail_mode,
+                    server_url=self.server_url,
+                )
         return None

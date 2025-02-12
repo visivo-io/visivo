@@ -5,6 +5,7 @@ includes:
 
 dashboards:
   - name: "Trace Props Examples: Violin"
+    level: 1
     rows:
       - height: compact
         items:

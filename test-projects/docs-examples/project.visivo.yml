@@ -1,7 +1,21 @@
 path: project
 name: docs-examples
+
+dashboards:
+  - name: "Taught A Second Time"
+    level: 0
+    tags: 
+      - "Staging Data"
+    href: "https://docs.google.com/spreadsheets/d/1qYwJuOCGw7AoiK5i2LOBABiSuO_w7g_PN0FKd0FkGeg/edit?gid=0#gid=0"
+
+   
 defaults:
   source_name: Example Source
+  levels:
+    - title: Chart Configuration
+      description: Visuals that illustrate chart based configuration.
+    - title: Trace Type Gallery
+      description: Visuals that show all of the different things you can do with our 20+ trace types.
 includes:
   - path: dashboards/includes.visivo.yml
 sources:

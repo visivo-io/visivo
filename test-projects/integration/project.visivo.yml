@@ -6,8 +6,9 @@ includes:
   - path: visivo-io/example-include.git@main
 
 defaults:
-  source_name: local-sqlite
+  source_name: local-duckdb
   alert_name: slack
+  thumbnail_mode: none
 
 alerts:
   - name: slack
@@ -79,7 +80,7 @@ dashboards:
         items:
           - align: left
             markdown: |
-              # <span title="This is a normal name and there's nothing funny about it.">Bigus Dicus </span>
+              
                Lorem ipsum odor amet, consectetuer adipiscing elit.  
                ```
                Volutpat primis laoreet, ridiculus in placerat facilisis laoreet. 
@@ -87,7 +88,7 @@ dashboards:
                > Montes semper quam litora condimentum maximus. 
                * Sollicitudin montes rhoncus sollicitudin mus et elit. 
                * Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. 
-
+               #### <span title="This is a normal name and there's nothing funny about it.">Bigus Dicus </span>
                Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
                Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.

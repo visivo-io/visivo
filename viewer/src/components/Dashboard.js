@@ -1,4 +1,3 @@
-import React from "react";
 import Chart from './items/Chart.js'
 import Table from './items/Table.js'
 import Selector from './items/Selector.js'
@@ -146,11 +145,11 @@ const Dashboard = ({ project, dashboardName }) => {
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.selector) {
             return <Selector
-                selector={item.selector}
-                project={project}
-                itemWidth={item.width}
-                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
-            </Selector>
+                    selector={item.selector}
+                    project={project}
+                    itemWidth={item.width}
+                    key={`dashboardRow${rowIndex}Item${itemIndex}`} >
+                </Selector>
         } else if (item.markdown) {
             const alignmentClass = item.align === 'right' ? 'text-right' : 
                                   item.align === 'center' ? 'text-center' : 

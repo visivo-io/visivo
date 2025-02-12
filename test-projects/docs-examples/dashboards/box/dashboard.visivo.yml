@@ -4,6 +4,8 @@ includes:
   - path: "proclamations.visivo.yml"
 dashboards:
   - name: "Trace Props Examples: Box"
+    tags: 
+      - "Trace Functionality"
     rows: 
       - height: compact 
         items:

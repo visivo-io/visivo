@@ -5,6 +5,9 @@ includes:
 
 dashboards:
   - name: "Trace Props Examples: Bar"
+    level: Trace Type Gallery
+    tags: 
+      - "Trace Functionality"
     rows:
       - height: compact 
         items:
