@@ -79,7 +79,7 @@ def test_dbt_with_defaults():
     assert os.path.exists(f"{output_dir}/dbt.yml")
     with open(f"{output_dir}/dbt.yml", "r") as file:
         dbt_content = yaml.safe_load(file)
-        assert dbt_content["models"][0]["source"] == "ref(dbt_profile_name_target_name)"
+        assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
 
 
 def test_dbt_with_set_profile_and_target():
@@ -98,7 +98,7 @@ def test_dbt_with_set_profile_and_target():
     assert os.path.exists(f"{output_dir}/dbt.yml")
     with open(f"{output_dir}/dbt.yml", "r") as file:
         dbt_content = yaml.safe_load(file)
-        assert dbt_content["models"][0]["source"] == "ref(dbt_profile_name_target_name)"
+        assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
 
 
 def test_dbt_with_missing_profile():

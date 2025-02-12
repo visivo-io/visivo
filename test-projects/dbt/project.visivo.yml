@@ -5,6 +5,7 @@ defaults:
 
 dbt:
   enabled: true
+  prefix: dbt_
 
 dashboards:
   - name: dashboard_name
