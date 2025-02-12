@@ -11,6 +11,7 @@ class BaseDashboard(NamedModel):
     tags: List[str] = Field(default_factory=list, description="A list of tags associated with the dashboard")
     description: Optional[str] = Field(None, description="A description of the dashboard's purpose and contents")
     type: Literal["internal", "external"] = Field(..., description="The type of dashboard (internal or external)")
+    name: str = Field(..., description="The unique name of the dashboard across the entire project")
 
     def for_each_item(self, function):
         pass
