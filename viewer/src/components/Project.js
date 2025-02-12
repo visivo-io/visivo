@@ -26,6 +26,9 @@ function Project(props) {
 
   // Use React Query to handle thumbnail loading
   const projectId = props.project?.id || props.project?.project_id;
+  const dashboardNames = allDashboards.map(d => d.name);
+
+
   const { data: thumbnails = {} } = useQuery({
     queryKey: ['dashboards', projectId],
     queryFn: async () => {
@@ -34,9 +37,8 @@ function Project(props) {
       }
 
       try {
-        const dashboardNames = allDashboards.map(d => d.name);
         const results = await Promise.all(
-          dashboardNames.map(async dashboardName=> {
+          dashboardNames.map(async dashboardName => {
             const query = fetchDashboardQuery(projectId, dashboardName);
             const dashboardData = await query.queryFn();
             if (dashboardData) {
@@ -86,7 +88,7 @@ function Project(props) {
     });
   }, [allDashboards, searchTerm, selectedTags]);
 
-  const dashboardsByLevel = useMemo(() => 
+  const dashboardsByLevel = useMemo(() =>
     organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.defaults),
     [filteredDashboards, props.project?.project_json?.defaults]
   );
