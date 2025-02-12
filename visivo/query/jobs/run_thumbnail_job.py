@@ -36,7 +36,7 @@ def generate_thumbnail(
         from urllib.parse import quote
 
         encoded_dashboard_name = quote(dashboard.name)
-        navigate_to = f"{server_url}/{encoded_dashboard_name}"
+        navigate_to = f"{server_url}/project/{encoded_dashboard_name}"
         # Navigate to dashboard
         if os.environ.get("STACKTRACE"):
             Logger.instance().info(f"   Navigating to {navigate_to}")
@@ -93,7 +93,7 @@ def generate_thumbnail(
                 }
             """ % check_loading, timeout=timeout_ms)
             # Wait for 350ms to ensure the page is fully loaded
-            page.wait_for_timeout(350)
+            page.wait_for_timeout(1000)
             # Log final state before screenshot
             if os.environ.get("STACKTRACE"):
                 final_state = page.evaluate(check_loading)
