@@ -10,6 +10,15 @@ import os
 from time import time
 
 def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target):
+    
+    # Run and Track dbt phase
+    dbt_start = time()
+    Logger.instance().debug("    Running dbt phase...")
+    dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
+    dbt_duration = round(time() - dbt_start, 2)
+    if os.environ.get("STACKTRACE"):
+        Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
+
     discover = Discover(working_dir=working_dir, output_dir=output_dir)
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
@@ -17,14 +26,6 @@ def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, db
     
     project = None
     try:
-        # Run and Track dbt phase
-        dbt_start = time()
-        Logger.instance().debug("    Running dbt phase...")
-        dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
-        dbt_duration = round(time() - dbt_start, 2)
-        if os.environ.get("STACKTRACE"):
-            Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
-
         project = parser.parse()
         if not project.defaults:
             project.defaults = Defaults()
