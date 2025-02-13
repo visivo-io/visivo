@@ -35,6 +35,8 @@ def run_phase(
             working_dir=working_dir,
             output_dir=output_dir,
             default_source=default_source,
+            dbt_profile=dbt_profile,
+            dbt_target=dbt_target,
         )
         Logger.instance().info(f"Parsing project took {round(time() - start_time, 2)}s")
     else: 
