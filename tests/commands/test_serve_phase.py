@@ -34,6 +34,9 @@ def setup_project_with_data(output_dir):
     return project
 
 def test_serve_phase_creates_server(test_project, output_dir, server_url):
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
     server, _, _ = serve_phase(
         output_dir=output_dir,
         working_dir=".",
@@ -47,9 +50,10 @@ def test_serve_phase_creates_server(test_project, output_dir, server_url):
     )
     assert server is not None
 
-
-
 def test_serve_phase_handles_dbt_ignore_patterns(test_project, output_dir, server_url):
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
     # Set up a mock dbt configuration
     test_project.dbt = type('MockDbt', (), {
         'enabled': True,
