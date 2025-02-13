@@ -17,6 +17,14 @@ def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, db
     
     project = None
     try:
+        # Run and Track dbt phase
+        dbt_start = time()
+        Logger.instance().debug("    Running dbt phase...")
+        dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
+        dbt_duration = round(time() - dbt_start, 2)
+        if os.environ.get("STACKTRACE"):
+            Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
+
         project = parser.parse()
         if not project.defaults:
             project.defaults = Defaults()
@@ -27,14 +35,6 @@ def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, db
         # Ensure thumbnail directory exists
         thumbnail_dir = get_dashboards_dir(output_dir)
         os.makedirs(thumbnail_dir, exist_ok=True)
-
-        # Run and Track dbt phase
-        dbt_start = time()
-        Logger.instance().debug("    Running dbt phase...")
-        dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
-        dbt_duration = round(time() - dbt_start, 2)
-        if os.environ.get("STACKTRACE"):
-            Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
 
     except yaml.YAMLError as e:
         message = "\n"
