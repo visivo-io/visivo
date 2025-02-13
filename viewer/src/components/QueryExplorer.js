@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLoaderData } from 'react-router-dom';
 import MonacoEditor from '@monaco-editor/react';
 import ExplorerTree from './explorer/ExplorerTree';
@@ -9,6 +9,7 @@ import { fetchExplorer } from '../api/explorer';
 import tw from "tailwind-styled-components";
 import TopNav from './TopNav';
 import Breadcrumbs from './Breadcrumbs';
+import { useQueryHotkeys } from '../hooks/useQueryHotkeys';
 
 const Container = tw.div`
   h-screen
@@ -304,7 +305,12 @@ const QueryExplorer = () => {
     }
   }, [executeQueryWithStats, setError, setIsLoading, setResults, setQuery, selectedSource]);
 
-  const handleRunQuery = () => executeQueryAndUpdateState(query);
+  const handleRunQuery = useCallback(() => {
+    executeQueryAndUpdateState(query);
+  }, [executeQueryAndUpdateState, query]);
+
+  // Use the new hook for hotkeys
+  useQueryHotkeys(handleRunQuery, isLoading, editorRef, monacoRef);
 
   // Add this useEffect hook to track source changes
   useEffect(() => {
@@ -312,17 +318,22 @@ const QueryExplorer = () => {
   }, [selectedSource]);
 
   useEffect(() => {
-    if (editorRef.current && monacoRef.current) {
-      // Remove existing Cmd+Enter command if it exists
+    if (editorRef.current) {
+      // Remove existing decorations if any
       editorRef.current.getModel()?.deltaDecorations([], []);
       
-      // Add the command with current selectedSource in its closure
-      editorRef.current.addCommand(
-        monacoRef.current.KeyMod.CtrlCmd | monacoRef.current.KeyCode.Enter,
-        () => executeQueryAndUpdateState(editorRef.current.getValue())
-      );
+      // Add resize handler
+      const resizeHandler = () => {
+        editorRef.current?.layout();
+      };
+      window.addEventListener('resize', resizeHandler);
+      
+      // Return cleanup for resize handler
+      editorRef.current.onDidDispose(() => {
+        window.removeEventListener('resize', resizeHandler);
+      });
     }
-  }, [selectedSource, executeQueryAndUpdateState]);
+  }, []);
 
   return (
     <Container>
@@ -454,9 +465,6 @@ const QueryExplorer = () => {
                     fixedOverflowWidgets: true
                   }}
                   onMount={(editor, monaco) => {
-                    editor.setValue(query || '');
-                    
-                    // Store editor and monaco instance in refs
                     editorRef.current = editor;
                     monacoRef.current = monaco;
                     
