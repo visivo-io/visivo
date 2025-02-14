@@ -8,8 +8,9 @@ import { executeQuery, fetchTraceQuery } from '../services/queryService';
 import { fetchExplorer } from '../api/explorer';
 import tw from "tailwind-styled-components";
 import TopNav from './TopNav';
-import Breadcrumbs from './Breadcrumbs';
+import { useWorksheets } from '../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../hooks/useQueryHotkeys';
+import WorksheetTabManager from './worksheets/WorksheetTabManager';
 
 const Container = tw.div`
   h-screen
@@ -81,9 +82,28 @@ const QueryExplorer = () => {
   const editorRef = React.useRef(null);
   const monacoRef = React.useRef(null);
 
+  // Use the worksheet context
+  const {
+    worksheets,
+    activeWorksheetId,
+    isLoading: isWorksheetLoading,
+    error: worksheetError,
+    actions: {
+      createWorksheet,
+      updateWorksheet,
+      deleteWorksheet,
+      reorderWorksheets,
+      setActiveWorksheetId,
+      clearError: clearWorksheetError
+    }
+  } = useWorksheets();
+
+  // Filter visible worksheets for the tab manager
+  const visibleWorksheets = worksheets.filter(w => w.is_visible);
+
   const handleMouseDown = (e) => {
     setIsDragging(true);
-    e.preventDefault();
+  e.preventDefault();
   };
 
   useEffect(() => {
@@ -123,7 +143,6 @@ const QueryExplorer = () => {
         const data = await fetchExplorer();
         if (data) {
           setExplorerData(data);
-          // Set initial selected source based on default_source or first available source
           if (data.sources && data.sources.length > 0) {
             if (data.default_source) {
               const defaultSource = data.sources.find(s => s.name === data.default_source);
@@ -205,20 +224,16 @@ const QueryExplorer = () => {
       switch (item.type) {
         case 'model':
           if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
-            // For these types, find the DuckDB source from available sources
             newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
           } else if (item.config.source) {
-            // If model has a specific source, find matching source from available sources
             newSource = explorerData?.sources?.find(s => s.name === item.config.source.name) || selectedSource;
           } else {
-            // Default to first available source if none specified
             newSource = explorerData?.sources?.[0] || selectedSource;
           }
           newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
           break;
         case 'trace':
           try {
-            // Fetch the trace query from the backend
             newQuery = await fetchTraceQuery(item.name);
           } catch (err) {
             console.error('Failed to fetch trace query:', err);
@@ -234,7 +249,14 @@ const QueryExplorer = () => {
       setQuery(newQuery);
       if (newSource) {
         setSelectedSource(newSource);
-        console.log('Setting new source:', newSource);
+      }
+
+      // Update active worksheet with new query
+      if (activeWorksheetId) {
+        await updateWorksheet(activeWorksheetId, {
+          query: newQuery,
+          selected_source: newSource?.name
+        });
       }
     } catch (err) {
       console.error('Error in handleItemClick:', err);
@@ -248,9 +270,9 @@ const QueryExplorer = () => {
     
     try {
       console.log('Executing query with source:', selectedSource);
-      const queryResults = await executeQuery(queryString, project.id, selectedSource?.name);
+      const queryResults = await executeQuery(queryString, project.id, selectedSource?.name, activeWorksheetId);
       const endTime = performance.now();
-      const executionTime = ((endTime - startTime) / 1000).toFixed(2); // Convert to seconds
+      const executionTime = ((endTime - startTime) / 1000).toFixed(2);
       
       setQueryStats({
         timestamp: timestamp,
@@ -262,10 +284,9 @@ const QueryExplorer = () => {
     } catch (err) {
       throw err;
     }
-  }, [selectedSource, project.id, setQueryStats]);
+  }, [selectedSource, project.id, activeWorksheetId]);
 
-  // Wrap executeQueryAndUpdateState in useCallback
-  const executeQueryAndUpdateState = React.useCallback(async (queryString) => {
+  const executeQueryAndUpdateState = useCallback(async (queryString) => {
     if (!queryString?.trim()) {
       setError('Please enter a query');
       return;
@@ -274,11 +295,18 @@ const QueryExplorer = () => {
     setIsLoading(true);
     setError(null);
     setResults(null);
-    setQuery(queryString);
 
     try {
-      console.log('Executing query with current source:', selectedSource);
       const queryResults = await executeQueryWithStats(queryString);
+      
+      if (activeWorksheetId) {
+        await updateWorksheet(activeWorksheetId, {
+          query: queryString,
+          selected_source: selectedSource?.name
+        });
+      }
+
+      setQuery(queryString);
       const formattedResults = {
         name: 'Query Results',
         traces: [{
@@ -303,7 +331,7 @@ const QueryExplorer = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [executeQueryWithStats, setError, setIsLoading, setResults, setQuery, selectedSource]);
+  }, [executeQueryWithStats, activeWorksheetId, selectedSource?.name, updateWorksheet]);
 
   const handleRunQuery = useCallback(() => {
     executeQueryAndUpdateState(query);
@@ -314,36 +342,41 @@ const QueryExplorer = () => {
 
   // Add this useEffect hook to track source changes
   useEffect(() => {
-    console.log('Selected source changed:', selectedSource);
-  }, [selectedSource]);
-
-  useEffect(() => {
     if (editorRef.current) {
-      // Remove existing decorations if any
       editorRef.current.getModel()?.deltaDecorations([], []);
-      
-      // Add resize handler
       const resizeHandler = () => {
         editorRef.current?.layout();
       };
       window.addEventListener('resize', resizeHandler);
       
-      // Return cleanup for resize handler
-      editorRef.current.onDidDispose(() => {
+      return () => {
         window.removeEventListener('resize', resizeHandler);
-      });
+      };
     }
   }, []);
+
+  // Effect to update query when active worksheet changes
+  useEffect(() => {
+    const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
+    if (activeWorksheet) {
+      setQuery(activeWorksheet.query || '');
+      if (activeWorksheet.selected_source) {
+        const source = explorerData?.sources?.find(s => s.name === activeWorksheet.selected_source);
+        if (source) setSelectedSource(source);
+      }
+    }
+  }, [activeWorksheetId, worksheets, explorerData?.sources]);
+
+  // Combine errors from both worksheet context and local state
+  const combinedError = worksheetError || error;
 
   return (
     <Container>
       <div className="flex flex-col h-full">
         <div className="flex-none">
-          <TopNav />
+          <TopNav project={project} />
           <div className="mx-2">
-            <div className="flex flex-row justify-between items-center whitespace-nowrap">
-              <Breadcrumbs />
-            </div>
+            
           </div>
         </div>
         <MainContent>
@@ -388,16 +421,27 @@ const QueryExplorer = () => {
 
           <RightPanel id="right-panel">
             <Panel style={{ flex: splitRatio }}>
+              <WorksheetTabManager
+                worksheets={visibleWorksheets}
+                activeWorksheetId={activeWorksheetId}
+                onWorksheetSelect={setActiveWorksheetId}
+                onWorksheetCreate={createWorksheet}
+                onWorksheetRename={(id, name) => updateWorksheet(id, { name })}
+                isLoading={isLoading || isWorksheetLoading}
+              />
               <div className="flex justify-between items-center mb-4">
                 <div className="flex-1 flex items-center justify-between min-w-0 relative">
                   <h2 className="text-lg font-semibold">SQL Query</h2>
-                  {error && (
+                  {combinedError && (
                     <div className="absolute left-32 right-32 px-4 py-2 text-sm text-red-800 rounded-lg bg-red-50 shadow-lg z-10 flex items-center justify-between">
-                      {error}
+                      {combinedError}
                       <button
                         type="button"
                         className="ml-2 inline-flex items-center"
-                        onClick={() => setError(null)}
+                        onClick={() => {
+                          setError(null);
+                          clearWorksheetError();
+                        }}
                       >
                         <span className="sr-only">Dismiss</span>
                         <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">

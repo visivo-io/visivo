@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import tw from 'tailwind-styled-components';
 import AddIcon from '@mui/icons-material/Add';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import WorksheetListPopup from './WorksheetListPopup';
+import { useWorksheets } from '../../contexts/WorksheetContext';
 
 const Container = tw.div`
   flex items-center space-x-2
@@ -16,25 +18,53 @@ const WorksheetTabActions = ({
   onWorksheetOpen,
   isLoading
 }) => {
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const { allWorksheets, activeWorksheetId, actions } = useWorksheets();
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    onWorksheetCreate();
+  };
+
+  const handleOpen = (e) => {
+    e.preventDefault();
+    setIsPopupOpen(true);
+  };
+
   return (
-    <Container>
-      <ActionButton
-        data-testid="create-worksheet"
-        onClick={onWorksheetCreate}
-        disabled={isLoading}
-        aria-label="Create new worksheet"
-      >
-        <AddIcon fontSize="small" />
-      </ActionButton>
-      <ActionButton
-        data-testid="open-worksheet"
-        onClick={onWorksheetOpen}
-        disabled={isLoading}
-        aria-label="Open worksheet"
-      >
-        <FolderOpenIcon fontSize="small" />
-      </ActionButton>
-    </Container>
+    <>
+      <Container>
+        <ActionButton
+          data-testid="create-worksheet"
+          onClick={handleCreate}
+          disabled={isLoading}
+          aria-label="Create new worksheet"
+        >
+          <AddIcon fontSize="small" />
+        </ActionButton>
+        <ActionButton
+          data-testid="open-worksheet"
+          onClick={handleOpen}
+          disabled={isLoading}
+          aria-label="Open worksheet"
+        >
+          <FolderOpenIcon fontSize="small" />
+        </ActionButton>
+      </Container>
+
+      {isPopupOpen && (
+        <WorksheetListPopup
+          worksheets={allWorksheets}
+          activeWorksheetId={activeWorksheetId}
+          onSelect={actions.setActiveWorksheetId}
+          onClose={() => setIsPopupOpen(false)}
+          onToggleVisibility={(id, isVisible) => 
+            actions.updateWorksheet(id, { is_visible: isVisible })
+          }
+          onDelete={actions.deleteWorksheet}
+        />
+      )}
+    </>
   );
 };
 

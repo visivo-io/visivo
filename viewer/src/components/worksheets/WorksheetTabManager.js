@@ -1,8 +1,8 @@
 import React from 'react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import tw from 'tailwind-styled-components';
 import WorksheetTab from './WorksheetTab';
 import WorksheetTabActions from './WorksheetTabActions';
+import { useWorksheets } from '../../contexts/WorksheetContext';
 
 const Container = tw.div`
   flex items-center border-b border-gray-200 bg-white px-4 overflow-x-auto min-h-[48px]
@@ -16,62 +16,43 @@ const WorksheetTabManager = ({
   worksheets,
   activeWorksheetId,
   onWorksheetSelect,
-  onWorksheetClose,
   onWorksheetCreate,
   onWorksheetOpen,
-  onWorksheetReorder,
+  onWorksheetRename,
   isLoading
 }) => {
-  const handleDragEnd = (result) => {
-    if (!result.destination || result.destination.index === result.source.index) {
-      return;
-    }
+  const { actions } = useWorksheets();
 
-    const newOrder = Array.from(worksheets);
-    const [removed] = newOrder.splice(result.source.index, 1);
-    newOrder.splice(result.destination.index, 0, removed);
-    onWorksheetReorder(newOrder.map(w => w.id));
+  const handleWorksheetClose = (worksheetId) => {
+    // Hide the worksheet instead of deleting it
+    actions.updateWorksheet(worksheetId, { is_visible: false });
+    
+    // If we're closing the active worksheet, switch to another visible one
+    if (worksheetId === activeWorksheetId) {
+      const nextVisibleWorksheet = worksheets.find(w => 
+        w.id !== worksheetId && w.is_visible
+      );
+      if (nextVisibleWorksheet) {
+        onWorksheetSelect(nextVisibleWorksheet.id);
+      }
+    }
   };
 
   return (
     <Container>
       <TabList>
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="worksheet-tabs" direction="horizontal">
-            {(provided) => (
-              <div ref={provided.innerRef} {...provided.droppableProps}>
-                <div className="flex">
-                  {worksheets.map((worksheet, index) => (
-                    <Draggable
-                      key={worksheet.id}
-                      draggableId={`worksheet-${worksheet.id}`}
-                      index={index}
-                      isDragDisabled={isLoading}
-                    >
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          <WorksheetTab
-                            worksheet={worksheet}
-                            index={index}
-                            isActive={worksheet.id === activeWorksheetId}
-                            onSelect={onWorksheetSelect}
-                            onClose={onWorksheetClose}
-                            isLoading={isLoading}
-                          />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+        {worksheets.map((worksheet, index) => (
+          <WorksheetTab
+            key={worksheet.id}
+            worksheet={worksheet}
+            index={index}
+            isActive={worksheet.id === activeWorksheetId}
+            onSelect={onWorksheetSelect}
+            onClose={handleWorksheetClose}
+            onRename={onWorksheetRename}
+            isLoading={isLoading}
+          />
+        ))}
       </TabList>
       <div data-testid="worksheet-actions-container">
         <WorksheetTabActions

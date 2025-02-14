@@ -48,9 +48,24 @@ module.exports = {
         'dark': "#191D33",
         'light': "#ECEFCB",
       },
+      keyframes: {
+        fadeOutLeft: {
+          '0%': { 
+            opacity: '1',
+            transform: 'translateX(0)'
+          },
+          '100%': { 
+            opacity: '0',
+            transform: 'translateX(-100%)'
+          }
+        }
+      },
+      animation: {
+        fadeOutLeft: 'fadeOutLeft 0.3s ease-out forwards'
+      }
     },
   },
   plugins: [
-    require('@tailwindcss/typography'),
+    require('@tailwindcss/typography')
   ],
 }

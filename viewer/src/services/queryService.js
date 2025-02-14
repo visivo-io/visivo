@@ -1,4 +1,4 @@
-export const executeQuery = async (query, projectId, sourceName) => {
+export const executeQuery = async (query, projectId, sourceName, worksheetId = null) => {
   const response = await fetch(`/api/query/${projectId}`, {
     method: 'POST',
     headers: {
@@ -6,7 +6,8 @@ export const executeQuery = async (query, projectId, sourceName) => {
     },
     body: JSON.stringify({
       query,
-      source: sourceName
+      source: sourceName,
+      worksheet_id: worksheetId
     }),
   });
 

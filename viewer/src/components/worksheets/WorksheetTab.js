@@ -1,5 +1,4 @@
-import React from 'react';
-import { Draggable } from 'react-beautiful-dnd';
+import React, { useState, useRef, useEffect } from 'react';
 import tw from 'tailwind-styled-components';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -23,6 +22,10 @@ const TabText = tw.span`
   truncate
 `;
 
+const TabInput = tw.input`
+  px-1 py-0.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500
+`;
+
 const CloseButton = tw.button`
   p-1 rounded-full hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity
 `;
@@ -33,54 +36,102 @@ const WorksheetTab = ({
   isActive,
   onSelect,
   onClose,
+  onRename,
   isLoading
 }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(worksheet.name);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
   const handleClose = (e) => {
     e.stopPropagation();
     onClose(worksheet.id);
   };
 
   const handleSelect = () => {
-    onSelect(worksheet.id);
+    if (!isEditing) {
+      onSelect(worksheet.id);
+    }
+  };
+
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    if (!isLoading) {
+      setIsEditing(true);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setEditValue(e.target.value);
+  };
+
+  const handleInputBlur = () => {
+    handleRename();
+  };
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleRename();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+      setEditValue(worksheet.name);
+    }
+  };
+
+  const handleRename = () => {
+    const newName = editValue.trim();
+    if (newName && newName !== worksheet.name) {
+      onRename(worksheet.id, newName);
+    }
+    setIsEditing(false);
   };
 
   const TabComponent = isActive ? ActiveTab : InactiveTab;
 
   return (
-    <Draggable
-      draggableId={`worksheet-${worksheet.id}`}
-      index={index}
-      isDragDisabled={isLoading}
+    <div
+      data-testid={`worksheet-tab-${worksheet.id}`}
+      onClick={handleSelect}
+      className="group"
     >
-      {(provided) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          data-testid={`worksheet-tab-${worksheet.id}`}
-          onClick={handleSelect}
-          className="group"
-        >
-          <TabComponent>
-            <TabContent>
-              <TabText
-                data-testid={`tab-text-${worksheet.id}`}
-                style={{ maxWidth: '200px' }}
-              >
-                {worksheet.name}
-              </TabText>
-              <CloseButton
-                data-testid={`close-tab-${worksheet.id}`}
-                onClick={handleClose}
-                aria-label="Close worksheet"
-              >
-                <CloseIcon fontSize="small" />
-              </CloseButton>
-            </TabContent>
-          </TabComponent>
-        </div>
-      )}
-    </Draggable>
+      <TabComponent>
+        <TabContent>
+          {isEditing ? (
+            <TabInput
+              ref={inputRef}
+              value={editValue}
+              onChange={handleInputChange}
+              onBlur={handleInputBlur}
+              onKeyDown={handleInputKeyDown}
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '200px' }}
+            />
+          ) : (
+            <TabText
+              data-testid={`tab-text-${worksheet.id}`}
+              style={{ maxWidth: '200px' }}
+              onDoubleClick={handleDoubleClick}
+            >
+              {worksheet.name}
+            </TabText>
+          )}
+          <CloseButton
+            data-testid={`close-tab-${worksheet.id}`}
+            onClick={handleClose}
+            aria-label="Close worksheet"
+          >
+            <CloseIcon fontSize="small" />
+          </CloseButton>
+        </TabContent>
+      </TabComponent>
+    </div>
   );
 };
 
