@@ -5,7 +5,8 @@ import {
   updateWorksheet,
   deleteWorksheet,
   getSessionState,
-  updateSessionState
+  updateSessionState,
+  getWorksheet
 } from '../api/worksheet';
 
 const WorksheetContext = createContext(null);
@@ -17,6 +18,7 @@ export const WorksheetProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [allWorksheets, setAllWorksheets] = useState([]); // Store all worksheets, not just visible ones
+  const [worksheetResults, setWorksheetResults] = useState({}); // Cache for worksheet results
 
   // Load initial state
   useEffect(() => {
@@ -163,13 +165,102 @@ export const WorksheetProvider = ({ children }) => {
     }
   }, [worksheets, sessionState]);
 
+  // Add function to load worksheet results
+  const loadWorksheetResults = useCallback(async (worksheetId) => {
+    console.log(`=== Loading Results for Worksheet ${worksheetId} ===`);
+    try {
+      const worksheet = await getWorksheet(worksheetId);
+      console.log('Loaded worksheet:', worksheet);
+      
+      const results = {
+        results: null,
+        queryStats: null
+      };
+      
+      if (worksheet?.results?.results_json) {
+        try {
+          const parsedResults = JSON.parse(worksheet.results.results_json);
+          console.log('Parsed results:', parsedResults);
+          
+          if (parsedResults.columns && parsedResults.rows) {
+            const formattedResults = {
+              name: 'Query Results',
+              traces: [{
+                name: 'results',
+                props: {},
+                data: parsedResults.rows.map((row, index) => ({
+                  id: index,
+                  ...row
+                })),
+                columns: parsedResults.columns.map(col => ({
+                  header: col,
+                  key: col,
+                  accessorKey: col,
+                  markdown: false
+                }))
+              }]
+            };
+            console.log('Formatted results for display:', formattedResults);
+            setWorksheetResults(prev => ({
+              ...prev,
+              [worksheetId]: formattedResults
+            }));
+            results.results = formattedResults;
+          }
+        } catch (parseError) {
+          console.error('Error parsing results JSON:', parseError);
+        }
+      }
+
+      // Parse query stats if available
+      if (worksheet?.results?.query_stats_json) {
+        try {
+          const queryStats = JSON.parse(worksheet.results.query_stats_json);
+          console.log('Parsed query stats:', queryStats);
+          
+          // Convert the UTC timestamp string to a UTC timestamp
+          const utcDate = new Date(queryStats.timestamp + 'Z'); // Append 'Z' to indicate UTC
+          
+          results.queryStats = {
+            timestamp: utcDate.toISOString(), // Store as ISO string with proper UTC designation
+            source: queryStats.source,
+            executionTime: queryStats.executionTime || '0.00'
+          };
+        } catch (parseError) {
+          console.error('Error parsing query stats JSON:', parseError);
+        }
+      }
+
+      return results;
+    } catch (err) {
+      console.error('Error loading worksheet results:', err);
+      return { results: null, queryStats: null };
+    }
+  }, []);
+
+  // Add effect to load results when active worksheet changes
+  useEffect(() => {
+    if (activeWorksheetId) {
+      loadWorksheetResults(activeWorksheetId);
+    }
+  }, [activeWorksheetId, loadWorksheetResults]);
+
+  // Modify handleUpdateWorksheet to update results cache
   const handleUpdateWorksheet = useCallback(async (worksheetId, updates) => {
     console.log(`=== Updating Worksheet ${worksheetId} ===`);
     console.log('Updates:', updates);
     try {
       // First update the backend
-      await updateWorksheet(worksheetId, updates);
+      const response = await updateWorksheet(worksheetId, updates);
       
+      // If the update includes results, update the cache
+      if (response && response.results) {
+        setWorksheetResults(prev => ({
+          ...prev,
+          [worksheetId]: response.results
+        }));
+      }
+
       // If visibility is being updated, update session state
       if ('is_visible' in updates) {
         console.log('Updating visibility in session state');
@@ -193,29 +284,33 @@ export const WorksheetProvider = ({ children }) => {
         return updatedWorksheets;
       });
 
-      // Update visible worksheets list
+      // Update visible worksheets list while preserving order
       setWorksheets(prev => {
-        // Find the worksheet we're updating
-        const existingWorksheet = prev.find(w => w.id === worksheetId);
-        const otherWorksheets = prev.filter(w => w.id !== worksheetId);
+        // Sort function to maintain existing order
+        const sortByTabOrder = (a, b) => (a.tab_order || 0) - (b.tab_order || 0);
         
-        // If the worksheet exists and we're not hiding it, or if we're making it visible
-        if ((existingWorksheet && updates.is_visible !== false) || updates.is_visible === true) {
-          const updatedWorksheet = existingWorksheet
-            ? { ...existingWorksheet, ...updates }
-            : { ...allWorksheets.find(w => w.id === worksheetId), ...updates };
-          
-          console.log('Updating visible worksheet:', updatedWorksheet);
-          return [...otherWorksheets, updatedWorksheet];
+        // If this is a visibility update
+        if ('is_visible' in updates) {
+          if (updates.is_visible) {
+            // Add the worksheet to visible list
+            const worksheetToAdd = allWorksheets.find(w => w.id === worksheetId);
+            if (worksheetToAdd) {
+              const updatedWorksheet = { ...worksheetToAdd, ...updates };
+              const newWorksheets = [...prev, updatedWorksheet];
+              return newWorksheets.sort(sortByTabOrder);
+            }
+          } else {
+            // Remove from visible list
+            return prev.filter(w => w.id !== worksheetId);
+          }
         }
         
-        // If we're hiding the worksheet, remove it from visible worksheets
-        if (updates.is_visible === false) {
-          console.log('Removing worksheet from visible list');
-          return otherWorksheets;
-        }
-        
-        return prev;
+        // For non-visibility updates, preserve order and just update the worksheet
+        return prev.map(w => 
+          w.id === worksheetId
+            ? { ...w, ...updates }
+            : w
+        );
       });
 
       // Get the final updated worksheet
@@ -312,12 +407,14 @@ export const WorksheetProvider = ({ children }) => {
     sessionState,
     isLoading,
     error,
+    worksheetResults, // Add results to context value
     actions: {
       createWorksheet: handleCreateWorksheet,
       updateWorksheet: handleUpdateWorksheet,
       deleteWorksheet: handleDeleteWorksheet,
       reorderWorksheets: handleReorderWorksheets,
       setActiveWorksheetId,
+      loadWorksheetResults, // Add results loading function to actions
       clearError: () => setError(null)
     }
   };

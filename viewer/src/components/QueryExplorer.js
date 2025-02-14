@@ -88,12 +88,14 @@ const QueryExplorer = () => {
     activeWorksheetId,
     isLoading: isWorksheetLoading,
     error: worksheetError,
+    worksheetResults,
     actions: {
       createWorksheet,
       updateWorksheet,
       deleteWorksheet,
       reorderWorksheets,
       setActiveWorksheetId,
+      loadWorksheetResults,
       clearError: clearWorksheetError
     }
   } = useWorksheets();
@@ -367,6 +369,24 @@ const QueryExplorer = () => {
     }
   }, [activeWorksheetId, worksheets, explorerData?.sources]);
 
+  // Effect to load results when active worksheet changes
+  useEffect(() => {
+    // Clear existing results when worksheet changes
+    setResults(null);
+    setQueryStats(null);
+    
+    if (activeWorksheetId) {
+      loadWorksheetResults(activeWorksheetId).then(({ results: loadedResults, queryStats: loadedStats }) => {
+        if (loadedResults) {
+          setResults(loadedResults);
+        }
+        if (loadedStats) {
+          setQueryStats(loadedStats);
+        }
+      });
+    }
+  }, [activeWorksheetId, loadWorksheetResults]);
+
   // Combine errors from both worksheet context and local state
   const combinedError = worksheetError || error;
 
@@ -543,7 +563,11 @@ const QueryExplorer = () => {
                   <div className="text-sm text-gray-600 font-medium">
                     {queryStats && (
                       <>
-                        {`Last Run at ${queryStats.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${queryStats.executionTime}s`}
+                        {`Last Run at ${new Date(queryStats.timestamp).toLocaleTimeString([], { 
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })} • ${queryStats.executionTime}s`}
                         {queryStats.source && ` • Source: ${queryStats.source}`}
                       </>
                     )}
