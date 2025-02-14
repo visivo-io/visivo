@@ -29,6 +29,9 @@ const WorksheetTabActions = ({
   const handleOpen = (e) => {
     e.preventDefault();
     setIsPopupOpen(true);
+    if (onWorksheetOpen) {
+      onWorksheetOpen();
+    }
   };
 
   return (

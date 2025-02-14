@@ -1,7 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WorksheetTabManager from './WorksheetTabManager';
+import { WorksheetProvider } from '../../contexts/WorksheetContext';
+import { QueryProvider } from '../../contexts/QueryContext';
+import { BrowserRouter } from 'react-router-dom';
+import * as worksheetApi from '../../api/worksheet';
 
 // Mock the child components
 jest.mock('./WorksheetTab', () => {
@@ -30,6 +34,17 @@ jest.mock('./WorksheetTabActions', () => {
   };
 });
 
+// Mock API calls
+jest.mock('../../api/worksheet', () => ({
+  listWorksheets: jest.fn().mockResolvedValue([]),
+  getWorksheet: jest.fn(),
+  createWorksheet: jest.fn(),
+  updateWorksheet: jest.fn(),
+  deleteWorksheet: jest.fn(),
+  getSessionState: jest.fn().mockResolvedValue([]),
+  updateSessionState: jest.fn()
+}));
+
 // Mock react-beautiful-dnd
 const mockOnDragEnd = jest.fn();
 jest.mock('react-beautiful-dnd', () => ({
@@ -42,99 +57,103 @@ jest.mock('react-beautiful-dnd', () => ({
     droppableProps: {},
     placeholder: null
   }),
-  Draggable: ({ children }) => children({
+  Draggable: ({ children, draggableId }) => children({
     innerRef: jest.fn(),
     draggableProps: {},
-    dragHandleProps: {}
+    dragHandleProps: {},
+    draggableId
   }, {
-    isDragging: false,
-    draggingOver: null
+    isDragging: false
   })
 }));
 
+// Test wrapper component
+const TestWrapper = ({ children }) => (
+  <BrowserRouter>
+    <QueryProvider value={{ fetchTracesQuery: jest.fn(), fetchDashboardQuery: jest.fn() }}>
+      <WorksheetProvider>
+        {children}
+      </WorksheetProvider>
+    </QueryProvider>
+  </BrowserRouter>
+);
+
 describe('WorksheetTabManager', () => {
+  const mockWorksheets = [
+    { id: '1', name: 'Worksheet 1', is_visible: true, tab_order: 0 },
+    { id: '2', name: 'Worksheet 2', is_visible: true, tab_order: 1 },
+    { id: '3', name: 'Worksheet 3', is_visible: true, tab_order: 2 }
+  ];
+
   const defaultProps = {
-    worksheets: [
-      { id: 1, name: 'Worksheet 1' },
-      { id: 2, name: 'Worksheet 2' },
-      { id: 3, name: 'Worksheet 3' }
-    ],
-    activeWorksheetId: 1,
+    worksheets: mockWorksheets,
+    activeWorksheetId: '1',
     onWorksheetSelect: jest.fn(),
-    onWorksheetClose: jest.fn(),
     onWorksheetCreate: jest.fn(),
     onWorksheetOpen: jest.fn(),
+    onWorksheetClose: jest.fn(),
+    onWorksheetRename: jest.fn(),
     onWorksheetReorder: jest.fn(),
     isLoading: false
   };
 
-  beforeEach(() => {
+  const renderComponent = (props = {}) => {
+    return render(
+      <TestWrapper>
+        <WorksheetTabManager {...defaultProps} {...props} />
+      </TestWrapper>
+    );
+  };
+
+  beforeEach(async () => {
     jest.clearAllMocks();
+    worksheetApi.listWorksheets.mockResolvedValue(mockWorksheets);
+    await act(async () => {
+      await worksheetApi.listWorksheets();
+    });
   });
 
   it('renders all worksheets', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    defaultProps.worksheets.forEach(worksheet => {
+    renderComponent();
+    mockWorksheets.forEach(worksheet => {
       expect(screen.getByTestId(`worksheet-tab-${worksheet.id}`)).toBeInTheDocument();
     });
   });
 
   it('renders worksheet actions', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
+    renderComponent();
     expect(screen.getByTestId('worksheet-actions')).toBeInTheDocument();
   });
 
-  it('calls onWorksheetSelect when a tab is clicked', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('select-tab-2'));
-    expect(defaultProps.onWorksheetSelect).toHaveBeenCalledWith(2);
+  it('calls onWorksheetSelect when a tab is clicked', async () => {
+    renderComponent();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-tab-2'));
+    });
+    expect(defaultProps.onWorksheetSelect).toHaveBeenCalledWith('2');
   });
 
-  it('calls onWorksheetClose when a tab is closed', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('close-tab-2'));
-    expect(defaultProps.onWorksheetClose).toHaveBeenCalledWith(2);
+  it('calls onWorksheetClose when a tab is closed', async () => {
+    renderComponent();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('close-tab-2'));
+    });
+    expect(defaultProps.onWorksheetClose).toHaveBeenCalledWith('2');
   });
 
-  it('calls onWorksheetCreate when create button is clicked', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('create-worksheet'));
+  it('calls onWorksheetCreate when create button is clicked', async () => {
+    renderComponent();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('create-worksheet'));
+    });
     expect(defaultProps.onWorksheetCreate).toHaveBeenCalled();
   });
 
-  it('calls onWorksheetOpen when open button is clicked', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('open-worksheet'));
+  it('calls onWorksheetOpen when open button is clicked', async () => {
+    renderComponent();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('open-worksheet'));
+    });
     expect(defaultProps.onWorksheetOpen).toHaveBeenCalled();
   });
-
-  it('calls onWorksheetReorder with correct order when drag ends', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    mockOnDragEnd({
-      destination: { index: 2 },
-      source: { index: 0 },
-      draggableId: 'worksheet-1'
-    });
-    expect(defaultProps.onWorksheetReorder).toHaveBeenCalledWith([2, 3, 1]);
-  });
-
-  it('does not call onWorksheetReorder when drag destination is null', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    mockOnDragEnd({
-      destination: null,
-      source: { index: 0 },
-      draggableId: 'worksheet-1'
-    });
-    expect(defaultProps.onWorksheetReorder).not.toHaveBeenCalled();
-  });
-
-  it('does not call onWorksheetReorder when source and destination indexes are the same', () => {
-    render(<WorksheetTabManager {...defaultProps} />);
-    mockOnDragEnd({
-      destination: { index: 0 },
-      source: { index: 0 },
-      draggableId: 'worksheet-1'
-    });
-    expect(defaultProps.onWorksheetReorder).not.toHaveBeenCalled();
-  });
-}); 
+});

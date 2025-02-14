@@ -268,7 +268,6 @@ const QueryExplorer = () => {
     const timestamp = new Date();
     
     try {
-      console.log('Executing query with source:', selectedSource);
       const queryResults = await executeQuery(queryString, project.id, selectedSource?.name, activeWorksheetId);
       const endTime = performance.now();
       const executionTime = ((endTime - startTime) / 1000).toFixed(2);
@@ -472,7 +471,6 @@ const QueryExplorer = () => {
                       <button
                         key={source.name}
                         onClick={() => {
-                          console.log('Source button clicked:', source);
                           setSelectedSource(source);
                         }}
                         className={`px-2 py-1 text-xs font-medium rounded-md ${

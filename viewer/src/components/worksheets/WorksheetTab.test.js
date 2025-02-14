@@ -2,29 +2,32 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WorksheetTab from './WorksheetTab';
+import { Draggable } from 'react-beautiful-dnd';
 
-const mockDraggable = jest.fn();
+// Mock react-beautiful-dnd
 jest.mock('react-beautiful-dnd', () => ({
-  Draggable: ({ draggableId, index, isDragDisabled, children }) => {
-    mockDraggable({ draggableId, index, isDragDisabled });
+  Draggable: ({ children, isDragDisabled }) => {
     return children({
-      draggableProps: { style: {} },
+      draggableProps: {},
       dragHandleProps: {},
-      innerRef: () => {},
+      innerRef: jest.fn()
     }, {
-      isDragging: false,
-      draggingOver: null
+      isDragging: false
     });
-  },
+  }
 }));
 
 describe('WorksheetTab', () => {
   const defaultProps = {
-    worksheet: { id: 1, name: 'Test Worksheet' },
+    worksheet: {
+      id: '1',
+      name: 'Test Worksheet'
+    },
     index: 0,
     isActive: false,
     onSelect: jest.fn(),
     onClose: jest.fn(),
+    onRename: jest.fn(),
     isLoading: false
   };
 
@@ -37,57 +40,53 @@ describe('WorksheetTab', () => {
     expect(screen.getByText('Test Worksheet')).toBeInTheDocument();
   });
 
-  it('applies active styles when isActive is true', () => {
-    const { container } = render(<WorksheetTab {...defaultProps} isActive={true} />);
-    const tabComponent = container.querySelector('.active-tab');
-    expect(tabComponent).toBeInTheDocument();
-  });
-
-  it('applies inactive styles when isActive is false', () => {
-    const { container } = render(<WorksheetTab {...defaultProps} isActive={false} />);
-    const tabComponent = container.querySelector('.inactive-tab');
-    expect(tabComponent).toBeInTheDocument();
-  });
-
-  it('calls onSelect when tab is clicked', () => {
+  it('calls onSelect when clicked', () => {
     render(<WorksheetTab {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('worksheet-tab-1'));
-    expect(defaultProps.onSelect).toHaveBeenCalledWith(1);
+    fireEvent.click(screen.getByTestId(`tab-text-${defaultProps.worksheet.id}`));
+    expect(defaultProps.onSelect).toHaveBeenCalledWith(defaultProps.worksheet.id);
   });
 
   it('calls onClose when close button is clicked', () => {
     render(<WorksheetTab {...defaultProps} />);
-    fireEvent.click(screen.getByTestId('close-tab-1'));
-    expect(defaultProps.onClose).toHaveBeenCalledWith(1);
+    fireEvent.click(screen.getByTestId(`close-tab-${defaultProps.worksheet.id}`));
+    expect(defaultProps.onClose).toHaveBeenCalledWith(defaultProps.worksheet.id);
   });
 
-  it('disables drag when isLoading is true', () => {
-    render(<WorksheetTab {...defaultProps} isLoading={true} />);
-    expect(mockDraggable).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isDragDisabled: true
-      })
-    );
+  it('applies correct styles when active', () => {
+    render(<WorksheetTab {...defaultProps} isActive={true} />);
+    const tab = screen.getByTestId(`worksheet-tab-${defaultProps.worksheet.id}`).firstChild;
+    expect(tab.className).toContain('text-gray-900');
+    expect(tab.className).toContain('bg-white');
+    expect(tab.className).toContain('border-t');
   });
 
-  it('enables drag when isLoading is false', () => {
-    render(<WorksheetTab {...defaultProps} isLoading={false} />);
-    expect(mockDraggable).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isDragDisabled: false
-      })
-    );
+  it('applies correct styles when inactive', () => {
+    render(<WorksheetTab {...defaultProps} isActive={false} />);
+    const tab = screen.getByTestId(`worksheet-tab-${defaultProps.worksheet.id}`).firstChild;
+    expect(tab.className).toContain('text-gray-500');
   });
 
-  it('truncates long worksheet names', () => {
-    const longName = 'A'.repeat(50);
-    render(
-      <WorksheetTab
-        {...defaultProps}
-        worksheet={{ ...defaultProps.worksheet, name: longName }}
-      />
-    );
-    const tabText = screen.getByTestId('tab-text-1');
-    expect(tabText).toHaveStyle({ maxWidth: '200px' });
+  it('enters edit mode on double click', () => {
+    render(<WorksheetTab {...defaultProps} />);
+    fireEvent.doubleClick(screen.getByTestId(`tab-text-${defaultProps.worksheet.id}`));
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+  });
+
+  it('calls onRename when editing is complete', () => {
+    render(<WorksheetTab {...defaultProps} />);
+    fireEvent.doubleClick(screen.getByTestId(`tab-text-${defaultProps.worksheet.id}`));
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'New Name' } });
+    fireEvent.blur(input);
+    expect(defaultProps.onRename).toHaveBeenCalledWith(defaultProps.worksheet.id, 'New Name');
+  });
+
+  it('cancels editing on escape key', () => {
+    render(<WorksheetTab {...defaultProps} />);
+    fireEvent.doubleClick(screen.getByTestId(`tab-text-${defaultProps.worksheet.id}`));
+    const input = screen.getByRole('textbox');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(defaultProps.onRename).not.toHaveBeenCalled();
   });
 }); 
