@@ -63,19 +63,15 @@ describe('WorksheetTabActions', () => {
     expect(screen.getByTestId('open-worksheet')).toBeInTheDocument();
   });
 
-  it('calls onWorksheetCreate when create button is clicked', async () => {
+  it('calls onWorksheetCreate when create button is clicked', () => {
     renderComponent();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('create-worksheet'));
-    });
+    fireEvent.click(screen.getByTestId('create-worksheet'));
     expect(defaultProps.onWorksheetCreate).toHaveBeenCalled();
   });
 
-  it('calls onWorksheetOpen when open button is clicked', async () => {
+  it('calls onWorksheetOpen when open button is clicked', () => {
     renderComponent();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('open-worksheet'));
-    });
+    fireEvent.click(screen.getByTestId('open-worksheet'));
     expect(defaultProps.onWorksheetOpen).toHaveBeenCalled();
   });
 

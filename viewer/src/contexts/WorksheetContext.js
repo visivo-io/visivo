@@ -4,7 +4,6 @@ import {
   createWorksheet,
   updateWorksheet,
   deleteWorksheet,
-  getSessionState,
   updateSessionState,
   getWorksheet
 } from '../api/worksheet';
@@ -15,25 +14,23 @@ export const WorksheetProvider = ({ children }) => {
   const [worksheets, setWorksheets] = useState([]);
   const [activeWorksheetId, setActiveWorksheetId] = useState(null);
   const [sessionState, setSessionState] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [allWorksheets, setAllWorksheets] = useState([]);
   const [worksheetResults, setWorksheetResults] = useState({});
+
 
   // Load initial state
   useEffect(() => {
     const loadInitialState = async () => {
       setIsLoading(true);
       try {
-        const [worksheetData, sessionData] = await Promise.all([
-          listWorksheets(),
-          getSessionState()
+        const [worksheetData] = await Promise.all([
+          listWorksheets()
         ]);
 
         // Create a map of worksheet IDs to their session states
-        const sessionMap = new Map(
-          worksheetData.map(w => [w.worksheet.id, w.session_state])
-        );
+        
 
         // Filter and sort visible worksheets
         const visibleWorksheets = worksheetData
