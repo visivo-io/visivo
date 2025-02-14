@@ -88,12 +88,9 @@ const QueryExplorer = () => {
     activeWorksheetId,
     isLoading: isWorksheetLoading,
     error: worksheetError,
-    worksheetResults,
     actions: {
       createWorksheet,
       updateWorksheet,
-      deleteWorksheet,
-      reorderWorksheets,
       setActiveWorksheetId,
       loadWorksheetResults,
       clearError: clearWorksheetError

@@ -321,7 +321,7 @@ export const WorksheetProvider = ({ children }) => {
       setError('Failed to update worksheet');
       throw err;
     }
-  }, [worksheets, sessionState, allWorksheets]);
+  }, [sessionState, allWorksheets]);
 
   const handleDeleteWorksheet = useCallback(async (worksheetId) => {
     console.log(`=== Deleting Worksheet ${worksheetId} ===`);
