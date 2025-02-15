@@ -66,7 +66,7 @@ class Discover:
 
                 if not os.path.exists(include_path):
                     raise click.ClickException(
-                        f'Invalid "include" in project. "{include_path}" referenced in "{file}" does not exist.'
+                        f'Invalid "include" in project. "{include_path}" referenced in "{file}" does not exist.' #TODO: Improve error message to do fuzzy string matching suggestion on similar file paths
                     )
                 files.append(Path(include_path))
                 self.__add_includes(files=files, file=include_path)
