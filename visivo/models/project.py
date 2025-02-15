@@ -44,10 +44,10 @@ class Project(NamedModel, ParentModel):
     selectors: List[Selector] = []
     dashboards: List[DashboardField] = []
 
-
-    def child_items(self):
+    #Should These equal the core_parser.py keys_to_merge?
+    def child_items(self): 
         return (
-            self.destinations
+            self.destinations #Exists as child but not merged.
             + self.alerts
             + self.sources
             + self.models
@@ -56,7 +56,8 @@ class Project(NamedModel, ParentModel):
             + self.charts
             + self.selectors
             + self.dashboards
-        )
+        ) 
+    #end comment
 
     @model_validator(mode="after")
     def validate_default_names(self):
