@@ -20,6 +20,7 @@ from .commands.init import init
 from .commands.test import test
 from .commands.aggregate import aggregate
 from .commands.archive import archive
+from .commands.authorize import authorize
 
 
 @click.group()
@@ -63,6 +64,7 @@ visivo.add_command(dist)
 visivo.add_command(test)
 visivo.add_command(aggregate)
 visivo.add_command(archive)
+visivo.add_command(authorize)
 
 
 def load_env(env_file):
