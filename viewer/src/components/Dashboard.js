@@ -57,12 +57,17 @@ const Dashboard = ({ project, dashboardName }) => {
 
     const shouldShowNamedModel = (namedModel) => {
         if (!namedModel || !namedModel.name) {
+            console.log("Named model is null or undefined")
             return true
         }
         const selector = getSelectorByOptionName(project, namedModel.name)
+        console.log("Selector is", selector)
         if (selector && searchParams.has(selector.name)) {
+            console.log("Search params has selector name", selector.name)
             const selectedNames = searchParams.get(selector.name).split(",")
+            console.log("Selected names are", selectedNames)
             if (!selectedNames.includes(namedModel.name)) {
+                console.log("Named model is not in selected names")
                 return false
             }
         }
@@ -145,26 +150,26 @@ const Dashboard = ({ project, dashboardName }) => {
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.selector) {
             return <Selector
-                    selector={item.selector}
-                    project={project}
-                    itemWidth={item.width}
-                    key={`dashboardRow${rowIndex}Item${itemIndex}`} >
-                </Selector>
+                selector={item.selector}
+                project={project}
+                itemWidth={item.width}
+                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
+            </Selector>
         } else if (item.markdown) {
-            const alignmentClass = item.align === 'right' ? 'text-right' : 
-                                  item.align === 'center' ? 'text-center' : 
-                                  'text-left';
-            
+            const alignmentClass = item.align === 'right' ? 'text-right' :
+                item.align === 'center' ? 'text-center' :
+                    'text-left';
+
             return (
-                <div className={`w-full h-full flex flex-col ${alignmentClass}`} 
-                     style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}>
+                <div className={`w-full h-full flex flex-col ${alignmentClass}`}
+                    style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}>
                     <div className={`w-full h-full overflow-auto flex flex-col items-stretch ${item.justify}`}>
                         <Markdown
-                            className={`p-2 prose max-w-none ${item.justify === 'end' ? 'mt-auto' : 
-                                       item.justify === 'center' ? 'my-auto' : 
-                                       item.justify === 'between' ? 'flex-grow flex flex-col justify-between' :
-                                       item.justify === 'around' ? 'flex-grow flex flex-col justify-around' :
-                                       item.justify === 'evenly' ? 'flex-grow flex flex-col justify-evenly' : ''}`}
+                            className={`p-2 prose max-w-none ${item.justify === 'end' ? 'mt-auto' :
+                                item.justify === 'center' ? 'my-auto' :
+                                    item.justify === 'between' ? 'flex-grow flex flex-col justify-between' :
+                                        item.justify === 'around' ? 'flex-grow flex flex-col justify-around' :
+                                            item.justify === 'evenly' ? 'flex-grow flex flex-col justify-evenly' : ''}`}
                             key={`dashboardRow${rowIndex}Item${itemIndex}`}
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw, rehypeSanitize]}
