@@ -1,4 +1,3 @@
-# web_utils.py
 import urllib.parse
 import webbrowser
 
