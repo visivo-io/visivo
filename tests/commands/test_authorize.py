@@ -8,8 +8,6 @@ from visivo.tokens.server import token_received_event, run_flask_server
 from visivo.tokens.web_utils import open_url
 from visivo.commands.authorize import authorize
 
-# --- Fixtures to stub out external behavior ---
-
 
 @pytest.fixture(autouse=True)
 def dummy_run_server(monkeypatch):
@@ -65,9 +63,6 @@ def mock_file_writes(monkeypatch):
     )
 
 
-# --- Tests ---
-
-
 def test_authorize_successful_callback(monkeypatch):
     """
     Test that when no token exists the authorize command completes normally.
@@ -106,13 +101,11 @@ def test_authorize_existing_token_no_overwrite(monkeypatch):
     Test the case where a token already exists and the user opts not to
     overwrite it. The command should cancel authorization immediately.
     """
-    # Simulate that a token already exists.
     monkeypatch.setattr(
         "visivo.commands.authorize.get_existing_token", lambda: "abc1234567"
     )
 
     runner = CliRunner()
-    # Answer "n" when prompted to add a new token.
     result = runner.invoke(authorize, ["--host", "http://localhost:3030"], input="n\n")
 
     expected = "Authorization cancelled. Using the existing token."
@@ -124,17 +117,13 @@ def test_authorize_existing_token_overwrite(monkeypatch):
     Test the case where a token already exists and the user opts to add a new token.
     In this case the command should continue to wait for a callback.
     """
-    # Simulate that a token already exists.
     monkeypatch.setattr(
         "visivo.commands.authorize.get_existing_token", lambda: "abc1234567"
     )
-    # Simulate an immediate callback by patching token_received_event.wait to return True.
     monkeypatch.setattr(token_received_event, "wait", lambda timeout=None: True)
 
     runner = CliRunner()
-    # Answer "y" when prompted to add a new token.
     result = runner.invoke(authorize, ["--host", "http://localhost:3030"], input="y\n")
 
     assert result.exit_code == 0
-    # Expect that the command waits for the callback.
     assert "Waiting for visivo token response" in result.output

@@ -28,13 +28,12 @@ def authorize(host):
     Checks for an existing token, and if the user chooses to add a
     new token, starts a Flask server (listening for a callback on
     http://localhost:5001/authorize-device-token). It then opens an external webapp
-    (at http://localhost:3030/authorize-device) for testing. The external webapp should eventually
+    (at <host>/authorize-device) for testing. The external webapp should eventually
     send a callback to our Flask server.
 
-    The process will wait for up to 120 seconds for the callback. If the
-    callback is not received, you will be prompted to cancel or continue waiting.
+    The process will wait for up to CALLBACK_RESPONSE_WAIT_TIME seconds for the callback.
+    If the callback is not received, you will be prompted to cancel or continue waiting.
     """
-
     Logger.instance().spinner.stop()
 
     existing_token = get_existing_token()

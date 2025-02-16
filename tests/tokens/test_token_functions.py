@@ -57,26 +57,20 @@ def test_get_existing_token_empty_token(mock_file, mock_exists):
 # ------------------ write_token tests ------------------ #
 
 
-# The topmost @patch is the LAST argument to the function,
-# so the order of decorators must match the parameter order in reverse.
 @patch("os.makedirs")
 @patch("builtins.open", new_callable=mock_open)
 def test_write_token_happy_path(mock_file, mock_makedirs, mock_logger):
     """Should write the token to PROFILE_PATH and log success."""
     write_token("testtoken")
 
-    # Ensure directories are created
     mock_makedirs.assert_called_once_with(os.path.dirname(PROFILE_PATH), exist_ok=True)
 
-    # Ensure file is opened for writing
     mock_file.assert_called_once_with(PROFILE_PATH, "w")
 
-    # Capture what was written to the file
     handle = mock_file()
     written_content = "".join(call.args[0] for call in handle.write.mock_calls)
     assert "testtoken" in written_content
 
-    # Verify the logger call
     mock_logger.success.assert_called_once_with("Token written successfully")
 
 

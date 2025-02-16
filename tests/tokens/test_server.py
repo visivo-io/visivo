@@ -39,11 +39,9 @@ def test_authorize_device_callback_with_token(
     - Set the token_received_event
     - Return an HTML page containing 'Authorization Successful'
     """
-    # Prepare mocks
     mock_logger = MagicMock()
     mock_logger_class.return_value = mock_logger
 
-    # Clear the event before the test
     token_received_event.clear()
 
     test_token = "abc1234567"
@@ -53,6 +51,5 @@ def test_authorize_device_callback_with_token(
     mock_validate.assert_called_once_with(test_token)
     assert token_received_event.is_set()
 
-    # The response should contain "Authorization Successful" in the HTML
     response_data = response.data.decode("utf-8")
     assert "Authorization Successful" in response_data
