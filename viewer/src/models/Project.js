@@ -4,7 +4,7 @@ export const findAllSelectors = (project) => {
         selectors.push(...project.project_json.selectors)
     }
     project.project_json.dashboards.forEach((dashboard) => {
-        if (dashboard.type === 'internal') {
+        if (dashboard.type !== 'external') {
             dashboard.rows.forEach((row) => {
                 row.items.forEach((item) => {
                     if (item.selector) {
