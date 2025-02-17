@@ -53,10 +53,9 @@ tasks:
 
   - key: deploy-ci-stage
     if: ${{ init.deploy }}
-    use: [run-visivo, github-cli]
+    use: [run-visivo, github-cli, sanitize-stage-name]
     run: |
       cd test-projects/integration
-      source $MINT_ENV/SANITIZED_STAGE_NAME
       visivo deploy -s ${SANITIZED_STAGE_NAME}-mint | tee /dev/stderr | grep 'Deployed to: ' > deployed.txt
       if ! gh pr comment ${{ init.pr-num }} -F deployed.txt --edit-last 2>/dev/null; then
         gh pr comment ${{ init.pr-num }} -F deployed.txt
