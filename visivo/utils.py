@@ -11,6 +11,22 @@ import importlib.resources as resources
 
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
+# List of the children of the project model that can have multiple instances. `dbt` for example is not included because you can only have one instance. 
+PROJECT_CHILDREN = [
+    "alerts",
+    "selectors",
+    "sources",
+    "models",
+    "traces",
+    "tables",
+    "charts",
+    "dashboards",
+    "destinations",
+]
+
+def get_schema_file_name(version):
+    return f"schema_{version}.json"
+
 
 def get_dashboards_dir(output_dir):
     return os.path.join(output_dir, "dashboards")

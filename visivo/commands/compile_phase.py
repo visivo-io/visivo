@@ -6,7 +6,6 @@ from visivo.logging.logger import Logger
 Logger.instance().debug("Compiling project...")
 import os
 import json
-from visivo.utils import get_dashboards_dir
 
 from visivo.models.dag import all_descendants_of_type, filter_dag
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -14,13 +13,13 @@ from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.trace import Trace
-from visivo.models.project import Project
+
 from visivo.parsers.serializer import Serializer
 from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
-
 from visivo.commands.parse_project_phase import parse_project_phase
+from visivo.commands.schema_phase import write_schema_if_not_exists_for_current_version
 
 import_duration = round(time() - compile_import_start, 2)
 if os.environ.get("STACKTRACE"):
@@ -39,9 +38,16 @@ def compile_phase(
     dag_filter: str = None,
     dbt_profile: str = None,
     dbt_target: str = None,
-    project: Project = None,
+    project = None,
 ):
     # Track dbt phase
+    write_schema_if_not_exists_for_current_version(output_dir)
+
+    if project: 
+        from visivo.models.project import Project
+        is_Project = isinstance(project, Project)
+    else: 
+        is_Project = False
 
     # Track parse project
     parse_start = time()
@@ -55,6 +61,10 @@ def compile_phase(
     artifacts_start = time()
     Logger.instance().debug("    Writing artifacts...")
     write_dag(project=project, output_dir=output_dir)
+
+    # Write the raw_project.json
+    with open(f"{output_dir}/raw_project.json", "w") as fp:
+        fp.write(project.model_dump_json(exclude_none=True))
 
     # Write the original project.json
     with open(f"{output_dir}/project.json", "w") as fp:

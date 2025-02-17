@@ -27,7 +27,7 @@ def serve_phase(
     )
 
     def on_project_change(one_shot=False):
-        try:
+        try: #TODO: Will this change the project instance in the flask app? It needs to for our endpoints to work after changes.
             Logger.instance().info("Server has detected changes to the project. Re-running project...")
             run_phase(
                 output_dir=output_dir,

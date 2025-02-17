@@ -21,14 +21,18 @@ from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
-
+from importlib.metadata import version
+from visivo.utils import PROJECT_CHILDREN
 
 class Project(NamedModel, ParentModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
-    cli_version: Optional[str] = None
+    cli_version:str = Field(
+        default=version("visivo"),
+        description="The version of the CLI that was used to create the project.",
+    )
     includes: List[Include] = []
     destinations: List[DestinationField] = []
     alerts: List[Alert] = []
@@ -46,17 +50,11 @@ class Project(NamedModel, ParentModel):
 
 
     def child_items(self):
-        return (
-            self.destinations
-            + self.alerts
-            + self.sources
-            + self.models
-            + self.traces
-            + self.tables
-            + self.charts
-            + self.selectors
-            + self.dashboards
-        )
+        children = []
+        for child_type in PROJECT_CHILDREN:
+            items = getattr(self, child_type, [])
+            children.extend(items)
+        return children
 
     @model_validator(mode="after")
     def validate_default_names(self):

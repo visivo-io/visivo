@@ -4,7 +4,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from visivo.parsers.line_validation_error import LineValidationError
 from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
-from visivo.utils import load_yaml_file
+from visivo.utils import load_yaml_file, PROJECT_CHILDREN
 from ..models.project import Project
 
 
@@ -47,16 +47,7 @@ class CoreParser:
         )
 
     def __merge_data_into_project(self, project_data: dict, data_files: List[dict]):
-        keys_to_merge = [
-            "alerts",
-            "selectors",
-            "sources",
-            "models",
-            "traces",
-            "tables",
-            "charts",
-            "dashboards",
-        ]
+        keys_to_merge = PROJECT_CHILDREN
         for data_file in data_files:
             for key_to_merge in keys_to_merge:
                 if key_to_merge in data_file:

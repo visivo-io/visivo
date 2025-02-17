@@ -5,7 +5,7 @@ from visivo.utils import get_dashboards_dir
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
-from visivo.utils import VIEWER_PATH
+from visivo.utils import VIEWER_PATH, get_schema_file_name
 from visivo.logging.logger import Logger
 
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
@@ -302,5 +302,101 @@ def flask_app(output_dir, dag_filter, project):
         except Exception as e:
             Logger.instance().error(f"Error updating session state: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+
+    @app.route("/api/schema/<version>", methods=["GET"])
+    def get_schema(version):
+        """
+        Get the project schema for a specific version.
+        """
+        try:
+            schema_filename = get_schema_file_name(version)
+            schema_path = os.path.join(output_dir, schema_filename)
+            if not os.path.exists(schema_path):
+                return jsonify({
+                    "error": f"Schema file: {schema_path} not found. Please run 'visivo compile' to generate schema."
+                }), 404
+            
+            with open(schema_path, 'r') as f:
+                return jsonify(json.load(f))
+        except Exception as e:
+            Logger.instance().error(f"Error serving schema: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/schema/<version>/project/children", methods=["GET"])
+    def get_schema_project_children(version):
+        """
+        Get all child attributes from the project schema that can have multiple children.
+        """ 
+        #TODO: update this endpoint to get all children but differentiate the array vs non-array children. I actually dont think we'll want to return the full array, just the name, type and if they are an array or not. 
+        try:
+            schema_filename = get_schema_file_name(version)
+            schema_path = os.path.join(output_dir, schema_filename)
+            if not os.path.exists(schema_path):
+                return jsonify({
+                    "error": "Schema not found. Please run 'visivo compile' to generate schema."
+                }), 404
+            
+            with open(schema_path, 'r') as f:
+                schema = json.load(f)
+                array_properties = []
+                for k, v in schema["properties"].items():
+                    if v.get("type") == "array":
+                        instances = "multiple"
+                    else:
+                        instances = "single"
+                    array_properties.append({
+                        "name": k,
+                        "instances": instances, 
+                        "config": v
+                    })
+                return jsonify(array_properties)
+        except Exception as e:
+            Logger.instance().error(f"Error getting project children: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/project/<project_id>/cli-version", methods=["GET"])
+    def get_project_cli_version(project_id):
+        """
+        Get the current schema version of the project.
+        """
+        version = project.cli_version
+        return jsonify({"version": version})
+    
+    @app.route("/api/project/<project_id>/names", methods=["GET"])
+    def get_project_object_names(project_id): # TODO: Update to use object not json
+        """
+        Get list of all project objects with their types and metadata.
+        """
+        try:
+            if not project:
+                return jsonify({
+                    "error": "Project not found. Please run 'visivo compile'."
+                }), 404
+                
+            
+            project_info = project.model_dump_json(exclude_none=True)
+            #TODO: Add a function to convert the project info to a list of objects
+            return jsonify(project_info)
+        except Exception as e:
+            Logger.instance().error(f"Error getting project objects: {str(e)}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/project/<project_id>/name/<name>")
+    def get_project_object(project_id, name):
+        """
+        Get configuration for a specific project object.
+        """
+        try:
+            for item in project.child_items():
+                if item.name == name:
+                    return jsonify({
+                        "type": item.__class__.__name__,
+                        "config": json.loads(item.model_dump_json(exclude_none=True))
+                    })
+            return jsonify({"error": f"Object '{name}' not found"}), 404
+        except Exception as e:
+            Logger.instance().error(f"Error getting object config: {str(e)}")
+            return jsonify({"error": str(e)}), 500
 
     return app
