@@ -12,8 +12,6 @@ import rehypeSanitize from 'rehype-sanitize';
 
 const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
-
-    console.log("Search params are: ", JSON.stringify(Object.fromEntries(searchParams.entries())))
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
             observe();
@@ -59,20 +57,15 @@ const Dashboard = ({ project, dashboardName }) => {
 
     const shouldShowNamedModel = (namedModel) => {
         if (!namedModel || !namedModel.name) {
-            console.log("Named model is null or not named")
             return true
         }
         const selector = getSelectorByOptionName(project, namedModel.name)
         if (selector && searchParams.has(selector.name)) {
             const selectedNames = searchParams.get(selector.name).split(",")
             if (!selectedNames.includes(namedModel.name)) {
-                console.log("Named model is not in selected names", namedModel.name, selectedNames)
                 return false
             }
-            console.log("Named model is in selected names", namedModel.name, selectedNames)
         }
-
-        console.log("Search params does not have selector name", selector?.name)
         return true
     }
 
@@ -92,7 +85,6 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const renderRow = (row, rowIndex) => {
-        console.log("Row is", row)
         if (!shouldShowNamedModel(row)) {
             return null;
         }
@@ -153,26 +145,26 @@ const Dashboard = ({ project, dashboardName }) => {
                 key={`dashboardRow${rowIndex}Item${itemIndex}`} />
         } else if (item.selector) {
             return <Selector
-                selector={item.selector}
-                project={project}
-                itemWidth={item.width}
-                key={`dashboardRow${rowIndex}Item${itemIndex}`} >
-            </Selector>
+                    selector={item.selector}
+                    project={project}
+                    itemWidth={item.width}
+                    key={`dashboardRow${rowIndex}Item${itemIndex}`} >
+                </Selector>
         } else if (item.markdown) {
-            const alignmentClass = item.align === 'right' ? 'text-right' :
-                item.align === 'center' ? 'text-center' :
-                    'text-left';
-
+            const alignmentClass = item.align === 'right' ? 'text-right' : 
+                                  item.align === 'center' ? 'text-center' : 
+                                  'text-left';
+            
             return (
-                <div className={`w-full h-full flex flex-col ${alignmentClass}`}
-                    style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}>
+                <div className={`w-full h-full flex flex-col ${alignmentClass}`} 
+                     style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}>
                     <div className={`w-full h-full overflow-auto flex flex-col items-stretch ${item.justify}`}>
                         <Markdown
-                            className={`p-2 prose max-w-none ${item.justify === 'end' ? 'mt-auto' :
-                                item.justify === 'center' ? 'my-auto' :
-                                    item.justify === 'between' ? 'flex-grow flex flex-col justify-between' :
-                                        item.justify === 'around' ? 'flex-grow flex flex-col justify-around' :
-                                            item.justify === 'evenly' ? 'flex-grow flex flex-col justify-evenly' : ''}`}
+                            className={`p-2 prose max-w-none ${item.justify === 'end' ? 'mt-auto' : 
+                                       item.justify === 'center' ? 'my-auto' : 
+                                       item.justify === 'between' ? 'flex-grow flex flex-col justify-between' :
+                                       item.justify === 'around' ? 'flex-grow flex flex-col justify-around' :
+                                       item.justify === 'evenly' ? 'flex-grow flex flex-col justify-evenly' : ''}`}
                             key={`dashboardRow${rowIndex}Item${itemIndex}`}
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw, rehypeSanitize]}
