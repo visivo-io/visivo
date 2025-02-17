@@ -43,7 +43,6 @@ def authorize(host):
         )
         if not click.confirm("Do you want to add a new token?"):
             Logger.instance().info("Authorization cancelled. Using the existing token.")
-            Logger.instance().spinner.start()
             return
 
     server_thread = Thread(
@@ -88,11 +87,9 @@ def authorize(host):
                 return
             else:
                 Logger.instance().info(
-                    "Continuing to wait for callback indefinitely. Press Ctrl+C to cancel."
+                    "Continuing to wait for token. Press Ctrl+C to cancel."
                 )
                 token_received_event.wait()  # Wait indefinitely.
     except KeyboardInterrupt:
         Logger.instance().info("Authorization process cancelled by user.")
         return
-
-    Logger.instance().spinner.start()
