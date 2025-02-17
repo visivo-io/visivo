@@ -12,6 +12,8 @@ import rehypeSanitize from 'rehype-sanitize';
 
 const Dashboard = ({ project, dashboardName }) => {
     const [searchParams] = useSearchParams();
+
+    console.log("Search params are: ", JSON.stringify(Object.fromEntries(searchParams.entries())))
     const { observe, width } = useDimensions({
         onResize: ({ observe }) => {
             observe();
@@ -57,20 +59,18 @@ const Dashboard = ({ project, dashboardName }) => {
 
     const shouldShowNamedModel = (namedModel) => {
         if (!namedModel || !namedModel.name) {
-            console.log("Named model is null or undefined")
             return true
         }
         const selector = getSelectorByOptionName(project, namedModel.name)
-        console.log("Selector is", selector)
         if (selector && searchParams.has(selector.name)) {
-            console.log("Search params has selector name", selector.name)
             const selectedNames = searchParams.get(selector.name).split(",")
-            console.log("Selected names are", selectedNames)
             if (!selectedNames.includes(namedModel.name)) {
-                console.log("Named model is not in selected names")
+                console.log("Named model is not in selected names", namedModel.name, selectedNames)
                 return false
             }
+            console.log("Named model is in selected names", namedModel.name, selectedNames)
         }
+
         return true
     }
 
