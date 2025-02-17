@@ -59,6 +59,7 @@ const Dashboard = ({ project, dashboardName }) => {
 
     const shouldShowNamedModel = (namedModel) => {
         if (!namedModel || !namedModel.name) {
+            console.log("Named model is null or not named")
             return true
         }
         const selector = getSelectorByOptionName(project, namedModel.name)
@@ -71,6 +72,7 @@ const Dashboard = ({ project, dashboardName }) => {
             console.log("Named model is in selected names", namedModel.name, selectedNames)
         }
 
+        console.log("Search params does not have selector name", selector?.name)
         return true
     }
 
@@ -90,6 +92,7 @@ const Dashboard = ({ project, dashboardName }) => {
     }
 
     const renderRow = (row, rowIndex) => {
+        console.log("Row is", row)
         if (!shouldShowNamedModel(row)) {
             return null;
         }
