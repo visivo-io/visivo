@@ -2,12 +2,7 @@ import warnings
 
 from visivo.models.base.parent_model import ParentModel
 
-from visivo.models.dag import (
-    all_descendants,
-    family_tree_contains_named_node,
-    filter_dag,
-    show_dag_fig,
-)
+from visivo.models.dag import filter_dag
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.dashboard import Dashboard
@@ -19,7 +14,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 import queue
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
-from visivo.query.jobs.job import CachedFuture, Job, JobResult
+from visivo.query.jobs.job import CachedFuture, JobResult
 
 from visivo.query.jobs.run_csv_script_job import job as csv_script_job
 from visivo.query.jobs.run_trace_job import job as trace_job

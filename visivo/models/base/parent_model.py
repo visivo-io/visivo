@@ -15,16 +15,15 @@ from visivo.models.dag import (
 )
 from visivo.models.sources.source import DefaultSource
 
-
 class ParentModel(ABC):
     @abstractmethod
     def child_items(self):
         return []
 
     def dag(self, node_permit_list=None):
-        from networkx import DiGraph
+        from visivo.models.base.dag_model import ProjectDag
 
-        dag = DiGraph()
+        dag = ProjectDag()
         dag.add_node(self)
         self.__build_dag(
             items=self.child_items(),
@@ -127,7 +126,7 @@ class ParentModel(ABC):
     def dag_dict(self):
         return create_dag_dict(self.dag())
 
-    def show_dag(self):
+    def show_dag(self): # TODO: This seems unimplemented, do we need it? 
         show_dag_fig(self.dag())
 
     def __get_dereferenced_item_by_name(self, name, dag, root, item, parent_item):

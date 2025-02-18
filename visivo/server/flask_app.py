@@ -8,6 +8,8 @@ import datetime
 from visivo.utils import VIEWER_PATH, get_schema_file_name
 from visivo.logging.logger import Logger
 
+from visivo.parsers.mkdocs_utils.markdown import find_refs
+
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 def flask_app(output_dir, dag_filter, project):
@@ -288,7 +290,7 @@ def flask_app(output_dir, dag_filter, project):
 
     @app.route("/api/worksheet/session", methods=["PUT"])
     def update_session_state():
-        """Update the session state."""
+        """Update the session state of worksheets. This enables managing tabs across sessions."""
         try:
             data = request.get_json()
             if not isinstance(data, list):
@@ -328,7 +330,6 @@ def flask_app(output_dir, dag_filter, project):
         """
         Get all child attributes from the project schema that can have multiple children.
         """ 
-        #TODO: update this endpoint to get all children but differentiate the array vs non-array children. I actually dont think we'll want to return the full array, just the name, type and if they are an array or not. 
         try:
             schema_filename = get_schema_file_name(version)
             schema_path = os.path.join(output_dir, schema_filename)
@@ -342,14 +343,12 @@ def flask_app(output_dir, dag_filter, project):
                 array_properties = []
                 for k, v in schema["properties"].items():
                     if v.get("type") == "array":
-                        instances = "multiple"
-                    else:
-                        instances = "single"
-                    array_properties.append({
-                        "name": k,
-                        "instances": instances, 
-                        "config": v
-                    })
+                        refs = find_refs(v.get("items", {}))
+                        clean_refs = [ref.replace("#/$defs/", "") for ref in refs]
+                        array_properties.append({
+                            "label": k,
+                            "options": clean_refs
+                        })
                 return jsonify(array_properties)
         except Exception as e:
             Logger.instance().error(f"Error getting project children: {str(e)}")
@@ -363,10 +362,10 @@ def flask_app(output_dir, dag_filter, project):
         version = project.cli_version
         return jsonify({"version": version})
     
-    @app.route("/api/project/<project_id>/names", methods=["GET"])
-    def get_project_object_names(project_id): # TODO: Update to use object not json
+    @app.route("/api/project/<project_id>/nodes", methods=["GET"])
+    def get_project_node_objects(project_id): # TODO: Update to use object not json
         """
-        Get list of all project objects with their types and metadata.
+        Get list of all named project nodes with their types and metadata.
         """
         try:
             if not project:
@@ -374,18 +373,17 @@ def flask_app(output_dir, dag_filter, project):
                     "error": "Project not found. Please run 'visivo compile'."
                 }), 404
                 
-            
-            project_info = project.model_dump_json(exclude_none=True)
-            #TODO: Add a function to convert the project info to a list of objects
-            return jsonify(project_info)
+            dag = project.dag()
+            dag.get_nodes_by_type() #TODO: Fix this to return the correct objects
+            return jsonify(dag)
         except Exception as e:
             Logger.instance().error(f"Error getting project objects: {str(e)}")
             return jsonify({"error": str(e)}), 500
 
-    @app.route("/api/project/<project_id>/name/<name>")
+    @app.route("/api/project/<project_id>/name/<name>", methods=["GET"])
     def get_project_object(project_id, name):
         """
-        Get configuration for a specific project object.
+        Get the model_dump_json for a specific named object from within the project dag.
         """
         try:
             for item in project.child_items():

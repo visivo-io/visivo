@@ -62,9 +62,6 @@ def compile_phase(
     Logger.instance().debug("    Writing artifacts...")
     write_dag(project=project, output_dir=output_dir)
 
-    # Write the raw_project.json
-    with open(f"{output_dir}/raw_project.json", "w") as fp:
-        fp.write(project.model_dump_json(exclude_none=True))
 
     # Write the original project.json
     with open(f"{output_dir}/project.json", "w") as fp:

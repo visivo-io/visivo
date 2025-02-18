@@ -5,6 +5,7 @@ from ..factories.model_factories import (
     AlertFactory,
     TraceFactory,
     SourceFactory,
+    SqlModelFactory,
     ChartFactory,
     DashboardFactory,
     RowFactory,
@@ -260,3 +261,58 @@ def test_set_paths_on_models():
     assert project.path == "project"
     assert project.dashboards[0].path == "project.dashboards[0]"
     assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"
+
+def test_project_child_flags():
+    """Test that is_project_child flag is set correctly for project children"""
+    project_data = {
+        "name": "test_project",
+        "models": [
+            {
+                "name": "model_name",
+                "args": ["cat", "csv.csv"]
+            }
+        ],
+        "traces": [
+            {
+                "name": "trace_name",
+                "model": "${ref(model_name)}"
+            },
+            {
+                "name": "trace_name_two",
+                "model": "${ref(model_name)}"
+            }
+        ],
+        "charts": [
+            {
+                "name": "chart_name",
+                "traces": [
+                    "${ref(trace_name)}",
+                    "${ref(trace_name_two)}"
+                ]
+            }
+        ],
+        "dashboards": [
+            {
+                "name": "dashboard1",
+                "rows": [
+                    {
+                        "items": [
+                            {"chart": "${ref(chart_name)}"},
+                            {"chart": {"name": "chart_name_two", "traces": ["${ref(trace_name_two)}"]}},
+                            {"markdown": "Yay markdown!"},
+                        ]
+                    }
+                ],
+            }
+        ],
+    }
+    project = Project(**project_data)
+    
+    assert project.models[0].is_project_child is True
+    assert project.traces[0].is_project_child is True
+    assert project.charts[0].is_project_child is True
+    assert project.dashboards[0].is_project_child is True
+
+    assert project.dashboards[0].rows[0].is_project_child is False
+    assert project.dashboards[0].rows[0].items[0].is_project_child is False
+    assert project.dashboards[0].rows[0].items[1].chart.is_project_child is True

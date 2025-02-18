@@ -23,6 +23,7 @@ from .base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
 from importlib.metadata import version
 from visivo.utils import PROJECT_CHILDREN
+import re
 
 class Project(NamedModel, ParentModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
@@ -89,18 +90,8 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_dag(self):
-        from networkx import simple_cycles, is_directed_acyclic_graph
-
         dag = self.dag()
-        if not is_directed_acyclic_graph(dag):
-            circular_references = list(simple_cycles(dag))
-            if len(circular_references) > 0:
-                circle = " -> ".join(
-                    list(map(lambda cr: cr.id(), circular_references[0]))
-                )
-                circle += f" -> {circular_references[0][0].id()}."
-                raise ValueError(f"Project contains a circular reference: {circle}")
-            raise ValueError("Project contains a circular reference.")
+        dag.validate_dag()
 
         tables = all_descendants_of_type(type=Table, dag=dag, from_node=self)
         for table in tables:
@@ -111,8 +102,29 @@ class Project(NamedModel, ParentModel):
                 )
 
         return self
+    
+    @model_validator(mode="after")
+    def validate_project_is_sole_root_node(self):
+        dag = self.dag()
+        roots = dag.get_root_nodes()
+        if len(roots) > 1:
+            root_list = ', '.join([root.__class__.__name__ for root in roots])
+            raise ValueError(
+                f"Project must be the sole root node in the DAG. Current root nodes: {root_list}"
+            )
+        elif len(roots) == 0:
+            raise ValueError(
+                "No root nodes found in the DAG. Please add a name for your project."
+            )
+        elif len(roots) == 1:
+            root = roots[0]
+            if root.__class__.__name__ != "Project":
+                raise ValueError(
+                    "The sole root node in the DAG must be a Project."
+                )
+        return self
 
-    @model_validator(mode="before")
+    @model_validator(mode="before") # TODO: Do we need both this and the set_path_on_named_models method? 
     def set_paths_on_models(cls, values):
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
@@ -134,7 +146,7 @@ class Project(NamedModel, ParentModel):
         Project.traverse_names([], self)
         return self
 
-    @model_validator(mode="before")
+    @model_validator(mode="before") # TODO: This is a duplicate of the set_paths_on_models method? 
     def set_path_on_named_models(cls, values):
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
@@ -164,3 +176,46 @@ class Project(NamedModel, ParentModel):
                     if name:
                         names.append(name)
                 Project.traverse_names(names, child_item)
+
+    @classmethod
+    def get_child_objects(cls) -> dict:
+        """
+        Returns a dictionary mapping each project child type to its field object.
+        This is used to identify which objects in the project hierarchy are direct children of the project.
+        """
+        child_objects = {}
+        for field_name in PROJECT_CHILDREN:
+            field = cls.model_fields[field_name]
+            child_objects[field_name] = field
+        return child_objects
+    
+    @model_validator(mode="after")
+    def set_project_child_flags(self):
+        """Sets is_project_child=True for all objects that are direct children of the project independently of their level in the project hierarchy"""
+        child_objects = str(Project.get_child_objects())
+        
+        def is_project_child(obj):
+            if isinstance(obj, BaseModel):
+                obj_name = obj.__class__.__name__
+                search_str = rf"[\s\[]{obj_name}[,\]]"
+                is_match = re.search(search_str, child_objects) is not None
+                return is_match
+            return False
+        
+        def set_flag_recursively(obj):
+            if isinstance(obj, BaseModel):
+                obj.is_project_child = is_project_child(obj)
+                # Iterate through all fields that aren't None
+                for field_name, field_value in obj.model_fields.items():
+                    if field_name not in ["props", "defaults", "layout", "columns"]:
+                        value = getattr(obj, field_name)
+                        if value is not None:
+                            if isinstance(value, BaseModel):
+                                value.is_project_child = is_project_child(value)
+                            set_flag_recursively(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    set_flag_recursively(item)
+
+        set_flag_recursively(self)
+        return self

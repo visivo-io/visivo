@@ -63,6 +63,11 @@ class BaseModel(PydanticBaseModel):
 
     path: Optional[str] = Field(None, description="A unique path to this object")
 
+    is_project_child: bool = Field(
+        False, 
+        description="Flag determines whether this object is a multi-instance child of the project ie. Traces, Tables, Charts, Dashboards etc."
+    )
+
     def id(self):
         return self.path
 

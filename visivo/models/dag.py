@@ -1,11 +1,14 @@
 import re
 
-
 def show_dag_fig(dag):
     import plotly.graph_objects as go
 
     from networkx import random_layout
 
+    project = dag.get_root_nodes()[0]
+    dag.remove_node(project)
+    dag = dag.reverse()
+    
     pos = random_layout(dag)
     edge_x = []
     edge_y = []
@@ -89,6 +92,10 @@ def show_dag_fig(dag):
 
 
 def create_dag_dict(dag):
+    project = dag.get_root_nodes()[0]
+    dag.remove_node(project)
+    dag = dag.reverse()
+    
     nodes = []
     edges = []
 
