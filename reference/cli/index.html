@@ -736,6 +736,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#authorize" class="md-nav__link">
+    <span class="md-ellipsis">
+      authorize
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compile" class="md-nav__link">
     <span class="md-ellipsis">
       compile
@@ -6240,6 +6249,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#authorize" class="md-nav__link">
+    <span class="md-ellipsis">
+      authorize
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#compile" class="md-nav__link">
     <span class="md-ellipsis">
       compile
@@ -6360,6 +6378,22 @@
   -h, --host TEXT      Host to deploy to
   -u, --user-dir TEXT  Directory containing profile
   --help               Show this message and exit.
+</code></pre></div>
+<h2 id="authorize">authorize</h2>
+<p>Handles the authorization process.</p>
+<p>Checks for an existing token, and if the user chooses to add a
+new token, starts a Flask server (listening for a callback on
+http://localhost:5001/authorize-device-token). It then opens an external webapp
+(at <host>/authorize-device) for testing. The external webapp should eventually
+send a callback to our Flask server.</host></p>
+<p>The process will wait for up to CALLBACK_RESPONSE_WAIT_TIME seconds for the callback.
+If the callback is not received, you will be prompted to cancel or continue waiting.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code>visivo authorize [OPTIONS]
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code>  -h, --host TEXT  Host to deploy to
+  --help           Show this message and exit.
 </code></pre></div>
 <h2 id="compile">compile</h2>
 <p>Parses the files in your working directory, extracting visivo configurations and then using those configurations to build the trace queries and a project.json file in your source directory. Queries are not run on compile, just written.</p>
