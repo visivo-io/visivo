@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime
-from visivo.server.models import ResultModel, WorksheetModel
+from visivo.server.models.worksheet import WorksheetModel
+from visivo.server.models.result import ResultModel
 
 def test_result_creation(session):
     """Test creating a ResultModel instance."""

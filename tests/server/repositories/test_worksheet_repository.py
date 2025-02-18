@@ -1,9 +1,6 @@
 import pytest
 from datetime import datetime
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
-from visivo.server.models.worksheet import WorksheetModel
-from visivo.server.models.session_state import SessionStateModel
-from visivo.server.models.result import ResultModel
 
 @pytest.fixture
 def repository(db_path):

@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime
-from visivo.server.models import WorksheetModel
+from visivo.server.models.worksheet import WorksheetModel
+from visivo.server.models.session_state import SessionStateModel
+from visivo.server.models.result import ResultModel
 
 def test_worksheet_creation(session):
     """Test creating a WorksheetModel instance."""
@@ -49,7 +51,6 @@ def test_worksheet_to_dict(session):
 
 def test_worksheet_relationships(session):
     """Test WorksheetModel relationships with SessionState and Results."""
-    from visivo.server.models import SessionStateModel, ResultModel
     
     worksheet = WorksheetModel(
         id="test-id",
@@ -87,7 +88,7 @@ def test_worksheet_relationships(session):
 
 def test_worksheet_cascade_delete(session):
     """Test that deleting a worksheet cascades to related models."""
-    from visivo.server.models import SessionStateModel, ResultModel
+    
     
     worksheet = WorksheetModel(
         id="test-id",

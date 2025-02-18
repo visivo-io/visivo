@@ -1,5 +1,6 @@
 import pytest
-from visivo.server.models import SessionStateModel, WorksheetModel
+from visivo.server.models.session_state import SessionStateModel
+from visivo.server.models.worksheet import WorksheetModel
 
 def test_session_state_creation(session):
     """Test creating a SessionStateModel instance."""

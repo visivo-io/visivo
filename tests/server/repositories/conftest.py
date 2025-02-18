@@ -2,7 +2,7 @@ import pytest
 import os
 import tempfile
 from sqlalchemy import create_engine
-from visivo.server.models import Base
+from visivo.server.models.base import Base
 
 @pytest.fixture(scope="function")
 def db_path():
