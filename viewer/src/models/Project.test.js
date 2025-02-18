@@ -29,8 +29,24 @@ describe('Project functions', () => {
         }
     };
 
-    test('findAllSelectors returns all selectors', () => {
+    test('findAllSelectors returns all selectors for internal dashboards', () => {
         const result = findAllSelectors(mockProject);
+        expect(result).toHaveLength(4);
+        expect(result).toEqual(expect.arrayContaining([
+            { name: 'selector1' },
+            { name: 'selector2' },
+            { name: 'selector3' },
+            { name: 'selector4' }
+        ]));
+    });
+    test('findAllSelectors returns all selectors for old dashboards', () => {
+        const mockProjectWithOldDashboard = {
+            ...mockProject,
+        }
+        mockProjectWithOldDashboard.project_json.dashboards.forEach(dashboard => {
+            delete dashboard.type;
+        });
+        const result = findAllSelectors(mockProjectWithOldDashboard);
         expect(result).toHaveLength(4);
         expect(result).toEqual(expect.arrayContaining([
             { name: 'selector1' },
