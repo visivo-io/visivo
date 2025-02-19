@@ -26,9 +26,9 @@ def flask_app(output_dir, dag_filter, project):
         with open(f"{output_dir}/project.json", "r") as f:
             project_json = json.load(f)
 
-        if (
+        if ( 
             dag_filter
-        ):  # TODO: I'm actually not sure why this works. It seems to be combination of our old name filter and the new dag filter.
+        ):  # TODO: This is definitely an old filter left over from the old dashboard name filter. Now I think importing dag_filter() should fix it.
             dashboards = [
                 d for d in project_json["dashboards"] if d["name"] == dag_filter
             ]
