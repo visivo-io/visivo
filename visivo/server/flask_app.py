@@ -7,8 +7,7 @@ from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
 from visivo.utils import VIEWER_PATH
 from visivo.logging.logger import Logger
-from .repositories.worksheet_repository import WorksheetRepository
-
+from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 def flask_app(output_dir, dag_filter, project):
     app = Flask(
@@ -18,26 +17,13 @@ def flask_app(output_dir, dag_filter, project):
     )
     
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    thumbnail_dir = get_dashboards_dir(output_dir)
     worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
     def get_project_json(output_dir, dag_filter=None):
         project_json = ""
-        with open(f"{output_dir}/project.json", "r") as f:
-            project_json = json.load(f)
-
-        if ( 
-            dag_filter
-        ):  # TODO: This is definitely an old filter left over from the old dashboard name filter. Now I think importing dag_filter() should fix it.
-            dashboards = [
-                d for d in project_json["dashboards"] if d["name"] == dag_filter
-            ]
-            if len(dashboards) == 1:
-                project_json["dashboards"] = dashboards
-            else:
-                raise click.ClickException(
-                    f"Currently the serve command name filtering only supports filtering at the dashbaord level.  No dashboard with {dag_filter} found."
-                )
+        # if dag_filter:
+        # TODO: We could implement something that filters the dashboard here, but maybe we should be filterting in compile? 
+        #     project_json = filter_dag(project, dag_filter)
 
         return project_json
 
