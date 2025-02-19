@@ -8,20 +8,20 @@ models:
       ]
 
 traces:
-  - name:?{numbers_column}
+  - name: Simple Scatter
     model: ref(Array of Numbers)
     props:
-      type: sc?{ abs(sin(exp(numbers_column) - 5)*100) }
-      x: ?{ ln(nu?{ abs(cos(exp(numbers_column) - 5)*100)/100 }
-      y: ?{numbers_column}
-      mo?{ numbers_column < 400 }
+      type: scatter
+      x: ?{ ln(numbers_column) }
+      y: ?{ numbers_column }
+      mode: markers
       marker:
-        ?{numbers_column}exp(numbers_column) - 5)*100) )
-        opacity: query( abs(cos(exp(numbers_column) - 5)*100)/100 )
+        size: ?{ abs(sin(exp(numbers_column) - 5)*100) }
+        opacity: ?{ abs(cos(exp(numbers_column) - 5)*100)/100 }
     filters:
-      - query( numbers_column < 400 )
+      - ?{ numbers_column < 400 }
     order_by:
-      - ?{numbers_column}
+      - ?{ numbers_column }
 
 charts:
   - name: Single Trace Chart

@@ -17,9 +17,9 @@ traces:
       x: ?{date}
       open: ?{open}
       high: ?{open}
-      low: q?{high}
-      close?{low}ose)
-      increas?{close}
+      low: ?{high}
+      close: ?{close}
+      increasing:
         line:
           color: "#17becf"
       decreasing:

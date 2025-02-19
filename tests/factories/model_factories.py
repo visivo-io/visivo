@@ -74,7 +74,7 @@ class ScatterTracePropsFactory(factory.Factory):
         model = Scatter
 
     type = "scatter"
-    x = "?{x}
+    x = "?{x}"
     y = "?{y}"
 
 
@@ -83,7 +83,7 @@ class SurfaceTracePropsFactory(factory.Factory):
         model = Surface
 
     type = "surface"
-    z = ["?{x+10)", "query(y+15}"]
+    z = ["?{x+10}", "?{y+15}"]
 
 
 class SqlModelFactory(factory.Factory):

@@ -12,13 +12,12 @@ traces:
     model: ref(Series of Numbers)
     props:
       type: bar
-      y:?{numbers_column}
+      y: ?{numbers_column}
       marker:
         color: "#713B57"
         opacity: .7
     order_by:
       - ?{numbers_column}
-?{ (500 -  numbers_column) }
   - name: Yaxis2 Trace
     model: ref(Series of Numbers)
     props:
@@ -26,7 +25,7 @@ traces:
       y: ?{ (500 -  numbers_column) }
       yaxis: "y2"
       line:
-        ?{numbers_column}
+        shape: spline
         smoothing: .1
         color: orange
 
