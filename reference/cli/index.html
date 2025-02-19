@@ -6405,7 +6405,9 @@ If the callback is not received, you will be prompted to cancel or continue wait
                            overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
-  -df, --dag-filter TEXT   Run the command with the given dag filter
+  -df, --dag-filter TEXT   Run the command with the given dag filter. ie `-df
+                           'dashboard-name'+` will only run the dashboard
+                           named 'dashboard-name' and it's children
   -dp, --dbt-profile TEXT  The dbt profile to use
   -dt, --dbt-target TEXT   The dbt target to use
   --help                   Show this message and exit.
@@ -6464,7 +6466,10 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <p><strong>Options:</strong></p>
 <div class="highlight"><pre><span></span><code>  -w, --working-dir TEXT          Directory to run the command
   -o, --output-dir TEXT           Directory to output results
-  -df, --dag-filter TEXT          Run the command with the given dag filter
+  -df, --dag-filter TEXT          Run the command with the given dag filter.
+                                  ie `-df 'dashboard-name'+` will only run the
+                                  dashboard named 'dashboard-name' and it's
+                                  children
   -s, --source TEXT               Name of the default source connection to
                                   use. This overrides the default source in
                                   the project.
@@ -6495,7 +6500,10 @@ This folder can be statically deployed to any web server, hosting service, or bu
                                   the project.
   -w, --working-dir TEXT          Directory to run the command
   -o, --output-dir TEXT           Directory to output results
-  -df, --dag-filter TEXT          Run the command with the given dag filter
+  -df, --dag-filter TEXT          Run the command with the given dag filter.
+                                  ie `-df 'dashboard-name'+` will only run the
+                                  dashboard named 'dashboard-name' and it's
+                                  children
   -p, --port INTEGER              What port to serve on
   -tm, --thumbnail-mode [none|missing|all]
                                   Mode for thumbnail generation: 'none' to
