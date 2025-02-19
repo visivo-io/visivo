@@ -21,6 +21,8 @@ def flask_app(output_dir, dag_filter, project):
 
     def get_project_json(output_dir, dag_filter=None):
         project_json = ""
+        with open(f"{output_dir}/project.json", "r") as f:
+            project_json = json.load(f)
         # if dag_filter:
         # TODO: We could implement something that filters the dashboard here, but maybe we should be filterting in compile? 
         #     project_json = filter_dag(project, dag_filter)
