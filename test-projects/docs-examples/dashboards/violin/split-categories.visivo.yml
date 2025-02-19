@@ -26,20 +26,20 @@ traces:
     props:
       type: violin
       side: positive
-      x: query(category)
-      y: query(value)
-    filters: 
-      - query( sub_category = 'X')
+      x: ?{category}
+      y: ?{value}
+    filters:
+      - ?{ sub_category = 'X'}
   - name: Violin Plot Category Y
     model: ref(violin-data-split)
     cohort_on: sub_category
     props:
       type: violin
       side: negative
-      x: query(category)
-      y: query(value)
-    filters: 
-      - query( sub_category = 'Y')
+      x: ?{category}
+      y: ?{value}
+    filters:
+      - ?{ sub_category = 'Y'}
 
 charts:
   - name: Violin Chart with Split Categories

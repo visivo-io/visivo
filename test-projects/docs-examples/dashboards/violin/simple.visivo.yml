@@ -15,8 +15,8 @@ traces:
     model: ref(violin-data)
     props:
       type: violin
-      x: query(category)
-      y: query(value)
+      x: ?{category}
+      y: ?{value}
 charts:
   - name: Simple Violin Chart
     traces:

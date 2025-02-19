@@ -50,8 +50,8 @@ def test_tokenization_with_query_functions():
         "cohort_on": "widget",
         "props": {
             "type": "scatter",
-            "x": "query( date_trunc('week', completed_at) )",
-            "y": "query( sum(amount) )",
+            "x": "?{ date_trunc('week', completed_at) }",
+            "y": "?{ sum(amount) }",
         },
     }
     trace = Trace(**data)
@@ -95,11 +95,11 @@ def test_tokenization_cohort_on():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "query(widget)",
+        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
-            "x": "query( date_trunc('week', completed_at) )",
-            "y": "query( sum(amount) )",
+            "x": "?{ date_trunc('week', completed_at) }",
+            "y": "?{ sum(amount) }",
         },
     }
     trace = Trace(**data)
@@ -115,8 +115,8 @@ def test_tokenization_cohort_on():
         "cohort_on": "widget",
         "props": {
             "type": "scatter",
-            "x": "query( date_trunc('week', completed_at) )",
-            "y": "query( sum(amount) )",
+            "x": "?{ date_trunc('week', completed_at) }",
+            "y": "?{ sum(amount) }",
         },
     }
     trace = Trace(**data)
@@ -130,15 +130,15 @@ def test_tokenization_order_by():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "query(widget)",
+        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
-            "x": "query( date_trunc('week', completed_at) )",
-            "y": "query( sum(amount) )",
+            "x": "?{ date_trunc('week', completed_at) }",
+            "y": "?{ sum(amount) }",
         },
         "order_by": [
-            "query( a_different_column desc)",
-            "query( count(amount) desc )",
+            "?{ a_different_column desc}",
+            "?{ count(amount) desc }",
         ],
     }
     trace = Trace(**data)
@@ -158,8 +158,8 @@ def test_tokenization_order_by_window():
         "model": {"sql": "SELECT * FROM widget_sales"},
         "props": {"type": "scatter"},
         "order_by": [
-            "query( a_different_column desc)",
-            "query( count(completed_at)OVER(PARTITION BY widget) )",
+            "?{ a_different_column desc}",
+            "?{ count(completed_at)OVER(PARTITION BY widget) }",
         ],
     }
     trace = Trace(**data)
@@ -179,9 +179,9 @@ def test_tokenization_filter_window_agg_vanilla():
         "model": {"sql": "SELECT * FROM widget_sales"},
         "props": {"type": "scatter"},
         "filters": [
-            "query( a_different_column = 'value' )",
-            "query( count(completed_at)OVER(PARTITION BY widget) > 2 )",
-            "query( count(distinct another_column)>2 )",
+            "?{ a_different_column = 'value' }",
+            "?{ count(completed_at)OVER(PARTITION BY widget) > 2 }",
+            "?{ count(distinct another_column)>2 }",
         ],
     }
     trace = Trace(**data)
@@ -202,9 +202,9 @@ def test_tokenization_warn_for_windows_filters_on_non_snowflake():
         "model": {"sql": "SELECT * FROM widget_sales"},
         "props": {"type": "scatter"},
         "filters": [
-            "query( a_different_column = 'value' )",
-            "query( count(completed_at)OVER(PARTITION BY widget) > 2 )",
-            "query( count(distinct another_column)>2 )",
+            "?{ a_different_column = 'value' }",
+            "?{ count(completed_at)OVER(PARTITION BY widget) > 2 }",
+            "?{ count(distinct another_column)>2 }",
         ],
     }
     trace = Trace(**data)
@@ -222,13 +222,13 @@ def test_tokenization_of_nested_inputs():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "query(widget)",
+        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
-            "x": "query( date_trunc('week', completed_at) )",
-            "y": "query( sum(amount) )",
+            "x": "?{ date_trunc('week', completed_at) }",
+            "y": "?{ sum(amount) }",
             "marker": {
-                "color": "query( case sum(amount) > 200 then 'green' else 'blue' end )",
+                "color": "?{ case sum(amount) > 200 then 'green' else 'blue' end }",
             },
         },
     }

@@ -11,11 +11,11 @@ class TraceColumns(BaseModel):
 
         Using Trace Columns can help reduce copy and paste code!
 
-    Trace Columns perform the same basic service that the `query()` function does- allowing you to define sql select statements.
+    Trace Columns perform the same basic service that the `?{}` function does- allowing you to define sql select statements.
 
     !!! example {% raw %}
 
-        === "With Inline `query()` Function"
+        === "With Inline `?{}` Function"
 
             ``` yaml
             - name: Simple Line
@@ -65,7 +65,7 @@ class TraceColumns(BaseModel):
 
     ### Indexing
     Some trace configurations require numbers or strings as inputs. For example indicator traces require a single number to represent as the
-    big value in the card. Since the `query()` and `column()` functions always return arrays, indexing allows you to grab a single value
+    big value in the card. Since the `?{)` and `column(}` functions always return arrays, indexing allows you to grab a single value
     from the array to use in configurations that require a single value.
 
     You can index columns by using the following syntax:

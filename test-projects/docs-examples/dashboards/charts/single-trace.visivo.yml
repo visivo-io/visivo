@@ -1,27 +1,32 @@
 models:
-  - name: Array of Numbers 
-    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+  - name: Array of Numbers
+    args:
+      [
+        "curl",
+        "-s",
+        "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv",
+      ]
 
 traces:
-  - name: Simple Scatter 
+  - name:?{numbers_column}
     model: ref(Array of Numbers)
-    props: 
-      type: scatter
-      x: query( ln(numbers_column))
-      y: query(numbers_column)
-      mode: markers 
+    props:
+      type: sc?{ abs(sin(exp(numbers_column) - 5)*100) }
+      x: ?{ ln(nu?{ abs(cos(exp(numbers_column) - 5)*100)/100 }
+      y: ?{numbers_column}
+      mo?{ numbers_column < 400 }
       marker:
-        size: query( abs(sin(exp(numbers_column) - 5)*100) )
+        ?{numbers_column}exp(numbers_column) - 5)*100) )
         opacity: query( abs(cos(exp(numbers_column) - 5)*100)/100 )
-    filters: 
+    filters:
       - query( numbers_column < 400 )
-    order_by: 
-      - query(numbers_column)
+    order_by:
+      - ?{numbers_column}
 
 charts:
   - name: Single Trace Chart
-    traces: 
+    traces:
       - ref(Simple Scatter)
-    layout: 
-      title: 
+    layout:
+      title:
         text: "Single Trace"

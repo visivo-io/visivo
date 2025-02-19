@@ -14,12 +14,12 @@ traces:
     props:
       type: funnel
       orientation: v
-      x: query(stage)
-      y: query(value)
+      x: ?{stage}
+      y: ?{value}
       marker:
         color: "#ff7f0e"
-    order_by: 
-      - query(value desc)
+    order_by:
+      - ?{value desc}
 charts:
   - name: Horizontal Funnel Chart
     traces:

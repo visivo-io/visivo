@@ -57,13 +57,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
             model: ref(scatter-data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "markers"
               marker: 
                 size: 10
             order_by: 
-              - query(x asc)
+              - ?{x asc}
         charts:
           - name: Simple Scatter Chart
             traces:
@@ -98,23 +98,23 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
             model: ref(scatter-data-lines)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "lines+markers"
             order_by: 
-              - query(x asc)
+              - ?{x asc}
           - name: Spline No Markers
             model: ref(scatter-data-lines)
             props:
               type: scatter
-              x: query(x+3 - (x*x)/3)
-              y: query(y*1.5)
+              x: ?{x+3 - (x*x)/3}
+              y: ?{y*1.5}
               mode: "lines"
               line: 
                 shape: spline
                 smoothing: .5 #Sets spline bend
             order_by: 
-              - query(x+3 - (x*x)/3)
+              - ?{x+3 - (x*x)/3}
         charts:
           - name: Scatter Chart with Lines
             traces:
@@ -152,14 +152,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
             model: ref(scatter-data-custom)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
             order_by: 
-              - query(x asc)
+              - ?{x asc}
         charts:
           - name: Scatter Chart with Custom Markers
             traces:
@@ -196,8 +196,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
             model: ref(area-plot-data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "lines"
               fill: "tozeroy"
               fillcolor: "rgba(55, 126, 184, 0.2)"
@@ -205,7 +205,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 color: "rgb(55, 126, 184)"
                 width: 2
             order_by: 
-              - query(x asc)
+              - ?{x asc}
         charts:
           - name: Area Plot Chart
             traces:

@@ -46,8 +46,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
             model: ref(scattercarpet-data)
             props:
               type: scattercarpet
-              a: query(a)
-              b: query(b)
+              a: ?{a}
+              b: ?{b}
               mode: "markers"
         charts:
           - name: Simple Scattercarpet Chart
@@ -83,8 +83,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
             model: ref(scattercarpet-data-lines)
             props:
               type: scattercarpet
-              a: query(a)
-              b: query(b)
+              a: ?{a}
+              b: ?{b}
               mode: "lines+markers"
         charts:
           - name: Scattercarpet Chart with Lines
@@ -120,12 +120,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
             model: ref(scattercarpet-data-custom)
             props:
               type: scattercarpet
-              a: query(a)
-              b: query(b)
+              a: ?{a}
+              b: ?{b}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scattercarpet Chart with Custom Markers
             traces:

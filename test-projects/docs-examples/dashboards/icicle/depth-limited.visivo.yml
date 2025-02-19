@@ -15,12 +15,12 @@ traces:
     model: ref(icicle-data-depth)
     props:
       type: icicle
-      labels: query(category)
-      parents: query(parent)
-      values: query(value)
+      labels: ?{category}
+      parents: ?{parent}
+      values: ?{value}
       maxdepth: 2
       branchvalues: "total"
-      marker: 
+      marker:
         colorscale: "YlOrRd"
 charts:
   - name: Icicle Plot with Depth Limiting

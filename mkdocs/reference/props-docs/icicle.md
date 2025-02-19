@@ -47,9 +47,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
             model: ref(icicle-data)
             props:
               type: icicle
-              labels: query(category)
-              parents: query(parent)
-              values: query(value)
+              labels: ?{category}
+              parents: ?{parent}
+              values: ?{value}
               branchvalues: "total"
               marker: 
                 colorscale: "Portland"
@@ -91,11 +91,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
             model: ref(icicle-data-custom)
             props:
               type: icicle
-              labels: query(category)
-              parents: query(parent)
-              values: query(value)
+              labels: ?{category}
+              parents: ?{parent}
+              values: ?{value}
               marker:
-                colors: query(color)
+                colors: ?{color}
               branchvalues: "total"
         charts:
           - name: Custom Colors Icicle Chart
@@ -132,9 +132,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
             model: ref(icicle-data-depth)
             props:
               type: icicle
-              labels: query(category)
-              parents: query(parent)
-              values: query(value)
+              labels: ?{category}
+              parents: ?{parent}
+              values: ?{value}
               maxdepth: 2
               branchvalues: "total"
               marker: 

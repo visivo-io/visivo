@@ -14,11 +14,11 @@ traces:
     model: ref(waterfall-data)
     props:
       type: waterfall
-      x: query(label)
-      y: query(value)
+      x: ?{label}
+      y: ?{value}
       measure: ["initial", "relative", "relative", "relative", "total"]
-    order_by: 
-      - query( idx asc)
+    order_by:
+      - ?{ idx asc}
 charts:
   - name: Simple Waterfall Chart
     traces:

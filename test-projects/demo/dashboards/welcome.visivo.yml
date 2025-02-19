@@ -9,7 +9,7 @@ models:
 traces:
   - name: Fibonacci Waterfall Trace
     model: ref(Waterfall Model)
-    cohort_on: query(year)
+    cohort_on: ?{year}
     columns:
       x_data: category
       y_data: try_cast( replace(thousands_dollars, ',', '') as float ) * try_cast(sign as float)
@@ -20,7 +20,7 @@ traces:
       measure: column(measure)
       x: column(x_data)
       y: column(y_data)
-      text: query( cast(thousands_dollars as text) )
+      text: ?{ cast(thousands_dollars as text) }
       increasing:
         marker:
           color: "#b97a9b"
@@ -28,11 +28,11 @@ traces:
         marker:
           color: "#edbdb5"
     order_by:
-      - query(row asc)
+      - ?{row asc}
     filters:
-      - query( waterfall is not null )
-      - query( category not in ('Earnings From Continuing Operations') )
-      - query( year in ('Sep 2023', 'Sep 2022') )
+      - ?{ waterfall is not null }
+      - ?{ category not in ('Earnings From Continuing Operations') }
+      - ?{ year in ('Sep 2023', 'Sep 2022') }
 
 dashboards:
   - name: Welcome to Visivo

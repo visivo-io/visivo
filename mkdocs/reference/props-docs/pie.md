@@ -44,8 +44,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
             model: ref(pie-data)
             props:
               type: pie
-              labels: query(category)
-              values: query(value)
+              labels: ?{category}
+              values: ?{value}
         charts:
           - name: Simple Pie Chart
             traces:
@@ -78,10 +78,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
             model: ref(pie-data-colors)
             props:
               type: pie
-              labels: query(category)
-              values: query(value)
+              labels: ?{category}
+              values: ?{value}
               marker:
-                colors: query(color)
+                colors: ?{color}
         charts:
           - name: Pie Chart with Custom Colors
             traces:
@@ -114,8 +114,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
             model: ref(pie-data-hover)
             props:
               type: pie
-              labels: query(category)
-              values: query(value)
+              labels: ?{category}
+              values: ?{value}
               hoverinfo: "label+value+percent"
         charts:
           - name: Pie Chart with Hover Info

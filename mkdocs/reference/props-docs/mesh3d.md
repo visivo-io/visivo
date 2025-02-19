@@ -46,16 +46,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
             model: ref(mesh3d-data)
             props:
               type: mesh3d
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              i: query(i)
-              j: query(j)
-              k: query(k)
-              facecolor: query(color)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              i: ?{i}
+              j: ?{j}
+              k: ?{k}
+              facecolor: ?{color}
               opacity: 0.7
             order_by: 
-              - query( idx asc)
+              - ?{ idx asc}
         charts:
           - name: Simple Mesh3D Chart
             traces:

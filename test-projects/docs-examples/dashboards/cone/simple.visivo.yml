@@ -18,12 +18,12 @@ traces:
     model: ref(vector-field-data)
     props:
       type: cone
-      x: query(x)
-      y: query(y)
-      z: query(z)
-      u: query(u)
-      v: query(v)
-      w: query(w)
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
       colorscale: "Viridis"
       sizemode: "absolute"
       sizeref: 0.5

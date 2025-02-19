@@ -51,7 +51,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
             model: ref(histogram-data)
             props:
               type: histogram
-              x: query(value)
+              x: ?{value}
               nbinsx: 5
               marker:
                 color: "#17becf"
@@ -114,7 +114,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
             model: ref(histogram-data-horizontal)
             props:
               type: histogram
-              y: query(value)
+              y: ?{value}
               nbinsy: 2
               marker:
                 color: "#ff7f0e"
@@ -172,7 +172,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
                 end 
             props:
               type: histogram
-              x: query(value)
+              x: ?{value}
               marker:
                 color: column(color) 
         charts:

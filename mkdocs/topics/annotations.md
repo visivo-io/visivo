@@ -268,8 +268,8 @@ Highlighting regions in your charts helps draw attention to important areas or p
             model: ref(scatter_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: blue
@@ -317,8 +317,8 @@ Highlighting regions in your charts helps draw attention to important areas or p
             model: ref(scatter_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: green
@@ -375,8 +375,8 @@ Highlighting regions in your charts helps draw attention to important areas or p
             model: ref(scatter_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: purple
@@ -440,8 +440,8 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
             model: ref(line_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: lines
               line:
                 color: blue
@@ -489,8 +489,8 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
             model: ref(vertical_threshold_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: lines
               line:
                 color: green
@@ -538,8 +538,8 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
             model: ref(threshold_annotation_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: lines
               line:
                 color: purple
@@ -603,8 +603,8 @@ Key points are data points that are particularly important or noteworthy. Annota
             model: ref(multiple_points_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: green
@@ -661,8 +661,8 @@ Key points are data points that are particularly important or noteworthy. Annota
             model: ref(point_region_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: purple
@@ -734,8 +734,8 @@ Below are three examples showcasing the use of emoji annotations.
             model: ref(emoji_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: green
@@ -794,8 +794,8 @@ Below are three examples showcasing the use of emoji annotations.
             model: ref(threshold_emoji_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: lines
               line:
                 color: blue
@@ -851,8 +851,8 @@ Below are three examples showcasing the use of emoji annotations.
             model: ref(region_emoji_data)
             props:
               type: scatter
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: markers
               marker:
                 color: orange

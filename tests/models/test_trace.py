@@ -10,7 +10,7 @@ from visivo.parsers.yaml_ordered_dict import YamlOrderedDict, setup_yaml_ordered
 def test_Trace_simple_data():
     data = {
         "name": "development",
-        "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+        "props": {"type": "scatter", "x": "?{x)", "y": "query(y}"},
         "model": {"sql": "select * from table"},
     }
     trace = Trace(**data)
@@ -30,7 +30,7 @@ def test_Trace_missing_props():
 def test_Trace_missing_props_type():
     data = {
         "name": "development",
-        "props": {"x": "query(x)", "y": "query(y)"},
+        "props": {"x": "?{x)", "y": "query(y}"},
         "model": {"sql": "select * from table"},
     }
     with pytest.raises(ValidationError) as exc_info:
@@ -44,7 +44,7 @@ def test_Trace_missing_props_type():
 def test_Trace_unknown_props_type():
     data = {
         "name": "development",
-        "props": {"type": "unknown", "x": "query(x)", "y": "query(y)"},
+        "props": {"type": "unknown", "x": "?{x}", "y": "?{y}"},
         "model": {"sql": "select * from table"},
     }
     with pytest.raises(ValidationError) as exc_info:

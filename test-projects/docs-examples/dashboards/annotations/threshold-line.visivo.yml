@@ -15,13 +15,13 @@ traces:
     model: ref(line_data)
     props:
       type: scatter
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       mode: lines
       line:
         color: blue
-    order_by: 
-      - query( x asc )
+    order_by:
+      - ?{ x asc }
 
 charts:
   - name: Threshold Line Example

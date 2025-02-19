@@ -46,8 +46,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
             model: ref(densitymapbox-data)
             props:
               type: densitymapbox
-              lat: query(lat)
-              lon: query(lon)
+              lat: ?{lat}
+              lon: ?{lon}
               radius: 10
               colorscale: "Viridis"
               zmin: 0
@@ -92,8 +92,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
             model: ref(densitymapbox-data-radius)
             props:
               type: densitymapbox
-              lat: query(lat)
-              lon: query(lon)
+              lat: ?{lat}
+              lon: ?{lon}
               radius: 20
               colorscale: "Jet"
               zmin: 0
@@ -138,8 +138,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
             model: ref(densitymapbox-data-colorscale)
             props:
               type: densitymapbox
-              lat: query(lat)
-              lon: query(lon)
+              lat: ?{lat}
+              lon: ?{lon}
               radius: 15
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               zmin: 0

@@ -74,8 +74,8 @@ class ScatterTracePropsFactory(factory.Factory):
         model = Scatter
 
     type = "scatter"
-    x = "query(x)"
-    y = "query(y)"
+    x = "?{x}
+    y = "?{y}"
 
 
 class SurfaceTracePropsFactory(factory.Factory):
@@ -83,7 +83,7 @@ class SurfaceTracePropsFactory(factory.Factory):
         model = Surface
 
     type = "surface"
-    z = ["query(x+10)", "query(y+15)"]
+    z = ["?{x+10)", "query(y+15}"]
 
 
 class SqlModelFactory(factory.Factory):
@@ -248,8 +248,10 @@ class ExternalDashboardFactory(factory.Factory):
     name = "external_dashboard"
     href = "https://example.com"
 
+
 class DashboardFactory(factory.Factory):
     name = "dashboard"
+
     class Meta:
         model = Dashboard
 

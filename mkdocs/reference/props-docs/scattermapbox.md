@@ -45,8 +45,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
             model: ref(scattermapbox-data)
             props:
               type: scattermapbox
-              lon: query(lon)
-              lat: query(lat)
+              lon: ?{lon}
+              lat: ?{lat}
               mode: "markers"
               marker:
                 size: 10
@@ -85,8 +85,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
             model: ref(scattermapbox-data-lines)
             props:
               type: scattermapbox
-              lon: query(lon)
-              lat: query(lat)
+              lon: ?{lon}
+              lat: ?{lat}
               mode: "lines+markers"
               marker:
                 size: 10
@@ -125,12 +125,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
             model: ref(scattermapbox-data-custom)
             props:
               type: scattermapbox
-              lon: query(lon)
-              lat: query(lat)
+              lon: ?{lon}
+              lat: ?{lat}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scattermapbox Chart with Custom Markers
             traces:

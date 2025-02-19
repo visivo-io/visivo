@@ -25,10 +25,10 @@ You can write a trace in any yml file directly your project. The trace can be ju
         model: ref('widget_sales')
         cohort_on: widget
         props:
-          x: query( date_trunc('week', completed_at) )
-          y: query( sum(amount) )
+          x: ?{ date_trunc('week', completed_at) }
+          y: ?{ sum(amount) }
           marker: 
-            color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+            color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
             shape: square
           mode: 'lines'
     charts:
@@ -44,12 +44,12 @@ You can write a trace in any yml file directly your project. The trace can be ju
     traces:
       - name: simple_trace
         model: ref('widget_sales')
-        cohort_on: query( widget )
+        cohort_on: ?{ widget }
         props:
-          x: query( date_trunc('week', completed_at) )
-          y: query( sum(amount) )
+          x: ?{ date_trunc('week', completed_at) }
+          y: ?{ sum(amount) }
           marker: 
-            color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+            color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
             shape: square
           mode: 'lines'
     charts:

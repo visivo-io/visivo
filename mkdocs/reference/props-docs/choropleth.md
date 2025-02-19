@@ -51,8 +51,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Choropleth/#attribute
             model: ref(country-population-data)
             props:
               type: choropleth
-              locations: query(country)
-              z: query(population_density)
+              locations: ?{country}
+              z: ?{population_density}
               colorscale: "Picnic"
         charts:
           - name: Simple Choropleth Map

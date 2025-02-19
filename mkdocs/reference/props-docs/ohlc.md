@@ -46,11 +46,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
             model: ref(ohlc-data)
             props:
               type: ohlc
-              x: query(date)
-              open: query(open)
-              high: query(high)
-              low: query(low)
-              close: query(close)
+              x: ?{date}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#17becf"
@@ -97,11 +97,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
             model: ref(ohlc-data-width)
             props:
               type: ohlc
-              x: query(date)
-              open: query(open)
-              high: query(high)
-              low: query(low)
-              close: query(close)
+              x: ?{date}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#2ca02c"
@@ -151,11 +151,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
             model: ref(ohlc-data-multi)
             props:
               type: ohlc
-              x: query(date)
-              open: query(open where stock = "AAPL")
-              high: query(high where stock = "AAPL")
-              low: query(low where stock = "AAPL")
-              close: query(close where stock = "AAPL")
+              x: ?{date}
+              open: ?{open where stock = "AAPL"}
+              high: ?{high where stock = "AAPL"}
+              low: ?{low where stock = "AAPL"}
+              close: ?{close where stock = "AAPL"}
               increasing:
                 line:
                   color: "#1f77b4"
@@ -166,11 +166,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
             model: ref(ohlc-data-multi)
             props:
               type: ohlc
-              x: query(date)
-              open: query(open where stock = "MSFT")
-              high: query(high where stock = "MSFT")
-              low: query(low where stock = "MSFT")
-              close: query(close where stock = "MSFT")
+              x: ?{date}
+              open: ?{open where stock = "MSFT"}
+              high: ?{high where stock = "MSFT"}
+              low: ?{low where stock = "MSFT"}
+              close: ?{close where stock = "MSFT"}
               increasing:
                 line:
                   color: "#2ca02c"

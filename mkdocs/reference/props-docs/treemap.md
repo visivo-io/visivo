@@ -52,9 +52,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
             model: ref(treemap-data)
             props:
               type: treemap
-              labels: query(labels)
-              parents: query(parents)
-              values: query("values")
+              labels: ?{labels}
+              parents: ?{parents}
+              values: ?{"values"}
               marker: 
                 colorscale: Blackbody
               textposition: "middle center"
@@ -97,11 +97,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
             model: ref(treemap-data-colors)
             props:
               type: treemap
-              labels: query(labels)
-              parents: query(parents)
-              values: query("values")
+              labels: ?{labels}
+              parents: ?{parents}
+              values: ?{"values"}
               marker:
-                colors: query(colors)
+                colors: ?{colors}
                 line: 
                   color: black
         charts:
@@ -143,9 +143,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
             model: ref(treemap-data-tiling)
             props:
               type: treemap
-              labels: query(labels)
-              parents: query(parents)
-              values: query("values")
+              labels: ?{labels}
+              parents: ?{parents}
+              values: ?{"values"}
               tiling:
                 packing: binary
                 squarifyratio: 1.5

@@ -44,13 +44,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
               type: splom
               dimensions:
                 - label: "Sepal Length"
-                  values: query(sepal_length)
+                  values: ?{sepal_length}
                 - label: "Sepal Width"
-                  values: query(sepal_width)
+                  values: ?{sepal_width}
                 - label: "Petal Length"
-                  values: query(petal_length)
+                  values: ?{petal_length}
                 - label: "Petal Width"
-                  values: query(petal_width)
+                  values: ?{petal_width}
               diagonal:
                 visible: false
               showupperhalf: false
@@ -90,13 +90,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
               type: splom
               dimensions:
                 - label: "Variable 1"
-                  values: query(var1)
+                  values: ?{var1}
                 - label: "Variable 2"
-                  values: query(var2)
+                  values: ?{var2}
                 - label: "Variable 3"
-                  values: query(var3)
+                  values: ?{var3}
               marker:
-                color: query(case when category = 'A' THEN 'red' else 'green' end)
+                color: ?{case when category = 'A' THEN 'red' else 'green' end}
                 size: 20
         charts:
           - name: Splom Chart with Custom Colors
@@ -134,13 +134,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
               type: splom
               dimensions:
                 - label: "Variable 1"
-                  values: query(var1)
+                  values: ?{var1}
                 - label: "Variable 2"
-                  values: query(var2)
+                  values: ?{var2}
                 - label: "Variable 3"
-                  values: query(var3)
+                  values: ?{var3}
               marker:
-                size: query(size)
+                size: ?{size}
         charts:
           - name: Splom Chart with Custom Sizes
             traces:

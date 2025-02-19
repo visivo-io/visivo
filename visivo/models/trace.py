@@ -64,14 +64,14 @@ class Trace(NamedModel, ParentModel):
         model:
           sql: 'SELECT * finance_data_atlas.FINANCE.CMCCD2019'
         source_name: remote-snowflake
-        cohort_on: query( "Cryptocurrency Name" )
+        cohort_on: ?{ "Cryptocurrency Name" }
         props:
           type: ohlc
-          x: query( date_trunc('week', "Date")::date::varchar )
-          close: query( max_by("Value", "Date") )
-          high: query( max("Value") )
-          low: query( min("Value") )
-          open: query( min_by("Value", "Date") )
+          x: ?{ date_trunc('week', "Date")::date::varchar }
+          close: ?{ max_by("Value", "Date") }
+          high: ?{ max("Value") }
+          low: ?{ min("Value") }
+          open: ?{ min_by("Value", "Date") }
           increasing:
             line:
               color: 'green'
@@ -81,9 +81,9 @@ class Trace(NamedModel, ParentModel):
           xaxis: 'x'
           yaxis: 'y'
         filters:
-        - query("Date" >= '2015-01-01')
-        - query( "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') )
-        - query( "Measure Name" = 'Price, USD' )
+        - ?{"Date" >= '2015-01-01'}
+        - ?{ "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') }
+        - ?{ "Measure Name" = 'Price, USD' }
     ```
     """
 
@@ -105,11 +105,11 @@ class Trace(NamedModel, ParentModel):
     )
     order_by: Optional[List[str]] = Field(
         None,
-        description="Takes a `column()` or `query()` reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using `asc` and `desc`.",
+        description="Takes a `column()` or `?{}` reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using `asc` and `desc`.",
     )
     filters: Optional[List[str]] = Field(
         None,
-        description="A list of `column()` or `query()` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
+        description="A list of `column()` or `?{}` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
     )
     tests: Optional[List[Test]] = Field(
         None,

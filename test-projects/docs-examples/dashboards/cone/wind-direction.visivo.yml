@@ -15,19 +15,18 @@ traces:
     model: ref(wind-data-cone)
     props:
       type: cone
-      x: query(x)
-      y: query(y)
-      z: query(z)
-      u: query(u)
-      v: query(v)
-      w: query(w)
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
       colorscale: "Virdis"
       colorbar:
-        title: 
+        title:
           text: "Wind Speed (m/s)"
       hoverinfo: "text"
-      text: query(speed)
-    
+      text: ?{speed}
 
 charts:
   - name: Wind Direction Cone Plot

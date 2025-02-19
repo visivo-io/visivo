@@ -47,8 +47,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
             model: ref(violin-data)
             props:
               type: violin
-              x: query(category)
-              y: query(value)
+              x: ?{category}
+              y: ?{value}
         charts:
           - name: Simple Violin Chart
             traces:
@@ -85,8 +85,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
             cohort_on: category
             props:
               type: violin
-              y: query(category)
-              x: query(value)
+              y: ?{category}
+              x: ?{value}
               orientation: h
               box: 
                 visible: true
@@ -139,20 +139,20 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
             props:
               type: violin
               side: positive
-              x: query(category)
-              y: query(value)
+              x: ?{category}
+              y: ?{value}
             filters: 
-              - query( sub_category = 'X')
+              - ?{ sub_category = 'X'}
           - name: Violin Plot Category Y
             model: ref(violin-data-split)
             cohort_on: sub_category
             props:
               type: violin
               side: negative
-              x: query(category)
-              y: query(value)
+              x: ?{category}
+              y: ?{value}
             filters: 
-              - query( sub_category = 'Y')
+              - ?{ sub_category = 'Y'}
         charts:
           - name: Violin Chart with Split Categories
             traces:

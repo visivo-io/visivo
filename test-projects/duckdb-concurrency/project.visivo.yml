@@ -7,9 +7,9 @@ includes: []
 destinations: []
 alerts: []
 sources:
-- name: Example Source
-  database: local.db
-  type: duckdb
+  - name: Example Source
+    database: local.db
+    type: duckdb
 
 models:
   - name: duck-db-model
@@ -20,27 +20,27 @@ traces:
   - name: "trace-{{i}}"
     model: ${ref(duck-db-model)}
     props:
-      type: bar 
-      x: query(x*{{i}})
-      y: query(y*{{i}})
+      type: bar
+      x: ?{x*{{i}}}
+      y: ?{y*{{i}}}
   #{% endfor %}
 tables: []
 charts: []
 selectors: []
 dashboards:
-- name: Example Dashboard
-  rows:
-  - height: medium
-    items:
-    - width: 1
-      chart:
-        name: Example Chart
-        traces:
-        - name: Example Trace
-          model:
-            name: Example Model
-            sql: select * from test_table
-          props:
-            type: scatter
-            x: query(x)
-            y: query(y)
+  - name: Example Dashboard
+    rows:
+      - height: medium
+        items:
+          - width: 1
+            chart:
+              name: Example Chart
+              traces:
+                - name: Example Trace
+                  model:
+                    name: Example Model
+                    sql: select * from test_table
+                  props:
+                    type: scatter
+               ?{x}?{x}
+               ?{y}?{y}

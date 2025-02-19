@@ -50,12 +50,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
             model: ref(vector-field-data)
             props:
               type: cone
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              u: query(u)
-              v: query(v)
-              w: query(w)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              u: ?{u}
+              v: ?{v}
+              w: ?{w}
               colorscale: "Viridis"
               sizemode: "absolute"
               sizeref: 0.5
@@ -99,17 +99,17 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
             model: ref(wind-data)
             props:
               type: cone
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              u: query(u)
-              v: query(v)
-              w: query(w)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              u: ?{u}
+              v: ?{v}
+              w: ?{w}
               colorscale: "Virdis"
               colorbar:
                 title: "Wind Speed (m/s)"
               hoverinfo: "text"
-              text: query(speed)
+              text: ?{speed}
         charts:
           - name: Wind Direction Cone Plot
             traces:

@@ -33,23 +33,23 @@ traces:
     model: ref(wind-data)
     cohort_on: "speed"
     columns:
-      bar_color: | 
+      bar_color: |
         CASE speed 
           when '0-1 m/s' THEN '#1f77b4' 
           when '1-2 m/s' then '#ff7f0e' 
           when '2-3 m/s' then '#2ca02c' 
-        end 
+        end
     props:
       type: barpolar
-      r: query(count)
-      theta: query(direction)
-      text: query(speed)
+      r: ?{count}
+      theta: ?{direction}
+      text: ?{speed}
       marker:
         color: column(bar_color)
         opacity: .85
       hoverinfo: "theta+r+name"
-    order_by: 
-      - query(cardinal_order)
+    order_by:
+      - ?{cardinal_order}
 charts:
   - name: Wind Rose Chart
     traces:
@@ -62,8 +62,8 @@ charts:
         angularaxis:
           direction: "clockwise"
           period: 8
-      margin: 
-        l: 110 
+      margin:
+        l: 110
         r: 0
         b: 40
       legend:

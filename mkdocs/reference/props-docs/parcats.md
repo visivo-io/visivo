@@ -47,11 +47,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
               type: parcats
               dimensions:
                 - label: "Category 1"
-                  values: query(category_1)
+                  values: ?{category_1}
                 - label: "Category 2"
-                  values: query(category_2)
+                  values: ?{category_2}
               line:
-                color: query(value)
+                color: ?{value}
                 colorscale: "Viridis"
         charts:
           - name: Simple Parcats Chart
@@ -88,13 +88,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
               type: parcats
               dimensions:
                 - label: "Category 1"
-                  values: query(category_1)
+                  values: ?{category_1}
                 - label: "Category 2"
-                  values: query(category_2)
+                  values: ?{category_2}
                 - label: "Category 3"
-                  values: query(category_3)
+                  values: ?{category_3}
               line:
-                color: query(value)
+                color: ?{value}
                 colorscale: "Blues"
         charts:
           - name: Parcats Chart with Multiple Dimensions
@@ -131,12 +131,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
               type: parcats
               dimensions:
                 - label: "Category 1"
-                  values: query(category_1)
+                  values: ?{category_1}
                 - label: "Category 2"
-                  values: query(category_2)
+                  values: ?{category_2}
               line:
-                color: query(value)
-                width: query(value)
+                color: ?{value}
+                width: ?{value}
                 colorscale: "Jet"
         charts:
           - name: Parcats Chart with Custom Line Widths

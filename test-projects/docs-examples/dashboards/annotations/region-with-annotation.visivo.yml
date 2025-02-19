@@ -15,13 +15,13 @@ traces:
     model: ref(scatter_data_region_annotation)
     props:
       type: scatter
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       mode: markers
       marker:
         color: purple
-    order_by: 
-      - query( x asc )
+    order_by:
+      - ?{ x asc }
 
 charts:
   - name: Region with Annotation Example

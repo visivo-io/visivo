@@ -34,10 +34,10 @@ traces:
     model: ref(contour-data)
     props:
       type: contour
-      z: 
-        - query(z)
-        - query(x)
-        - query(y)
+      z:
+        - ?{z}
+        - ?{x}
+        - ?{y}
       colorscale: "Viridis"
       ncontours: 20
 charts:

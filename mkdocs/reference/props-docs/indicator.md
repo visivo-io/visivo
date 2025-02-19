@@ -135,7 +135,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
               delta:
                 reference: column(val)[1]
             order_by: 
-              - query(sort desc)
+              - ?{sort desc}
         charts:
           - name: Delta Indicator with Comparison Chart
             traces:
