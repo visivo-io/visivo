@@ -2,7 +2,7 @@ import click
 from time import time
 import json
 
-from .options import dag_filter, output_dir, working_dir, source, port, threads, thumbnail_mode, skip_compile
+from .options import dag_filter, output_dir, working_dir, source, port, threads, dbt_profile, dbt_target, thumbnail_mode, skip_compile
 
 
 @click.command()
@@ -14,7 +14,9 @@ from .options import dag_filter, output_dir, working_dir, source, port, threads,
 @thumbnail_mode
 @threads
 @skip_compile
-def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_mode, skip_compile):
+@dbt_profile
+@dbt_target
+def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_mode, skip_compile, dbt_profile, dbt_target):
     """
     Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.
     """
@@ -30,6 +32,8 @@ def serve(output_dir, working_dir, source, port, dag_filter, threads, thumbnail_
         working_dir=working_dir,
         output_dir=output_dir,
         default_source=source,
+        dbt_profile=dbt_profile,
+        dbt_target=dbt_target,
     )
 
     # Create and configure server & callbacks

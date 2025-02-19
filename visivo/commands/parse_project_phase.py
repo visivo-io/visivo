@@ -1,14 +1,29 @@
 from visivo.discovery.discover import Discover
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.models.project import Defaults
+from visivo.logging.logger import Logger
+from visivo.commands.dbt_phase import dbt_phase
+from visivo.utils import get_dashboards_dir
 import yaml
 import click
+import os
+from time import time
 
-def parse_project_phase(working_dir, output_dir, default_source):
+def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target):
+    
+    # Run and Track dbt phase
+    dbt_start = time()
+    Logger.instance().debug("    Running dbt phase...")
+    dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
+    dbt_duration = round(time() - dbt_start, 2)
+    if os.environ.get("STACKTRACE"):
+        Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
+
     discover = Discover(working_dir=working_dir, output_dir=output_dir)
     parser = ParserFactory().build(
         project_file=discover.project_file, files=discover.files
     )
+    
     project = None
     try:
         project = parser.parse()
@@ -16,6 +31,12 @@ def parse_project_phase(working_dir, output_dir, default_source):
             project.defaults = Defaults()
         if default_source:
             project.defaults.source_name = default_source
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        # Ensure thumbnail directory exists
+        thumbnail_dir = get_dashboards_dir(output_dir)
+        os.makedirs(thumbnail_dir, exist_ok=True)
+
     except yaml.YAMLError as e:
         message = "\n"
         if hasattr(e, "problem_mark"):

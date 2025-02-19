@@ -140,10 +140,11 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources, "models": models}, file)
         
-        models_written = ', '.join([model['name'] for model in models])
-        relative_output_file = os.path.relpath(output_file, working_dir)
-        Logger.instance().info(f"dbt base visivo models written to {relative_output_file}: {models_written}")
-        sources_written = ', '.join([source['name'] for source in sources])
-        Logger.instance().info(f"dbt base visivo sources written to {relative_output_file}: {sources_written}")
+        if os.environ.get("STACKTRACE"):
+            models_written = ', '.join([model['name'] for model in models])
+            relative_output_file = os.path.relpath(output_file, working_dir)
+            Logger.instance().info(f"dbt base visivo models written to {relative_output_file}: {models_written}")
+            sources_written = ', '.join([source['name'] for source in sources])
+            Logger.instance().info(f"dbt base visivo sources written to {relative_output_file}: {sources_written}")
     else:
         Logger.instance().debug(f"dbt is not enabled.")
