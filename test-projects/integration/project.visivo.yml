@@ -68,7 +68,7 @@ charts:
       width: 500
       height: 500
 dashboards:
-  - name: Table
+  - name: Table Name
     rows:
       - height: compact
         items:
