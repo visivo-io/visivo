@@ -28,15 +28,27 @@ function Project(props) {
   const projectId = props.project?.id || props.project?.project_id;
   const dashboardNames = allDashboards.map(d => d.name);
 
+  // Add debug logging for query conditions
+  console.warn('Query conditions:', {
+    projectId,
+    dashboardsLength: allDashboards.length,
+    enabled: Boolean(projectId) && allDashboards.length > 0
+  });
 
   const { data: thumbnails = {} } = useQuery({
     queryKey: ['dashboards', projectId],
     queryFn: async () => {
+      console.warn('Query function executing');
       if (!projectId || allDashboards.length === 0) {
+        console.warn('Early return conditions:', { projectId, dashboardsLength: allDashboards.length });
         return {};
       }
 
       try {
+        console.warn('Processing dashboards:', {
+          allDashboards: allDashboards.length,
+          internalDashboards: internalDashboards.length
+        });
         const results = await Promise.all(
           dashboardNames.map(async dashboardName => {
             const query = fetchDashboardQuery(projectId, dashboardName);
