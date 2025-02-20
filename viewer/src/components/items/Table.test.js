@@ -166,8 +166,8 @@ test('handles number values in cells', async () => {
       "cohortName": {
         "columns.regular_data": [
           123,
-          1234567890,
-          1234567890.12
+          12345678901234567,
+          1234567890.123456
         ]
       }
     }
@@ -180,6 +180,6 @@ test('handles number values in cells', async () => {
   await waitFor(() => {
     expect(screen.getByText('123')).toBeInTheDocument();
   });
-  expect(screen.getByText('1,234,567,890')).toBeInTheDocument();
-  expect(screen.getByText('1,234,567,890.12')).toBeInTheDocument();
+  expect(screen.getByText('12,345,678,901,234,568')).toBeInTheDocument();
+  expect(screen.getByText('1,234,567,890.123')).toBeInTheDocument();
 });

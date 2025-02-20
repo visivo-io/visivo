@@ -106,7 +106,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                             {value}
                         </Markdown>
                     );
-                } else if (/^[\d.]+$/.test(`${value}`) && `${value}`.length < 18) {
+                } else if (typeof value === 'number' && `${value}`.length < 18) {
                     return new Intl.NumberFormat(navigator.language).format(value)
                 }
                 return value;
