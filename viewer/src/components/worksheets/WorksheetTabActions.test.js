@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WorksheetTabActions from './WorksheetTabActions';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
@@ -8,15 +8,7 @@ import { BrowserRouter } from 'react-router-dom';
 import * as worksheetApi from '../../api/worksheet';
 
 // Mock API calls
-jest.mock('../../api/worksheet', () => ({
-  listWorksheets: jest.fn().mockResolvedValue([]),
-  getWorksheet: jest.fn(),
-  createWorksheet: jest.fn(),
-  updateWorksheet: jest.fn(),
-  deleteWorksheet: jest.fn(),
-  getSessionState: jest.fn().mockResolvedValue([]),
-  updateSessionState: jest.fn()
-}));
+jest.mock('../../api/worksheet');
 
 // Test wrapper component
 const TestWrapper = ({ children }) => (
@@ -31,8 +23,14 @@ const TestWrapper = ({ children }) => (
 
 describe('WorksheetTabActions', () => {
   const mockWorksheets = [
-    { id: '1', name: 'Worksheet 1', is_visible: true },
-    { id: '2', name: 'Worksheet 2', is_visible: true }
+    { 
+      worksheet: { id: '1', name: 'Worksheet 1' },
+      session_state: { worksheet_id: '1', is_visible: true }
+    },
+    { 
+      worksheet: { id: '2', name: 'Worksheet 2' },
+      session_state: { worksheet_id: '2', is_visible: true }
+    }
   ];
 
   const defaultProps = {
@@ -41,54 +39,63 @@ describe('WorksheetTabActions', () => {
     isLoading: false
   };
 
-  const renderComponent = (props = {}) => {
-    return render(
+  const renderComponent = async (props = {}) => {
+    // Setup mocks before render
+    worksheetApi.listWorksheets.mockResolvedValue(mockWorksheets);
+    worksheetApi.getSessionState.mockResolvedValue(mockWorksheets.map(w => w.session_state));
+
+    const result = render(
       <TestWrapper>
         <WorksheetTabActions {...defaultProps} {...props} />
       </TestWrapper>
     );
+
+    // Wait for component to be ready
+    await waitFor(() => {
+      expect(screen.getByTestId('create-worksheet')).toBeInTheDocument();
+    });
+
+    return result;
   };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     jest.clearAllMocks();
-    worksheetApi.listWorksheets.mockResolvedValue(mockWorksheets);
-    await act(async () => {
-      await worksheetApi.listWorksheets();
-    });
   });
 
-  it('renders create and open buttons', () => {
-    renderComponent();
+  it('renders create and open buttons', async () => {
+    await renderComponent();
     expect(screen.getByTestId('create-worksheet')).toBeInTheDocument();
     expect(screen.getByTestId('open-worksheet')).toBeInTheDocument();
   });
 
-  it('calls onWorksheetCreate when create button is clicked', () => {
-    renderComponent();
-    fireEvent.click(screen.getByTestId('create-worksheet'));
+  it('calls onWorksheetCreate when create button is clicked', async () => {
+    await renderComponent();
+    const createButton = screen.getByTestId('create-worksheet');
+    fireEvent.click(createButton);
     expect(defaultProps.onWorksheetCreate).toHaveBeenCalled();
   });
 
-  it('calls onWorksheetOpen when open button is clicked', () => {
-    renderComponent();
-    fireEvent.click(screen.getByTestId('open-worksheet'));
+  it('calls onWorksheetOpen when open button is clicked', async () => {
+    await renderComponent();
+    const openButton = screen.getByTestId('open-worksheet');
+    fireEvent.click(openButton);
     expect(defaultProps.onWorksheetOpen).toHaveBeenCalled();
   });
 
-  it('disables buttons when isLoading is true', () => {
-    renderComponent({ isLoading: true });
+  it('disables buttons when isLoading is true', async () => {
+    await renderComponent({ isLoading: true });
     expect(screen.getByTestId('create-worksheet')).toBeDisabled();
     expect(screen.getByTestId('open-worksheet')).toBeDisabled();
   });
 
-  it('enables buttons when isLoading is false', () => {
-    renderComponent({ isLoading: false });
+  it('enables buttons when isLoading is false', async () => {
+    await renderComponent({ isLoading: false });
     expect(screen.getByTestId('create-worksheet')).not.toBeDisabled();
     expect(screen.getByTestId('open-worksheet')).not.toBeDisabled();
   });
 
-  it('applies correct styles to buttons', () => {
-    renderComponent();
+  it('applies correct styles to buttons', async () => {
+    await renderComponent();
     const createButton = screen.getByTestId('create-worksheet');
     const openButton = screen.getByTestId('open-worksheet');
     
