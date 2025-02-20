@@ -120,13 +120,13 @@ test('renders markdown formatted cells', async () => {
       }
     }
   };
-  
+
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
 
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
   await waitFor(() => {
-    expect(screen.getByText('Regular Column')).toBeInTheDocument(); 
+    expect(screen.getByText('Regular Column')).toBeInTheDocument();
   });
 
   await waitFor(() => {
@@ -150,7 +150,7 @@ test('handles non-string values in markdown cells', async () => {
       }
     }
   };
-  
+
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
 
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
@@ -158,4 +158,28 @@ test('handles non-string values in markdown cells', async () => {
   await waitFor(() => {
     expect(screen.getByText('123')).toBeInTheDocument();
   });
+});
+
+test('handles number values in cells', async () => {
+  const traceData = {
+    "traceName": {
+      "cohortName": {
+        "columns.regular_data": [
+          123,
+          1234567890,
+          1234567890.12
+        ]
+      }
+    }
+  };
+
+  jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
+
+  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('123')).toBeInTheDocument();
+  });
+  expect(screen.getByText('1,234,567,890')).toBeInTheDocument();
+  expect(screen.getByText('1,234,567,890.12')).toBeInTheDocument();
 });
