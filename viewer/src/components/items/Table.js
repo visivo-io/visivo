@@ -76,22 +76,22 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
 
     const handleExportData = () => {
-        const csv = generateCsv(csvConfig)(tableData); 
+        const csv = generateCsv(csvConfig)(tableData);
         const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(csvBlob);
         const link = document.createElement('a');
         link.href = url;
-        
+
         const cohortName = selectedTableCohort?.cohortName || 'cohort';
         const traceName = selectedTableCohort?.traceName || 'trace';
-        
+
         link.setAttribute('download', `${table.name}_${traceName}_${cohortName}.csv`);
-        
+
         document.body.appendChild(link);
-        link.click(); 
+        link.click();
         document.body.removeChild(link);
     };
-    
+
     const useTable = useMaterialReactTable({
         columns: tableColumnsWithUnderscores(columns).map(column => ({
             ...column,
@@ -106,6 +106,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                             {value}
                         </Markdown>
                     );
+                } else if (typeof value === 'number' && `${value}`.length < 18) {
+                    return new Intl.NumberFormat(navigator.language).format(value)
                 }
                 return value;
             }
@@ -131,9 +133,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         muiPaginationProps: {
             rowsPerPageOptions: [3, 5, 15, 25, 50, 100, 500, 1000]
         },
-        initialState: { 
-            showGlobalFilter: true, 
-            density: "compact", 
+        initialState: {
+            showGlobalFilter: true,
+            density: "compact",
             pagination: {
                 pageSize: table.rows_per_page || 50
             }
@@ -187,9 +189,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                             <MRT_ToggleFiltersButton table={useTable} />
                             <MRT_ShowHideColumnsButton table={useTable} />
                             <MRT_ToggleDensePaddingButton table={useTable} />
-                            <Button 
-                                aria-label="DownloadCsv" 
-                                onClick={handleExportData} 
+                            <Button
+                                aria-label="DownloadCsv"
+                                onClick={handleExportData}
                                 startIcon={<FileDownloadIcon />}
                             />
                             {!isDirectQueryResult && tracesData && (
@@ -205,7 +207,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                     </Box>
 
                     <MRT_TableContainer table={useTable} sx={{ width: width, maxHeight: `${height - 120}px` }} />
-                    
+
                     <Box>
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                             <MRT_TablePagination table={useTable} />
