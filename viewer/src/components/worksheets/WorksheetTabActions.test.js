@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WorksheetTabActions from './WorksheetTabActions';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
@@ -44,7 +44,7 @@ describe('WorksheetTabActions', () => {
     worksheetApi.listWorksheets.mockResolvedValue(mockWorksheets);
     worksheetApi.getSessionState.mockResolvedValue(mockWorksheets.map(w => w.session_state));
 
-    const result = render(
+    const view = render(
       <TestWrapper>
         <WorksheetTabActions {...defaultProps} {...props} />
       </TestWrapper>
@@ -55,7 +55,7 @@ describe('WorksheetTabActions', () => {
       expect(screen.getByTestId('create-worksheet')).toBeInTheDocument();
     });
 
-    return result;
+    return view;
   };
 
   beforeEach(() => {
