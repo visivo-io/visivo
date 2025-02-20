@@ -22,12 +22,10 @@ const WorksheetTabActions = ({
   const { allWorksheets, activeWorksheetId, actions } = useWorksheets();
 
   const handleCreate = (e) => {
-    e.preventDefault();
     onWorksheetCreate();
   };
 
   const handleOpen = (e) => {
-    e.preventDefault();
     setIsPopupOpen(true);
     if (onWorksheetOpen) {
       onWorksheetOpen();
