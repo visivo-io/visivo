@@ -80,6 +80,7 @@ def error_if_true(bool: bool, message: str):
 
 
 def extract_value_from_function(function_text, function_name):
+    breakpoint()
     if isinstance(function_text, QueryString):
         return function_text.get_value()
     if function_text is None:

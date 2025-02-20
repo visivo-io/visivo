@@ -1,8 +1,8 @@
 
 from pydantic import Field, constr
-from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
+from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional, Any 
+from typing import List, Literal, Optional 
 
 
 class Line25(TracePropsAttribute):
@@ -10,7 +10,7 @@ class Line25(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the inner box plot bounding line color. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the inner box plot bounding line width. """
 	)
@@ -23,11 +23,11 @@ class ViolinBox(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	visible: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines if an miniature box plot is drawn inside the violins.  """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the width of the inner box plots relative to the violins' width. For example, with 1, the inner box plots are as wide as the violins. """
 	)
@@ -40,7 +40,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -61,7 +61,7 @@ class ViolinHoverlabel(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+	namelength: Optional[int | IndexedStatementField | StatementField | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
@@ -74,7 +74,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
@@ -92,7 +92,7 @@ class Line22(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the color of line bounding the violin(s). """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the violin(s). """
 	)
@@ -105,16 +105,16 @@ class Line8(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the border line color of the outlier sample points. Defaults to marker.color """
 	)
-	outlierwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	outlierwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the border line width (in px) of the outlier sample points. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 class ViolinMarker(TracePropsAttribute):
-	angle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	angle: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" angle<br>Sets the marker angle in respect to `angleref`. """
 	)
@@ -126,7 +126,7 @@ class ViolinMarker(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity. """
 	)
@@ -134,7 +134,7 @@ class ViolinMarker(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the color of the outlier sample points. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size (in px). """
 	)
@@ -147,11 +147,11 @@ class Meanline1(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the mean line color. """
 	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	visible: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines if a line corresponding to the sample's mean is shown inside the violins. If `box.visible` is turned on, the mean line is drawn inside the inner box. Otherwise, the mean line is drawn from one side of the violin to other. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the mean line width. """
 	)
@@ -160,11 +160,11 @@ class Marker1(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of selected points. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
@@ -178,11 +178,11 @@ class Marker2(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
@@ -196,7 +196,7 @@ class Violin(TraceProps):
 		None,
 		description=""" string<br>Set several traces linked to the same position axis or matching axes to the same alignmentgroup. This controls whether bars compute their positional range dependently or independently. """
 	)
-	bandwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	bandwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the bandwidth used to compute the kernel density estimate. By default, the bandwidth is determined by Silverman's rule of thumb. """
 	)
@@ -204,7 +204,7 @@ class Violin(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	customdata: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	customdata: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
@@ -232,11 +232,11 @@ class Violin(TraceProps):
 		None,
 		description=""" string or array of strings<br>Same as `text`. """
 	)
-	ids: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	ids: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """
 	)
-	jitter: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	jitter: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the amount of jitter in the sample points drawn. If "0", the sample points align along the distribution axis. If "1", the sample points are drawn in a random jitter of width equal to the width of the violins. """
 	)
@@ -248,11 +248,11 @@ class Violin(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	legendrank: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendrank: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with `"reversed" `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. """
 	)
-	legendwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
@@ -268,7 +268,7 @@ class Violin(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	meta: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """
 	)
@@ -276,7 +276,7 @@ class Violin(TraceProps):
 		None,
 		description=""" string<br>Set several traces linked to the same position axis or matching axes to the same offsetgroup where bars of the same position coordinate will line up. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the opacity of the trace. """
 	)
@@ -284,7 +284,7 @@ class Violin(TraceProps):
 		None,
 		description=""" enumerated , one of ( "v" | "h" )<br>Sets the orientation of the violin(s). If "v" ("h"), the distribution is visualized along the vertical (horizontal). """
 	)
-	pointpos: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	pointpos: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -2 and 2<br>Sets the position of the sample points in relation to the violins. If "0", the sample points are places over the center of the violins. Positive (negative) values correspond to positions to the right (left) for vertical violins and above (below) for horizontal violins. """
 	)
@@ -308,11 +308,11 @@ class Violin(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	selectedpoints: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	selectedpoints: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect. """
 	)
-	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showlegend: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not an item corresponding to this trace is shown in the legend. """
 	)
@@ -320,7 +320,7 @@ class Violin(TraceProps):
 		None,
 		description=""" enumerated , one of ( "both" | "positive" | "negative" )<br>Determines on which side of the position value the density function making up one half of a violin is plotted. Useful when comparing two violin traces under "overlay" mode, where one trace has `side` set to "positive" and the other to "negative". """
 	)
-	span: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	span: Optional[StatementField | List]= Field(
 		None,
 		description=""" array<br>Sets the span in data space for which the density function will be computed. Has an effect only when `spanmode` is set to "manual". """
 	)
@@ -336,7 +336,7 @@ class Violin(TraceProps):
 		...,
 		description=""" "violin"<br> """
 	)
-	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	uirevision: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
@@ -348,15 +348,15 @@ class Violin(TraceProps):
 		None,
 		description=""" enumerated , one of ( true | false | "legendonly" )<br>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width of the violin in data coordinates. If "0" (default value) the width is automatically selected based on the positions of other violin traces in the same subplot. """
 	)
-	x0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	x0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the x coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info. """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	x: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the x sample data or coordinates. See overview for more info. """
 	)
@@ -368,11 +368,11 @@ class Violin(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `x` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `xaxis.hoverformat`. """
 	)
-	y0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	y0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the y coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info. """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	y: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the y sample data or coordinates. See overview for more info. """
 	)

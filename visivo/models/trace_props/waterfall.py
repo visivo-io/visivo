@@ -1,8 +1,8 @@
 
 from pydantic import Field, constr
-from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
+from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional, Any 
+from typing import List, Literal, Optional 
 
 
 class Line2(TracePropsAttribute):
@@ -14,7 +14,7 @@ class Line2(TracePropsAttribute):
 		None,
 		description=""" string<br>Sets the dash style of lines. Set to a dash type string ("solid", "dot", "dash", "longdash", "dashdot", or "longdashdot") or a dash length list in px (eg "5px,10px,2px,2px"). """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the line width (in px). """
 	)
@@ -27,7 +27,7 @@ class WaterfallConnector(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "spanning" | "between" )<br>Sets the shape of connector lines. """
 	)
-	visible: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	visible: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines if connector lines are drawn.  """
 	)
@@ -36,7 +36,7 @@ class Line24(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the line color of all decreasing values. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the line width of all decreasing values. """
 	)
@@ -63,7 +63,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -84,7 +84,7 @@ class WaterfallHoverlabel(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+	namelength: Optional[int | IndexedStatementField | StatementField | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
@@ -93,7 +93,7 @@ class Line27(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the line color of all increasing values. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the line width of all increasing values. """
 	)
@@ -120,7 +120,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -133,7 +133,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
@@ -155,7 +155,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -168,7 +168,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -177,7 +177,7 @@ class Line26(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the line color of all intermediate sums and total values. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the line width of all intermediate sums and total values. """
 	)
@@ -200,11 +200,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" string<br>Set several traces linked to the same position axis or matching axes to the same alignmentgroup. This controls whether bars compute their positional range dependently or independently. """
 	)
-	base: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	base: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets where the bar base is drawn (in position axis units). """
 	)
-	cliponaxis: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cliponaxis: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether the text nodes are clipped about the subplot axes. To show the text nodes above axis lines and tick labels, make sure to set `xaxis.layer` and `yaxis.layer` to "below traces". """
 	)
@@ -216,7 +216,7 @@ class Waterfall(TraceProps):
 		None,
 		description=""" enumerated , one of ( "inside" | "outside" | "both" | "none" )<br>Constrain the size of text inside or outside a bar to be no larger than the bar itself. """
 	)
-	customdata: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	customdata: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
@@ -224,11 +224,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	dx: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	dx: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the x coordinate step. See `x0` for more info. """
 	)
-	dy: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	dy: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the y coordinate step. See `y0` for more info. """
 	)
@@ -248,7 +248,7 @@ class Waterfall(TraceProps):
 		None,
 		description=""" string or array of strings<br>Sets hover text elements associated with each (x,y) pair. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. To be seen, trace `hoverinfo` must contain a "text" flag. """
 	)
-	ids: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	ids: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """
 	)
@@ -272,23 +272,23 @@ class Waterfall(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	legendrank: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendrank: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with `"reversed" `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. """
 	)
-	legendwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
-	measure: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	measure: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>An array containing types of values. By default the values are considered as 'relative'. However; it is possible to use 'total' to compute the sums. Also 'absolute' could be applied to reset the computed total or to declare an initial value where needed. """
 	)
-	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	meta: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """
 	)
-	offset: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	offset: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers<br>Shifts the position where the bar is drawn (in position axis units). In "group" barmode, traces that set "offset" will be excluded and drawn in "overlay" mode instead. """
 	)
@@ -296,7 +296,7 @@ class Waterfall(TraceProps):
 		None,
 		description=""" string<br>Set several traces linked to the same position axis or matching axes to the same offsetgroup where bars of the same position coordinate will line up. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the opacity of the trace. """
 	)
@@ -308,11 +308,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for `text` lying outside the bar. """
 	)
-	selectedpoints: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	selectedpoints: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect. """
 	)
-	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showlegend: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not an item corresponding to this trace is shown in the legend. """
 	)
@@ -320,7 +320,7 @@ class Waterfall(TraceProps):
 		None,
 		description=""" string or array of strings<br>Sets text elements associated with each (x,y) pair. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. If trace `hoverinfo` contains a "text" flag and "hovertext" is not set, these elements will be seen in the hover labels. """
 	)
-	textangle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	textangle: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" angle<br>Sets the angle of the tick labels with respect to the bar. For example, a `tickangle` of -90 draws the tick labels vertically. With "auto" the texts may automatically be rotated to fit with the maximum size in bars. """
 	)
@@ -348,7 +348,7 @@ class Waterfall(TraceProps):
 		...,
 		description=""" "waterfall"<br> """
 	)
-	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	uirevision: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
@@ -356,15 +356,15 @@ class Waterfall(TraceProps):
 		None,
 		description=""" enumerated , one of ( true | false | "legendonly" )<br>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). """
 	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	width: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the bar width (in position axis units). """
 	)
-	x0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	x0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Alternate to `x`. Builds a linear space of x coordinates. Use with `dx` where `x0` is the starting coordinate and `dx` the step. """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	x: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the x coordinates. """
 	)
@@ -376,11 +376,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `x` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `xaxis.hoverformat`. """
 	)
-	xperiod0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xperiod0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the base for period positioning in milliseconds or date string on the x0 axis. When `x0period` is round number of weeks, the `x0period0` by default would be on a Sunday i.e. 2000-01-02, otherwise it would be at 2000-01-01. """
 	)
-	xperiod: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xperiod: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the period positioning in milliseconds or "M<n>" on the x axis. Special values in the form of "M<n>" could be used to declare the number of months. In this case `n` must be a positive integer. """
 	)
@@ -388,11 +388,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" enumerated , one of ( "start" | "middle" | "end" )<br>Only relevant when the axis `type` is "date". Sets the alignment of data points on the x axis. """
 	)
-	y0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	y0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Alternate to `y`. Builds a linear space of y coordinates. Use with `dy` where `y0` is the starting coordinate and `dy` the step. """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	y: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the y coordinates. """
 	)
@@ -404,11 +404,11 @@ class Waterfall(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `y` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `yaxis.hoverformat`. """
 	)
-	yperiod0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yperiod0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the base for period positioning in milliseconds or date string on the y0 axis. When `y0period` is round number of weeks, the `y0period0` by default would be on a Sunday i.e. 2000-01-02, otherwise it would be at 2000-01-01. """
 	)
-	yperiod: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yperiod: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the period positioning in milliseconds or "M<n>" on the y axis. Special values in the form of "M<n>" could be used to declare the number of months. In this case `n` must be a positive integer. """
 	)

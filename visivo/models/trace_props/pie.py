@@ -1,24 +1,24 @@
 
 from pydantic import Field, constr
-from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
+from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional, Any 
+from typing import List, Literal, Optional 
 
 
 class Domain11(TracePropsAttribute):
-	column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	column: Optional[int | IndexedStatementField]= Field(
 		None,
 		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this pie trace . """
 	)
-	row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	row: Optional[int | IndexedStatementField]= Field(
 		None,
 		description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this pie trace . """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	x: Optional[StatementField | List]= Field(
 		None,
 		description=""" array<br>Sets the horizontal domain of this pie trace (in plot fraction). """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	y: Optional[StatementField | List]= Field(
 		None,
 		description=""" array<br>Sets the vertical domain of this pie trace (in plot fraction). """
 	)
@@ -31,7 +31,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -52,7 +52,7 @@ class PieHoverlabel(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+	namelength: Optional[int | IndexedStatementField | StatementField | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
@@ -65,7 +65,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -78,7 +78,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
@@ -96,12 +96,12 @@ class Line19(TracePropsAttribute):
 		None,
 		description=""" color or array of colors<br>Sets the color of the line enclosing each sector. """
 	)
-	width: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	width: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the line enclosing each sector. """
 	)
 class PieMarker(TracePropsAttribute):
-	colors: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	colors: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the color of each sector. If not specified, the default trace color set is used to pick the sector colors. """
 	)
@@ -118,7 +118,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -131,7 +131,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -144,7 +144,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -162,11 +162,11 @@ class PieTitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the chart. If it is empty, no title is displayed. Note that before the existence of `title.text`, the title's contents used to be defined as the `title` attribute itself. This behavior has been deprecated. """
 	)
 class Pie(TraceProps):
-	automargin: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	automargin: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether outside text labels can push the margins. """
 	)
-	customdata: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	customdata: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
@@ -174,7 +174,7 @@ class Pie(TraceProps):
 		None,
 		description=""" enumerated , one of ( "clockwise" | "counterclockwise" )<br>Specifies the direction at which succeeding sectors follow one another. """
 	)
-	dlabel: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	dlabel: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the label step. See `label0` for more info. """
 	)
@@ -182,7 +182,7 @@ class Pie(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	hole: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	hole: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fraction of the radius to cut out of the pie. Use this to make a donut chart. """
 	)
@@ -202,7 +202,7 @@ class Pie(TraceProps):
 		None,
 		description=""" string or array of strings<br>Sets hover text elements associated with each sector. If a single string, the same string appears for all data points. If an array of string, the items are mapped in order of this trace's sectors. To be seen, trace `hoverinfo` must contain a "text" flag. """
 	)
-	ids: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	ids: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """
 	)
@@ -214,11 +214,11 @@ class Pie(TraceProps):
 		None,
 		description=""" enumerated , one of ( "horizontal" | "radial" | "tangential" | "auto" )<br>Controls the orientation of the text inside chart sectors. When set to "auto", text may be oriented in any direction in order to be as big as possible in the middle of a sector. The "horizontal" option orients text to be parallel with the bottom of the chart, and may make text smaller in order to achieve that goal. The "radial" option orients text along the radius of the sector. The "tangential" option orients text perpendicular to the radius of the sector. """
 	)
-	label0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	label0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Alternate to `labels`. Builds a numeric set of labels. Use with `dlabel` where `label0` is the starting label and `dlabel` the step. """
 	)
-	labels: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	labels: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the sector labels. If `labels` entries are duplicated, we sum associated `values` or simply count occurrences if `values` is not provided. For other array attributes (including color) we use the first non-empty entry among all occurrences of the label. """
 	)
@@ -230,11 +230,11 @@ class Pie(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	legendrank: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendrank: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with `"reversed" `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. """
 	)
-	legendwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
@@ -242,11 +242,11 @@ class Pie(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	meta: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the opacity of the trace. """
 	)
@@ -254,11 +254,11 @@ class Pie(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used for `textinfo` lying outside the sector. """
 	)
-	pull: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	pull: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers between or equal to 0 and 1<br>Sets the fraction of larger radius to pull the sectors out from the center. This can be a constant to pull all slices apart from each other equally or an array to highlight one or more slices. """
 	)
-	rotation: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	rotation: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" angle<br>Instead of the first slice starting at 12 o'clock, rotate to some other angle. """
 	)
@@ -266,15 +266,15 @@ class Pie(TraceProps):
 		None,
 		description=""" string<br>If there are multiple pie charts that should be sized according to their totals, link them by providing a non-empty group id here shared by every trace in the same group. """
 	)
-	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showlegend: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not an item corresponding to this trace is shown in the legend. """
 	)
-	sort: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	sort: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not the sectors are reordered from largest to smallest. """
 	)
-	text: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	text: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets text elements associated with each sector. If trace `textinfo` contains a "text" flag, these elements will be seen on the chart. If trace `hoverinfo` contains a "text" flag and "hovertext" is not set, these elements will be seen in the hover labels. """
 	)
@@ -302,11 +302,11 @@ class Pie(TraceProps):
 		...,
 		description=""" "pie"<br> """
 	)
-	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	uirevision: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
-	values: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	values: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the values of the sectors. If omitted, we count occurrences of each label. """
 	)

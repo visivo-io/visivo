@@ -11,12 +11,17 @@ from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX, QueryStrin
 def get_statement_model_discriminator_value(value: Any) -> str:
     if isinstance(value, str) and re.match(QUERY_STRING_VALUE_REGEX, value):
         return "Query"
+    elif isinstance(value, QueryString):
+        return "Query"
     elif isinstance(value, str) and re.match(CONTEXT_STRING_VALUE_REGEX, value):
+        return "Context"
+    elif isinstance(value, ContextString):
         return "Context"
     elif isinstance(value, str) and re.match(STATEMENT_REGEX, value):
         return "Statement"
 
     return None
+
 
 def get_indexed_statement_model_discriminator_value(value: Any) -> str:
     if isinstance(value, str) and re.match(QUERY_STRING_VALUE_REGEX, value):

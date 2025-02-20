@@ -236,6 +236,7 @@ def test_tokenization_of_nested_inputs():
     source = SnowflakeSourceFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
+    breakpoint()
     assert (
         tokenized_trace.select_items["props.marker.color"]
         == "case sum(amount) > 200 then 'green' else 'blue' end"

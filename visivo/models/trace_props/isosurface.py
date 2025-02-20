@@ -1,34 +1,34 @@
 
 from pydantic import Field, constr
-from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
+from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional, Any 
+from typing import List, Literal, Optional 
 
 
 class X2(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the x `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
 class Y2(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the y `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
 class Z2(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `caps`. The default fill value of the `caps` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Sets the fill ratio of the `slices`. The default fill value of the z `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
@@ -54,16 +54,16 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
 class Tickformatstops1(TracePropsAttribute):
-	dtickrange: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	dtickrange: Optional[StatementField | List]= Field(
 		None,
 		description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """
 	)
-	enabled: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	enabled: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`. """
 	)
@@ -88,7 +88,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
@@ -114,11 +114,11 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the axis line color. """
 	)
-	borderwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	borderwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) or the border enclosing this color bar. """
 	)
-	dtick: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	dtick: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to "log" and "date" axes. If the axis `type` is "log", then ticks are set every 10^(n"dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. "log" has several special values; "L<f>", where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = "L0.5" will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use "D1" (all digits) or "D2" (only 2 and 5). `tick0` is ignored for "D1" and "D2". If the axis `type` is "date", then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. "date" also has special values "M<n>" gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to "2000-01-15" and `dtick` to "M3". To set ticks every 4 years, set `dtick` to "M48" """
 	)
@@ -126,7 +126,7 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "none" | "e" | "e" | "power" | "si" | "b" )<br>Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If "none", it appears as 1,000,000,000. If "e", 1e+9. If "E", 1E+9. If "power", 1x10^9 (with 9 in a super script). If "SI", 1G. If "B", 1B. """
 	)
-	len: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	len: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends. """
 	)
@@ -134,11 +134,11 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot "fraction" or in "pixels. Use `len` to set the value. """
 	)
-	minexponent: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	minexponent: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Hide SI prefix for 10^n if |n| is below this number. This only has an effect when `tickformat` is "SI" or "B". """
 	)
-	nticks: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	nticks: Optional[int | IndexedStatementField]= Field(
 		None,
 		description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """
 	)
@@ -150,11 +150,11 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the axis line color. """
 	)
-	outlinewidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	outlinewidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the axis line. """
 	)
-	separatethousands: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	separatethousands: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>If "true", even 4-digit integers are separated """
 	)
@@ -162,7 +162,7 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>If "all", all exponents are shown besides their significands. If "first", only the exponent of the first tick is shown. If "last", only the exponent of the last tick is shown. If "none", no exponents appear. """
 	)
-	showticklabels: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showticklabels: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not the tick labels are drawn. """
 	)
@@ -174,7 +174,7 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "all" | "first" | "last" | "none" )<br>Same as `showtickprefix` but for tick suffixes. """
 	)
-	thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	thickness: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels. """
 	)
@@ -182,11 +182,11 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "fraction" | "pixels" )<br>Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot "fraction" or in "pixels". Use `thickness` to set the value. """
 	)
-	tick0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	tick0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the placement of the first tick on this axis. Use with `dtick`. If the axis `type` is "log", then you must take the log of your starting tick (e.g. to set the starting tick to 100, set the `tick0` to 2) except when `dtick`="L<f>" (see `dtick` for more info). If the axis `type` is "date", it should be a date string, like date data. If the axis `type` is "category", it should be a number, using the scale where each category is assigned a serial number from zero in the order it appears. """
 	)
-	tickangle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	tickangle: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """
 	)
@@ -214,11 +214,11 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "outside" | "inside" | "outside top" | "inside top" | "outside left" | "inside left" | "outside right" | "inside right" | "outside bottom" | "inside bottom" )<br>Determines where tick labels are drawn relative to the ticks. Left and right options are used when `orientation` is "h", top and bottom when `orientation` is "v". """
 	)
-	ticklabelstep: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	ticklabelstep: Optional[int | IndexedStatementField]= Field(
 		None,
 		description=""" integer greater than or equal to 1<br>Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. `tick0` determines which labels are shown. Not implemented for axes with `type` "log" or "multicategory", or when `tickmode` is "array". """
 	)
-	ticklen: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	ticklen: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the tick length (in px). """
 	)
@@ -238,15 +238,15 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" string<br>Sets a tick label suffix. """
 	)
-	ticktext: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	ticktext: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """
 	)
-	tickvals: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	tickvals: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """
 	)
-	tickwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	tickwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the tick width (in px). """
 	)
@@ -254,7 +254,7 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	x: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -2 and 3<br>Sets the x position of the color bar (in plot fraction). Defaults to 1.02 when `orientation` is "v" and 0.5 when `orientation` is "h". """
 	)
@@ -262,11 +262,11 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets this color bar's horizontal position anchor. This anchor binds the `x` position to the "left", "center" or "right" of the color bar. Defaults to "left" when `orientation` is "v" and "center" when `orientation` is "h". """
 	)
-	xpad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xpad: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the x direction. """
 	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	y: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -2 and 3<br>Sets the y position of the color bar (in plot fraction). Defaults to 0.5 when `orientation` is "v" and 1.02 when `orientation` is "h". """
 	)
@@ -274,7 +274,7 @@ class IsosurfaceColorbar(TracePropsAttribute):
 		None,
 		description=""" enumerated , one of ( "top" | "middle" | "bottom" )<br>Sets this color bar's vertical position anchor This anchor binds the `y` position to the "top", "middle" or "bottom" of the color bar. Defaults to "middle" when `orientation` is "v" and "bottom" when `orientation` is "h". """
 	)
-	ypad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	ypad: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the amount of padding (in px) along the y direction. """
 	)
@@ -283,11 +283,11 @@ class Contour1(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the color of the contour lines. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Sets whether or not dynamic contours are shown on hover """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 1 and 16<br>Sets the width of the contour lines. """
 	)
@@ -300,7 +300,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -321,7 +321,7 @@ class IsosurfaceHoverlabel(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+	namelength: Optional[int | IndexedStatementField | StatementField | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
@@ -334,7 +334,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
@@ -348,83 +348,83 @@ class IsosurfaceLegendgrouptitle(TracePropsAttribute):
 		description=""" string<br>Sets the title of the legend group. """
 	)
 class Lighting1(TracePropsAttribute):
-	ambient: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	ambient: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Ambient light increases overall color visibility but can wash out the image. """
 	)
-	diffuse: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	diffuse: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Represents the extent that incident rays are reflected in a range of angles. """
 	)
-	facenormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	facenormalsepsilon: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Epsilon for face normals calculation avoids math issues arising from degenerate geometry. """
 	)
-	fresnel: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fresnel: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 5<br>Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine. """
 	)
-	roughness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	roughness: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Alters specular reflection; the rougher the surface, the wider and less contrasty the shine. """
 	)
-	specular: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	specular: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 2<br>Represents the level that incident rays are reflected in a single direction, causing shine. """
 	)
-	vertexnormalsepsilon: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	vertexnormalsepsilon: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry. """
 	)
 class Lightposition1(TracePropsAttribute):
-	x: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	x: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the X coordinate for each vertex. """
 	)
-	y: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	y: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Y coordinate for each vertex. """
 	)
-	z: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	z: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -100000 and 100000<br>Numeric vector, representing the Z coordinate for each vertex. """
 	)
 class X1(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	locations: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis x except start and end. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not slice planes about the x dimension are drawn. """
 	)
 class Y1(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	locations: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis y except start and end. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not slice planes about the y dimension are drawn. """
 	)
 class Z1(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `slices`. The default fill value of the `slices` is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
-	locations: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	locations: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Specifies the location(s) of slices on the axis. When not specified slices would be created for all points of the axis z except start and end. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not slice planes about the z dimension are drawn. """
 	)
@@ -442,20 +442,20 @@ class IsosurfaceSlices(TracePropsAttribute):
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
 class Spaceframe2(TracePropsAttribute):
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the `spaceframe` elements. The default fill value is 0.15 meaning that only 15% of the area of every faces of tetras would be shaded. Applying a greater `fill` ratio would allow the creation of stronger elements or could be sued to have entirely closed areas (in case of using 1). """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Displays/hides tetrahedron shapes between minimum and maximum iso-values. Often useful when either caps or surfaces are disabled or filled with values less than 1. """
 	)
 class Surface1(TracePropsAttribute):
-	count: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	count: Optional[int | IndexedStatementField]= Field(
 		None,
 		description=""" integer greater than or equal to 1<br>Sets the number of iso-surfaces between minimum and maximum iso-values. By default this value is 2 meaning that only minimum and maximum surfaces would be drawn. """
 	)
-	fill: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	fill: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the fill ratio of the iso-surface. The default fill value of the surface is 1 meaning that they are entirely shaded. On the other hand Applying a `fill` ratio less than one would allow the creation of openings parallel to the edges. """
 	)
@@ -463,12 +463,12 @@ class Surface1(TracePropsAttribute):
 		None,
 		description=""" flaglist string. any combination of "a", "b", "c", "d", "e" joined with a "+" or "all" or "odd" or "even".<br>Sets the surface pattern of the iso-surface 3-D sections. The default pattern of the surface is `all` meaning that the rest of surface elements would be shaded. The check options (either 1 or 2) could be used to draw half of the squares on the surface. Using various combinations of capital `A`, `B`, `C`, `D` and `E` may also be used to reduce the number of triangles on the iso-surfaces and creating other patterns of interest. """
 	)
-	show: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	show: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Hides/displays surfaces between minimum and maximum iso-values. """
 	)
 class Isosurface(TraceProps):
-	autocolorscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	autocolorscale: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `colorscale`. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed. """
 	)
@@ -476,19 +476,19 @@ class Isosurface(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	cauto: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cauto: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not the color domain is computed with respect to the input data (here `value`) or the bounds set in `cmin` and `cmax` Defaults to `false` when `cmin` and `cmax` are set by the user. """
 	)
-	cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cmax: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the upper bound of the color domain. Value should have the same units as `value` and if set, `cmin` must be set as well. """
 	)
-	cmid: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cmid: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the mid-point of the color domain by scaling `cmin` and/or `cmax` to be equidistant to this point. Value should have the same units as `value`. Has no effect when `cauto` is `false`. """
 	)
-	cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	cmin: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the lower bound of the color domain. Value should have the same units as `value` and if set, `cmax` must be set as well. """
 	)
@@ -500,7 +500,7 @@ class Isosurface(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	colorscale: Optional[Any]= Field(
+	colorscale: Optional[str]= Field(
 		None,
 		description=""" colorscale<br>Sets the colorscale. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `cmin` and `cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """
 	)
@@ -508,11 +508,11 @@ class Isosurface(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	customdata: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	customdata: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	flatshading: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	flatshading: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not normal smoothing is applied to the meshes, creating meshes with an angular, low-poly look via flat reflections. """
 	)
@@ -532,15 +532,15 @@ class Isosurface(TraceProps):
 		None,
 		description=""" string or array of strings<br>Same as `text`. """
 	)
-	ids: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	ids: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """
 	)
-	isomax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	isomax: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the maximum boundary for iso-surface plot. """
 	)
-	isomin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	isomin: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the minimum boundary for iso-surface plot. """
 	)
@@ -552,11 +552,11 @@ class Isosurface(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	legendrank: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendrank: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with `"reversed" `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. """
 	)
-	legendwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
@@ -568,15 +568,15 @@ class Isosurface(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	meta: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the opacity of the surface. Please note that in the case of using high `opacity` values for example a value greater than or equal to 0.5 on two surfaces (and 0.25 with four surfaces), an overlay of multiple transparent surfaces may not perfectly be sorted in depth by the webgl API. This behavior may be improved in the near future and is subject to change. """
 	)
-	reversescale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	reversescale: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Reverses the color mapping if true. If true, `cmin` will correspond to the last color in the array and `cmax` will correspond to the first color. """
 	)
@@ -584,11 +584,11 @@ class Isosurface(TraceProps):
 		None,
 		description=""" subplotid<br>Sets a reference between this trace's 3D coordinate system and a 3D scene. If "scene" (the default value), the (x,y,z) coordinates refer to `layout.scene`. If "scene2", the (x,y,z) coordinates refer to `layout.scene2`, and so on. """
 	)
-	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showlegend: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not an item corresponding to this trace is shown in the legend. """
 	)
-	showscale: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showscale: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. """
 	)
@@ -612,11 +612,11 @@ class Isosurface(TraceProps):
 		...,
 		description=""" "isosurface"<br> """
 	)
-	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	uirevision: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
-	value: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	value: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the 4th dimension (value) of the vertices. """
 	)
@@ -628,7 +628,7 @@ class Isosurface(TraceProps):
 		None,
 		description=""" enumerated , one of ( true | false | "legendonly" )<br>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	x: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the X coordinates of the vertices on X axis. """
 	)
@@ -636,7 +636,7 @@ class Isosurface(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `x` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `xaxis.hoverformat`. """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	y: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the Y coordinates of the vertices on Y axis. """
 	)
@@ -644,7 +644,7 @@ class Isosurface(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `y` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `yaxis.hoverformat`. """
 	)
-	z: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	z: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the Z coordinates of the vertices on Z axis. """
 	)

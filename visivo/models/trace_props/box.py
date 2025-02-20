@@ -1,8 +1,8 @@
 
 from pydantic import Field, constr
-from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
+from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
 from visivo.models.trace_props.trace_props import  TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional, Any 
+from typing import List, Literal, Optional 
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
@@ -14,7 +14,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
 		None,
 		description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | float | List[float]]= Field(
+	size: Optional[IndexedStatementField | StatementField | float | List[float]]= Field(
 		None,
 		description=""" number or array of numbers greater than or equal to 1<br> """
 	)
@@ -35,7 +35,7 @@ class BoxHoverlabel(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """
 	)
-	namelength: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]]= Field(
+	namelength: Optional[int | IndexedStatementField | StatementField | List[int]]= Field(
 		None,
 		description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """
 	)
@@ -48,7 +48,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 		None,
 		description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 1<br> """
 	)
@@ -66,7 +66,7 @@ class Line5(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the color of line bounding the box(es). """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of line bounding the box(es). """
 	)
@@ -79,16 +79,16 @@ class Line8(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the border line color of the outlier sample points. Defaults to marker.color """
 	)
-	outlierwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	outlierwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the border line width (in px) of the outlier sample points. """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px) of the lines bounding the marker points. """
 	)
 class BoxMarker(TracePropsAttribute):
-	angle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	angle: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" angle<br>Sets the marker angle in respect to `angleref`. """
 	)
@@ -100,7 +100,7 @@ class BoxMarker(TracePropsAttribute):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity. """
 	)
@@ -108,7 +108,7 @@ class BoxMarker(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the color of the outlier sample points. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size (in px). """
 	)
@@ -121,11 +121,11 @@ class Marker1(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of selected points. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of selected points. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of selected points. """
 	)
@@ -139,11 +139,11 @@ class Marker2(TracePropsAttribute):
 		None,
 		description=""" color<br>Sets the marker color of unselected points, applied only when a selection exists. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the marker opacity of unselected points, applied only when a selection exists. """
 	)
-	size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	size: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the marker size of unselected points, applied only when a selection exists. """
 	)
@@ -165,15 +165,15 @@ class Box(TraceProps):
 		None,
 		description=""" enumerated , one of ( "all" | "outliers" | "suspectedoutliers" | false )<br>If "outliers", only the sample points lying outside the whiskers are shown If "suspectedoutliers", the outlier points are shown and points either less than 4"Q1-3"Q3 or greater than 4"Q3-3"Q1 are highlighted (see `outliercolor`) If "all", all sample points are shown If "false", only the box(es) are shown with no sample points Defaults to "suspectedoutliers" when `marker.outliercolor` or `marker.line.outliercolor` is set. Defaults to "all" under the q1/median/q3 signature. Otherwise defaults to "outliers". """
 	)
-	customdata: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	customdata: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """
 	)
-	dx: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	dx: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the x coordinate step for multi-box traces set using q1/median/q3. """
 	)
-	dy: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	dy: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the y coordinate step for multi-box traces set using q1/median/q3. """
 	)
@@ -201,11 +201,11 @@ class Box(TraceProps):
 		None,
 		description=""" string or array of strings<br>Same as `text`. """
 	)
-	ids: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	ids: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """
 	)
-	jitter: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	jitter: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the amount of jitter in the sample points drawn. If "0", the sample points align along the distribution axis. If "1", the sample points are drawn in a random jitter of width equal to the width of the box(es). """
 	)
@@ -217,11 +217,11 @@ class Box(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	legendrank: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendrank: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number<br>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with `"reversed" `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. """
 	)
-	legendwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	legendwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """
 	)
@@ -229,7 +229,7 @@ class Box(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	lowerfence: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	lowerfence: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the lower fence values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `lowerfence` is not provided but a sample (in `y` or `x`) is set, we compute the lower as the last sample point below 1.5 times the IQR. """
 	)
@@ -237,27 +237,27 @@ class Box(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	mean: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	mean: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the mean values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `mean` is not provided but a sample (in `y` or `x`) is set, we compute the mean for each box using the sample values. """
 	)
-	median: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	median: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the median values. There should be as many items as the number of boxes desired. """
 	)
-	meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	meta: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """
 	)
-	notched: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	notched: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not notches are drawn. Notches displays a confidence interval around the median. We compute the confidence interval as median +/- 1.57 " IQR / sqrt(N), where IQR is the interquartile range and N is the sample size. If two boxes' notches do not overlap there is 95% confidence their medians differ. See https://sites.google.com/site/davidsstatistics/home/notched-box-plots for more info. Defaults to "false" unless `notchwidth` or `notchspan` is set. """
 	)
-	notchspan: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	notchspan: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the notch span from the boxes' `median` values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `notchspan` is not provided but a sample (in `y` or `x`) is set, we compute it as 1.57 " IQR / sqrt(N), where N is the sample size. """
 	)
-	notchwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	notchwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 0.5<br>Sets the width of the notches relative to the box' width. For example, with 0, the notches are as wide as the box(es). """
 	)
@@ -265,7 +265,7 @@ class Box(TraceProps):
 		None,
 		description=""" string<br>Set several traces linked to the same position axis or matching axes to the same offsetgroup where bars of the same position coordinate will line up. """
 	)
-	opacity: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	opacity: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the opacity of the trace. """
 	)
@@ -273,15 +273,15 @@ class Box(TraceProps):
 		None,
 		description=""" enumerated , one of ( "v" | "h" )<br>Sets the orientation of the box(es). If "v" ("h"), the distribution is visualized along the vertical (horizontal). """
 	)
-	pointpos: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	pointpos: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to -2 and 2<br>Sets the position of the sample points in relation to the box(es). If "0", the sample points are places over the center of the box(es). Positive (negative) values correspond to positions to the right (left) for vertical boxes and above (below) for horizontal boxes """
 	)
-	q1: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	q1: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the Quartile 1 values. There should be as many items as the number of boxes desired. """
 	)
-	q3: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	q3: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the Quartile 3 values. There should be as many items as the number of boxes desired. """
 	)
@@ -289,7 +289,7 @@ class Box(TraceProps):
 		None,
 		description=""" enumerated , one of ( "linear" | "exclusive" | "inclusive" )<br>Sets the method used to compute the sample's Q1 and Q3 quartiles. The "linear" method uses the 25th percentile for Q1 and 75th percentile for Q3 as computed using method #10 (listed on http://jse.amstat.org/v14n3/langford.html). The "exclusive" method uses the median to divide the ordered dataset into two halves if the sample is odd, it does not include the median in either half - Q1 is then the median of the lower half and Q3 the median of the upper half. The "inclusive" method also uses the median to divide the ordered dataset into two halves but if the sample is odd, it includes the median in both halves - Q1 is then the median of the lower half and Q3 the median of the upper half. """
 	)
-	sd: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	sd: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the standard deviation values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `sd` is not provided but a sample (in `y` or `x`) is set, we compute the standard deviation for each box using the sample values. """
 	)
@@ -297,11 +297,11 @@ class Box(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	selectedpoints: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	selectedpoints: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect. """
 	)
-	showlegend: Optional[bool | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	showlegend: Optional[bool | IndexedStatementField]= Field(
 		None,
 		description=""" boolean<br>Determines whether or not an item corresponding to this trace is shown in the legend. """
 	)
@@ -313,7 +313,7 @@ class Box(TraceProps):
 		...,
 		description=""" "box"<br> """
 	)
-	uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	uirevision: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """
 	)
@@ -321,7 +321,7 @@ class Box(TraceProps):
 		None,
 		description=""" object containing one or more of the keys listed below.<br> """
 	)
-	upperfence: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	upperfence: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the upper fence values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `upperfence` is not provided but a sample (in `y` or `x`) is set, we compute the lower as the last sample point above 1.5 times the IQR. """
 	)
@@ -329,19 +329,19 @@ class Box(TraceProps):
 		None,
 		description=""" enumerated , one of ( true | false | "legendonly" )<br>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). """
 	)
-	whiskerwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	whiskerwidth: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number between or equal to 0 and 1<br>Sets the width of the whiskers relative to the box' width. For example, with 1, the whiskers are as wide as the box(es). """
 	)
-	width: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	width: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number greater than or equal to 0<br>Sets the width of the box in data coordinate If "0" (default value) the width is automatically selected based on the positions of other box traces in the same subplot. """
 	)
-	x0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	x0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the x coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info. """
 	)
-	x: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	x: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the x sample data or coordinates. See overview for more info. """
 	)
@@ -357,11 +357,11 @@ class Box(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `x` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `xaxis.hoverformat`. """
 	)
-	xperiod0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xperiod0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the base for period positioning in milliseconds or date string on the x0 axis. When `x0period` is round number of weeks, the `x0period0` by default would be on a Sunday i.e. 2000-01-02, otherwise it would be at 2000-01-01. """
 	)
-	xperiod: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	xperiod: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the period positioning in milliseconds or "M<n>" on the x axis. Special values in the form of "M<n>" could be used to declare the number of months. In this case `n` must be a positive integer. """
 	)
@@ -369,11 +369,11 @@ class Box(TraceProps):
 		None,
 		description=""" enumerated , one of ( "start" | "middle" | "end" )<br>Only relevant when the axis `type` is "date". Sets the alignment of data points on the x axis. """
 	)
-	y0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	y0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Sets the y coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info. """
 	)
-	y: Optional[constr(pattern=STATEMENT_REGEX) | List]= Field(
+	y: Optional[StatementField | List]= Field(
 		None,
 		description=""" data array<br>Sets the y sample data or coordinates. See overview for more info. """
 	)
@@ -389,11 +389,11 @@ class Box(TraceProps):
 		None,
 		description=""" string<br>Sets the hover text formatting rulefor `y` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `yaxis.hoverformat`. """
 	)
-	yperiod0: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yperiod0: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the base for period positioning in milliseconds or date string on the y0 axis. When `y0period` is round number of weeks, the `y0period0` by default would be on a Sunday i.e. 2000-01-02, otherwise it would be at 2000-01-01. """
 	)
-	yperiod: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+	yperiod: Optional[float | IndexedStatementField]= Field(
 		None,
 		description=""" number or categorical coordinate string<br>Only relevant when the axis `type` is "date". Sets the period positioning in milliseconds or "M<n>" on the y axis. Special values in the form of "M<n>" could be used to declare the number of months. In this case `n` must be a positive integer. """
 	)

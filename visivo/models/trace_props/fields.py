@@ -1,6 +1,3 @@
-import re
-from visivo.models.base.base_model import STATEMENT_REGEX
-from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX, QueryString
 from visivo.models.trace_props.bar import Bar
 from visivo.models.trace_props.barpolar import Barpolar
 from visivo.models.trace_props.box import Box
@@ -47,156 +44,105 @@ from visivo.models.trace_props.treemap import Treemap
 from visivo.models.trace_props.violin import Violin
 from visivo.models.trace_props.volume import Volume
 from visivo.models.trace_props.waterfall import Waterfall
-from typing import Any, Union, Annotated
-from pydantic import Discriminator, Field, Tag, constr
+from typing import Union, Annotated
+from pydantic import Field
 
-
-TracePropsFieldUnion = Union[
-    Bar,
-    Barpolar,
-    Box,
-    Candlestick,
-    Carpet,
-    Choropleth,
-    Choroplethmapbox,
-    Cone,
-    Contour,
-    Contourcarpet,
-    Densitymapbox,
-    Funnel,
-    Funnelarea,
-    Heatmap,
-    Heatmapgl,
-    Histogram,
-    Histogram2d,
-    Histogram2dcontour,
-    Icicle,
-    Image,
-    Indicator,
-    Isosurface,
-    Mesh3d,
-    Ohlc,
-    Parcats,
-    Parcoords,
-    Pie,
-    Sankey,
-    Scatter,
-    Scatter3d,
-    Scattercarpet,
-    Scattergeo,
-    Scattergl,
-    Scattermapbox,
-    Scatterpolar,
-    Scatterpolargl,
-    Scattersmith,
-    Scatterternary,
-    Splom,
-    Streamtube,
-    Sunburst,
-    Surface,
-    Treemap,
-    Violin,
-    Volume,
-    Waterfall,
-]
+TracePropsFieldUnion = Union[Bar, Barpolar, Box, Candlestick, Carpet, Choropleth, Choroplethmapbox, Cone, Contour, Contourcarpet, Densitymapbox, Funnel, Funnelarea, Heatmap, Heatmapgl, Histogram, Histogram2d, Histogram2dcontour, Icicle, Image, Indicator, Isosurface, Mesh3d, Ohlc, Parcats, Parcoords, Pie, Sankey, Scatter, Scatter3d, Scattercarpet, Scattergeo, Scattergl, Scattermapbox, Scatterpolar, Scatterpolargl, Scattersmith, Scatterternary, Splom, Streamtube, Sunburst, Surface, Treemap, Violin, Volume, Waterfall]
 TracePropsField = Annotated[TracePropsFieldUnion, Field(discriminator="type")]
 
-
 def validate_trace_props(props):
-    if "type" not in props:
-        raise ValueError(f"trace_props type is required.")
     match props["type"]:
         case "bar":
-            return Bar(**props)
+           return Bar(**props)
         case "barpolar":
-            return Barpolar(**props)
+           return Barpolar(**props)
         case "box":
-            return Box(**props)
+           return Box(**props)
         case "candlestick":
-            return Candlestick(**props)
+           return Candlestick(**props)
         case "carpet":
-            return Carpet(**props)
+           return Carpet(**props)
         case "choropleth":
-            return Choropleth(**props)
+           return Choropleth(**props)
         case "choroplethmapbox":
-            return Choroplethmapbox(**props)
+           return Choroplethmapbox(**props)
         case "cone":
-            return Cone(**props)
+           return Cone(**props)
         case "contour":
-            return Contour(**props)
+           return Contour(**props)
         case "contourcarpet":
-            return Contourcarpet(**props)
+           return Contourcarpet(**props)
         case "densitymapbox":
-            return Densitymapbox(**props)
+           return Densitymapbox(**props)
         case "funnel":
-            return Funnel(**props)
+           return Funnel(**props)
         case "funnelarea":
-            return Funnelarea(**props)
+           return Funnelarea(**props)
         case "heatmap":
-            return Heatmap(**props)
+           return Heatmap(**props)
         case "heatmapgl":
-            return Heatmapgl(**props)
+           return Heatmapgl(**props)
         case "histogram":
-            return Histogram(**props)
+           return Histogram(**props)
         case "histogram2d":
-            return Histogram2d(**props)
+           return Histogram2d(**props)
         case "histogram2dcontour":
-            return Histogram2dcontour(**props)
+           return Histogram2dcontour(**props)
         case "icicle":
-            return Icicle(**props)
+           return Icicle(**props)
         case "image":
-            return Image(**props)
+           return Image(**props)
         case "indicator":
-            return Indicator(**props)
+           return Indicator(**props)
         case "isosurface":
-            return Isosurface(**props)
+           return Isosurface(**props)
         case "mesh3d":
-            return Mesh3d(**props)
+           return Mesh3d(**props)
         case "ohlc":
-            return Ohlc(**props)
+           return Ohlc(**props)
         case "parcats":
-            return Parcats(**props)
+           return Parcats(**props)
         case "parcoords":
-            return Parcoords(**props)
+           return Parcoords(**props)
         case "pie":
-            return Pie(**props)
+           return Pie(**props)
         case "sankey":
-            return Sankey(**props)
+           return Sankey(**props)
         case "scatter":
-            return Scatter(**props)
+           return Scatter(**props)
         case "scatter3d":
-            return Scatter3d(**props)
+           return Scatter3d(**props)
         case "scattercarpet":
-            return Scattercarpet(**props)
+           return Scattercarpet(**props)
         case "scattergeo":
-            return Scattergeo(**props)
+           return Scattergeo(**props)
         case "scattergl":
-            return Scattergl(**props)
+           return Scattergl(**props)
         case "scattermapbox":
-            return Scattermapbox(**props)
+           return Scattermapbox(**props)
         case "scatterpolar":
-            return Scatterpolar(**props)
+           return Scatterpolar(**props)
         case "scatterpolargl":
-            return Scatterpolargl(**props)
+           return Scatterpolargl(**props)
         case "scattersmith":
-            return Scattersmith(**props)
+           return Scattersmith(**props)
         case "scatterternary":
-            return Scatterternary(**props)
+           return Scatterternary(**props)
         case "splom":
-            return Splom(**props)
+           return Splom(**props)
         case "streamtube":
-            return Streamtube(**props)
+           return Streamtube(**props)
         case "sunburst":
-            return Sunburst(**props)
+           return Sunburst(**props)
         case "surface":
-            return Surface(**props)
+           return Surface(**props)
         case "treemap":
-            return Treemap(**props)
+           return Treemap(**props)
         case "violin":
-            return Violin(**props)
+           return Violin(**props)
         case "volume":
-            return Volume(**props)
+           return Volume(**props)
         case "waterfall":
-            return Waterfall(**props)
+           return Waterfall(**props)
         case _:
-            raise ValueError(f"{props['type']} is not a valid trace_props type.")
+           raise ValueError(f"{props['type']} is not a valid trace_props type.")
