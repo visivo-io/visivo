@@ -25,9 +25,10 @@ def dummy_run_server(monkeypatch):
 def dummy_open_url(monkeypatch):
     """
     Patch open_url so that it always returns True,
-    simulating a successful browser open.
+    simulating a successful browser open without actually opening a browser.
     """
     monkeypatch.setattr("visivo.tokens.web_utils.open_url", lambda url: True)
+    monkeypatch.setattr("visivo.commands.authorize.open_url", lambda url: True)
 
 
 @pytest.fixture(autouse=True)
