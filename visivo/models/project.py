@@ -21,6 +21,7 @@ from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
+from visivo.utils import PROJECT_CHILDREN
 
 
 class Project(NamedModel, ParentModel):
@@ -46,17 +47,12 @@ class Project(NamedModel, ParentModel):
 
 
     def child_items(self):
-        return (
-            self.destinations
-            + self.alerts
-            + self.sources
-            + self.models
-            + self.traces
-            + self.tables
-            + self.charts
-            + self.selectors
-            + self.dashboards
-        )
+        project_children = PROJECT_CHILDREN.copy()
+        children = []
+        for child_type in project_children:
+            items = getattr(self, child_type, [])
+            children.extend(items)
+        return children
 
     @model_validator(mode="after")
     def validate_default_names(self):
