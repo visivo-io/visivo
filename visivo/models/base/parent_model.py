@@ -3,6 +3,7 @@ from typing import List
 from abc import ABC, abstractmethod
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
+from visivo.models.base.project_dag import ProjectDag
 from pydantic_core import PydanticCustomError
 from visivo.models.dag import (
     all_descendants,
@@ -22,9 +23,8 @@ class ParentModel(ABC):
         return []
 
     def dag(self, node_permit_list=None):
-        from networkx import DiGraph
 
-        dag = DiGraph()
+        dag = ProjectDag()
         dag.add_node(self)
         self.__build_dag(
             items=self.child_items(),
@@ -119,8 +119,8 @@ class ParentModel(ABC):
 
     @staticmethod
     def filtered(pattern, objects) -> List:
-        def name_match(trace):
-            return re.search(pattern, trace.name)
+        def name_match(obj):
+            return re.search(pattern, obj.name)
 
         return list(filter(name_match, objects))
 
