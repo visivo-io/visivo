@@ -260,3 +260,32 @@ def test_set_paths_on_models():
     assert project.path == "project"
     assert project.dashboards[0].path == "project.dashboards[0]"
     assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"
+
+def test_get_child_objects():
+    project_children_fields = Project.get_child_objects()
+    assert "dashboards" in project_children_fields
+    assert "traces" in project_children_fields
+    assert "charts" in project_children_fields
+    assert "tables" in project_children_fields
+    assert "models" in project_children_fields
+    assert "traces" in project_children_fields
+    assert "tables" in project_children_fields
+
+
+def test_named_child_nodes():
+    ref = "ref(trace_name)"
+    chart = ChartFactory(traces=[ref])
+    source = SourceFactory()
+    item = Item(chart=chart)
+    trace = TraceFactory(name="trace_name")
+    row = RowFactory(items=[item])
+    dashboard = DashboardFactory(rows=[row])
+
+    data = {"name": "development", "traces": [trace], "dashboards": [dashboard], "sources": [source]}
+    project = Project(**data)
+    named_nodes = project.named_child_nodes()
+
+    assert len(named_nodes) == 6
+    assert trace in named_nodes
+    assert dashboard in named_nodes
+    assert source in named_nodes

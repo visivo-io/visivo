@@ -50,13 +50,27 @@ class Project(NamedModel, ParentModel):
     dashboards: List[DashboardField] = []\
 
 
-    def child_items(self):
+    def child_items(self) -> List:
         project_children = PROJECT_CHILDREN.copy()
         children = []
         for child_type in project_children:
             items = getattr(self, child_type, [])
             children.extend(items)
         return children
+    
+    def named_child_nodes(self) -> List: 
+        """
+        Returns a list of all named child nodes of the project, independent of the 
+        literal position of the child in the project file. This enables us to find 
+        all chilren even if they are nested in a dashboard or chart.
+        """
+        dag = self.dag()
+        named_nodes = []
+        for node in dag.nodes():
+            if hasattr(node, "name") and Project.is_project_child(node):
+                named_nodes.append(node)
+
+        return named_nodes
     
     @model_validator(mode="after")
     def validate_cli_version(self):
@@ -183,6 +197,20 @@ class Project(NamedModel, ParentModel):
             field = cls.model_fields[field_name]
             child_objects[field_name] = field
         return child_objects
+    
+    @classmethod
+    def is_project_child(cls, obj) -> list:
+        """
+        Accepts an object and returns True if it is a child of the project. 
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        if isinstance(obj, BaseModel):
+            obj_name = obj.__class__.__name__
+            search_str = rf"[\s\[]{obj_name}[,\]]"
+            is_match = search(search_str, str(project_child_objects)) is not None
+            return is_match
+        return False
 
     @classmethod
     def traverse_names(cls, names, object):
