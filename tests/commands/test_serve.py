@@ -7,9 +7,14 @@ from click.testing import CliRunner
 from tests.support.utils import temp_yml_file, temp_folder
 from tests.factories.model_factories import ProjectFactory, DashboardFactory, TraceFactory
 from visivo.commands.serve import serve
+from visivo.server.hot_reload_server import HotReloadServer
 import pytest
 
 runner = CliRunner()
+
+def get_test_port():
+    """Get an available port for testing"""
+    return HotReloadServer.find_available_port()
 
 @pytest.fixture
 def test_project():
@@ -54,6 +59,8 @@ def test_serve(output_dir):
     )
     working_dir = os.path.dirname(tmp)
 
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
     server, _, _ = serve_phase(
         output_dir=output_dir,
         working_dir=working_dir,
@@ -63,7 +70,7 @@ def test_serve(output_dir):
         thumbnail_mode=None,
         skip_compile=True,
         project=project,
-        server_url="http://localhost:8000"
+        server_url=server_url
     )
 
     # Test the Flask app directly
@@ -81,6 +88,8 @@ def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
     
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
     server, on_project_change, on_server_ready = serve_phase(
         output_dir=output_dir,
         working_dir=".",
@@ -90,7 +99,7 @@ def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
         thumbnail_mode=None,
         skip_compile=True,
         project=test_project,
-        server_url="http://localhost:8000"
+        server_url=server_url
     )
     
     assert server is not None
@@ -99,10 +108,11 @@ def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
 
 def test_serve_command_handles_errors(output_dir):
     with runner.isolated_filesystem():
+        port = get_test_port()
         result = runner.invoke(serve, [
             '--output-dir', output_dir,
             '--working-dir', '.',
-            '--port', '8000'
+            '--port', str(port)
         ])
         assert result.exit_code != 0
         assert "error" in result.output.lower()

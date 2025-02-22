@@ -15,7 +15,11 @@ from visivo.query.runner import Runner
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
+from visivo.server.hot_reload_server import HotReloadServer
 
+def get_test_port():
+    """Get an available port for testing"""
+    return HotReloadServer.find_available_port()
 
 def test_Runner_trace_with_default():
     output_dir = temp_folder()
@@ -33,13 +37,17 @@ def test_Runner_trace_with_default():
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
-    runner = Runner(project=project, output_dir=output_dir, server_url="http://localhost:8000")
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
+    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
 
 
 def test_Runner_trace_given_source():
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
     output_dir = temp_folder()
     source = SourceFactory(database=f"{output_dir}/test.sqlite")
     model = SqlModelFactory(name="model1", source=source)
@@ -52,13 +60,15 @@ def test_Runner_trace_given_source():
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
-    runner = Runner(project=project, output_dir=output_dir)
+    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
 
 
 def test_runner_with_csv_script_model():
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
     output_dir = temp_folder()
     model = CsvScriptModelFactory(name="csv_script_model")
     trace = TraceFactory(name="trace1", model=model)
@@ -68,7 +78,7 @@ def test_runner_with_csv_script_model():
     with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
         fp.write(f"select *, 'value' as 'cohort_on' from {model.table_name}")
 
-    runner = Runner(project=project, output_dir=output_dir)
+    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
@@ -77,7 +87,8 @@ def test_runner_with_csv_script_model():
 
 def test_runner_with_local_merge_model():
     output_dir = temp_folder()
-
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
     source1 = SourceFactory(name="source1", database=f"{output_dir}/test1.db")
     source2 = SourceFactory(name="source2", database=f"{output_dir}/test2.db")
     sub_model1 = SqlModelFactory(name="model1", source=source1)
@@ -99,7 +110,7 @@ def test_runner_with_local_merge_model():
             "SELECT * FROM local_merge_model.model"
         )
 
-    runner = Runner(project=project, output_dir=output_dir)
+    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
@@ -132,13 +143,16 @@ def test_runner_dag_filter():
     os.makedirs(f"{output_dir}/Additional Trace", exist_ok=True)
     with open(f"{output_dir}/Additional Trace/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from no_exist")
+    
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
 
     runner = Runner(
         project=project, 
         output_dir=output_dir, 
         dag_filter="+dashboard+", 
         thumbnail_mode="none", 
-        server_url="http://localhost:8000"
+        server_url=server_url
     )
     runner.run()
     assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
@@ -152,12 +166,14 @@ def test_runner_dag_filter_with_no_jobs():
     capturedOutput = io.StringIO()
     sys.stdout = capturedOutput
 
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
     runner = Runner(
         project=project, 
         output_dir=output_dir, 
         dag_filter="+dashboard", 
         thumbnail_mode="none", 
-        server_url="http://localhost:8000"
+        server_url=server_url
     )
     runner.run()
 
@@ -173,7 +189,10 @@ def test_create_job_dag():
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(traces=[trace])
 
-    runner = Runner(project=project, output_dir=temp_folder(), server_url="http://localhost:8000")
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
+
+    runner = Runner(project=project, output_dir=temp_folder(), server_url=server_url)
     job_dag = runner.create_job_dag()
     assert len(job_dag.nodes()) == 6
     assert is_directed_acyclic_graph(job_dag)
@@ -186,7 +205,9 @@ def test_create_job_dag_with_non_referenced_source():
     additional_source = SourceFactory(name="non_referenced_source")
     project = ProjectFactory(traces=[trace], sources=[source, additional_source])
 
-    runner = Runner(project=project, output_dir=temp_folder(),server_url="http://localhost:8000")
+    port = get_test_port()
+    server_url = f"http://localhost:{port}"
+    runner = Runner(project=project, output_dir=temp_folder(), server_url=server_url)
     job_dag = runner.create_job_dag()
     assert len(job_dag.nodes()) == 6
     assert is_directed_acyclic_graph(job_dag)
