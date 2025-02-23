@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchNamedChildren } from '../../api/namedChildren';
 import { HiOutlineChartBar, HiOutlineDatabase, HiOutlineViewGrid, HiOutlineSelector, HiOutlineTable } from 'react-icons/hi';
+import { MdScatterPlot } from 'react-icons/md';
+import { FaExternalLinkAlt } from "react-icons/fa";
+
 
 const TYPE_COLORS = {
-  'ChartModel': {
+  'Chart': {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
     border: 'border-blue-200',
@@ -32,10 +35,23 @@ const TYPE_COLORS = {
     text: 'text-pink-800',
     border: 'border-pink-200',
     icon: HiOutlineTable
+  },
+  'Trace': {
+    bg: 'bg-orange-100',
+    text: 'text-orange-800',
+    border: 'border-orange-200',
+    icon: MdScatterPlot
+  },
+  'ExternalDashboard': {
+    bg: 'bg-black-100',
+    text: 'text-black-800',
+    border: 'border-black-200',
+    icon: FaExternalLinkAlt
   }
+
 };
 
-const ObjectsPanel = () => {
+const ObjectsPanel = ({ onObjectOpen }) => {
   const [objects, setObjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
@@ -47,7 +63,6 @@ const ObjectsPanel = () => {
       try {
         const data = await fetchNamedChildren();
         if (data) {
-          // Transform the object into an array with name and type
           const objectsArray = Object.entries(data).map(([name, details]) => ({
             name,
             type: details.type,
@@ -78,7 +93,8 @@ const ObjectsPanel = () => {
     });
   }, [objects, searchTerm, selectedType]);
 
-  const ObjectPill = ({ name, type }) => {
+  const ObjectPill = ({ object }) => {
+    const { name, type } = object;
     const typeConfig = TYPE_COLORS[type] || {
       bg: 'bg-gray-100',
       text: 'text-gray-800',
@@ -88,7 +104,10 @@ const ObjectsPanel = () => {
     const Icon = typeConfig.icon;
 
     return (
-      <div className={`flex items-center p-2 mb-2 rounded-lg border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 transition-opacity`}>
+      <div
+        className={`flex items-center p-2 mb-2 rounded-lg border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 transition-opacity`}
+        onDoubleClick={() => onObjectOpen(object)}
+      >
         <Icon className={`w-5 h-5 mr-2 ${typeConfig.text}`} />
         <span className={`text-sm font-medium ${typeConfig.text} truncate`}>
           {name}
@@ -145,8 +164,7 @@ const ObjectsPanel = () => {
           filteredObjects.map(obj => (
             <ObjectPill
               key={obj.name}
-              name={obj.name}
-              type={obj.type}
+              object={obj}
             />
           ))
         )}
