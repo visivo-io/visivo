@@ -6,6 +6,19 @@ import PreviewPanel from './editor/PreviewPanel';
 const Editor = () => {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
+  const [project, setProject] = useState(null);
+
+  // Load project data when component mounts
+  React.useEffect(() => {
+    const loadProject = async () => {
+      const response = await fetch('/data/project.json');
+      if (response.ok) {
+        const data = await response.json();
+        setProject(data.project_json);
+      }
+    };
+    loadProject();
+  }, []);
 
   const handleObjectOpen = useCallback((object) => {
     // Check if tab already exists
@@ -62,7 +75,14 @@ const Editor = () => {
           onTabClose={handleTabClose}
           onConfigChange={handleConfigChange}
         />
-        <PreviewPanel />
+        <PreviewPanel 
+          activeObject={activeTab ? {
+            type: activeTab.type,
+            name: activeTab.name,
+            config: activeTab.config
+          } : null}
+          project={project}
+        />
       </div>
     </div>
   );
