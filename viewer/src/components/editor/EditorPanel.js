@@ -37,6 +37,7 @@ const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange 
         {activeTab ? (
           <FriendlyJsonEditor
             data={activeTab.config}
+            objectType={activeTab.type}
             onChange={(newConfig) => onConfigChange(activeTab.id, newConfig)}
           />
         ) : (
