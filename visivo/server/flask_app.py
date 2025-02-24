@@ -7,7 +7,7 @@ from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
 from visivo.utils import VIEWER_PATH
 from visivo.logging.logger import Logger
-
+from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 def flask_app(output_dir, dag_filter, project):
     app = Flask(
@@ -17,25 +17,15 @@ def flask_app(output_dir, dag_filter, project):
     )
     
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    thumbnail_dir = get_dashboards_dir(output_dir)
+    worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
     def get_project_json(output_dir, dag_filter=None):
         project_json = ""
         with open(f"{output_dir}/project.json", "r") as f:
             project_json = json.load(f)
-
-        if (
-            dag_filter
-        ):  # TODO: I'm actually not sure why this works. It seems to be combination of our old name filter and the new dag filter.
-            dashboards = [
-                d for d in project_json["dashboards"] if d["name"] == dag_filter
-            ]
-            if len(dashboards) == 1:
-                project_json["dashboards"] = dashboards
-            else:
-                raise click.ClickException(
-                    f"Currently the serve command name filtering only supports filtering at the dashbaord level.  No dashboard with {dag_filter} found."
-                )
+        # if dag_filter:
+        # TODO: We could implement something that filters the dashboard here, but maybe we should be filterting in compile? 
+        #     project_json = filter_dag(project, dag_filter)
 
         return project_json
 
@@ -69,18 +59,17 @@ def flask_app(output_dir, dag_filter, project):
                 return jsonify({"message": "No query provided"}), 400
 
             query = data["query"]
-            source_name = data.get("source")  # Get source name from request
+            source_name = data.get("source")
+            worksheet_id = data.get("worksheet_id")  # New: Get worksheet_id if provided
 
             # Get the appropriate source based on the request
             source = None
             if source_name:
-                # First try to find the explicitly requested source
                 source = next(
                     (s for s in project.sources if s.name == source_name), None
                 )
 
             if not source and project.defaults and project.defaults.source_name:
-                # If no explicit source found, try the default
                 source = next(
                     (
                         s
@@ -91,7 +80,6 @@ def flask_app(output_dir, dag_filter, project):
                 )
 
             if not source and project.sources:
-                # Fallback to first source if no default
                 source = project.sources[0]
 
             if not source:
@@ -104,13 +92,26 @@ def flask_app(output_dir, dag_filter, project):
 
             # Transform the result into the expected format
             if result is None or result.empty:
-                return jsonify({"columns": [], "rows": []}), 200
+                response_data = {"columns": [], "rows": []}
+            else:
+                response_data = {
+                    "columns": list(result.columns),
+                    "rows": result.to_dict("records")
+                }
 
-            # Result is a pandas DataFrame
-            columns = list(result.columns)
-            rows = result.to_dict("records")
+            # If worksheet_id is provided, save the results
+            if worksheet_id:
+                query_stats = {
+                    "timestamp": datetime.datetime.utcnow().isoformat(),
+                    "source": source.name
+                }
+                worksheet_repo.save_results(
+                    worksheet_id,
+                    json.dumps(response_data),
+                    json.dumps(query_stats)
+                )
 
-            return jsonify({"columns": columns, "rows": rows}), 200
+            return jsonify(response_data), 200
 
         except Exception as e:
             Logger.instance().error(f"Query execution error: {str(e)}")
@@ -200,6 +201,102 @@ def flask_app(output_dir, dag_filter, project):
             return send_from_directory(output_dir, thumbnail_path)
         except Exception as e:
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet", methods=["GET"])
+    def list_worksheets():
+        """List all worksheets."""
+        try:
+            worksheets = worksheet_repo.list_worksheets()
+            return jsonify(worksheets)
+        except Exception as e:
+            Logger.instance().error(f"Error listing worksheets: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet/<worksheet_id>", methods=["GET"])
+    def get_worksheet(worksheet_id):
+        """Get a specific worksheet."""
+        try:
+            worksheet = worksheet_repo.get_worksheet(worksheet_id)
+            if worksheet is None:
+                return jsonify({"message": "Worksheet not found"}), 404
+            return jsonify(worksheet)
+        except Exception as e:
+            Logger.instance().error(f"Error getting worksheet: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet", methods=["POST"])
+    def create_worksheet():
+        """Create a new worksheet."""
+        try:
+            data = request.get_json()
+            if not data or "name" not in data:
+                return jsonify({"message": "Name is required"}), 400
+
+            result = worksheet_repo.create_worksheet(
+                name=data["name"],
+                query=data.get("query", ""),
+                selected_source=data.get("selected_source")
+            )
+            return jsonify(result), 201
+        except Exception as e:
+            Logger.instance().error(f"Error creating worksheet: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet/<worksheet_id>", methods=["PUT"])
+    def update_worksheet(worksheet_id):
+        """Update a worksheet."""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"message": "No update data provided"}), 400
+
+            success = worksheet_repo.update_worksheet(worksheet_id, data)
+            if not success:
+                return jsonify({"message": "Worksheet not found"}), 404
+            
+            return jsonify({"message": "Worksheet updated successfully"})
+        except Exception as e:
+            Logger.instance().error(f"Error updating worksheet: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet/<worksheet_id>", methods=["DELETE"])
+    def delete_worksheet(worksheet_id):
+        """Delete a worksheet."""
+        try:
+            success = worksheet_repo.delete_worksheet(worksheet_id)
+            if not success:
+                return jsonify({"message": "Worksheet not found"}), 404
+            return jsonify({"message": "Worksheet deleted successfully"})
+        except Exception as e:
+            Logger.instance().error(f"Error deleting worksheet: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet/session", methods=["GET"])
+    def get_session_state():
+        """Get the current session state."""
+        try:
+            worksheets = worksheet_repo.list_worksheets()
+            return jsonify([w["session_state"] for w in worksheets])
+        except Exception as e:
+            Logger.instance().error(f"Error getting session state: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/worksheet/session", methods=["PUT"])
+    def update_session_state():
+        """Update the session state."""
+        try:
+            data = request.get_json()
+            if not isinstance(data, list):
+                return jsonify({"message": "Expected array of session states"}), 400
+
+            success = worksheet_repo.update_session_states(data)
+            if not success:
+                return jsonify({"message": "Failed to update session state"}), 500
+            
+            return jsonify({"message": "Session state updated successfully"})
+        except Exception as e:
+            Logger.instance().error(f"Error updating session state: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
     return app

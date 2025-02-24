@@ -50,6 +50,8 @@ def run(
         working_dir=working_dir,
         output_dir=output_dir,
         default_source=source,
+        dbt_profile=dbt_profile,
+        dbt_target=dbt_target,
     )
 
     # Create temporary server for thumbnail generation if needed

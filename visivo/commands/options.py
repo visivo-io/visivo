@@ -59,7 +59,7 @@ def dag_filter(function):
     click.option(
         "-df",
         "--dag-filter",
-        help="Run the command with the given dag filter",
+        help="Run the command with the given dag filter. ie `-df 'dashboard-name'+` will only run the dashboard named 'dashboard-name' and it's children",
         default=None,
     )(function)
     return function

@@ -43,7 +43,7 @@ tasks:
     run: |
       cd test-projects/integration
       visivo --version
-      visivo run --thumbnail-mode all
+      visivo run 
 
   - key: sanitize-stage-name
     run: |

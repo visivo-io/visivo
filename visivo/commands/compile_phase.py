@@ -20,8 +20,7 @@ from visivo.query.query_string_factory import QueryStringFactory
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_writer import QueryWriter
 
-from .parse_project_phase import parse_project_phase
-from .dbt_phase import dbt_phase
+from visivo.commands.parse_project_phase import parse_project_phase
 
 import_duration = round(time() - compile_import_start, 2)
 if os.environ.get("STACKTRACE"):
@@ -43,26 +42,14 @@ def compile_phase(
     project: Project = None,
 ):
     # Track dbt phase
-    dbt_start = time()
-    Logger.instance().debug("    Running dbt phase...")
-    dbt_phase(working_dir, output_dir, dbt_profile, dbt_target)
-    dbt_duration = round(time() - dbt_start, 2)
-    if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
 
     # Track parse project
     parse_start = time()
     Logger.instance().debug("    Running parse project phase...")
-    project = parse_project_phase(working_dir, output_dir, default_source)
+    project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
     parse_duration = round(time() - parse_start, 2)
     if os.environ.get("STACKTRACE"):
         Logger.instance().info(f"Project parsing completed in {parse_duration}s")
-
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-    # Ensure thumbnail directory exists
-    thumbnail_dir = get_dashboards_dir(output_dir)
-    os.makedirs(thumbnail_dir, exist_ok=True)
 
     # Track artifacts writing
     artifacts_start = time()
@@ -112,7 +99,6 @@ def compile_phase(
     Logger.instance().success(
         f"Compile completed in {total_duration}s "
         f"(imports: {import_duration}s, "
-        f"dbt: {dbt_duration}s, "
         f"parse: {parse_duration}s, "
         f"artifacts: {artifacts_duration}s, "
         f"traces: {traces_duration}s)"

@@ -78,6 +78,9 @@ def test_serve(output_dir):
 
 
 def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
     server, on_project_change, on_server_ready = serve_phase(
         output_dir=output_dir,
         working_dir=".",
