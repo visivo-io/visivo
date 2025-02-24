@@ -1,7 +1,6 @@
 import re
 from typing import Annotated, Any, Union
 
-from pydantic import constr
 from pydantic import Discriminator, Tag, constr
 from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
 from visivo.models.base.context_string import CONTEXT_STRING_VALUE_REGEX, ContextString
@@ -23,6 +22,16 @@ def get_statement_model_discriminator_value(value: Any) -> str:
     return None
 
 
+StatementField = Annotated[
+    Union[
+        Annotated[QueryString, Tag("Query")],
+        Annotated[ContextString, Tag("Context")],
+        Annotated[constr(pattern=STATEMENT_REGEX), Tag("Statement")],
+    ],
+    Discriminator(get_statement_model_discriminator_value),
+]
+
+
 def get_indexed_statement_model_discriminator_value(value: Any) -> str:
     if isinstance(value, str) and re.match(QUERY_STRING_VALUE_REGEX, value):
         return "Query"
@@ -33,15 +42,6 @@ def get_indexed_statement_model_discriminator_value(value: Any) -> str:
 
     return None
 
-
-StatementField = Annotated[
-    Union[
-        Annotated[QueryString, Tag("Query")],
-        Annotated[ContextString, Tag("Context")],
-        Annotated[constr(pattern=STATEMENT_REGEX), Tag("Statement")],
-    ],
-    Discriminator(get_statement_model_discriminator_value),
-]
 
 IndexedStatementField = Annotated[
     Union[

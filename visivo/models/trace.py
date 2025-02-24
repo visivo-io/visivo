@@ -2,6 +2,7 @@ import re
 import os
 from typing import Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator
+from visivo.models.fields import QueryOrStringField
 from visivo.models.models.fields import ModelRefField
 from visivo.models.trace_props.fields import validate_trace_props
 from .base.named_model import NamedModel
@@ -99,15 +100,15 @@ class Trace(NamedModel, ParentModel):
         ...,
         description="The model or model ref that Visivo should use to build the trace.",
     )
-    cohort_on: Optional[str] = Field(
+    cohort_on: Optional[QueryOrStringField] = Field(
         None,
         description="`cohort_on` enables splitting the trace out into different series or cohorts. The column or query referenced here will be used to cut the resulting trace.",
     )
-    order_by: Optional[List[str]] = Field(
+    order_by: Optional[List[QueryOrStringField]] = Field(
         None,
         description="Takes a `column()` or `?{}` reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using `asc` and `desc`.",
     )
-    filters: Optional[List[str]] = Field(
+    filters: Optional[List[QueryOrStringField]] = Field(
         None,
         description="A list of `column()` or `?{}` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
     )

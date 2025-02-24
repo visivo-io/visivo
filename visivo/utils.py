@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import re
 import click
+from visivo.logging.logger import Logger
 from visivo.models.base.query_string import QueryString
 from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
@@ -80,11 +81,17 @@ def error_if_true(bool: bool, message: str):
 
 
 def extract_value_from_function(function_text, function_name):
-    breakpoint()
-    if isinstance(function_text, QueryString):
-        return function_text.get_value()
     if function_text is None:
         return None
+    if isinstance(function_text, QueryString):
+        return function_text.get_value()
+    query_string = QueryString(function_text)
+    if query_string.get_value():
+        # TODO: This is a catch for missed trace props attributes that should be query strings.
+        Logger.instance().debug(
+            f"{function_text} should be StatementField or IndexedStatementField"
+        )
+        return query_string.get_value()
     pattern = r"{}\((.+)\)".format(re.escape(function_name))
     match = re.search(pattern, function_text)
     if not match:

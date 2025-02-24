@@ -1,8 +1,11 @@
+from visivo.models.base.base_model import BaseModel
+from visivo.models.base.query_string import QueryString
 from visivo.models.trace import Trace
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
+from visivo.models.trace_props.trace_props import TracePropsAttribute
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
 from ..utils import extract_value_from_function
@@ -28,10 +31,10 @@ class TraceTokenizer:
     def tokenize(self):
         cohort_on = self._get_cohort_on()
         if isinstance(self.model, LocalMergeModel):
-            source_type = 'duckdb'
+            source_type = "duckdb"
         elif self.source.type:
             source_type = self.source.type
-        else: 
+        else:
             source_type = None
         data = {
             "sql": self.model.sql,
@@ -60,11 +63,12 @@ class TraceTokenizer:
 
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
-            obj = self.trace.model_dump()
-        if isinstance(obj, dict):
-            for key, value in obj.items():
-                if value != None:
-                    self._set_select_items(value, path + [key])
+            obj = self.trace
+        if isinstance(obj, BaseModel) or isinstance(obj, TracePropsAttribute):
+            for prop in obj.model_fields.keys():
+                prop_value = getattr(obj, prop, None)
+                if prop_value != None:
+                    self._set_select_items(prop_value, path + [prop])
         # TODO: Add support for lists of query statements.
         elif isinstance(obj, list):
             for i, value in enumerate(obj):
