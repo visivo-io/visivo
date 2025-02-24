@@ -14,7 +14,7 @@ const Editor = () => {
       const response = await fetch('/data/project.json');
       if (response.ok) {
         const data = await response.json();
-        setProject(data.project_json);
+        setProject(data);
       }
     };
     loadProject();
