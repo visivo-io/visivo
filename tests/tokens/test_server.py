@@ -25,11 +25,13 @@ def test_authorize_device_callback_no_token(client):
     assert data["error"] == "Token not provided"
 
 
+@patch("visivo.tokens.server.threading.Thread")
 @patch("visivo.tokens.server.validate_and_store_token")  # bottom patch
 @patch("visivo.tokens.server.Logger.instance")  # top patch
 def test_authorize_device_callback_with_token(
     mock_logger_class,
     mock_validate,
+    mock_thread,
     client,
 ):
     """
@@ -53,3 +55,7 @@ def test_authorize_device_callback_with_token(
 
     response_data = response.data.decode("utf-8")
     assert "Authorization Successful" in response_data
+
+    mock_thread.assert_called_once()
+    thread_instance = mock_thread.return_value
+    thread_instance.start.assert_called_once()
