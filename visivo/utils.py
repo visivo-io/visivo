@@ -80,20 +80,20 @@ def error_if_true(bool: bool, message: str):
         raise Exception(message)
 
 
-def extract_value_from_function(function_text, function_name):
-    if function_text is None:
+def extract_value_from_function(function_value, function_name):
+    if function_value is None:
         return None
-    if isinstance(function_text, QueryString):
-        return function_text.get_value()
-    query_string = QueryString(function_text)
+    if isinstance(function_value, QueryString):
+        return function_value.get_value()
+    query_string = QueryString(str(function_value))
     if query_string.get_value():
         # TODO: This is a catch for missed trace props attributes that should be query strings.
         Logger.instance().debug(
-            f"{function_text} should be StatementField or IndexedStatementField"
+            f"{function_value} should be StatementField or IndexedStatementField"
         )
         return query_string.get_value()
     pattern = r"{}\((.+)\)".format(re.escape(function_name))
-    match = re.search(pattern, function_text)
+    match = re.search(pattern, str(function_value))
     if not match:
         return None
     value = match.group(1)

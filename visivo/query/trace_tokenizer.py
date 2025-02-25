@@ -77,7 +77,7 @@ class TraceTokenizer:
             query_id = ".".join([str(i) for i in path])
             query_statement = False
             if path[0] == "props":
-                query_statement = extract_value_from_function(str(obj), "query")
+                query_statement = extract_value_from_function(obj, "query")
             if path[0] == "columns":
                 query_statement = str(obj)
 

@@ -1,4 +1,5 @@
 from visivo.models.base.context_string import ContextString
+from visivo.models.dag import show_dag_fig
 from visivo.models.models.model import Model
 from visivo.models.row import Row
 from visivo.models.selector import Selector
@@ -100,6 +101,7 @@ def test_ref_selector_Project_dag():
     item.chart.selector = "ref(selector)"
     project.dashboards[0].rows[0].items = [item]
     dag = project.dag()
+
 
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 10
