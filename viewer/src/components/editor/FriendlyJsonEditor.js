@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HiPlus, HiTrash, HiPencil, HiExclamation, HiX } from 'react-icons/hi';
+import { HiPlus, HiTrash, HiPencil, HiExclamation, HiX, HiInformationCircle } from 'react-icons/hi';
 import { fetchSchema } from '../../api/schema';
 import { validateValue, getAvailableProperties, getDefaultValue } from '../../utils/schemaValidation';
 import ObjectReferenceSelect from './ObjectReferenceSelect';
@@ -89,6 +89,25 @@ const PropertySelector = ({ properties, onSelect, onClose }) => {
   );
 };
 
+// Helper function to split description into validation suggestion and explanation
+const splitDescription = (description) => {
+  if (!description) return { suggestion: '', explanation: '' };
+  
+  const parts = description.split('<br>');
+  return {
+    suggestion: parts[0] || '',
+    explanation: parts.length > 1 ? parts.slice(1).join('<br>') : ''
+  };
+};
+
+// Format property key for display
+const formatKey = (key) => {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
   const [schema, setSchema] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
@@ -96,6 +115,7 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
   const [availableObjects, setAvailableObjects] = useState({});
   const [showPropertySelector, setShowPropertySelector] = useState(false);
   const [currentPath, setCurrentPath] = useState([]);
+  const [focusedInputs, setFocusedInputs] = useState({});
 
   useEffect(() => {
     const loadSchema = async () => {
@@ -129,56 +149,131 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
     return current;
   };
 
-  const renderValue = (value, path = [], isRoot = false) => {
-    console.log('Rendering value:', { value, path, isRoot });
+  const handleInputFocus = (path) => {
+    setFocusedInputs(prev => ({
+      ...prev,
+      [path.join('.')]: true
+    }));
+  };
 
+  const handleInputBlur = (path) => {
+    setFocusedInputs(prev => ({
+      ...prev,
+      [path.join('.')]: false
+    }));
+  };
+
+  // Helper function to render a field label with explanation icon
+  const renderFieldLabel = (property, key) => {
+    // If property is provided directly, use it
+    if (property) {
+      const { explanation } = property.description 
+        ? splitDescription(property.description) 
+        : { explanation: '' };
+      
+      return (
+        <label className="text-xs font-medium text-gray-700 mb-1 block">
+          {formatKey(property.key)}
+          {property.required && <span className="text-red-500 ml-1">*</span>}
+          {explanation && (
+            <span className="ml-1 inline-block">
+              <HiInformationCircle 
+                className="w-4 h-4 text-gray-400 hover:text-gray-600 inline" 
+                title={explanation}
+              />
+            </span>
+          )}
+        </label>
+      );
+    }
+    
+    // If no property but key is provided (for nested objects)
+    if (key) {
+      return (
+        <label className="text-xs font-medium text-gray-700 mb-1 block">
+          {formatKey(key)}
+        </label>
+      );
+    }
+    
+    return null;
+  };
+
+  const renderValue = (value, path = [], isRoot = false) => {
     if (value === null) return <span className="text-gray-400">No value</span>;
 
     const validation = validateValue(schema, objectType, value, path);
     const properties = getAvailableProperties(schema, objectType, path, getValueAtPath(path.slice(0, -1)));
     const currentProperty = path.length > 0 ? properties.find(p => p.key === path[path.length - 1]) : null;
-
-    console.log('Render context:', { validation, properties, currentProperty });
+    
+    const pathKey = path.join('.');
+    const isFocused = focusedInputs[pathKey];
+    
+    // Split description into validation suggestion and explanation
+    const { suggestion, explanation } = currentProperty?.description 
+      ? splitDescription(currentProperty.description) 
+      : { suggestion: '', explanation: '' };
 
     // Handle top-level references
     if (currentProperty?.isTopLevelRef) {
       return (
-        <ObjectReferenceSelect
-          value={value}
-          onChange={(newValue) => handleValueChange(path, newValue)}
-          availableObjects={availableObjects[currentProperty.type.toLowerCase()] || []}
-          type={currentProperty.type}
-        />
+        <div className="relative mb-4">
+          {renderFieldLabel(currentProperty)}
+          <ObjectReferenceSelect
+            value={value}
+            onChange={(newValue) => handleValueChange(path, newValue)}
+            availableObjects={availableObjects[currentProperty.type.toLowerCase()] || []}
+            type={currentProperty.type}
+          />
+        </div>
       );
     }
 
     if (typeof value === 'boolean') {
       return (
-        <select 
-          className={`px-2 py-1 rounded border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white`}
-          value={value.toString()}
-          onChange={(e) => handleValueChange(path, e.target.value === 'true')}
-        >
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        </select>
+        <div className="relative mb-4">
+          {renderFieldLabel(currentProperty)}
+          <select 
+            className={`w-full px-3 py-2 rounded-lg border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white`}
+            value={value.toString()}
+            onChange={(e) => handleValueChange(path, e.target.value === 'true')}
+            title={suggestion}
+          >
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+          {!validation.valid && (
+            <div className="absolute right-2 top-[calc(50%+10px)] transform -translate-y-1/2">
+              <HiExclamation 
+                className="text-red-500 w-5 h-5" 
+                title={validation.errors.join('\n')}
+              />
+            </div>
+          )}
+        </div>
       );
     }
 
     if (typeof value === 'number') {
       return (
-        <div className="flex items-center gap-2">
+        <div className="relative mb-4">
+          {renderFieldLabel(currentProperty)}
           <input
             type="number"
-            className={`px-2 py-1 rounded border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white`}
+            className={`w-full px-3 py-2 rounded-lg border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white`}
             value={value}
             onChange={(e) => handleValueChange(path, Number(e.target.value))}
+            onFocus={() => handleInputFocus(path)}
+            onBlur={() => handleInputBlur(path)}
+            title={suggestion}
           />
           {!validation.valid && (
-            <HiExclamation 
-              className="text-red-500" 
-              title={validation.errors.join('\n')}
-            />
+            <div className="absolute right-2 top-[calc(50%+10px)] transform -translate-y-1/2">
+              <HiExclamation 
+                className="text-red-500 w-5 h-5" 
+                title={validation.errors.join('\n')}
+              />
+            </div>
           )}
         </div>
       );
@@ -187,52 +282,65 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
     if (typeof value === 'string') {
       if (currentProperty?.enum) {
         return (
-          <div className="flex items-center gap-2">
+          <div className="relative mb-4">
+            {renderFieldLabel(currentProperty)}
             <select
-              className={`px-2 py-1 rounded border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white w-full`}
+              className={`w-full px-3 py-2 rounded-lg border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white`}
               value={value}
               onChange={(e) => handleValueChange(path, e.target.value)}
+              title={suggestion}
             >
+              <option value="" disabled>
+                Select {formatKey(currentProperty?.key || '')}
+              </option>
               {currentProperty.enum.map(option => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
             {!validation.valid && (
-              <HiExclamation 
-                className="text-red-500" 
-                title={validation.errors.join('\n')}
-              />
+              <div className="absolute right-2 top-[calc(50%+10px)] transform -translate-y-1/2">
+                <HiExclamation 
+                  className="text-red-500 w-5 h-5" 
+                  title={validation.errors.join('\n')}
+                />
+              </div>
             )}
           </div>
         );
       }
 
       return (
-        <div className="flex items-center gap-2">
+        <div className="relative mb-4">
+          {renderFieldLabel(currentProperty)}
           <input
             type="text"
-            className={`px-2 py-1 rounded border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white w-full`}
+            className={`w-full px-3 py-2 rounded-lg border ${validation.valid ? 'border-gray-200' : 'border-red-300'} bg-white`}
             value={value}
             onChange={(e) => handleValueChange(path, e.target.value)}
+            onFocus={() => handleInputFocus(path)}
+            onBlur={() => handleInputBlur(path)}
+            title={suggestion}
           />
           {!validation.valid && (
-            <HiExclamation 
-              className="text-red-500" 
-              title={validation.errors.join('\n')}
-            />
+            <div className="absolute right-2 top-[calc(50%+10px)] transform -translate-y-1/2">
+              <HiExclamation 
+                className="text-red-500 w-5 h-5" 
+                title={validation.errors.join('\n')}
+              />
+            </div>
           )}
         </div>
       );
     }
 
     if (Array.isArray(value)) {
-      console.log('Rendering array:', { path, value });
       return (
-        <div className="pl-4 border-l-2 border-gray-200">
+        <div className="pl-4 border-l-2 border-gray-200 mb-4">
+          {renderFieldLabel(currentProperty)}
           {value.map((item, index) => (
-            <div key={index} className="mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-500 text-sm">Item {index + 1}</span>
+            <div key={index} className="mb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-gray-500">Item {index + 1}</span>
                 <button
                   onClick={() => handleArrayDelete(path, index)}
                   className="p-1 text-red-500 hover:bg-red-50 rounded"
@@ -254,33 +362,81 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
     }
 
     if (typeof value === 'object') {
-      console.log('Rendering object:', { path, value });
       const availableProperties = getAvailableProperties(schema, objectType, path, getValueAtPath(path));
-      console.log('Available properties:', availableProperties);
-
+      
+      // For top-level objects, render as cards in a grid
+      if (isRoot) {
+        // Filter out the excluded top-level properties
+        const filteredEntries = Object.entries(value).filter(([key]) => 
+          !['path', 'name', 'changed'].includes(key.toLowerCase())
+        );
+        
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredEntries.map(([key, val]) => {
+              const propertyDef = availableProperties.find(p => p.key === key);
+              const { explanation } = propertyDef?.description 
+                ? splitDescription(propertyDef.description) 
+                : { explanation: '' };
+              
+              return (
+                <div key={key} className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-gray-800">
+                      {formatKey(key)}
+                      {propertyDef?.required && <span className="text-red-500 ml-1">*</span>}
+                    </h3>
+                    {explanation && (
+                      <span>
+                        <HiInformationCircle 
+                          className="w-5 h-5 text-gray-400 hover:text-gray-600" 
+                          title={explanation}
+                        />
+                      </span>
+                    )}
+                  </div>
+                  {renderValue(val, [...path, key])}
+                </div>
+              );
+            })}
+            <div className="bg-white rounded-lg border border-dashed border-gray-300 p-4 flex items-center justify-center">
+              <button
+                onClick={() => handleObjectAdd(path)}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
+              >
+                <HiPlus className="w-5 h-5" /> Add Property
+              </button>
+            </div>
+          </div>
+        );
+      }
+      
+      // For nested objects
       return (
-        <div className={isRoot ? '' : 'pl-4 border-l-2 border-gray-200'}>
+        <div className={isRoot ? '' : 'pl-4 border-l-2 border-gray-200 mb-4'}>
+          {renderFieldLabel(currentProperty)}
           {Object.entries(value).map(([key, val]) => {
             const propertyDef = availableProperties.find(p => p.key === key);
-            console.log('Property definition:', { key, propertyDef });
-
+            const { explanation } = propertyDef?.description 
+              ? splitDescription(propertyDef.description) 
+              : { explanation: '' };
+            
             return (
-              <div key={key} className="mb-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="font-medium text-gray-700">
+              <div key={key} className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center">
+                    <span className="text-xs font-medium text-gray-700">
                       {formatKey(key)}
-                      {propertyDef?.required && <span className="text-red-500">*</span>}
+                      {propertyDef?.required && <span className="text-red-500 ml-1">*</span>}
                     </span>
-                    {propertyDef?.description && (
-                      <span className="text-sm text-gray-500">{propertyDef.description}</span>
+                    {explanation && (
+                      <span className="ml-1">
+                        <HiInformationCircle 
+                          className="w-4 h-4 text-gray-400 hover:text-gray-600 inline" 
+                          title={explanation}
+                        />
+                      </span>
                     )}
-                    <button
-                      onClick={() => handleKeyEdit(path, key)}
-                      className="p-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <HiPencil className="w-3 h-3" />
-                    </button>
                   </div>
                   {!isRoot && (
                     <button
@@ -306,13 +462,6 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
     }
 
     return <span>{String(value)}</span>;
-  };
-
-  const formatKey = (key) => {
-    return key
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
   };
 
   const handleValueChange = (path, newValue) => {
@@ -448,7 +597,7 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
   }
 
   return (
-    <div className="p-4 bg-white rounded-lg">
+    <div className="p-4 bg-gray-50 rounded-lg">
       {renderValue(data, [], true)}
       {Object.keys(validationErrors).length > 0 && (
         <div className="mt-4 p-3 bg-red-50 text-red-700 rounded">
