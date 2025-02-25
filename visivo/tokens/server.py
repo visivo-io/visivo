@@ -1,3 +1,5 @@
+import threading
+import time
 from flask import Flask, request, jsonify
 from threading import Event
 
@@ -11,23 +13,27 @@ token_received_event = Event()
 callback_server = Flask(__name__)
 
 
+def shutdown_server():
+    time.sleep(1)
+    shutdown = request.environ.get("werkzeug.server.shutdown")
+    if shutdown:
+        shutdown()
+
+
 @callback_server.route("/authorize-device-token", methods=["GET", "POST"])
 def authorize_device_callback():
-    token = None
-    if request.method == "GET":
-        token = request.args.get("token")
+    token = request.args.get("token") if request.method == "GET" else None
     if not token:
         return jsonify({"error": "Token not provided"}), 400
 
     Logger.instance().success("Received token via callback: " + token)
     validate_and_store_token(token)
-
     token_received_event.set()
+
     base_url = callback_server.config.get("BASE_URL")
     html_content = generate_success_html_response(base_url, timeout=5)
-    shutdown = request.environ.get("werkzeug.server.shutdown")
-    if shutdown:
-        shutdown()
+
+    threading.Thread(target=shutdown_server).start()
     return html_content, 200
 
 
