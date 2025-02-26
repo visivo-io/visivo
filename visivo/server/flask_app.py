@@ -7,6 +7,7 @@ from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
 from visivo.utils import VIEWER_PATH
 from visivo.logging.logger import Logger
+
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 def flask_app(output_dir, dag_filter, project):
@@ -17,6 +18,9 @@ def flask_app(output_dir, dag_filter, project):
     )
     
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+    
+    thumbnail_dir = get_dashboards_dir(output_dir)
+
     worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
     def get_project_json(output_dir, dag_filter=None):
