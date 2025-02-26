@@ -46,46 +46,40 @@ const ObjectsPanel = ({ onObjectOpen }) => {
 
   if (loading) {
     return (
-      <div className="w-64 bg-white border-r border-gray-200 p-4">
-        <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        </div>
+      <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="w-64 bg-white border-r border-gray-200 p-4">
+      <div className="w-64 bg-white border-r border-gray-200 p-4 h-full">
         <div className="text-red-500 text-sm">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 p-4">
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search objects..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-      <div className="mb-4">
-        <select
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-        >
-          <option value="">All Types</option>
-          {uniqueTypes.map(type => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
-      </div>
-      <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+    <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex flex-col">
+      <input
+        type="text"
+        placeholder="Search objects..."
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <select
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+        value={selectedType}
+        onChange={(e) => setSelectedType(e.target.value)}
+      >
+        <option value="">All Types</option>
+        {uniqueTypes.map(type => (
+          <option key={type} value={type}>{type}</option>
+        ))}
+      </select>
+      <div className="overflow-y-auto flex-1">
         {filteredObjects.length === 0 ? (
           <div className="text-gray-500 text-sm">No objects found</div>
         ) : (

@@ -5,12 +5,13 @@ import Dashboard from '../Dashboard';
 const PreviewPanel = ({ activeObject, project }) => {
   if (!activeObject || !project) {
     return (
-      <div className="h-1/2 bg-white p-4 border-t border-gray-200">
-        <div className="text-gray-500 text-sm">Preview will appear here for supported objects</div>
+      <div className="h-1/2 bg-white p-4 border-t border-gray-200 overflow-hidden min-h-0">
+        <div className="text-gray-500">Preview will appear here for supported objects</div>
       </div>
     );
   }
 
+  // Render preview based on object type
   const renderPreview = () => {
     switch (activeObject.type) {
       case 'Chart':
@@ -19,7 +20,6 @@ const PreviewPanel = ({ activeObject, project }) => {
             chart={activeObject.config}
             project={project}
             height={300}
-            width={null}
           />
         );
 
@@ -38,23 +38,20 @@ const PreviewPanel = ({ activeObject, project }) => {
             chart={chartConfig}
             project={project}
             height={300}
-            width={null}
           />
         );
 
       case 'Dashboard':
         return (
-          <div className="h-full overflow-auto">
-            <Dashboard
-              project={project}
-              dashboardName={activeObject.name}
-            />
-          </div>
+          <Dashboard
+            project={project}
+            dashboardName={activeObject.name}
+          />
         );
 
       default:
         return (
-          <div className="text-gray-500 text-sm">
+          <div className="text-gray-500">
             Preview not available for {activeObject.type} objects
           </div>
         );
@@ -62,11 +59,11 @@ const PreviewPanel = ({ activeObject, project }) => {
   };
 
   return (
-    <div className="h-1/2 bg-white p-4 border-t border-gray-200 overflow-hidden">
+    <div className="h-1/2 bg-white p-4 border-t border-gray-200 overflow-hidden flex flex-col min-h-0">
       <div className="text-sm font-medium text-gray-700 mb-2">
         Preview: {activeObject.name}
       </div>
-      <div className="h-[calc(100%-2rem)] overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0">
         {renderPreview()}
       </div>
     </div>

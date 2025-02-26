@@ -11,7 +11,6 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
   const [availableObjects, setAvailableObjects] = useState({});
   const [showPropertySelector, setShowPropertySelector] = useState(false);
   const [currentPath, setCurrentPath] = useState([]);
-  const [focusedInputs, setFocusedInputs] = useState({});
 
   // Load schema and validate initial data
   useEffect(() => {
@@ -20,22 +19,18 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
         const schemaData = await fetchSchema();
         setSchema(schemaData);
         
-        // Extract available objects for each top-level type
+        // Extract available objects for top-level types
         const objects = {};
-        const topLevelArrayProps = [
-          'models', 'traces', 'charts', 'dashboards', 'tables', 'selectors'
-        ];
-        
-        topLevelArrayProps.forEach(propName => {
+        ['models', 'traces', 'charts', 'dashboards', 'tables', 'selectors'].forEach(propName => {
           const prop = schemaData.properties?.[propName];
           if (prop?.items?.oneOf || prop?.items?.$ref) {
-            objects[propName.toLowerCase()] = []; // This would need to be populated with actual object names
+            objects[propName.toLowerCase()] = []; // Would need actual object names
           }
         });
         
         setAvailableObjects(objects);
         
-        // Validate the initial data
+        // Validate initial data
         if (data && objectType) {
           const validation = validateObject(schemaData, objectType, data);
           if (!validation.valid) {
@@ -51,66 +46,77 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
     loadSchema();
   }, [data, objectType]);
 
+  // Update data at path with new value
   const handleValueChange = (path, newValue) => {
     const newData = { ...data };
     let current = newData;
+    
+    // Navigate to the parent object
     for (let i = 0; i < path.length - 1; i++) {
       current = current[path[i]];
     }
+    
+    // Update the value
     current[path[path.length - 1]] = newValue;
 
     // Validate the new value
     const validation = validateValue(schema, objectType, newValue, path);
-    if (!validation.valid) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [path.join('.')]: validation.errors
-      }));
-    } else {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
+    
+    // Update validation errors
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      if (!validation.valid) {
+        newErrors[path.join('.')] = validation.errors;
+      } else {
         delete newErrors[path.join('.')];
-        return newErrors;
-      });
-    }
+      }
+      return newErrors;
+    });
 
     onChange(newData);
   };
 
+  // Add item to array
   const handleArrayAdd = (path) => {
     const newData = { ...data };
     let current = newData;
+    
+    // Navigate to the array
     for (const key of path) {
       current = current[key];
     }
-    const defaultValue = getDefaultValue(schema, objectType, [...path, current.length]);
-    current.push(defaultValue);
+    
+    // Add default value
+    current.push(getDefaultValue(schema, objectType, [...path, current.length]));
     onChange(newData);
   };
 
+  // Delete item from array
   const handleArrayDelete = (path, index) => {
     const newData = { ...data };
     let current = newData;
+    
+    // Navigate to the array
     for (const key of path) {
       current = current[key];
     }
+    
+    // Remove the item
     current.splice(index, 1);
     onChange(newData);
   };
 
+  // Show property selector for adding to object
   const handleObjectAdd = (path) => {
-    const properties = getAvailableProperties(schema, objectType, path, data);
-    
     // Get current object at path
     let current = data;
     for (const key of path) {
       current = current[key];
     }
 
-    // Filter out properties that already exist
-    const availableProps = properties.filter(
-      prop => !(prop.key in current)
-    );
+    // Check if there are properties available to add
+    const availableProps = getAvailableProperties(schema, objectType, path, data)
+      .filter(prop => !(prop.key in current));
 
     if (availableProps.length === 0) {
       alert('No more properties available to add');
@@ -121,20 +127,26 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
     setShowPropertySelector(true);
   };
 
+  // Add selected property to object
   const handlePropertySelect = (propName) => {
     setShowPropertySelector(false);
 
     const newData = { ...data };
     let current = newData;
+    
+    // Navigate to the object
     for (const key of currentPath) {
       current = current[key];
     }
-
+    
+    // Add property with default value
     current[propName] = getDefaultValue(schema, objectType, [...currentPath, propName]);
     onChange(newData);
   };
 
+  // Delete property from object
   const handleObjectDelete = (path, key) => {
+    // Check if property is required
     const properties = getAvailableProperties(schema, objectType, path, data);
     const propertyDef = properties.find(p => p.key === key);
     
@@ -145,25 +157,15 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
 
     const newData = { ...data };
     let current = newData;
+    
+    // Navigate to the object
     for (const p of path) {
       current = current[p];
     }
+    
+    // Delete the property
     delete current[key];
     onChange(newData);
-  };
-
-  const handleInputFocus = (path) => {
-    setFocusedInputs(prev => ({
-      ...prev,
-      [path.join('.')]: true
-    }));
-  };
-
-  const handleInputBlur = (path) => {
-    setFocusedInputs(prev => ({
-      ...prev,
-      [path.join('.')]: false
-    }));
   };
 
   if (loading) {
@@ -180,14 +182,15 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
         onArrayDelete={handleArrayDelete}
         onObjectAdd={handleObjectAdd}
         onObjectDelete={handleObjectDelete}
-        onInputFocus={handleInputFocus}
-        onInputBlur={handleInputBlur}
-        focusedInputs={focusedInputs}
+        onInputFocus={() => {}}
+        onInputBlur={() => {}}
         validationErrors={validationErrors}
         availableObjects={availableObjects}
         schema={schema}
         objectType={objectType}
       />
+      
+      {/* Validation errors summary */}
       {Object.keys(validationErrors).length > 0 && (
         <div className="mt-4 p-3 bg-red-50 text-red-700 rounded">
           <h4 className="font-medium">Validation Errors:</h4>
@@ -200,11 +203,12 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
           </ul>
         </div>
       )}
+      
+      {/* Property selector modal */}
       {showPropertySelector && (
         <PropertySelector
-          properties={getAvailableProperties(schema, objectType, currentPath, data).filter(
-            prop => !(prop.key in data)
-          )}
+          properties={getAvailableProperties(schema, objectType, currentPath, data)
+            .filter(prop => !(prop.key in data[currentPath[0]]))}
           onSelect={handlePropertySelect}
           onClose={() => setShowPropertySelector(false)}
         />

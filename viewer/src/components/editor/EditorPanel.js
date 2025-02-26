@@ -4,7 +4,7 @@ import FriendlyJsonEditor from './FriendlyJsonEditor';
 
 const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange }) => {
   return (
-    <div className="flex-1 bg-white border-b border-gray-200 p-4 overflow-hidden flex flex-col">
+    <div className="flex-1 bg-white border-b border-gray-200 p-4 overflow-hidden flex flex-col min-h-0">
       <div className="flex items-center border-b border-gray-200 mb-4 overflow-x-auto">
         <div className="flex space-x-1">
           {tabs.map((tab) => (
@@ -33,7 +33,7 @@ const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange 
           ))}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab ? (
           <FriendlyJsonEditor
             data={activeTab.config}

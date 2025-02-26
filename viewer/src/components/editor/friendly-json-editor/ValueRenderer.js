@@ -1,9 +1,28 @@
 import React, { useState } from 'react';
-import { HiPlus, HiTrash, HiExclamation, HiChevronDown, HiChevronRight, HiInformationCircle } from 'react-icons/hi';
+import { HiPlus, HiTrash, HiExclamation, HiChevronDown, HiChevronRight } from 'react-icons/hi';
 import FieldLabel from './FieldLabel';
 import ObjectReferenceSelect from '../ObjectReferenceSelect';
-import { splitDescription } from './utils';
 import { getAvailableProperties } from '../../../utils/draft7Validator';
+
+// Common input wrapper component to reduce repetition
+const InputWrapper = ({ children, property, hasError, errors, path, suggestion, min, max, pattern }) => (
+  <div className="mb-3">
+    <FieldLabel property={property} />
+    <div className="relative">
+      {children}
+      {hasError && <div className="absolute right-2 top-1/2 -translate-y-1/2">
+        <HiExclamation className="text-red-500 w-5 h-5" title={errors.join('\n')} />
+      </div>}
+    </div>
+    {hasError && <div className="text-xs text-red-500 mt-1">{errors[0]}</div>}
+    {!hasError && (min !== undefined || max !== undefined) && 
+      <div className="text-xs text-gray-500 mt-1">
+        {min !== undefined && max !== undefined ? `Range: ${min} to ${max}` : 
+         min !== undefined ? `Min: ${min}` : `Max: ${max}`}
+      </div>}
+    {!hasError && pattern && <div className="text-xs text-gray-500 mt-1">Pattern: {pattern}</div>}
+  </div>
+);
 
 const ValueRenderer = ({
   value,
@@ -21,7 +40,6 @@ const ValueRenderer = ({
   onObjectDelete,
   onInputFocus,
   onInputBlur,
-  focusedInputs = {},
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   
@@ -32,225 +50,107 @@ const ValueRenderer = ({
   const errors = validationErrors[pathKey] || [];
   const hasError = errors.length > 0;
 
-  // Get property description and suggestion
-  const { suggestion, explanation } = property?.description 
-    ? splitDescription(property.description) 
-    : { suggestion: '', explanation: '' };
-
   // Handle top-level references
   if (property?.isTopLevelRef) {
     return (
-      <div className="relative mb-4">
-        <FieldLabel property={property} />
-        <div className={`relative ${hasError ? 'border-red-300' : ''}`}>
-          <ObjectReferenceSelect
-            value={value}
-            onChange={(newValue) => onValueChange(path, newValue)}
-            availableObjects={availableObjects[property.type.toLowerCase()] || []}
-            type={property.type}
-          />
-          {hasError && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <HiExclamation 
-                className="text-red-500 w-5 h-5" 
-                title={errors.join('\n')}
-              />
-            </div>
-          )}
-        </div>
-        {hasError && (
-          <div className="text-xs text-red-500 mt-1">{errors[0]}</div>
-        )}
-      </div>
+      <InputWrapper property={property} hasError={hasError} errors={errors}>
+        <ObjectReferenceSelect
+          value={value}
+          onChange={(newValue) => onValueChange(path, newValue)}
+          availableObjects={availableObjects[property.type.toLowerCase()] || []}
+          type={property.type}
+        />
+      </InputWrapper>
     );
   }
 
-  // Handle boolean values
+  // Handle primitive values (boolean, number, string)
   if (typeof value === 'boolean') {
     return (
-      <div className="relative mb-4">
-        <FieldLabel property={property} />
-        <div className="relative">
-          <select 
-            className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
-            value={value.toString()}
-            onChange={(e) => onValueChange(path, e.target.value === 'true')}
-            title={suggestion}
-          >
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-          {hasError && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <HiExclamation 
-                className="text-red-500 w-5 h-5" 
-                title={errors.join('\n')}
-              />
-            </div>
-          )}
-        </div>
-        {hasError && (
-          <div className="text-xs text-red-500 mt-1">{errors[0]}</div>
-        )}
-      </div>
+      <InputWrapper property={property} hasError={hasError} errors={errors}>
+        <select 
+          className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
+          value={value.toString()}
+          onChange={(e) => onValueChange(path, e.target.value === 'true')}
+        >
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </InputWrapper>
     );
   }
 
-  // Handle number values
   if (typeof value === 'number') {
     return (
-      <div className="relative mb-4">
-        <FieldLabel property={property} />
-        <div className="relative">
-          <input
-            type="number"
-            className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
-            value={value}
-            onChange={(e) => onValueChange(path, Number(e.target.value))}
-            onFocus={() => onInputFocus(path)}
-            onBlur={() => onInputBlur(path)}
-            title={suggestion}
-            min={property?.minimum}
-            max={property?.maximum}
-            step={property?.type === 'integer' ? 1 : 'any'}
-          />
-          {hasError && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <HiExclamation 
-                className="text-red-500 w-5 h-5" 
-                title={errors.join('\n')}
-              />
-            </div>
-          )}
-        </div>
-        {hasError && (
-          <div className="text-xs text-red-500 mt-1">{errors[0]}</div>
-        )}
-        {(property?.minimum !== undefined || property?.maximum !== undefined) && !hasError && (
-          <div className="text-xs text-gray-500 mt-1">
-            {property.minimum !== undefined && property.maximum !== undefined
-              ? `Range: ${property.minimum} to ${property.maximum}`
-              : property.minimum !== undefined
-                ? `Min: ${property.minimum}`
-                : `Max: ${property.maximum}`
-            }
-          </div>
-        )}
-      </div>
+      <InputWrapper 
+        property={property} 
+        hasError={hasError} 
+        errors={errors} 
+        min={property?.minimum} 
+        max={property?.maximum}
+      >
+        <input
+          type="number"
+          className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
+          value={value}
+          onChange={(e) => onValueChange(path, Number(e.target.value))}
+          onFocus={() => onInputFocus(path)}
+          onBlur={() => onInputBlur(path)}
+          min={property?.minimum}
+          max={property?.maximum}
+          step={property?.type === 'integer' ? 1 : 'any'}
+        />
+      </InputWrapper>
     );
   }
 
-  // Handle string values
   if (typeof value === 'string') {
     if (property?.enum) {
       return (
-        <div className="relative mb-4">
-          <FieldLabel property={property} />
-          <div className="relative">
-            <select
-              className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
-              value={value}
-              onChange={(e) => onValueChange(path, e.target.value)}
-              title={suggestion}
-            >
-              <option value="" disabled>Select {property.key}</option>
-              {property.enum.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            {hasError && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <HiExclamation 
-                  className="text-red-500 w-5 h-5" 
-                  title={errors.join('\n')}
-                />
-              </div>
-            )}
-          </div>
-          {hasError && (
-            <div className="text-xs text-red-500 mt-1">{errors[0]}</div>
-          )}
-        </div>
-      );
-    }
-
-    // Handle string with format
-    if (property?.format) {
-      const inputType = getInputTypeFromFormat(property.format);
-      
-      return (
-        <div className="relative mb-4">
-          <FieldLabel property={property} />
-          <div className="relative">
-            <input
-              type={inputType}
-              className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
-              value={value}
-              onChange={(e) => onValueChange(path, e.target.value)}
-              onFocus={() => onInputFocus(path)}
-              onBlur={() => onInputBlur(path)}
-              title={suggestion}
-              minLength={property?.minLength}
-              maxLength={property?.maxLength}
-              placeholder={`Enter ${property?.format} value`}
-            />
-            {hasError && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                <HiExclamation 
-                  className="text-red-500 w-5 h-5" 
-                  title={errors.join('\n')}
-                />
-              </div>
-            )}
-          </div>
-          {hasError && (
-            <div className="text-xs text-red-500 mt-1">{errors[0]}</div>
-          )}
-          {!hasError && (
-            <div className="text-xs text-gray-500 mt-1">
-              Format: {property.format}
-              {property.pattern && <span> (Pattern: {property.pattern})</span>}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // Regular string input
-    return (
-      <div className="relative mb-4">
-        <FieldLabel property={property} />
-        <div className="relative">
-          <input
-            type="text"
+        <InputWrapper property={property} hasError={hasError} errors={errors}>
+          <select
             className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
             value={value}
             onChange={(e) => onValueChange(path, e.target.value)}
-            onFocus={() => onInputFocus(path)}
-            onBlur={() => onInputBlur(path)}
-            title={suggestion}
-            minLength={property?.minLength}
-            maxLength={property?.maxLength}
-            pattern={property?.pattern}
-          />
-          {hasError && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-              <HiExclamation 
-                className="text-red-500 w-5 h-5" 
-                title={errors.join('\n')}
-              />
-            </div>
-          )}
-        </div>
-        {hasError && (
-          <div className="text-xs text-red-500 mt-1">{errors[0]}</div>
-        )}
-        {property?.pattern && !hasError && (
-          <div className="text-xs text-gray-500 mt-1">
-            Pattern: {property.pattern}
-          </div>
-        )}
-      </div>
+          >
+            <option value="" disabled>Select {property.key}</option>
+            {property.enum.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        </InputWrapper>
+      );
+    }
+
+    // Handle string with format or pattern
+    const inputType = property?.format === 'email' ? 'email' : 
+                      property?.format === 'uri' || property?.format === 'url' ? 'url' :
+                      property?.format === 'date' ? 'date' :
+                      property?.format === 'time' ? 'time' :
+                      property?.format === 'date-time' ? 'datetime-local' :
+                      property?.format === 'color' ? 'color' :
+                      property?.format === 'password' ? 'password' : 'text';
+    
+    return (
+      <InputWrapper 
+        property={property} 
+        hasError={hasError} 
+        errors={errors} 
+        pattern={property?.pattern}
+      >
+        <input
+          type={inputType}
+          className={`w-full px-3 py-2 rounded-lg border ${hasError ? 'border-red-300' : 'border-gray-200'} bg-white`}
+          value={value}
+          onChange={(e) => onValueChange(path, e.target.value)}
+          onFocus={() => onInputFocus(path)}
+          onBlur={() => onInputBlur(path)}
+          minLength={property?.minLength}
+          maxLength={property?.maxLength}
+          pattern={property?.pattern}
+          placeholder={property?.format ? `Enter ${property.format} value` : ''}
+        />
+      </InputWrapper>
     );
   }
 
@@ -293,7 +193,6 @@ const ValueRenderer = ({
                   onObjectDelete={onObjectDelete}
                   onInputFocus={onInputFocus}
                   onInputBlur={onInputBlur}
-                  focusedInputs={focusedInputs}
                   validationErrors={validationErrors}
                   availableObjects={availableObjects}
                   schema={schema}
@@ -336,7 +235,6 @@ const ValueRenderer = ({
                 onObjectDelete={onObjectDelete}
                 onInputFocus={onInputFocus}
                 onInputBlur={onInputBlur}
-                focusedInputs={focusedInputs}
                 validationErrors={validationErrors}
                 availableObjects={availableObjects}
                 schema={schema}
@@ -373,14 +271,6 @@ const ValueRenderer = ({
           <span className="text-xs text-gray-500 ml-2">
             ({Object.keys(value).length} properties)
           </span>
-          {explanation && (
-            <span className="ml-1">
-              <HiInformationCircle 
-                className="w-4 h-4 text-gray-400 hover:text-gray-600 inline" 
-                title={explanation}
-              />
-            </span>
-          )}
         </div>
         
         {!collapsed && (
@@ -401,7 +291,6 @@ const ValueRenderer = ({
                       onObjectDelete={onObjectDelete}
                       onInputFocus={onInputFocus}
                       onInputBlur={onInputBlur}
-                      focusedInputs={focusedInputs}
                       validationErrors={validationErrors}
                       availableObjects={availableObjects}
                       schema={schema}
@@ -433,29 +322,6 @@ const ValueRenderer = ({
   }
 
   return <div className="text-gray-500">Unsupported value type</div>;
-};
-
-// Helper function to determine input type from format
-const getInputTypeFromFormat = (format) => {
-  switch (format) {
-    case 'email':
-      return 'email';
-    case 'uri':
-    case 'url':
-      return 'url';
-    case 'date':
-      return 'date';
-    case 'time':
-      return 'time';
-    case 'date-time':
-      return 'datetime-local';
-    case 'color':
-      return 'color';
-    case 'password':
-      return 'password';
-    default:
-      return 'text';
-  }
 };
 
 export default ValueRenderer; 

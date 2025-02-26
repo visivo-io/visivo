@@ -65,9 +65,9 @@ const Editor = () => {
   const activeTab = tabs.find(tab => tab.id === activeTabId);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-[calc(100vh-50px)] bg-gray-50 overflow-hidden">
       <ObjectsPanel onObjectOpen={handleObjectOpen} />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <EditorPanel
           tabs={tabs}
           activeTab={activeTab}

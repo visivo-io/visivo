@@ -3,47 +3,38 @@ import { HiInformationCircle } from 'react-icons/hi';
 import { formatKey, splitDescription } from './utils';
 
 const FieldLabel = ({ property, fieldKey }) => {
-  // If property is provided directly, use it
-  if (property) {
-    const { explanation } = property.description 
-      ? splitDescription(property.description) 
-      : { explanation: '' };
-    
-    return (
-      <div className="flex items-center mb-1">
-        <label className="text-xs font-medium text-gray-700">
-          {formatKey(property.key)}
-          {property.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        
-        {property.type && (
-          <span className="ml-2 text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">
-            {property.format ? `${property.type}:${property.format}` : property.type}
-          </span>
-        )}
-        
-        {explanation && (
-          <span className="ml-1 inline-block">
-            <HiInformationCircle 
-              className="w-4 h-4 text-gray-400 hover:text-gray-600" 
-              title={explanation}
-            />
-          </span>
-        )}
-      </div>
-    );
-  }
+  if (!property && !fieldKey) return null;
   
-  // If no property but key is provided (for nested objects)
-  if (fieldKey) {
-    return (
-      <label className="text-xs font-medium text-gray-700 mb-1 block">
-        {formatKey(fieldKey)}
+  // Use property if provided, otherwise use fieldKey
+  const key = property?.key || fieldKey;
+  const type = property?.type;
+  const format = property?.format;
+  const required = property?.required;
+  const { explanation } = property?.description 
+    ? splitDescription(property.description) 
+    : { explanation: '' };
+  
+  return (
+    <div className="flex items-center mb-1">
+      <label className="text-xs font-medium text-gray-700">
+        {formatKey(key)}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-    );
-  }
-  
-  return null;
+      
+      {type && (
+        <span className="ml-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">
+          {format ? `${type}:${format}` : type}
+        </span>
+      )}
+      
+      {explanation && (
+        <HiInformationCircle 
+          className="w-4 h-4 text-gray-400 ml-1" 
+          title={explanation}
+        />
+      )}
+    </div>
+  );
 };
 
 export default FieldLabel; 
