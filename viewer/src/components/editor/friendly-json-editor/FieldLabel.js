@@ -10,18 +10,27 @@ const FieldLabel = ({ property, fieldKey }) => {
       : { explanation: '' };
     
     return (
-      <label className="text-xs font-medium text-gray-700 mb-1 block">
-        {formatKey(property.key)}
-        {property.required && <span className="text-red-500 ml-1">*</span>}
+      <div className="flex items-center mb-1">
+        <label className="text-xs font-medium text-gray-700">
+          {formatKey(property.key)}
+          {property.required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        
+        {property.type && (
+          <span className="ml-2 text-xs text-gray-500 px-1.5 py-0.5 bg-gray-100 rounded">
+            {property.format ? `${property.type}:${property.format}` : property.type}
+          </span>
+        )}
+        
         {explanation && (
           <span className="ml-1 inline-block">
             <HiInformationCircle 
-              className="w-4 h-4 text-gray-400 hover:text-gray-600 inline" 
+              className="w-4 h-4 text-gray-400 hover:text-gray-600" 
               title={explanation}
             />
           </span>
         )}
-      </label>
+      </div>
     );
   }
   

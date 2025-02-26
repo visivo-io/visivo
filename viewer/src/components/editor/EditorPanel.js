@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { HiX } from 'react-icons/hi';
 import FriendlyJsonEditor from './FriendlyJsonEditor';
 

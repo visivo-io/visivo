@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSchema } from '../../api/schema';
-import { validateValue, getAvailableProperties, getDefaultValue } from '../../utils/schemaValidation';
+import { validateValue, getAvailableProperties, getDefaultValue, validateObject } from '../../utils/draft7Validator';
 import ValueRenderer from './friendly-json-editor/ValueRenderer';
 import PropertySelector from './friendly-json-editor/PropertySelector';
 
@@ -13,6 +13,7 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
   const [currentPath, setCurrentPath] = useState([]);
   const [focusedInputs, setFocusedInputs] = useState({});
 
+  // Load schema and validate initial data
   useEffect(() => {
     const loadSchema = async () => {
       try {
@@ -21,12 +22,26 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
         
         // Extract available objects for each top-level type
         const objects = {};
-        Object.entries(schemaData.properties || {}).forEach(([key, prop]) => {
-          if (prop.items?.oneOf) {
-            objects[key.toLowerCase()] = []; // This would need to be populated with actual object names
+        const topLevelArrayProps = [
+          'models', 'traces', 'charts', 'dashboards', 'tables', 'selectors'
+        ];
+        
+        topLevelArrayProps.forEach(propName => {
+          const prop = schemaData.properties?.[propName];
+          if (prop?.items?.oneOf || prop?.items?.$ref) {
+            objects[propName.toLowerCase()] = []; // This would need to be populated with actual object names
           }
         });
+        
         setAvailableObjects(objects);
+        
+        // Validate the initial data
+        if (data && objectType) {
+          const validation = validateObject(schemaData, objectType, data);
+          if (!validation.valid) {
+            setValidationErrors(validation.errors);
+          }
+        }
       } catch (err) {
         console.error('Failed to load schema:', err);
       } finally {
@@ -34,7 +49,7 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
       }
     };
     loadSchema();
-  }, []);
+  }, [data, objectType]);
 
   const handleValueChange = (path, newValue) => {
     const newData = { ...data };
@@ -167,21 +182,29 @@ const FriendlyJsonEditor = ({ data, onChange, objectType }) => {
         onObjectDelete={handleObjectDelete}
         onInputFocus={handleInputFocus}
         onInputBlur={handleInputBlur}
+        focusedInputs={focusedInputs}
+        validationErrors={validationErrors}
         availableObjects={availableObjects}
+        schema={schema}
+        objectType={objectType}
       />
       {Object.keys(validationErrors).length > 0 && (
         <div className="mt-4 p-3 bg-red-50 text-red-700 rounded">
           <h4 className="font-medium">Validation Errors:</h4>
           <ul className="list-disc list-inside">
             {Object.entries(validationErrors).map(([path, errors]) => (
-              <li key={path}>{errors.join(', ')}</li>
+              <li key={path}>
+                {path}: {Array.isArray(errors) ? errors.join(', ') : errors}
+              </li>
             ))}
           </ul>
         </div>
       )}
       {showPropertySelector && (
         <PropertySelector
-          properties={getAvailableProperties(schema, objectType, currentPath, data)}
+          properties={getAvailableProperties(schema, objectType, currentPath, data).filter(
+            prop => !(prop.key in data)
+          )}
           onSelect={handlePropertySelect}
           onClose={() => setShowPropertySelector(false)}
         />
