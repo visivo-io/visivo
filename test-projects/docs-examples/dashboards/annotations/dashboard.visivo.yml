@@ -11,8 +11,8 @@ includes:
   - path: "emoji-region.visivo.yml"
 
 dashboards:
-  - name: "Tres: Annotation and Shape Examples"
-    description: "Annotations are cool! They are so cool that Im going to write a decently long description"
+  - name: "Annotation and Shapes"
+    description: "Examples of how you may use annotations and shapes to enahnce your charts"
     tags: 
       - "chart feature"
     level: 0

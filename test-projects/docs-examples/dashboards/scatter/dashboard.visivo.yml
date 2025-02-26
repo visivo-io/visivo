@@ -5,7 +5,10 @@ includes:
   - path: "area-plot.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Scatter"
+  - name: "Scatter"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:

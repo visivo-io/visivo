@@ -63,6 +63,7 @@ charts:
 
 dashboards:
   - name: Color Palettes in Visivo
+    level: 0
     rows:
       - height: compact
         items:

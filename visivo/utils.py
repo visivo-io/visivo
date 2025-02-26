@@ -11,6 +11,19 @@ import importlib.resources as resources
 
 VIEWER_PATH = resources.files("visivo") / "viewer"
 
+SCHEMA_FILE = resources.files("visivo") / "src" / "visivo_project_schema.json"
+
+PROJECT_CHILDREN = [
+    "alerts",
+    "selectors",
+    "sources",
+    "models",
+    "traces",
+    "tables",
+    "charts",
+    "dashboards",
+    "destinations",
+]
 
 def get_dashboards_dir(output_dir):
     return os.path.join(output_dir, "dashboards")

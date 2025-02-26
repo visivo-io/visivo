@@ -21,14 +21,19 @@ from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
-
+from visivo.utils import PROJECT_CHILDREN
+from importlib.metadata import version
+from click import ClickException
 
 class Project(NamedModel, ParentModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
-    cli_version: Optional[str] = None
+    cli_version: Optional[str] = Field(
+        default=version("visivo"),
+        description="The version of the CLI that created the project.",
+    )
     includes: List[Include] = []
     destinations: List[DestinationField] = []
     alerts: List[Alert] = []
@@ -42,21 +47,36 @@ class Project(NamedModel, ParentModel):
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
-    dashboards: List[DashboardField] = []
+    dashboards: List[DashboardField] = []\
 
 
-    def child_items(self):
-        return (
-            self.destinations
-            + self.alerts
-            + self.sources
-            + self.models
-            + self.traces
-            + self.tables
-            + self.charts
-            + self.selectors
-            + self.dashboards
-        )
+    def child_items(self) -> List:
+        project_children = PROJECT_CHILDREN.copy()
+        children = []
+        for child_type in project_children:
+            items = getattr(self, child_type, [])
+            children.extend(items)
+        return children
+    
+    def named_child_nodes(self) -> List: 
+        """
+        Returns a list of all named child nodes of the project, independent of the 
+        literal position of the child in the project file. This enables us to find 
+        all chilren even if they are nested in a dashboard or chart.
+        """
+        dag = self.dag()
+        named_nodes = []
+        for node in dag.nodes():
+            if hasattr(node, "name") and Project.is_project_child(node):
+                named_nodes.append(node)
+
+        return named_nodes
+    
+    @model_validator(mode="after")
+    def validate_cli_version(self):
+        if self.cli_version != version("visivo"):
+            raise ClickException(f"The project specifies {self.cli_version}, but the current version of visivo installed is {version('visivo')}. Your project version needs to match your CLI version.")
+        return self
 
     @model_validator(mode="after")
     def validate_default_names(self):
@@ -91,17 +111,9 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_dag(self):
-        from networkx import simple_cycles, is_directed_acyclic_graph
 
         dag = self.dag()
-        if not is_directed_acyclic_graph(dag):
-            circular_references = list(simple_cycles(dag))
-            if len(circular_references) > 0:
-                circle = " -> ".join(
-                    list(map(lambda cr: cr.id(), circular_references[0]))
-                )
-                circle += f" -> {circular_references[0][0].id()}."
-                raise ValueError(f"Project contains a circular reference: {circle}")
+        if not dag.validate_dag():
             raise ValueError("Project contains a circular reference.")
 
         tables = all_descendants_of_type(type=Table, dag=dag, from_node=self)
@@ -114,8 +126,29 @@ class Project(NamedModel, ParentModel):
 
         return self
 
+    @model_validator(mode="after")
+    def validate_project_is_sole_root_node(self):
+        dag = self.dag()
+        roots = dag.get_root_nodes()
+        if len(roots) > 1:
+            root_list = ', '.join([root.__class__.__name__ for root in roots])
+            raise ValueError(
+                f"Project must be the sole root node in the DAG. Current root nodes: {root_list}"
+            )
+        elif len(roots) == 0:
+            raise ValueError(
+                "No root nodes found in the DAG. Please add a name for your project."
+            )
+        elif len(roots) == 1:
+            root = roots[0]
+            if root.__class__.__name__ != "Project":
+                raise ValueError(
+                    "The sole root node in the DAG must be a Project."
+                )
+        return self
+
     @model_validator(mode="before")
-    def set_paths_on_models(cls, values):
+    def set_paths_on_models(cls, values): # TODO: Do we need both this and the set_path_on_named_models method? 
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
                 obj["path"] = path
@@ -137,7 +170,7 @@ class Project(NamedModel, ParentModel):
         return self
 
     @model_validator(mode="before")
-    def set_path_on_named_models(cls, values):
+    def set_path_on_named_models(cls, values): #This seems redundant with the set_paths_on_models method above
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
                 obj["path"] = path
@@ -152,6 +185,32 @@ class Project(NamedModel, ParentModel):
 
         set_path_recursively(values, "project")
         return values
+    
+    @classmethod
+    def get_child_objects(cls) -> dict:
+        """
+        Returns a dictionary mapping each project child type to its field object.
+        This is used to identify which objects in the project hierarchy are direct children of the project.
+        """
+        child_objects = {}
+        for field_name in PROJECT_CHILDREN:
+            field = cls.model_fields[field_name]
+            child_objects[field_name] = field
+        return child_objects
+    
+    @classmethod
+    def is_project_child(cls, obj) -> list:
+        """
+        Accepts an object and returns True if it is a child of the project. 
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        if isinstance(obj, BaseModel):
+            obj_name = obj.__class__.__name__
+            search_str = rf"[\s\[]{obj_name}[,\]]"
+            is_match = search(search_str, str(project_child_objects)) is not None
+            return is_match
+        return False
 
     @classmethod
     def traverse_names(cls, names, object):

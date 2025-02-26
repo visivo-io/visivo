@@ -1,6 +1,5 @@
 import re
 
-
 def show_dag_fig(dag):
     import plotly.graph_objects as go
 
@@ -89,10 +88,16 @@ def show_dag_fig(dag):
 
 
 def create_dag_dict(dag):
+    if not hasattr(dag, "get_root_nodes"):
+        raise ValueError("DAG is not a ProjectDag")
+    project = dag.get_root_nodes()[0]
+    dag.remove_node(project)
+    dag = dag.reverse()
     nodes = []
     edges = []
 
     for node in dag.nodes():
+        
         node_data = {
             "id": str(id(node)),
             "name": node.name,

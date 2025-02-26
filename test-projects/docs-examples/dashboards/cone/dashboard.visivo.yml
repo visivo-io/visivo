@@ -3,7 +3,10 @@ includes:
   - path: "wind-direction.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Cone"
+  - name: "Cone"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:
