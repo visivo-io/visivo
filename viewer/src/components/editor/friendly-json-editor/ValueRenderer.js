@@ -3,6 +3,7 @@ import { HiPlus, HiTrash, HiExclamation, HiChevronDown, HiChevronRight } from 'r
 import FieldLabel from './FieldLabel';
 import ObjectReferenceSelect from '../ObjectReferenceSelect';
 import { getAvailableProperties } from '../../../utils/draft7Validator';
+import TreemapLayout from './TreemapLayout';
 
 // Common input wrapper component to reduce repetition
 const InputWrapper = ({ children, property, hasError, errors, path, suggestion, min, max, pattern }) => (
@@ -214,35 +215,46 @@ const ValueRenderer = ({
 
   // Handle object values
   if (typeof value === 'object') {
-    // For top-level objects, render as cards in a grid
+    // For top-level objects, render as cards in a treemap layout
     if (isRoot) {
       const filteredEntries = Object.entries(value).filter(([key]) => 
         !['path', 'name', 'changed'].includes(key.toLowerCase())
       );
       
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <TreemapLayout className="min-h-[500px]" gap={12}>
           {filteredEntries.map(([key, val]) => (
-            <div key={key} className={`bg-white rounded-lg border ${validationErrors[key] ? 'border-red-300' : 'border-gray-200'} shadow-sm p-4`}>
-              <ValueRenderer
-                value={val}
-                path={[...path, key]}
-                property={{ key }}
-                onValueChange={onValueChange}
-                onArrayAdd={onArrayAdd}
-                onArrayDelete={onArrayDelete}
-                onObjectAdd={onObjectAdd}
-                onObjectDelete={onObjectDelete}
-                onInputFocus={onInputFocus}
-                onInputBlur={onInputBlur}
-                validationErrors={validationErrors}
-                availableObjects={availableObjects}
-                schema={schema}
-                objectType={objectType}
-              />
+            <div 
+              key={key} 
+              className={`bg-white rounded-lg border ${validationErrors[key] ? 'border-red-300' : 'border-gray-200'} shadow-sm w-full h-full flex flex-col`}
+            >
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="font-medium text-gray-800 capitalize">{key.replace(/_/g, ' ')}</h3>
+                {validationErrors[key] && (
+                  <HiExclamation className="text-red-500 w-5 h-5" title={validationErrors[key].join('\n')} />
+                )}
+              </div>
+              <div className="p-4 flex-1 overflow-visible">
+                <ValueRenderer
+                  value={val}
+                  path={[...path, key]}
+                  property={{ key }}
+                  onValueChange={onValueChange}
+                  onArrayAdd={onArrayAdd}
+                  onArrayDelete={onArrayDelete}
+                  onObjectAdd={onObjectAdd}
+                  onObjectDelete={onObjectDelete}
+                  onInputFocus={onInputFocus}
+                  onInputBlur={onInputBlur}
+                  validationErrors={validationErrors}
+                  availableObjects={availableObjects}
+                  schema={schema}
+                  objectType={objectType}
+                />
+              </div>
             </div>
           ))}
-          <div className="bg-white rounded-lg border border-dashed border-gray-300 p-4 flex items-center justify-center">
+          <div className="bg-white rounded-lg border border-dashed border-gray-300 flex items-center justify-center w-full h-full">
             <button
               onClick={() => onObjectAdd(path)}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-700"
@@ -250,7 +262,7 @@ const ValueRenderer = ({
               <HiPlus className="w-5 h-5" /> Add Property
             </button>
           </div>
-        </div>
+        </TreemapLayout>
       );
     }
     
