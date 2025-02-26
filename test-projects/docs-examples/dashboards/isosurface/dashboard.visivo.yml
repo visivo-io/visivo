@@ -3,7 +3,10 @@ includes:
   - path: "complex-with-slice.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Isosurface"
+  - name: "Isosurface"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:

@@ -4,8 +4,10 @@ includes:
   - path: "split-categories.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Violin"
+  - name: "Violin"
     level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:

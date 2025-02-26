@@ -4,7 +4,10 @@ includes:
   - path: "text-annotations.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Heatmap"
+  - name: "Heatmap"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:
