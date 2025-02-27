@@ -70,7 +70,7 @@ def test_tokenization_with_column_functions():
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
         "cohort_on": "widget",
-        "columns": {"x": "sum(amount)", "y": "date_trunc('week', completed_at)"},
+        "columns": {"x": "?{sum(amount)}", "y": "?{date_trunc('week', completed_at)}"},
         "props": {
             "type": "scatter",
             "x": "column(x)",

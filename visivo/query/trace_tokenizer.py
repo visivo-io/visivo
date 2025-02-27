@@ -5,6 +5,7 @@ from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
+from visivo.models.trace_columns import TraceColumns
 from visivo.models.trace_props.trace_props import TracePropsAttribute
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
@@ -69,6 +70,11 @@ class TraceTokenizer:
                 prop_value = getattr(obj, prop, None)
                 if prop_value != None:
                     self._set_select_items(prop_value, path + [prop])
+        elif isinstance(obj, TraceColumns):
+            for key in obj.model_dump().keys():
+                prop_value = getattr(obj, key, None)
+                if prop_value != None:
+                    self._set_select_items(prop_value, path + [key])
         # TODO: Add support for lists of query statements.
         elif isinstance(obj, list):
             for i, value in enumerate(obj):
@@ -79,7 +85,10 @@ class TraceTokenizer:
             if path[0] == "props":
                 query_statement = extract_value_from_function(obj, "query")
             if path[0] == "columns":
-                query_statement = str(obj)
+                if isinstance(obj, QueryString):
+                    query_statement = obj.get_value()
+                else:
+                    query_statement = str(obj)
 
             if query_statement and query_id not in ("cohort_on", "filter", "order_by"):
                 self.select_items.update({query_id: query_statement})
