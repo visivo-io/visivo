@@ -3,7 +3,7 @@ from typing import Any
 import re
 
 
-QUERY_STRING_MATCH_SECTION_REGEX = r"\s*([a-zA-Z0-9\s'\"\-_,\.\[\]\(\)<>=;+|&*/]+?)\s*"
+QUERY_STRING_MATCH_SECTION_REGEX = r"\s*([a-zA-Z0-9\s'\"\-_,\.\[\]\(\)<>=;+|&*/:]+?)\s*"
 QUERY_STRING_VALUE_REGEX = rf"\?{{{QUERY_STRING_MATCH_SECTION_REGEX}}}"
 
 
