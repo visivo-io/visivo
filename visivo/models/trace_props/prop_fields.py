@@ -16,10 +16,8 @@ def get_statement_model_discriminator_value(value: Any) -> str:
         return "Context"
     elif isinstance(value, ContextString):
         return "Context"
-    elif isinstance(value, str) and re.match(STATEMENT_REGEX, value):
-        return "Statement"
 
-    return None
+    return "Statement"
 
 
 StatementField = Annotated[
