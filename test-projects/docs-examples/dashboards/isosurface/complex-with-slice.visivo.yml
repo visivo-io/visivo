@@ -13,7 +13,7 @@ traces:
       x: ?{x}
       y: ?{y}
       z: ?{y}
-      val?{z}y(value)
+      value: ?{value}
       isomin: -100
       isomax: 100
       surface:
