@@ -15,11 +15,11 @@ traces:
     model: ref(icicle-data-custom)
     props:
       type: icicle
-      labels: query(category)
-      parents: query(parent)
-      values: query(value)
+      labels: ?{category}
+      parents: ?{parent}
+      values: ?{value}
       marker:
-        colors: query(color)
+        colors: ?{color}
       branchvalues: "total"
 charts:
   - name: Custom Colors Icicle Chart

@@ -16,16 +16,16 @@ traces:
     model: ref(area-plot-data)
     props:
       type: scatter
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       mode: "lines"
       fill: "tozeroy"
       fillcolor: "rgba(55, 126, 184, 0.2)"
       line:
         color: "rgb(55, 126, 184)"
         width: 2
-    order_by: 
-      - query(x asc)
+    order_by:
+      - ?{x asc}
 charts:
   - name: Area Plot Chart
     traces:

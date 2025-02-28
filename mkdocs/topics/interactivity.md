@@ -24,10 +24,10 @@ The [selector](/../reference/configuration/Selector/) enables you to **toggle be
             cohort_on: "'{{date_grain}}'"
             props: 
               type: bar
-              x: query(date_trunc('{{date_grain}}', created_at)::date::varchar)
-              y: query(count(*) ) 
+              x: ?{date_trunc('{{date_grain}}', created_at)::date::varchar}
+              y: ?{count(*) } 
             order_by: 
-              - query(date_trunc('{{date_grain}}', created_at)::date asc)
+              - ?{date_trunc('{{date_grain}}', created_at)::date asc}
         #{% endfor %}   
         charts:
           - name: issues-created-total-over-time
@@ -58,8 +58,8 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
         model: ref(orders)
         props:
           type: scatter
-          x: query( date_trunc('week', date) ) 
-          y: query( sum(amount) )
+          x: ?{ date_trunc('week', date) } 
+          y: ?{ sum(amount) }
     ```
     This would produce a single line with the week on the x axis and the sum of order amounts on the y axis. However, let's say you want to split this out by product type sold. To do that you can add a `cohort_on` attribute. 
     ``` yaml
@@ -69,8 +69,8 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
         cohort_on: product_name
         props:
           type: scatter
-          x: query( date_trunc('week', date) ) 
-          y: query( sum(amount) )
+          x: ?{ date_trunc('week', date) } 
+          y: ?{ sum(amount) }
     ```
 These cohort values are also the primary way you can create interactivity across your charts by telling a selector, when it should show different trace cohorts. 
 

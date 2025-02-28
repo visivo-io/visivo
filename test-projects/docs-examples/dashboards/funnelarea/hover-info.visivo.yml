@@ -13,8 +13,8 @@ traces:
     model: ref(funnelarea-data-hover)
     props:
       type: funnelarea
-      labels: query(stage)
-      values: query(value)
+      labels: ?{stage}
+      values: ?{value}
       hoverinfo: "label+value+percent"
 charts:
   - name: Funnelarea Chart with Hover Info

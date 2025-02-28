@@ -281,10 +281,10 @@ This function is very useful to passing in configurations to Visivo for jinja lo
             model: ref(orders)
             props:
               type: bar 
-              x: query( date_trunc('week', created_at) )
-              y: query( count(distinct id) )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ count(distinct id) }
             filters:
-              - query( account_name = '{{ account }}')
+              - ?{ account_name = '{{ account }}'}
         {%- endfor %}
         ```
     === "Rendered"
@@ -294,18 +294,18 @@ This function is very useful to passing in configurations to Visivo for jinja lo
             model: ref(orders)
             props:
               type: bar 
-              x: query( date_trunc('week', created_at) )
-              y: query( count(distinct id) )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ count(distinct id) }
             filters:
-              - query( account_name = 'Acme Co')
+              - ?{ account_name = 'Acme Co'}
           - name: Knights of Ni LTD-orders-per-week
             model: ref(orders)
             props:
               type: bar 
-              x: query( date_trunc('week', created_at) )
-              y: query( count(distinct id) )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ count(distinct id) }
             filters:
-              - query( account_name = 'Knights of Ni LTD')
+              - ?{ account_name = 'Knights of Ni LTD'}
         ```
 
 

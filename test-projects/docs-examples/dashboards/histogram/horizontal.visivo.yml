@@ -32,7 +32,7 @@ traces:
     model: ref(histogram-data-horizontal)
     props:
       type: histogram
-      y: query(value)
+      y: ?{value}
       nbinsy: 2
       marker:
         color: "#ff7f0e"

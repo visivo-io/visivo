@@ -10,7 +10,7 @@ traces:
     model: ref(image-data)
     props:
       type: image
-      z: query(z)
+      z: ?{z}
 charts:
   - name: Simple Image Chart
     traces:

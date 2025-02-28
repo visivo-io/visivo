@@ -45,12 +45,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
             model: ref(streamtube-data)
             props:
               type: streamtube
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              u: query(u)
-              v: query(v)
-              w: query(w)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              u: ?{u}
+              v: ?{v}
+              w: ?{w}
         charts:
           - name: Simple Streamtube Chart
             traces:
@@ -84,14 +84,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
             model: ref(streamtube-data-color)
             props:
               type: streamtube
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              u: query(u)
-              v: query(v)
-              w: query(w)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              u: ?{u}
+              v: ?{v}
+              w: ?{w}
               colorscale: "Viridis"
-              color: query(magnitude)
+              color: ?{magnitude}
         charts:
           - name: Streamtube Chart with Color Mapping
             traces:
@@ -125,12 +125,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
             model: ref(streamtube-data-size)
             props:
               type: streamtube
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              u: query(u)
-              v: query(v)
-              w: query(w)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              u: ?{u}
+              v: ?{v}
+              w: ?{w}
               tube_sizeref: 0.5
         charts:
           - name: Streamtube Chart with Custom Tube Sizes

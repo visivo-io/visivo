@@ -46,8 +46,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
             model: ref(funnelarea-data)
             props:
               type: funnelarea
-              labels: query(stage)
-              values: query(value)
+              labels: ?{stage}
+              values: ?{value}
         charts:
           - name: Simple Funnelarea Chart
             traces:
@@ -82,10 +82,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
             model: ref(funnelarea-data-custom)
             props:
               type: funnelarea
-              labels: query(stage)
-              values: query(value)
+              labels: ?{stage}
+              values: ?{value}
               marker:
-                colors: query(color)
+                colors: ?{color}
         charts:
           - name: Funnelarea Chart with Custom Colors
             traces:
@@ -119,8 +119,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
             model: ref(funnelarea-data-hover)
             props:
               type: funnelarea
-              labels: query(stage)
-              values: query(value)
+              labels: ?{stage}
+              values: ?{value}
               hoverinfo: "label+value+percent"
         charts:
           - name: Funnelarea Chart with Hover Info

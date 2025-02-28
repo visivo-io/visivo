@@ -1,56 +1,60 @@
 models:
-  - name: Series of Numbers 
-    args: ["curl", "-s", "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"]
+  - name: Series of Numbers
+    args:
+      [
+        "curl",
+        "-s",
+        "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv",
+      ]
 
 traces:
   - name: Yaxis Trace
     model: ref(Series of Numbers)
-    props: 
-      type: bar 
-      y: query(numbers_column)
-      marker: 
-        color: '#713B57'
+    props:
+      type: bar
+      y: ?{numbers_column}
+      marker:
+        color: "#713B57"
         opacity: .7
     order_by:
-      - query(numbers_column)
-        
+      - ?{numbers_column}
   - name: Yaxis2 Trace
     model: ref(Series of Numbers)
-    props: 
+    props:
       type: scatter
-      y: query( (500 -  numbers_column) )
-      yaxis: 'y2'
-      line: 
-        shape: spline 
+      y: ?{ (500 -  numbers_column) }
+      yaxis: "y2"
+      line:
+        shape: spline
         smoothing: .1
         color: orange
-        
+
     order_by:
-      - query(numbers_column)
+      - ?{numbers_column}
 
 charts:
   - name: Duel Axis
-    traces: 
+    traces:
       - ref(Yaxis2 Trace)
       - ref(Yaxis Trace)
-    layout: 
-      title: 
+    layout:
+      title:
         text: "Dual Axis"
-      legend: 
+      legend:
         orientation: "h"
-      yaxis: 
-        title: 
+      yaxis:
+        title:
           text: "yaxis title"
-          font: 
+          font:
             size: 18
-            color: '#713B57'
-      yaxis2: 
-        title: 
+            color: "#713B57"
+      yaxis2:
+        title:
           text: "yaxis2 title"
-          font: 
+          font:
             size: 18
             color: orange
-        side: right 
-        overlaying: 'y'
-        anchor: 'y'
-        showgrid: false 
+        side: right
+        overlaying: "y"
+        anchor: "y"
+        showgrid: false

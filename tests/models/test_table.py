@@ -17,7 +17,7 @@ def test_Table_with_trace_simple_data():
         "traces": [
             {
                 "name": "Trace Name",
-                "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
                 "model": {"sql": "select * from table"},
             }
         ],
@@ -32,7 +32,7 @@ def test_Table_with_columns_with_header():
         "traces": [
             {
                 "name": "Trace Name",
-                "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
                 "model": {"sql": "select * from table"},
             }
         ],
@@ -74,7 +74,7 @@ def test_Table_column_def_not_present():
         "traces": [
             {
                 "name": "Trace Name",
-                "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
                 "model": {"sql": "select * from table"},
             }
         ],

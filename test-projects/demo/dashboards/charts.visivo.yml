@@ -19,5 +19,5 @@ dashboards:
                   model: ref(Echo CSV)
                   props:
                     type: bar
-                    x: query(x)
-                    y: query(y)
+                    x: ?{x}
+                    y: ?{y}

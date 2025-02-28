@@ -30,10 +30,10 @@ Generate a list of users in a YAML configuration.
             type: bar 
             model: ref('orders')
             props:
-              x: query( date_trunc('week', created_at) )
-              y: query( orders )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ orders }
             filters:
-              - query( user = '{{ user }}' )
+              - ?{ user = '{{ user }}' }
           {%- endfor %}
         ```
     === "Rendered YAML"
@@ -43,26 +43,26 @@ Generate a list of users in a YAML configuration.
             type: bar 
             model: ref('orders')
             props:
-              x: query( date_trunc('week', created_at) )
-              y: query( orders )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ orders }
             filters:
-              - query( user = 'Alice' )
+              - ?{ user = 'Alice' }
           - name: "Bob_weekly_orders_trace"
             type: bar 
             model: ref('orders')
             props:
-              x: query( date_trunc('week', created_at) )
-              y: query( orders )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ orders }
             filters:
-              - query( user = 'Bob' )
+              - ?{ user = 'Bob' }
           - name: "Charlie_weekly_orders_trace"
             type: bar 
             model: ref('orders')
             props:
-              x: query( date_trunc('week', created_at) )
-              y: query( orders )
+              x: ?{ date_trunc('week', created_at) }
+              y: ?{ orders }
             filters:
-              - query( user = 'Charlie' )
+              - ?{ user = 'Charlie' }
         ```
 
 ### Nested Loops for Hierarchical Structures

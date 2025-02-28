@@ -14,14 +14,14 @@ traces:
     model: ref(scatter-data-custom)
     props:
       type: scatter
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       mode: "markers"
       marker:
-        size: query(size)
-        color: query(color)
-    order_by: 
-      - query(x asc)
+        size: ?{size}
+        color: ?{color}
+    order_by:
+      - ?{x asc}
 charts:
   - name: Scatter Chart with Custom Markers
     traces:

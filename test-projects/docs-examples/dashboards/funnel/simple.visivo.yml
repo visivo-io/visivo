@@ -14,13 +14,13 @@ traces:
     model: ref(funnel-data)
     props:
       type: funnel
-      y: query(stage)
-      x: query(value)
+      y: ?{stage}
+      x: ?{value}
       textinfo: "value+percent previous"
       marker:
         color: "#17becf"
-    order_by: 
-      - query(value desc)
+    order_by:
+      - ?{value desc}
 charts:
   - name: Simple Funnel Chart
     traces:
@@ -31,5 +31,5 @@ charts:
       xaxis:
         title:
           text: "Stage"
-      margin: 
+      margin:
         l: 100

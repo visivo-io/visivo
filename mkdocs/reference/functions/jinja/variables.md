@@ -24,7 +24,7 @@ This enables you to keep your code cleaner by storing variables that you can reu
             type: bar 
             ...
         filters:
-          - query(date_column between '{{ seven_days_ago }}'::date and '{{ current_timestamp }}'::date )
+          - ?{date_column between '{{ seven_days_ago }}'::date and '{{ current_timestamp }}'::date }
     ```
 
 It also gives you to the ability to store configurations and reuse them. 

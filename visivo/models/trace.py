@@ -2,6 +2,7 @@ import re
 import os
 from typing import Any, Literal, Union
 from pydantic import BaseModel, Field, model_validator
+from visivo.models.fields import QueryOrStringField
 from visivo.models.models.fields import ModelRefField
 from visivo.models.trace_props.fields import validate_trace_props
 from .base.named_model import NamedModel
@@ -64,14 +65,14 @@ class Trace(NamedModel, ParentModel):
         model:
           sql: 'SELECT * finance_data_atlas.FINANCE.CMCCD2019'
         source_name: remote-snowflake
-        cohort_on: query( "Cryptocurrency Name" )
+        cohort_on: ?{ "Cryptocurrency Name" }
         props:
           type: ohlc
-          x: query( date_trunc('week', "Date")::date::varchar )
-          close: query( max_by("Value", "Date") )
-          high: query( max("Value") )
-          low: query( min("Value") )
-          open: query( min_by("Value", "Date") )
+          x: ?{ date_trunc('week', "Date")::date::varchar }
+          close: ?{ max_by("Value", "Date") }
+          high: ?{ max("Value") }
+          low: ?{ min("Value") }
+          open: ?{ min_by("Value", "Date") }
           increasing:
             line:
               color: 'green'
@@ -81,9 +82,9 @@ class Trace(NamedModel, ParentModel):
           xaxis: 'x'
           yaxis: 'y'
         filters:
-        - query("Date" >= '2015-01-01')
-        - query( "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') )
-        - query( "Measure Name" = 'Price, USD' )
+        - ?{"Date" >= '2015-01-01'}
+        - ?{ "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') }
+        - ?{ "Measure Name" = 'Price, USD' }
     ```
     """
 
@@ -99,17 +100,17 @@ class Trace(NamedModel, ParentModel):
         ...,
         description="The model or model ref that Visivo should use to build the trace.",
     )
-    cohort_on: Optional[str] = Field(
+    cohort_on: Optional[QueryOrStringField] = Field(
         None,
         description="`cohort_on` enables splitting the trace out into different series or cohorts. The column or query referenced here will be used to cut the resulting trace.",
     )
-    order_by: Optional[List[str]] = Field(
+    order_by: Optional[List[QueryOrStringField]] = Field(
         None,
-        description="Takes a `column()` or `query()` reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using `asc` and `desc`.",
+        description="Takes a `column()` or `?{}` reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using `asc` and `desc`.",
     )
-    filters: Optional[List[str]] = Field(
+    filters: Optional[List[QueryOrStringField]] = Field(
         None,
-        description="A list of `column()` or `query()` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
+        description="A list of `column()` or `?{}` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
     )
     tests: Optional[List[Test]] = Field(
         None,

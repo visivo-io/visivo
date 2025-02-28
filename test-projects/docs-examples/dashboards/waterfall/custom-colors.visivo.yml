@@ -14,23 +14,23 @@ traces:
     model: ref(waterfall-data-colors)
     props:
       type: waterfall
-      x: query(label)
-      y: query(value)
+      x: ?{label}
+      y: ?{value}
       measure: ["initial", "relative", "relative", "relative", "total"]
       increasing:
-        marker: 
-          color: 'orange'
-      decreasing: 
-        marker: 
-          color: 'purple'
-      totals: 
-        marker: 
-          color: 'grey'
-          line: 
-            color: 'orange'
+        marker:
+          color: "orange"
+      decreasing:
+        marker:
+          color: "purple"
+      totals:
+        marker:
+          color: "grey"
+          line:
+            color: "orange"
             width: 4
-    order_by: 
-      - query( idx asc)
+    order_by:
+      - ?{ idx asc}
 charts:
   - name: Waterfall Chart with Custom Colors
     traces:

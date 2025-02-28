@@ -11,16 +11,16 @@ models:
 traces:
   - name: Delta Indicator with Comparison
     model: ref(indicator-data-delta)
-    columns: 
-      val: value 
+    columns:
+      val: value
     props:
       type: indicator
       mode: "number+delta"
       value: column(val)[0]
       delta:
         reference: column(val)[1]
-    order_by: 
-      - query( sort desc)
+    order_by:
+      - ?{ sort desc}
 charts:
   - name: Delta Indicator with Comparison Chart
     traces:

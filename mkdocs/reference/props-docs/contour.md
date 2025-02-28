@@ -68,9 +68,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
             props:
               type: contour
               z: 
-                - query(x)
-                - query(y)
-                - query(z)
+                - ?{x}
+                - ?{y}
+                - ?{z}
               colorscale: "Viridis"
               ncontours: 20
         charts:
@@ -133,9 +133,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
             model: ref(contour-data-filled)
             props:
               type: contour
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: "Earth"
               contours:
                 coloring: "heatmap"
@@ -225,9 +225,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
             model: ref(contour-data-multi)
             props:
               type: contour
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: "Jet"
               contours:
                 start: 0

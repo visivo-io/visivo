@@ -52,8 +52,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: query(iso_alpha)
-              z: query(population_density)
+              locations: ?{iso_alpha}
+              z: ?{population_density}
               colorscale: "Blues"
               marker:
                 opacity: 0.7
@@ -98,8 +98,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: query(iso_alpha)
-              z: query(gdp)
+              locations: ?{iso_alpha}
+              z: ?{gdp}
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               marker:
                 opacity: 0.75
@@ -144,10 +144,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-              locations: query(iso_alpha)
-              z: query(covid_cases)
+              locations: ?{iso_alpha}
+              z: ?{covid_cases}
               colorscale: "Reds"
-              text: query(covid_deaths)
+              text: ?{covid_deaths}
               hovertemplate: "Cases: %{z}<br>Deaths: %{text}"
               marker:
                 opacity: 0.8

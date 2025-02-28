@@ -94,16 +94,21 @@ nav:
               - reference/configuration/Chart/index.md
               - Layout:
                   - reference/configuration/Chart/Layout/index.md
-          - Dashboard:
-              - reference/configuration/Dashboard/index.md
-              - Row:
-                  - reference/configuration/Dashboard/Row/index.md
-                  - Item:
-                      - reference/configuration/Dashboard/Row/Item/index.md
+          - Dashboards:
+              - Dashboard:
+                  - reference/configuration/Dashboards/Dashboard/index.md
+                  - Row:
+                      - reference/configuration/Dashboards/Dashboard/Row/index.md
+                      - Item:
+                          - reference/configuration/Dashboards/Dashboard/Row/Item/index.md
+              - ExternalDashboard:
+                  - reference/configuration/Dashboards/ExternalDashboard/index.md
           - Dbt:
               - reference/configuration/Dbt/index.md
           - Defaults:
               - reference/configuration/Defaults/index.md
+              - Level:
+                  - reference/configuration/Defaults/Level/index.md
           - Destinations:
               - SlackDestination:
                   - reference/configuration/Destinations/SlackDestination/index.md
@@ -137,6 +142,8 @@ nav:
                   - reference/configuration/Sources/BigQuerySource/index.md
               - DuckdbSource:
                   - reference/configuration/Sources/DuckdbSource/index.md
+                  - DuckdbAttachment:
+                      - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/index.md
           - Table:
               - reference/configuration/Table/index.md
               - TableColumnDefinition:

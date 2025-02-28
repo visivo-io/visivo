@@ -4,10 +4,11 @@ import re
 
 from visivo.models.dag import all_descendants_with_name
 
-INLINE_REF_REGEX = r"\${\s*ref\(([a-zA-Z0-9\s'\"\-_]+?)\)[\.\d\w\[\]]*\s*}"
-INLINE_REF_PROPS_PATH_REGEX = r"\${\s*ref\([a-zA-Z0-9\s'\"\-_]+?\)([\.\d\w\[\]]*)\s*}"
-INLINE_PATH_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]]+?)\s*}"
-CONTEXT_STRING_VALUE_REGEX = r"\${\s*([a-zA-Z0-9\s'\"\-_\.\[\]\)\()]+?)\s*}"
+NAME_REGEX = r"a-zA-Z0-9\s'\"\-_"
+INLINE_REF_REGEX = rf"\${{\s*ref\(([{NAME_REGEX}]+?)\)[\.\d\w\[\]]*\s*}}"
+INLINE_REF_PROPS_PATH_REGEX = rf"\${{\s*ref\([{NAME_REGEX}]+?\)([\.\d\w\[\]]*)\s*}}"
+INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
+CONTEXT_STRING_VALUE_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
 
 
 class ContextString:

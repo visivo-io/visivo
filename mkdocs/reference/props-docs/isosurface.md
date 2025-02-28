@@ -50,15 +50,15 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
             model: ref(isosurface-data-simple)
             props:
               type: isosurface
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              value: ?{value}
               isomin: 2 
               isomax: 6 
               colorscale: "Reds"
             order_by: 
-              - query( idx asc )
+              - ?{ idx asc }
         charts:
           - name: Simple Isosurface Chart
             traces:
@@ -88,10 +88,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
             model: ref(isosurface-data)
             props:
               type: isosurface
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              value: ?{value}
               isomin: -100
               isomax: 100
               surface: 
@@ -110,7 +110,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
                 z: 
                   show: false
             order_by: 
-              - query(idx asc)
+              - ?{idx asc}
 
         charts:
           - name: Complex With Slice Isosurface Chart

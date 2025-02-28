@@ -1,10 +1,10 @@
 name: project
 
-defaults: 
+defaults:
   thumbnail_mode: none
 
 sources:
-  - name: development 
+  - name: development
     database: db/development.sqlite3
     type: sqlite
 
@@ -12,37 +12,36 @@ models:
   - name: accounts_per_week
     source: ref(development)
     sql: |
-                    SELECT 
-                      count(*) as account_count, 
-                      strftime('%W', created_at) as week_number, 
-                      max(date(created_at, 'weekday 0', '-7 day')) as week 
-                    FROM 
-                      accounts group by 2 
+      SELECT 
+        count(*) as account_count, 
+        strftime('%W', created_at) as week_number, 
+        max(date(created_at, 'weekday 0', '-7 day')) as week 
+      FROM 
+        accounts group by 2
 dashboards:
   - name: Weekly Accounts
     rows:
       - height: medium
         items:
           - width: 2
-            chart: 
+            chart:
               name: Weekly Accounts Chart
               traces:
                 - name: Accounts per Week
-                  model: ref(accounts_per_week) 
-                  props: 
-                    type: scatter 
-                    x: query(week)
-                    y: query(account_count)
+                  model: ref(accounts_per_week)
+                  props:
+                    type: scatter
+                    x: ?{week}
+                    y: ?{account_count}
                   order_by:
-                    - query(week desc)
+                    - ?{week desc}
               layout:
-                title: 
-                  text: 'Weekly Account Counts'
-                yaxis: 
-                  title: 
-                    text: 'Count'
+                title:
+                  text: "Weekly Account Counts"
+                yaxis:
+                  title:
+                    text: "Count"
                 xaxis:
-                  title: 
-                    text: 'Week'
+                  title:
+                    text: "Week"
                 stack: False
-

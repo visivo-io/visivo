@@ -46,9 +46,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
             model: ref(scatter3d-data)
             props:
               type: scatter3d
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               mode: "markers"
         charts:
           - name: Simple Scatter3D Chart
@@ -84,9 +84,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
             model: ref(scatter3d-data-lines)
             props:
               type: scatter3d
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               mode: "lines+markers"
         charts:
           - name: Scatter3D Chart with Lines
@@ -122,13 +122,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
             model: ref(scatter3d-data-custom)
             props:
               type: scatter3d
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scatter3D Chart with Custom Markers
             traces:

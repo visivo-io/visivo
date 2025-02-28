@@ -15,16 +15,16 @@ traces:
     model: ref(icicle-data)
     props:
       type: icicle
-      labels: query(category)
-      parents: query(parent)
-      values: query(value)
+      labels: ?{category}
+      parents: ?{parent}
+      values: ?{value}
       branchvalues: "total"
-      marker: 
+      marker:
         colorscale: "Portland"
       textposition: "middle center"
-      textfont: 
+      textfont:
         size: 18
-      
+
 charts:
   - name: Simple Icicle Chart
     traces:

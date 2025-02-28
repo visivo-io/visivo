@@ -9,7 +9,10 @@ from tests.factories.model_factories import SnowflakeSourceFactory
 
 def test_QueryStringBuilder_with_only_base_query():
     tokenized_trace = TokenizedTrace(
-        sql="select * from table", cohort_on="'value'", source="name", source_type="snowflake"
+        sql="select * from table",
+        cohort_on="'value'",
+        source="name",
+        source_type="snowflake",
     )
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert format_sql(query_string) == format_sql(
@@ -37,15 +40,15 @@ def test_tokenization_query_string_order_by():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "query(widget)",
+        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
-            "x": "query( date_trunc('week', completed_at) )",
-            "y": "query( sum(amount) )",
+            "x": "?{ date_trunc('week', completed_at) }",
+            "y": "?{ sum(amount) }",
         },
         "order_by": [
-            "query( a_different_column desc)",
-            "query( count(amount) desc )",
+            "?{ a_different_column desc}",
+            "?{ count(amount) desc }",
         ],
     }
     trace = Trace(**data)

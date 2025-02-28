@@ -46,13 +46,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
             model: ref(funnel-data)
             props:
               type: funnel
-              y: query(stage)
-              x: query(value)
+              y: ?{stage}
+              x: ?{value}
               textinfo: "value+percent previous"
               marker:
                 color: "#17becf"
             order_by: 
-              - query(value desc)
+              - ?{value desc}
         charts:
           - name: Simple Funnel Chart
             traces:
@@ -92,12 +92,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
             props:
               type: funnel
               orientation: v
-              x: query(stage)
-              y: query(value)
+              x: ?{stage}
+              y: ?{value}
               marker:
                 color: "#ff7f0e"
             order_by: 
-              - query(value desc)
+              - ?{value desc}
         charts:
           - name: Horizontal Funnel Chart
             traces:
@@ -135,14 +135,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
             model: ref(funnel-data-custom)
             props:
               type: funnel
-              y: query(stage)
-              x: query(value)
+              y: ?{stage}
+              x: ?{value}
               marker:
-                color: query(color)
+                color: ?{color}
               textinfo: "value+percent"
               orientation: h
             order_by: 
-              - query(value desc)
+              - ?{value desc}
         charts:
           - name: Funnel Chart with Custom Markers
             traces:
@@ -188,14 +188,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
             cohort_on: product
             props:
               type: funnel
-              y: query(stage)
-              x: query(value)
+              y: ?{stage}
+              x: ?{value}
               textinfo: "value+percent previous"
               marker:
                 colorscale: "Viridis"
             order_by: 
-              - query( product )
-              - query( value desc)
+              - ?{ product }
+              - ?{ value desc}
         charts:
           - name: Funnel Chart with Cohorts
             traces:

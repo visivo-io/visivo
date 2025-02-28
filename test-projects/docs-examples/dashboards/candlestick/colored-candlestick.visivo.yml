@@ -1,4 +1,3 @@
-
 models:
   - name: stock-data-colored
     args:
@@ -15,11 +14,11 @@ traces:
     model: ref(stock-data-colored)
     props:
       type: candlestick
-      x: query(date)
-      open: query(open)
-      high: query(high)
-      low: query(low)
-      close: query(close)
+      x: ?{date}
+      open: ?{open}
+      high: ?{open}
+      low: ?{high}
+      close: ?{close}
       increasing:
         line:
           color: "#17becf"

@@ -15,11 +15,11 @@ traces:
     model: ref(waterfall-data-connectors)
     props:
       type: waterfall
-      x: 
-        - query(half)
-        - query(quarter)
-      y: query(value)
-      measure: query(mode)
+      x:
+        - ?{half}
+        - ?{quarter}
+      y: ?{value}
+      measure: ?{mode}
       hovertemplate: "%{x}: %{y:$.2f}"
       texttemplate: "%{delta:$.2f}"
       textposition: "outside"
@@ -27,8 +27,8 @@ traces:
         line:
           color: "orange"
           width: 5
-    order_by: 
-      - query( idx asc)
+    order_by:
+      - ?{ idx asc}
 charts:
   - name: Waterfall Chart with Connectors
     traces:
@@ -36,12 +36,11 @@ charts:
     layout:
       title:
         text: Financial Waterfall
-      margin: 
+      margin:
         b: 50
         t: 60
       yaxis:
         range: [0, 1600]
-        tickprefix: '$'
-        title: 
+        tickprefix: "$"
+        title:
           text: "Millions ($)"
-        
