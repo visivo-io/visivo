@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import ObjectsPanel from './editor/ObjectsPanel';
-import EditorPanel from './editor/EditorPanel';
-import PreviewPanel from './editor/PreviewPanel';
+import ObjectsPanel from './editors/ObjectsPanel';
+import EditorPanel from './editors/EditorPanel';
+import PreviewPanel from './editors/PreviewPanel';
 
 const Editor = () => {
   const [tabs, setTabs] = useState([]);
