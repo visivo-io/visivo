@@ -12,7 +12,7 @@ validate schema client side and to power flask app api endpoints.
 """
 
 
-def generate_schema(cleaned=True):
+def generate_schema():
     # Store original environment state
     
     if os.getenv("EXCLUDE_TRACE_PROPS") != "False":
@@ -33,14 +33,14 @@ def generate_schema(cleaned=True):
     
     # Generate schema with complete properties
     schema = Project.model_json_schema(by_alias=False)
+    schema['$schema'] = 'https://json-schema.org/draft/2020-12/schema'
     schema_string = json.dumps(schema)
     
-    if cleaned:
-        schema_string = schema_string.replace("?P<ref_name>", "")
-        schema_string = schema_string.replace("?P<column_name>", "")
-        schema_string = schema_string.replace("?P<query_statement>", "")
-
-
+    schema_string = schema_string.replace("\\\"", "")
+    schema_string = schema_string.replace("?P<ref_name>", "")
+    schema_string = schema_string.replace("?P<ref_name>", "")
+    schema_string = schema_string.replace("?P<column_name>", "")
+    schema_string = schema_string.replace("?P<query_statement>", "")
         
     return schema_string
 
@@ -58,7 +58,7 @@ def write_schema_json() -> None:
     try:
         Logger.instance().info(f"Generating schema file: {SCHEMA_FILE}...")
 
-        schema = generate_schema(cleaned=False)
+        schema = generate_schema()
         with open(SCHEMA_FILE, 'w') as f:
                 f.write(schema)
         Logger.instance().info(f"Schema file written to: {SCHEMA_FILE}")

@@ -1,8 +1,22 @@
 import React from 'react';
 import { HiX } from 'react-icons/hi';
-import FriendlyJsonEditor from './FriendlyJsonEditor';
+import { useState, useEffect } from 'react';
+import Json202012Editor from './Json202012Editor'
+import { fetchSchema } from '../../api/schema';
 
 const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange }) => {
+  const [schema, setSchema] = useState(null);
+  useEffect(() => {
+    const loadSchema = async () => {
+      try {
+        const schemaData = await fetchSchema();
+        setSchema(schemaData);
+      } catch (error) {
+        console.error('Error loading schema:', error);
+      }
+    };
+    loadSchema();
+  }, []);
   return (
     <div className="flex-1 bg-white border-b border-gray-200 p-4 overflow-hidden flex flex-col min-h-0">
       <div className="flex items-center border-b border-gray-200 mb-4 overflow-x-auto">
@@ -35,11 +49,11 @@ const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange 
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab ? (
-          <FriendlyJsonEditor
-            data={activeTab.config}
-            objectType={activeTab.type}
-            onChange={(newConfig) => onConfigChange(activeTab.id, newConfig)}
-          />
+            <Json202012Editor
+              schema={schema}
+              data={activeTab.config}
+              onChange={(newConfig) => onConfigChange(activeTab.id, newConfig)}
+            />
         ) : (
           <div className="text-gray-500 text-sm text-center mt-8">
             Double-click an object from the left panel to edit its configuration

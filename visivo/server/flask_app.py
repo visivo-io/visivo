@@ -3,7 +3,7 @@ import re
 import os
 from visivo.utils import get_dashboards_dir
 import json
-from flask import Flask, send_from_directory, request, jsonify, Response
+from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
@@ -58,8 +58,7 @@ def flask_app(output_dir, dag_filter, project):
     @app.route("/data/schema.json")
     def schema():
         if os.path.exists(SCHEMA_FILE):
-            with open(SCHEMA_FILE, "r") as f:
-                return json.load(f)
+            return send_file(SCHEMA_FILE)
         else:
             return (
                     jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
