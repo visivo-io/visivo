@@ -1,7 +1,7 @@
-from pydantic import Field, constr
+from pydantic import Field
 from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Any
 
 
 class Dimensions2(TracePropsAttribute):

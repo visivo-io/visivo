@@ -5,7 +5,7 @@ from visivo.models.trace_props.trace_props import (
     TraceProps,
     TracePropsAttribute,
 )
-from typing import List, Literal, Optional
+from typing import List, Optional, Any
 from visivo.models.color_palette import ColorPalette
 
 
