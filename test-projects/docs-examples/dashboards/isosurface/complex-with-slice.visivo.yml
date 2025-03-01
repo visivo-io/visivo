@@ -7,7 +7,7 @@ models:
 
 traces:
   - name: Complex With Slice Isosurface Plot
-    model: ref(isosurface-data)
+    model: ${ ref(isosurface-data) }
     props:
       type: isosurface
       x: ?{x}

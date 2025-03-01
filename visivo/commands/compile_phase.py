@@ -46,7 +46,9 @@ def compile_phase(
     # Track parse project
     parse_start = time()
     Logger.instance().debug("    Running parse project phase...")
-    project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
+    project = parse_project_phase(
+        working_dir, output_dir, default_source, dbt_profile, dbt_target
+    )
     parse_duration = round(time() - parse_start, 2)
     if os.environ.get("STACKTRACE"):
         Logger.instance().info(f"Project parsing completed in {parse_duration}s")
@@ -87,6 +89,7 @@ def compile_phase(
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, source=source
         ).tokenize()
+        breakpoint()
         query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
         QueryWriter(
             trace=trace, query_string=query_string, output_dir=output_dir

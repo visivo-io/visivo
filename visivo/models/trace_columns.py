@@ -65,7 +65,7 @@ class TraceColumns(BaseModel):
 
     ### Indexing
     Some trace configurations require numbers or strings as inputs. For example indicator traces require a single number to represent as the
-    big value in the card. Since the `?{)` and `column(}` functions always return arrays, indexing allows you to grab a single value
+    big value in the card. Since the `?{}` and `column()` functions always return arrays, indexing allows you to grab a single value
     from the array to use in configurations that require a single value.
 
     You can index columns by using the following syntax:
