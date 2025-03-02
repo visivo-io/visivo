@@ -4,6 +4,15 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import QueryContext from '../contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// Mock window.scrollTo
+beforeAll(() => {
+  window.scrollTo = jest.fn();
+});
+
+afterAll(() => {
+  window.scrollTo.mockRestore();
+});
+
 const getProject = (items) => {
   return {
     project_json: {
