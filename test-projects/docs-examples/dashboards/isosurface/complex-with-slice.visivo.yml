@@ -12,7 +12,7 @@ traces:
       type: isosurface
       x: ?{x}
       y: ?{y}
-      z: ?{y}
+      z: ?{z}
       value: ?{value}
       isomin: -100
       isomax: 100

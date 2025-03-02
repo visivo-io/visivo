@@ -89,7 +89,6 @@ def compile_phase(
         tokenized_trace = TraceTokenizer(
             trace=trace, model=model, source=source
         ).tokenize()
-        breakpoint()
         query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
         QueryWriter(
             trace=trace, query_string=query_string, output_dir=output_dir

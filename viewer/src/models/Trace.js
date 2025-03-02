@@ -68,6 +68,7 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
 export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) => {
     replaceColumnRefWithData(traceProps, traceData)
     const mergedTraceAndNestedData = merge({}, traceProps, traceData.props, { name: cohortOn })
+    console.log(mergedTraceAndNestedData)
     return mergedTraceAndNestedData;
 };
 
