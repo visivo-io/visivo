@@ -68,21 +68,25 @@ const Editor = () => {
     <div className="flex h-[calc(100vh-50px)] bg-gray-50 overflow-hidden">
       <ObjectsPanel onObjectOpen={handleObjectOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <EditorPanel
-          tabs={tabs}
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          onTabClose={handleTabClose}
-          onConfigChange={handleConfigChange}
-        />
-        <PreviewPanel 
-          activeObject={activeTab ? {
-            type: activeTab.type,
-            name: activeTab.name,
-            config: activeTab.config
-          } : null}
-          project={project}
-        />
+        <div className="flex-2 h-2/3">
+          <EditorPanel
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            onTabClose={handleTabClose}
+            onConfigChange={handleConfigChange}
+          />
+        </div>
+        <div className="flex-1 h-1/3">
+          <PreviewPanel 
+            activeObject={activeTab ? {
+              type: activeTab.type,
+              name: activeTab.name,
+              config: activeTab.config
+            } : null}
+            project={project}
+          />
+        </div>
       </div>
     </div>
   );

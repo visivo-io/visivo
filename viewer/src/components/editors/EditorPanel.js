@@ -1,7 +1,6 @@
 import React from 'react';
 import { HiX } from 'react-icons/hi';
 import { useState, useEffect } from 'react';
-import Json202012Editor from './Json202012Editor'
 import { fetchSchema } from '../../api/schema';
 
 const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange }) => {
@@ -49,11 +48,9 @@ const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange 
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab ? (
-            <Json202012Editor
-              schema={schema}
-              data={activeTab.config}
-              onChange={(newConfig) => onConfigChange(activeTab.id, newConfig)}
-            />
+          <div className="text-gray-500 text-sm text-center mt-8">
+            Replace this with the editor the filtered editor for the active tab object
+          </div>
         ) : (
           <div className="text-gray-500 text-sm text-center mt-8">
             Double-click an object from the left panel to edit its configuration
