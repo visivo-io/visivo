@@ -46,11 +46,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
             props:
               type: sankey
               node:
-                label: query(unique([source, target]))
+                label: ?{unique([source, target])}
               link:
-                source: query(source)
-                target: query(target)
-                value: query(value)
+                source: ?{source}
+                target: ?{target}
+                value: ?{value}
         charts:
           - name: Simple Sankey Diagram
             traces:
@@ -85,12 +85,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
             props:
               type: sankey
               node:
-                label: query(unique([source, target]))
-                color: query(color)
+                label: ?{unique([source, target])}
+                color: ?{color}
               link:
-                source: query(source)
-                target: query(target)
-                value: query(value)
+                source: ?{source}
+                target: ?{target}
+                value: ?{value}
         charts:
           - name: Sankey Diagram with Custom Colors
             traces:
@@ -125,11 +125,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
             props:
               type: sankey
               node:
-                label: query(unique([source, target]))
+                label: ?{unique([source, target])}
               link:
-                source: query(source)
-                target: query(target)
-                value: query(value)
+                source: ?{source}
+                target: ?{target}
+                value: ?{value}
                 hoverinfo: "source+target+value"
         charts:
           - name: Sankey Diagram with Hover Information

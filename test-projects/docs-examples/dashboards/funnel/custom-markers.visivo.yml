@@ -14,14 +14,14 @@ traces:
     model: ref(funnel-data-custom)
     props:
       type: funnel
-      y: query(stage)
-      x: query(value)
+      y: ?{stage}
+      x: ?{value}
       marker:
-        color: query(color)
+        color: ?{color}
       textinfo: "value+percent"
       orientation: h
-    order_by: 
-      - query(value desc)
+    order_by:
+      - ?{value desc}
 charts:
   - name: Funnel Chart with Custom Markers
     traces:

@@ -10,7 +10,7 @@ traces:
     model: ref(image-data-annotated)
     props:
       type: image
-      z: query(z)
+      z: ?{z}
 charts:
   - name: Image Plot with Axis Annotations
     traces:

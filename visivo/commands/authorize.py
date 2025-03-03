@@ -61,7 +61,7 @@ def authorize(host):
 
     full_url = f"{host}/authorize-device?{query_string}"
 
-    Logger.instance().debug(f"Attempting to open URL: {full_url}")
+    Logger.instance().info(f"Attempting to open URL: {full_url}")
     webbrowser_opened = open_url(full_url)
 
     if not webbrowser_opened:

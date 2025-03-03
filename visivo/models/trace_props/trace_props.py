@@ -1,5 +1,5 @@
 from pydantic import ConfigDict, BaseModel
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 
 class LayoutBase(BaseModel):
@@ -17,4 +17,4 @@ class TracePropsAttribute(LayoutBase):
 
 
 class TraceProps(TracePropsAttribute):
-    pass
+    type: str = "scatter"

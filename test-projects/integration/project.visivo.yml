@@ -20,7 +20,7 @@ sources:
   - name: local-sqlite
     database: local.db
     type: sqlite
-  
+
   - name: local-duckdb
     database: test.duckdb
     type: duckdb
@@ -80,22 +80,22 @@ dashboards:
         items:
           - align: left
             markdown: |
-              
-               Lorem ipsum odor amet, consectetuer adipiscing elit.  
-               ```
-               Volutpat primis laoreet, ridiculus in placerat facilisis laoreet. 
-               ```
-               > Montes semper quam litora condimentum maximus. 
-               * Sollicitudin montes rhoncus sollicitudin mus et elit. 
-               * Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. 
-               #### <span title="This is a normal name and there's nothing funny about it.">Bigus Dicus </span>
-               Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
-               Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+              Lorem ipsum odor amet, consectetuer adipiscing elit.  
+              ```
+              Volutpat primis laoreet, ridiculus in placerat facilisis laoreet. 
+              ```
+              > Montes semper quam litora condimentum maximus. 
+              * Sollicitudin montes rhoncus sollicitudin mus et elit. 
+              * Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. 
+              #### <span title="This is a normal name and there's nothing funny about it.">Bigus Dicus </span>
+              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
-               Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
-               Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
+
+              Nostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.
 
       - height: medium
         items:
@@ -206,18 +206,18 @@ dashboards:
               name: fibonacci times 2
               traces:
                 - name: Double Simple Line
-                  #cohort_on: "query('Fibonacci times 2')"
+                  #cohort_on: "?{'Fibonacci times 2'}"
                   model:
                     sql: "SELECT x, y*2 as y FROM test_table"
                   props:
                     type: scatter
-                    x: query(x)
-                    y: query(y)
+                    x: ?{x}
+                    y: ?{y}
                     line:
                       shape: spline
                       color: "#4F494C"
                   order_by:
-                    - query(x asc)
+                    - ?{x asc}
                   tests:
                     - assertions:
                         - ">{ ${ref(Double Simple Line).props.x[2]} == 3 }"

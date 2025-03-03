@@ -16,12 +16,12 @@ traces:
     model: ref(treemap-data-colors)
     props:
       type: treemap
-      labels: query(labels)
-      parents: query(parents)
-      values: query("values")
+      labels: ?{labels}
+      parents: ?{parents}
+      values: ?{"values"}
       marker:
-        colors: query(colors)
-        line: 
+        colors: ?{colors}
+        line:
           color: black
 charts:
   - name: Treemap Chart with Custom Colors

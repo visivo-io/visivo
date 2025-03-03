@@ -46,8 +46,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
             model: ref(scattergl-data)
             props:
               type: scattergl
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "markers"
         charts:
           - name: Simple Scattergl Chart
@@ -83,8 +83,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
             model: ref(scattergl-data-lines)
             props:
               type: scattergl
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "lines+markers"
         charts:
           - name: Scattergl Chart with Lines
@@ -120,12 +120,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
             model: ref(scattergl-data-custom)
             props:
               type: scattergl
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scattergl Chart with Custom Markers
             traces:

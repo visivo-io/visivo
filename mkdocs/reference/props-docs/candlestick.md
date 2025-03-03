@@ -47,11 +47,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
             model: ref(stock-data)
             props:
               type: candlestick
-              x: query(date)
-              open: query(open)
-              high: query(high)
-              low: query(low)
-              close: query(close)
+              x: ?{date}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
         charts:
           - name: Simple Candlestick Chart
             traces:
@@ -94,17 +94,17 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
             model: ref(stock-data-with-volume)
             props:
               type: candlestick
-              x: query(date)
-              open: query(open)
-              high: query(high)
-              low: query(low)
-              close: query(close)
+              x: ?{date}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
           - name: Volume Trace
             model: ref(stock-data-with-volume)
             props:
               type: bar
-              x: query(date)
-              y: query(volume)
+              x: ?{date}
+              y: ?{volume}
               yaxis: "y2"
               marker:
                 opacity: .5
@@ -161,11 +161,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
             model: ref(stock-data-colored)
             props:
               type: candlestick
-              x: query(date)
-              open: query(open)
-              high: query(high)
-              low: query(low)
-              close: query(close)
+              x: ?{date}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#17becf"

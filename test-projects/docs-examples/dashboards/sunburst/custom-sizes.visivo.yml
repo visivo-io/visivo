@@ -16,12 +16,12 @@ traces:
     model: ref(sunburst-data-sizes)
     props:
       type: sunburst
-      labels: query(labels)
-      parents: query(parents)
-      values: query("values")
+      labels: ?{labels}
+      parents: ?{parents}
+      values: ?{"values"}
       marker:
         line:
-          width: query(size)
+          width: ?{size}
           color: black
 charts:
   - name: Sunburst Chart with Custom Sizes

@@ -10,8 +10,8 @@ traces:
     cohort_on: "person"
     props:
       type: box
-      y: query(person)
-      x: query(reward_gbp)
+      y: ?{person}
+      x: ?{reward_gbp}
       boxpoints: "all"
       jitter: 1
       pointpos: -1.1

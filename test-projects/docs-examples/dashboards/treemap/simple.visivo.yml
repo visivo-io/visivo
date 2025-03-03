@@ -16,10 +16,10 @@ traces:
     model: ref(treemap-data)
     props:
       type: treemap
-      labels: query(labels)
-      parents: query(parents)
-      values: query("values")
-      marker: 
+      labels: ?{labels}
+      parents: ?{parents}
+      values: ?{"values"}
+      marker:
         colorscale: Blackbody
       textposition: "middle center"
       texttemplate: "<b>%{label}</b>"

@@ -19,7 +19,7 @@ traces:
     model: ref(histogram-data)
     props:
       type: histogram
-      x: query(value)
+      x: ?{value}
       nbinsx: 5
       marker:
         color: "#17becf"

@@ -1,19 +1,19 @@
 traces:
   - name: top_exporters
     model: ref(exports)
-    cohort_on: query(top_countries)
+    cohort_on: ?{top_countries}
     props:
       type: scatter
-      x: query(year::varchar)
-      y: query(SUM(abs(kilograms)))
+      x: ?{year::varchar}
+      y: ?{SUM(abs(kilograms))}
       mode: line
       line:
         shape: spline
     order_by:
-      - query(year)
+      - ?{year}
     filters:
-      - query(SUM(abs(kilograms)) > 0)
-  
+      - ?{SUM(abs(kilograms)) > 0}
+
   - name: percent_exports
     model: ref(exports)
     columns:
@@ -40,42 +40,41 @@ traces:
       text: column(top_countries_percent)
       textinfo: text
 
-    
   - name: total_export_production
     model: ref(exports)
-    cohort_on: query('Total')
+    cohort_on: ?{'Total'}
     props:
-      yaxis: 'y2'
-      type: bar 
+      yaxis: "y2"
+      type: bar
       marker:
         opacity: .20
-        color: 'grey'
-      x: query(year::varchar)
-      y: query(sum(kilograms))
-      text: query(round(sum(kilograms)/1000000000, 1) || 'B')
+        color: "grey"
+      x: ?{year::varchar}
+      y: ?{sum(kilograms)}
+      text: ?{round(sum(kilograms)/1000000000, 1) || 'B'}
   - name: top_importers
     model: ref(imports)
-    cohort_on: query(top_countries)
+    cohort_on: ?{top_countries}
     props:
       type: scatter
-      x: query(year::varchar)
-      y: query(SUM(kilograms))
+      x: ?{year::varchar}
+      y: ?{SUM(kilograms)}
       mode: line
       line:
         shape: spline
     order_by:
-      - query(year)
+      - ?{year}
     filters:
-      - query(SUM(kilograms) > 0)
+      - ?{SUM(kilograms) > 0}
   - name: total_import_production
     model: ref(imports)
-    cohort_on: query('Total')
+    cohort_on: ?{'Total'}
     props:
-      yaxis: 'y2'
-      type: bar 
+      yaxis: "y2"
+      type: bar
       marker:
         opacity: .20
-        color: 'grey'
-      x: query(year::varchar)
-      y: query(sum(kilograms))
-      text: query(round(sum(kilograms)/1000000000, 1) || 'B')
+        color: "grey"
+      x: ?{year::varchar}
+      y: ?{sum(kilograms)}
+      text: ?{round(sum(kilograms)/1000000000, 1) || 'B'}

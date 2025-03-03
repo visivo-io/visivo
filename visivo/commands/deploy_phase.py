@@ -420,7 +420,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     }
 
     # Upload the project information (synchronous)
-    Logger.instance().debug("Uploading project information...")
+    Logger.instance().info("Uploading project information...")
     upload_project_start_time = time()
     url = f"{host}/api/projects/"
     response = requests.post(url, data=json.dumps(body), headers=json_headers)

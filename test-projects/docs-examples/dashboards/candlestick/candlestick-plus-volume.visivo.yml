@@ -14,21 +14,21 @@ traces:
     model: ref(stock-data-with-volume)
     props:
       type: candlestick
-      x: query(date)
-      open: query(open)
-      high: query(high)
-      low: query(low)
-      close: query(close)
+      x: ?{date}
+      open: ?{open}
+      high: ?{high}
+      low: ?{low}
+      close: ?{close}
   - name: Volume Trace
     model: ref(stock-data-with-volume)
     props:
       type: bar
-      x: query(date)
-      y: query(volume)
+      x: ?{date}
+      y: ?{volume}
       yaxis: "y2"
       marker:
         opacity: .5
-        color: 'blue'
+        color: "blue"
 charts:
   - name: Candlestick Chart with Volume
     traces:
@@ -42,7 +42,7 @@ charts:
       xaxis:
         title:
           text: "Date"
-        rangeslider: 
+        rangeslider:
           visible: false
       yaxis:
         title:

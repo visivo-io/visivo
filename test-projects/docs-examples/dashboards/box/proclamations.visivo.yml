@@ -10,8 +10,8 @@ traces:
     cohort_on: "person"
     props:
       type: box
-      y: query(proclamations_made)
-      x: query(enemy_encountered) 
+      y: ?{proclamations_made}
+      x: ?{enemy_encountered}
 
 charts:
   - name: Proclamations Box Plot with Outliers

@@ -14,9 +14,9 @@ traces:
     model: ref(carpet-data-axes)
     props:
       type: carpet
-      a: query(a)
-      b: query(b)
-      y: query(y)
+      a: ?{a}
+      b: ?{b}
+      y: ?{y}
       aaxis:
         title:
           text: "Custom A Axis"
@@ -38,7 +38,7 @@ charts:
       yaxis:
         title:
           text: "Y Axis"
-      margin: 
+      margin:
         b: 0
         r: 70
         l: 70

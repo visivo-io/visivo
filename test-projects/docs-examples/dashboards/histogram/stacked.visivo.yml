@@ -17,18 +17,18 @@ traces:
   - name: Histogram Groups
     model: ref(histogram-data-stacked)
     cohort_on: '"group"'
-    columns: 
+    columns:
       color: |
         case 
           when "group" = 'A' Then '#1f77b4' 
           when "group" = 'B' THEN '#ff7f0e' 
           else null 
-        end 
+        end
     props:
       type: histogram
-      x: query(value)
+      x: ?{value}
       marker:
-        color: column(color) 
+        color: column(color)
 charts:
   - name: Stacked Histogram Chart
     traces:

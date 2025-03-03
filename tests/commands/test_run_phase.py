@@ -1,6 +1,5 @@
 import os
 import json
-from unittest.mock import patch
 from tests.factories.model_factories import DashboardFactory, ProjectFactory
 from tests.support.utils import temp_folder, temp_yml_file
 from visivo.commands.run_phase import run_phase

@@ -46,8 +46,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
             model: ref(scattergeo-data)
             props:
               type: scattergeo
-              lon: query(lon)
-              lat: query(lat)
+              lon: ?{lon}
+              lat: ?{lat}
               mode: "markers"
         charts:
           - name: Simple Scattergeo Chart
@@ -85,8 +85,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
             model: ref(scattergeo-data-lines)
             props:
               type: scattergeo
-              lon: query(lon)
-              lat: query(lat)
+              lon: ?{lon}
+              lat: ?{lat}
               mode: "lines+markers"
         charts:
           - name: Scattergeo Chart with Lines
@@ -124,12 +124,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
             model: ref(scattergeo-data-custom)
             props:
               type: scattergeo
-              lon: query(lon)
-              lat: query(lat)
+              lon: ?{lon}
+              lat: ?{lat}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scattergeo Chart with Custom Markers
             traces:

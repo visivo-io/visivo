@@ -17,10 +17,10 @@ traces:
     model: ref(heatmap-data-annotations)
     props:
       type: heatmap
-      x: query(x)
-      y: query(y)
-      z: query(z)
-      text: query(z)
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      text: ?{z}
       texttemplate: "%{text}"
       textfont:
         size: 12

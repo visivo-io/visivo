@@ -116,10 +116,10 @@ traces:
     model: ref(widget_sales)
     cohort_on: widget
     props:
-      x: query( date_trunc('week', completed_at) )
-      y: query( sum(amount) )
+      x: ?{ date_trunc('week', completed_at) }
+      y: ?{ sum(amount) }
       marker: 
-        color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+        color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
         shape: square
       mode: 'lines'
 charts:
@@ -194,10 +194,10 @@ traces:
     cohort_on: widget
     props:
       type: scatter
-      x: query( date_trunc('week', completed_at) )
-      y: query( sum(amount) )
+      x: ?{ date_trunc('week', completed_at) }
+      y: ?{ sum(amount) }
       marker: 
-        color: query( case sum(amount) > 200 then 'green' else 'blue' end )
+        color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
         shape: square
       mode: 'lines'
 ```
@@ -205,8 +205,8 @@ We won't go into all of the details of the trace here, but a few things to note:
 
 * **`type`** tells Visivo how to plot the data. Visivo utilizes plotly.js and you can use most plotly trace types for this attribute. 
 * **`cohort_on`** let's Visivo know that you would like cut your chart by the `widget` column from the `widget_sales` table. Thus you will get as many lines as you have distinct `widget` types in the table from this trace. 
-* **`query( )`** is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. 
-* When **`query()`** is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. 
+* **`?{ }`** is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. 
+* When **`?{}`** is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. 
 
 Traces are able to be sourced from different sources. You can set the default source at the trace level by specifying a source name in the `source_name` attribute of the source. 
 

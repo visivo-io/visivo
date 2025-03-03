@@ -47,6 +47,15 @@ def dummy_spinner(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def mock_webbrowser_open(monkeypatch):
+    """
+    Mock webbrowser.open for all tests in this file.
+    If you want to test the actual opening of a browser, you can comment out this fixture.
+    """
+    monkeypatch.setattr("webbrowser.open", lambda url, new=0, autoraise=True: True)
+
+
+@pytest.fixture(autouse=True)
 def reset_token_event():
     token_received_event.clear()
     yield

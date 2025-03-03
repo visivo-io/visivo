@@ -50,9 +50,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
             model: ref(surface-data)
             props:
               type: surface
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
         charts:
           - name: Simple Surface Chart
             traces:
@@ -91,9 +91,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
             model: ref(surface-data-colorscale)
             props:
               type: surface
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: "Viridis"
         charts:
           - name: Surface Chart with Custom Colorscale
@@ -133,9 +133,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
             model: ref(surface-data-contours)
             props:
               type: surface
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               contours:
                 z:
                   show: true

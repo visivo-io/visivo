@@ -9,19 +9,16 @@ traces:
     model: ref(monty-python-quests)
     props:
       type: bar
-      x: query(enemy_encountered)
-      y: query( count(*) )
-      text: query( count(*) )
-    order_by: 
-      - query( count(*) desc)
+      x: ?{enemy_encountered}
+      y: ?{ count(*) }
+      text: ?{ count(*) }
+    order_by:
+      - ?{ count(*) desc}
 
-charts: 
+charts:
   - name: Count Times Enemy Was Encountered
-    traces: 
+    traces:
       - ref(Count Enemy Encountered)
-    layout: 
-      title: 
+    layout:
+      title:
         text: Simple Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest</sub>
-
-
-

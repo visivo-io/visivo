@@ -14,10 +14,10 @@ traces:
     model: ref(funnelarea-data-custom)
     props:
       type: funnelarea
-      labels: query(stage)
-      values: query(value)
+      labels: ?{stage}
+      values: ?{value}
       marker:
-        colors: query(color)
+        colors: ?{color}
 charts:
   - name: Funnelarea Chart with Custom Colors
     traces:

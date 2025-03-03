@@ -50,8 +50,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
             model: ref(histogram2d-data)
             props:
               type: histogram2d
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               colorscale: "Viridis"
         charts:
           - name: Simple 2D Histogram Chart
@@ -97,8 +97,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
             model: ref(histogram2d-data-bins)
             props:
               type: histogram2d
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               xbins:
                 size: 1
               ybins:
@@ -148,8 +148,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
             model: ref(histogram2d-data-density)
             props:
               type: histogram2d
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               histnorm: "density"
               colorscale: "Jet"
         charts:

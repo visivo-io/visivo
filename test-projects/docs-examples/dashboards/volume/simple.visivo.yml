@@ -17,12 +17,12 @@ traces:
     model: ref(volume-data)
     props:
       type: volume
-      x: query(x)
-      y: query(y)
-      z: query(z)
-      value: query(value)
-    order_by: 
-      - query( idx asc)
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      value: ?{value}
+    order_by:
+      - ?{ idx asc}
 charts:
   - name: Simple Volume Chart
     traces:

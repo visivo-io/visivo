@@ -18,9 +18,9 @@ traces:
     model: ref(contour-data-filled)
     props:
       type: contour
-      x: query(x)
-      y: query(y)
-      z: query(z)
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
       colorscale: "Earth"
       contours:
         coloring: "heatmap"

@@ -1,8 +1,12 @@
+from visivo.models.base.base_model import BaseModel
+from visivo.models.base.query_string import QueryString
 from visivo.models.trace import Trace
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
+from visivo.models.trace_columns import TraceColumns
+from visivo.models.trace_props.trace_props import TracePropsAttribute
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
 from ..utils import extract_value_from_function
@@ -28,10 +32,10 @@ class TraceTokenizer:
     def tokenize(self):
         cohort_on = self._get_cohort_on()
         if isinstance(self.model, LocalMergeModel):
-            source_type = 'duckdb'
+            source_type = "duckdb"
         elif self.source.type:
             source_type = self.source.type
-        else: 
+        else:
             source_type = None
         data = {
             "sql": self.model.sql,
@@ -54,16 +58,23 @@ class TraceTokenizer:
         if self.trace.name:
             cohort_on = cohort_on or f"'{self.trace.name}'"
         cohort_on = cohort_on or DEFAULT_COHORT_ON
+        # TODO Replace with query string
         de_query = extract_value_from_function(cohort_on, "query")
         return de_query if de_query else cohort_on
 
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
-            obj = self.trace.model_dump()
-        if isinstance(obj, dict):
-            for key, value in obj.items():
-                if value != None:
-                    self._set_select_items(value, path + [key])
+            obj = self.trace
+        if isinstance(obj, BaseModel) or isinstance(obj, TracePropsAttribute):
+            for prop in obj.model_fields.keys():
+                prop_value = getattr(obj, prop, None)
+                if prop_value != None:
+                    self._set_select_items(prop_value, path + [prop])
+        elif isinstance(obj, TraceColumns):
+            for key in obj.model_dump().keys():
+                prop_value = getattr(obj, key, None)
+                if prop_value != None:
+                    self._set_select_items(prop_value, path + [key])
         # TODO: Add support for lists of query statements.
         elif isinstance(obj, list):
             for i, value in enumerate(obj):
@@ -72,9 +83,12 @@ class TraceTokenizer:
             query_id = ".".join([str(i) for i in path])
             query_statement = False
             if path[0] == "props":
-                query_statement = extract_value_from_function(str(obj), "query")
+                query_statement = extract_value_from_function(obj, "query")
             if path[0] == "columns":
-                query_statement = str(obj)
+                if isinstance(obj, QueryString):
+                    query_statement = obj.get_value()
+                else:
+                    query_statement = str(obj)
 
             if query_statement and query_id not in ("cohort_on", "filter", "order_by"):
                 self.select_items.update({query_id: query_statement})

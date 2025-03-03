@@ -14,8 +14,8 @@ traces:
     model: ref(funnelarea-data)
     props:
       type: funnelarea
-      labels: query(stage)
-      values: query(value)
+      labels: ?{stage}
+      values: ?{value}
 charts:
   - name: Simple Funnelarea Chart
     traces:

@@ -32,10 +32,11 @@ class Logger:
             self.echo = None
 
     def debug(self, message: str):
-        if self.echo:
-            self.echo(message)
-        elif self.spinner:
-            self.spinner.text = str(message)
+        if os.environ.get("DEBUG") == "true":
+            if self.echo:
+                self.echo(message)
+            elif self.spinner:
+                self.spinner.text = str(message)
 
     def info(self, message: str):
         if self.echo:

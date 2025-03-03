@@ -1,34 +1,37 @@
-import pydantic
+import re
+from typing import Any
+from pydantic import BaseModel, ConfigDict, model_validator
+from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX, QueryString
 
 
-class TraceColumns(pydantic.BaseModel):
+class TraceColumns(BaseModel):
     """
     Trace Columns enable you to reuse query elements as columns throughout multiple different areas within the trace.
     !!! tip
 
         Using Trace Columns can help reduce copy and paste code!
 
-    Trace Columns perform the same basic service that the `query()` function does- allowing you to define sql select statements.
+    Trace Columns perform the same basic service that the `?{}` function does- allowing you to define sql select statements.
 
     !!! example {% raw %}
 
-        === "With Inline `query()` Function"
+        === "With Inline `?{}` Function"
 
             ``` yaml
             - name: Simple Line
               model: ref(test-table)
               props:
                 type: bar
-                x: query(x)
-                y: query(y)
+                x: ?{ x }
+                y: ?{ y }
                 marker:
-                  color: query( case when x >= 5 then '#713B57' else 'grey' end )
+                  color: ?{ case when x >= 5 then '#713B57' else 'grey' end }
                   line:
-                    color: query( case when x >= 5 then '#713B57' else 'grey' end )
+                    color: ?{ case when x >= 5 then '#713B57' else 'grey' end }
                 pattern:
-                  shape: query( case when x = 5 then '/' when x = 6 THEN 'x' else '' end )
+                  shape: ?{ case when x = 5 then '/' when x = 6 THEN 'x' else '' end }
                 line:
-                  width: query( Case when x in (5,6) then 2.5 else null end)
+                  width: ?{ case when x in (5,6) then 2.5 else null end }
             ```
 
         === "With Trace Columns"
@@ -37,23 +40,23 @@ class TraceColumns(pydantic.BaseModel):
             - name: Simple Line
               model: ref(test-table)
               columns:
-                x_data: x
-                y_data: y
-                color: case when x >= 5 then '#713B57' else 'grey' end
-                shape: case when x = 5 then '/' when x = 6 THEN 'x' else '' end
-                width: case when x in (5,6) then 2.5 else null end
+                x_data: ?{ x }
+                y_data: ?{ y }
+                color: ?{ case when x >= 5 then '#713B57' else 'grey' end }
+                shape: ?{ case when x = 5 then '/' when x = 6 THEN 'x' else '' end }
+                width: ?{ case when x in (5,6) then 2.5 else null end }
               props:
                 type: bar
-                x: column(x_data)
-                y: column(y_data)
+                x: ${ columns.x_data }
+                y: ${ columns.y_data }
                 marker:
-                  color: column(color)
+                  color: ${ columns.color }
                   line:
-                    color: column(color)
+                    color: ${ columns.color }
                 pattern:
-                  shape: column(shape)
+                  shape: ${ columns.shape }
                 line:
-                  width: column(width)
+                  width: ${ columns.width }
             ```
     {% endraw %}
 
@@ -62,7 +65,7 @@ class TraceColumns(pydantic.BaseModel):
 
     ### Indexing
     Some trace configurations require numbers or strings as inputs. For example indicator traces require a single number to represent as the
-    big value in the card. Since the `query()` and `column()` functions always return arrays, indexing allows you to grab a single value
+    big value in the card. Since the `?{}` and `column()` functions always return arrays, indexing allows you to grab a single value
     from the array to use in configurations that require a single value.
 
     You can index columns by using the following syntax:
@@ -79,17 +82,17 @@ class TraceColumns(pydantic.BaseModel):
         - name: Indicator Trace
           model: ref(csv)
           columns:
-          x_data: x
-          y_data: y
+            x_data: ?{ x }
+            y_data: ?{ y }
           props:
             type: "indicator"
             mode: "number+delta"
-            value: column(y_data)[0]
+            value: ?{ columns.y_data[0] }
             number:
               prefix: "$"
             delta:
               position: "top"
-              reference: column(y_data)[1]
+              reference: ?{ columns.y_data[1] }
         ```
         In the trace above `column(y_data)[0]` is pulling the first item in the array as the value and comparing its delta to the second item in the column y_data array.
 
@@ -113,23 +116,34 @@ class TraceColumns(pydantic.BaseModel):
         Surface plots can be a really useful place to utilize slicing.
         ``` yaml
         - name: Surface Trace
-          model: ref(csv)
+          model: ${ ref(csv) }
           columns:
-          x_data: x
-          y_data: y
+            x_data: ?{ x }
+            y_data: ?{ y }
           props:
             type: surface
             z:
-              - column(x_data)
-              - column(x_data)[0:5]
-              - column(x_data)[5:10]
-              - column(y_data)
-              - column(y_data)[0:5]
-              - column(x_data)[5:10]
+              - ${ columns.x_data }
+              - ${ columns.x_data[0:5] }
+              - ${ columns.x_data[5:10] }
+              - ${ columns.y_data }
+              - ${ columns.y_data[0:5] }
+              - ${ columns.y_data[5:10] }
         ```
         The trace above is creating a surface plot with lines on the plane of different lengths that represent different portions
         of the x_data and y_data arrays.
 
     """
 
-    model_config = pydantic.ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow")
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_unique_item_types(cls, data: any):
+        # TODO 1.1: This validator can throw and error
+        for field_name, field_value in data.items():
+            if isinstance(field_value, str) and re.match(
+                QUERY_STRING_VALUE_REGEX, field_value
+            ):
+                data[field_name] = QueryString(field_value)
+        return data
