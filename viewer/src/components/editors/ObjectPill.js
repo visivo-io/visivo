@@ -2,6 +2,7 @@ import React from 'react';
 import { HiOutlineChartBar, HiOutlineDatabase, HiOutlineViewGrid, HiOutlineSelector, HiOutlineTable } from 'react-icons/hi';
 import { MdScatterPlot } from 'react-icons/md';
 import { FaExternalLinkAlt } from "react-icons/fa";
+import useStore from '../../stores/store';
 
 export const TYPE_COLORS = {
   'Chart': {
@@ -49,7 +50,9 @@ export const TYPE_COLORS = {
 };
 
 const ObjectPill = ({ object, onObjectOpen }) => {
-  const { name, type } = object;
+  const { name, type, id } = object;
+  const { setSelectedObject } = useStore();
+  
   const typeConfig = TYPE_COLORS[type] || {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
@@ -58,10 +61,22 @@ const ObjectPill = ({ object, onObjectOpen }) => {
   };
   const Icon = typeConfig.icon;
 
+  const handleObjectOpen = () => {
+    // Set the selected object in the store
+    if (id) {
+      setSelectedObject(id);
+    }
+    
+    // Also call the onObjectOpen prop for backward compatibility
+    if (onObjectOpen) {
+      onObjectOpen(object);
+    }
+  };
+
   return (
     <div
       className={`flex items-center p-2 mb-2 rounded-lg border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 transition-opacity`}
-      onDoubleClick={() => onObjectOpen(object)}
+      onDoubleClick={handleObjectOpen}
     >
       <Icon className={`w-5 h-5 mr-2 ${typeConfig.text}`} />
       <span className={`text-sm font-medium ${typeConfig.text} truncate`}>

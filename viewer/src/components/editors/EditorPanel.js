@@ -1,21 +1,8 @@
 import React from 'react';
 import { HiX } from 'react-icons/hi';
-import { useState, useEffect } from 'react';
-import { fetchSchema } from '../../api/schema';
+import ObjectComponent from './ObjectComponent';
 
-const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange }) => {
-  const [schema, setSchema] = useState(null);
-  useEffect(() => {
-    const loadSchema = async () => {
-      try {
-        const schemaData = await fetchSchema();
-        setSchema(schemaData);
-      } catch (error) {
-        console.error('Error loading schema:', error);
-      }
-    };
-    loadSchema();
-  }, []);
+const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose }) => {
   return (
     <div className="flex-1 bg-white border-b border-gray-200 p-4 overflow-hidden flex flex-col min-h-0">
       <div className="flex items-center border-b border-gray-200 mb-4 overflow-x-auto">
@@ -48,9 +35,7 @@ const EditorPanel = ({ tabs, activeTab, onTabChange, onTabClose, onConfigChange 
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         {activeTab ? (
-          <div className="text-gray-500 text-sm text-center mt-8">
-            Replace this with the editor the filtered editor for the active tab object
-          </div>
+          <ObjectComponent data={activeTab.config} path={[]} />
         ) : (
           <div className="text-gray-500 text-sm text-center mt-8">
             Double-click an object from the left panel to edit its configuration

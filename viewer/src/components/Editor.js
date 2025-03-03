@@ -1,23 +1,31 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ObjectsPanel from './editors/ObjectsPanel';
 import EditorPanel from './editors/EditorPanel';
 import PreviewPanel from './editors/PreviewPanel';
+import useStore from '../stores/store';
 
 const Editor = () => {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
-  const [project, setProject] = useState(null);
+  const projectData = useStore((state) => state.projectData);
+  const setProjectData = useStore((state) => state.setProjectData);
 
   // Load project data when component mounts
-  React.useEffect(() => {
-    const loadProject = async () => {
-      const response = await fetch('/data/project.json');
-      if (response.ok) {
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      try {
+        const response = await fetch('/data/project.json');
+        if (!response.ok) {
+          throw new Error('Failed to fetch project data');
+        }
         const data = await response.json();
-        setProject(data);
+        setProjectData(data); // Update the store
+      } catch (error) {
+        console.error('Error fetching project data:', error);
       }
     };
-    loadProject();
+
+    fetchProjectData();
   }, []);
 
   const handleObjectOpen = useCallback((object) => {
@@ -68,7 +76,6 @@ const Editor = () => {
     <div className="flex h-[calc(100vh-50px)] bg-gray-50 overflow-hidden">
       <ObjectsPanel onObjectOpen={handleObjectOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-2 h-2/3">
           <EditorPanel
             tabs={tabs}
             activeTab={activeTab}
@@ -76,17 +83,14 @@ const Editor = () => {
             onTabClose={handleTabClose}
             onConfigChange={handleConfigChange}
           />
-        </div>
-        <div className="flex-1 h-1/3">
           <PreviewPanel 
             activeObject={activeTab ? {
               type: activeTab.type,
               name: activeTab.name,
               config: activeTab.config
             } : null}
-            project={project}
-          />
-        </div>
+            project={projectData}
+          />   
       </div>
     </div>
   );

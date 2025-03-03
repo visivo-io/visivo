@@ -1,35 +1,34 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchNamedChildren } from '../../api/namedChildren';
 import ObjectPill from './ObjectPill';
+import useStore from '../../stores/store';
 
 const ObjectsPanel = ({ onObjectOpen }) => {
-  const [objects, setObjects] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  
+  // Use the store for state management
+  const { 
+    namedChildren, 
+    isLoading, 
+    error, 
+    fetchNamedChildren 
+  } = useStore();
 
+  // Fetch named children on component mount
   useEffect(() => {
-    const fetchObjects = async () => {
-      try {
-        const data = await fetchNamedChildren();
-        if (data) {
-          const objectsArray = Object.entries(data).map(([name, details]) => ({
-            name,
-            type: details.type,
-            config: JSON.parse(details.config)
-          }));
-          setObjects(objectsArray.sort((a, b) => a.name.localeCompare(b.name)));
-        }
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch objects');
-        setLoading(false);
-      }
-    };
+    fetchNamedChildren();
+  }, [fetchNamedChildren]);
 
-    fetchObjects();
-  }, []);
+  // Transform namedChildren into the format expected by the component
+  const objects = useMemo(() => {
+    if (!namedChildren || !Array.isArray(namedChildren)) return [];
+    return namedChildren.map(item => ({
+      id: item.id,
+      name: item.name || item.id,
+      type: item.type || 'Unknown',
+      config: item.config || {}
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [namedChildren]);
 
   const uniqueTypes = useMemo(() => {
     const types = [...new Set(objects.map(obj => obj.type))];
@@ -44,7 +43,7 @@ const ObjectsPanel = ({ onObjectOpen }) => {
     });
   }, [objects, searchTerm, selectedType]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -85,7 +84,7 @@ const ObjectsPanel = ({ onObjectOpen }) => {
         ) : (
           filteredObjects.map(obj => (
             <ObjectPill
-              key={obj.name}
+              key={obj.name || obj.id }
               object={obj}
               onObjectOpen={onObjectOpen}
             />
