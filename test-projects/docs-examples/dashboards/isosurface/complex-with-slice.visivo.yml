@@ -23,7 +23,8 @@ traces:
       slices:
         z:
           show: true
-          locations: [-0.1]
+          locations:
+            - -0.1
       caps:
         x:
           show: false
@@ -40,7 +41,7 @@ charts:
       - ref(Complex With Slice Isosurface Plot)
     layout:
       title:
-        text: Complex With Slice Isosurface Plot<br><sub>3D Volume Visualization</sub>
+        text: Complex With SSlice Isosurface Plot<br><sub>3D Volume Visualization</sub>
       margin:
         t: 50
         b: 20

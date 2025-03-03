@@ -1,5 +1,10 @@
 from pydantic import Field, model_validator
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import (
     LayoutBase,
     TraceProps,
@@ -263,7 +268,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -444,11 +449,11 @@ class LayoutColoraxisColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -573,11 +578,11 @@ class Domain4(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this geo subplot . Note that geo subplots are constrained by domain. In general, when `projection.scale` is set to 1. a map will fit either its x or y domain, but not both. """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this geo subplot (in plot fraction). Note that geo subplots are constrained by domain. In general, when `projection.scale` is set to 1. a map will fit either its x or y domain, but not both. """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this geo subplot (in plot fraction). Note that geo subplots are constrained by domain. In general, when `projection.scale` is set to 1. a map will fit either its x or y domain, but not both. """,
     )
@@ -599,7 +604,7 @@ class LonaxisLataxis1(TracePropsAttribute):
         None,
         description=""" number greater than or equal to 0<br>Sets the graticule's stroke width (in px). """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis (in degrees), sets the map's clipped coordinates. """,
     )
@@ -629,7 +634,7 @@ class LonaxisLataxis1(TracePropsAttribute):
         None,
         description=""" number greater than or equal to 0<br>Sets the graticule's stroke width (in px). """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis (in degrees), sets the map's clipped coordinates. """,
     )
@@ -663,7 +668,7 @@ class LayoutGeoProjection(TracePropsAttribute):
         None,
         description=""" number greater than or equal to 1.001<br>For satellite projection type only. Sets the distance from the center of the sphere to the point of view as a proportion of the sphere���s radius. """,
     )
-    parallels: Optional[StatementField | List] = Field(
+    parallels: Optional[StatementListField] = Field(
         None,
         description=""" array<br>For conic projection types only. Sets the parallels (tangent, secant) where the cone intersects the sphere. """,
     )
@@ -806,11 +811,11 @@ class LayoutGeo(TracePropsAttribute):
 
 
 class Domain17(TracePropsAttribute):
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this grid subplot (in plot fraction). The first and last cells end exactly at the domain edges, with no grout around the edges. """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this grid subplot (in plot fraction). The first and last cells end exactly at the domain edges, with no grout around the edges. """,
     )
@@ -837,11 +842,11 @@ class LayoutGrid(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 1<br>The number of rows in the grid. If you provide a 2D `subplots` array or a `yaxes` array, its length is used as the default. But it's also possible to have a different length, if you want to leave a row at the end for non-cartesian subplots. """,
     )
-    subplots: Optional[StatementField | List] = Field(
+    subplots: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Used for freeform grids, where some axes may be shared across subplots but others are not. Each entry should be a cartesian subplot id, like "xy" or "x3y2", or "" to leave that cell empty. You may reuse x axes within the same column, and y axes within the same row. Non-cartesian subplots and traces that support `domain` can place themselves in this grid separately using the `gridcell` attribute. """,
     )
-    xaxes: Optional[StatementField | List] = Field(
+    xaxes: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Used with `yaxes` when the x and y axes are shared across columns and rows. Each entry should be an x axis id like "x", "x2", etc., or "" to not put an x axis in that column. Entries other than "" must be unique. Ignored if `subplots` is present. If missing but `yaxes` is present, will generate consecutive IDs. """,
     )
@@ -853,7 +858,7 @@ class LayoutGrid(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "bottom" | "bottom plot" | "top plot" | "top" )<br>Sets where the x axis labels and titles go. "bottom" means the very bottom of the grid. "bottom plot" is the lowest plot that each x axis is used in. "top" and "top plot" are similar. """,
     )
-    yaxes: Optional[StatementField | List] = Field(
+    yaxes: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Used with `yaxes` when the x and y axes are shared across columns and rows. Each entry should be an y axis id like "y", "y2", etc., or "" to not put a y axis in that row. Entries other than "" must be unique. Ignored if `subplots` is present. If missing but `xaxes` is present, will generate consecutive IDs. """,
     )
@@ -1176,11 +1181,11 @@ class Domain5(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this mapbox subplot . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this mapbox subplot (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this mapbox subplot (in plot fraction). """,
     )
@@ -1201,7 +1206,7 @@ class Fill2(TracePropsAttribute):
 
 
 class Line29(TracePropsAttribute):
-    dash: Optional[StatementField | List] = Field(
+    dash: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the length of dashes and gaps (mapbox.layer.paint.line-dasharray). Has an effect only when `type` is set to "line". """,
     )
@@ -1507,7 +1512,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -1534,7 +1539,7 @@ class LayoutPolarAngularaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "convert types" | "strict" )<br>Using "strict" a numeric string in trace data is not converted to a number. Using "convert types" a numeric string in trace data may be treated as a number during automatic axis `type` detection. Defaults to layout.autotypenumbers. """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -1679,11 +1684,11 @@ class LayoutPolarAngularaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -1714,11 +1719,11 @@ class Domain16(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this polar subplot . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this polar subplot (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this polar subplot (in plot fraction). """,
     )
@@ -1738,7 +1743,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -1803,7 +1808,7 @@ class LayoutPolarRadialaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the calendar system to use for `range` and `tick0` if this is a date axis. This does not set the calendar for interpreting data on this axis, that's specified in the trace or via the global `layout.calendar` """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -1857,7 +1862,7 @@ class LayoutPolarRadialaxis(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis. If the axis `type` is "log", then you must take the log of your desired range (e.g. to set the range from 1 to 100, set the range from 0 to 2). If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -1944,11 +1949,11 @@ class LayoutPolarRadialaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -1998,7 +2003,7 @@ class LayoutPolar(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    sector: Optional[StatementField | List] = Field(
+    sector: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets angular span of this polar subplot with two angles (in degrees). Sector are assumed to be spanned in the counterclockwise direction with "0" corresponding to rightmost limit of the polar subplot. """,
     )
@@ -2285,11 +2290,11 @@ class Domain14(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this scene subplot . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this scene subplot (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this scene subplot (in plot fraction). """,
     )
@@ -2309,7 +2314,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -2373,7 +2378,7 @@ class LayoutSceneXaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the calendar system to use for `range` and `tick0` if this is a date axis. This does not set the calendar for interpreting data on this axis, that's specified in the trace or via the global `layout.calendar` """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -2423,7 +2428,7 @@ class LayoutSceneXaxis(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis. If the axis `type` is "log", then you must take the log of your desired range (e.g. to set the range from 1 to 100, set the range from 0 to 2). If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -2524,11 +2529,11 @@ class LayoutSceneXaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -2574,7 +2579,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -2638,7 +2643,7 @@ class LayoutSceneYaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the calendar system to use for `range` and `tick0` if this is a date axis. This does not set the calendar for interpreting data on this axis, that's specified in the trace or via the global `layout.calendar` """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -2688,7 +2693,7 @@ class LayoutSceneYaxis(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis. If the axis `type` is "log", then you must take the log of your desired range (e.g. to set the range from 1 to 100, set the range from 0 to 2). If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -2789,11 +2794,11 @@ class LayoutSceneYaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -2839,7 +2844,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -2903,7 +2908,7 @@ class LayoutSceneZaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the calendar system to use for `range` and `tick0` if this is a date axis. This does not set the calendar for interpreting data on this axis, that's specified in the trace or via the global `layout.calendar` """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -2953,7 +2958,7 @@ class LayoutSceneZaxis(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis. If the axis `type` is "log", then you must take the log of your desired range (e.g. to set the range from 1 to 100, set the range from 0 to 2). If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -3054,11 +3059,11 @@ class LayoutSceneZaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -3379,7 +3384,7 @@ class Pad1(TracePropsAttribute):
 
 
 class Steps1(TracePropsAttribute):
-    args: Optional[StatementField | List] = Field(
+    args: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the arguments values to be passed to the Plotly method set in `method` on slide. """,
     )
@@ -3528,11 +3533,11 @@ class Domain3(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this smith subplot . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this smith subplot (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this smith subplot (in plot fraction). """,
     )
@@ -3629,7 +3634,7 @@ class LayoutSmithImaginaryaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Defaults to `realaxis.tickvals` plus the same as negatives and zero. """,
     )
@@ -3742,7 +3747,7 @@ class LayoutSmithRealaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. """,
     )
@@ -3788,7 +3793,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -3962,11 +3967,11 @@ class LayoutTernaryAaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -3998,7 +4003,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -4172,11 +4177,11 @@ class LayoutTernaryBaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -4208,7 +4213,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -4382,11 +4387,11 @@ class LayoutTernaryCaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -4413,11 +4418,11 @@ class Domain6(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this ternary subplot . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this ternary subplot (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this ternary subplot (in plot fraction). """,
     )
@@ -4553,11 +4558,11 @@ class Uniformtext1(TracePropsAttribute):
 
 
 class Buttons1(TracePropsAttribute):
-    args2: Optional[StatementField | List] = Field(
+    args2: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets a 2nd set of `args`, these arguments values are passed to the Plotly method set in `method` when clicking this button while in the active state. Use this to create toggle buttons. """,
     )
-    args: Optional[StatementField | List] = Field(
+    args: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the arguments values to be passed to the Plotly method set in `method` on click. """,
     )
@@ -4734,7 +4739,7 @@ class Minor1(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "outside" | "inside" | "" )<br>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -4745,7 +4750,7 @@ class Minor1(TracePropsAttribute):
 
 
 class Rangebreaks1(TracePropsAttribute):
-    bounds: Optional[StatementField | List] = Field(
+    bounds: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the lower and upper bounds of this axis rangebreak. Can be used with `pattern`. """,
     )
@@ -4769,7 +4774,7 @@ class Rangebreaks1(TracePropsAttribute):
         None,
         description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """,
     )
-    values: Optional[StatementField | List] = Field(
+    values: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the coordinate values corresponding to the rangebreaks. An alternative to `bounds`. Use `dvalue` to set the size of the values along the axis. """,
     )
@@ -4868,7 +4873,7 @@ class LayoutXaxisRangeselector(TracePropsAttribute):
 
 
 class Yaxis1(TracePropsAttribute):
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis for the rangeslider. """,
     )
@@ -4894,7 +4899,7 @@ class LayoutXaxisRangeslider(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>Sets the border width of the range slider. """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of the range slider. If not set, defaults to the full xaxis range. If the axis `type` is "log", then you must take the log of your desired range. If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -4926,7 +4931,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -4999,7 +5004,7 @@ class LayoutXaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the calendar system to use for `range` and `tick0` if this is a date axis. This does not set the calendar for interpreting data on this axis, that's specified in the trace or via the global `layout.calendar` """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -5027,7 +5032,7 @@ class LayoutXaxis(TracePropsAttribute):
         None,
         description=""" number<br>Sets the width (in px) of the dividers Only has an effect on "multicategory" axes. """,
     )
-    domain: Optional[StatementField | List] = Field(
+    domain: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the domain of this axis (in plot fraction). """,
     )
@@ -5097,7 +5102,7 @@ class LayoutXaxis(TracePropsAttribute):
         None,
         description=""" number between or equal to 0 and 1<br>Sets the position of this axis in the plotting space (in normalized coordinates). Only has an effect if `anchor` is set to "free". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis. If the axis `type` is "log", then you must take the log of your desired range (e.g. to set the range from 1 to 100, set the range from 0 to 2). If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -5247,11 +5252,11 @@ class LayoutXaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -5330,7 +5335,7 @@ class Minor1(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "outside" | "inside" | "" )<br>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -5341,7 +5346,7 @@ class Minor1(TracePropsAttribute):
 
 
 class Rangebreaks1(TracePropsAttribute):
-    bounds: Optional[StatementField | List] = Field(
+    bounds: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the lower and upper bounds of this axis rangebreak. Can be used with `pattern`. """,
     )
@@ -5365,7 +5370,7 @@ class Rangebreaks1(TracePropsAttribute):
         None,
         description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """,
     )
-    values: Optional[StatementField | List] = Field(
+    values: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the coordinate values corresponding to the rangebreaks. An alternative to `bounds`. Use `dvalue` to set the size of the values along the axis. """,
     )
@@ -5385,7 +5390,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -5458,7 +5463,7 @@ class LayoutYaxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "chinese" | "coptic" | "discworld" | "ethiopian" | "gregorian" | "hebrew" | "islamic" | "jalali" | "julian" | "mayan" | "nanakshahi" | "nepali" | "persian" | "taiwan" | "thai" | "ummalqura" )<br>Sets the calendar system to use for `range` and `tick0` if this is a date axis. This does not set the calendar for interpreting data on this axis, that's specified in the trace or via the global `layout.calendar` """,
     )
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories on this axis appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -5486,7 +5491,7 @@ class LayoutYaxis(TracePropsAttribute):
         None,
         description=""" number<br>Sets the width (in px) of the dividers Only has an effect on "multicategory" axes. """,
     )
-    domain: Optional[StatementField | List] = Field(
+    domain: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the domain of this axis (in plot fraction). """,
     )
@@ -5556,7 +5561,7 @@ class LayoutYaxis(TracePropsAttribute):
         None,
         description=""" number between or equal to 0 and 1<br>Sets the position of this axis in the plotting space (in normalized coordinates). Only has an effect if `anchor` is set to "free". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the range of this axis. If the axis `type` is "log", then you must take the log of your desired range (e.g. to set the range from 1 to 100, set the range from 0 to 2). If the axis `type` is "date", it should be date strings, like date data, though Date objects and unix milliseconds will be accepted and converted to strings. If the axis `type` is "category", it should be numbers, using the scale where each category is assigned a serial number from zero in the order it appears. """,
     )
@@ -5698,11 +5703,11 @@ class LayoutYaxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -5759,9 +5764,9 @@ class Layout(LayoutBase):
         None,
         description=""" enumerated , one of ( "convert types" | "strict" )<br>Using "strict" a numeric string in trace data is not converted to a number. Using "convert types" a numeric string in trace data may be treated as a number during automatic axis `type` detection. This is the default value; however it could be overridden for individual axes. """,
     )
-    barcornerradius: Optional[float | str | IndexedStatementField]= Field(
+    barcornerradius: Optional[float | str | IndexedStatementField] = Field(
         "10%",
-        description=""" number or categorical coordinate string<br>Sets the rounding of bar corners. May be an integer number of pixels, or a percentage of bar width (as a string ending in %)"""
+        description=""" number or categorical coordinate string<br>Sets the rounding of bar corners. May be an integer number of pixels, or a percentage of bar width (as a string ending in %)""",
     )
     calendar: Optional[str] = Field(
         None,

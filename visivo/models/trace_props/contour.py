@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
@@ -18,7 +23,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -199,11 +204,11 @@ class ContourColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -336,11 +341,9 @@ class ContourHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -430,7 +433,7 @@ class Contour(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -462,10 +465,10 @@ class Contour(TraceProps):
         None,
         description=""" string or array of strings<br>Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. Anything contained in tag `<extra>` is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag `<extra></extra>`. """,
     )
-    hovertext: Optional[StatementField | List] = Field(
+    hovertext: Optional[StatementListField] = Field(
         None, description=""" data array<br>Same as `text`. """
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -513,7 +516,7 @@ class Contour(TraceProps):
         None,
         description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. """,
     )
-    text: Optional[StatementField | List] = Field(
+    text: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text elements associated with each z value. """,
     )
@@ -543,7 +546,7 @@ class Contour(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Alternate to `x`. Builds a linear space of x coordinates. Use with `dx` where `x0` is the starting coordinate and `dx` the step. """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the x coordinates. """
     )
     xaxis: Optional[str] = Field(
@@ -578,7 +581,7 @@ class Contour(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Alternate to `y`. Builds a linear space of y coordinates. Use with `dy` where `y0` is the starting coordinate and `dy` the step. """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the y coordinates. """
     )
     yaxis: Optional[str] = Field(
@@ -609,7 +612,7 @@ class Contour(TraceProps):
         None,
         description=""" enumerated , one of ( "array" | "scaled" )<br>If "array", the heatmap's y coordinates are given by "y" (the default behavior when `y` is provided) If "scaled", the heatmap's y coordinates are given by "y0" and "dy" (the default behavior when `y` is not provided) """,
     )
-    z: Optional[StatementField | List] = Field(
+    z: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the z data. """
     )
     zauto: Optional[bool | IndexedStatementField] = Field(

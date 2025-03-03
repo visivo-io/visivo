@@ -1,11 +1,16 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
 
 class Dimensions2(TracePropsAttribute):
-    constraintrange: Optional[StatementField | List] = Field(
+    constraintrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>The domain range to which the filter on the dimension is constrained. Must be an array of `[fromValue, toValue]` with `fromValue <= toValue`, or if `multiselect` is not disabled, you may give an array of arrays, where each inner array is `[fromValue, toValue]`. """,
     )
@@ -20,7 +25,7 @@ class Dimensions2(TracePropsAttribute):
         None,
         description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None,
         description=""" array<br>The domain range that represents the full, shown axis extent. Defaults to the `values` extent. Must be an array of `[fromValue, toValue]` with finite numbers as elements. """,
     )
@@ -32,15 +37,15 @@ class Dimensions2(TracePropsAttribute):
         None,
         description=""" string<br>Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46" """,
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. """,
     )
-    values: Optional[StatementField | List] = Field(
+    values: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Dimension values. `values[n]` represents the value of the `n`th point in the dataset, therefore the `values` vector for all dimensions must be the same (longer vectors will be truncated). Each value must be a finite number. """,
     )
@@ -59,11 +64,11 @@ class Domain1(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this parcoords trace . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this parcoords trace (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this parcoords trace (in plot fraction). """,
     )
@@ -121,7 +126,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -302,11 +307,11 @@ class ParcoordsLineColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -436,7 +441,7 @@ class ParcoordsUnselected(TracePropsAttribute):
 
 
 class Parcoords(TraceProps):
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -448,7 +453,7 @@ class Parcoords(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )

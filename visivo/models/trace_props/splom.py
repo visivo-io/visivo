@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
@@ -39,7 +44,7 @@ class SplomDimensions(TracePropsAttribute):
         None,
         description=""" string<br>Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. """,
     )
-    values: Optional[StatementField | List] = Field(
+    values: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the dimension values to be plotted. """
     )
     visible: Optional[bool | IndexedStatementField] = Field(
@@ -81,11 +86,9 @@ class SplomHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -128,7 +131,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -309,11 +312,11 @@ class SplomMarkerColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -523,7 +526,7 @@ class SplomUnselected(TracePropsAttribute):
 
 
 class Splom(TraceProps):
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -550,7 +553,7 @@ class Splom(TraceProps):
     hovertext: Optional[str | List[str]] = Field(
         None, description=""" string or array of strings<br>Same as `text`. """
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -619,7 +622,7 @@ class Splom(TraceProps):
         None,
         description=""" enumerated , one of ( true | false | "legendonly" )<br>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). """,
     )
-    xaxes: Optional[StatementField | List] = Field(
+    xaxes: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the list of x axes corresponding to dimensions of this splom trace. By default, a splom will match the first N xaxes where N is the number of input dimensions. Note that, in case where `diagonal.visible` is false and `showupperhalf` or `showlowerhalf` is false, this splom trace will generate one less x-axis and one less y-axis. """,
     )
@@ -627,7 +630,7 @@ class Splom(TraceProps):
         None,
         description=""" string<br>Sets the hover text formatting rulefor `x` using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: "%h" for half of the year as a decimal number as well as "%{n}f" for fractional seconds with n digits. For example, "2016-10-13 09:15:23.456" with tickformat "%H~%M~%S.%2f" would display "09~15~23.46"By default the values are formatted using `xaxis.hoverformat`. """,
     )
-    yaxes: Optional[StatementField | List] = Field(
+    yaxes: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the list of y axes corresponding to dimensions of this splom trace. By default, a splom will match the first N yaxes where N is the number of input dimensions. Note that, in case where `diagonal.visible` is false and `showupperhalf` or `showlowerhalf` is false, this splom trace will generate one less x-axis and one less y-axis. """,
     )

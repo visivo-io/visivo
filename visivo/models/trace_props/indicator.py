@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional
 
@@ -84,11 +89,11 @@ class Domain12(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this indicator trace . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this indicator trace (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this indicator trace (in plot fraction). """,
     )
@@ -108,7 +113,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -147,7 +152,7 @@ class IndicatorGaugeAxis(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to "auto". """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None, description=""" array<br>Sets the range of this axis. """
     )
     separatethousands: Optional[bool | IndexedStatementField] = Field(
@@ -217,11 +222,11 @@ class IndicatorGaugeAxis(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -283,7 +288,7 @@ class IndicatorGaugeSteps(TracePropsAttribute):
         None,
         description=""" string<br>When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template. """,
     )
-    range: Optional[StatementField | List] = Field(
+    range: Optional[StatementListField] = Field(
         None, description=""" array<br>Sets the range of this axis. """
     )
     templateitemname: Optional[str] = Field(
@@ -445,7 +450,7 @@ class Indicator(TraceProps):
         None,
         description=""" enumerated , one of ( "left" | "center" | "right" )<br>Sets the horizontal alignment of the `text` within the box. Note that this attribute has no effect if an angular gauge is displayed: in this case, it is always centered """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -461,7 +466,7 @@ class Indicator(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br>The gauge of the Indicator plot. """,
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )

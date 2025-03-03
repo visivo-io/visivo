@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
@@ -18,7 +23,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -199,11 +204,11 @@ class ChoroplethmapboxColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -274,11 +279,9 @@ class ChoroplethmapboxHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -382,7 +385,7 @@ class Choroplethmapbox(TraceProps):
         None,
         description=""" colorscale<br>Sets the colorscale. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `zmin` and `zmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -409,7 +412,7 @@ class Choroplethmapbox(TraceProps):
     hovertext: Optional[str | List[str]] = Field(
         None, description=""" string or array of strings<br>Same as `text`. """
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -429,7 +432,7 @@ class Choroplethmapbox(TraceProps):
         None,
         description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """,
     )
-    locations: Optional[StatementField | List] = Field(
+    locations: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets which features found in "geojson" to plot using their feature `id` field. """,
     )
@@ -484,7 +487,7 @@ class Choroplethmapbox(TraceProps):
         None,
         description=""" enumerated , one of ( true | false | "legendonly" )<br>Determines whether or not this trace is visible. If "legendonly", the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible). """,
     )
-    z: Optional[StatementField | List] = Field(
+    z: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the color values. """
     )
     zauto: Optional[bool | IndexedStatementField] = Field(

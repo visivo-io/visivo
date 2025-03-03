@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
@@ -13,11 +18,11 @@ class Domain2(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this sankey trace . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this sankey trace (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this sankey trace (in plot fraction). """,
     )
@@ -56,11 +61,9 @@ class SankeyHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -147,11 +150,9 @@ class SankeyLinkHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -181,7 +182,7 @@ class SankeyLink(TracePropsAttribute):
         None,
         description=""" array of object where each object has one or more of the keys listed below.<br> """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None, description=""" data array<br>Assigns extra data to each link. """
     )
     hoverinfo: Optional[str] = Field(
@@ -196,22 +197,22 @@ class SankeyLink(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. variables `value` and `label`. Anything contained in tag `<extra>` is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag `<extra></extra>`. """,
     )
-    label: Optional[StatementField | List] = Field(
+    label: Optional[StatementListField] = Field(
         None, description=""" data array<br>The shown name of the link. """
     )
     line: Optional[Line20] = Field(
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    source: Optional[StatementField | List] = Field(
+    source: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the source node. """,
     )
-    target: Optional[StatementField | List] = Field(
+    target: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the target node. """,
     )
-    value: Optional[StatementField | List] = Field(
+    value: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>A numeric value representing the flow volume value. """,
     )
@@ -250,11 +251,9 @@ class SankeyNodeHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -276,10 +275,10 @@ class SankeyNode(TracePropsAttribute):
         None,
         description=""" color or array of colors<br>Sets the `node` color. It can be a single value, or an array for specifying color for each `node`. If `node.color` is omitted, then the default `Plotly` color palette will be cycled through to have a variety of colors. These defaults are not fully opaque, to allow some visibility of what is beneath the node. """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None, description=""" data array<br>Assigns extra data to each node. """
     )
-    groups: Optional[StatementField | List] = Field(
+    groups: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Groups of nodes. Each group is defined by an array with the indices of the nodes it contains. Multiple groups can be specified. """,
     )
@@ -295,7 +294,7 @@ class SankeyNode(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. variables `value` and `label`. Anything contained in tag `<extra>` is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag `<extra></extra>`. """,
     )
-    label: Optional[StatementField | List] = Field(
+    label: Optional[StatementListField] = Field(
         None, description=""" data array<br>The shown name of the node. """
     )
     line: Optional[Line21] = Field(
@@ -310,11 +309,11 @@ class SankeyNode(TracePropsAttribute):
         None,
         description=""" number greater than or equal to 1<br>Sets the thickness (in px) of the `nodes`. """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>The normalized horizontal position of the node. """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>The normalized vertical position of the node. """,
     )
@@ -338,7 +337,7 @@ class Sankey(TraceProps):
         None,
         description=""" enumerated , one of ( "snap" | "perpendicular" | "freeform" | "fixed" )<br>If value is `snap` (the default), the node arrangement is assisted by automatic snapping of elements to preserve space between nodes specified via `nodepad`. If value is `perpendicular`, the nodes can only move along a line perpendicular to the flow. If value is `freeform`, the nodes can freely move on the plane. If value is `fixed`, the nodes are stationary. """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -354,7 +353,7 @@ class Sankey(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )

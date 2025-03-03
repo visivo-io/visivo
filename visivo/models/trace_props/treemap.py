@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
@@ -13,11 +18,11 @@ class Domain9(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this treemap trace . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this treemap trace (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this treemap trace (in plot fraction). """,
     )
@@ -56,11 +61,9 @@ class TreemapHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -119,7 +122,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -300,11 +303,11 @@ class TreemapMarkerColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -403,7 +406,7 @@ class TreemapMarker(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    colors: Optional[StatementField | List] = Field(
+    colors: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the color of each sector of this trace. If not specified, the default trace color set is used to pick the sector colors. """,
     )
@@ -539,7 +542,7 @@ class Treemap(TraceProps):
         None,
         description=""" flaglist string. any combination of "branches", "leaves" joined with a "+"<br>Determines default for `values` when it is not provided, by inferring a 1 for each of the "leaves" and/or "branches", otherwise 0. """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -563,7 +566,7 @@ class Treemap(TraceProps):
         None,
         description=""" string or array of strings<br>Sets hover text elements associated with each sector. If a single string, the same string appears for all data points. If an array of string, the items are mapped in order of this trace's sectors. To be seen, trace `hoverinfo` must contain a "text" flag. """,
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -571,7 +574,7 @@ class Treemap(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used for `textinfo` lying inside the sector. """,
     )
-    labels: Optional[StatementField | List] = Field(
+    labels: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the labels of each of the sectors. """
     )
     legendgrouptitle: Optional[TreemapLegendgrouptitle] = Field(
@@ -610,7 +613,7 @@ class Treemap(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used for `textinfo` lying outside the sector. This option refers to the root of the hierarchy presented on top left corner of a treemap graph. Please note that if a hierarchy has multiple root nodes, this option won't have any effect and `insidetextfont` would be used. """,
     )
-    parents: Optional[StatementField | List] = Field(
+    parents: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the parent sectors for each of the sectors. Empty string items '' are understood to reference the root node in the hierarchy. If `ids` is filled, `parents` items are understood to be "ids" themselves. When `ids` is not set, plotly attempts to find matching items in `labels`, but beware they must be unique. """,
     )
@@ -626,7 +629,7 @@ class Treemap(TraceProps):
         None,
         description=""" boolean<br>Determines whether or not the sectors are reordered from largest to smallest. """,
     )
-    text: Optional[StatementField | List] = Field(
+    text: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets text elements associated with each sector. If trace `textinfo` contains a "text" flag, these elements will be seen on the chart. If trace `hoverinfo` contains a "text" flag and "hovertext" is not set, these elements will be seen in the hover labels. """,
     )
@@ -655,7 +658,7 @@ class Treemap(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """,
     )
-    values: Optional[StatementField | List] = Field(
+    values: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values associated with each of the sectors. Use with `branchvalues` to determine how the values are summed. """,
     )

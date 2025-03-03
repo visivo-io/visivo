@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional
 
@@ -58,11 +63,9 @@ class CandlestickHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
     split: Optional[bool | IndexedStatementField] = Field(
         None,
@@ -124,10 +127,10 @@ class Line31(TracePropsAttribute):
 
 
 class Candlestick(TraceProps):
-    close: Optional[StatementField | List] = Field(
+    close: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the close values. """
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -135,7 +138,7 @@ class Candlestick(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    high: Optional[StatementField | List] = Field(
+    high: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the high values. """
     )
     hoverinfo: Optional[str] = Field(
@@ -149,7 +152,7 @@ class Candlestick(TraceProps):
     hovertext: Optional[str | List[str]] = Field(
         None, description=""" string or array of strings<br>Same as `text`. """
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -177,7 +180,7 @@ class Candlestick(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    low: Optional[StatementField | List] = Field(
+    low: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the low values. """
     )
     meta: Optional[float | IndexedStatementField] = Field(
@@ -188,7 +191,7 @@ class Candlestick(TraceProps):
         None,
         description=""" number between or equal to 0 and 1<br>Sets the opacity of the trace. """,
     )
-    open: Optional[StatementField | List] = Field(
+    open: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the open values. """
     )
     selectedpoints: Optional[float | IndexedStatementField] = Field(
@@ -216,7 +219,7 @@ class Candlestick(TraceProps):
         None,
         description=""" number between or equal to 0 and 1<br>Sets the width of the whiskers relative to the box' width. For example, with 1, the whiskers are as wide as the box(es). """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the x coordinates. If absent, linear coordinate will be generated. """,
     )

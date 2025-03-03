@@ -16,13 +16,12 @@ def test_invalid_trace_prop_mesh3d():
     }
 
     with pytest.raises(Exception) as e:
-        trace = Trace(**data)
+        Trace(**data)
     message = str(e.value)
     errors = e._excinfo[1].errors()
     assert e.type == ValidationError
-    assert "2 validation errors" in message
-    assert errors[0]["type"] == "string_type"
-    assert errors[1]["type"] == "list_type"
+    assert "1 validation error" in message
+    assert errors[0]["type"] == "union_tag_not_found"
 
 
 def test_valid_trace_prop_mesh3d():
@@ -127,11 +126,23 @@ def test_valid_trace_prop_sunburst():
 def test_valid_trace_prop_isosurface():
     data = {
         "name": "development",
-        "props": {"type": "isosurface", "uirevision": 1, "visible": "true"},
+        "props": {
+            "type": "isosurface",
+            "uirevision": 1,
+            "visible": "true",
+            "slices": {
+                "z": {
+                    "show": True,
+                    "locations": [-0.1],
+                }
+            },
+        },
         "model": {"name": "awesome-model", "sql": "select * from table"},
     }
     trace = Trace(**data)
+    # breakpoint()
     props = trace.props
+    assert props.model_dump()["slices"]["z"]["locations"] == [-0.1]
     assert isinstance(props, TracePropsFieldUnion)
 
 

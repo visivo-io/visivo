@@ -1,15 +1,20 @@
 from pydantic import Field, constr
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import Any, List, Literal, Optional
 
 
 class BarError_x(TracePropsAttribute):
-    array: Optional[StatementField | List] = Field(
+    array: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the data corresponding the length of each error bar. Values are plotted relative to the underlying data. """,
     )
-    arrayminus: Optional[StatementField | List] = Field(
+    arrayminus: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the data corresponding the length of each error bar in the bottom (left) direction for vertical (horizontal) bars Values are plotted relative to the underlying data. """,
     )
@@ -56,11 +61,11 @@ class BarError_x(TracePropsAttribute):
 
 
 class BarError_y(TracePropsAttribute):
-    array: Optional[StatementField | List] = Field(
+    array: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the data corresponding the length of each error bar. Values are plotted relative to the underlying data. """,
     )
-    arrayminus: Optional[StatementField | List] = Field(
+    arrayminus: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the data corresponding the length of each error bar in the bottom (left) direction for vertical (horizontal) bars Values are plotted relative to the underlying data. """,
     )
@@ -136,11 +141,9 @@ class BarHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -199,7 +202,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -380,11 +383,11 @@ class BarMarkerColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -656,7 +659,7 @@ class Bar(TraceProps):
         None,
         description=""" string<br>Set several traces linked to the same position axis or matching axes to the same alignmentgroup. This controls whether bars compute their positional range dependently or independently. """,
     )
-    base: Optional[float | IndexedStatementField | StatementField | List] = Field(
+    base: Optional[float | IndexedStatementField | StatementListField] = Field(
         None,
         description=""" number or categorical coordinate string<br>Sets where the bar base is drawn (in position axis units). In "stack" or "relative" barmode, traces that set "base" will be excluded and drawn in "overlay" mode instead. """,
     )
@@ -668,7 +671,7 @@ class Bar(TraceProps):
         None,
         description=""" enumerated , one of ( "inside" | "outside" | "both" | "none" )<br>Constrain the size of text inside or outside a bar to be no larger than the bar itself. """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -704,7 +707,7 @@ class Bar(TraceProps):
         None,
         description=""" string or array of strings<br>Sets hover text elements associated with each (x,y) pair. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. To be seen, trace `hoverinfo` must contain a "text" flag. """,
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -817,7 +820,7 @@ class Bar(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Alternate to `x`. Builds a linear space of x coordinates. Use with `dx` where `x0` is the starting coordinate and `dx` the step. """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the x coordinates. """
     )
     xaxis: Optional[str] = Field(
@@ -848,7 +851,7 @@ class Bar(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Alternate to `y`. Builds a linear space of y coordinates. Use with `dy` where `y0` is the starting coordinate and `dy` the step. """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the y coordinates. """
     )
     yaxis: Optional[str] = Field(

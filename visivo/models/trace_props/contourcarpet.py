@@ -1,5 +1,10 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
@@ -18,7 +23,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -199,11 +204,11 @@ class ContourcarpetColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )
@@ -352,7 +357,7 @@ class Contourcarpet(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Alternate to `x`. Builds a linear space of x coordinates. Use with `dx` where `x0` is the starting coordinate and `dx` the step. """,
     )
-    a: Optional[StatementField | List] = Field(
+    a: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the x coordinates. """
     )
     atype: Optional[str] = Field(
@@ -371,7 +376,7 @@ class Contourcarpet(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Alternate to `y`. Builds a linear space of y coordinates. Use with `dy` where `y0` is the starting coordinate and `dy` the step. """,
     )
-    b: Optional[StatementField | List] = Field(
+    b: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the y coordinates. """
     )
     btype: Optional[str] = Field(
@@ -398,7 +403,7 @@ class Contourcarpet(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -414,10 +419,10 @@ class Contourcarpet(TraceProps):
         None,
         description=""" color<br>Sets the fill color if `contours.type` is "constraint". Defaults to a half-transparent variant of the line color, marker color, or marker line color, whichever is available. """,
     )
-    hovertext: Optional[StatementField | List] = Field(
+    hovertext: Optional[StatementListField] = Field(
         None, description=""" data array<br>Same as `text`. """
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -465,7 +470,7 @@ class Contourcarpet(TraceProps):
         None,
         description=""" boolean<br>Determines whether or not a colorbar is displayed for this trace. """,
     )
-    text: Optional[StatementField | List] = Field(
+    text: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text elements associated with each z value. """,
     )
@@ -489,7 +494,7 @@ class Contourcarpet(TraceProps):
         None,
         description=""" subplotid<br>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If "y" (the default value), the y coordinates refer to `layout.yaxis`. If "y2", the y coordinates refer to `layout.yaxis2`, and so on. """,
     )
-    z: Optional[StatementField | List] = Field(
+    z: Optional[StatementListField] = Field(
         None, description=""" data array<br>Sets the z data. """
     )
     zauto: Optional[bool | IndexedStatementField] = Field(

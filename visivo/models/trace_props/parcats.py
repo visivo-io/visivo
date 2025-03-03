@@ -1,11 +1,16 @@
 from pydantic import Field
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
 
 class Dimensions1(TracePropsAttribute):
-    categoryarray: Optional[StatementField | List] = Field(
+    categoryarray: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the order in which categories in this dimension appear. Only has an effect if `categoryorder` is set to "array". Used with `categoryorder`. """,
     )
@@ -20,11 +25,11 @@ class Dimensions1(TracePropsAttribute):
     label: Optional[str] = Field(
         None, description=""" string<br>The shown name of the dimension. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets alternative tick labels for the categories in this dimension. Only has an effect if `categoryorder` is set to "array". Should be an array the same length as `categoryarray` Used with `categoryorder`. """,
     )
-    values: Optional[StatementField | List] = Field(
+    values: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Dimension values. `values[n]` represents the category value of the `n`th point in the dataset, therefore the `values` vector for all dimensions must be the same (longer vectors will be truncated). """,
     )
@@ -43,11 +48,11 @@ class Domain8(TracePropsAttribute):
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this parcats trace . """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this parcats trace (in plot fraction). """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this parcats trace (in plot fraction). """,
     )
@@ -105,7 +110,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
 
 
 class Tickformatstops1(TracePropsAttribute):
-    dtickrange: Optional[StatementField | List] = Field(
+    dtickrange: Optional[StatementListField] = Field(
         None,
         description=""" array<br>range ["min", "max"], where "min", "max" - dtick values which describe some zoom level, it is possible to omit "min" or "max" value by passing "null" """,
     )
@@ -286,11 +291,11 @@ class ParcatsLineColorbar(TracePropsAttribute):
     ticksuffix: Optional[str] = Field(
         None, description=""" string<br>Sets a tick label suffix. """
     )
-    ticktext: Optional[StatementField | List] = Field(
+    ticktext: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
     )
-    tickvals: Optional[StatementField | List] = Field(
+    tickvals: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to "array". Used with `ticktext`. """,
     )

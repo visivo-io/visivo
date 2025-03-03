@@ -1,5 +1,10 @@
 from pydantic import Field, constr
-from visivo.models.trace_props.prop_fields import StatementField, IndexedStatementField
+from visivo.models.trace_props.prop_fields import (
+    StatementField,
+    StatementListField,
+    StatementListIntField,
+    IndexedStatementField,
+)
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional
 
@@ -37,11 +42,9 @@ class BoxHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementField | List[int]] = (
-        Field(
-            None,
-            description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
-        )
+    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+        None,
+        description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
 
 
@@ -185,7 +188,7 @@ class Box(TraceProps):
         None,
         description=""" enumerated , one of ( "all" | "outliers" | "suspectedoutliers" | false )<br>If "outliers", only the sample points lying outside the whiskers are shown If "suspectedoutliers", the outlier points are shown and points either less than 4"Q1-3"Q3 or greater than 4"Q3-3"Q1 are highlighted (see `outliercolor`) If "all", all sample points are shown If "false", only the box(es) are shown with no sample points Defaults to "suspectedoutliers" when `marker.outliercolor` or `marker.line.outliercolor` is set. Defaults to "all" under the q1/median/q3 signature. Otherwise defaults to "outliers". """,
     )
-    customdata: Optional[StatementField | List] = Field(
+    customdata: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -220,7 +223,7 @@ class Box(TraceProps):
     hovertext: Optional[str | List[str]] = Field(
         None, description=""" string or array of strings<br>Same as `text`. """
     )
-    ids: Optional[StatementField | List] = Field(
+    ids: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -248,7 +251,7 @@ class Box(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    lowerfence: Optional[StatementField | List] = Field(
+    lowerfence: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the lower fence values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `lowerfence` is not provided but a sample (in `y` or `x`) is set, we compute the lower as the last sample point below 1.5 times the IQR. """,
     )
@@ -256,11 +259,11 @@ class Box(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    mean: Optional[StatementField | List] = Field(
+    mean: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the mean values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `mean` is not provided but a sample (in `y` or `x`) is set, we compute the mean for each box using the sample values. """,
     )
-    median: Optional[StatementField | List] = Field(
+    median: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the median values. There should be as many items as the number of boxes desired. """,
     )
@@ -272,7 +275,7 @@ class Box(TraceProps):
         None,
         description=""" boolean<br>Determines whether or not notches are drawn. Notches displays a confidence interval around the median. We compute the confidence interval as median +/- 1.57 " IQR / sqrt(N), where IQR is the interquartile range and N is the sample size. If two boxes' notches do not overlap there is 95% confidence their medians differ. See https://sites.google.com/site/davidsstatistics/home/notched-box-plots for more info. Defaults to "false" unless `notchwidth` or `notchspan` is set. """,
     )
-    notchspan: Optional[StatementField | List] = Field(
+    notchspan: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the notch span from the boxes' `median` values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `notchspan` is not provided but a sample (in `y` or `x`) is set, we compute it as 1.57 " IQR / sqrt(N), where N is the sample size. """,
     )
@@ -296,11 +299,11 @@ class Box(TraceProps):
         None,
         description=""" number between or equal to -2 and 2<br>Sets the position of the sample points in relation to the box(es). If "0", the sample points are places over the center of the box(es). Positive (negative) values correspond to positions to the right (left) for vertical boxes and above (below) for horizontal boxes """,
     )
-    q1: Optional[StatementField | List] = Field(
+    q1: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the Quartile 1 values. There should be as many items as the number of boxes desired. """,
     )
-    q3: Optional[StatementField | List] = Field(
+    q3: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the Quartile 3 values. There should be as many items as the number of boxes desired. """,
     )
@@ -308,7 +311,7 @@ class Box(TraceProps):
         None,
         description=""" enumerated , one of ( "linear" | "exclusive" | "inclusive" )<br>Sets the method used to compute the sample's Q1 and Q3 quartiles. The "linear" method uses the 25th percentile for Q1 and 75th percentile for Q3 as computed using method #10 (listed on http://jse.amstat.org/v14n3/langford.html). The "exclusive" method uses the median to divide the ordered dataset into two halves if the sample is odd, it does not include the median in either half - Q1 is then the median of the lower half and Q3 the median of the upper half. The "inclusive" method also uses the median to divide the ordered dataset into two halves but if the sample is odd, it includes the median in both halves - Q1 is then the median of the lower half and Q3 the median of the upper half. """,
     )
-    sd: Optional[StatementField | List] = Field(
+    sd: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the standard deviation values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `sd` is not provided but a sample (in `y` or `x`) is set, we compute the standard deviation for each box using the sample values. """,
     )
@@ -337,7 +340,7 @@ class Box(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    upperfence: Optional[StatementField | List] = Field(
+    upperfence: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the upper fence values. There should be as many items as the number of boxes desired. This attribute has effect only under the q1/median/q3 signature. If `upperfence` is not provided but a sample (in `y` or `x`) is set, we compute the lower as the last sample point above 1.5 times the IQR. """,
     )
@@ -357,7 +360,7 @@ class Box(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Sets the x coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info. """,
     )
-    x: Optional[StatementField | List] = Field(
+    x: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the x sample data or coordinates. See overview for more info. """,
     )
@@ -389,7 +392,7 @@ class Box(TraceProps):
         None,
         description=""" number or categorical coordinate string<br>Sets the y coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info. """,
     )
-    y: Optional[StatementField | List] = Field(
+    y: Optional[StatementListField] = Field(
         None,
         description=""" data array<br>Sets the y sample data or coordinates. See overview for more info. """,
     )
