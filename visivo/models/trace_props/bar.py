@@ -617,7 +617,7 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
     )
-    size: Optional[IndexedStatementField | StatementField | float | List[float]] = (
+    size: Optional[float | List[float] | IndexedStatementField | StatementField] = (
         Field(
             None,
             description=""" number or array of numbers greater than or equal to 1<br> """,

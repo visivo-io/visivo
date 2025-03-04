@@ -24,6 +24,20 @@ def test_invalid_trace_prop_mesh3d():
     assert errors[0]["type"] == "union_tag_not_found"
 
 
+def test_float_property_validation():
+    data = {
+        "name": "development",
+        "props": {
+            "type": "bar",
+            "textfont": {"size": 15},
+        },
+        "model": {"name": "awesome-model", "sql": "select * from table"},
+    }
+
+    trace = Trace(**data)
+    breakpoint()
+
+
 def test_valid_trace_prop_mesh3d():
     data = {
         "name": "development",
