@@ -49,9 +49,9 @@ export const TYPE_COLORS = {
   }
 };
 
-const ObjectPill = ({ object, onObjectOpen }) => {
-  const { name, type, id } = object;
-  const { setSelectedObject } = useStore();
+const ObjectPill = ({ object }) => {
+  const openTab = useStore((state) => state.openTab);
+  const { name, type } = object;
   
   const typeConfig = TYPE_COLORS[type] || {
     bg: 'bg-gray-100',
@@ -62,15 +62,7 @@ const ObjectPill = ({ object, onObjectOpen }) => {
   const Icon = typeConfig.icon;
 
   const handleObjectOpen = () => {
-    // Set the selected object in the store
-    if (id) {
-      setSelectedObject(id);
-    }
-    
-    // Also call the onObjectOpen prop for backward compatibility
-    if (onObjectOpen) {
-      onObjectOpen(object);
-    }
+    openTab(object);
   };
 
   return (

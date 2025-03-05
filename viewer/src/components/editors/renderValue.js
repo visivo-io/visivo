@@ -2,7 +2,7 @@ import ListComponent from './ListComponent';
 import ObjectComponent from './ObjectComponent';
 import AttributeComponent from './AttributeComponent';
 
-function renderValue(key, value, path, useNamedChildren = true) {
+function renderValue(key, value, path) {
   // Handle null or undefined values
   if (value === null || value === undefined) {
     return (
@@ -14,12 +14,12 @@ function renderValue(key, value, path, useNamedChildren = true) {
 
   if (typeof value === 'object') {
     if (Array.isArray(value)) {
-      return <ListComponent key={key} name={key} data={value} path={path} useNamedChildren={useNamedChildren} />;
+      return <ListComponent key={key} name={key} data={value} path={path} />;
     } else {
-      return <ObjectComponent key={key} name={key} data={value} path={path} useNamedChildren={useNamedChildren} />;
+      return <ObjectComponent key={key} name={key} data={value} path={path} />;
     }
   } else {
-    return <AttributeComponent key={key} name={key} value={value} path={path} useNamedChildren={useNamedChildren} />;
+    return <AttributeComponent key={key} name={key} value={value} path={path} />;
   }
 }
 

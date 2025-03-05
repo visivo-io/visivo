@@ -1,9 +1,7 @@
 import React from 'react';
 import renderValue from './renderValue';
-import useStore from '../../stores/store';
 
-function ObjectComponent({ name, data, path, useNamedChildren = true }) {
-
+function ObjectComponent({ name, data, path }) {
   return (
     <div className="flex flex-col gap-4">
       {name && isNaN(parseInt(name)) && (
@@ -24,7 +22,7 @@ function ObjectComponent({ name, data, path, useNamedChildren = true }) {
           const childPath = [...path, key];
           return (
             <div key={key} className="mb-3">
-              {renderValue(key, value, childPath, useNamedChildren)}
+              {renderValue(key, value, childPath)}
             </div>
           );
         })}

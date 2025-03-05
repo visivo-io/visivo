@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ObjectPill from './ObjectPill';
 import useStore from '../../stores/store';
 
-const ObjectsPanel = ({ onObjectOpen }) => {
+const ObjectsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   
@@ -11,18 +11,18 @@ const ObjectsPanel = ({ onObjectOpen }) => {
     namedChildren, 
     isLoading, 
     error, 
-    fetchNamedChildren 
   } = useStore();
-
-  // Fetch named children on component mount
-  useEffect(() => {
-    fetchNamedChildren();
-  }, [fetchNamedChildren]);
-
   // Transform namedChildren into the format expected by the component
   const objects = useMemo(() => {
-    if (!namedChildren || !Array.isArray(namedChildren)) return [];
-    return namedChildren.map(item => ({
+    const objectsArray = Object.entries(namedChildren).map(([name, details]) => ({
+      name,
+      type: details.type,
+      updated: details.updated,
+      config: details.config
+    }));
+    
+    if (!objectsArray || !Array.isArray(objectsArray)) return [];
+    return objectsArray.map(item => ({
       id: item.id,
       name: item.name || item.id,
       type: item.type || 'Unknown',
@@ -84,9 +84,8 @@ const ObjectsPanel = ({ onObjectOpen }) => {
         ) : (
           filteredObjects.map(obj => (
             <ObjectPill
-              key={obj.name || obj.id }
+              key={obj.name}
               object={obj}
-              onObjectOpen={onObjectOpen}
             />
           ))
         )}

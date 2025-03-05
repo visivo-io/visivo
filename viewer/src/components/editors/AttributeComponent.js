@@ -1,21 +1,18 @@
 import useStore from '../../stores/store'; // Adjust path to Zustand store
 
-function AttributeComponent({ name, value, path, useNamedChildren = true }) {
-  const updateAttribute = useStore((state) => state.updateAttribute);
+function AttributeComponent({ name, value, path,}) {
   const updateNamedChildAttribute = useStore((state) => state.updateNamedChildAttribute);
   
   const handleChange = (newValue) => {
     // Determine which update function to use based on context
-    if (useNamedChildren) {
-      updateNamedChildAttribute(path, newValue);
-    } else {
-      updateAttribute(path, newValue);
-    }
+    console.log('updateNamedChildAttribute', path, newValue);
+    updateNamedChildAttribute(path, newValue);
+
   };
 
   return (
     <div className="flex items-center gap-2">
-      {name && isNaN(parseInt(name)) && (
+      {name && isNaN(parseInt(name)) && name !== '0' && (
        <span className="text-sm font-medium">{name}:</span>
       )}
       <input
