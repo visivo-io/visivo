@@ -51,7 +51,6 @@ const useStore = create(devtools((set, get) => ({
       }
       
       const childToUpdate = state.namedChildren[childName];
-      // Parse the config if it's a string
       const configToUpdate = typeof childToUpdate.config === 'string' 
         ? JSON.parse(childToUpdate.config)
         : childToUpdate.config;
@@ -59,15 +58,16 @@ const useStore = create(devtools((set, get) => ({
       updateNestedValue(configToUpdate, path, newValue);
       console.log('post update configToUpdate', configToUpdate);
       
-      
-      let newNamedChildren = state.namedChildren;
-      newNamedChildren[childName] = {
-        ...childToUpdate,
-        config: configToUpdate,  // Store as object, not string
-        updated: true
+      return { 
+        namedChildren: {
+          ...state.namedChildren,  // Create new object reference
+          [childName]: {
+            ...childToUpdate,
+            config: configToUpdate,
+            updated: true
+          }
+        }
       };
-      console.log('newNamedChildren', newNamedChildren);
-      return { namedChildren: newNamedChildren };
     }),
 
   // New tab management actions
