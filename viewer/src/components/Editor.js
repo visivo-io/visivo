@@ -29,7 +29,7 @@ const Editor = () => {
 
     fetchProjectData();
     fetchNamedChildren();
-  }, []);
+  }, [fetchNamedChildren, setProjectData]);
 
 
   return (
@@ -37,14 +37,9 @@ const Editor = () => {
       <ObjectsPanel />
       <div className="flex-1 flex flex-col overflow-hidden">
         <EditorPanel />
-        {/* <PreviewPanel 
-          activeObject={activeTab ? {
-            type: activeTab.type,
-            name: activeTab.name,
-            config: activeTab.config
-          } : null}
+        <PreviewPanel 
           project={projectData}
-        />    */}
+        />   
       </div>
     </div>
   );

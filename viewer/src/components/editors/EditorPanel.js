@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { HiX } from 'react-icons/hi';
 import ObjectComponent from './ObjectComponent';
 import useStore from '../../stores/store';
-import { shallow } from 'zustand/shallow';
 
 // Split into smaller, more focused selectors
 const selectTabs = state => state.tabs;
@@ -19,13 +18,6 @@ const EditorPanel = () => {
   const setActiveTab = useStore(state => state.setActiveTab);
   const closeTab = useStore(state => state.closeTab);
   
-  // Compute active tab data only when needed
-  useEffect(() => {
-    console.log('EditorPanel render with namedChildren update:', 
-      activeTab?.name, 
-      activeConfig
-    );
-  }, [namedChildren, activeTabId]);
   
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;

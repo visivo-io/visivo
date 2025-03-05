@@ -71,18 +71,18 @@ const useStore = create(devtools((set, get) => ({
     }),
 
   // New tab management actions
-  openTab: (object) => set((state) => {
+  openTab: (name, type) => set((state) => {
     // Check if tab already exists
-    const existingTab = state.tabs.find(tab => tab.name === object.name);
+    const existingTab = state.tabs.find(tab => tab.name === name);
     if (existingTab) {
       return { activeTabId: existingTab.id };
     }
 
     // Create new tab (only storing reference info, not config copy)
     const newTab = {
-      id: `${object.type}-${object.name}-${Date.now()}`,
-      name: object.name,
-      type: object.type
+      id: `${type}-${name}-${Date.now()}`,
+      name: name,
+      type: type
     };
 
     return {

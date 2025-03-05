@@ -1,47 +1,40 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import ObjectPill from './ObjectPill';
 import useStore from '../../stores/store';
+import { shallow } from 'zustand/shallow';
 
 const ObjectsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
   
   // Use the store for state management
-  const { 
-    namedChildren, 
-    isLoading, 
-    error, 
-  } = useStore();
-  // Transform namedChildren into the format expected by the component
-  const objects = useMemo(() => {
-    const objectsArray = Object.entries(namedChildren).map(([name, details]) => ({
-      name,
-      type: details.type,
-      updated: details.updated,
-      config: details.config
+  const isLoading = useStore((state) => state.isLoading);
+  const error = useStore((state) => state.error);
+
+  const namedChildrenAndType = useStore(
+    (state) => state.namedChildren,
+    shallow
+  );
+
+  const mappedObjects = useMemo(() => {
+    return Object.entries(namedChildrenAndType).map(([key, { type }]) => ({ 
+        name: key, 
+        type 
     }));
-    
-    if (!objectsArray || !Array.isArray(objectsArray)) return [];
-    return objectsArray.map(item => ({
-      id: item.id,
-      name: item.name || item.id,
-      type: item.type || 'Unknown',
-      config: item.config || {}
-    })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [namedChildren]);
+  }, [namedChildrenAndType]);
 
   const uniqueTypes = useMemo(() => {
-    const types = [...new Set(objects.map(obj => obj.type))];
+    const types = [...new Set(mappedObjects.map(item => item.type))];
     return types.sort();
-  }, [objects]);
+  }, [mappedObjects]);
 
   const filteredObjects = useMemo(() => {
-    return objects.filter(obj => {
-      const matchesSearch = obj.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !selectedType || obj.type === selectedType;
+    return mappedObjects.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = !selectedType || item.type === selectedType;
       return matchesSearch && matchesType;
     });
-  }, [objects, searchTerm, selectedType]);
+  }, [mappedObjects, searchTerm, selectedType]);
 
   if (isLoading) {
     return (
@@ -83,9 +76,10 @@ const ObjectsPanel = () => {
           <div className="text-gray-500 text-sm">No objects found</div>
         ) : (
           filteredObjects.map(obj => (
-            <ObjectPill
+            <ObjectPill 
               key={obj.name}
-              object={obj}
+              name={obj.name}
+              type={obj.type}
             />
           ))
         )}

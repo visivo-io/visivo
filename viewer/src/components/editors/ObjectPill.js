@@ -49,9 +49,10 @@ export const TYPE_COLORS = {
   }
 };
 
-const ObjectPill = ({ object }) => {
+const ObjectPill = ({name, type}) => {
+  //Will need to refactor to just accept name and get the type from the store to be able to render the
+  //pill just based on passing a string name when we want to render pills in the editor
   const openTab = useStore((state) => state.openTab);
-  const { name, type } = object;
   
   const typeConfig = TYPE_COLORS[type] || {
     bg: 'bg-gray-100',
@@ -62,7 +63,7 @@ const ObjectPill = ({ object }) => {
   const Icon = typeConfig.icon;
 
   const handleObjectOpen = () => {
-    openTab(object);
+    openTab(name, type);
   };
 
   return (
