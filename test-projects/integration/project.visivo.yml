@@ -208,7 +208,8 @@ dashboards:
                 - name: Double Simple Line
                   #cohort_on: "query('Fibonacci times 2')"
                   model:
-                    sql: "SELECT x, y*2 as y FROM test_table"
+                    name: nested-and-name
+                    sql: "SELECT x, y*3 as y FROM test_table"
                   props:
                     type: scatter
                     x: query(x)

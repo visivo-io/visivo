@@ -67,7 +67,14 @@ class Project(NamedModel, ParentModel):
         dag = self.dag()
         named_nodes = []
         for node in dag.nodes():
-            if hasattr(node, "name") and Project.is_project_child(node):
+            if hasattr(node, "name"):
+                if node.name is not None:
+                    is_named = True
+                else:
+                    is_named = False
+            else:
+                is_named = False
+            if is_named and Project.is_project_child(node):
                 named_nodes.append(node)
 
         return named_nodes
