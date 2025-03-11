@@ -20,8 +20,9 @@ def test_invalid_trace_prop_mesh3d():
     message = str(e.value)
     errors = e._excinfo[1].errors()
     assert e.type == ValidationError
-    assert "1 validation error" in message
-    assert errors[0]["type"] == "union_tag_not_found"
+    assert "2 validation errors" in message
+    assert errors[0]["type"] == "string_type"
+    assert errors[1]["type"] == "list_type"
 
 
 def test_float_property_validation():
