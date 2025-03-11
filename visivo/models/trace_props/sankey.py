@@ -1,28 +1,23 @@
-from pydantic import Field
-from visivo.models.trace_props.prop_fields import (
-    StatementField,
-    StatementListField,
-    StatementListIntField,
-    IndexedStatementField,
-)
+from pydantic import Field, constr
+from visivo.models.base.base_model import INDEXED_STATEMENT_REGEX, STATEMENT_REGEX
 from visivo.models.trace_props.trace_props import TraceProps, TracePropsAttribute
 from typing import List, Literal, Optional, Any
 
 
 class Domain2(TracePropsAttribute):
-    column: Optional[int | IndexedStatementField] = Field(
+    column: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this column in the grid for this sankey trace . """,
     )
-    row: Optional[int | IndexedStatementField] = Field(
+    row: Optional[int | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" integer greater than or equal to 0<br>If there is a layout grid, use the domain for this row in the grid for this sankey trace . """,
     )
-    x: Optional[StatementListField] = Field(
+    x: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" array<br>Sets the horizontal domain of this sankey trace (in plot fraction). """,
     )
-    y: Optional[StatementListField] = Field(
+    y: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" array<br>Sets the vertical domain of this sankey trace (in plot fraction). """,
     )
@@ -36,11 +31,14 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
     )
-    size: Optional[IndexedStatementField | StatementField | float | List[float]] = (
-        Field(
-            None,
-            description=""" number or array of numbers greater than or equal to 1<br> """,
-        )
+    size: Optional[
+        constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | float
+        | List[float]
+    ] = Field(
+        None,
+        description=""" number or array of numbers greater than or equal to 1<br> """,
     )
 
 
@@ -61,7 +59,12 @@ class SankeyHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+    namelength: Optional[
+        int
+        | constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | List[int]
+    ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
@@ -75,7 +78,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
         None,
         description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
     )
-    size: Optional[float | IndexedStatementField] = Field(
+    size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None, description=""" number greater than or equal to 1<br> """
     )
 
@@ -93,10 +96,10 @@ class SankeyLegendgrouptitle(TracePropsAttribute):
 
 
 class Colorscales1(TracePropsAttribute):
-    cmax: Optional[float | IndexedStatementField] = Field(
+    cmax: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None, description=""" number<br>Sets the upper bound of the color domain. """
     )
-    cmin: Optional[float | IndexedStatementField] = Field(
+    cmin: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None, description=""" number<br>Sets the lower bound of the color domain. """
     )
     colorscale: Optional[Any] = Field(
@@ -125,11 +128,14 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
     )
-    size: Optional[IndexedStatementField | StatementField | float | List[float]] = (
-        Field(
-            None,
-            description=""" number or array of numbers greater than or equal to 1<br> """,
-        )
+    size: Optional[
+        constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | float
+        | List[float]
+    ] = Field(
+        None,
+        description=""" number or array of numbers greater than or equal to 1<br> """,
     )
 
 
@@ -150,7 +156,12 @@ class SankeyLinkHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+    namelength: Optional[
+        int
+        | constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | List[int]
+    ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
@@ -161,16 +172,19 @@ class Line20(TracePropsAttribute):
         None,
         description=""" color or array of colors<br>Sets the color of the `line` around each `link`. """,
     )
-    width: Optional[IndexedStatementField | StatementField | float | List[float]] = (
-        Field(
-            None,
-            description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `link`. """,
-        )
+    width: Optional[
+        constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | float
+        | List[float]
+    ] = Field(
+        None,
+        description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `link`. """,
     )
 
 
 class SankeyLink(TracePropsAttribute):
-    arrowlen: Optional[float | IndexedStatementField] = Field(
+    arrowlen: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number greater than or equal to 0<br>Sets the length (in px) of the links arrow, if 0 no arrow will be drawn. """,
     )
@@ -182,7 +196,7 @@ class SankeyLink(TracePropsAttribute):
         None,
         description=""" array of object where each object has one or more of the keys listed below.<br> """,
     )
-    customdata: Optional[StatementListField] = Field(
+    customdata: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None, description=""" data array<br>Assigns extra data to each link. """
     )
     hoverinfo: Optional[str] = Field(
@@ -197,22 +211,22 @@ class SankeyLink(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. variables `value` and `label`. Anything contained in tag `<extra>` is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag `<extra></extra>`. """,
     )
-    label: Optional[StatementListField] = Field(
+    label: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None, description=""" data array<br>The shown name of the link. """
     )
     line: Optional[Line20] = Field(
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    source: Optional[StatementListField] = Field(
+    source: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the source node. """,
     )
-    target: Optional[StatementListField] = Field(
+    target: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>An integer number `[0..nodes.length - 1]` that represents the target node. """,
     )
-    value: Optional[StatementListField] = Field(
+    value: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>A numeric value representing the flow volume value. """,
     )
@@ -226,11 +240,14 @@ class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
     )
-    size: Optional[IndexedStatementField | StatementField | float | List[float]] = (
-        Field(
-            None,
-            description=""" number or array of numbers greater than or equal to 1<br> """,
-        )
+    size: Optional[
+        constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | float
+        | List[float]
+    ] = Field(
+        None,
+        description=""" number or array of numbers greater than or equal to 1<br> """,
     )
 
 
@@ -251,7 +268,12 @@ class SankeyNodeHoverlabel(TracePropsAttribute):
         None,
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
-    namelength: Optional[int | IndexedStatementField | StatementListIntField] = Field(
+    namelength: Optional[
+        int
+        | constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | List[int]
+    ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
     )
@@ -262,11 +284,14 @@ class Line21(TracePropsAttribute):
         None,
         description=""" color or array of colors<br>Sets the color of the `line` around each `node`. """,
     )
-    width: Optional[IndexedStatementField | StatementField | float | List[float]] = (
-        Field(
-            None,
-            description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `node`. """,
-        )
+    width: Optional[
+        constr(pattern=INDEXED_STATEMENT_REGEX)
+        | constr(pattern=STATEMENT_REGEX)
+        | float
+        | List[float]
+    ] = Field(
+        None,
+        description=""" number or array of numbers greater than or equal to 0<br>Sets the width (in px) of the `line` around each `node`. """,
     )
 
 
@@ -275,10 +300,10 @@ class SankeyNode(TracePropsAttribute):
         None,
         description=""" color or array of colors<br>Sets the `node` color. It can be a single value, or an array for specifying color for each `node`. If `node.color` is omitted, then the default `Plotly` color palette will be cycled through to have a variety of colors. These defaults are not fully opaque, to allow some visibility of what is beneath the node. """,
     )
-    customdata: Optional[StatementListField] = Field(
+    customdata: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None, description=""" data array<br>Assigns extra data to each node. """
     )
-    groups: Optional[StatementListField] = Field(
+    groups: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" array<br>Groups of nodes. Each group is defined by an array with the indices of the nodes it contains. Multiple groups can be specified. """,
     )
@@ -294,26 +319,26 @@ class SankeyNode(TracePropsAttribute):
         None,
         description=""" string or array of strings<br>Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example "y: %{y}" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, "xother" will be added to those with different x positions from the first point. An underscore before or after "(x|y)other" will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example "Price: %{y:$.2f}". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example "Day: %{2019-01-01|%A}". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. variables `value` and `label`. Anything contained in tag `<extra>` is displayed in the secondary box, for example "<extra>{fullData.name}</extra>". To hide the secondary box completely, use an empty tag `<extra></extra>`. """,
     )
-    label: Optional[StatementListField] = Field(
+    label: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None, description=""" data array<br>The shown name of the node. """
     )
     line: Optional[Line21] = Field(
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    pad: Optional[float | IndexedStatementField] = Field(
+    pad: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number greater than or equal to 0<br>Sets the padding (in px) between the `nodes`. """,
     )
-    thickness: Optional[float | IndexedStatementField] = Field(
+    thickness: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number greater than or equal to 1<br>Sets the thickness (in px) of the `nodes`. """,
     )
-    x: Optional[StatementListField] = Field(
+    x: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>The normalized horizontal position of the node. """,
     )
-    y: Optional[StatementListField] = Field(
+    y: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>The normalized vertical position of the node. """,
     )
@@ -327,7 +352,7 @@ class TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGroupti
         None,
         description=""" string<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
     )
-    size: Optional[float | IndexedStatementField] = Field(
+    size: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None, description=""" number greater than or equal to 1<br> """
     )
 
@@ -337,7 +362,7 @@ class Sankey(TraceProps):
         None,
         description=""" enumerated , one of ( "snap" | "perpendicular" | "freeform" | "fixed" )<br>If value is `snap` (the default), the node arrangement is assisted by automatic snapping of elements to preserve space between nodes specified via `nodepad`. If value is `perpendicular`, the nodes can only move along a line perpendicular to the flow. If value is `freeform`, the nodes can freely move on the plane. If value is `fixed`, the nodes are stationary. """,
     )
-    customdata: Optional[StatementListField] = Field(
+    customdata: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements """,
     )
@@ -353,7 +378,7 @@ class Sankey(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    ids: Optional[StatementListField] = Field(
+    ids: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type. """,
     )
@@ -361,11 +386,11 @@ class Sankey(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br> """,
     )
-    legendrank: Optional[float | IndexedStatementField] = Field(
+    legendrank: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number<br>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with `"reversed" `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. """,
     )
-    legendwidth: Optional[float | IndexedStatementField] = Field(
+    legendwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number greater than or equal to 0<br>Sets the width (in px or fraction) of the legend for this trace. """,
     )
@@ -373,7 +398,7 @@ class Sankey(TraceProps):
         None,
         description=""" object containing one or more of the keys listed below.<br>The links of the Sankey plot. """,
     )
-    meta: Optional[float | IndexedStatementField] = Field(
+    meta: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number or categorical coordinate string<br>Assigns extra meta information associated with this trace that can be used in various text attributes. Attributes such as trace `name`, graph, axis and colorbar `title.text`, annotation `text` `rangeselector`, `updatemenues` and `sliders` `label` text all support `meta`. To access the trace `meta` values in an attribute in the same trace, simply use `%{meta[i]}` where `i` is the index or key of the `meta` item in question. To access trace `meta` in layout attributes, use `%{data[n[.meta[i]}` where `i` is the index or key of the `meta` and `n` is the trace index. """,
     )
@@ -385,7 +410,7 @@ class Sankey(TraceProps):
         None,
         description=""" enumerated , one of ( "v" | "h" )<br>Sets the orientation of the Sankey diagram. """,
     )
-    selectedpoints: Optional[float | IndexedStatementField] = Field(
+    selectedpoints: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number or categorical coordinate string<br>Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect. """,
     )
@@ -396,7 +421,7 @@ class Sankey(TraceProps):
         description=""" object containing one or more of the keys listed below.<br>Sets the font for node labels """,
     )
     type: Literal["sankey"] = Field(..., description=""" "sankey"<br> """)
-    uirevision: Optional[float | IndexedStatementField] = Field(
+    uirevision: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number or categorical coordinate string<br>Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves. """,
     )
