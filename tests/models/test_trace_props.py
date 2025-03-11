@@ -35,7 +35,6 @@ def test_float_property_validation():
     }
 
     trace = Trace(**data)
-    breakpoint()
 
 
 def test_valid_trace_prop_mesh3d():

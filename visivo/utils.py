@@ -87,10 +87,6 @@ def extract_value_from_function(function_value, function_name):
         return function_value.get_value()
     query_string = QueryString(str(function_value))
     if query_string.get_value():
-        # TODO: This is a catch for missed trace props attributes that should be query strings.
-        Logger.instance().debug(
-            f"{function_value} should be StatementField or IndexedStatementField"
-        )
         return query_string.get_value()
     pattern = r"{}\((.+)\)".format(re.escape(function_name))
     match = re.search(pattern, str(function_value))

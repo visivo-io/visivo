@@ -3,8 +3,7 @@ from typing import Any
 import re
 
 
-QUERY_STRING_MATCH_SECTION_REGEX = r"\s*([a-zA-Z0-9\s'\"\-_,\.\[\]\(\)<>=;+|&*:/]+?)\s*"
-QUERY_STRING_VALUE_REGEX = rf"\?{{{QUERY_STRING_MATCH_SECTION_REGEX}}}"
+QUERY_STRING_VALUE_REGEX = r"^\?\{\s*(?P<query_string>.+)\s*\}\s*$"
 
 
 class QueryString:
@@ -26,7 +25,7 @@ class QueryString:
         if len(matches) == 0:
             return None
         else:
-            return matches[0]
+            return matches[0].strip()
 
     @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):
