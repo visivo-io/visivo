@@ -286,6 +286,6 @@ def test_named_child_nodes():
     named_nodes = project.named_child_nodes()
 
     assert len(named_nodes) == 6
-    assert trace in named_nodes
-    assert dashboard in named_nodes
-    assert source in named_nodes
+    assert trace.name in named_nodes.keys()
+    assert dashboard.name in named_nodes.keys()
+    assert source.name in named_nodes.keys()
