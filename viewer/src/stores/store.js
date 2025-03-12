@@ -26,7 +26,6 @@ const useStore = create(devtools((set, get) => ({
         for (const key in data) {
             if (data.hasOwnProperty(key)) {
                 data[key].updated = false;
-                data[key].config = JSON.parse(data[key].config);
             }
         }
         set({ namedChildren: data, isLoading: false });

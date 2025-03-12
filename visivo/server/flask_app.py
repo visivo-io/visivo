@@ -69,14 +69,7 @@ def flask_app(output_dir, dag_filter, project):
     def named_children():
         named_children = project.named_child_nodes()
         if named_children:
-            name_map = {}
-            for child in named_children:
-                contents = {
-                    "type": child.__class__.__name__,
-                    "config": child.model_dump_json(exclude_none=True)
-                }
-                name_map[child.name] = contents
-            return jsonify(name_map)
+            return jsonify(named_children)
         else:
             return jsonify({})
     

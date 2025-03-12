@@ -5,6 +5,7 @@ from visivo.models.base.base_model import BaseModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.project_dag import ProjectDag
 from pydantic_core import PydanticCustomError
+from pydantic import model_serializer
 from visivo.models.dag import (
     all_descendants,
     all_descendants_of_type,
@@ -18,6 +19,15 @@ from visivo.models.sources.source import DefaultSource
 
 
 class ParentModel(ABC):
+    @model_serializer(mode='wrap')
+    def wrap_serializer(self, serializer, info):
+        # Get the default serialized output
+        serialized = serializer(self)
+        # Check the context to decide whether to include the class type
+        if info.context and info.context.get('include_type', False):
+            serialized['__type__'] = self.__class__.__name__
+        return serialized
+    
     @abstractmethod
     def child_items(self):
         return []

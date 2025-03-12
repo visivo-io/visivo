@@ -58,14 +58,14 @@ class Project(NamedModel, ParentModel):
             children.extend(items)
         return children
     
-    def named_child_nodes(self) -> List: 
+    def named_child_nodes(self) -> dict: 
         """
-        Returns a list of all named child nodes of the project, independent of the 
+        Returns a dictionary of all named child nodes of the project, independent of the 
         literal position of the child in the project file. This enables us to find 
-        all chilren even if they are nested in a dashboard or chart.
+        all children even if they are nested in a dashboard or chart.
         """
         dag = self.dag()
-        named_nodes = []
+        named_nodes = {}
         for node in dag.nodes():
             if hasattr(node, "name"):
                 if node.name is not None:
@@ -75,9 +75,53 @@ class Project(NamedModel, ParentModel):
             else:
                 is_named = False
             if is_named and Project.is_project_child(node):
-                named_nodes.append(node)
+                contents = {
+                    "type": node.__class__.__name__,
+                    "config": Project._fully_referenced_model_dump(node)
+                }
+                named_nodes[node.name] = contents
 
         return named_nodes
+   
+    @classmethod
+    def _fully_referenced_model_dump(cls, node: ParentModel) -> dict:
+        import json
+        def clean_value(value):
+            # Case 1: Value is a dictionary
+            if isinstance(value, dict):
+                # Check if it's a project child and has a non-null 'name'
+                if ( 
+                    Project.is_type_project_child(value.get("__type__", "na")) and
+                    value.get("name") is not None
+                ):
+                    return "${" + f"ref({value['name']})" + "}"
+                # If not replaced, recurse into the dictionary's values
+                return {k: clean_value(v) for k, v in value.items()}
+            # Case 2: Value is a list
+            elif isinstance(value, list):
+                return [clean_value(elem) for elem in value]
+            # Case 3: Value is a primitive (str, int, float, bool, None)
+            else:
+                return value
+            
+        def remove_type_keys(data):
+            if isinstance(data, dict):
+                return {k: remove_type_keys(v) for k, v in data.items() if k != "__type__"}
+            elif isinstance(data, list):
+                return [remove_type_keys(elem) for elem in data]
+            else:
+                return data
+            
+        model_dump_json_string = node.model_dump_json(
+            exclude_none=True, 
+            context={"include_type": True}
+        )
+        jsonable_model_dump = json.loads(model_dump_json_string)
+        fully_referenced_project_child_dict = {k: clean_value(v) for k, v in jsonable_model_dump.items()}
+        fully_referenced_project_child_dict = remove_type_keys(fully_referenced_project_child_dict)
+        if node.name == "Simple Dashboard":
+            print(fully_referenced_project_child_dict)
+        return fully_referenced_project_child_dict
     
     @model_validator(mode="after")
     def validate_cli_version(self):
@@ -204,6 +248,19 @@ class Project(NamedModel, ParentModel):
             field = cls.model_fields[field_name]
             child_objects[field_name] = field
         return child_objects
+    
+    @classmethod
+    def is_type_project_child(cls, object_type: str) -> bool:
+        """
+        Accepts a string and returns True if it is a child of the project.
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        
+        search_str = rf"[\s\[]{object_type}[,\]]"
+        is_match = search(search_str, str(project_child_objects)) is not None
+
+        return is_match
     
     @classmethod
     def is_project_child(cls, obj) -> list:
