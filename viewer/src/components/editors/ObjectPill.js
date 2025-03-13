@@ -1,60 +1,13 @@
 import React from 'react';
-import { HiOutlineChartBar, HiOutlineDatabase, HiOutlineViewGrid, HiOutlineSelector, HiOutlineTable } from 'react-icons/hi';
-import { MdScatterPlot } from 'react-icons/md';
-import { FaExternalLinkAlt } from "react-icons/fa";
 import useStore from '../../stores/store';
+import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
+import { HiOutlineDatabase } from "react-icons/hi";
 
-export const TYPE_COLORS = {
-  'Chart': {
-    bg: 'bg-blue-100',
-    text: 'text-blue-800',
-    border: 'border-blue-200',
-    icon: HiOutlineChartBar
-  },
-  'CsvScriptModel': {
-    bg: 'bg-green-100',
-    text: 'text-green-800',
-    border: 'border-green-200',
-    icon: HiOutlineDatabase
-  },
-  'Dashboard': {
-    bg: 'bg-purple-100',
-    text: 'text-purple-800',
-    border: 'border-purple-200',
-    icon: HiOutlineViewGrid
-  },
-  'Selector': {
-    bg: 'bg-yellow-100',
-    text: 'text-yellow-800',
-    border: 'border-yellow-200',
-    icon: HiOutlineSelector
-  },
-  'Table': {
-    bg: 'bg-pink-100',
-    text: 'text-pink-800',
-    border: 'border-pink-200',
-    icon: HiOutlineTable
-  },
-  'Trace': {
-    bg: 'bg-orange-100',
-    text: 'text-orange-800',
-    border: 'border-orange-200',
-    icon: MdScatterPlot
-  },
-  'ExternalDashboard': {
-    bg: 'bg-black-100',
-    text: 'text-black-800',
-    border: 'border-black-200',
-    icon: FaExternalLinkAlt
-  }
-};
-
-const ObjectPill = ({name, type}) => {
-  //Will need to refactor to just accept name and get the type from the store to be able to render the
-  //pill just based on passing a string name when we want to render pills in the editor
+const ObjectPill = ({name}) => {
   const openTab = useStore((state) => state.openTab);
+  const type = useStore((state) => state.namedChildren[name]?.type);
   
-  const typeConfig = TYPE_COLORS[type] || {
+  const typeConfig = TYPE_STYLE_MAP[type] || {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
     border: 'border-gray-200',
@@ -68,7 +21,7 @@ const ObjectPill = ({name, type}) => {
 
   return (
     <div
-      className={`flex items-center p-2 mb-2 rounded-lg border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 transition-opacity`}
+      className={`flex items-center p-2 shadow-md rounded-2xl border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 hover:shadow-lg transition-opacity`}
       onDoubleClick={handleObjectOpen}
     >
       <Icon className={`w-5 h-5 mr-2 ${typeConfig.text}`} />

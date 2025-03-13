@@ -16,25 +16,22 @@ const ObjectsPanel = () => {
     shallow
   );
 
-  const mappedObjects = useMemo(() => {
-    return Object.entries(namedChildrenAndType).map(([key, { type }]) => ({ 
-        name: key, 
-        type 
-    }));
+  const objectNames = useMemo(() => {
+    return Object.keys(namedChildrenAndType);
   }, [namedChildrenAndType]);
 
   const uniqueTypes = useMemo(() => {
-    const types = [...new Set(mappedObjects.map(item => item.type))];
+    const types = [...new Set(Object.values(namedChildrenAndType).map(item => item.type))];
     return types.sort();
-  }, [mappedObjects]);
+  }, [namedChildrenAndType]);
 
   const filteredObjects = useMemo(() => {
-    return mappedObjects.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !selectedType || item.type === selectedType;
+    return objectNames.filter(name => {
+      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = !selectedType || namedChildrenAndType[name].type === selectedType;
       return matchesSearch && matchesType;
     });
-  }, [mappedObjects, searchTerm, selectedType]);
+  }, [objectNames, namedChildrenAndType, searchTerm, selectedType]);
 
   if (isLoading) {
     return (
@@ -75,12 +72,13 @@ const ObjectsPanel = () => {
         {filteredObjects.length === 0 ? (
           <div className="text-gray-500 text-sm">No objects found</div>
         ) : (
-          filteredObjects.map(obj => (
-            <ObjectPill 
-              key={obj.name}
-              name={obj.name}
-              type={obj.type}
-            />
+          filteredObjects.map(name => (
+            <div className="mb-2 mr-1 ml-1">
+              <ObjectPill 
+                key={name}
+                name={name}
+              />
+            </div>
           ))
         )}
       </div>
