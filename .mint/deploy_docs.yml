@@ -1,7 +1,7 @@
 on:
   github:
     push:
-      if: ${{ event.git.branch == 'main' }}
+      if: ${{ event.git.tag =~ '^refs/tags/v.+$' }}
       init:
         commit-sha: ${{ event.git.sha }}
 
