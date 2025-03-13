@@ -4,7 +4,10 @@ includes:
   - path: "custom-radial-data.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Barpolar"
+  - name: "Barpolar"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows: 
       - height: compact 
         items:

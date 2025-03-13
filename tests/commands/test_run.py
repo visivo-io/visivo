@@ -12,9 +12,13 @@ from tests.factories.model_factories import (
     TraceFactory,
 )
 from tests.support.utils import temp_folder
+from visivo.server.hot_reload_server import HotReloadServer
 
 runner = CliRunner()
 
+def get_test_port():
+    """Get an available port for testing"""
+    return HotReloadServer.find_available_port()
 
 def test_run():
     output_dir = temp_folder()
@@ -26,7 +30,8 @@ def test_run():
     )
     working_dir = os.path.dirname(tmp)
 
-    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+    port = get_test_port()
+    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)])
 
     assert "Running project across 8 threads" in response.output
     assert response.exit_code == 0
@@ -42,8 +47,9 @@ def test_run_with_threads():
     )
     working_dir = os.path.dirname(tmp)
 
+    port = get_test_port()
     response = runner.invoke(
-        run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-th", "3"]
+        run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-th", "3", "-p", str(port)]
     )
 
     assert "Running project across 3 threads" in response.output
@@ -60,7 +66,8 @@ def test_run_with_model_ref():
     )
     working_dir = os.path.dirname(tmp)
 
-    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+    port = get_test_port()
+    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)])
 
     assert "Running project" in response.output
     assert response.exit_code == 0
@@ -83,8 +90,9 @@ def test_run_by_with_passing_new_defaults():
     )
     working_dir = os.path.dirname(tmp)
 
+    port = get_test_port()
     response = runner.invoke(
-        run, ["-w", working_dir, "-o", output_dir, "-s", "alternate-source"]
+        run, ["-w", working_dir, "-o", output_dir, "-s", "alternate-source", "-p", str(port)]
     )
     trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
 

@@ -4,7 +4,10 @@ includes:
   - path: "multi-level-contour.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Contour"
+  - name: "Contour"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:
