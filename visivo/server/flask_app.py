@@ -1,7 +1,6 @@
 import click
 import re
 import os
-from visivo.utils import get_dashboards_dir
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
@@ -18,8 +17,6 @@ def flask_app(output_dir, dag_filter, project):
     )
     
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    
-    thumbnail_dir = get_dashboards_dir(output_dir)
 
     worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 

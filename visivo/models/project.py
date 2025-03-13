@@ -11,6 +11,8 @@ from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
 
 from .base.parent_model import ParentModel
+from .base.base_model import REF_REGEX
+from .base.context_string import INLINE_REF_REGEX
 from visivo.models.dashboards.fields import DashboardField
 from .chart import Chart
 from .trace import Trace
@@ -86,6 +88,7 @@ class Project(NamedModel, ParentModel):
     @classmethod
     def _fully_referenced_model_dump(cls, node: ParentModel) -> dict:
         import json
+        import re
         def clean_value(value):
             # Case 1: Value is a dictionary
             if isinstance(value, dict):
@@ -94,13 +97,38 @@ class Project(NamedModel, ParentModel):
                     Project.is_type_project_child(value.get("__type__", "na")) and
                     value.get("name") is not None
                 ):
-                    return "${" + f"ref({value['name']})" + "}"
+                    inline_defined_named_child = json.dumps({
+                         'name': value["name"],
+                         'is_inline_defined': True
+                    })
+                    return inline_defined_named_child
                 # If not replaced, recurse into the dictionary's values
                 return {k: clean_value(v) for k, v in value.items()}
             # Case 2: Value is a list
             elif isinstance(value, list):
                 return [clean_value(elem) for elem in value]
             # Case 3: Value is a primitive (str, int, float, bool, None)
+            elif isinstance(value, str):
+                # Check for inline references ${ref(Name)}
+                inline_matches = re.search(INLINE_REF_REGEX, value)
+                if inline_matches and value.strip() == inline_matches.group(0):
+                    ref_name = inline_matches.group(1).strip()
+                    return json.dumps({
+                        'name': ref_name,
+                        'is_inline_defined': False,
+                        'original_value': value
+                    })
+                
+                # Check for direct ref(Name) pattern
+                direct_matches = re.search(REF_REGEX, value)
+                if direct_matches:
+                    ref_name = direct_matches.group('ref_name').strip()
+                    return json.dumps({
+                        'name': ref_name,
+                        'is_inline_defined': False,
+                        'original_value': value
+                    })
+                return value
             else:
                 return value
             
@@ -119,8 +147,7 @@ class Project(NamedModel, ParentModel):
         jsonable_model_dump = json.loads(model_dump_json_string)
         fully_referenced_project_child_dict = {k: clean_value(v) for k, v in jsonable_model_dump.items()}
         fully_referenced_project_child_dict = remove_type_keys(fully_referenced_project_child_dict)
-        if node.name == "Simple Dashboard":
-            print(fully_referenced_project_child_dict)
+        
         return fully_referenced_project_child_dict
     
     @model_validator(mode="after")
