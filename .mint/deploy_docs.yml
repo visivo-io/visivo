@@ -1,7 +1,7 @@
 on:
   github:
     push:
-      if: ${{ event.git.tag =~ '^refs/tags/v.+$' }}
+      if: ${{ event.git.ref=~ '^refs/tags/v.+$' }}
       init:
         commit-sha: ${{ event.git.sha }}
 
