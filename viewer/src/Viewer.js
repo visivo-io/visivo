@@ -13,6 +13,7 @@ import BreadcrumbLink from './components/styled/BreadcrumbLink'
 import ErrorPage from './components/ErrorPage'
 import Dag from './components/Dag'
 import QueryExplorer from './components/QueryExplorer'
+import Editor from './components/Editor'
 
 const Viewer = createBrowserRouter(
   createRoutesFromElements(
@@ -34,6 +35,13 @@ const Viewer = createBrowserRouter(
         element={<QueryExplorer />}
         loader={loadProject}
         handle={{ crumb: () => <BreadcrumbLink to="/query">Query Explorer</BreadcrumbLink> }}
+      />
+      <Route
+        id="editor"
+        path="/editor"
+        element={<Editor />}
+        loader={loadProject}
+        handle={{ crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink> }}
       />
       <Route
         path="/project"

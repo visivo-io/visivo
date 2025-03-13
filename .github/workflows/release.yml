@@ -27,6 +27,7 @@ jobs:
       - name: Build App
         run: |
           cd viewer && yarn install && yarn deploy && cd ..
+          EXCLUDE_TRACE_PROPS=False poetry run write-schema-json
           poetry version ${{ inputs.version }}
 
       - name: Commit changes
@@ -60,7 +61,7 @@ jobs:
         run: |
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry build
-          poetry publish 
+          poetry publish
 
       - name: Trigger Core Deployment
         uses: peter-evans/repository-dispatch@v2

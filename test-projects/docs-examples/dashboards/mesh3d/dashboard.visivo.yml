@@ -2,7 +2,10 @@ includes:
   - path: "simple.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Mesh3D"
+  - name: "Mesh3D"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:
