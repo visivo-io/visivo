@@ -23,3 +23,5 @@ dist/
 node_modules
 
 .report.json
+# Local Netlify folder
+.netlify

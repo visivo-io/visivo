@@ -22,6 +22,7 @@ jobs:
         run: |
           pip install visivo
           cd test-projects/docs-examples
+          visivo run
           visivo dist
           cp _redirects dist
           
