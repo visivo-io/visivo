@@ -26,9 +26,9 @@ def handle_allOf(attribute_property_object: dict, model_defs: dict):
     if not model:
         raise KeyError(f"Key {model_key} was not found in $defs dictionary.")
 
-    if model.get('enum'):
-        if model.get('type') not in ['string', 'object']:
-            enum_options = [ str(a) for a in  model.get("enum")]
+    if model.get("enum"):
+        if model.get("type") not in ["string", "object"]:
+            enum_options = [str(a) for a in model.get("enum")]
         else:
             enum_options = model.get("enum")
         type = "Enumerated - one of: " + ", ".join(enum_options)
@@ -44,6 +44,8 @@ def handle_anyOf(attribute_property_object: dict):
     for option in attribute_property_object["anyOf"]:
         if "pattern" in option and find_refs(attribute_property_object) == []:
             anyOf.append(f"Regex({option.get('pattern')})")
+        elif "oneOf" in option and len(option.get("oneOf")) == 1:
+            anyOf.append(option.get("oneOf")[0].get("type"))
         elif "type" in option and "pattern" not in option:
             if option.get("type") not in ["null", "None"]:
                 anyOf.append(option.get("type"))
@@ -191,28 +193,28 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
         if not model_def.get("description", {})
         else dedent(model_def.get("description")) + "\n"
     )
-    if model_name.lower() == 'layout':
+    if model_name.lower() == "layout":
         description = "These attributes apply to the `chart.layout` object.\n"
     else:
         description = f"These attributes apply to traces where `trace.props.type` is set to `{model_name.lower()}`. You would configure these attributes on the trace with the `trace.props` object.\n"
     nested_structure, details = _get_traceprop_nested_structure(
         model_defs, model_name, details=[]
     )
-    if model_name.lower() == 'scatter':
-        title = 'Scatter (line, area & scatter)'
-    else: 
-        title = model_name        
+    if model_name.lower() == "scatter":
+        title = "Scatter (line, area & scatter)"
+    else:
+        title = model_name
     yaml_doc = yaml.dump(nested_structure, default_flow_style=False)
     pattern = r"'([^'#]+) (\#\(.*?\)!)'"
     processed_yaml_doc = re.sub(pattern, r"'\1' \2", yaml_doc)
-    if model_name.lower() != 'layout':
+    if model_name.lower() != "layout":
         includes = (
-            "{!" + 
-            f" include-markdown '" +
-            f"reference/props-docs/{model_name.lower()}.md' " + 
-            f"\nstart='<!--start-->'" +
-            f"\nend='<!--end-->'" +
-            "!}" 
+            "{!"
+            + f" include-markdown '"
+            + f"reference/props-docs/{model_name.lower()}.md' "
+            + f"\nstart='<!--start-->'"
+            + f"\nend='<!--end-->'"
+            + "!}"
         )
     else:
         includes = ""

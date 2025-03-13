@@ -16,11 +16,11 @@ traces:
     model: ref(sunburst-data-colors)
     props:
       type: sunburst
-      labels: query(labels)
-      parents: query(parents)
-      values: query("values")
+      labels: ?{labels}
+      parents: ?{parents}
+      values: ?{"values"}
       marker:
-        colors: query(colors)
+        colors: ?{colors}
 charts:
   - name: Sunburst Chart with Custom Colors
     traces:

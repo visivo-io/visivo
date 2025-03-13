@@ -50,9 +50,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
             model: ref(heatmap-data)
             props:
               type: heatmap
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: "Viridis"
         charts:
           - name: Simple Heatmap Chart
@@ -98,9 +98,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
             model: ref(heatmap-data-custom)
             props:
               type: heatmap
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               zmin: 0
               zmax: 1
         charts:
@@ -148,10 +148,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
             model: ref(heatmap-data-annotations)
             props:
               type: heatmap
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              text: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              text: ?{z}
               texttemplate: "%{text}"
               textfont:
                 size: 12

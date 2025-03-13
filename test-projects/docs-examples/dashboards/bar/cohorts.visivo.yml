@@ -9,22 +9,17 @@ traces:
     model: ref(monty-python-quest-data)
     cohort_on: "person"
     props:
-      type: bar 
-      x: query(enemy_encountered)
-      y: query( count(*) )
-      text: query( count(*) )
-    order_by: 
-      - query( count(*) desc)
+      type: bar
+      x: ?{enemy_encountered}
+      y: ?{ count(*) }
+      text: ?{ count(*) }
+    order_by:
+      - ?{ count(*) desc}
 
-charts: 
+charts:
   - name: Count Times Enemy Was Encountered by Knight
-    traces: 
+    traces:
       - ref(Count Enemies Encountered by Knight)
-    layout: 
-      title: 
+    layout:
+      title:
         text: Cohorted Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest by Knight</sub>
-      
-      
-
-
-

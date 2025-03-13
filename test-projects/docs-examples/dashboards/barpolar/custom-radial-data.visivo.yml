@@ -15,7 +15,7 @@ traces:
     model: ref(custom-radial-data)
     props:
       type: barpolar
-      theta: query(direction)
+      theta: ?{direction}
       width: 30
       r0: 1
       dr: 2
@@ -23,7 +23,7 @@ traces:
         color: "#d62728"
       opacity: 0.8
     order_by:
-      - query(direction)
+      - ?{direction}
 charts:
   - name: Custom Radial Barpolar Chart
     traces:
@@ -32,9 +32,9 @@ charts:
       polar:
         radialaxis:
           visible: true
-      margin: 
-        l: 0 
-        r: 0 
+      margin:
+        l: 0
+        r: 0
         b: 40
       title:
         text: Polar Bar with Custom Radial Range<br><sub>Bars Starting and Ending at Custom Radial Positions</sub>

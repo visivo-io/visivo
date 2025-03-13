@@ -45,8 +45,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
             model: ref(scattersmith-data)
             props:
               type: scattersmith
-              real: query(real)
-              imaginary: query(imaginary)
+              real: ?{real}
+              imaginary: ?{imaginary}
               mode: "markers"
         charts:
           - name: Simple Scattersmith Chart
@@ -81,8 +81,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
             model: ref(scattersmith-data-lines)
             props:
               type: scattersmith
-              real: query(real)
-              imaginary: query(imaginary)
+              real: ?{real}
+              imaginary: ?{imaginary}
               mode: "lines+markers"
         charts:
           - name: Scattersmith Chart with Lines
@@ -117,12 +117,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
             model: ref(scattersmith-data-custom)
             props:
               type: scattersmith
-              real: query(real)
-              imaginary: query(imaginary)
+              real: ?{real}
+              imaginary: ?{imaginary}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scattersmith Chart with Custom Markers
             traces:

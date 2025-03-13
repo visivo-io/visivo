@@ -14,23 +14,23 @@ traces:
     model: ref(scatter-data-lines)
     props:
       type: scatter
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       mode: "lines+markers"
-    order_by: 
-      - query(x asc)
+    order_by:
+      - ?{x asc}
   - name: Spline No Markers
     model: ref(scatter-data-lines)
     props:
       type: scatter
-      x: query(x+3 - (x*x)/3)
-      y: query(y*1.5)
+      x: ?{x+3 - (x*x)/3}
+      y: ?{y*1.5}
       mode: "lines"
-      line: 
+      line:
         shape: spline
         smoothing: .5 #Sets spline bend
-    order_by: 
-      - query(x+3 - (x*x)/3)
+    order_by:
+      - ?{x+3 - (x*x)/3}
 charts:
   - name: Scatter Chart with Lines
     traces:
@@ -39,6 +39,6 @@ charts:
     layout:
       title:
         text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
-      legend: 
+      legend:
         orientation: h
       colorway: "High Contrast"

@@ -50,16 +50,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
             model: ref(contourcarpet-data)
             props:
               type: carpet
-              a: query(a)
-              b: query(b)
-              x: query(x)
-              y: query(y)
+              a: ?{a}
+              b: ?{b}
+              x: ?{x}
+              y: ?{y}
           - name: Simple Contourcarpet Plot
             model: ref(contourcarpet-data)
             props:
               type: contourcarpet
               carpet: ref(Carpet Plot)
-              z: query(z)
+              z: ?{z}
               colorscale: "Viridis"
         charts:
           - name: Simple Contourcarpet Chart
@@ -106,16 +106,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
             model: ref(contourcarpet-data-filled)
             props:
               type: carpet
-              a: query(a)
-              b: query(b)
-              x: query(x)
-              y: query(y)
+              a: ?{a}
+              b: ?{b}
+              x: ?{x}
+              y: ?{y}
           - name: Filled Contourcarpet Plot
             model: ref(contourcarpet-data-filled)
             props:
               type: contourcarpet
               carpet: ref(Carpet Plot Filled)
-              z: query(z)
+              z: ?{z}
               colorscale: "Earth"
               contours:
                 coloring: "heatmap"
@@ -165,16 +165,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
             model: ref(contourcarpet-data-custom)
             props:
               type: carpet
-              a: query(a)
-              b: query(b)
-              x: query(x)
-              y: query(y)
+              a: ?{a}
+              b: ?{b}
+              x: ?{x}
+              y: ?{y}
           - name: Custom Contourcarpet Plot
             model: ref(contourcarpet-data-custom)
             props:
               type: contourcarpet
               carpet: ref(Carpet Plot Custom)
-              z: query(z)
+              z: ?{z}
               colorscale: "Jet"
               contours:
                 start: 10

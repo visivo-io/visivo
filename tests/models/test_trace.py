@@ -1,3 +1,5 @@
+from visivo.models.base.context_string import ContextString
+from visivo.models.base.query_string import QueryString
 from visivo.models.trace import Trace
 from tests.factories.model_factories import TraceFactory
 from pydantic import ValidationError
@@ -8,7 +10,7 @@ from visivo.parsers.yaml_ordered_dict import YamlOrderedDict, setup_yaml_ordered
 def test_Trace_simple_data():
     data = {
         "name": "development",
-        "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+        "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
         "model": {"sql": "select * from table"},
     }
     trace = Trace(**data)
@@ -28,7 +30,7 @@ def test_Trace_missing_props():
 def test_Trace_missing_props_type():
     data = {
         "name": "development",
-        "props": {"x": "query(x)", "y": "query(y)"},
+        "props": {"x": "?{x}", "y": "?{y}"},
         "model": {"sql": "select * from table"},
     }
     with pytest.raises(ValidationError) as exc_info:
@@ -42,7 +44,7 @@ def test_Trace_missing_props_type():
 def test_Trace_unknown_props_type():
     data = {
         "name": "development",
-        "props": {"type": "unknown", "x": "query(x)", "y": "query(y)"},
+        "props": {"type": "unknown", "x": "?{x}", "y": "?{y}"},
         "model": {"sql": "select * from table"},
     }
     with pytest.raises(ValidationError) as exc_info:
@@ -116,3 +118,20 @@ def test_Trace_with_columns_without_props():
     }
     trace = Trace(**data)
     assert trace.name == "development"
+
+
+def test_Trace_with_columns_and_props_as_query_string_props():
+    data = {
+        "name": "development",
+        "columns": {"x_data": "?{x}"},
+        "props": {
+            "type": "scatter",
+            "x": "column(x_data)",
+            "y": "?{ y }",
+            "x0": "column(x_data)[0]",
+        },
+        "model": {"sql": "select * from table"},
+    }
+    trace = Trace(**data)
+    assert trace.name == "development"
+    assert isinstance(trace.columns.x_data, QueryString)

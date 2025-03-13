@@ -46,8 +46,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
             model: ref(scatterpolar-data)
             props:
               type: scatterpolar
-              theta: query(theta)
-              r: query(r)
+              theta: ?{theta}
+              r: ?{r}
               mode: "markers"
         charts:
           - name: Simple Scatterpolar Chart
@@ -83,8 +83,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
             model: ref(scatterpolar-data-lines)
             props:
               type: scatterpolar
-              theta: query(theta)
-              r: query(r)
+              theta: ?{theta}
+              r: ?{r}
               mode: "lines+markers"
         charts:
           - name: Scatterpolar Chart with Lines
@@ -120,12 +120,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
             model: ref(scatterpolar-data-custom)
             props:
               type: scatterpolar
-              theta: query(theta)
-              r: query(r)
+              theta: ?{theta}
+              r: ?{r}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scatterpolar Chart with Custom Markers
             traces:

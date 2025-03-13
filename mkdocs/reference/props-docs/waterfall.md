@@ -46,11 +46,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
             model: ref(waterfall-data)
             props:
               type: waterfall
-              x: query(label)
-              y: query(value)
+              x: ?{label}
+              y: ?{value}
               measure: ["initial", "relative", "relative", "relative", "total"]
             order_by: 
-              - query( idx asc)
+              - ?{ idx asc}
         charts:
           - name: Simple Waterfall Chart
             traces:
@@ -85,8 +85,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
             model: ref(waterfall-data-colors)
             props:
               type: waterfall
-              x: query(label)
-              y: query(value)
+              x: ?{label}
+              y: ?{value}
               measure: ["initial", "relative", "relative", "relative", "total"]
               increasing:
                 marker: 
@@ -101,7 +101,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
                     color: 'orange'
                     width: 4
             order_by: 
-              - query( idx asc)
+              - ?{ idx asc}
         charts:
           - name: Waterfall Chart with Custom Colors
             traces:
@@ -138,10 +138,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
             props:
               type: waterfall
               x: 
-                - query(half)
-                - query(quarter)
-              y: query(value)
-              measure: query(mode)
+                - ?{half}
+                - ?{quarter}
+              y: ?{value}
+              measure: ?{mode}
               hovertemplate: "%{x}: %{y:$.2f}"
               texttemplate: "%{delta:$.2f}"
               textposition: "outside"
@@ -150,7 +150,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
                   color: "orange"
                   width: 5
             order_by: 
-              - query( idx asc)
+              - ?{ idx asc}
         charts:
           - name: Waterfall Chart with Connectors
             traces:

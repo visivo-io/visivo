@@ -22,7 +22,7 @@ def compile(working_dir, output_dir, source, dag_filter, dbt_profile, dbt_target
     """
     from visivo.logging.logger import Logger
 
-    Logger.instance().debug("Compiling")
+    Logger.instance().info("Compiling")
 
     from visivo.commands.compile_phase import compile_phase
 

@@ -14,12 +14,12 @@ traces:
     model: ref(stock-data)
     props:
       type: candlestick
-      x: query(date)
-      open: query(open)
-      high: query(high)
-      low: query(low)
-      close: query(close)
-      
+      x: ?{date}
+      open: ?{open}
+      high: ?{high}
+      low: ?{low}
+      close: ?{close}
+
 charts:
   - name: Simple Candlestick Chart
     traces:

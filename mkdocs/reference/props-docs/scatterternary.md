@@ -45,9 +45,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
             model: ref(scatterternary-data)
             props:
               type: scatterternary
-              a: query(a)
-              b: query(b)
-              c: query(c)
+              a: ?{a}
+              b: ?{b}
+              c: ?{c}
               mode: "markers"
         charts:
           - name: Simple Scatterternary Chart
@@ -82,9 +82,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
             model: ref(scatterternary-data-lines)
             props:
               type: scatterternary
-              a: query(a)
-              b: query(b)
-              c: query(c)
+              a: ?{a}
+              b: ?{b}
+              c: ?{c}
               mode: "lines+markers"
         charts:
           - name: Scatterternary Chart with Lines
@@ -119,13 +119,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
             model: ref(scatterternary-data-custom)
             props:
               type: scatterternary
-              a: query(a)
-              b: query(b)
-              c: query(c)
+              a: ?{a}
+              b: ?{b}
+              c: ?{c}
               mode: "markers"
               marker:
-                size: query(size)
-                color: query(color)
+                size: ?{size}
+                color: ?{color}
         charts:
           - name: Scatterternary Chart with Custom Markers
             traces:

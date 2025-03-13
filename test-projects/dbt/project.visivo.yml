@@ -17,6 +17,6 @@ dashboards:
                 - name: trace_name
                   model: ref(dbt_fact_transaction)
                   props:
-                    x: query(CREATED_AT)
-                    y: query(AMOUNT)
+                    x: ?{CREATED_AT}
+                    y: ?{AMOUNT}
                     type: bar

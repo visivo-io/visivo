@@ -12,18 +12,17 @@ traces:
       type: splom
       dimensions:
         - label: "Sepal Length"
-          values: query(sepal_length)
+          values: ?{sepal_length}
         - label: "Sepal Width"
-          values: query(sepal_width)
+          values: ?{sepal_width}
         - label: "Petal Length"
-          values: query(petal_length)
+          values: ?{petal_length}
         - label: "Petal Width"
-          values: query(petal_width)
+          values: ?{petal_width}
       diagonal:
         visible: false
       showupperhalf: false
-      
-      
+
 charts:
   - name: Simple Splom Chart
     traces:

@@ -48,9 +48,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
             model: ref(sunburst-data)
             props:
               type: sunburst
-              labels: query(labels)
-              parents: query(parents)
-              values: query("values")
+              labels: ?{labels}
+              parents: ?{parents}
+              values: ?{"values"}
         charts:
           - name: Simple Sunburst Chart
             traces:
@@ -87,11 +87,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
             model: ref(sunburst-data-colors)
             props:
               type: sunburst
-              labels: query(labels)
-              parents: query(parents)
-              values: query("values")
+              labels: ?{labels}
+              parents: ?{parents}
+              values: ?{"values"}
               marker:
-                colors: query(colors)
+                colors: ?{colors}
         charts:
           - name: Sunburst Chart with Custom Colors
             traces:
@@ -128,12 +128,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
             model: ref(sunburst-data-sizes)
             props:
               type: sunburst
-              labels: query(labels)
-              parents: query(parents)
-              values: query("values")
+              labels: ?{labels}
+              parents: ?{parents}
+              values: ?{"values"}
               marker:
                 line:
-                  width: query(size)
+                  width: ?{size}
                   color: black
         charts:
           - name: Sunburst Chart with Custom Sizes

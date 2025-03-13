@@ -50,9 +50,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
             model: ref(heatmapgl-data)
             props:
               type: heatmapgl
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: "Viridis"
         charts:
           - name: Simple Heatmapgl Chart
@@ -98,9 +98,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
             model: ref(heatmapgl-data-custom)
             props:
               type: heatmapgl
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: [[0, "rgb(255,245,240)"], [0.5, "rgb(252,146,114)"], [1, "rgb(165,15,21)"]]
               zmin: 0
               zmax: 1
@@ -154,9 +154,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
             model: ref(heatmapgl-data-large)
             props:
               type: heatmapgl
-              x: query(x)
-              y: query(y)
-              z: query(z)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
               colorscale: "Jet"
               zmin: 0
               zmax: 15

@@ -50,8 +50,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
             model: ref(histogram2dcontour-data)
             props:
               type: histogram2dcontour
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               colorscale: "Viridis"
               contours:
                 coloring: "none"
@@ -99,8 +99,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
             model: ref(histogram2dcontour-data-filled)
             props:
               type: histogram2dcontour
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               colorscale: "Blues"
               contours:
                 coloring: "heatmap"
@@ -148,8 +148,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
             model: ref(histogram2dcontour-data-bins)
             props:
               type: histogram2dcontour
-              x: query(x)
-              y: query(y)
+              x: ?{x}
+              y: ?{y}
               xbins:
                 size: 1
               ybins:

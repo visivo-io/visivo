@@ -15,13 +15,13 @@ traces:
     model: ref(vertical_threshold_data)
     props:
       type: scatter
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       mode: lines
       line:
         color: green
-    order_by: 
-      - query( x asc )
+    order_by:
+      - ?{ x asc }
 
 charts:
   - name: Vertical Threshold Example

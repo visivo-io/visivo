@@ -46,13 +46,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
               type: parcoords
               dimensions:
                 - label: "Variable 1"
-                  values: query(variable_1)
+                  values: ?{variable_1}
                 - label: "Variable 2"
-                  values: query(variable_2)
+                  values: ?{variable_2}
                 - label: "Variable 3"
-                  values: query(variable_3)
+                  values: ?{variable_3}
               line:
-                color: query(variable_3)
+                color: ?{variable_3}
                 colorscale: "Viridis"
         charts:
           - name: Simple Parcoords Chart
@@ -88,16 +88,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
               type: parcoords
               dimensions:
                 - label: "Variable 1"
-                  values: query(variable_1)
+                  values: ?{variable_1}
                   range: [5, 15]
                 - label: "Variable 2"
-                  values: query(variable_2)
+                  values: ?{variable_2}
                   range: [10, 30]
                 - label: "Variable 3"
-                  values: query(variable_3)
+                  values: ?{variable_3}
                   range: [15, 35]
               line:
-                color: query(variable_3)
+                color: ?{variable_3}
                 colorscale: "Blues"
         charts:
           - name: Parcoords Chart with Custom Ranges
@@ -133,13 +133,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
               type: parcoords
               dimensions:
                 - label: "Variable 1"
-                  values: query(variable_1)
+                  values: ?{variable_1}
                 - label: "Variable 2"
-                  values: query(variable_2)
+                  values: ?{variable_2}
                 - label: "Variable 3"
-                  values: query(variable_3)
+                  values: ?{variable_3}
               line:
-                color: query(variable_3)
+                color: ?{variable_3}
                 colorscale: "Jet"
         charts:
           - name: Parcoords Chart with Custom Colorscale

@@ -21,13 +21,13 @@ traces:
     cohort_on: category
     props:
       type: bar
-      x: query( 1 )
-      y: query(value) 
+      x: ?{ 1 }
+      y: ?{value}
       hovertemplate: "%{fullData.marker.color}<extra></extra>"
       orientation: h
 
 charts:
-# {% for palette in palettes %}
+  # {% for palette in palettes %}
   - name: "{{ palette }}"
     traces:
       - ref(Color Palette Example)
@@ -43,13 +43,25 @@ charts:
           text: "Order"
         dtick: 1
       showlegend: false
-# {% endfor %}
+  # {% endfor %}
 
   - name: Custom Colors Example
     traces:
       - ref(Color Palette Example)
     layout:
-      colorway: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#800000', '#008000', '#000080', '#808000']
+      colorway:
+        [
+          "#FF0000",
+          "#00FF00",
+          "#0000FF",
+          "#FFFF00",
+          "#FF00FF",
+          "#00FFFF",
+          "#800000",
+          "#008000",
+          "#000080",
+          "#808000",
+        ]
       title:
         text: Custom Color Palette
       xaxis:
@@ -68,22 +80,22 @@ dashboards:
         items:
           - markdown: |
               # Color Palettes in Visivo
-              
+
               This dashboard demonstrates the various predefined color palettes available in Visivo,
               as well as how to use custom color palettes.
-# {% for palette in palettes %}
-# {% if loop.index0 % 2 == 0 %}
+      # {% for palette in palettes %}
+      # {% if loop.index0 % 2 == 0 %}
       - height: medium
         items:
-# {% endif %}
+          # {% endif %}
           - chart: ref({{ palette }})
-# {% endfor %}
+      # {% endfor %}
       - height: medium
         items:
           - chart: ref(Custom Colors Example)
           - markdown: |
               ### Using Custom Color Palettes
-              
+
               You can define your own color palettes using a list of hex color codes:
               ```yaml
               layout:

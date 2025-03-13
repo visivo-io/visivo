@@ -34,7 +34,7 @@ def test_Core_Parser_with_one_of_each_project():
                             "type": "postgresql",
                         },
                     },
-                    "props": {"type": "scatter", "x": "query(x)", "y": "query(y)"},
+                    "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
                 }
             ],
         },

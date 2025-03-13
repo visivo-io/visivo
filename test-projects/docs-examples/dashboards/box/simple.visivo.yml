@@ -19,8 +19,8 @@ traces:
     model: ref(sample-data)
     props:
       type: box
-      x: query(category)
-      y: query(value)
+      x: ?{category}
+      y: ?{value}
       boxpoints: "all"
       jitter: 1
       pointpos: -1.1

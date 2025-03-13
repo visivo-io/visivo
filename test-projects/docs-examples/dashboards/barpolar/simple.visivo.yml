@@ -17,12 +17,12 @@ traces:
     model: ref(activity-data)
     props:
       type: barpolar
-      r: query(activity_level)
-      theta: query(direction)
+      r: ?{activity_level}
+      theta: ?{direction}
       marker:
         color: "#1f77b4"
     order_by:
-      - query(direction)
+      - ?{direction}
 charts:
   - name: Activity Level Polar Chart
     traces:
@@ -36,9 +36,9 @@ charts:
           dtick: 2
         angularaxis:
           rotation: 180
-      margin: 
-        l: 0 
-        r: 0 
+      margin:
+        l: 0
+        r: 0
         b: 40
       title:
         text: Simple Barpolar Chart<br><sub>Activity Level by Direction</sub>

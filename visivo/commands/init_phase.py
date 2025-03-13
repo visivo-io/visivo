@@ -118,7 +118,10 @@ def init_phase():
         project = click.prompt("? BigQuery project", type=str)
         dataset = click.prompt("? BigQuery dataset", type=str)
         credentials_base64 = click.prompt(
-            "? base64 encoded credentials", type=str, hide_input=True, confirmation_prompt=True
+            "? base64 encoded credentials",
+            type=str,
+            hide_input=True,
+            confirmation_prompt=True,
         )
         fp = open(f"{project_name}/.env", "w+")
         fp.write(f"DB_PASSWORD={credentials_base64}")
@@ -131,7 +134,9 @@ def init_phase():
             credentials_base64=credentials_base64,
         )
     if source_type == duckdb_type:
-        database = click.prompt("? Database file path", type=str, default=f"{project_name}/local.db")
+        database = click.prompt(
+            "? Database file path", type=str, default=f"{project_name}/local.db"
+        )
         source = DuckdbSource(
             name="Example Source",
             database=database,
@@ -145,7 +150,7 @@ def init_phase():
     Logger.instance().debug("Generating project, gitignore & env files")
 
     model = SqlModel(name="Example Model", sql="select * from test_table")
-    props = Scatter(type="scatter", x="query(x)", y="query(y)")
+    props = Scatter(type="scatter", x="query(x)", y="?{y}")
     trace = Trace(name="Example Trace", model=model, props=props, changed=None)
     chart = Chart(name="Example Chart", traces=[trace])
     item = Item(chart=chart)

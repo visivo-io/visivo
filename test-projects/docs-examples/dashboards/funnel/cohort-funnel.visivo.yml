@@ -22,14 +22,14 @@ traces:
     cohort_on: product
     props:
       type: funnel
-      y: query(stage)
-      x: query(value)
+      y: ?{stage}
+      x: ?{value}
       textinfo: "value+percent previous"
       marker:
         colorscale: "Viridis"
-    order_by: 
-      - query( product )
-      - query( value desc)
+    order_by:
+      - ?{ product }
+      - ?{ value desc}
 charts:
   - name: Funnel Chart with Cohorts
     traces:
@@ -37,5 +37,5 @@ charts:
     layout:
       title:
         text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>
-      margin: 
+      margin:
         l: 100

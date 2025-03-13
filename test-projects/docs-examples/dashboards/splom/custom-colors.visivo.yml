@@ -16,13 +16,13 @@ traces:
       type: splom
       dimensions:
         - label: "Variable 1"
-          values: query(var1)
+          values: ?{var1}
         - label: "Variable 2"
-          values: query(var2)
+          values: ?{var2}
         - label: "Variable 3"
-          values: query(var3)
+          values: ?{var3}
       marker:
-        color: query(case when category = 'A' THEN 'red' else 'green' end)
+        color: ?{case when category = 'A' THEN 'red' else 'green' end}
         size: 20
 charts:
   - name: Splom Chart with Custom Colors

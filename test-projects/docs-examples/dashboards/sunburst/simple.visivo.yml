@@ -16,9 +16,9 @@ traces:
     model: ref(sunburst-data)
     props:
       type: sunburst
-      labels: query(labels)
-      parents: query(parents)
-      values: query("values")
+      labels: ?{labels}
+      parents: ?{parents}
+      values: ?{"values"}
 charts:
   - name: Simple Sunburst Chart
     traces:

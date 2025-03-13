@@ -50,15 +50,15 @@ _**Check out the [Attributes](../configuration/Trace/Props/Volume/#attributes) f
             model: ref(isosurface-data-simple)
             props:
               type: isosurface
-              x: query(x)
-              y: query(y)
-              z: query(z)
-              value: query(value)
+              x: ?{x}
+              y: ?{y}
+              z: ?{z}
+              value: ?{value}
               isomin: 2 
               isomax: 6 
               colorscale: "Reds"
             order_by: 
-              - query( idx asc )
+              - ?{ idx asc }
         charts:
           - name: Simple Isosurface Chart
             traces:

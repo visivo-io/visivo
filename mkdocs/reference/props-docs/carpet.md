@@ -47,9 +47,9 @@ _**Check out the [Attributes](../configuration/Trace/Props/Carpet/#attributes) f
             model: ref(carpet-data-axes)
             props:
               type: carpet
-              a: query(a)
-              b: query(b)
-              y: query(y)
+              a: ?{a}
+              b: ?{b}
+              y: ?{y}
               aaxis:
                 title:
                   text: "Custom A Axis"

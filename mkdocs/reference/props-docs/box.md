@@ -52,8 +52,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
             model: ref(sample-data)
             props:
               type: box
-              x: query(category)
-              y: query(value)
+              x: ?{category}
+              y: ?{value}
               boxpoints: "all"
               jitter: 1
               pointpos: -1.1
@@ -92,8 +92,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
             cohort_on: "person"
             props:
               type: box
-              y: query(person)
-              x: query(reward_gbp)
+              y: ?{person}
+              x: ?{reward_gbp}
               boxpoints: "all"
               jitter: 1
               pointpos: -1.1
@@ -130,8 +130,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
             cohort_on: "person"
             props:
               type: box
-              y: query(proclamations_made)
-              x: query(enemy_encountered) 
+              y: ?{proclamations_made}
+              x: ?{enemy_encountered} 
 
         charts:
           - name: Proclamations Box Plot with Outliers

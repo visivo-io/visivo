@@ -24,6 +24,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize from 'rehype-sanitize'
 
+
 const Table = ({ table, project, itemWidth, height, width }) => {
     const isDirectQueryResult = table.traces[0]?.data !== undefined;
     // Always call the hook, but with empty array if it's a direct query

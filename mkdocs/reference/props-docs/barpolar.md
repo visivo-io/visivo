@@ -51,12 +51,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
             model: ref(activity-data)
             props:
               type: barpolar
-              r: query(activity_level)
-              theta: query(direction)
+              r: ?{activity_level}
+              theta: ?{direction}
               marker:
                 color: "#1f77b4"
             order_by:
-              - query(direction)
+              - ?{direction}
         charts:
           - name: Activity Level Polar Chart
             traces:
@@ -129,15 +129,15 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
                 end 
             props:
               type: barpolar
-              r: query(count)
-              theta: query(direction)
-              text: query(speed)
+              r: ?{count}
+              theta: ?{direction}
+              text: ?{speed}
               marker:
                 color: column(bar_color)
                 opacity: .85
               hoverinfo: "theta+r+name"
             order_by: 
-              - query(cardinal_order)
+              - ?{cardinal_order}
         charts:
           - name: Wind Rose Chart
             traces:
@@ -184,13 +184,13 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
             model: ref(custom-radial-data)
             props:
               type: barpolar
-              theta: query(direction)
+              theta: ?{direction}
               width: 30
               marker:
                 color: "#d62728"
               opacity: 0.8
             order_by:
-              - query(direction)
+              - ?{direction}
         charts:
           - name: Custom Radial Barpolar Chart
             traces:

@@ -39,11 +39,11 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
             cohort_on: "person"
             props:
               type: bar 
-              x: query(enemy_encountered)
-              y: query( count(*) )
-              text: query( count(*) )
+              x: ?{enemy_encountered}
+              y: ?{ count(*) }
+              text: ?{ count(*) }
             order_by: 
-              - query( count(*) desc)
+              - ?{ count(*) desc}
         charts: 
           - name: Count Times Enemy Was Encountered by Knight
             traces: 
@@ -70,11 +70,11 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
             cohort_on: "person"
             props:
               type: bar 
-              x: query(enemy_encountered)
-              y: query( count(*) )
-              text: query( count(*) )
+              x: ?{enemy_encountered}
+              y: ?{ count(*) }
+              text: ?{ count(*) }
             order_by: 
-              - query( count(*) desc)
+              - ?{ count(*) desc}
 
         charts: 
           - name: Count Times Enemy Was Encountered by Knight
@@ -104,15 +104,15 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
             cohort_on: "person"
             props:
               type: bar 
-              y: query(enemy_encountered)
-              x: query( count(*) )
-              text: query( count(*) )
+              y: ?{enemy_encountered}
+              x: ?{ count(*) }
+              text: ?{ count(*) }
               textposition: outside
               textfont:
                 size: 15
               orientation: h
             order_by: 
-              - query( count(*) desc)
+              - ?{ count(*) desc}
 
         charts: 
           - name: Count Times Enemy Was Encountered by Knight H

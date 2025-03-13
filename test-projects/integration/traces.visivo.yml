@@ -14,9 +14,9 @@ traces:
     props:
       type: surface
       z:
-        - query(x*x+30)
-        - query(y*y+30)
-        - query(x*y*y+40)
+        - ?{x*x+30}
+        - ?{y*y+30}
+        - ?{x*y*y+40}
 
   - name: Indicator Trace
     model: ref(csv)
@@ -39,14 +39,14 @@ traces:
   - name: funnel trace
     model: ref(test table)
     order_by:
-      - query(x desc)
+      - ?{x desc}
     props:
       type: funnel
-      y: query( 'Position:' || x)
-      x: query(y)
+      y: ?{ 'Position:' || x}
+      x: ?{y}
       textinfo: "percent initial"
       marker:
-        color: query( case when y >= 12 then '#713B57' else 'grey' end )
+        color: ?{ case when y >= 12 then '#713B57' else 'grey' end }
         opacity: .2
       textfont:
         color: "white"
@@ -59,12 +59,12 @@ traces:
     model: ref(test table)
     props:
       type: bar
-      x: query( CASE WHEN x <= 3 THEN 'less' else 'More' END )
-      y: query( avg(y) )
+      x: ?{ CASE WHEN x <= 3 THEN 'less' else 'More' END }
+      y: ?{ avg(y) }
       marker:
         color: ["rgb(142,124,195)", "rgba(204,204,204,1)"]
         line:
-          color: query(CASE WHEN x <= 3 THEN '#D25946' else '#191D33' END)
+          color: ?{CASE WHEN x <= 3 THEN '#D25946' else '#191D33' END}
           width: 2.5
         pattern:
           shape: ["/", ""]
@@ -75,17 +75,17 @@ traces:
 
   - name: Simple Line
     model: ref(join_table)
-    cohort_on: query( CASE WHEN y >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END )
+    cohort_on: ?{ CASE WHEN y >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
     props:
       type: bar
-      x: query(x)
-      y: query(y)
+      x: ?{x}
+      y: ?{y}
       marker:
-        color: query( case when x >= 5 then '#713B57' else 'grey' end )
+        color: ?{ case when x >= 5 then '#713B57' else 'grey' end }
         pattern:
-          shape: query( case when x = 5 then '/' when x = 6 THEN 'x' else '' end )
+          shape: ?{ case when x = 5 then '/' when x = 6 THEN 'x' else '' end }
         line:
-          width: query( Case when x in (5,6) then 2.5 else null end)
+          width: ?{ Case when x in (5,6) then 2.5 else null end}
     tests:
       - assertions:
           - ">{ ${ref(Simple Line).props.x[0]} == 5 }"
@@ -94,12 +94,12 @@ traces:
   - name: 3d Line One
     model: ref(test table)
     order_by:
-      - query(x asc)
+      - ?{x asc}
     props:
       type: scatter3d
-      x: query(x)
-      y: query(y)
-      z: query( -2*(x/16)*x + x + y*(y-3))
+      x: ?{x}
+      y: ?{y}
+      z: ?{ -2*(x/16)*x + x + y*(y-3)}
     tests:
       - assertions:
           - ">{ ${ref(3d Line One).props.x[1]} == 2 }"
@@ -108,18 +108,18 @@ traces:
   - name: 3d Line Two
     model: ref(test table)
     order_by:
-      - query(x asc)
+      - ?{x asc}
     filters:
-      - query(x>1)
+      - ?{x>1}
     props:
       type: scatter3d
-      x: query(x)
-      y: query(y)
-      z: query( (-3*(x/16)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y)
+      x: ?{x}
+      y: ?{y}
+      z: ?{ (-3*(x/16)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y}
 
   - name: Fibonacci Waterfall
     model: ref(waterfall_model)
-    cohort_on: query( year)
+    cohort_on: ?{ year}
     columns:
       x_data: category
       y_data: try_cast( replace(thousands_dollars, ',', '') as float ) * try_cast(sign as float)
@@ -130,7 +130,7 @@ traces:
       measure: column(measure)
       x: column(x_data)
       y: column(y_data)
-      text: query( cast(thousands_dollars as text) )
+      text: ?{ cast(thousands_dollars as text) }
       increasing:
         marker:
           color: "#b97a9b"
@@ -138,8 +138,8 @@ traces:
         marker:
           color: "#edbdb5"
     order_by:
-      - query(row asc)
+      - ?{row asc}
     filters:
-      - query( waterfall is not null )
-      - query( category not in ('Earnings From Continuing Operations') )
-      - query( year in ('Sep 2023', 'Sep 2022') )
+      - ?{ waterfall is not null }
+      - ?{ category not in ('Earnings From Continuing Operations') }
+      - ?{ year in ('Sep 2023', 'Sep 2022') }

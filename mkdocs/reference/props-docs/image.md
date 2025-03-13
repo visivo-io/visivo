@@ -44,7 +44,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
             model: ref(image-data)
             props:
               type: image
-              z: query(z)
+              z: ?{z}
         charts:
           - name: Simple Image Chart
             traces:
@@ -77,7 +77,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
             model: ref(image-data-custom)
             props:
               type: image
-              z: query(z)
+              z: ?{z}
               colorscale: "Viridis"
         charts:
           - name: Image Plot with Custom Colorscale
@@ -111,7 +111,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
             model: ref(image-data-annotated)
             props:
               type: image
-              z: query(z)
+              z: ?{z}
         charts:
           - name: Image Plot with Axis Annotations
             traces:

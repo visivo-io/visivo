@@ -16,10 +16,10 @@ traces:
     cohort_on: category
     props:
       type: violin
-      y: query(category)
-      x: query(value)
+      y: ?{category}
+      x: ?{value}
       orientation: h
-      box: 
+      box:
         visible: true
       points: "all"
       marker:

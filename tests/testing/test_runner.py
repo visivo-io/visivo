@@ -19,8 +19,8 @@ def test_TestQueryStringFactory_errors(capsys):
         "name": "two_test_trace",
         "props": {
             "type": "scatter",
-            "x": "query(x)",
-            "y": "query(y)",
+            "x": "?{x}",
+            "y": "?{y}",
         },
         "model": {"sql": "select * from test_table", "source": "ref(source)"},
         "tests": [

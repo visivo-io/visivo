@@ -1,4 +1,5 @@
 from visivo.models.base.context_string import ContextString
+from visivo.models.dag import show_dag_fig
 from visivo.models.models.model import Model
 from visivo.models.row import Row
 from visivo.models.selector import Selector
@@ -94,24 +95,31 @@ def test_context_source_Project_dag():
     assert source in model.descendants_of_type(type=Source, dag=dag)
 
 
-def test_ref_selector_Project_dag():
+def test_ref_selector_Project_dag_has_one_selector():
     project = ProjectFactory(table_ref=True)
     item = ItemFactory()
     item.chart.selector = "ref(selector)"
+    item.chart.traces[0].name = "trace 2"
     project.dashboards[0].rows[0].items = [item]
+
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 10
+    assert len(project.descendants()) == 11
     assert project.descendants_of_type(type=Selector) == [project.tables[0].selector]
-    assert project.descendants_of_type(type=Trace) == [project.tables[0].traces[0]]
+    assert project.descendants_of_type(type=Trace) == [
+        project.tables[0].traces[0],
+        item.chart.traces[0],
+    ]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
+    assert project.descendants_of_type(type=Chart) == [item.chart]
 
 
 def test_ref_selector_item_Project_dag():
     project = ProjectFactory(table_ref=True)
     item = ItemFactory()
     item.chart.selector = "ref(selector)"
+    item.chart.traces[0].name = "trace 2"
     project.dashboards[0].rows[0].items = [item]
     project.tables[0].selector = "ref(selector)"
     selector = SelectorFactory()
@@ -119,10 +127,13 @@ def test_ref_selector_item_Project_dag():
     dag = project.dag()
 
     assert networkx.is_directed_acyclic_graph(dag)
-    assert len(project.descendants()) == 10
+    assert len(project.descendants()) == 11
     assert project.descendants_of_type(type=Selector) == project.selectors
-    assert project.descendants_of_type(type=Trace) == project.tables[0].traces
-    assert project.descendants_of_type(type=Table) == project.tables
+    assert project.descendants_of_type(type=Trace) == [
+        project.tables[0].traces[0],
+        item.chart.traces[0],
+    ]
+    assert project.descendants_of_type(type=Table) == [project.tables[0]]
     assert project.descendants_of_type(type=Chart) == [
         project.dashboards[0].rows[0].items[0].chart
     ]
