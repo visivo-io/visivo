@@ -21,6 +21,25 @@ const EditorPanel = () => {
   
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;
+
+  // Add ref for scroll container
+  const scrollRef = React.useRef(null);
+  const [scrollPosition, setScrollPosition] = React.useState(0);
+
+  // Save scroll position before update
+  const handleScroll = React.useCallback(() => {
+    if (scrollRef.current) {
+      setScrollPosition(scrollRef.current.scrollTop);
+    }
+  }, []);
+
+  // Restore scroll position after update
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollPosition;
+    }
+  }, [scrollPosition, activeConfig]);
+
   return (
     <div className="flex-1 bg-white border-b border-gray-200 p-4 overflow-hidden flex flex-col min-h-0">
       <div className="flex items-center border-b border-gray-200 mb-4 overflow-x-auto">
@@ -51,10 +70,14 @@ const EditorPanel = () => {
           ))}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto min-h-0"
+      >
         {activeTabId && activeConfig ? (
           <ObjectComponent 
-            key={`${activeTab.name}-${JSON.stringify(activeConfig)}`}
+            key={activeTab.name}
             data={activeConfig} 
             path={[activeTab.name]} 
           />
