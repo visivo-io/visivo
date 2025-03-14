@@ -73,7 +73,7 @@ const ObjectsPanel = () => {
           <div className="text-gray-500 text-sm">No objects found</div>
         ) : (
           filteredObjects.map(name => (
-            <div className="mb-2 mr-1 ml-1">
+            <div key={name} className="mb-2 mr-1 ml-1">
               <ObjectPill 
                 key={name}
                 name={name}

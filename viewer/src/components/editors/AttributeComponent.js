@@ -1,5 +1,5 @@
 import useStore from '../../stores/store'; // Adjust path to Zustand store
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import debounce from 'lodash/debounce'; // You'll need to install lodash if not already present
 import ObjectPill from './ObjectPill'; // You'll need to create this component if it doesn't exist
 
@@ -28,10 +28,16 @@ function AttributeComponent({ name, value, path,}) {
 
   // Create a debounced update function
   const debouncedUpdate = useCallback(
-    debounce((newValue) => {
+    (newValue) => {
       updateNamedChildAttribute(path, newValue);
-    }, 300), // 300ms delay
-    [path]
+    },
+    [path, updateNamedChildAttribute]
+  );
+
+  // Create the debounced version outside the callback
+  const debouncedUpdateFn = useMemo(
+    () => debounce(debouncedUpdate, 300),
+    [debouncedUpdate]
   );
 
   // Update local value immediately but debounce the store update
@@ -39,7 +45,7 @@ function AttributeComponent({ name, value, path,}) {
     const newValue = e.target.value;
     setLocalValue(newValue);
     checkAndParseJson(newValue);
-    debouncedUpdate(newValue);
+    debouncedUpdateFn(newValue);
   };
 
   // Sync local value when prop value changes
@@ -51,9 +57,9 @@ function AttributeComponent({ name, value, path,}) {
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
-      debouncedUpdate.cancel();
+      debouncedUpdateFn.cancel();
     };
-  }, [debouncedUpdate]);
+  }, [debouncedUpdateFn]);
 
   // Determine flex direction based on name type
   const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
