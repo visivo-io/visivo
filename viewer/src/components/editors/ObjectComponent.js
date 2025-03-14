@@ -20,9 +20,9 @@ function ObjectComponent({ name, data, path }) {
   
   // Combine the sorted non-object entries with object entries
   return (
-    <div className="flex flex-col rounded-md gap-1">
+    <div className="flex flex-col p-1  rounded-md ">
       {name && isNaN(parseInt(name)) && typeof name === 'string' && (
-        <div className="text-md font-medium text-yellow-800">{name}</div>
+        <div className="text-md font-medium pb-1 text-yellow-800">{name}</div>
       )}
       
       
@@ -35,7 +35,7 @@ function ObjectComponent({ name, data, path }) {
             return (
                 <div
                 key={key}
-                className="border-gray-200 border bg-red-50 p-3 rounded-md text-" 
+                className="border-gray-200 border bg-red-50 pl-2 pr-2 pb-2 mb-2 rounded-md text-" 
                 style={{ minWidth: '30px', maxWidth: '400px', flex: '1 0 auto' }}
                 >
                 {renderValue(key, value, childPath)}
@@ -57,7 +57,7 @@ function ObjectComponent({ name, data, path }) {
             return (
                 <div
                 key={key}
-                className="border-gray-400 border bg-blue-50 p-4 rounded-lg  shadow"
+                className="border-gray-400 border bg-blue-50 pb-2 pr-2 pl-2 rounded-lg  shadow"
                 style={{ width: `${sizeFactor}px`, minWidth: '200px' }}
                 >
                 {renderValue(key, value, childPath)}

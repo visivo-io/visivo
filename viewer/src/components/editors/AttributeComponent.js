@@ -70,7 +70,7 @@ function AttributeComponent({ name, value, path,}) {
       
       {isJsonObject && parsedObject ? (
         
-          <ObjectPill name={parsedObject.name} />
+          <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
         
       ) : (
         <input
