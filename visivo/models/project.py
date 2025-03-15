@@ -49,7 +49,7 @@ class Project(NamedModel, ParentModel):
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
-    dashboards: List[DashboardField] = []\
+    dashboards: List[DashboardField] = []
 
 
     def child_items(self) -> List:
@@ -76,13 +76,16 @@ class Project(NamedModel, ParentModel):
                     is_named = False
             else:
                 is_named = False
-            if is_named and Project.is_project_child(node):
+            if is_named and (Project.is_project_child(node) or isinstance(node, Project)):
+                #TODO: Need to pull in the project file path from the parse phase and store it as a field so we cna use it here. 
                 fully_referenced_model_dump = Project._fully_referenced_model_dump(node)
                 file_path = fully_referenced_model_dump.pop("file_path", "Not Found")
+                path = fully_referenced_model_dump.pop("path", "Not Found")
                 contents = {
                     "type": node.__class__.__name__,
                     "config": fully_referenced_model_dump, 
-                    "file_path": file_path
+                    "file_path": file_path,
+                    "path": path
                 }
                 named_nodes[node.name] = contents
 

@@ -25,7 +25,7 @@ const useStore = create(devtools((set, get) => ({
       if (data) {
         for (const key in data) {
             if (data.hasOwnProperty(key)) {
-                data[key].updated = false;
+                data[key].status = "Unchanged";
             }
         }
         set({ namedChildren: data, isLoading: false });
@@ -63,7 +63,7 @@ const useStore = create(devtools((set, get) => ({
           [childName]: {
             ...childToUpdate,
             config: configToUpdate,
-            updated: true
+            status: 'Modified'
           }
         }
       };
