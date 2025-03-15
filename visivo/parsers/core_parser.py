@@ -1,5 +1,5 @@
 from deepmerge import always_merger
-from typing import List
+from typing import Dict, List
 from pathlib import Path
 from pydantic import ValidationError
 from visivo.parsers.line_validation_error import LineValidationError
@@ -36,24 +36,43 @@ class CoreParser:
     def __merged_project_data(self):
         project_data = self.project_file_data()
 
-        data_files = []
+        data_files = {}
         for file in self.files:
             if file == self.project_file:
                 continue
-            data_files.append(load_yaml_file(file))
+            data_files[file] = load_yaml_file(file)
 
         return self.__merge_data_into_project(
             project_data=project_data, data_files=data_files
         )
 
-    def __merge_data_into_project(self, project_data: dict, data_files: List[dict]):
-        for data_file in data_files:
+    def __merge_data_into_project(self, project_data: dict, data_files: dict):
+        for file_path, data_file in data_files.items():
             for key_to_merge in PROJECT_CHILDREN.copy():
                 if key_to_merge in data_file:
                     base_merge = []
                     if key_to_merge in project_data:
                         base_merge = project_data[key_to_merge]
+                        self.__recursively_add_file_path(
+                            base_merge, 
+                            file_path
+                        )
                     project_data[key_to_merge] = always_merger.merge(
                         base_merge, data_file[key_to_merge]
                     )
         return project_data
+    
+    def __recursively_add_file_path(self, obj, file_path:str):
+        """
+        Modifies the input object by adding the file path to the named model objects.
+        """
+        if isinstance(obj, dict):
+            if obj.get("name") is not None:
+                obj["file_path"] = str(file_path)
+            for value in obj.values():
+                self.__recursively_add_file_path(value, file_path)
+        elif isinstance(obj, list):
+            for item in obj:
+                self.__recursively_add_file_path(item, file_path)
+        else: 
+            pass 

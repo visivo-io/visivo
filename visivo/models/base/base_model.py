@@ -63,8 +63,6 @@ class BaseModel(PydanticBaseModel):
 
     path: Optional[str] = Field(None, description="A unique path to this object")
 
-    file: Optional[str] = Field(None, description="The path to the file that this object is defined in")
-
     def id(self):
         return self.path
 

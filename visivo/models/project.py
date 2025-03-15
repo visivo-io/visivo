@@ -77,9 +77,12 @@ class Project(NamedModel, ParentModel):
             else:
                 is_named = False
             if is_named and Project.is_project_child(node):
+                fully_referenced_model_dump = Project._fully_referenced_model_dump(node)
+                file_path = fully_referenced_model_dump.pop("file_path", "Not Found")
                 contents = {
                     "type": node.__class__.__name__,
-                    "config": Project._fully_referenced_model_dump(node)
+                    "config": fully_referenced_model_dump, 
+                    "file_path": file_path
                 }
                 named_nodes[node.name] = contents
 
