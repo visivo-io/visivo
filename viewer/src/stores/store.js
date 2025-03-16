@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware'
 import { fetchNamedChildren } from '../api/namedChildren';
 import { updateNestedValue } from './utils';
+
 const useStore = create(devtools((set, get) => ({
   projectData: {}, // Holds the fetched project data
   setProjectData: (data) => set({ projectData: data }),
@@ -14,6 +15,50 @@ const useStore = create(devtools((set, get) => ({
   // New tab-related state
   tabs: [],
   activeTabId: null,
+  
+  // Write modified files
+  writeModifiedFiles: async () => {
+    const state = get();
+    const modifiedItems = Object.entries(state.namedChildren)
+      .filter(([_, value]) => value.status !== "Unchanged");
+      
+    if (modifiedItems.length === 0) return;
+    
+    set({ isLoading: true, error: null });
+    
+    try {
+      // Make API call to write files
+      const response = await fetch('/api/write-files', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(modifiedItems),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to write files');
+      }
+      
+      // Update status of written items to Unchanged
+      const updatedNamedChildren = { ...state.namedChildren };
+      modifiedItems.forEach(([key]) => {
+        updatedNamedChildren[key] = {
+          ...updatedNamedChildren[key],
+          status: "Unchanged"
+        };
+      });
+      
+      set({ 
+        namedChildren: updatedNamedChildren,
+        isLoading: false 
+      });
+      
+    } catch (error) {
+      console.error('Error writing files:', error);
+      set({ error: error.message || 'Failed to write files', isLoading: false });
+    }
+  },
   
   // Fetch actions for namedChildren
   fetchNamedChildren: async () => {
