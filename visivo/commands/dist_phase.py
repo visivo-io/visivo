@@ -34,6 +34,9 @@ def dist_phase(output_dir, dist_dir):
                     }
                 )
             )
+        with open(f"{dist_dir}/_redirects", "w") as f:
+            f.write("/*    /index.html   200")
+
         with open(f"{dist_dir}/data/error.json", "w") as f:
             f.write(json.dumps({}))
         with open(f"{dist_dir}/data/project_history.json", "w") as f:
