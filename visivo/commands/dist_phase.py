@@ -19,7 +19,6 @@ def dist_phase(output_dir, dist_dir):
     try:
         thumbnail_dir = get_dashboards_dir(output_dir)
         if os.path.exists(thumbnail_dir):
-            print(f"Copying thumbnail directory: {thumbnail_dir}")
             dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboards")
             shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
 
