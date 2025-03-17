@@ -22,7 +22,7 @@ jobs:
       
       - name: Install visivo
         run: | 
-          pip install visivo
+          python -m pip install git+https://github.com/visivo-io/visivo.git@main
       
       - name: Install playwright
         run: |
