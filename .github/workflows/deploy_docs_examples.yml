@@ -14,6 +14,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
       
       - name: Install Python
         uses: actions/setup-python@v5
@@ -22,7 +27,7 @@ jobs:
       
       - name: Install visivo
         run: | 
-          pip install visivo
+          python -m pip install git+https://github.com/visivo-io/visivo.git@main
       
       - name: Install playwright
         run: |
@@ -35,12 +40,13 @@ jobs:
           visivo compile
           visivo run -tm all
           visivo dist
+          cd ../..
           
-      - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v3.0
-        with:
-          publish-dir: './test-projects/docs-examples/dist'
-          production-deploy: true
+      - name: Deploy to Netlify via CLI
+        run: |
+          cd test-projects/docs-examples/dist
+          npm install -g netlify-cli@latest
+          netlify deploy --prod --dir . --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN_JARED }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_DOCS_EXAMPLES }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NEW_NETLIFY_JARED_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: 205cbb07-07a8-49ba-92af-0ffb25b47451
