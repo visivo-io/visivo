@@ -98,6 +98,8 @@ def compile_phase(
         Logger.instance().info(f"Trace queries written in {traces_duration}s")
 
     total_duration = round(time() - compile_import_start, 2)
+    with open(f"{output_dir}/error.json", "w") as error_file:
+        error_file.write(json.dumps({}))
     Logger.instance().success(
         f"Compile completed in {total_duration}s "
         f"(imports: {import_duration}s, "
