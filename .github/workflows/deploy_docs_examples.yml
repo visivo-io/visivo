@@ -43,6 +43,7 @@ jobs:
           
       - name: Deploy to Netlify via CLI
         run: |
+          npm install -g netlify-cli@latest
           npx netlify deploy --prod --dir "$PUBLISH_DIR" --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NEW_NETLIFY_JARED_AUTH_TOKEN }}
