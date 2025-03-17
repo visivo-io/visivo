@@ -40,12 +40,13 @@ jobs:
           visivo compile
           visivo run -tm all
           visivo dist
+          cd ../..
           
       - name: Deploy to Netlify via CLI
         run: |
+          cd test-projects/docs-examples/dist
           npm install -g netlify-cli@latest
-          npx netlify deploy --prod --dir "$PUBLISH_DIR" --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
+          netlify deploy --prod --dir . --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NEW_NETLIFY_JARED_AUTH_TOKEN }}
           NETLIFY_SITE_ID: 205cbb07-07a8-49ba-92af-0ffb25b47451
-          PUBLISH_DIR: './test-projects/docs-examples/dist'
