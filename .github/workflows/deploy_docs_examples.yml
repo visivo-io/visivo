@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    
 permissions:
   contents: write
 jobs:
@@ -17,14 +19,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10' 
+      
+      - name: Install visivo
+        run: | 
+          pip install visivo
+      
+      - name: Install playwright
+        run: |
+          pip install playwright
+          python -m playwright install webkit --with-deps
 
       - name: Install and Build
         run: |
-          pip install visivo
           cd test-projects/docs-examples
-          visivo run
+          visivo compile
+          visivo run -tm all
           visivo dist
-          cp _redirects dist
           
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
