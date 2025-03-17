@@ -69,6 +69,15 @@ def flask_app(output_dir, dag_filter, project):
             return jsonify(named_children)
         else:
             return jsonify({})
+        
+    @app.route("/api/project/write_changes", methods = ["POST"])
+    def write_changes():
+        from time import sleep
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided"}), 400
+        sleep(3)
+        return jsonify({"message": "Changes written successfully"}), 200
     
 
     @app.route("/api/query/<project_id>", methods=["POST"])

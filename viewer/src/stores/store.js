@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware'
-import { fetchNamedChildren } from '../api/namedChildren';
+import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
 import { updateNestedValue } from './utils';
 
 const useStore = create(devtools((set, get) => ({
@@ -11,6 +11,7 @@ const useStore = create(devtools((set, get) => ({
   namedChildren: {},
   isLoading: false,
   error: null,
+  writeError: null,
   
   // New tab-related state
   tabs: [],
@@ -24,19 +25,13 @@ const useStore = create(devtools((set, get) => ({
       
     if (modifiedItems.length === 0) return;
     
-    set({ isLoading: true, error: null });
-    
     try {
       // Make API call to write files
-      const response = await fetch('/api/write-files', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(modifiedItems),
-      });
+      const response = await writeNamedChildren(state.namedChildren);
+      console.log('writeNamedChildren response', response);
+      console.log('writeNamedChildren response', response.status);
       
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error('Failed to write files');
       }
       
@@ -54,9 +49,9 @@ const useStore = create(devtools((set, get) => ({
         isLoading: false 
       });
       
-    } catch (error) {
-      console.error('Error writing files:', error);
-      set({ error: error.message || 'Failed to write files', isLoading: false });
+    } catch (e) {
+      console.error('Error writing files:', e);
+      set({ writeError: e.message || 'Failed to write files', isLoading: false });
     }
   },
   

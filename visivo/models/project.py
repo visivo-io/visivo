@@ -83,8 +83,10 @@ class Project(NamedModel, ParentModel):
                 path = fully_referenced_model_dump.pop("path", "Not Found")
                 contents = {
                     "type": node.__class__.__name__,
+                    "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),
                     "config": fully_referenced_model_dump, 
                     "file_path": file_path,
+                    "new_file_path": file_path,
                     "path": path
                 }
                 named_nodes[node.name] = contents
@@ -308,6 +310,22 @@ class Project(NamedModel, ParentModel):
             is_match = search(search_str, str(project_child_objects)) is not None
             return is_match
         return False
+
+    @classmethod
+    def get_key_for_project_child_class(cls, project_child_class: str) -> str:
+        """
+        Accepts an object and returns True if it is a child of the project. 
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        for key, value in project_child_objects.items():
+            search_str = rf"[\s\[]{project_child_class}[,\]]"
+            is_match = search(search_str, str(value)) is not None
+            if is_match:
+                return key
+        if project_child_class == "Project":
+            return "na"
+        raise ValueError(f"Project child class '{project_child_class}' not found in project")
 
     @classmethod
     def traverse_names(cls, names, object):

@@ -1,0 +1,1295 @@
+{
+  "3d Line One": {
+    "config": {
+      "changed": true,
+      "model": "{\"name\": \"test table\", \"is_inline_defined\": false, \"original_value\": \"ref(test table)\"}",
+      "name": "3d Line One",
+      "order_by": [
+        "query(x asc)"
+      ],
+      "props": {
+        "type": "scatter3d",
+        "x": "query(x)",
+        "y": "query(y)",
+        "z": "query( -2*(x/16)*x + x + y*(y-3))"
+      },
+      "tests": [
+        {
+          "assertions": [
+            ">{ ${ref(3d Line One).props.x[1]} == 2 }",
+            ">{ ${ref(3d Line One).props.y[1]} == 1 }"
+          ],
+          "on_failure": "exit",
+          "path": "project.traces[6].tests[0]"
+        }
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[6]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "3d Line Two": {
+    "config": {
+      "changed": true,
+      "filters": [
+        "query(x>1)"
+      ],
+      "model": "{\"name\": \"test table\", \"is_inline_defined\": false, \"original_value\": \"ref(test table)\"}",
+      "name": "3d Line Two",
+      "order_by": [
+        "query(x asc)"
+      ],
+      "props": {
+        "type": "scatter3d",
+        "x": "query(x)",
+        "y": "query(y)",
+        "z": "query( (-3*(x/16)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y)"
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[7]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "A very Fibonacci Waterfall": {
+    "config": {
+      "layout": {
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "title": {
+          "text": "AAPL P&L"
+        },
+        "waterfallgroupgap": 0.1
+      },
+      "name": "A very Fibonacci Waterfall",
+      "traces": [
+        "{\"name\": \"Fibonacci Waterfall\", \"is_inline_defined\": false, \"original_value\": \"ref(Fibonacci Waterfall)\"}",
+        "{\"name\": \"Example Indicator\", \"is_inline_defined\": false, \"original_value\": \"ref(Example Indicator)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[0].items[0].chart",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "Aggregated Fib": {
+    "config": {
+      "layout": {
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "title": {
+          "text": "Aggregated Fibonacci"
+        },
+        "xaxis": {
+          "title": {
+            "text": "More if x>3 Less if x<=3"
+          }
+        },
+        "yaxis": {
+          "title": {
+            "text": "output"
+          }
+        }
+      },
+      "name": "Aggregated Fib",
+      "traces": [
+        "{\"name\": \"Aggregated Line\", \"is_inline_defined\": false, \"original_value\": \"ref(Aggregated Line)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[0].items[1].chart",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "Aggregated Line": {
+    "config": {
+      "changed": true,
+      "model": "{\"name\": \"test table\", \"is_inline_defined\": false, \"original_value\": \"ref(test table)\"}",
+      "name": "Aggregated Line",
+      "props": {
+        "marker": {
+          "color": [
+            "rgb(142,124,195)",
+            "rgba(204,204,204,1)"
+          ],
+          "line": {
+            "color": "query(CASE WHEN x <= 3 THEN '#D25946' else '#191D33' END)",
+            "width": 2.5
+          },
+          "pattern": {
+            "shape": [
+              "/",
+              ""
+            ]
+          }
+        },
+        "type": "bar",
+        "x": "query( CASE WHEN x <= 3 THEN 'less' else 'More' END )",
+        "y": "query( avg(y) )"
+      },
+      "tests": [
+        {
+          "assertions": [
+            ">{ ${ref(Aggregated Line).props.marker.line.color[1]} == '#D25946' }",
+            ">{ ${ref(Aggregated Line).props.x[1]} == 'less' }"
+          ],
+          "on_failure": "exit",
+          "path": "project.traces[4].tests[0]"
+        }
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[4]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "Double Simple Line": {
+    "config": {
+      "changed": true,
+      "model": "{\"name\": \"nested-and-name\", \"is_inline_defined\": true}",
+      "name": "Double Simple Line",
+      "order_by": [
+        "query(x asc)"
+      ],
+      "props": {
+        "line": {
+          "color": "#4F494C",
+          "shape": "spline"
+        },
+        "type": "scatter",
+        "x": "query(x)",
+        "y": "query(y)"
+      },
+      "tests": [
+        {
+          "assertions": [
+            ">{ ${ref(Double Simple Line).props.x[2]} == 3 }"
+          ],
+          "on_failure": "exit",
+          "path": "project.dashboards[1].rows[1].items[2].chart.traces[0].tests[0]"
+        }
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[1].items[2].chart.traces[0]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "Example Indicator": {
+    "config": {
+      "changed": true,
+      "columns": {
+        "x_data": "x"
+      },
+      "model": "{\"name\": \"csv\", \"is_inline_defined\": false, \"original_value\": \"ref(csv)\"}",
+      "name": "Example Indicator",
+      "props": {
+        "delta": {
+          "reference": "column(x_data)[1]"
+        },
+        "type": "indicator",
+        "value": "column(x_data)[-1]"
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[0]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "Fibonacci Waterfall": {
+    "config": {
+      "changed": true,
+      "cohort_on": "query( year)",
+      "columns": {
+        "measure": "waterfall",
+        "x_data": "category",
+        "y_data": "try_cast( replace(thousands_dollars, ',', '') as float ) * try_cast(sign as float)"
+      },
+      "filters": [
+        "query( waterfall is not null )",
+        "query( category not in ('Earnings From Continuing Operations') )",
+        "query( year in ('Sep 2023', 'Sep 2022') )"
+      ],
+      "model": "{\"name\": \"waterfall_model\", \"is_inline_defined\": false, \"original_value\": \"ref(waterfall_model)\"}",
+      "name": "Fibonacci Waterfall",
+      "order_by": [
+        "query(row asc)"
+      ],
+      "props": {
+        "base": 0,
+        "decreasing": {
+          "marker": {
+            "color": "#edbdb5"
+          }
+        },
+        "increasing": {
+          "marker": {
+            "color": "#b97a9b"
+          }
+        },
+        "measure": "column(measure)",
+        "text": "query( cast(thousands_dollars as text) )",
+        "type": "waterfall",
+        "x": "column(x_data)",
+        "y": "column(y_data)"
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[8]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "Indicator Trace": {
+    "config": {
+      "changed": true,
+      "columns": {
+        "x_data": "x",
+        "y_data": "y"
+      },
+      "model": "{\"name\": \"csv\", \"is_inline_defined\": false, \"original_value\": \"ref(csv)\"}",
+      "name": "Indicator Trace",
+      "props": {
+        "delta": {
+          "position": "top",
+          "reference": 320
+        },
+        "domain": {
+          "x": [
+            0,
+            ".75"
+          ],
+          "y": [
+            0,
+            1
+          ]
+        },
+        "mode": "number+delta",
+        "number": {
+          "prefix": "$"
+        },
+        "type": "indicator",
+        "value": "column(y_data)[0]"
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[2]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Modified"
+  },
+  "Simple Dashboard": {
+    "config": {
+      "name": "Simple Dashboard",
+      "rows": [
+        {
+          "height": "medium",
+          "items": [
+            {
+              "chart": "{\"name\": \"A very Fibonacci Waterfall\", \"is_inline_defined\": true}",
+              "path": "project.dashboards[1].rows[0].items[0]",
+              "width": 9
+            },
+            {
+              "chart": "{\"name\": \"Aggregated Fib\", \"is_inline_defined\": true}",
+              "path": "project.dashboards[1].rows[0].items[1]",
+              "width": 2
+            }
+          ],
+          "path": "project.dashboards[1].rows[0]"
+        },
+        {
+          "height": "medium",
+          "items": [
+            {
+              "chart": "{\"name\": \"fibonacci plane\", \"is_inline_defined\": true}",
+              "path": "project.dashboards[1].rows[1].items[0]",
+              "width": 3
+            },
+            {
+              "chart": "{\"name\": \"fibonacci\", \"is_inline_defined\": true}",
+              "path": "project.dashboards[1].rows[1].items[1]",
+              "width": 4
+            },
+            {
+              "chart": "{\"name\": \"fibonacci times 2\", \"is_inline_defined\": true}",
+              "path": "project.dashboards[1].rows[1].items[2]",
+              "width": 3
+            }
+          ],
+          "path": "project.dashboards[1].rows[1]"
+        },
+        {
+          "height": "medium",
+          "items": [
+            {
+              "align": "left",
+              "justify": "start",
+              "markdown": "# Here is the first\n1. Numbered\n1. List\n",
+              "path": "project.dashboards[1].rows[2].items[0]",
+              "width": 2
+            },
+            {
+              "chart": "{\"name\": \"funnel chart\", \"is_inline_defined\": true}",
+              "path": "project.dashboards[1].rows[2].items[1]",
+              "width": 2
+            }
+          ],
+          "path": "project.dashboards[1].rows[2]"
+        },
+        {
+          "height": "xlarge",
+          "items": [
+            {
+              "chart": "{\"name\": \"surface-chart\", \"is_inline_defined\": false, \"original_value\": \"ref(surface-chart)\"}",
+              "path": "project.dashboards[1].rows[3].items[0]",
+              "width": 1
+            }
+          ],
+          "path": "project.dashboards[1].rows[3]"
+        }
+      ],
+      "tags": [],
+      "type": "internal"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1]",
+    "type": "Dashboard",
+    "type_key": "dashboards",
+    "status": "Unchanged"
+  },
+  "Simple Line": {
+    "config": {
+      "changed": true,
+      "cohort_on": "query( CASE WHEN y >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END )",
+      "model": "{\"name\": \"join_table\", \"is_inline_defined\": false, \"original_value\": \"ref(join_table)\"}",
+      "name": "Simple Line",
+      "props": {
+        "marker": {
+          "color": "query( case when x >= 5 then '#713B57' else 'grey' end )",
+          "line": {
+            "width": "query( Case when x in (5,6) then 2.5 else null end)"
+          },
+          "pattern": {
+            "shape": "query( case when x = 5 then '/' when x = 6 THEN 'x' else '' end )"
+          }
+        },
+        "type": "bar",
+        "x": "query(x)",
+        "y": "query(y)"
+      },
+      "tests": [
+        {
+          "assertions": [
+            ">{ ${ref(Simple Line).props.x[0]} == 5 }",
+            ">{ ${ref(Simple Line).props.y[0]} == 10 }"
+          ],
+          "on_failure": "exit",
+          "path": "project.traces[5].tests[0]"
+        }
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[5]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "Surface Trace": {
+    "config": {
+      "changed": true,
+      "model": "{\"name\": \"local_test_table\", \"is_inline_defined\": false, \"original_value\": \"ref(local_test_table)\"}",
+      "name": "Surface Trace",
+      "props": {
+        "type": "contour",
+        "z": [
+          "query(x*x+30)",
+          "query(y*y+30)",
+          "query(x*y*y+40)"
+        ]
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[1]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Modified"
+  },
+  "Table Name": {
+    "config": {
+      "name": "Table Name",
+      "rows": [
+        {
+          "height": "compact",
+          "items": [
+            {
+              "align": "left",
+              "justify": "between",
+              "markdown": "# Text!\n",
+              "path": "project.dashboards[0].rows[0].items[0]",
+              "width": 1
+            }
+          ],
+          "path": "project.dashboards[0].rows[0]"
+        },
+        {
+          "height": "small",
+          "items": [
+            {
+              "align": "left",
+              "justify": "start",
+              "markdown": "\nLorem ipsum odor amet, consectetuer adipiscing elit.  \n```\nVolutpat primis laoreet, ridiculus in placerat facilisis laoreet. \n```\n> Montes semper quam litora condimentum maximus. \n* Sollicitudin montes rhoncus sollicitudin mus et elit. \n* Erat erat lectus turpis consequat sed tortor suspendisse rhoncus maximus. \n#### <span title=\"This is a normal name and there's nothing funny about it.\">Bigus Dicus </span>\nNostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.\n\nNostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.\n\nNostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.\n\nNostra ornare urna nullam scelerisque quis. Natoque nullam aliquet taciti blandit facilisi vel sollicitudin montes. Nulla platea diam, vitae velit varius fringilla. Dolor condimentum convallis proin augue a fusce suspendisse. Eget elit tempor sociosqu platea feugiat.\n",
+              "path": "project.dashboards[0].rows[1].items[0]",
+              "width": 1
+            }
+          ],
+          "path": "project.dashboards[0].rows[1]"
+        },
+        {
+          "height": "medium",
+          "items": [
+            {
+              "align": "left",
+              "justify": "start",
+              "markdown": "## Sub heading\n1. Numbered\n1. Lists are cool\n\nBut we can have lots of other _content_ as well\n",
+              "path": "project.dashboards[0].rows[2].items[0]",
+              "width": 1
+            },
+            {
+              "path": "project.dashboards[0].rows[2].items[1]",
+              "table": "{\"name\": \"awesome-table\", \"is_inline_defined\": true}",
+              "width": 3
+            },
+            {
+              "chart": "{\"name\": \"indicator_chart\", \"is_inline_defined\": false, \"original_value\": \"ref(indicator_chart)\"}",
+              "path": "project.dashboards[0].rows[2].items[2]",
+              "width": 2
+            }
+          ],
+          "path": "project.dashboards[0].rows[2]"
+        },
+        {
+          "height": "medium",
+          "items": [
+            {
+              "path": "project.dashboards[0].rows[3].items[0]",
+              "table": "{\"name\": \"awesome-table-2\", \"is_inline_defined\": true}",
+              "width": 1
+            }
+          ],
+          "path": "project.dashboards[0].rows[3]"
+        }
+      ],
+      "tags": [],
+      "type": "internal"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[0]",
+    "type": "Dashboard",
+    "type_key": "dashboards",
+    "status": "Unchanged"
+  },
+  "awesome-table": {
+    "config": {
+      "column_defs": [
+        {
+          "columns": [
+            {
+              "key": "columns.x_data",
+              "markdown": false
+            },
+            {
+              "aggregation": "sum",
+              "header": "y amount",
+              "key": "columns.y_data",
+              "markdown": false
+            },
+            {
+              "key": "columns.measure",
+              "markdown": false
+            },
+            {
+              "key": "props.text",
+              "markdown": false
+            }
+          ],
+          "path": "project.dashboards[0].rows[2].items[1].table.column_defs[0]",
+          "trace_name": "Fibonacci Waterfall"
+        }
+      ],
+      "name": "awesome-table",
+      "rows_per_page": 1000,
+      "traces": [
+        "{\"name\": \"Fibonacci Waterfall\", \"is_inline_defined\": false, \"original_value\": \"ref(Fibonacci Waterfall)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[0].rows[2].items[1].table",
+    "type": "Table",
+    "type_key": "tables",
+    "status": "Unchanged"
+  },
+  "awesome-table-2": {
+    "config": {
+      "column_defs": [
+        {
+          "columns": [
+            {
+              "key": "columns.vanilla_text",
+              "markdown": false
+            },
+            {
+              "header": "Markdown",
+              "key": "columns.markdown",
+              "markdown": true
+            }
+          ],
+          "path": "project.dashboards[0].rows[3].items[0].table.column_defs[0]",
+          "trace_name": "markdown-trace-base"
+        }
+      ],
+      "name": "awesome-table-2",
+      "rows_per_page": 50,
+      "traces": [
+        "{\"name\": \"markdown-trace-base\", \"is_inline_defined\": true}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[0].rows[3].items[0].table",
+    "type": "Table",
+    "type_key": "tables",
+    "status": "Unchanged"
+  },
+  "csv": {
+    "config": {
+      "args": [
+        "echo",
+        "x,y1,92,13,24,35,56,9"
+      ],
+      "changed": true,
+      "name": "csv",
+      "table_name": "csv"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[3]",
+    "type": "CsvScriptModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "fibonacci": {
+    "config": {
+      "layout": {
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "title": {
+          "text": "A great fibonacci series"
+        },
+        "xaxis": {
+          "title": {
+            "text": "Input"
+          }
+        },
+        "yaxis": {
+          "title": {
+            "text": "Output"
+          }
+        }
+      },
+      "name": "fibonacci",
+      "traces": [
+        "{\"name\": \"Simple Line\", \"is_inline_defined\": false, \"original_value\": \"ref(Simple Line)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[1].items[1].chart",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "fibonacci plane": {
+    "config": {
+      "layout": {
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "legend": {
+          "orientation": "h",
+          "x": 1,
+          "xanchor": "right",
+          "y": 1.02,
+          "yanchor": "bottom"
+        },
+        "title": {
+          "text": "The Greatest 3d Lines"
+        }
+      },
+      "name": "fibonacci plane",
+      "traces": [
+        "{\"name\": \"3d Line One\", \"is_inline_defined\": false, \"original_value\": \"ref(3d Line One)\"}",
+        "{\"name\": \"3d Line Two\", \"is_inline_defined\": false, \"original_value\": \"ref(3d Line Two)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[1].items[0].chart",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "fibonacci times 2": {
+    "config": {
+      "layout": {
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "title": {
+          "text": "A not great fibonacci series"
+        },
+        "xaxis": {
+          "title": {
+            "text": "Input"
+          }
+        },
+        "yaxis": {
+          "title": {
+            "text": "Output"
+          }
+        }
+      },
+      "name": "fibonacci times 2",
+      "traces": [
+        "{\"name\": \"Double Simple Line\", \"is_inline_defined\": true}",
+        "{\"name\": \"Simple Line\", \"is_inline_defined\": false, \"original_value\": \"ref(Simple Line)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[1].items[2].chart",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "funnel chart": {
+    "config": {
+      "layout": {
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "title": {
+          "text": "Funnel Chart"
+        }
+      },
+      "name": "funnel chart",
+      "traces": [
+        "{\"name\": \"funnel trace\", \"is_inline_defined\": false, \"original_value\": \"ref(funnel trace)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[2].items[1].chart",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "funnel trace": {
+    "config": {
+      "changed": true,
+      "model": "{\"name\": \"test table\", \"is_inline_defined\": false, \"original_value\": \"ref(test table)\"}",
+      "name": "funnel trace",
+      "order_by": [
+        "query(x desc)"
+      ],
+      "props": {
+        "connector": {
+          "fillcolor": "#edbdb5"
+        },
+        "marker": {
+          "color": "query( case when y >= 12 then '#713B57' else 'grey' end )",
+          "opacity": 0.2
+        },
+        "textfont": {
+          "color": "white",
+          "family": "Gravitas One",
+          "size": 38
+        },
+        "textinfo": "percent initial",
+        "type": "funnel",
+        "x": "query(y)",
+        "y": "query( 'Position:' || x)"
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.traces[3]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "indicator_chart": {
+    "config": {
+      "name": "indicator_chart",
+      "traces": [
+        "{\"name\": \"Indicator Trace\", \"is_inline_defined\": false, \"original_value\": \"ref(Indicator Trace)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.charts[0]",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "join_table": {
+    "config": {
+      "models": [
+        "{\"name\": \"local_test_table\", \"is_inline_defined\": false, \"original_value\": \"ref(local_test_table)\"}",
+        "{\"name\": \"second_local_test_table\", \"is_inline_defined\": false, \"original_value\": \"ref(second_local_test_table)\"}"
+      ],
+      "name": "join_table",
+      "sql": "SELECT ltt.x, sltt.y FROM local_test_table.model AS ltt \n  JOIN second_local_test_table.model AS sltt\n  ON ltt.x = sltt.x\n"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[2]",
+    "type": "LocalMergeModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "local-duckdb": {
+    "config": {
+      "connection_pool_size": 1,
+      "database": "test.duckdb",
+      "name": "local-duckdb",
+      "type": "duckdb"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.sources[1]",
+    "type": "DuckdbSource",
+    "type_key": "sources",
+    "status": "Unchanged"
+  },
+  "local-mysql": {
+    "config": {
+      "connection_pool_size": 1,
+      "database": "visivo",
+      "host": "localhost",
+      "name": "local-mysql",
+      "password": "**********",
+      "port": 3306,
+      "type": "mysql",
+      "username": "root"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.sources[3]",
+    "type": "MysqlSource",
+    "type_key": "sources",
+    "status": "Unchanged"
+  },
+  "local-postgres": {
+    "config": {
+      "connection_pool_size": 1,
+      "database": "postgres",
+      "host": "localhost",
+      "name": "local-postgres",
+      "password": "**********",
+      "port": 5434,
+      "type": "postgresql",
+      "username": "postgres"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.sources[2]",
+    "type": "PostgresqlSource",
+    "type_key": "sources",
+    "status": "Unchanged"
+  },
+  "local-sqlite": {
+    "config": {
+      "database": "local.db",
+      "name": "local-sqlite",
+      "type": "sqlite"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.sources[0]",
+    "type": "SqliteSource",
+    "type_key": "sources",
+    "status": "Unchanged"
+  },
+  "local_test_table": {
+    "config": {
+      "name": "local_test_table",
+      "sql": "SELECT * FROM test_table"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[0]",
+    "type": "SqlModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "markdown-table-base": {
+    "config": {
+      "args": [
+        "echo",
+        "vanilla_text,markdown\nplain,plain\n**bold**,**bold**\n<ins>[link](https://visivo.io/)</ins>,<ins>[link](https://visivo.io/)</ins>\n# header,# header\n"
+      ],
+      "changed": true,
+      "name": "markdown-table-base",
+      "table_name": "model"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[4]",
+    "type": "CsvScriptModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "markdown-trace-base": {
+    "config": {
+      "changed": true,
+      "columns": {
+        "markdown": "markdown",
+        "vanilla_text": "vanilla_text"
+      },
+      "model": "{\"name\": \"markdown-table-base\", \"is_inline_defined\": false, \"original_value\": \"ref(markdown-table-base)\"}",
+      "name": "markdown-trace-base",
+      "props": {
+        "type": "scatter"
+      }
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[0].rows[3].items[0].table.traces[0]",
+    "type": "Trace",
+    "type_key": "traces",
+    "status": "Unchanged"
+  },
+  "nested-and-name": {
+    "config": {
+      "name": "nested-and-name",
+      "sql": "SELECT x, y*3 as y FROM test_table"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.dashboards[1].rows[1].items[2].chart.traces[0].model",
+    "type": "SqlModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "processes": {
+    "config": {
+      "args": [
+        "python",
+        "create_processes_csv.py",
+        "&&",
+        "cat target/processes.csv"
+      ],
+      "changed": true,
+      "name": "processes",
+      "table_name": "processes"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[5]",
+    "type": "CsvScriptModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "project": {
+    "config": {
+      "alerts": [
+        {
+          "destinations": [
+            {
+              "path": "project.alerts[0].destinations[0]",
+              "type": "slack",
+              "webhook_url": "https://hooks.slack.com/services/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"
+            }
+          ],
+          "name": "slack",
+          "path": "project.alerts[0]"
+        }
+      ],
+      "charts": [
+        "{\"name\": \"indicator_chart\", \"is_inline_defined\": true}",
+        "{\"name\": \"surface-chart\", \"is_inline_defined\": true}"
+      ],
+      "cli_version": "1.0.50",
+      "dashboards": [
+        "{\"name\": \"Table Name\", \"is_inline_defined\": true}",
+        "{\"name\": \"Simple Dashboard\", \"is_inline_defined\": true}"
+      ],
+      "defaults": {
+        "alert_name": "slack",
+        "levels": [],
+        "source_name": "local-duckdb",
+        "threads": 8,
+        "thumbnail_mode": "none"
+      },
+      "destinations": [],
+      "includes": [
+        {
+          "path": "project.includes[0]"
+        },
+        {
+          "path": "project.includes[1]"
+        },
+        {
+          "path": "project.includes[2]"
+        }
+      ],
+      "models": [
+        "{\"name\": \"local_test_table\", \"is_inline_defined\": true}",
+        "{\"name\": \"second_local_test_table\", \"is_inline_defined\": true}",
+        "{\"name\": \"join_table\", \"is_inline_defined\": true}",
+        {
+          "args": [
+            "echo",
+            "x,y\n1,9\n2,1\n3,2\n4,3\n5,5\n6,8\n"
+          ],
+          "changed": true,
+          "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+          "name": "csv",
+          "path": "project.models[3]",
+          "table_name": "csv"
+        },
+        {
+          "args": [
+            "echo",
+            "vanilla_text,markdown\nplain,plain\n**bold**,**bold**\n<ins>[link](https://visivo.io/)</ins>,<ins>[link](https://visivo.io/)</ins>\n# header,# header\n"
+          ],
+          "changed": true,
+          "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+          "name": "markdown-table-base",
+          "path": "project.models[4]",
+          "table_name": "model"
+        },
+        {
+          "args": [
+            "python",
+            "create_processes_csv.py",
+            "&&",
+            "cat target/processes.csv"
+          ],
+          "changed": true,
+          "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+          "name": "processes",
+          "path": "project.models[5]",
+          "table_name": "processes"
+        },
+        {
+          "args": [
+            "cat",
+            "data/aapl_pl.csv"
+          ],
+          "changed": true,
+          "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+          "name": "waterfall_model",
+          "path": "project.models[6]",
+          "table_name": "appl_pl"
+        },
+        "{\"name\": \"test table\", \"is_inline_defined\": true}"
+      ],
+      "name": "project",
+      "selectors": [],
+      "sources": [
+        {
+          "database": "local.db",
+          "name": "local-sqlite",
+          "path": "project.sources[0]",
+          "type": "sqlite"
+        },
+        {
+          "connection_pool_size": 1,
+          "database": "test.duckdb",
+          "name": "local-duckdb",
+          "path": "project.sources[1]",
+          "type": "duckdb"
+        },
+        {
+          "connection_pool_size": 1,
+          "database": "postgres",
+          "host": "localhost",
+          "name": "local-postgres",
+          "password": "**********",
+          "path": "project.sources[2]",
+          "port": 5434,
+          "type": "postgresql",
+          "username": "postgres"
+        },
+        {
+          "connection_pool_size": 1,
+          "database": "visivo",
+          "host": "localhost",
+          "name": "local-mysql",
+          "password": "**********",
+          "path": "project.sources[3]",
+          "port": 3306,
+          "type": "mysql",
+          "username": "root"
+        },
+        {
+          "account": "bu13083.us-east-2.aws",
+          "connection_pool_size": 8,
+          "database": "JARED_DEV",
+          "db_schema": "DEFAULT",
+          "name": "remote-snowflake",
+          "password": "**********",
+          "path": "project.sources[4]",
+          "role": "PROD",
+          "type": "snowflake",
+          "username": "JAREDVISIVO",
+          "warehouse": "DEV"
+        },
+        {
+          "connection_pool_size": 8,
+          "credentials_base64": "**********",
+          "database": "test",
+          "name": "remote-bigquery",
+          "path": "project.sources[5]",
+          "project": "visivo-io-production",
+          "type": "bigquery"
+        }
+      ],
+      "tables": [],
+      "traces": [
+        "{\"name\": \"Example Indicator\", \"is_inline_defined\": true}",
+        "{\"name\": \"Surface Trace\", \"is_inline_defined\": true}",
+        "{\"name\": \"Indicator Trace\", \"is_inline_defined\": true}",
+        "{\"name\": \"funnel trace\", \"is_inline_defined\": true}",
+        "{\"name\": \"Aggregated Line\", \"is_inline_defined\": true}",
+        "{\"name\": \"Simple Line\", \"is_inline_defined\": true}",
+        "{\"name\": \"3d Line One\", \"is_inline_defined\": true}",
+        "{\"name\": \"3d Line Two\", \"is_inline_defined\": true}",
+        "{\"name\": \"Fibonacci Waterfall\", \"is_inline_defined\": true}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project",
+    "type": "Project",
+    "type_key": "na",
+    "status": "Unchanged"
+  },
+  "remote-bigquery": {
+    "config": {
+      "connection_pool_size": 8,
+      "credentials_base64": "**********",
+      "database": "test",
+      "name": "remote-bigquery",
+      "project": "visivo-io-production",
+      "type": "bigquery"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.sources[5]",
+    "type": "BigQuerySource",
+    "type_key": "sources",
+    "status": "Unchanged"
+  },
+  "remote-snowflake": {
+    "config": {
+      "account": "bu13083.us-east-2.aws",
+      "connection_pool_size": 8,
+      "database": "JARED_DEV",
+      "db_schema": "DEFAULT",
+      "name": "remote-snowflake",
+      "password": "**********",
+      "role": "PROD",
+      "type": "snowflake",
+      "username": "JAREDVISIVO",
+      "warehouse": "DEV"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.sources[4]",
+    "type": "SnowflakeSource",
+    "type_key": "sources",
+    "status": "Unchanged"
+  },
+  "second_local_test_table": {
+    "config": {
+      "name": "second_local_test_table",
+      "sql": "SELECT * FROM second_test_table"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[1]",
+    "type": "SqlModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "slack": {
+    "config": {
+      "destinations": [
+        {
+          "path": "project.alerts[0].destinations[0]",
+          "type": "slack",
+          "webhook_url": "https://hooks.slack.com/services/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"
+        }
+      ],
+      "name": "slack"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.alerts[0]",
+    "type": "Alert",
+    "type_key": "alerts",
+    "status": "Unchanged"
+  },
+  "surface-chart": {
+    "config": {
+      "layout": {
+        "autosize": false,
+        "barcornerradius": "10%",
+        "colorway": [
+          "#713B57",
+          "#FFB400",
+          "#003F91",
+          "#D25946",
+          "#1CA9C9",
+          "#999999",
+          "#E63946",
+          "#A8DADC",
+          "#457B9D",
+          "#2B2B2B"
+        ],
+        "height": 500,
+        "title": {
+          "text": "Plot"
+        },
+        "width": 500
+      },
+      "name": "surface-chart",
+      "traces": [
+        "{\"name\": \"Surface Trace\", \"is_inline_defined\": false, \"original_value\": \"ref(Surface Trace)\"}"
+      ]
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.charts[1]",
+    "type": "Chart",
+    "type_key": "charts",
+    "status": "Unchanged"
+  },
+  "test table": {
+    "config": {
+      "name": "test table",
+      "sql": "SELECT * FROM test_table"
+    },
+    "file_path": "Not Found",
+    "new_file_path": "Not Found",
+    "path": "project.models[7]",
+    "type": "SqlModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  },
+  "waterfall_model": {
+    "config": {
+      "args": [
+        "cat",
+        "data/aapl_pl.csv"
+      ],
+      "changed": true,
+      "name": "waterfall_model",
+      "table_name": "appl_pl"
+    },
+    "file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "new_file_path": "/Users/jaredjesionek/visivo/Product/visivo/test-projects/integration/.visivo_cache/visivo-io/example-include@main/models.yml",
+    "path": "project.models[6]",
+    "type": "CsvScriptModel",
+    "type_key": "models",
+    "status": "Unchanged"
+  }
+}
