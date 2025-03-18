@@ -4,9 +4,10 @@ includes:
   - path: "horizontal-cohorts.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Bar"
-    level: Trace Type Gallery
+  - name: "Bar"
+    level: 1
     tags: 
+      - "Trace Prop"
       - "Trace Functionality"
     rows:
       - height: compact 

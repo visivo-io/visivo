@@ -2,7 +2,10 @@ includes:
   - path: "simple.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Choropleth"
+  - name: "Choropleth"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows: 
       - height: compact 
         items:

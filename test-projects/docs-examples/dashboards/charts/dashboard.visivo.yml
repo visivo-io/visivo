@@ -5,6 +5,7 @@ includes:
 
 dashboards:
   - name: Chart Layout Examples
+    level: 0 
     rows:
       - height: compact
         items:

@@ -4,7 +4,10 @@ includes:
   - path: "depth-limited.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Icicle"
+  - name: "Icicle"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:

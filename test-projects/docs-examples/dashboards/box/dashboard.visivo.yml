@@ -3,8 +3,10 @@ includes:
   - path: "monty-python-simple.visivo.yml"
   - path: "proclamations.visivo.yml"
 dashboards:
-  - name: "Trace Props Examples: Box"
+  - name: "Box"
+    level: 1
     tags: 
+      - "Trace Prop"
       - "Trace Functionality"
     rows: 
       - height: compact 
