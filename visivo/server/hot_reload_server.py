@@ -7,6 +7,7 @@ from visivo.logging.logger import Logger
 import os
 from flask_socketio import SocketIO
 import logging
+import socket
 
 class ProjectChangeHandler(FileSystemEventHandler):
     def __init__(self, callback, ignore_patterns=None):
@@ -33,6 +34,18 @@ class ProjectChangeHandler(FileSystemEventHandler):
             self.callback()
 
 class HotReloadServer:
+    @staticmethod
+    def find_available_port(start_port=8000, max_attempts=100):
+        """Find an available port starting from start_port"""
+        for port in range(start_port, start_port + max_attempts):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('', port))
+                    return port
+            except OSError:
+                continue
+        raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
+
     def __init__(self, app: Flask, watch_path: str, ignore_patterns=None):
         self.app = app
         self.watch_path = watch_path

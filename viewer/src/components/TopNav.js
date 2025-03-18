@@ -14,7 +14,10 @@ const TopNav = () => {
             DAG
           </Link>
           <Link to="/query" className="text-white hover:text-gray-300">
-            Query Explorer
+            Explorer
+          </Link>
+          <Link to="/editor" className="text-white hover:text-gray-300">
+            Editor
           </Link>
           <Link to="/project" className="text-white hover:text-gray-300">
             Project

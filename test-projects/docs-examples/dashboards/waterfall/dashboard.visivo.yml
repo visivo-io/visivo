@@ -4,7 +4,10 @@ includes:
   - path: "financial.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Waterfall"
+  - name: "Waterfall"
+    level: 1
+    tags:
+      - "Trace Prop"
     rows:
       - height: compact
         items:

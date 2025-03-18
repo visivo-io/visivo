@@ -5,8 +5,10 @@ includes:
   - path: "cohort-funnel.visivo.yml"
 
 dashboards:
-  - name: "Trace Props Examples: Funnel"
+  - name: "Funnel"
+    level: 1
     tags: 
+      - "Trace Prop"
       - Funnel
     rows:
       - height: compact

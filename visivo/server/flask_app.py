@@ -5,7 +5,7 @@ from visivo.utils import get_dashboards_dir
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response
 import datetime
-from visivo.utils import VIEWER_PATH
+from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
 
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
@@ -54,6 +54,33 @@ def flask_app(output_dir, dag_filter, project):
                 return json.load(f)
         else:
             return json.dumps({})
+
+    @app.route("/data/schema.json")
+    def schema():
+        if os.path.exists(SCHEMA_FILE):
+            with open(SCHEMA_FILE, "r") as f:
+                return json.load(f)
+        else:
+            return (
+                    jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
+                    404,
+                )
+        
+    @app.route("/api/project/named_children", methods = ["GET"])
+    def named_children():
+        named_children = project.named_child_nodes()
+        if named_children:
+            name_map = {}
+            for child in named_children:
+                contents = {
+                    "type": child.__class__.__name__,
+                    "config": child.model_dump_json(exclude_none=True)
+                }
+                name_map[child.name] = contents
+            return jsonify(name_map)
+        else:
+            return jsonify({})
+    
 
     @app.route("/api/query/<project_id>", methods=["POST"])
     def execute_query(project_id):
