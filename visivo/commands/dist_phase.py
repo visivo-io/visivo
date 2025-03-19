@@ -19,7 +19,7 @@ def dist_phase(output_dir, dist_dir):
     try:
         thumbnail_dir = get_dashboards_dir(output_dir)
         if os.path.exists(thumbnail_dir):
-            dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboard-thumbnails")
+            dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboards")
             shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
 
         with open(f"{output_dir}/project.json", "r") as f:
@@ -34,6 +34,9 @@ def dist_phase(output_dir, dist_dir):
                     }
                 )
             )
+        with open(f"{dist_dir}/_redirects", "w") as f:
+            f.write("/*    /index.html   200")
+
         with open(f"{dist_dir}/data/error.json", "w") as f:
             f.write(json.dumps({}))
         with open(f"{dist_dir}/data/project_history.json", "w") as f:

@@ -24,3 +24,5 @@ node_modules
 
 .report.json
 .qodo
+# Local Netlify folder
+.netlify

@@ -1,11 +1,10 @@
 import click
 import re
 import os
-from visivo.utils import get_dashboards_dir
 import json
-from flask import Flask, send_from_directory, request, jsonify, Response
+from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
-from visivo.utils import VIEWER_PATH
+from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
 
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
@@ -18,8 +17,6 @@ def flask_app(output_dir, dag_filter, project):
     )
     
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    
-    thumbnail_dir = get_dashboards_dir(output_dir)
 
     worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
@@ -54,6 +51,34 @@ def flask_app(output_dir, dag_filter, project):
                 return json.load(f)
         else:
             return json.dumps({})
+
+    @app.route("/data/schema.json")
+    def schema():
+        if os.path.exists(SCHEMA_FILE):
+            return send_file(SCHEMA_FILE)
+        else:
+            return (
+                    jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
+                    404,
+                )
+        
+    @app.route("/api/project/named_children", methods = ["GET"])
+    def named_children():
+        named_children = project.named_child_nodes()
+        if named_children:
+            return jsonify(named_children)
+        else:
+            return jsonify({})
+        
+    @app.route("/api/project/write_changes", methods = ["POST"])
+    def write_changes():
+        from time import sleep
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided"}), 400
+        sleep(3)
+        return jsonify({"message": "Changes written successfully"}), 200
+    
 
     @app.route("/api/query/<project_id>", methods=["POST"])
     def execute_query(project_id):

@@ -11,6 +11,8 @@ from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
 
 from .base.parent_model import ParentModel
+from .base.base_model import REF_REGEX
+from .base.context_string import INLINE_REF_REGEX
 from visivo.models.dashboards.fields import DashboardField
 from .chart import Chart
 from .trace import Trace
@@ -21,14 +23,19 @@ from typing import List
 from .base.named_model import NamedModel
 from .base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
-
+from visivo.utils import PROJECT_CHILDREN
+from importlib.metadata import version
+from click import ClickException
 
 class Project(NamedModel, ParentModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
-    cli_version: Optional[str] = None
+    cli_version: Optional[str] = Field(
+        default=version("visivo"),
+        description="The version of the CLI that created the project.",
+    )
     includes: List[Include] = []
     destinations: List[DestinationField] = []
     alerts: List[Alert] = []
@@ -45,18 +52,117 @@ class Project(NamedModel, ParentModel):
     dashboards: List[DashboardField] = []
 
 
-    def child_items(self):
-        return (
-            self.destinations
-            + self.alerts
-            + self.sources
-            + self.models
-            + self.traces
-            + self.tables
-            + self.charts
-            + self.selectors
-            + self.dashboards
+    def child_items(self) -> List:
+        project_children = PROJECT_CHILDREN.copy()
+        children = []
+        for child_type in project_children:
+            items = getattr(self, child_type, [])
+            children.extend(items)
+        return children
+    
+    def named_child_nodes(self) -> dict: 
+        """
+        Returns a dictionary of all named child nodes of the project, independent of the 
+        literal position of the child in the project file. This enables us to find 
+        all children even if they are nested in a dashboard or chart.
+        """
+        dag = self.dag()
+        named_nodes = {}
+        for node in dag.nodes():
+            if hasattr(node, "name"):
+                if node.name is not None:
+                    is_named = True
+                else:
+                    is_named = False
+            else:
+                is_named = False
+            if is_named and (Project.is_project_child(node) or isinstance(node, Project)):
+                #TODO: Need to pull in the project file path from the parse phase and store it as a field so we cna use it here. 
+                fully_referenced_model_dump = Project._fully_referenced_model_dump(node)
+                file_path = fully_referenced_model_dump.pop("file_path", "Not Found")
+                path = fully_referenced_model_dump.pop("path", "Not Found")
+                contents = {
+                    "type": node.__class__.__name__,
+                    "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),
+                    "config": fully_referenced_model_dump, 
+                    "file_path": file_path,
+                    "new_file_path": file_path,
+                    "path": path
+                }
+                named_nodes[node.name] = contents
+
+        return named_nodes
+   
+    @classmethod
+    def _fully_referenced_model_dump(cls, node: ParentModel) -> dict:
+        import json
+        import re
+        def clean_value(value):
+            # Case 1: Value is a dictionary
+            if isinstance(value, dict):
+                # Check if it's a project child and has a non-null 'name'
+                if ( 
+                    Project.is_type_project_child(value.get("__type__", "na")) and
+                    value.get("name") is not None
+                ):
+                    inline_defined_named_child = json.dumps({
+                         'name': value["name"],
+                         'is_inline_defined': True
+                    })
+                    return inline_defined_named_child
+                # If not replaced, recurse into the dictionary's values
+                return {k: clean_value(v) for k, v in value.items()}
+            # Case 2: Value is a list
+            elif isinstance(value, list):
+                return [clean_value(elem) for elem in value]
+            # Case 3: Value is a primitive (str, int, float, bool, None)
+            elif isinstance(value, str):
+                # Check for inline references ${ref(Name)}
+                inline_matches = re.search(INLINE_REF_REGEX, value)
+                if inline_matches and value.strip() == inline_matches.group(0):
+                    ref_name = inline_matches.group(1).strip()
+                    return json.dumps({
+                        'name': ref_name,
+                        'is_inline_defined': False,
+                        'original_value': value
+                    })
+                
+                # Check for direct ref(Name) pattern
+                direct_matches = re.search(REF_REGEX, value)
+                if direct_matches:
+                    ref_name = direct_matches.group('ref_name').strip()
+                    return json.dumps({
+                        'name': ref_name,
+                        'is_inline_defined': False,
+                        'original_value': value
+                    })
+                return value
+            else:
+                return value
+            
+        def remove_type_keys(data):
+            if isinstance(data, dict):
+                return {k: remove_type_keys(v) for k, v in data.items() if k != "__type__"}
+            elif isinstance(data, list):
+                return [remove_type_keys(elem) for elem in data]
+            else:
+                return data
+            
+        model_dump_json_string = node.model_dump_json(
+            exclude_none=True, 
+            context={"include_type": True}
         )
+        jsonable_model_dump = json.loads(model_dump_json_string)
+        fully_referenced_project_child_dict = {k: clean_value(v) for k, v in jsonable_model_dump.items()}
+        fully_referenced_project_child_dict = remove_type_keys(fully_referenced_project_child_dict)
+        
+        return fully_referenced_project_child_dict
+    
+    @model_validator(mode="after")
+    def validate_cli_version(self):
+        if self.cli_version != version("visivo"):
+            raise ClickException(f"The project specifies {self.cli_version}, but the current version of visivo installed is {version('visivo')}. Your project version needs to match your CLI version.")
+        return self
 
     @model_validator(mode="after")
     def validate_default_names(self):
@@ -91,17 +197,9 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_dag(self):
-        from networkx import simple_cycles, is_directed_acyclic_graph
 
         dag = self.dag()
-        if not is_directed_acyclic_graph(dag):
-            circular_references = list(simple_cycles(dag))
-            if len(circular_references) > 0:
-                circle = " -> ".join(
-                    list(map(lambda cr: cr.id(), circular_references[0]))
-                )
-                circle += f" -> {circular_references[0][0].id()}."
-                raise ValueError(f"Project contains a circular reference: {circle}")
+        if not dag.validate_dag():
             raise ValueError("Project contains a circular reference.")
 
         tables = all_descendants_of_type(type=Table, dag=dag, from_node=self)
@@ -114,8 +212,29 @@ class Project(NamedModel, ParentModel):
 
         return self
 
+    @model_validator(mode="after")
+    def validate_project_is_sole_root_node(self):
+        dag = self.dag()
+        roots = dag.get_root_nodes()
+        if len(roots) > 1:
+            root_list = ', '.join([root.__class__.__name__ for root in roots])
+            raise ValueError(
+                f"Project must be the sole root node in the DAG. Current root nodes: {root_list}"
+            )
+        elif len(roots) == 0:
+            raise ValueError(
+                "No root nodes found in the DAG. Please add a name for your project."
+            )
+        elif len(roots) == 1:
+            root = roots[0]
+            if root.__class__.__name__ != "Project":
+                raise ValueError(
+                    "The sole root node in the DAG must be a Project."
+                )
+        return self
+
     @model_validator(mode="before")
-    def set_paths_on_models(cls, values):
+    def set_paths_on_models(cls, values): # TODO: Do we need both this and the set_path_on_named_models method? 
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
                 obj["path"] = path
@@ -137,7 +256,7 @@ class Project(NamedModel, ParentModel):
         return self
 
     @model_validator(mode="before")
-    def set_path_on_named_models(cls, values):
+    def set_path_on_named_models(cls, values): #This seems redundant with the set_paths_on_models method above
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
                 obj["path"] = path
@@ -152,6 +271,61 @@ class Project(NamedModel, ParentModel):
 
         set_path_recursively(values, "project")
         return values
+    
+    @classmethod
+    def get_child_objects(cls) -> dict:
+        """
+        Returns a dictionary mapping each project child type to its field object.
+        This is used to identify which objects in the project hierarchy are direct children of the project.
+        """
+        child_objects = {}
+        for field_name in PROJECT_CHILDREN:
+            field = cls.model_fields[field_name]
+            child_objects[field_name] = field
+        return child_objects
+    
+    @classmethod
+    def is_type_project_child(cls, object_type: str) -> bool:
+        """
+        Accepts a string and returns True if it is a child of the project.
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        
+        search_str = rf"[\s\[]{object_type}[,\]]"
+        is_match = search(search_str, str(project_child_objects)) is not None
+
+        return is_match
+    
+    @classmethod
+    def is_project_child(cls, obj) -> list:
+        """
+        Accepts an object and returns True if it is a child of the project. 
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        if isinstance(obj, BaseModel):
+            obj_name = obj.__class__.__name__
+            search_str = rf"[\s\[]{obj_name}[,\]]"
+            is_match = search(search_str, str(project_child_objects)) is not None
+            return is_match
+        return False
+
+    @classmethod
+    def get_key_for_project_child_class(cls, project_child_class: str) -> str:
+        """
+        Accepts an object and returns True if it is a child of the project. 
+        """
+        from re import search
+        project_child_objects = cls.get_child_objects()
+        for key, value in project_child_objects.items():
+            search_str = rf"[\s\[]{project_child_class}[,\]]"
+            is_match = search(search_str, str(value)) is not None
+            if is_match:
+                return key
+        if project_child_class == "Project":
+            return "na"
+        raise ValueError(f"Project child class '{project_child_class}' not found in project")
 
     @classmethod
     def traverse_names(cls, names, object):

@@ -93,7 +93,7 @@ def generate_thumbnail(
                 }
             """ % check_loading, timeout=timeout_ms)
             # Wait for 350ms to ensure the page is fully loaded
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(1200)
             # Log final state before screenshot
             if os.environ.get("STACKTRACE"):
                 final_state = page.evaluate(check_loading)

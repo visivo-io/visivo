@@ -4,8 +4,14 @@ from tests.factories.model_factories import ProjectFactory, DashboardFactory, Tr
 from tests.support.utils import temp_file, temp_folder
 from visivo.commands.serve_phase import serve_phase
 from visivo.commands.utils import create_file_database
+from visivo.server.hot_reload_server import HotReloadServer
 import json
+
 TRACE_NAME = "test_trace"
+
+def get_test_port():
+    """Get an available port for testing"""
+    return HotReloadServer.find_available_port()
 
 @pytest.fixture
 def test_project():
@@ -16,7 +22,8 @@ def test_project():
 
 @pytest.fixture
 def server_url():
-    return "http://localhost:8000"
+    port = get_test_port()
+    return f"http://localhost:{port}"
 
 @pytest.fixture
 def output_dir():
