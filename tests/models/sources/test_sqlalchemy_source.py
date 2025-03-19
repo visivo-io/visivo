@@ -1,26 +1,21 @@
-from visivo.models.sources.postgresql_source import PostgresqlSource
-import click
-import pytest
+from typing import Literal
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 
 
-def test_PostgresqlSource_simple_data():
-    data = {"name": "source", "database": "database", "type": "postgresql"}
-    source = PostgresqlSource(**data)
-    assert source.name == "source"
+class MockSqlAlchemySource(SqlalchemySource):
+    type: Literal["mock"]
+
+    def get_dialect(self):
+        return "sqlite"
 
 
-def test_PostgresqlSource_bad_connection():
+def test_SqlAlchemySource_get_engine():
     data = {
-        "name": "development",
+        "name": "source",
         "database": "database",
-        "type": "postgresql",
-        "port": 5434,
+        "type": "mock",
+        "after_connect": "SELECT 1",
     }
-    source = PostgresqlSource(**data)
-    with pytest.raises(click.ClickException) as exc_info:
-        source.read_sql("query")
-
-    assert (
-        "Error connecting to source 'development'. Ensure the database is running and the connection properties are correct."
-        in exc_info.value.message
-    )
+    source = MockSqlAlchemySource(**data)
+    engine = source.get_engine()
+    assert engine is not None
