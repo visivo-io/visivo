@@ -1,26 +1,26 @@
 from visivo.logging.logger import Logger
 
 from visivo.server.hot_reload_server import HotReloadServer
-from visivo.server.flask_app import flask_app
+from visivo.server.flask_app import FlaskApp
 from visivo.commands.run_phase import run_phase
 import json
 import os
 import traceback
 
-    
-def serve_phase(
-        output_dir, 
-        working_dir, 
-        default_source, 
-        dag_filter, 
-        threads, 
-        thumbnail_mode, 
-        skip_compile, 
-        project, 
-        server_url
-    ):
 
-    app = flask_app(
+def serve_phase(
+    output_dir,
+    working_dir,
+    default_source,
+    dag_filter,
+    threads,
+    thumbnail_mode,
+    skip_compile,
+    project,
+    server_url,
+):
+
+    app = FlaskApp(
         output_dir=output_dir,
         dag_filter=dag_filter,
         project=project,
@@ -28,8 +28,10 @@ def serve_phase(
 
     def on_project_change(one_shot=False):
         try:
-            Logger.instance().info("Server has detected changes to the project. Re-running project...")
-            run_phase(
+            Logger.instance().info(
+                "Server has detected changes to the project. Re-running project..."
+            )
+            runner = run_phase(
                 output_dir=output_dir,
                 working_dir=working_dir,
                 default_source=default_source,
@@ -42,16 +44,17 @@ def serve_phase(
                 project=None,  # Don't reuse project instance
                 server_url=server_url,
             )
+            app.project = runner.project
             if one_shot:
                 Logger.instance().success("Closing server...")
             else:
-                Logger.instance().success("File Change Data Refresh Complete.") 
+                Logger.instance().success("File Change Data Refresh Complete.")
                 Logger.instance().info("View your project at: " + server_url)
             with open(f"{output_dir}/error.json", "w") as error_file:
                 error_file.write(json.dumps({}))
         except Exception as e:
             error_message = str(e)
-            if os.environ.get('STACKTRACE'):
+            if os.environ.get("STACKTRACE"):
                 error_message = f"{str(e)}\n{traceback.format_exc()}"
             Logger.instance().error(error_message)
             with open(f"{output_dir}/error.json", "w") as error_file:
@@ -78,11 +81,11 @@ def serve_phase(
             if one_shot:
                 Logger.instance().info("Closing server...")
             else:
-                Logger.instance().success("Initial Data Refresh Complete.") 
+                Logger.instance().success("Initial Data Refresh Complete.")
                 Logger.instance().info("View your project at: " + server_url)
         except Exception as e:
             error_message = str(e)
-            if os.environ.get('STACKTRACE'):
+            if os.environ.get("STACKTRACE"):
                 error_message = f"{str(e)}\n{traceback.format_exc()}"
             Logger.instance().error(error_message)
             raise
@@ -96,9 +99,7 @@ def serve_phase(
 
     # Create and return the hot reload server
     server = HotReloadServer(
-        app=app,
-        watch_path=working_dir,
-        ignore_patterns=ignore_patterns
+        app=app.app, watch_path=working_dir, ignore_patterns=ignore_patterns
     )
-    
+
     return server, on_project_change, on_server_ready
