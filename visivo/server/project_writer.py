@@ -1,4 +1,5 @@
 import json
+import yaml
 from copy import deepcopy
 
 class ProjectNamedChildrenWriter:
@@ -24,7 +25,14 @@ class ProjectNamedChildrenWriter:
         self.new(named_child)
 
     def __write(self):
-        pass
+        """ 
+        Need to find a way to write back to the file while maintaining whatever spacing they were using
+        in their project to avoid frivolous git diffs. 
+
+        """
+        for file, contents in self.files_to_write.items(): 
+            with open(file, 'w') as file:
+                yaml.dump(contents, file)
 
     def reconstruct_named_child_config(self, named_child_config: dict) -> dict:
         """"
@@ -85,9 +93,16 @@ class ProjectNamedChildrenWriter:
                     file_contents = yaml.safe_load(file)
                     files_to_write[file_path] = file_contents
             else: 
-                files_to_write[file_path] = ""
+                with open (file_path, "w") as file: 
+                    file.write("")
+                files_to_write[file_path] = {}
         return files_to_write
 
     def __merge_dictionary_updates(self, base_dict, updates_dict):
-        """"""
+        """
+        Function needs to find the named object in the file dictionary recursively. 
+        Then we can use the path that we found to replace the current object with the modified one.
+
+        I think for new objects we need a different process. Deletions seem like the same thing since were just 
+        """
         pass     
