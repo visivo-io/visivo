@@ -144,6 +144,7 @@ tasks:
       CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD: ${{ secrets.CLI_UNIT_TESTING_SNOWFLAKE_PASSWORD }}
     filter: [test-projects/complex-project]
   
+  
   - key: test-docs-examples-project
     use: [visivo-install, install-playwright]
     run: |
