@@ -173,7 +173,7 @@ class FlaskApp:
             project_json = self.project.model_dump_json()
             return {
                 "id": "id",
-                "project_json": project_json,
+                "project_json": json.loads(project_json),
                 "created_at": datetime.datetime.now().isoformat(),
             }
 
