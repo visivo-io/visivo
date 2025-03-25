@@ -1,6 +1,12 @@
 ![PyPI](https://img.shields.io/pypi/v/visivo?label=pypi%20package)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/visivo)
 
+<img src="viewer/src/images/logo.png" alt="Visivo Logo" style="width:25%;">
+
+# Introduction
+
+Visivo is an open-source, fully code-based, data-visualization tool that enables users to create interactive and customizable dashboards for their data. It provides a simple and intuitive way to connect to various data sources, create visualizations, and share insights with others.
+
 # Usage
 
 Please refer to https://docs.visivo.io for detailed instructions on how to use this package.
