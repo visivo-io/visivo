@@ -3,6 +3,7 @@ import os
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
+from visivo.parsers.serializer import Serializer
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
 
@@ -16,14 +17,19 @@ class FlaskApp:
             static_folder=output_dir,
             static_url_path="/data",
         )
-        self.project = project
+
+        self._project_json = (
+            Serializer(project=project).dereference().model_dump_json(exclude_none=True)
+        )
+        self._project = project
+
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(
             os.path.join(output_dir, "worksheets.db")
         )
 
         @self.app.route("/data/<trace_name>/data.json")
-        def serve_trace_data(self, trace_name):
+        def serve_trace_data(trace_name):
             try:
                 trace_dir = os.path.join(output_dir, trace_name)
                 if not os.path.exists(trace_dir):
@@ -58,7 +64,7 @@ class FlaskApp:
 
         @self.app.route("/api/project/named_children", methods=["GET"])
         def named_children():
-            named_children = project.named_child_nodes()
+            named_children = self._project.named_child_nodes()
             if named_children:
                 return jsonify(named_children)
             else:
@@ -91,21 +97,26 @@ class FlaskApp:
                 source = None
                 if source_name:
                     source = next(
-                        (s for s in project.sources if s.name == source_name), None
+                        (s for s in self._project.sources if s.name == source_name),
+                        None,
                     )
 
-                if not source and project.defaults and project.defaults.source_name:
+                if (
+                    not source
+                    and self._project.defaults
+                    and self._project.defaults.source_name
+                ):
                     source = next(
                         (
                             s
-                            for s in project.sources
-                            if s.name == project.defaults.source_name
+                            for s in self._project.sources
+                            if s.name == self._project.defaults.source_name
                         ),
                         None,
                     )
 
-                if not source and project.sources:
-                    source = project.sources[0]
+                if not source and self._project.sources:
+                    source = self._project.sources[0]
 
                 if not source:
                     return jsonify({"message": "No source configured"}), 400
@@ -170,10 +181,9 @@ class FlaskApp:
 
         @self.app.route("/data/project.json")
         def projects():
-            project_json = self.project.model_dump_json()
             return {
                 "id": "id",
-                "project_json": json.loads(project_json),
+                "project_json": json.loads(self._project_json),
                 "created_at": datetime.datetime.now().isoformat(),
             }
 
@@ -326,12 +336,13 @@ class FlaskApp:
                 Logger.instance().error(f"Error updating session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-    def get_project_json(output_dir, dag_filter=None):
-        project_json = ""
-        with open(f"{output_dir}/project.json", "r") as f:
-            project_json = json.load(f)
-        # if dag_filter:
-        # TODO: We could implement something that filters the dashboard here, but maybe we should be filterting in compile?
-        #     project_json = filter_dag(project, dag_filter)
+    @property
+    def project(self):
+        return self._project
 
-        return project_json
+    @project.setter
+    def project(self, value):
+        self._project_json = (
+            Serializer(project=value).dereference().model_dump_json(exclude_none=True)
+        )
+        self._project = value
