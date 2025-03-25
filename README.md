@@ -17,9 +17,15 @@ If you want to install a preview version you can install from a beta tag:
 python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1 --force-reinstall
 ```
 
+If you are planning to do development work and want to read from the current files in the repo:
+
+```
+pip install -e .
+```
+
 ## Quickstart
 
-To get started with Visivo, follow these steps:
+To get started with (non-development version) Visivo, follow these steps:
 
 1. Install Visivo using pip: `pip install visivo`
 2. Create a new project using `visivo init --project-name quick_start`.
@@ -49,6 +55,7 @@ The development of the python CLI is straight forward.  The code is contained wi
 ### Commands
 
 * Test: `poetry run pytest`
+* Server: `visivo serve`
 
 ## Viewer
 
