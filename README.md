@@ -80,6 +80,6 @@ A release is created by running the action `Create Release`. This will create a 
 
 # Authors
 
-* Visivo LLC - [YourWebsite](https://visivo.io/)
+* Visivo LLC - [visivo.io](https://visivo.io/)
 
 See also the list of [contributors](https://github.com/visivo-io/visivo/contributors) who participated in this project.
