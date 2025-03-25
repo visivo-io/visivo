@@ -82,7 +82,7 @@ class ProjectWriter:
                 self.yaml.dump(contents, file)
     
     def _update(self, child_name: str):
-        new_object = self.__get_named_child_config(child_name)
+        new_object = self._get_named_child_config(child_name)
         
         def recurse(current):
             if isinstance(current, dict):
@@ -111,7 +111,7 @@ class ProjectWriter:
         
         
     def _new(self, child_name: str):
-        child_dict = self.__get_named_child_config(child_name)
+        child_dict = self._get_named_child_config(child_name)
         file_path = self.named_children[child_name]["new_file_path"]
         type_key = self.named_children[child_name]["type_key"]
 
@@ -167,7 +167,7 @@ class ProjectWriter:
         raise NotImplementedError("Rename is not implemented yet.")
     
 
-    def __get_named_child_config(self, named_child_name: str) -> dict:
+    def _get_named_child_config(self, named_child_name: str) -> dict:
         """
         Returns the reconstructed config for a named child.
         """
@@ -224,13 +224,17 @@ class ProjectWriter:
             else: 
                 relevant_files.append(value.get("file_path"))
                 relevant_files.append(value.get("new_file_path"))
-        relevant_files = list(set(relevant_files))
-        
+        relevant_files = [x for x in list(set(relevant_files)) if x is not None]
+        print(relevant_files)
         files_to_write = {}
+
         for file_path in relevant_files:
-            if os.path.isfile(file_path):
+            print(file_path)
+            if file_path is None: 
+                continue 
+            elif os.path.isfile(file_path):
                 with open(file_path, "r") as file:
-                    file_contents = self.yaml.safe_load(file)
+                    file_contents = self.yaml.load(file)
                     files_to_write[file_path] = file_contents
             else: 
                 with open (file_path, "w") as file: 
