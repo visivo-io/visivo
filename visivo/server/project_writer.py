@@ -225,11 +225,9 @@ class ProjectWriter:
                 relevant_files.append(value.get("file_path"))
                 relevant_files.append(value.get("new_file_path"))
         relevant_files = [x for x in list(set(relevant_files)) if x is not None]
-        print(relevant_files)
         files_to_write = {}
 
         for file_path in relevant_files:
-            print(file_path)
             if file_path is None: 
                 continue 
             elif os.path.isfile(file_path):
