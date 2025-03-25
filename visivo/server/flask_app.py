@@ -6,7 +6,7 @@ from flask import Flask, send_from_directory, request, jsonify, Response, send_f
 import datetime
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
-
+from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 def flask_app(output_dir, dag_filter, project):
