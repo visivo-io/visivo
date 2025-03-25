@@ -44,8 +44,6 @@ def simple_project_file(temp_project_dir):
 @pytest.fixture
 def simple_writer(temp_project_dir, simple_project_file):
     """Create a ProjectWriter instance with minimal configuration"""
-    print(simple_project_file)
-    print(simple_project_file)
     named_children = {
         "Existing Component": {
             "status": "Modified",
@@ -53,7 +51,6 @@ def simple_writer(temp_project_dir, simple_project_file):
             "config": {"name": "Existing Component", "value": "original"}
         }
     }
-    print(named_children)
     return ProjectWriter(named_children)
 
 def test_initial_files_to_write_map(writer, sample_named_children):
@@ -129,7 +126,6 @@ def test_update_named_child(simple_writer, simple_project_file):
         "file_path": simple_project_file,
         "config": {"name": "Existing Component", "value": "updated"}
     }
-    print(simple_writer.files_to_write)
     simple_writer._update("Existing Component")
     
     # Verify the update was applied
