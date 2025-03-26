@@ -27,11 +27,6 @@ If you want to install a preview version you can install from a beta tag:
 python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1 --force-reinstall
 ```
 
-If you are planning to do development work and want to read from the current files in the repo:
-
-```
-pip install -e .
-```
 
 ## Quickstart
 
@@ -48,7 +43,7 @@ To get started with (non-development version) Visivo, follow these steps:
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/visivo-io/visivo/tags). 
 
-# Development
+# Contributing 
 
 There are two pieces to the local Visivo deployment, the python CLI and the javascript viewer.  When packaged, the viewer is contained in the CLI, but it is needed to be able to develop them separately locally.
 
@@ -61,6 +56,12 @@ The development of the python CLI is straight forward.  The code is contained wi
 1. Python 3.10+
 2. Poetry: `pip install poetry`
 3. Dependencies: `poetry install`
+
+After this, you can install the visivo package from the files in the repo.  This keeps the `visivo ...` commands in sync with your github repo because it reads those commands from the files on your computer.
+
+```
+pip install -e .
+```
 
 ### Commands
 
@@ -99,4 +100,12 @@ A release is created by running the action `Create Release`. This will create a 
 
 * Visivo LLC - [visivo.io](https://visivo.io/)
 
+Our team has experienced building analytics at fast growing companies and scaling systems at household names like Intuit, Boeing and Root Insurance.
+
 See also the list of [contributors](https://github.com/visivo-io/visivo/contributors) who participated in this project.
+
+# Join Our Community
+
+* File a GitHub [issue](https://github.com/visivo-io/visivo/issues).
+* Send us an email [info@visivo.io](mailto:info@visivo.io).
+* Read our [blog](https://visivo.io/blog).
