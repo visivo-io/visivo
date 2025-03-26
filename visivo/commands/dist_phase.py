@@ -42,7 +42,7 @@ def dist_phase(output_dir, dist_dir):
         with open(f"{dist_dir}/data/project_history.json", "w") as f:
             f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
 
-        trace_dirs = glob(f"{output_dir}/*/", recursive=True)
+        trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
         for trace_dir in trace_dirs:
             trace_name = os.path.basename(os.path.normpath(trace_dir))
             if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
