@@ -63,8 +63,8 @@
   },
   "scripts": {
     "start": "yarn run start:local",
-    "start:local": "cp src/LocalProviders.jsx src/Providers.jsx && VITE_APP_API_BASE_URL='http://localhost:8000' vite",
-    "start:dist": "cp src/DistProviders.jsx src/Providers.jsx && VITE_APP_API_BASE_URL='http://localhost:8000' vite",
+    "start:local": "cp src/LocalProviders.jsx src/Providers.jsx && vite",
+    "start:dist": "cp src/DistProviders.jsx src/Providers.jsx && vite",
     "test": "jest",
     "build": "vite build",
     "deploy": "yarn run deploy:local && yarn run deploy:dist",
