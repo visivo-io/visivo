@@ -9,25 +9,33 @@ import ProjectContainer from './components/ProjectContainer'
 import BreadcrumbLink from './components/styled/BreadcrumbLink'
 import ErrorPage from './components/ErrorPage'
 import DistHome from './components/DistHome'
+import { loadError } from './loaders/error'
+import logo from './images/logo.png'
+
 const Viewer = createBrowserRouter(
   createRoutesFromElements(
-      <Route
-        path="/"
-        element={<DistHome/>}
-        errorElement={<ErrorPage />}
-        shouldRevalidate={() => false}
-        loader={loadProject}
-        handle={{ crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink> }}
+      <Route path="/"
+        element={<DistHome />}
+        loader={loadError}
+        handle={{ crumb: () => <a href="https://visivo.io"><img src={logo} className="h-8" alt="Visivo Logo" /></a> }}
       >
-        <Route index element={<ProjectContainer />} />
         <Route
-          id="project"
-          path=":dashboardName?/*"
+          path="/project"
           element={<ProjectContainer />}
-          loader={loadProject}
+          errorElement={<ErrorPage />}
           shouldRevalidate={() => false}
-          handle={{ crumb: (match) => <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>{match.params.dashboardName}</BreadcrumbLink> }}
-        />
+          loader={loadProject}
+          handle={{ crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink> }}
+        >
+          <Route index element={<ProjectContainer />} />
+          <Route
+            id="project"
+            path=":dashboardName?/*"
+            element={<ProjectContainer />}
+            loader={loadProject}
+            shouldRevalidate={() => false}
+            handle={{ crumb: (match) => <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>{match.params.dashboardName}</BreadcrumbLink> }}          />
+        </Route>
       </Route>
   )
 );

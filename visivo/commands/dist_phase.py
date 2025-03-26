@@ -1,4 +1,4 @@
-from visivo.utils import VIEWER_PATH
+from visivo.utils import DIST_PATH
 from visivo.logging.logger import Logger
 import traceback
 
@@ -52,7 +52,7 @@ def dist_phase(output_dir, dist_dir):
                     f"{dist_dir}/data/{trace_name}/data.json",
                 )
 
-        shutil.copytree(VIEWER_PATH, dist_dir, dirs_exist_ok=True)
+        shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
     except Exception as e:
         Logger.instance().error(
             f"Error creating dist. Try running `visivo run` to ensure your project is up to date."

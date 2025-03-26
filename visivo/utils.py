@@ -12,6 +12,7 @@ from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 import importlib.resources as resources
 
 VIEWER_PATH = resources.files("visivo") / "viewer"
+DIST_PATH = resources.files("visivo") / "dist"
 
 SCHEMA_FILE = resources.files("visivo") / "src" / "visivo_project_schema.json"
 
@@ -26,6 +27,7 @@ PROJECT_CHILDREN = [
     "dashboards",
     "destinations",
 ]
+
 
 def get_dashboards_dir(output_dir):
     return os.path.join(output_dir, "dashboards")

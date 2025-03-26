@@ -69,7 +69,9 @@
     "start:dist": "REACT_APP_API_BASE_URL='http://localhost:8000' REACT_APP_USE_DIST='true' react-scripts start",
     "test": "react-scripts test ",
     "build": "PUBLIC_URL='/' yarn run react-scripts build",
-    "deploy": "yarn run build && rm -rf ../visivo/viewer && cp -Rv build/ ../visivo/viewer/",
+    "deploy:viewer": "yarn run build && rm -rf ../visivo/viewer && cp -Rv build/ ../visivo/viewer/",
+    "deploy:dist": "REACT_APP_USE_DIST='true' yarn run build && rm -rf ../visivo/dist && cp -Rv build/ ../visivo/dist/",
+    "deploy": "yarn run deploy:viewer && yarn run deploy:dist",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
   },
   "eslintConfig": {
