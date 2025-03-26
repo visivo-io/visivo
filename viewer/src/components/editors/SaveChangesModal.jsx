@@ -45,7 +45,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
     <>
       {/* Saving Toast */}
       {showSavingToast && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60]">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-60">
           <Toast className="bg-[#713B57] text-white border-none">
             <div className="inline-flex items-center">
               <div className="h-4 w-4 mr-3 animate-spin rounded-full border-2 border-solid border-white border-r-transparent" />
@@ -57,7 +57,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
 
       {/* Success Toast */}
       {showSuccessToast && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60]">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-60">
           <Toast className="bg-[#713B57] text-white border-none">
             <div className="inline-flex items-center">
               <HiCheck className="h-4 w-4 mr-3" />
@@ -69,7 +69,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
 
       {/* Error Toast */}
       {showErrorToast && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[60]">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-60">
           <Toast className="bg-[#D25946] text-white border-none">
             <div className="inline-flex items-center">
               <HiExclamation className="h-4 w-4 mr-3" />

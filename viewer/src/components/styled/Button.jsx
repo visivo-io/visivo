@@ -4,7 +4,7 @@ export const Button = tw.button`
   text-white 
   focus:ring-4 
   focus:ring-primary-300 
-  focus:outline-none 
+  focus:outline-hidden 
   bg-primary-500 
   hover:bg-primary-600 
   disabled:bg-secondary-100
@@ -37,7 +37,7 @@ export const ButtonOutline = tw(Button)`
   hover:text-white
   hover:bg-primary-600
   focus:ring-4
-  focus:outline-none
+  focus:outline-hidden
   focus:ring-primary-300
 `
 

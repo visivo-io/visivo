@@ -184,7 +184,7 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectDef
           className="max-w-xs"
           trigger="hover"
         >
-          <HiInformationCircle className="h-5 w-5 text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0" />
+          <HiInformationCircle className="h-5 w-5 text-gray-400 hover:text-gray-600 ml-2 shrink-0" />
         </Tooltip>
       </div>
       <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-8 gap-3 transition-all duration-200 ${

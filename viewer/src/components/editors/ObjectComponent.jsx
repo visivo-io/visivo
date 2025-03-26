@@ -57,7 +57,7 @@ function ObjectComponent({ name, data, path }) {
             return (
                 <div
                 key={key}
-                className="border-gray-400 border bg-blue-50 pb-2 pr-2 pl-2 rounded-lg  shadow"
+                className="border-gray-400 border bg-blue-50 pb-2 pr-2 pl-2 rounded-lg  shadow-sm"
                 style={{ width: `${sizeFactor}px`, minWidth: '200px' }}
                 >
                 {renderValue(key, value, childPath)}

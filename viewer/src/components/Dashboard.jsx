@@ -162,9 +162,9 @@ const Dashboard = ({ project, dashboardName }) => {
                         <Markdown
                             className={`p-2 prose max-w-none ${item.justify === 'end' ? 'mt-auto' : 
                                        item.justify === 'center' ? 'my-auto' : 
-                                       item.justify === 'between' ? 'flex-grow flex flex-col justify-between' :
-                                       item.justify === 'around' ? 'flex-grow flex flex-col justify-around' :
-                                       item.justify === 'evenly' ? 'flex-grow flex flex-col justify-evenly' : ''}`}
+                                       item.justify === 'between' ? 'grow flex flex-col justify-between' :
+                                       item.justify === 'around' ? 'grow flex flex-col justify-around' :
+                                       item.justify === 'evenly' ? 'grow flex flex-col justify-evenly' : ''}`}
                             key={`dashboardRow${rowIndex}Item${itemIndex}`}
                             remarkPlugins={[remarkGfm]}
                             rehypePlugins={[rehypeRaw, rehypeSanitize]}

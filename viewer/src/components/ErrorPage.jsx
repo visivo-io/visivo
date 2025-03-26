@@ -22,7 +22,7 @@ const ErrorPage = (props) => {
       <div className="text-center">
         <h1 className="text-6xl font-medium">{title}</h1>
         <p className="text-xl font-medium m-6">{message}</p>
-        <Link to="/" className="bg-primary-500 hover:bg-primary-600 text-white py-2 px-4 rounded">Home</Link>
+        <Link to="/" className="bg-primary-500 hover:bg-primary-600 text-white py-2 px-4 rounded-sm">Home</Link>
       </div>
     </div>
   )

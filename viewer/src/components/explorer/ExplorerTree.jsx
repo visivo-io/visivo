@@ -43,7 +43,7 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
           </div>
           <button
             onClick={(e) => handleCopyName(e, node.name)}
-            className="relative inline-flex items-center p-1 text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-none opacity-0 group-hover:opacity-100"
+            className="relative inline-flex items-center p-1 text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-hidden opacity-0 group-hover:opacity-100"
           >
             <ContentCopyIcon className="w-4 h-4" />
             <span className="sr-only">Copy name</span>

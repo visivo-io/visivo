@@ -23,7 +23,7 @@ const TabText = tw.span`
 `;
 
 const TabInput = tw.input`
-  px-1 py-0.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500
+  px-1 py-0.5 border border-gray-300 rounded text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500
 `;
 
 const CloseButton = tw.button`

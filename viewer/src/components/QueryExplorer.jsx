@@ -487,7 +487,7 @@ const QueryExplorer = () => {
                     type="button"
                     className={`text-white ${
                       isLoading ? 'bg-[#A06C86]' : 'bg-[#713B57] hover:bg-[#5A2E46]'
-                    } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none`}
+                    } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-hidden`}
                     onClick={handleRunQuery}
                     disabled={isLoading}
                   >

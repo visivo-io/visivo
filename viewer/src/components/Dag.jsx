@@ -145,7 +145,7 @@ const Dag = () => {
                 <input
                     type="text"
                     placeholder="Filter by node name"
-                    className="px-2 py-1 border rounded mr-2"
+                    className="px-2 py-1 border rounded-sm mr-2"
                     onChange={(e) => setState(prevState => ({ ...prevState, nodeName: e.target.value }))}
                 />
                 <input
@@ -153,7 +153,7 @@ const Dag = () => {
                     min="0"
                     step="1"
                     placeholder="Before"
-                    className="px-2 py-1 border rounded mr-2"
+                    className="px-2 py-1 border rounded-sm mr-2"
                     onChange={(e) => {
                         const value = Math.max(0, parseInt(e.target.value) || 0);
                         setState(prevState => ({ ...prevState, before: value }));
@@ -164,7 +164,7 @@ const Dag = () => {
                     min="0"
                     step="1"
                     placeholder="After"
-                    className="px-2 py-1 border rounded"
+                    className="px-2 py-1 border rounded-sm"
                     onChange={(e) => {
                         const value = Math.max(0, parseInt(e.target.value) || 0);
                         setState(prevState => ({ ...prevState, after: value }));

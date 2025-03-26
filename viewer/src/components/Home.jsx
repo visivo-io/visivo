@@ -17,10 +17,10 @@ const Home = () => {
     <div className="container mx-auto px-4 py-12">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
         <Link to="/dag" className="col-span-1">
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-white rounded-lg shadow-xs hover:shadow-md transition-shadow duration-200">
             <div className="flex flex-col items-center p-8">
               <HiOutlineDatabase className="w-12 h-12 mb-4 text-gray-700" />
-              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded">
+              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-sm">
                 <h5 className="text-xl font-medium text-gray-900">
                   DAG Explorer
                 </h5>
@@ -32,10 +32,10 @@ const Home = () => {
           </div>
         </Link>
         <Link to="/query" className="col-span-1">
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-white rounded-lg shadow-xs hover:shadow-md transition-shadow duration-200">
             <div className="flex flex-col items-center p-8">
               <HiOutlineSearch className="w-12 h-12 mb-4 text-gray-700" />
-              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded">
+              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-sm">
                 <h5 className="text-xl font-medium text-gray-900">
                   Query Explorer
                 </h5>
@@ -47,10 +47,10 @@ const Home = () => {
           </div>
         </Link>
         <Link to="/project" className="col-span-1 md:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+          <div className="bg-white rounded-lg shadow-xs hover:shadow-md transition-shadow duration-200">
             <div className="flex flex-col items-center p-8">
               <HiTemplate className="w-12 h-12 mb-4 text-gray-700" />
-              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded">
+              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-sm">
                 <h5 className="text-xl font-medium text-gray-900">
                   Project
                 </h5>
