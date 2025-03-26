@@ -28,8 +28,8 @@ const useStore = create(devtools((set, get) => ({
     try {
       // Make API call to write files
       const response = await writeNamedChildren(state.namedChildren);
-      VITE_APP_API_BASE_URL('writeNamedChildren response', response);
-      VITE_APP_API_BASE_URL('writeNamedChildren response', response.status);
+      console.log('writeNamedChildren response', response);
+      console.log('writeNamedChildren response', response.status);
       
       if (response.status !== 200) {
         throw new Error('Failed to write files');
@@ -57,7 +57,7 @@ const useStore = create(devtools((set, get) => ({
   
   // Fetch actions for namedChildren
   fetchNamedChildren: async () => {
-    VITE_APP_API_BASE_URL('fetchNamedChildren called');
+    console.log('fetchNamedChildren called');
     set({ isLoading: true, error: null });
     try {
       const data = await fetchNamedChildren();
@@ -82,10 +82,10 @@ const useStore = create(devtools((set, get) => ({
   // New update attribute for namedChildren
   updateNamedChildAttribute: (path, newValue) => 
     set((state) => {
-      VITE_APP_API_BASE_URL('updateNamedChildAttribute called', path, newValue);
+      console.log('updateNamedChildAttribute called', path, newValue);
       const childName = path.shift();
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        VITE_APP_API_BASE_URL(`childName:${childName} not found in namedChildren store`, state.namedChildren);
+        console.log(`childName:${childName} not found in namedChildren store`, state.namedChildren);
         return { error: 'Child not found in namedChildren store', isLoading: false };
       }
       
@@ -95,7 +95,7 @@ const useStore = create(devtools((set, get) => ({
         : childToUpdate.config;
 
       updateNestedValue(configToUpdate, path, newValue);
-      VITE_APP_API_BASE_URL('post update configToUpdate', configToUpdate);
+      console.log('post update configToUpdate', configToUpdate);
       
       return { 
         namedChildren: {
@@ -151,7 +151,7 @@ const useStore = create(devtools((set, get) => ({
   getActiveTab: () => {
     const state = get();
     const activeTab = state.tabs.find(tab => tab.id === state.activeTabId);
-    VITE_APP_API_BASE_URL('getActiveTab called', activeTab);
+    console.log('getActiveTab called', activeTab);
     if (!activeTab) return null;
     
     // Get current config from namedChildren

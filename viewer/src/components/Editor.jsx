@@ -6,7 +6,7 @@ import useStore from '../stores/store';
 
 const Editor = () => {
   // Get state and actions from store
-  VITE_APP_API_BASE_URL('Editor render');
+  console.log('Editor render');
   const projectData = useStore((state) => state.projectData);
   const setProjectData = useStore((state) => state.setProjectData);
   const fetchNamedChildren = useStore((state) => state.fetchNamedChildren);
