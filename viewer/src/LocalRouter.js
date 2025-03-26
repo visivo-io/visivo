@@ -15,7 +15,7 @@ import Dag from './components/Dag'
 import QueryExplorer from './components/QueryExplorer'
 import Editor from './components/Editor'
 
-const Viewer = createBrowserRouter(
+const LocalRouter = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/"
       element={<Home />}
@@ -65,4 +65,4 @@ const Viewer = createBrowserRouter(
   )
 );
 
-export default Viewer;
+export default LocalRouter;

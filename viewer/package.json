@@ -65,13 +65,14 @@
     ]
   },
   "scripts": {
-    "start": "REACT_APP_API_BASE_URL='http://localhost:8000' react-scripts start",
-    "start:dist": "REACT_APP_API_BASE_URL='http://localhost:8000' REACT_APP_USE_DIST='true' react-scripts start",
+    "start": "yarn run start:local",
+    "start:local": "cp LocalProviders.js src/Providers.js && REACT_APP_API_BASE_URL='http://localhost:8000' react-scripts start",
+    "start:dist": "cp DistProviders.js src/Providers.js && REACT_APP_API_BASE_URL='http://localhost:8000' react-scripts start",
     "test": "react-scripts test ",
     "build": "PUBLIC_URL='/' yarn run react-scripts build",
-    "deploy:viewer": "yarn run build && rm -rf ../visivo/viewer && cp -Rv build/ ../visivo/viewer/",
-    "deploy:dist": "REACT_APP_USE_DIST='true' yarn run build && rm -rf ../visivo/dist && cp -Rv build/ ../visivo/dist/",
-    "deploy": "yarn run deploy:viewer && yarn run deploy:dist",
+    "deploy": "yarn run deploy:local && yarn run deploy:dist",
+    "deploy:local": "cp LocalProviders.js src/Providers.js && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv build/ ../visivo/viewers/local/",
+    "deploy:dist": "cp DistProviders.js src/Providers.js && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv build/ ../visivo/viewers/dist/",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
   },
   "eslintConfig": {

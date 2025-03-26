@@ -6,7 +6,6 @@ function ProjectContainer() {
   const { dashboardName } = useParams();
   const project = useLoaderData();
 
-  console.log(project)
   const dashboards = (project) => {
     if (!project) {
       return [];

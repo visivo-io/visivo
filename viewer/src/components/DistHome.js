@@ -3,7 +3,7 @@ import Breadcrumbs from './Breadcrumbs';
 import { useLoaderData } from 'react-router-dom';
 import Error from './styled/Error';
 import { SearchParamsProvider } from '../contexts/SearchParamsContext';
-
+import ProjectHistory from './ProjectHistory';
 const DistHome = () => {
   const error = useLoaderData();
 
@@ -13,6 +13,7 @@ const DistHome = () => {
         <div className={"mx-4"}>
             <div className="flex flex-row justify-between items-center whitespace-nowrap py-4">
               <Breadcrumbs />
+              <ProjectHistory />
             </div>
           {error && error.message && (
             <Error>{error.message}</Error>

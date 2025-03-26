@@ -12,7 +12,7 @@ import DistHome from './components/DistHome'
 import { loadError } from './loaders/error'
 import logo from './images/logo.png'
 
-const Viewer = createBrowserRouter(
+const DistRouter = createBrowserRouter(
   createRoutesFromElements(
       <Route path="/"
         element={<DistHome />}
@@ -40,4 +40,4 @@ const Viewer = createBrowserRouter(
   )
 );
 
-export default Viewer;
+export default DistRouter;
