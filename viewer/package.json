@@ -66,6 +66,7 @@
   },
   "scripts": {
     "start": "REACT_APP_API_BASE_URL='http://localhost:8000' react-scripts start",
+    "start:dist": "REACT_APP_API_BASE_URL='http://localhost:8000' REACT_APP_USE_DIST='true' react-scripts start",
     "test": "react-scripts test ",
     "build": "PUBLIC_URL='/' yarn run react-scripts build",
     "deploy": "yarn run build && rm -rf ../visivo/viewer && cp -Rv build/ ../visivo/viewer/",
