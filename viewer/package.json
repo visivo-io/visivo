@@ -74,8 +74,8 @@
     "test": "react-scripts test ",
     "build": "vite build",
     "deploy": "yarn run deploy:local && yarn run deploy:dist",
-    "deploy:local": "cp src/LocalProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv build/ ../visivo/viewers/local/",
-    "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv build/ ../visivo/viewers/dist/",
+    "deploy:local": "cp src/LocalProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv dist/ ../visivo/viewers/local/",
+    "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv dist/ ../visivo/viewers/dist/",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
   },
   "eslintConfig": {

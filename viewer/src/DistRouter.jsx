@@ -20,12 +20,12 @@ const DistRouter = createBrowserRouter(
         handle={{ crumb: () => <a href="https://visivo.io"><img src={logo} className="h-8" alt="Visivo Logo" /></a> }}
       >
         <Route
-          path="/project"
+          path="/"
           element={<ProjectContainer />}
           errorElement={<ErrorPage />}
           shouldRevalidate={() => false}
           loader={loadProject}
-          handle={{ crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink> }}
+          handle={{ crumb: () => <BreadcrumbLink to="/">Project</BreadcrumbLink> }}
         >
           <Route index element={<ProjectContainer />} />
           <Route
@@ -34,7 +34,7 @@ const DistRouter = createBrowserRouter(
             element={<ProjectContainer />}
             loader={loadProject}
             shouldRevalidate={() => false}
-            handle={{ crumb: (match) => <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>{match.params.dashboardName}</BreadcrumbLink> }}          />
+            handle={{ crumb: (match) => <BreadcrumbLink to={`/${match.params.dashboardName}`}>{match.params.dashboardName}</BreadcrumbLink> }}          />
         </Route>
       </Route>
   )
