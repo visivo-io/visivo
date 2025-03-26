@@ -20,6 +20,21 @@ def test_init_with_sqlite():
     assert "sqlite" in Path(f"{tmp}/project.visivo.yml").read_text()
 
 
+def test_init_with_sqlite_and_project_name():
+    tmp = temp_folder()
+
+    response = runner.invoke(
+        init, args=["--project-name", tmp], input=f"sqlite\ntoken\n"
+    )
+    assert f"Created project in '{tmp}'" in response.output
+    assert response.exit_code == 0
+    assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=EXAMPLE_password_l0cation"
+    assert Path(f"{tmp}/.gitignore").read_text() == ".env\ntarget\n.visivo_cache"
+    assert os.path.exists(f"{tmp}/project.visivo.yml")
+    assert os.path.exists(f"{tmp}/local.db")
+    assert "sqlite" in Path(f"{tmp}/project.visivo.yml").read_text()
+
+
 def test_init_with_postgres():
     tmp = temp_folder()
 
@@ -130,10 +145,7 @@ def test_init_with_duckdb():
 
     response = runner.invoke(
         init,
-        input=f"{tmp}\n"
-        + "duckdb\n"
-        + f"{tmp}/local.db\n"
-        + "token\n",
+        input=f"{tmp}\n" + "duckdb\n" + f"{tmp}/local.db\n" + "token\n",
     )
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
