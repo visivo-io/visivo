@@ -9,13 +9,14 @@ from visivo.logging.logger import Logger
 
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
+
 def flask_app(output_dir, dag_filter, project):
     app = Flask(
         __name__,
         static_folder=output_dir,
         static_url_path="/data",
     )
-    
+
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
     worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
@@ -25,7 +26,7 @@ def flask_app(output_dir, dag_filter, project):
         with open(f"{output_dir}/project.json", "r") as f:
             project_json = json.load(f)
         # if dag_filter:
-        # TODO: We could implement something that filters the dashboard here, but maybe we should be filterting in compile? 
+        # TODO: We could implement something that filters the dashboard here, but maybe we should be filterting in compile?
         #     project_json = filter_dag(project, dag_filter)
 
         return project_json
@@ -33,7 +34,7 @@ def flask_app(output_dir, dag_filter, project):
     @app.route("/data/<trace_name>/data.json")
     def serve_trace_data(trace_name):
         try:
-            trace_dir = os.path.join(output_dir, trace_name)
+            trace_dir = os.path.join(output_dir, "traces", trace_name)
             if not os.path.exists(trace_dir):
                 return (
                     jsonify({"message": f"Trace directory not found: {trace_name}"}),
@@ -58,27 +59,27 @@ def flask_app(output_dir, dag_filter, project):
             return send_file(SCHEMA_FILE)
         else:
             return (
-                    jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
-                    404,
-                )
-        
-    @app.route("/api/project/named_children", methods = ["GET"])
+                jsonify({"message": f"Schema file not found: {SCHEMA_FILE}"}),
+                404,
+            )
+
+    @app.route("/api/project/named_children", methods=["GET"])
     def named_children():
         named_children = project.named_child_nodes()
         if named_children:
             return jsonify(named_children)
         else:
             return jsonify({})
-        
-    @app.route("/api/project/write_changes", methods = ["POST"])
+
+    @app.route("/api/project/write_changes", methods=["POST"])
     def write_changes():
         from time import sleep
+
         data = request.get_json()
         if not data:
             return jsonify({"message": "No data provided"}), 400
         sleep(3)
         return jsonify({"message": "Changes written successfully"}), 200
-    
 
     @app.route("/api/query/<project_id>", methods=["POST"])
     def execute_query(project_id):
@@ -125,19 +126,17 @@ def flask_app(output_dir, dag_filter, project):
             else:
                 response_data = {
                     "columns": list(result.columns),
-                    "rows": result.to_dict("records")
+                    "rows": result.to_dict("records"),
                 }
 
             # If worksheet_id is provided, save the results
             if worksheet_id:
                 query_stats = {
                     "timestamp": datetime.datetime.utcnow().isoformat(),
-                    "source": source.name
+                    "source": source.name,
                 }
                 worksheet_repo.save_results(
-                    worksheet_id,
-                    json.dumps(response_data),
-                    json.dumps(query_stats)
+                    worksheet_id, json.dumps(response_data), json.dumps(query_stats)
                 )
 
             return jsonify(response_data), 200
@@ -149,7 +148,7 @@ def flask_app(output_dir, dag_filter, project):
     @app.route("/api/trace/<trace_name>/query", methods=["GET"])
     def get_trace_query(trace_name):
         try:
-            query_file_path = f"{output_dir}/{trace_name}/query.sql"
+            query_file_path = f"{output_dir}/traces/{trace_name}/query.sql"
             if not os.path.exists(query_file_path):
                 return (
                     jsonify(
@@ -224,7 +223,9 @@ def flask_app(output_dir, dag_filter, project):
             # Since static_url_path="/data" maps to output_dir, we can use send_from_directory with output_dir
             thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
             if not os.path.exists(os.path.join(output_dir, thumbnail_path)):
-                Logger.instance().debug(f"Thumbnail not found at path: {thumbnail_path}")
+                Logger.instance().debug(
+                    f"Thumbnail not found at path: {thumbnail_path}"
+                )
                 return Response(status=404)
 
             return send_from_directory(output_dir, thumbnail_path)
@@ -265,7 +266,7 @@ def flask_app(output_dir, dag_filter, project):
             result = worksheet_repo.create_worksheet(
                 name=data["name"],
                 query=data.get("query", ""),
-                selected_source=data.get("selected_source")
+                selected_source=data.get("selected_source"),
             )
             return jsonify(result), 201
         except Exception as e:
@@ -283,7 +284,7 @@ def flask_app(output_dir, dag_filter, project):
             success = worksheet_repo.update_worksheet(worksheet_id, data)
             if not success:
                 return jsonify({"message": "Worksheet not found"}), 404
-            
+
             return jsonify({"message": "Worksheet updated successfully"})
         except Exception as e:
             Logger.instance().error(f"Error updating worksheet: {str(e)}")
@@ -322,7 +323,7 @@ def flask_app(output_dir, dag_filter, project):
             success = worksheet_repo.update_session_states(data)
             if not success:
                 return jsonify({"message": "Failed to update session state"}), 500
-            
+
             return jsonify({"message": "Session state updated successfully"})
         except Exception as e:
             Logger.instance().error(f"Error updating session state: {str(e)}")

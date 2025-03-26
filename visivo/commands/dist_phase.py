@@ -45,10 +45,10 @@ def dist_phase(output_dir, dist_dir):
         trace_dirs = glob(f"{output_dir}/*/", recursive=True)
         for trace_dir in trace_dirs:
             trace_name = os.path.basename(os.path.normpath(trace_dir))
-            if os.path.exists(f"{output_dir}/{trace_name}/data.json"):
+            if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
                 os.makedirs(f"{dist_dir}/data/{trace_name}", exist_ok=True)
                 shutil.copyfile(
-                    f"{output_dir}/{trace_name}/data.json",
+                    f"{output_dir}/traces/{trace_name}/data.json",
                     f"{dist_dir}/data/{trace_name}/data.json",
                 )
 

@@ -1,0 +1,6 @@
+This favicon was generated using the following font:
+
+- Font Title: Kaushan Script
+- Font Author: Copyright (c) 2011, Pablo Impallari (www.impallari.com|impallari@gmail.com), Copyright (c) 2011, Igino Marini. (www.ikern.com|mail@iginomarini.com), with Reserved Font Name Kaushan Script.
+- Font Source: http://fonts.gstatic.com/s/kaushanscript/v14/vm8vdRfvXFLG3OLnsO15WYS5DF7_ytN3M48a.ttf
+- Font License: SIL Open Font License, 1.1 (http://scripts.sil.org/OFL))

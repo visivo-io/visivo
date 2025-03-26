@@ -10,7 +10,7 @@ class QueryWriter:
         self.query_string = query_string
 
     def write(self):
-        trace_directory = f"{self.output_dir}/{self.trace.name}"
+        trace_directory = f"{self.output_dir}/traces/{self.trace.name}"
         os.makedirs(trace_directory, exist_ok=True)
         query_file = f"{trace_directory}/query.sql"
         existing_query = ""

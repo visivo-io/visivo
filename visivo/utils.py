@@ -11,8 +11,8 @@ from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 import importlib.resources as resources
 
-VIEWER_PATH = resources.files("visivo") / "viewer"
-DIST_PATH = resources.files("visivo") / "dist"
+VIEWER_PATH = resources.files("visivo") / "viewers" / "local"
+DIST_PATH = resources.files("visivo") / "viewers" / "dist"
 
 SCHEMA_FILE = resources.files("visivo") / "src" / "visivo_project_schema.json"
 

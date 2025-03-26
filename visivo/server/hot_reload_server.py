@@ -119,7 +119,7 @@ class HotReloadServer:
                 return """
                     const socket = io();
                     socket.on('reload', () => {
-                        console.log('Reloading page...');
+                        VITE_APP_API_BASE_URL('Reloading page...');
                         window.location.reload();
                     });
                 """, {'Content-Type': 'application/javascript'}

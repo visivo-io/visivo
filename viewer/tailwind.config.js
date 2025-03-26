@@ -4,6 +4,7 @@ const colors = require('tailwindcss/colors')
 // https://www.colors.tools/tints-and-shades/?currentColor=713B57&currentColorMixed=8589f5&currentSteps=20&currentHarmony=180&currentHarmonyDominance=50,50,50,50
 module.exports = {
   content: [
+    "./index.html",
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {

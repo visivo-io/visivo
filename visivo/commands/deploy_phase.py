@@ -94,7 +94,7 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
     attempt.set(attempt.get(0) + 1)
     async with semaphore_50:
         try:
-            data_file = f"{output_dir}/{file_name}"
+            data_file = f"{output_dir}/traces/{file_name}"
             additional_headers = {}
             if "localhost" in upload_url:
                 additional_headers["Content-Disposition"] = (
