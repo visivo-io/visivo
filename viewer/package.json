@@ -61,27 +61,38 @@
     "web-vitals": "^3.5.0",
     "zustand": "^5.0.3"
   },
-  "jest": {
-    "transformIgnorePatterns": [
-      "<rootDir>/node_modules/(?!export-to-csv)/",
-      "<rootDir>/node_modules/(?!d3)/"
-    ]
-  },
   "scripts": {
     "start": "yarn run start:local",
     "start:local": "cp src/LocalProviders.jsx src/Providers.jsx && VITE_APP_API_BASE_URL='http://localhost:8000' vite",
     "start:dist": "cp src/DistProviders.jsx src/Providers.jsx && VITE_APP_API_BASE_URL='http://localhost:8000' vite",
-    "test": "react-scripts test ",
+    "test": "jest",
     "build": "vite build",
     "deploy": "yarn run deploy:local && yarn run deploy:dist",
-    "deploy:local": "cp src/LocalProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv dist/ ../visivo/viewers/local/",
-    "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv dist/ ../visivo/viewers/dist/",
+    "deploy:local": "cp src/LocalProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv build/ ../visivo/viewers/local/",
+    "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv build/ ../visivo/viewers/dist/",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
   },
   "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "jest-environment-jsdom",
+    "moduleNameMapper": {
+      "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
+      "\\.(css|less)$": "<rootDir>/__mocks__/styleMock.js"
+    },
+    "modulePaths": [
+      "<rootDir>/src"
+    ],
+    "transformIgnorePatterns": [
+      "<rootDir>/node_modules/(?!export-to-csv)/",
+      "<rootDir>/node_modules/(?!d3)/"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/setupTests.js"
     ]
   },
   "browserslist": {
@@ -98,12 +109,20 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/preset-env": "^7.26.9",
+    "@babel/preset-react": "^7.26.3",
     "@testing-library/dom": "^10.4.0",
     "babel-core": "^6.26.3",
+    "babel-jest": "^29.7.0",
     "history": "^5.3.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jsdom": "^26.0.0",
     "postcss": "^8.4.47",
     "react-select-event": "^5.5.1",
-    "unist-util-visit-parents": "^5.0.0"
+    "react-test-renderer": "^19.0.0",
+    "unist-util-visit-parents": "^5.0.0",
+    "whatwg-fetch": "^3.6.20"
   },
   "resolutions": {
     "unist-util-visit-parents": "^5.0.0"

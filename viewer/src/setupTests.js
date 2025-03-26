@@ -11,7 +11,6 @@ if (!("ResizeObserver" in window)) {
     // Only use it when you have this trouble: https://github.com/wellyshen/react-cool-dimensions/issues/45
     // window.ResizeObserverEntry = ResizeObserverEntry;
 }
-
 window.URL.createObjectURL = function () { };
 
 jest.mock("react-plotly.js", () => (props) => {
@@ -26,7 +25,8 @@ global.structuredClone = (val) => {
     return JSON.parse(JSON.stringify(val));
 };
 
-beforeAll(() => {
-    global.ResizeObserver = ResizeObserver;
-    global.ResizeObserverEntry = ResizeObserverEntry;
-});
+const { Response, Headers, Request } = require('whatwg-fetch');
+
+global.Response = Response;
+global.Headers = Headers;
+global.Request = Request;

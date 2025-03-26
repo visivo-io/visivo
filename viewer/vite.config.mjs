@@ -2,8 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-
-
 export default defineConfig({
     // depending on your application, base can also be "/"
     base: '',
@@ -17,5 +15,8 @@ export default defineConfig({
             "/data":'http://localhost:8000',
             "/api":'http://localhost:8000',
         }
+    },
+    build: {
+        outDir: 'build',
     },
 })
