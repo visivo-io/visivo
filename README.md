@@ -5,7 +5,11 @@
 
 # Introduction
 
-Visivo is an open-source, fully code-based, data-visualization tool that enables users to create interactive and customizable dashboards for their data. It provides a simple and intuitive way to connect to various data sources, create visualizations, and share insights with others.
+Visivo is an open-source, fully code-based, data-visualization tool that enables users to create interactive and customizable dashboards for their data. 
+
+It provides a simple and intuitive way to connect to various data sources, reuse queries and charts, and share insights with others.
+
+Here are some examples
 
 # Usage
 
