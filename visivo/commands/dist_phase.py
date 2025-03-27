@@ -17,42 +17,43 @@ def dist_phase(output_dir, dist_dir):
 
     # Copy dashboard thumbnails if they exist, otherwise create an empty folder
     try:
-        thumbnail_dir = get_dashboards_dir(output_dir)
-        if os.path.exists(thumbnail_dir):
-            dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboards")
-            shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
+        pass
+        # thumbnail_dir = get_dashboards_dir(output_dir)
+        # if os.path.exists(thumbnail_dir):
+        #     dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboards")
+        #     shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
 
-        with open(f"{output_dir}/project.json", "r") as f:
-            project_json = json.load(f)
-        created_at = (datetime.datetime.now().isoformat(),)
-        with open(f"{dist_dir}/data/project.json", "w") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "project_json": project_json,
-                        "created_at": created_at,
-                    }
-                )
-            )
-        with open(f"{dist_dir}/_redirects", "w") as f:
-            f.write("/*    /index.html   200")
+        # with open(f"{output_dir}/project.json", "r") as f:
+        #     project_json = json.load(f)
+        # created_at = (datetime.datetime.now().isoformat(),)
+        # with open(f"{dist_dir}/data/project.json", "w") as f:
+        #     f.write(
+        #         json.dumps(
+        #             {
+        #                 "project_json": project_json,
+        #                 "created_at": created_at,
+        #             }
+        #         )
+        #     )
+        # with open(f"{dist_dir}/_redirects", "w") as f:
+        #     f.write("/*    /index.html   200")
 
-        with open(f"{dist_dir}/data/error.json", "w") as f:
-            f.write(json.dumps({}))
-        with open(f"{dist_dir}/data/project_history.json", "w") as f:
-            f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
+        # with open(f"{dist_dir}/data/error.json", "w") as f:
+        #     f.write(json.dumps({}))
+        # with open(f"{dist_dir}/data/project_history.json", "w") as f:
+        #     f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
 
-        trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
-        for trace_dir in trace_dirs:
-            trace_name = os.path.basename(os.path.normpath(trace_dir))
-            if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
-                os.makedirs(f"{dist_dir}/data/{trace_name}", exist_ok=True)
-                shutil.copyfile(
-                    f"{output_dir}/traces/{trace_name}/data.json",
-                    f"{dist_dir}/data/{trace_name}/data.json",
-                )
+        # trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
+        # for trace_dir in trace_dirs:
+        #     trace_name = os.path.basename(os.path.normpath(trace_dir))
+        #     if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
+        #         os.makedirs(f"{dist_dir}/data/{trace_name}", exist_ok=True)
+        #         shutil.copyfile(
+        #             f"{output_dir}/traces/{trace_name}/data.json",
+        #             f"{dist_dir}/data/{trace_name}/data.json",
+        #         )
 
-        shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
+        # shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
     except Exception as e:
         Logger.instance().error(
             f"Error creating dist. Try running `visivo run` to ensure your project is up to date."
