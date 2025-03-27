@@ -1,1 +1,0 @@
-{"Sunburst Plot with Custom Colors":{"props.labels":["B","F","A","E","C","Total","D"],"props.marker.colors":["#2ca02c","#e377c2","#ff7f0e","#8c564b","#d62728","#1f77b4","#9467bd"],"props.parents":["Total","B","Total","A","Total",null,"A"],"props.values":[30,10,40,20,30,100,10]}}
