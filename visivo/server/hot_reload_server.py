@@ -58,9 +58,8 @@ class HotReloadServer:
         self.server_thread = None
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
-
-        # Configure Flask logging based on STACKTRACE
-        if not os.environ.get("STACKTRACE"):
+        
+        if not os.environ.get('DEBUG'):
             # Suppress Flask logging
             log = logging.getLogger("werkzeug")
             log.setLevel(logging.ERROR)

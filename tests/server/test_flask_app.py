@@ -1,7 +1,7 @@
 import pytest
 import json
 import os
-from visivo.server.flask_app import flask_app
+from visivo.server.flask_app import FlaskApp 
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from tests.factories.model_factories import ProjectFactory, SourceFactory
 from tests.support.utils import temp_folder
@@ -23,9 +23,9 @@ def app(output_dir):
     create_file_database(url=source.url(), output_dir=output_dir)
     
     # Create the Flask app with output_dir as static_folder
-    app = flask_app(output_dir, None, project)
-    app.config['TESTING'] = True
-    return app
+    app = FlaskApp(output_dir, None, project)
+    app.app.config['TESTING'] = True
+    return app.app
 
 @pytest.fixture
 def client(app):
@@ -290,8 +290,8 @@ def test_execute_query_no_sources(client, worksheet_repo):
     os.makedirs(new_output_dir, exist_ok=True)
     
     # Create the Flask app with the new output directory
-    app = flask_app(new_output_dir, None, minimal_project)
-    test_client = app.test_client()
+    app = FlaskApp(new_output_dir, None, minimal_project)
+    test_client = app.app.test_client()
     
     # Test query execution with no available sources
     response = test_client.post('/api/query/test-project',
