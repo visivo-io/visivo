@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 import click
 from visivo.models.sources.source import Source
 
@@ -7,6 +7,7 @@ from visivo.models.sources.source import Source
 class SqlalchemySource(Source, ABC):
 
     _engine: Any = None
+    after_connect: Optional[str] = None
 
     @abstractmethod
     def get_dialect(self):
@@ -46,7 +47,7 @@ class SqlalchemySource(Source, ABC):
             )
 
     def get_engine(self):
-        from sqlalchemy import create_engine
+        from sqlalchemy import create_engine, event
         from visivo.logging.logger import Logger
 
         if not self._engine:
@@ -54,5 +55,12 @@ class SqlalchemySource(Source, ABC):
 
             Logger.instance().debug(f"Creating engine for Source: {self.name}")
             self._engine = create_engine(self.url(), poolclass=NullPool)
+
+            @event.listens_for(self._engine, "connect")
+            def connect(dbapi_connection, connection_record):
+                if self.after_connect:
+                    cursor_obj = dbapi_connection.cursor()
+                    cursor_obj.execute(self.after_connect)
+                    cursor_obj.close()
 
         return self._engine
