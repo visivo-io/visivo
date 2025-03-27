@@ -1,0 +1,1 @@
+{"Treemap Plot with Custom Colors":{"props.labels":["C","Total","B","F","E","A","D"],"props.marker.colors":["#d62728","#1f77b4","#2ca02c","#e377c2","#8c564b","#ff7f0e","#9467bd"],"props.parents":["Total",null,"Total","B","A","Total","A"],"props.values":[30,100,30,10,20,40,10]}}

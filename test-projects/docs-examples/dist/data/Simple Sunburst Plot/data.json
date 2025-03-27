@@ -1,0 +1,1 @@
+{"Simple Sunburst Plot":{"props.labels":["Total","D","C","A","F","B","E"],"props.parents":[null,"A","Total","Total","B","Total","A"],"props.values":[100,10,30,40,10,30,20]}}
