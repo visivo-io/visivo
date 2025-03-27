@@ -72,12 +72,6 @@
     "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv build/ ../visivo/viewers/dist/",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
   "jest": {
     "testEnvironment": "jest-environment-jsdom",
     "moduleNameMapper": {
