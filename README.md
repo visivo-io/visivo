@@ -70,7 +70,7 @@ pip install -e .
 
 ## Viewer
 
-The local development environment is a basic Create React App setup. It uses `yarn` as its package manager and commands can be found in the `package.json`.
+The local development environment is a basic vite app. It uses `yarn` as its package manager and commands can be found in the `package.json`.
 
 ### Prerequisites
 

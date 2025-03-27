@@ -1,6 +1,75 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --color-primary-100: #e2d7dd;
+  --color-primary-200: #c6b0bb;
+  --color-primary-300: #a9899a;
+  --color-primary-400: #8d6278;
+  --color-primary-500: #713b57;
+  --color-primary-600: #5a2f45;
+  --color-primary-700: #432334;
+  --color-primary-800: #2d1722;
+  --color-primary-900: #160b11;
+  --color-primary: #713b57;
+
+  --color-secondary-100: #dbdadb;
+  --color-secondary-200: #b8b6b7;
+  --color-secondary-300: #959193;
+  --color-secondary-400: #726d6f;
+  --color-secondary-500: #4f494c;
+  --color-secondary-600: #3f3a3c;
+  --color-secondary-700: #2f2b2d;
+  --color-secondary-800: #1f1d1e;
+  --color-secondary-900: #0f0e0f;
+  --color-secondary: #4f494c;
+
+  --color-highlight-100: #f6ddda;
+  --color-highlight-200: #edbcb5;
+  --color-highlight-300: #e49b90;
+  --color-highlight-400: #db7a6b;
+  --color-highlight-500: #d25946;
+  --color-highlight-600: #a84738;
+  --color-highlight-700: #7e352a;
+  --color-highlight-800: #54231c;
+  --color-highlight-900: #29110d;
+  --color-highlight: #d25946;
+
+  --color-dark: #191d33;
+  --color-light: #ecefcb;
+
+  --animate-fade-out-left: fadeOutLeft 0.3s ease-out forwards;
+
+  @keyframes fadeOutLeft {
+    0% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
 
 body {
   margin: 0;
@@ -17,7 +86,7 @@ code {
 }
 
 .btn {
-  @apply font-bold py-1 px-2 rounded;
+  @apply font-bold py-1 px-2 rounded-sm;
 }
 
 .btn-primary {

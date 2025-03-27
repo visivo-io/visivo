@@ -15,13 +15,13 @@ RSpec.configure do |config|
       value = %x( visivo compile -o "#{visivo_tmp_folder}" -s development)
       raise "Error running external Visivo command" if $?.exitstatus != 0
 
-      sql = File.read("tmp/visivo/#{trace_name}/query.sql")
+      sql = File.read("tmp/visivo/traces/#{trace_name}/query.sql")
       records_array = ActiveRecord::Base.connection.execute(sql)
-      File.write("#{visivo_tmp_folder}/#{trace_name}/rails_data.json", records_array.to_json)
-      value = %x( visivo aggregate -j "#{visivo_tmp_folder}/#{trace_name}/rails_data.json" -o "#{visivo_tmp_folder}/#{trace_name}")
+      File.write("#{visivo_tmp_folder}/traces/#{trace_name}/rails_data.json", records_array.to_json)
+      value = %x( visivo aggregate -j "#{visivo_tmp_folder}/traces/#{trace_name}/rails_data.json" -o "#{visivo_tmp_folder}/traces/#{trace_name}")
       
       raise "Error running external Visivo command" if $?.exitstatus != 0
-      JSON.parse(File.read("#{visivo_tmp_folder}/#{trace_name}/data.json"))
+      JSON.parse(File.read("#{visivo_tmp_folder}/traces/#{trace_name}/data.json"))
     }
   end
 

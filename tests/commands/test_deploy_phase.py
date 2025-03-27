@@ -74,7 +74,7 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     # create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     project.traces.append(TraceFactory(name="trace-two", model="ref(model)"))
     for trace in ["trace", "trace-two"]:
-        data_file = os.path.join(output_dir, trace, "data.json")
+        data_file = os.path.join(output_dir, "traces", trace, "data.json")
         os.makedirs(os.path.dirname(data_file), exist_ok=True)
         with open(data_file, "w") as f:
             json.dump({trace: {"x": [1, 2, 3], "y": [1, 2, 3]}}, f)

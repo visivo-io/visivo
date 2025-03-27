@@ -28,7 +28,7 @@ def action(trace, dag, output_dir):
     else:
         source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
 
-    trace_directory = f"{output_dir}/{trace.name}"
+    trace_directory = f"{output_dir}/traces/{trace.name}"
     trace_query_file = f"{trace_directory}/query.sql"
     with open(trace_query_file, "r") as file:
         query_string = file.read()
