@@ -154,7 +154,7 @@ class FlaskApp:
         @self.app.route("/api/trace/<trace_name>/query", methods=["GET"])
         def get_trace_query(trace_name):
             try:
-                query_file_path = f"{output_dir}/{trace_name}/query.sql"
+                query_file_path = f"{output_dir}/traces/{trace_name}/query.sql"
                 if not os.path.exists(query_file_path):
                     return (
                         jsonify(
