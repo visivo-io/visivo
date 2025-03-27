@@ -246,7 +246,7 @@ async def process_traces_async(
         data_file_task = upload_file(
             trace_name,
             data_file_upload["upload_url"],
-            f"{trace_name}/data.json",
+            f"traces/{trace_name}/data.json",
             output_dir,
             form_headers,
             progress,

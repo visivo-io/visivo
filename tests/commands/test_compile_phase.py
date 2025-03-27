@@ -4,7 +4,7 @@ from tests.factories.model_factories import (
     DashboardFactory,
     ProjectFactory,
     CsvScriptModelFactory,
-    LocalMergeModelFactory
+    LocalMergeModelFactory,
 )
 from tests.support.utils import temp_folder, temp_yml_file
 from visivo.commands.compile_phase import compile_phase
@@ -41,8 +41,8 @@ def test_filtered_dashboard():
         output_dir=output_dir,
         dag_filter="+dashboard+",
     )
-    assert "Additional Trace" not in os.listdir(output_dir)
-    assert "trace" in os.listdir(output_dir)
+    assert "Additional Trace" not in os.listdir(f"{output_dir}/traces")
+    assert "trace" in os.listdir(f"{output_dir}/traces")
 
 
 def test_compile_csv_script_model():
@@ -66,43 +66,43 @@ def test_compile_csv_script_model():
         output_dir=output_dir,
         dag_filter="+dashboard+",
     )
-    assert "trace" in os.listdir(output_dir)
-    with open(f"{output_dir}/trace/query.sql") as f:
+    assert "trace" in os.listdir(f"{output_dir}/traces")
+    with open(f"{output_dir}/traces/trace/query.sql") as f:
         assert model.name in f.read()
+
 
 def test_compile_csv_script_model_with_nested_local_merge_model():
     output_dir = temp_folder()
     project = ProjectFactory()
     project.sources = []
-    
+
     # Create a base CSV model
     csv_model = CsvScriptModelFactory(
-        name="csv_model",
-        args=["echo", "x,y\n1,2\n3,4\n5,6"]
+        name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"]
     )
-    
+
     # Create inner local merge model that uses the CSV model
     inner_merge_model = LocalMergeModelFactory(
         name="inner_merge_model",
         sql="SELECT x, y FROM csv_model.model",
-        models=[csv_model]
+        models=[csv_model],
     )
-    
+
     # Create outer local merge model that uses the inner merge model
     outer_merge_model = LocalMergeModelFactory(
         name="outer_merge_model",
         sql="SELECT x, y FROM inner_merge_model.model",
-        models=[inner_merge_model]
+        models=[inner_merge_model],
     )
 
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = outer_merge_model
 
     # Get the DAG first to ensure it's properly initialized
     dag = project.dag()
-    
+
     create_file_database(
         url=outer_merge_model.get_duckdb_source(output_dir, dag=dag).url(),
-        output_dir=output_dir
+        output_dir=output_dir,
     )
 
     tmp = temp_yml_file(
@@ -116,23 +116,24 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
         output_dir=output_dir,
         dag_filter="+dashboard+",
     )
-    assert "trace" in os.listdir(output_dir)
-    with open(f"{output_dir}/trace/query.sql") as f:
+    assert "trace" in os.listdir(f"{output_dir}/traces")
+    with open(f"{output_dir}/traces/trace/query.sql") as f:
         assert outer_merge_model.name in f.read()
+
 
 def test_explorer_json_creation():
     """Test that explorer.json is created with flattened project structure"""
     output_dir = temp_folder()
     project = ProjectFactory(defaults=Defaults(source_name="source"))
-    
+
     # Add a dashboard with new fields and ensure unique row names
     dashboard = DashboardFactory(
         name="Test Dashboard",
         level="L2",
         tags=["test", "example"],
-        description="A test dashboard with new fields"
+        description="A test dashboard with new fields",
     )
-    
+
     # Ensure unique row, item, chart, trace, model, and selector names in the new dashboard
     for i, row in enumerate(dashboard.rows):
         row.name = f"test_row_{i}"
@@ -146,7 +147,7 @@ def test_explorer_json_creation():
                     trace.name = f"test_trace_{i}_{j}_{k}"
                     if trace.model:
                         trace.model.name = f"test_model_{i}_{j}_{k}"
-    
+
     # Also ensure unique row, item, chart, trace, model, and selector names in the original dashboard
     for i, row in enumerate(project.dashboards[0].rows):
         row.name = f"original_row_{i}"
@@ -160,54 +161,52 @@ def test_explorer_json_creation():
                     trace.name = f"original_trace_{i}_{j}_{k}"
                     if trace.model:
                         trace.model.name = f"original_model_{i}_{j}_{k}"
-    
+
     project.dashboards.append(dashboard)
-    
+
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    
+
     tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()),
-        name=PROJECT_FILE_NAME
+        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
     )
     working_dir = os.path.dirname(tmp)
-    
+
     compile_phase(
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter=None
+        dag_filter=None,
     )
-    
+
     # Verify explorer.json was created
     assert os.path.exists(f"{output_dir}/explorer.json")
-    
+
     # Read and verify contents
     with open(f"{output_dir}/explorer.json") as f:
         explorer_data = json.load(f)
-        
+
     assert "sources" in explorer_data
     assert "models" in explorer_data
     assert "traces" in explorer_data
     assert "default_source" in explorer_data
     assert explorer_data["default_source"] == "source"
 
+
 def test_dashboard_new_fields():
     """Test the new dashboard fields (level, tags, description)"""
     project = ProjectFactory()
-    
+
     # Create a dashboard with all new fields
     dashboard = DashboardFactory(
         name="Test Dashboard",
         level="L0",
         tags=["critical", "production"],
-        description="A critical dashboard for production metrics"
+        description="A critical dashboard for production metrics",
     )
     project.dashboards.append(dashboard)
-    
+
     # Verify the new fields were set correctly
     assert dashboard.level == "L0"
     assert "critical" in dashboard.tags
     assert "production" in dashboard.tags
     assert dashboard.description == "A critical dashboard for production metrics"
-    
-

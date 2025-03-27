@@ -27,11 +27,12 @@ from visivo.commands.utils import get_source_types
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 
 
-def init_phase():
+def init_phase(project_name=None):
     """Enables a quick set up by writing your source & api credentials to an env file."""
     user_home = os.path.expanduser("~")
     Logger.instance().success("Initialized")
-    project_name = click.prompt("? Project name", type=str)
+    if not project_name:
+        project_name = click.prompt("? Project name", type=str)
     if Path(project_name).exists():
         raise click.ClickException(f"'{project_name}' directory already exists")
 

@@ -10,7 +10,6 @@ from visivo.commands.options import (
 
 
 @click.command()
-
 @output_dir
 @dist_dir
 def dist(output_dir, dist_dir):
