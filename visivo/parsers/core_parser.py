@@ -47,18 +47,25 @@ class CoreParser:
         )
 
     def __merge_data_into_project(self, project_data: dict, data_files: dict):
-        for file_path, data_file in data_files.items():
+        for index, (file_path, data_file) in enumerate(data_files.items()):
             for key_to_merge in PROJECT_CHILDREN.copy():
                 if key_to_merge in data_file:
                     base_merge = []
                     if key_to_merge in project_data:
                         base_merge = project_data[key_to_merge]
-                        self.__recursively_add_file_path(
-                            base_merge, 
-                            file_path
-                        )
+                        if index == 0:
+                            self.__recursively_add_file_path(
+                                base_merge, 
+                                self.project_file
+                            )
+                    file_to_merge = data_file[key_to_merge]
+                    self.__recursively_add_file_path(
+                        file_to_merge, 
+                        file_path
+                    )
                     project_data[key_to_merge] = always_merger.merge(
-                        base_merge, data_file[key_to_merge]
+                        base_merge, 
+                        file_to_merge
                     )
         return project_data
     

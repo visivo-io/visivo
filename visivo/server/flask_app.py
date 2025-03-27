@@ -6,7 +6,7 @@ from flask import Flask, send_from_directory, request, jsonify, Response, send_f
 import datetime
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
-
+from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 
 def flask_app(output_dir, dag_filter, project):
@@ -72,12 +72,22 @@ def flask_app(output_dir, dag_filter, project):
         
     @app.route("/api/project/write_changes", methods = ["POST"])
     def write_changes():
-        from time import sleep
+        
         data = request.get_json()
         if not data:
             return jsonify({"message": "No data provided"}), 400
-        sleep(3)
-        return jsonify({"message": "Changes written successfully"}), 200
+        project_writer = ProjectWriter(data)
+        try:
+            project_writer.update_file_contents()
+            if os.environ.get("STACKTRACE"):
+                Logger.instance().info(f"Made Updates to File Contents")
+            project_writer.write()
+            if os.environ.get("STACKTRACE"):
+                Logger.instance().info(f"Wrote Changes to Files")
+            return jsonify({"message": "Changes written successfully"}), 200
+        except Exception as e:
+            Logger.instance().error(f"Error writing changes: {str(e)}")
+            return jsonify({"message": str(e)}), 500
     
 
     @app.route("/api/query/<project_id>", methods=["POST"])
