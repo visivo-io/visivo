@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   // depending on your application, base can also be "/"
-  base: "",
+  base: "/",
   plugins: [react(), tailwindcss(), eslint()],
   server: {
     // this ensures that the browser opens upon server start

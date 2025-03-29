@@ -31,7 +31,7 @@ class FlaskApp:
         @self.app.route("/data/<trace_name>/data.json")
         def serve_trace_data(trace_name):
             try:
-                trace_dir = os.path.join(output_dir, trace_name)
+                trace_dir = os.path.join(output_dir, "traces", trace_name)
                 if not os.path.exists(trace_dir):
                     return (
                         jsonify(

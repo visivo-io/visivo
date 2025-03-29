@@ -30,7 +30,7 @@ function Project(props) {
 
 
   const { data: thumbnails = {} } = useQuery({
-    queryKey: ['dashboards', projectId],
+    queryKey: ['dashboards', projectId, dashboardNames],
     queryFn: async () => {
       if (!projectId || allDashboards.length === 0) {
         return {};
