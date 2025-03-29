@@ -36,31 +36,30 @@ function Project(props) {
         return {};
       }
 
-      try {
-        const results = await Promise.all(
-          dashboardNames.map(async dashboardName => {
-            const query = fetchDashboardQuery(projectId, dashboardName);
-            const dashboardData = await query.queryFn();
-            if (dashboardData) {
-              try {
-                if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {
-                  const thumbnail = await fetchDashboardThumbnail(dashboardData);
-                  return [dashboardData.name, thumbnail];
-                } else {
-                  return [dashboardData.name, null];
-                }
-              } catch (e) {
-                return null;
-              }
-            }
+      const results = await Promise.all(
+        dashboardNames.map(async dashboardName => {
+          const query = fetchDashboardQuery(projectId, dashboardName);
+          const dashboardData = await query.queryFn().catch(e => {
+            console.error("Error fetching dashboard", e);
             return null;
-          })
-        );
+          });
+          if (dashboardData) {
+            try {
+              if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {
+                const thumbnail = await fetchDashboardThumbnail(dashboardData);
+                return [dashboardData.name, thumbnail];
+              } else {
+                return [dashboardData.name, null];
+              }
+            } catch (e) {
+              return null;
+            }
+          }
+          return null;
+        })
+      );
 
-        return Object.fromEntries(results.filter(Boolean));
-      } catch (e) {
-        throw e;
-      }
+      return Object.fromEntries(results.filter(Boolean));
     },
     enabled: Boolean(projectId) && allDashboards.length > 0,
     staleTime: Infinity

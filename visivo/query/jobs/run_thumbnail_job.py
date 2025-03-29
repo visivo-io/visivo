@@ -38,7 +38,7 @@ def generate_thumbnail(
         encoded_dashboard_name = quote(dashboard.name)
         navigate_to = f"{server_url}/project/{encoded_dashboard_name}"
         # Navigate to dashboard
-        if os.environ.get("STACKTRACE"):
+        if os.environ.get("DEBUG"):
             Logger.instance().info(f"   Navigating to {navigate_to}")
         page.goto(navigate_to)
 
@@ -80,25 +80,34 @@ def generate_thumbnail(
         try:
             if os.environ.get("STACKTRACE"):
                 initial_state = page.evaluate(check_loading)
-                Logger.instance().info(f"Initial chart states: Total: {initial_state['total']}, Loaded: {initial_state['loaded_count']}")
-                for chart in initial_state['states']:
-                    Logger.instance().info(f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}")
-            
-            
+                Logger.instance().info(
+                    f"Initial chart states: Total: {initial_state['total']}, Loaded: {initial_state['loaded_count']}"
+                )
+                for chart in initial_state["states"]:
+                    Logger.instance().info(
+                        f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}"
+                    )
+
             # Wait for all charts to finish loading
-            page.wait_for_function("""
+            page.wait_for_function(
+                """
                 () => {
                     const state = (%s)();
                     return state.loaded;
                 }
-            """ % check_loading, timeout=timeout_ms)
+            """
+                % check_loading,
+                timeout=timeout_ms,
+            )
             # Wait for 350ms to ensure the page is fully loaded
             page.wait_for_timeout(1200)
             # Log final state before screenshot
             if os.environ.get("STACKTRACE"):
                 final_state = page.evaluate(check_loading)
-                Logger.instance().info(f"Final chart states: Total: {final_state['total']}, Loaded: {final_state['loaded_count']}")
-            
+                Logger.instance().info(
+                    f"Final chart states: Total: {final_state['total']}, Loaded: {final_state['loaded_count']}"
+                )
+
             # Take screenshot
             page.screenshot(
                 timeout=timeout_ms, path=thumbnail_path, type="png", full_page=False
