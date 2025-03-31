@@ -79,10 +79,10 @@ def flask_app(output_dir, dag_filter, project):
         project_writer = ProjectWriter(data)
         try:
             project_writer.update_file_contents()
-            if os.environ.get("STACKTRACE"):
+            if os.environ.get("DEBUG"):
                 Logger.instance().info(f"Made Updates to File Contents")
             project_writer.write()
-            if os.environ.get("STACKTRACE"):
+            if os.environ.get("DEBUG"):
                 Logger.instance().info(f"Wrote Changes to Files")
             return jsonify({"message": "Changes written successfully"}), 200
         except Exception as e:
