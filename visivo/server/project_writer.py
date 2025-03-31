@@ -1,32 +1,183 @@
 import json
+import os
+import ruamel.yaml 
 from copy import deepcopy
 
-class ProjectNamedChildrenWriter:
-    def __init__(self, named_children, project_file_path):
+DELETE = object()
+
+class SubDiff(dict):
+    pass
+
+def diff(old_dict, new_dict):
+    updates = {}
+    for key in new_dict:
+        if key not in old_dict:
+            updates[key] = new_dict[key]
+        elif isinstance(new_dict[key], dict) and isinstance(old_dict[key], dict):
+            sub_diff = diff(old_dict[key], new_dict[key])
+            if sub_diff:
+                updates[key] = SubDiff(sub_diff)
+        elif isinstance(new_dict[key], list) and isinstance(old_dict[key], list):
+            if old_dict[key] != new_dict[key]:
+                updates[key] = new_dict[key]
+        else:
+            if old_dict[key] != new_dict[key]:
+                updates[key] = new_dict[key]
+    for key in old_dict:
+        if key not in new_dict:
+            updates[key] = DELETE
+    return updates
+
+# Apply diff
+def apply_diff(target, diff):
+    for key, value in diff.items():
+        if value is DELETE:
+            if key in target:
+                del target[key]
+        elif isinstance(value, SubDiff):
+            if key in target and isinstance(target[key], dict):
+                apply_diff(target[key], value)
+            else:
+                target[key] = value
+        else:
+            target[key] = value
+class ProjectWriter:
+    """
+    This class is responsible for parsing the front end data store and writing changes to the project files.
+
+    It's a three step process to write changes to the project files:
+
+        1. Re-build the named child to reflect how the information sits in the project files.
+        2. Make changes to project files using a special round trip yaml parser that preserves comments and spacing.
+        3. Write the changes to the project files. 
+    """
+    def __init__(self, named_children: dict):
         self.named_children = named_children
-        self.project_file_path = project_file_path
+        self.yaml = ruamel.yaml.YAML(typ='rt') 
         self.files_to_write = self.__set_initial_files_to_write_map(named_children)
     
-    def update(self, named_child: str):
-        pass
+    def update_file_contents(self):
+        for child_name, child_info in self.named_children.items():
+            match child_info["status"]:
+                case "Unchanged":
+                    continue
+                case "New":
+                    self._new(child_name)
+                case "Deleted":
+                    self._delete(child_name)
+                case "Moved":
+                    self._move(child_name)
+                case "Modified":
+                    self._update(child_name)
+                case "Renamed":
+                    self._rename(child_name, child_name)
 
-    def new(self, named_child: str):
-        child_dict = self.named_children[named_child]
-        file_path = child_dict["file_path"]
+    def write(self):
+        """ 
+        Writes changes to all files that have been updated. Setting "typ='rt'" on 
+        init allows us to keep the original spacing, comments, etc.
+        """
+        for file, contents in self.files_to_write.items(): 
+            with open(file, 'w') as file:
+                self.yaml.dump(contents, file)
+    
+    def _update(self, child_name: str):
+        new_object = self._get_named_child_config(child_name)
+        
+        def recurse(current):
+            if isinstance(current, dict):
+                for key, value in current.items():
+                    if isinstance(value, dict) and value.get("name") == child_name:
+                        diff_result = diff(value, new_object)
+                        apply_diff(value, diff_result)
+                        return True
+                    elif isinstance(value, (dict, list)):
+                        if recurse(value):
+                            return True
+            elif isinstance(current, list):
+                for item in current:
+                    if isinstance(item, dict) and item.get("name") == child_name:
+                        diff_result = diff(item, new_object)
+                        apply_diff(item, diff_result)
+                        return True
+                    elif isinstance(item, (dict, list)):
+                        if recurse(item):
+                            return True
+            return False
+        
+        file_path = self.named_children[child_name]["file_path"]
+        # Modify the file contents in place to reflect the changes for the named child
+        recurse(self.files_to_write[file_path])
+        
+        
+    def _new(self, child_name: str):
+        child_dict = self._get_named_child_config(child_name)
+        file_path = self.named_children[child_name]["new_file_path"]
+        type_key = self.named_children[child_name]["type_key"]
 
-        pass
+        if self.files_to_write[file_path].get(type_key) is None:
+            self.files_to_write[file_path][type_key] = []
+        # Inplace append the new child to the type key list
+        self.files_to_write[file_path][type_key].append(child_dict)
+        
 
-    def delete(self, named_child: str):
-        pass
+    def _delete(self, child_name: str, replace_with_reference: bool = False):
+        
+        def recurse(current):
+            # Handle dictionaries
+            if isinstance(current, dict):
+                for key, value in list(current.items()):  # Use list to safely iterate
+                    if isinstance(value, dict) and value.get("name") == child_name:
+                        if replace_with_reference: 
+                            current[key] =  "${ref(" + f"{child_name}" + ")}"
+                        else: 
+                            del current[key]
+                        return True
+                    elif isinstance(value, (dict, list)):
+                        if recurse(value):
+                            return True
+            # Handle lists
+            elif isinstance(current, list):
+                for i, item in enumerate(current):
+                    if isinstance(item, dict) and item.get("name") == child_name:
+                        if replace_with_reference: 
+                            current[i] =  "${ref(" + f"{child_name}" + ")}"
+                        else: 
+                            del current[i]
+                        return True
+                    elif isinstance(item, (dict, list)):
+                        if recurse(item):
+                            return True
+            return False
+        file_path = self.named_children[child_name]["file_path"]
+        # Modify the file contents in place to reflect the deletion of the named child
+        recurse(self.files_to_write[file_path])
 
-    def move(self, named_child: str):
-        self.delete(named_child)
-        self.new(named_child)
+    def _move(self, child_name: str):
+        """
+        Moving files is just a combination of deleting a file and then creating a new one. 
+        If the new file path is the same as the old file path, it will move the named child to 
+        a flat list in the project file.
+        """
+        self._delete(child_name, replace_with_reference=True)
+        self._new(child_name)
 
-    def __write(self):
-        pass
+    def _rename(self, old_child_name: str, new_child_name: str):
+        """Find and replace the old child name with the new child name in all file refs & in the named_child"""
+        raise NotImplementedError("Rename is not implemented yet.")
+    
 
-    def reconstruct_named_child_config(self, named_child_config: dict) -> dict:
+    def _get_named_child_config(self, named_child_name: str) -> dict:
+        """
+        Returns the reconstructed config for a named child.
+        """
+        if named_child_name not in self.named_children:
+            raise ValueError(f"Named child {named_child_name} not found in named_children dictionary.")
+        return self.__reconstruct_named_child_config(
+            self.named_children[named_child_name].get("config")
+            )
+
+    def __reconstruct_named_child_config(self, named_child_config: dict) -> dict:
         """"
         This function will recursivly reconstruct a named child and return a config dictionary with the 
         references and inline children returned to the original form found in the file. 
@@ -64,10 +215,7 @@ class ProjectNamedChildrenWriter:
                     
             
 
-    @staticmethod
-    def __set_initial_files_to_write_map(named_children: dict) -> dict:
-        import yaml
-        import os 
+    def __set_initial_files_to_write_map(self, named_children: dict) -> dict:
 
         relevant_files = []
         for value in named_children.values():
@@ -76,18 +224,18 @@ class ProjectNamedChildrenWriter:
             else: 
                 relevant_files.append(value.get("file_path"))
                 relevant_files.append(value.get("new_file_path"))
-        relevant_files = list(set(relevant_files))
-        
+        relevant_files = [x for x in list(set(relevant_files)) if x is not None]
         files_to_write = {}
+
         for file_path in relevant_files:
-            if os.path.isfile(file_path):
+            if file_path is None: 
+                continue 
+            elif os.path.isfile(file_path):
                 with open(file_path, "r") as file:
-                    file_contents = yaml.safe_load(file)
+                    file_contents = self.yaml.load(file)
                     files_to_write[file_path] = file_contents
             else: 
-                files_to_write[file_path] = ""
+                with open (file_path, "w") as file: 
+                    file.write("")
+                files_to_write[file_path] = {}
         return files_to_write
-
-    def __merge_dictionary_updates(self, base_dict, updates_dict):
-        """"""
-        pass     
