@@ -99,7 +99,7 @@ def test_run_by_with_passing_new_defaults():
     assert "alternate-source" in response.output
     assert "Running project across 3 threads" in response.output
     assert response.exit_code == 0
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    with open(f"{output_dir}/{trace.name}/query.sql") as f:
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    with open(f"{output_dir}/traces/{trace.name}/query.sql") as f:
         trace_sql = f.read()
     assert "-- source: alternate-source" == trace_sql.split(f"\n")[-1]

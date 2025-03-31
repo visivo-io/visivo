@@ -33,16 +33,16 @@ def test_Runner_trace_with_default():
 
     create_file_database(url=source.url(), output_dir=output_dir)
 
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
     port = get_test_port()
     server_url = f"http://localhost:{port}"
     runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
 
 
 def test_Runner_trace_given_source():
@@ -56,14 +56,14 @@ def test_Runner_trace_given_source():
 
     create_file_database(url=source.url(), output_dir=output_dir)
 
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
     runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
 
 
 def test_runner_with_csv_script_model():
@@ -74,14 +74,14 @@ def test_runner_with_csv_script_model():
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[])
 
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write(f"select *, 'value' as 'cohort_on' from {model.table_name}")
 
     runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
     assert os.path.exists(f"{output_dir}/{model.name}.duckdb")
 
 
@@ -104,16 +104,16 @@ def test_runner_with_local_merge_model():
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
 
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write(
             "SELECT * FROM local_merge_model.model"
         )
 
     runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
 
 
 def test_runner_dag_filter():
@@ -136,8 +136,8 @@ def test_runner_dag_filter():
 
     create_file_database(url=source.url(), output_dir=output_dir)
 
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
     os.makedirs(f"{output_dir}/Additional Trace", exist_ok=True)
@@ -155,8 +155,8 @@ def test_runner_dag_filter():
         server_url=server_url
     )
     runner.run()
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
 
 
 def test_runner_dag_filter_with_no_jobs():
@@ -230,15 +230,15 @@ def test_runner_with_local_merge_and_csv_model():
     trace = TraceFactory(name="trace1", model=local_merge_model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
     
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("SELECT x, y, 'values' as cohort_on FROM csv_model.model")
     
     runner = Runner(project=project, output_dir=output_dir)
     runner.run()
     
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
     assert os.path.exists(f"{output_dir}/csv_model.duckdb")
     assert os.path.exists(f"{output_dir}/local_merge_model.duckdb")
 
@@ -269,7 +269,7 @@ def test_runner_with_nested_local_merge_models():
     trace = TraceFactory(name="trace1", model=outer_merge_model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
     
-    os.makedirs(f"{output_dir}/{trace.name}", exist_ok=True)
+    os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
     trace_query_sql = """
         WITH 
     base_query as (
@@ -291,14 +291,14 @@ def test_runner_with_nested_local_merge_models():
             x ,
         "cohort_on" 
     """
-    with open(f"{output_dir}/{trace.name}/query.sql", "w") as fp:
+    with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write(trace_query_sql)
     
     runner = Runner(project=project, output_dir=output_dir)
     runner.run()
     
-    assert os.path.exists(f"{output_dir}/{trace.name}/query.sql")
-    assert os.path.exists(f"{output_dir}/{trace.name}/data.json")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
     assert os.path.exists(f"{output_dir}/csv_model.duckdb")
     assert os.path.exists(f"{output_dir}/inner_merge_model.duckdb")
     assert os.path.exists(f"{output_dir}/outer_merge_model.duckdb")

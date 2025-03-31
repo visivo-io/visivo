@@ -9,6 +9,7 @@ from flask_socketio import SocketIO
 import logging
 import socket
 
+
 class ProjectChangeHandler(FileSystemEventHandler):
     def __init__(self, callback, ignore_patterns=None):
         self.callback = callback
@@ -19,11 +20,11 @@ class ProjectChangeHandler(FileSystemEventHandler):
     def on_modified(self, event):
         if event.is_directory:
             return
-            
+
         # Only process .yml files
-        if not (event.src_path.endswith('.yml') or event.src_path.endswith('.yaml')):
+        if not (event.src_path.endswith(".yml") or event.src_path.endswith(".yaml")):
             return
-            
+
         # Check if file should be ignored
         if any(pattern in event.src_path for pattern in self.ignore_patterns):
             return
@@ -33,6 +34,7 @@ class ProjectChangeHandler(FileSystemEventHandler):
             self.last_event_time = current_time
             self.callback()
 
+
 class HotReloadServer:
     @staticmethod
     def find_available_port(start_port=8000, max_attempts=100):
@@ -40,11 +42,13 @@ class HotReloadServer:
         for port in range(start_port, start_port + max_attempts):
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('', port))
+                    s.bind(("", port))
                     return port
             except OSError:
                 continue
-        raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
+        raise RuntimeError(
+            f"Could not find an available port after {max_attempts} attempts"
+        )
 
     def __init__(self, app: Flask, watch_path: str, ignore_patterns=None):
         self.app = app
@@ -55,56 +59,62 @@ class HotReloadServer:
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
         
-        # Configure Flask logging based on STACKTRACE
-        if not os.environ.get('STACKTRACE'):
+        if not os.environ.get('DEBUG'):
             # Suppress Flask logging
-            log = logging.getLogger('werkzeug')
+            log = logging.getLogger("werkzeug")
             log.setLevel(logging.ERROR)
-            
+
             # Suppress Flask-SocketIO logging
-            log = logging.getLogger('engineio')
+            log = logging.getLogger("engineio")
             log.setLevel(logging.ERROR)
-            log = logging.getLogger('socketio')
+            log = logging.getLogger("socketio")
             log.setLevel(logging.ERROR)
 
     def start_file_watcher(self, callback, one_shot=False):
         """Start watching for file changes"""
+
         def wrapped_callback():
             # Pass one_shot context to the callback
             callback(one_shot=one_shot)
             # Notify clients to refresh after callback completes
-            self.socketio.emit('reload')
-            
+            self.socketio.emit("reload")
+
         event_handler = ProjectChangeHandler(wrapped_callback, self.ignore_patterns)
         self.observer = Observer()
         self.observer.schedule(event_handler, self.watch_path, recursive=True)
         self.observer.start()
-        Logger.instance().debug(f"Started file watcher for YML files on {self.watch_path}")
+        Logger.instance().debug(
+            f"Started file watcher for YML files on {self.watch_path}"
+        )
 
     def run_server(self, host: str, port: int):
         """Run the Flask server in a separate thread"""
+
         def run():
             self.socketio.run(
-                self.app, 
-                host=host, 
-                port=port, 
-                use_reloader=False, 
+                self.app,
+                host=host,
+                port=port,
+                use_reloader=False,
                 allow_unsafe_werkzeug=True,
-                debug=bool(os.environ.get('STACKTRACE')),
-                log_output=bool(os.environ.get('STACKTRACE'))
+                debug=bool(os.environ.get("STACKTRACE")),
+                log_output=bool(os.environ.get("STACKTRACE")),
             )
 
         self.server_thread = Thread(target=run, daemon=True)
         self.server_thread.start()
         Logger.instance().debug(f"Started server on {host}:{port}")
 
-    def serve(self, host: str, port: int, 
-              on_change_callback=None, 
-              on_server_ready=None, 
-              one_shot=False
-        ):
+    def serve(
+        self,
+        host: str,
+        port: int,
+        on_change_callback=None,
+        on_server_ready=None,
+        one_shot=False,
+    ):
         """Start both the server and file watcher
-        
+
         Args:
             host: Host to bind to
             port: Port to listen on
@@ -114,7 +124,7 @@ class HotReloadServer:
         """
         try:
             # Add route for client-side reload script
-            @self.app.route('/hot-reload.js')
+            @self.app.route("/hot-reload.js")
             def hot_reload_script():
                 return """
                     const socket = io();
@@ -122,11 +132,13 @@ class HotReloadServer:
                         console.log('Reloading page...');
                         window.location.reload();
                     });
-                """, {'Content-Type': 'application/javascript'}
-            
+                """, {
+                    "Content-Type": "application/javascript"
+                }
+
             # Start the Flask server
             self.run_server(host, port)
-            
+
             # Run initialization callback if provided
             if on_server_ready:
                 # Pass one_shot context to the callback
@@ -134,18 +146,18 @@ class HotReloadServer:
                 if one_shot:
                     self.stop()
                     return
-            
+
             # Start the file watcher if callback provided and not in one_shot mode
             if on_change_callback and not one_shot:
                 self.start_file_watcher(on_change_callback, one_shot=one_shot)
-            
+
             # Keep the main thread alive if not in one_shot mode
             while not one_shot and not self.stop_event.is_set():
                 time.sleep(1)
-                
+
         except KeyboardInterrupt:
             self.stop()
-            
+
         except Exception as e:
             Logger.instance().error(f"Server error: {str(e)}")
             self.stop()
@@ -156,12 +168,12 @@ class HotReloadServer:
         if self.observer:
             self.observer.stop()
             self.observer.join()
-        
+
         self.stop_event.set()
-        
+
         if self.server_thread:
             # Flask's development server doesn't handle clean shutdowns well
             # We'll let it be terminated when the main process exits
             pass
 
-        Logger.instance().debug("Stopped server and file watcher") 
+        Logger.instance().debug("Stopped server and file watcher")
