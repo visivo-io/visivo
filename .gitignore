@@ -18,8 +18,8 @@ venv.bak/
 target
 tmp
 mkdocs_build/
-dist/
-
+test-projects/*/dist
+visivo/dist
 node_modules
 
 .report.json
