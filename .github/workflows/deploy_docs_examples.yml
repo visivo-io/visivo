@@ -45,6 +45,8 @@ jobs:
         run: |
           cd test-projects/docs-examples/dist
           npm install -g netlify-cli@latest
+          ls -la
+          ls assets
           netlify deploy --prod --dir . --auth "$NETLIFY_AUTH_TOKEN" --site "$NETLIFY_SITE_ID"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NEW_NETLIFY_JARED_AUTH_TOKEN }}
