@@ -71,6 +71,7 @@
   }
 }
 
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -86,7 +87,7 @@ code {
 }
 
 .btn {
-  @apply font-bold py-1 px-2 rounded-sm;
+  @apply font-bold py-1 px-2 rounded-xs;
 }
 
 .btn-primary {

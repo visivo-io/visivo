@@ -15,7 +15,7 @@ function DashboardCard({ dashboard, thumbnail }) {
   }, [thumbnail]);
 
   const CardContent = () => (
-    <div className="h-full bg-white rounded-md shadow-xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
+    <div className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
       <div className="aspect-16/10 rounded-t-md overflow-hidden relative bg-gray-50">
         {imageUrl ? (
           <img 
