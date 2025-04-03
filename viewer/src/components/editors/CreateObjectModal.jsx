@@ -13,26 +13,67 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   const openTab = useStore(state => state.openTab);
   const namedChildren = useStore(state => state.namedChildren);
 
+  // Reset all state to initial values
+  const resetState = () => {
+    setStep('property');
+    setSelectedProperty(null);
+    setSelectedType(null);
+    setObjectName('');
+  };
+
+  // Add effect to reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      resetState();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const loadSchema = async () => {
-      const schemaData = await fetchSchema();
-      setSchema(schemaData);
+      console.log('Fetching schema...');
+      try {
+        const schemaData = await fetchSchema();
+        console.log('Schema response:', schemaData);
+        setSchema(schemaData);
+      } catch (error) {
+        console.error('Error fetching schema:', error);
+      }
     };
     loadSchema();
   }, []);
 
+  // Add debug logging for schema state changes
+  useEffect(() => {
+    console.log('Current schema state:', schema);
+    if (schema?.properties) {
+      console.log('Available properties:', 
+        Object.keys(schema.properties)
+          .filter(key => schema.properties[key]?.type === 'array')
+      );
+    }
+  }, [schema]);
+
   const getValidTypesForProperty = (prop) => {
-    if (!schema) return [];
-    const propSchema = schema[prop];
+    if (!schema?.properties) return [];
+    console.log('Getting valid types for property:', prop);
+    
+    const propSchema = schema.properties[prop];
+    console.log('Property schema:', propSchema);
+    
     if (propSchema?.items?.oneOf) {
-      return propSchema.items.oneOf.map(item => {
+      const types = propSchema.items.oneOf.map(item => {
         const typePath = item.$ref.split('/');
         return typePath[typePath.length - 1];
       });
+      console.log('Found oneOf types:', types);
+      return types;
     } else if (propSchema?.items?.$ref) {
       const typePath = propSchema.items.$ref.split('/');
-      return [typePath[typePath.length - 1]];
+      const type = typePath[typePath.length - 1];
+      console.log('Found single type:', type);
+      return [type];
     }
+    console.log('No valid types found');
     return [];
   };
 
@@ -72,6 +113,9 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
 
     // Open the new object in a tab
     openTab(objectName, selectedType);
+    
+    // Reset state and close modal
+    resetState();
     onClose();
   };
 
@@ -89,8 +133,8 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
 
         {step === 'property' && schema && (
           <div className="grid grid-cols-2 gap-4">
-            {Object.keys(schema)
-              .filter(key => Array.isArray(schema[key]?.default))
+            {Object.keys(schema.properties)
+              .filter(key => schema.properties[key]?.type === 'array')
               .map(prop => (
                 <button
                   key={prop}
@@ -99,7 +143,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                 >
                   <div className="font-medium capitalize">{prop}</div>
                   <div className="text-sm text-gray-500">
-                    {schema[prop]?.description || `Create a new ${prop} object`}
+                    {schema.properties[prop]?.description || `Create a new ${prop} object`}
                   </div>
                 </button>
               ))}

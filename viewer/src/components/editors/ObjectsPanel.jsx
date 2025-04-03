@@ -89,7 +89,7 @@ const ObjectsPanel = () => {
       <div className="mt-4 pt-4 border-t border-gray-200">
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center"
+          className="w-full py-2 px-4 bg-[#713B57] text-white rounded-lg hover:bg-[#5A2F46] hover:scale-105 flex items-center justify-center"
         >
           <span className="mr-2">+</span>
           Create New Object
