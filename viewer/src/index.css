@@ -191,3 +191,26 @@ code {
     direction: ltr;
     text-align: right;
 }
+
+@layer utilities {
+  /* Override Flowbite's drawer and modal backdrop */
+  #flowbite-backdrop,
+  [backdrop],
+  .fixed.inset-0.bg-gray-900.bg-opacity-50,
+  .fixed.inset-0.z-40.bg-gray-900.bg-opacity-50 {
+    --tw-bg-opacity: 0.3 !important;
+    background-color: rgb(107 114 128 / var(--tw-bg-opacity)) !important;
+  }
+}
+
+@layer components {
+  /* Global modal backdrop styling */
+  .fixed.inset-0[class*='bg-black'],
+  .fixed.inset-0[class*='bg-gray-900'],
+  .backdrop {
+    @apply bg-gray-500/30 backdrop-blur-sm z-50;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+
+  }
+}

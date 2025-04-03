@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import ObjectPill from './ObjectPill';
 import useStore from '../../stores/store';
 import { shallow } from 'zustand/shallow';
+import CreateObjectModal from './CreateObjectModal';
 
 const ObjectsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   // Use the store for state management
   const isLoading = useStore((state) => state.isLoading);
@@ -82,6 +84,22 @@ const ObjectsPanel = () => {
           ))
         )}
       </div>
+
+      {/* New create button section */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center"
+        >
+          <span className="mr-2">+</span>
+          Create New Object
+        </button>
+      </div>
+
+      <CreateObjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </div>
   );
 };
