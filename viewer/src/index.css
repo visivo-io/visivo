@@ -2,6 +2,8 @@
 
 @plugin '@tailwindcss/typography';
 
+
+
 @theme {
   --color-primary-100: #e2d7dd;
   --color-primary-200: #c6b0bb;
@@ -69,6 +71,10 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
   }
+}
+
+input {
+  @apply bg-white;
 }
 
 body {
