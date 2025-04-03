@@ -3,6 +3,17 @@ import { devtools } from 'zustand/middleware'
 import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
 import { updateNestedValue } from './utils';
 
+// Add this function to get unique file paths from existing named children
+const getUniqueFilePaths = (state) => {
+  const paths = new Set();
+  Object.values(state.namedChildren).forEach(child => {
+    if (child.file_path) {
+      paths.add(child.file_path);
+    }
+  });
+  return Array.from(paths);
+};
+
 const useStore = create(devtools((set, get) => ({
   projectData: {}, // Holds the fetched project data
   setProjectData: (data) => set({ projectData: data }),
@@ -103,7 +114,8 @@ const useStore = create(devtools((set, get) => ({
           [childName]: {
             ...childToUpdate,
             config: configToUpdate,
-            status: 'Modified'
+            // Only set status to 'Modified' if it's not already 'New'
+            status: childToUpdate.status === 'New' ? 'New' : 'Modified'
           }
         }
       };
@@ -163,7 +175,10 @@ const useStore = create(devtools((set, get) => ({
       ...activeTab,
       config: namedChild.config
     };
-  }
+  },
+
+  // Add getter for file paths
+  getUniqueFilePaths: () => getUniqueFilePaths(get()),
 })));
 
 export default useStore;
