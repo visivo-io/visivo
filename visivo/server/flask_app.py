@@ -72,13 +72,19 @@ class FlaskApp:
 
         @self.app.route("/api/project/write_changes", methods=["POST"])
         def write_changes():
-            from time import sleep
 
             data = request.get_json()
             if not data:
                 return jsonify({"message": "No data provided"}), 400
-            sleep(3)
-            return jsonify({"message": "Changes written successfully"}), 200
+            
+            try: 
+                project_writer = ProjectWriter(data)
+                project_writer.update_file_contents()
+                project_writer.write() 
+                return jsonify({"message": "Changes written successfully"}), 200
+            except Exception as e:
+                Logger.instance().error(f"Error writing changes: {str(e)}")
+                return jsonify({"message": str(e)}), 500
 
         @self.app.route("/api/query/<project_id>", methods=["POST"])
         def execute_query(project_id):

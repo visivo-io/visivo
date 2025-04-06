@@ -48,12 +48,13 @@ class ProjectWriter:
     It's a three step process to write changes to the project files:
 
         1. Re-build the named child to reflect how the information sits in the project files.
-        2. Make changes to project files using a special round trip yaml parser that preserves comments and spacing.
-        3. Write the changes to the project files. 
+        2. Run `update_file_contents` to make changes to project files using a special round trip yaml parser that preserves comments and spacing.
+        3. Run `write` to write the changes to the project files. 
     """
     def __init__(self, named_children: dict):
         self.named_children = named_children
         self.yaml = ruamel.yaml.YAML(typ='rt') 
+        self.yaml.indent(mapping=4, sequence=4, offset=2)
         self.files_to_write = self.__set_initial_files_to_write_map(named_children)
     
     def update_file_contents(self):
