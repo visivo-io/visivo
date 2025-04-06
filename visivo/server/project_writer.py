@@ -54,7 +54,8 @@ class ProjectWriter:
     def __init__(self, named_children: dict):
         self.named_children = named_children
         self.yaml = ruamel.yaml.YAML(typ='rt') 
-        self.yaml.indent(mapping=4, sequence=4, offset=2)
+        self.yaml.indent(mapping=2, sequence=4, offset=2)
+        self.yaml.preserve_quotes = True
         self.files_to_write = self.__set_initial_files_to_write_map(named_children)
     
     def update_file_contents(self):
