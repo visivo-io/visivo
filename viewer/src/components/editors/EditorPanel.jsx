@@ -77,7 +77,7 @@ const EditorPanel = () => {
             onClick={() => setIsModalOpen(true)}
             className="px-4 py-2 bg-[#713B57] text-white rounded-lg hover:bg-[#5A2F46] hover:scale-105 flex items-center"
           >
-            Save
+            View Changes
           </button>
         </div>
       </div>
