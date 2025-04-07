@@ -25,6 +25,7 @@ class CoreParser:
 
     def __build_project(self):
         data = self.__merged_project_data()
+        data["project_file_path"] = str(self.project_file)
         try:
             project = Project(**data)
         except ValidationError as validation_error:

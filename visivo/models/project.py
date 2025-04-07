@@ -32,6 +32,7 @@ class Project(NamedModel, ParentModel):
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
+    project_file_path: Optional[str] = None
     cli_version: Optional[str] = Field(
         default=version("visivo"),
         description="The version of the CLI that created the project.",
@@ -81,6 +82,7 @@ class Project(NamedModel, ParentModel):
                 fully_referenced_model_dump = Project._fully_referenced_model_dump(node)
                 file_path = fully_referenced_model_dump.pop("file_path", "Not Found")
                 path = fully_referenced_model_dump.pop("path", "Not Found")
+                _ = fully_referenced_model_dump.pop("changed", "Not Found") #pop changed attribute because that's an internal attribute that should not be written into the file
                 contents = {
                     "type": node.__class__.__name__,
                     "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),

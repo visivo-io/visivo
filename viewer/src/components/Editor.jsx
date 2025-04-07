@@ -10,6 +10,8 @@ const Editor = () => {
   const projectData = useStore((state) => state.projectData);
   const setProjectData = useStore((state) => state.setProjectData);
   const fetchNamedChildren = useStore((state) => state.fetchNamedChildren);
+  const fetchProjectFilePath = useStore((state) => state.fetchProjectFilePath);
+  const CreateProjectFileObjects = useStore((state) => state.CreateProjectFileObjects);
 
 
   // Load project data when component mounts
@@ -26,10 +28,11 @@ const Editor = () => {
         console.error('Error fetching project data:', error);
       }
     };
-
+    fetchProjectFilePath();
     fetchProjectData();
     fetchNamedChildren();
-  }, [fetchNamedChildren, setProjectData]);
+    CreateProjectFileObjects();
+  }, [fetchNamedChildren, setProjectData, fetchProjectFilePath, CreateProjectFileObjects]);
 
 
   return (

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware'
 import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
+import { fetchProjectFilePath } from '../api/projectFilePath';
 import { updateNestedValue } from './utils';
 
 // Add this function to get unique file paths from existing named children
@@ -23,11 +24,14 @@ const useStore = create(devtools((set, get) => ({
   isLoading: false,
   error: null,
   writeError: null,
+  projectFilePath: null,
+  projectFileObjects: [],
   
   // New tab-related state
   tabs: [],
   activeTabId: null,
   
+
   // Write modified files
   writeModifiedFiles: async () => {
     const state = get();
@@ -66,7 +70,48 @@ const useStore = create(devtools((set, get) => ({
     }
   },
   
+  CreateProjectFileObjects: async () => {
+    const state = get();
+    const projectFilePath = state.projectFilePath;
+    const namedChildren = state.namedChildren;
+    // Create a Set to store unique file paths
+    const uniqueFilePaths = new Set();
+    
+    // Add the project file path if it exists
+    if (projectFilePath) {
+      uniqueFilePaths.add(projectFilePath);
+    }
+    
+    // Loop through namedChildren to collect file paths
+    for (const key in namedChildren) {
+      if (namedChildren.hasOwnProperty(key)) {
+        const child = namedChildren[key];
+        
+        // Add file_path if it exists
+        if (child.file_path) {
+          uniqueFilePaths.add(child.file_path);
+        }
+        
+        // Add new_file_path if it exists
+        if (child.new_file_path) {
+          uniqueFilePaths.add(child.new_file_path);
+        }
+      }
+    }
+    
+    // Convert Set to array for easier handling
+    const projectFileObjects = Array.from(uniqueFilePaths);
+    console.log('Unique file paths:', projectFileObjects);
+    set({ projectFileObjects: projectFileObjects });
+  },
   // Fetch actions for namedChildren
+  fetchProjectFilePath: async () => {
+    const data = await fetchProjectFilePath();
+    console.log('fetchProjectFilePath called', data);
+    console.log('fetchProjectFilePath called', data.projectFilePath);
+    set({ projectFilePath: data});
+  },
+  
   fetchNamedChildren: async () => {
     console.log('fetchNamedChildren called');
     set({ isLoading: true, error: null });

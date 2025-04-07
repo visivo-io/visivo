@@ -69,6 +69,14 @@ class FlaskApp:
                 return jsonify(named_children)
             else:
                 return jsonify({})
+            
+        @self.app.route("/api/project/project_file_path", methods=["GET"])
+        def project_file_path():
+            project_file_path = self._project.project_file_path
+            if project_file_path:
+                return jsonify(project_file_path)
+            else:
+                return jsonify({})
 
         @self.app.route("/api/project/write_changes", methods=["POST"])
         def write_changes():
