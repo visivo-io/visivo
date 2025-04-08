@@ -125,7 +125,7 @@ function Project(props) {
             ))}
 
             {filteredDashboards.length === 0 && (
-              <div className="w-full text-center py-8 bg-white rounded-lg shadow-xs border border-gray-200">
+              <div className="w-full text-center py-8 bg-white rounded-lg shadow-2xs border border-gray-200">
                 <HiTemplate className="mx-auto h-10 w-10 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No dashboards found</h3>
                 <p className="mt-1 text-sm text-gray-500">No dashboards match your search criteria.</p>

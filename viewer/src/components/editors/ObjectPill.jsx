@@ -28,7 +28,7 @@ const ObjectPill = ({name, inline = false}) => {
     >
       <div className="group relative">
         <Icon className={`w-5 h-5 mr-2 ${typeConfig.text}`} />
-        <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-sm py-1 px-2 -left-1 -bottom-8 whitespace-nowrap">
+        <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-xs py-1 px-2 -left-1 -bottom-8 whitespace-nowrap">
           {type || 'Unknown Type'}
         </div>
       </div>
@@ -38,7 +38,7 @@ const ObjectPill = ({name, inline = false}) => {
       {inline && (
         <div className="group relative ml-auto">
           <PiArrowsInLineHorizontal className={`w-4 h-4 ${typeConfig.text}`} />
-          <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-sm py-1 px-2 right-0 -bottom-8 whitespace-nowrap">
+          <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-xs py-1 px-2 right-0 -bottom-8 whitespace-nowrap">
             This object is defined inline <br /> with another object in the project
           </div>
         </div>
