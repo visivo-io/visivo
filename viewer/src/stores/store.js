@@ -66,9 +66,7 @@ const useStore = create(devtools((set, get) => ({
     
     // Helper function to create path object and calculate relative path
     const createPathObject = (fullPath) => {
-      console.log('createPathObject called', fullPath);
       const relativePath = getRelativePath(projectFilePath, fullPath);
-      console.log('relativePath', relativePath);
       return {
         status: "existing",
         full_path: fullPath,
@@ -100,18 +98,15 @@ const useStore = create(devtools((set, get) => ({
     
     // Convert Map values to array for easier handling
     const projectFileObjects = Array.from(uniqueFilePaths.values());
-    console.log('Project file objects:', projectFileObjects);
     set({ projectFileObjects: projectFileObjects });
   },
   // Fetch actions for namedChildren
   fetchProjectFilePath: async () => {
     const data = await fetchProjectFilePath();
-    console.log('fetchProjectFilePath called', data);
     set({ projectFilePath: data});
   },
   
   fetchNamedChildren: async () => {
-    console.log('fetchNamedChildren called');
     set({ isLoading: true, error: null });
     try {
       const data = await fetchNamedChildren();
@@ -136,10 +131,8 @@ const useStore = create(devtools((set, get) => ({
   // New update attribute for namedChildren
   updateNamedChildAttribute: (path, newValue) => 
     set((state) => {
-      console.log('updateNamedChildAttribute called', path, newValue);
       const childName = path.shift();
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        console.log(`childName:${childName} not found in namedChildren store`, state.namedChildren);
         return { error: 'Child not found in namedChildren store', isLoading: false };
       }
       
@@ -149,7 +142,6 @@ const useStore = create(devtools((set, get) => ({
         : childToUpdate.config;
 
       updateNestedValue(configToUpdate, path, newValue);
-      console.log('post update configToUpdate', configToUpdate);
       
       return { 
         namedChildren: {
@@ -206,7 +198,6 @@ const useStore = create(devtools((set, get) => ({
   getActiveTab: () => {
     const state = get();
     const activeTab = state.tabs.find(tab => tab.id === state.activeTabId);
-    console.log('getActiveTab called', activeTab);
     if (!activeTab) return null;
     
     // Get current config from namedChildren

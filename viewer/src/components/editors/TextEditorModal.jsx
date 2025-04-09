@@ -42,7 +42,7 @@ const TextEditorModal = ({ isOpen, onClose, objectName }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          command: editor.command,
+          editorId: editor.id,
           filePath: filePath
         }),
       });
