@@ -28,6 +28,7 @@ def dist_phase(output_dir, dist_dir):
             f.write(
                 json.dumps(
                     {
+                        "id": "id",
                         "project_json": project_json,
                         "created_at": created_at,
                     }

@@ -28,11 +28,10 @@ function Project(props) {
   const projectId = props.project?.id || props.project?.project_id;
   const dashboardNames = allDashboards.map(d => d.name);
 
-
   const { data: thumbnails = {} } = useQuery({
-    queryKey: ['dashboards', projectId],
+    queryKey: ['dashboards', projectId, dashboardNames],
     queryFn: async () => {
-      if (!projectId || allDashboards.length === 0) {
+      if (!projectId || dashboardNames.length === 0) {
         return {};
       }
 
@@ -40,7 +39,6 @@ function Project(props) {
         dashboardNames.map(async dashboardName => {
           const query = fetchDashboardQuery(projectId, dashboardName);
           const dashboardData = await query.queryFn().catch(e => {
-            console.error("Error fetching dashboard", e);
             return null;
           });
           if (dashboardData) {
@@ -61,8 +59,8 @@ function Project(props) {
 
       return Object.fromEntries(results.filter(Boolean));
     },
-    enabled: Boolean(projectId) && allDashboards.length > 0,
-    staleTime: Infinity
+    enabled: Boolean(projectId) && dashboardNames.length > 0,
+    staleTime: 1000 * 60 * 5
   });
 
   const availableTags = useMemo(() => {
