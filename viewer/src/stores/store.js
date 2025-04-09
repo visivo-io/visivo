@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware'
 import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
 import { fetchProjectFilePath } from '../api/projectFilePath';
-import { updateNestedValue } from './utils';
-
+import { updateNestedValue, getRelativePath } from './utils';
 
 
 const useStore = create(devtools((set, get) => ({
@@ -67,16 +66,13 @@ const useStore = create(devtools((set, get) => ({
     
     // Helper function to create path object and calculate relative path
     const createPathObject = (fullPath) => {
-      let relativePath = fullPath;
-      if (projectFilePath && fullPath.startsWith(projectFilePath)) {
-        // Remove projectFilePath and leading slash if present
-        relativePath = fullPath.slice(projectFilePath.length).replace(/^\//, '');
-      }
-      
+      console.log('createPathObject called', fullPath);
+      const relativePath = getRelativePath(projectFilePath, fullPath);
+      console.log('relativePath', relativePath);
       return {
         status: "existing",
         full_path: fullPath,
-        relative_path: relativePath || fullPath // Fallback to full path if relative calculation fails
+        relative_path: relativePath 
       };
     };
     

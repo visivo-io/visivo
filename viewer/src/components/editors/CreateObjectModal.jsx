@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TYPE_STYLE_MAP } from '../../components/styled/VisivoObjectStyles';
 import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
 import useStore from '../../stores/store';
