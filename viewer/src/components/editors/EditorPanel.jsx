@@ -5,6 +5,7 @@ import SaveChangesModal from './SaveChangesModal';
 import useStore from '../../stores/store';
 import MoveObjectModal from './MoveObjectModal';
 import DeleteObjectModal from './DeleteObjectModal';
+import TextEditorModal from './TextEditorModal';
 
 // Split into smaller, more focused selectors
 const selectTabs = state => state.tabs;
@@ -28,6 +29,7 @@ const EditorPanel = () => {
   const [isMoveModalOpen, setIsMoveModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isTextEditorModalOpen, setIsTextEditorModalOpen] = React.useState(false);
   
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;
@@ -117,6 +119,17 @@ const EditorPanel = () => {
                       <button
                         onClick={() => {
                           setIsMenuOpen(false);
+                          setIsTextEditorModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
+                      >
+                        Open in Text Editor
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
                           setIsMoveModalOpen(true);
                         }}
                         className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
@@ -179,6 +192,12 @@ const EditorPanel = () => {
         onClose={() => setIsDeleteModalOpen(false)}
         objectName={activeTab?.name}
         onConfirm={handleDelete}
+      />
+      
+      <TextEditorModal
+        isOpen={isTextEditorModalOpen}
+        onClose={() => setIsTextEditorModalOpen(false)}
+        objectName={activeTab?.name}
       />
       
       <SaveChangesModal 

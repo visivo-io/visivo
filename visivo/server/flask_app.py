@@ -8,6 +8,8 @@ from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
+import shutil
+import subprocess
 
 
 class FlaskApp:
@@ -349,6 +351,48 @@ class FlaskApp:
             except Exception as e:
                 Logger.instance().error(f"Error updating session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
+
+        @self.app.route("/api/editors/installed", methods=["GET"])
+        def get_installed_editors():
+            # Common text editors and their commands
+            editors = [
+                {"name": "Visual Studio Code", "id": "code", "command": "code"},
+                {"name": "Cursor", "id": "cursor", "command": "cursor"},
+                {"name": "Sublime Text", "id": "subl", "command": "subl"},
+                {"name": "Atom", "id": "atom", "command": "atom"},
+                {"name": "TextMate", "id": "mate", "command": "mate"},
+                {"name": "Nova", "id": "nova", "command": "nova"},
+                {"name": "BBEdit", "id": "bbedit", "command": "bbedit"},
+                {"name": "MacVim", "id": "mvim", "command": "mvim"},
+            ]
+            
+            # Check which editors are installed
+            installed_editors = []
+            for editor in editors:
+                if shutil.which(editor["command"]):
+                    installed_editors.append(editor)
+            
+            return jsonify(installed_editors)
+
+        @self.app.route("/api/editors/open", methods=["POST"])
+        def open_in_editor():
+            data = request.get_json()
+            if not data or "command" not in data or "filePath" not in data:
+                return jsonify({"error": "Missing required parameters"}), 400
+            
+            command = data["command"]
+            file_path = data["filePath"]
+            
+            # Validate file path exists
+            if not os.path.exists(file_path):
+                return jsonify({"error": "File not found"}), 404
+            
+            try:
+                # Open the file in the selected editor
+                subprocess.Popen([command, file_path])
+                return jsonify({"message": "File opened successfully"}), 200
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
 
     @property
     def project(self):
