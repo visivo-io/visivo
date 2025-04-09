@@ -41,10 +41,9 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     const loadSchema = async () => {
-      console.log('Fetching schema...');
+      
       try {
         const schemaData = await fetchSchema();
-        console.log('Schema response:', schemaData);
         setSchema(schemaData);
       } catch (error) {
         console.error('Error fetching schema:', error);
@@ -53,38 +52,25 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     loadSchema();
   }, []);
 
-  // Add debug logging for schema state changes
-  useEffect(() => {
-    console.log('Current schema state:', schema);
-    if (schema?.properties) {
-      console.log('Available properties:', 
-        Object.keys(schema.properties)
-          .filter(key => schema.properties[key]?.type === 'array')
-      );
-    }
-  }, [schema]);
 
   const getValidTypesForProperty = (prop) => {
     if (!schema?.properties) return [];
-    console.log('Getting valid types for property:', prop);
     
     const propSchema = schema.properties[prop];
-    console.log('Property schema:', propSchema);
     
     if (propSchema?.items?.oneOf) {
       const types = propSchema.items.oneOf.map(item => {
         const typePath = item.$ref.split('/');
         return typePath[typePath.length - 1];
       });
-      console.log('Found oneOf types:', types);
+      
       return types;
     } else if (propSchema?.items?.$ref) {
       const typePath = propSchema.items.$ref.split('/');
       const type = typePath[typePath.length - 1];
-      console.log('Found single type:', type);
+      
       return [type];
     }
-    console.log('No valid types found');
     return [];
   };
 

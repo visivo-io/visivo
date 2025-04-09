@@ -161,7 +161,18 @@ class ProjectWriter:
         If the new file path is the same as the old file path, it will move the named child to 
         a flat list in the project file.
         """
-        self._delete(child_name, replace_with_reference=True)
+        # Check if the object is defined inline by looking at its config
+        child_config = self.named_children[child_name].get("config", {})
+        is_inline = False
+        try:
+            if isinstance(child_config, str):
+                parsed_config = json.loads(child_config)
+                is_inline = parsed_config.get("is_inline_defined", False)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+        # Only replace with reference if the object is defined inline
+        self._delete(child_name, replace_with_reference=is_inline)
         self._new(child_name)
 
     def _rename(self, old_child_name: str, new_child_name: str):
