@@ -89,7 +89,7 @@ const EditorPanel = () => {
                 {tab.name}
               </span>
               <button
-                className="ml-2 p-1 hover:bg-blue-100 rounded-sm"
+                className="ml-2 p-1 hover:bg-blue-100 rounded-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   closeTab(tab.id);

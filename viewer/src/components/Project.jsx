@@ -28,11 +28,10 @@ function Project(props) {
   const projectId = props.project?.id || props.project?.project_id;
   const dashboardNames = allDashboards.map(d => d.name);
 
-
   const { data: thumbnails = {} } = useQuery({
-    queryKey: ['dashboards', projectId],
+    queryKey: ['dashboards', projectId, dashboardNames],
     queryFn: async () => {
-      if (!projectId || allDashboards.length === 0) {
+      if (!projectId || dashboardNames.length === 0) {
         return {};
       }
 
@@ -40,7 +39,6 @@ function Project(props) {
         dashboardNames.map(async dashboardName => {
           const query = fetchDashboardQuery(projectId, dashboardName);
           const dashboardData = await query.queryFn().catch(e => {
-            console.error("Error fetching dashboard", e);
             return null;
           });
           if (dashboardData) {
@@ -61,8 +59,8 @@ function Project(props) {
 
       return Object.fromEntries(results.filter(Boolean));
     },
-    enabled: Boolean(projectId) && allDashboards.length > 0,
-    staleTime: Infinity
+    enabled: Boolean(projectId) && dashboardNames.length > 0,
+    staleTime: 1000 * 60 * 5
   });
 
   const availableTags = useMemo(() => {
@@ -125,7 +123,7 @@ function Project(props) {
             ))}
 
             {filteredDashboards.length === 0 && (
-              <div className="w-full text-center py-8 bg-white rounded-lg shadow-xs border border-gray-200">
+              <div className="w-full text-center py-8 bg-white rounded-lg shadow-2xs border border-gray-200">
                 <HiTemplate className="mx-auto h-10 w-10 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No dashboards found</h3>
                 <p className="mt-1 text-sm text-gray-500">No dashboards match your search criteria.</p>

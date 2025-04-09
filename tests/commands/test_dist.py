@@ -68,6 +68,7 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
     # Verify project.json has created_at field
     with open(os.path.join(dist_dir, "data", "project.json")) as project_json:
         data = json.load(project_json)
+        assert "id" in data
         assert "created_at" in data
         assert "project_json" in data
 
