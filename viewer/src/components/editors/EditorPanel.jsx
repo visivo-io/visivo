@@ -99,45 +99,47 @@ const EditorPanel = () => {
           ))}
         </div>
         <div className="pl-2 pb-4 flex items-center space-x-2">
-          {/* Add kebab menu */}
-          <div className="relative">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <HiDotsVertical className="w-5 h-5 text-gray-600" />
-            </button>
-            
-            {/* Dropdown menu */}
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <ul className="py-2">
-                  <li>
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setIsMoveModalOpen(true);
-                      }}
-                      className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
-                    >
-                      Move Object
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setIsDeleteModalOpen(true);
-                      }}
-                      className="w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
-                    >
-                      Delete Object
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            )}
-          </div>
+          {/* Only show kebab menu when there's an active tab */}
+          {activeTabId && (
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <HiDotsVertical className="w-5 h-5 text-gray-600" />
+              </button>
+              
+              {/* Dropdown menu */}
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <ul className="py-2">
+                    <li>
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          setIsMoveModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100"
+                      >
+                        Move Object
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 text-left text-red-600 hover:bg-gray-100"
+                      >
+                        Delete Object
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
           
           <button
             onClick={() => setIsModalOpen(true)}

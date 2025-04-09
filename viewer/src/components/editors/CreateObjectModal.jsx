@@ -271,10 +271,9 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                     {pathObj.relative_path}
                   </option>
                 ))}
-                <option value="project.yaml">project.yaml (default)</option>
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Select where to save this {displayName.toLowerCase()}
+                Select the file where you want to save this {displayName.toLowerCase()}. Default is the project file path.
               </p>
             </div>
 
