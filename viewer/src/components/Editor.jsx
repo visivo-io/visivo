@@ -28,10 +28,13 @@ const Editor = () => {
         console.error('Error fetching project data:', error);
       }
     };
-    fetchProjectFilePath();
-    fetchProjectData();
-    fetchNamedChildren();
-    CreateProjectFileObjects();
+    const initializeEditor = async () => {
+      await fetchProjectFilePath();
+      await fetchProjectData();
+      await fetchNamedChildren();
+      await CreateProjectFileObjects();
+    };
+    initializeEditor();
   }, [fetchNamedChildren, setProjectData, fetchProjectFilePath, CreateProjectFileObjects]);
 
 

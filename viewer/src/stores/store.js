@@ -4,16 +4,7 @@ import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
 import { fetchProjectFilePath } from '../api/projectFilePath';
 import { updateNestedValue } from './utils';
 
-// Add this function to get unique file paths from existing named children
-const getUniqueFilePaths = (state) => {
-  const paths = new Set();
-  Object.values(state.namedChildren).forEach(child => {
-    if (child.file_path) {
-      paths.add(child.file_path);
-    }
-  });
-  return Array.from(paths);
-};
+
 
 const useStore = create(devtools((set, get) => ({
   projectData: {}, // Holds the fetched project data
@@ -43,9 +34,6 @@ const useStore = create(devtools((set, get) => ({
     try {
       // Make API call to write files
       const response = await writeNamedChildren(state.namedChildren);
-      console.log('writeNamedChildren response', response);
-      console.log('writeNamedChildren response', response.status);
-      
       if (response.status !== 200) {
         throw new Error('Failed to write files');
       }
@@ -74,12 +62,27 @@ const useStore = create(devtools((set, get) => ({
     const state = get();
     const projectFilePath = state.projectFilePath;
     const namedChildren = state.namedChildren;
-    // Create a Set to store unique file paths
-    const uniqueFilePaths = new Set();
+    // Create a Map to store unique file paths with their objects
+    const uniqueFilePaths = new Map();
+    
+    // Helper function to create path object and calculate relative path
+    const createPathObject = (fullPath) => {
+      let relativePath = fullPath;
+      if (projectFilePath && fullPath.startsWith(projectFilePath)) {
+        // Remove projectFilePath and leading slash if present
+        relativePath = fullPath.slice(projectFilePath.length).replace(/^\//, '');
+      }
+      
+      return {
+        status: "existing",
+        full_path: fullPath,
+        relative_path: relativePath || fullPath // Fallback to full path if relative calculation fails
+      };
+    };
     
     // Add the project file path if it exists
     if (projectFilePath) {
-      uniqueFilePaths.add(projectFilePath);
+      uniqueFilePaths.set(projectFilePath, createPathObject(projectFilePath));
     }
     
     // Loop through namedChildren to collect file paths
@@ -89,26 +92,25 @@ const useStore = create(devtools((set, get) => ({
         
         // Add file_path if it exists
         if (child.file_path) {
-          uniqueFilePaths.add(child.file_path);
+          uniqueFilePaths.set(child.file_path, createPathObject(child.file_path));
         }
         
         // Add new_file_path if it exists
         if (child.new_file_path) {
-          uniqueFilePaths.add(child.new_file_path);
+          uniqueFilePaths.set(child.new_file_path, createPathObject(child.new_file_path));
         }
       }
     }
     
-    // Convert Set to array for easier handling
-    const projectFileObjects = Array.from(uniqueFilePaths);
-    console.log('Unique file paths:', projectFileObjects);
+    // Convert Map values to array for easier handling
+    const projectFileObjects = Array.from(uniqueFilePaths.values());
+    console.log('Project file objects:', projectFileObjects);
     set({ projectFileObjects: projectFileObjects });
   },
   // Fetch actions for namedChildren
   fetchProjectFilePath: async () => {
     const data = await fetchProjectFilePath();
     console.log('fetchProjectFilePath called', data);
-    console.log('fetchProjectFilePath called', data.projectFilePath);
     set({ projectFilePath: data});
   },
   
@@ -222,8 +224,6 @@ const useStore = create(devtools((set, get) => ({
     };
   },
 
-  // Add getter for file paths
-  getUniqueFilePaths: () => getUniqueFilePaths(get()),
 })));
 
 export default useStore;

@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import useStore from '../../stores/store';
 
 const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
-  const getUniqueFilePaths = useStore(state => state.getUniqueFilePaths);
+  const projectFileObjects = useStore(state => state.projectFileObjects);
   const namedChildren = useStore(state => state.namedChildren);
   const [selectedPath, setSelectedPath] = useState('');
   const [customPath, setCustomPath] = useState('');
   const [isCustomPath, setIsCustomPath] = useState(false);
-
-  const availablePaths = getUniqueFilePaths();
 
   const handleMove = () => {
     const newPath = isCustomPath ? customPath : selectedPath;
@@ -73,8 +71,10 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 disabled:bg-gray-100"
             >
               <option value="">Select a location...</option>
-              {availablePaths.map(path => (
-                <option key={path} value={path}>{path}</option>
+              {projectFileObjects.map(pathObj => (
+                <option key={pathObj.full_path} value={pathObj.full_path}>
+                  {pathObj.relative_path}
+                </option>
               ))}
             </select>
           </div>

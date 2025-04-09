@@ -15,12 +15,12 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   
   const openTab = useStore(state => state.openTab);
   const namedChildren = useStore(state => state.namedChildren);
-  const getUniqueFilePaths = useStore(state => state.getUniqueFilePaths);
+  
+  const projectFileObjects = useStore(state => state.projectFileObjects);
+  const projectFilePath = useStore(state => state.projectFilePath);
 
   // Get unique file paths for the dropdown
-  const availableFilePaths = useMemo(() => {
-    return getUniqueFilePaths();
-  }, [getUniqueFilePaths]);
+  
 
   // Reset all state to initial values
   const resetState = () => {
@@ -148,8 +148,8 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
         ...attributes
       },
       status: 'New', // Set status to New for new objects
-      file_path: selectedFilePath || availableFilePaths[0] || 'project.yaml', // Default to first available path or project.yaml
-      new_file_path: selectedFilePath || availableFilePaths[0] || 'project.yaml',
+      file_path: selectedFilePath || projectFilePath, // defaults to existing project file path
+      new_file_path: selectedFilePath || projectFilePath,
       path: null
     };
 
@@ -266,8 +266,10 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
               >
                 <option value="">Select a file...</option>
-                {availableFilePaths.map(path => (
-                  <option key={path} value={path}>{path}</option>
+                {projectFileObjects.map(pathObj => (
+                  <option key={pathObj.full_path} value={pathObj.full_path}>
+                    {pathObj.relative_path}
+                  </option>
                 ))}
                 <option value="project.yaml">project.yaml (default)</option>
               </select>
