@@ -37,30 +37,29 @@ function QueryPill({ value, onChange, isQueryFunction }) {
 
   return (
     <div 
-      className="relative inline-flex items-center h-8 rounded-full bg-blue-100 border-2 border-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] cursor-text"
+      className="relative inline-flex flex-wrap items-stretch min-h-[2rem] rounded-full bg-blue-100 border-2 border-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] cursor-text"
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Left moon with SQL text */}
-      <div className="flex items-center h-full px-3 border-r border-white">
+      {/* Left moon with SQL text - now self-stretches and centers content */}
+      <div className="flex items-center self-stretch px-3 border-r border-white">
         <span className="text-sm font-semibold text-blue-900">SQL</span>
       </div>
 
       {/* Main content */}
-      <div className="px-3 flex-grow">
+      <div className="flex-1 px-3 py-1 min-w-[150px]">
         {isEditing ? (
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
             value={displayValue}
             onChange={(e) => setLocalValue(e.target.value)}
             onBlur={handleBlur}
-            className="bg-transparent text-blue-900 outline-none w-full"
-            size={displayValue.length}
+            className="bg-transparent text-blue-900 outline-none w-full resize-none"
+            rows={Math.max(1, displayValue.split('\n').length)}
           />
         ) : (
-          <span className="text-blue-900">{displayValue}</span>
+          <span className="text-blue-900 whitespace-pre-wrap break-words">{displayValue}</span>
         )}
       </div>
 
@@ -68,7 +67,7 @@ function QueryPill({ value, onChange, isQueryFunction }) {
       {isHovered && !isEditing && (
         <button
           onClick={handleDelete}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-blue-900 hover:text-blue-700 focus:outline-none"
+          className="absolute right-2 top-4 -translate-y-1/2 w-4 h-4 flex items-center justify-center text-blue-900 hover:text-blue-700 focus:outline-none"
         >
           <svg 
             viewBox="0 0 20 20" 
