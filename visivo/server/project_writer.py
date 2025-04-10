@@ -162,16 +162,8 @@ class ProjectWriter:
         a flat list in the project file.
         """
         # Check if the object is defined inline by looking at its config
-        child_config = self.named_children[child_name].get("config", {})
-        is_inline = False
-        try:
-            if isinstance(child_config, str):
-                parsed_config = json.loads(child_config)
-                is_inline = parsed_config.get("is_inline_defined", False)
-        except (json.JSONDecodeError, AttributeError):
-            pass
-
-        # Only replace with reference if the object is defined inline
+        is_inline = self.named_children[child_name].get("is_inline_defined", False)
+        
         self._delete(child_name, replace_with_reference=is_inline)
         self._new(child_name)
 

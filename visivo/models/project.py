@@ -69,6 +69,7 @@ class Project(NamedModel, ParentModel):
         """
         dag = self.dag()
         named_nodes = {}
+        # First pass - collect all nodes and their inline dependencies
         for node in dag.nodes():
             if hasattr(node, "name"):
                 if node.name is not None:
@@ -78,28 +79,38 @@ class Project(NamedModel, ParentModel):
             else:
                 is_named = False
             if is_named and (Project.is_project_child(node) or isinstance(node, Project)):
-                #TODO: Need to pull in the project file path from the parse phase and store it as a field so we cna use it here. 
                 fully_referenced_model_dump = Project._fully_referenced_model_dump(node)
                 file_path = fully_referenced_model_dump.pop("file_path", "Not Found")
                 path = fully_referenced_model_dump.pop("path", "Not Found")
-                _ = fully_referenced_model_dump.pop("changed", "Not Found") #pop changed attribute because that's an internal attribute that should not be written into the file
+                inline_dependent_objects = fully_referenced_model_dump.pop("inline_dependent_objects", [])
+                _ = fully_referenced_model_dump.pop("changed", "Not Found")
                 contents = {
                     "type": node.__class__.__name__,
                     "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),
                     "config": fully_referenced_model_dump, 
                     "file_path": file_path,
                     "new_file_path": file_path,
-                    "path": path
+                    "path": path,
+                    "inline_dependent_objects": inline_dependent_objects,
+                    "inline_object_parents": [],  # Initialize empty list for parents
+                    "is_inline_defined": False
                 }
                 named_nodes[node.name] = contents
-
+        
+        # Second pass - build the reverse mapping
+        for node_name, node_data in named_nodes.items():
+            if node_data["type"] != "Project":
+                for dependent_object in node_data["inline_dependent_objects"]:
+                    if dependent_object in named_nodes:
+                        named_nodes[dependent_object]["inline_object_parents"].append(node_name)
+                        named_nodes[dependent_object]["is_inline_defined"] = True
         return named_nodes
    
     @classmethod
     def _fully_referenced_model_dump(cls, node: ParentModel) -> dict:
         import json
         import re
-        def clean_value(value):
+        def clean_value(value, inline_dependent_objects: list):
             # Case 1: Value is a dictionary
             if isinstance(value, dict):
                 # Check if it's a project child and has a non-null 'name'
@@ -111,12 +122,13 @@ class Project(NamedModel, ParentModel):
                          'name': value["name"],
                          'is_inline_defined': True
                     })
+                    inline_dependent_objects.append(value["name"])
                     return inline_defined_named_child
                 # If not replaced, recurse into the dictionary's values
-                return {k: clean_value(v) for k, v in value.items()}
+                return {k: clean_value(v, inline_dependent_objects) for k, v in value.items()}
             # Case 2: Value is a list
             elif isinstance(value, list):
-                return [clean_value(elem) for elem in value]
+                return [clean_value(elem, inline_dependent_objects) for elem in value]
             # Case 3: Value is a primitive (str, int, float, bool, None)
             elif isinstance(value, str):
                 # Check for inline references ${ref(Name)}
@@ -155,9 +167,10 @@ class Project(NamedModel, ParentModel):
             context={"include_type": True}
         )
         jsonable_model_dump = json.loads(model_dump_json_string)
-        fully_referenced_project_child_dict = {k: clean_value(v) for k, v in jsonable_model_dump.items()}
+        inline_dependent_objects = []
+        fully_referenced_project_child_dict = {k: clean_value(v, inline_dependent_objects) for k, v in jsonable_model_dump.items()}
         fully_referenced_project_child_dict = remove_type_keys(fully_referenced_project_child_dict)
-        
+        fully_referenced_project_child_dict["inline_dependent_objects"] = inline_dependent_objects
         return fully_referenced_project_child_dict
     
     @model_validator(mode="after")
