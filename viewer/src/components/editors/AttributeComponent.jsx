@@ -115,7 +115,8 @@ function AttributeComponent({ name, value, path,}) {
           const selectedChild = filteredChildren[selectedIndex];
           const reference = JSON.stringify({
             name: selectedChild,
-            is_inline_defined: false
+            is_inline_defined: false,
+            original_value: `\${ref(${selectedChild})}`,
           });
           setLocalValue(reference);
           checkAndParseJson(reference);
@@ -234,7 +235,8 @@ function AttributeComponent({ name, value, path,}) {
                   onClick={() => {
                     const reference = JSON.stringify({
                       name: child,
-                      is_inline_defined: false
+                      is_inline_defined: false,
+                      original_value: `\${ref(${child})}`,
                     });
                     setLocalValue(reference);
                     checkAndParseJson(reference);
