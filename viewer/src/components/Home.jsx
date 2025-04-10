@@ -67,7 +67,7 @@ const Home = () => {
 
   return (
     <SearchParamsProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="visivo-home min-h-screen bg-gray-50">
         <TopNav />
         <div className={isEditor ? "" : "mx-4"}>
           {!isEditor && (
