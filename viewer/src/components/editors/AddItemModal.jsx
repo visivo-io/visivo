@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { Label, TextInput, Select } from 'flowbite-react';
-import { HiPlus } from 'react-icons/hi';
 
 const ITEM_TYPES = {
   ATTRIBUTE: 'attribute',
@@ -31,6 +29,10 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
         if (!isNaN(value)) {
           processedValue = Number(value);
         }
+        break;
+      default:
+        // Keep the original value if type is not recognized
+        processedValue = value;
         break;
     }
 
