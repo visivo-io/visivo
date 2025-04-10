@@ -36,7 +36,7 @@ class Logger:
             if self.echo:
                 self.echo(message)
             elif self.spinner:
-                self.spinner.text = str(message)
+                self.spinner.info(text=str(message))
 
     def info(self, message: str):
         if self.echo:
