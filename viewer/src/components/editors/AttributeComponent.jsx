@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import debounce from 'lodash/debounce'; // You'll need to install lodash if not already present
 import ObjectPill from './ObjectPill'; // You'll need to create this component if it doesn't exist
 import { createPortal } from 'react-dom';
+import QueryPill from './QueryPill'; // You'll need to create this component if it doesn't exist
 
 function AttributeComponent({ name, value, path,}) {
   const updateNamedChildAttribute = useStore((state) => state.updateNamedChildAttribute);
@@ -17,9 +18,23 @@ function AttributeComponent({ name, value, path,}) {
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
   const [clickTimeout, setClickTimeout] = useState(null);
+  const [isQueryValue, setIsQueryValue] = useState(false);
+  const [queryType, setQueryType] = useState(null); // 'function' or 'bracket'
 
   // Check if value is valid JSON object with required structure
   const checkAndParseJson = useCallback((val) => {
+    // Check for query patterns first
+    const queryFunctionPattern = /^query\((.*)\)$/;
+    const queryBracketPattern = /^\?\{(.*)\}$/;
+
+    if (queryFunctionPattern.test(val) || queryBracketPattern.test(val)) {
+      setIsQueryValue(true);
+      setQueryType(queryFunctionPattern.test(val) ? 'function' : 'bracket');
+      setIsJsonObject(false);
+      setParsedObject(null);
+      return false;
+    }
+
     try {
       const parsed = JSON.parse(val);
       if (parsed && typeof parsed === 'object' && parsed.name) {
@@ -158,6 +173,19 @@ function AttributeComponent({ name, value, path,}) {
     }
   };
 
+  const handleQueryChange = (newValue) => {
+    if (newValue === 'none') {
+      // Reset all states
+      setIsQueryValue(false);
+      setQueryType(null);
+      setLocalValue('');
+      debouncedUpdateFn('');
+    } else {
+      setLocalValue(newValue);
+      debouncedUpdateFn(newValue);
+    }
+  };
+
   // Sync local value when prop value changes
   useEffect(() => {
     setLocalValue(value);
@@ -206,6 +234,12 @@ function AttributeComponent({ name, value, path,}) {
             inline={parsedObject.is_inline_defined}
           />
         </div>
+      ) : isQueryValue ? (
+        <QueryPill
+          value={localValue}
+          onChange={handleQueryChange}
+          isQueryFunction={queryType === 'function'}
+        />
       ) : (
         <div className="relative w-full">
           <input
