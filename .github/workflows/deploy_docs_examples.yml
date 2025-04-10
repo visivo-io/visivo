@@ -37,7 +37,7 @@ jobs:
         run: |
           cd test-projects/docs-examples
           visivo compile
-          visivo run -tm all
+          DEBUG=true visivo run -tm all
           visivo dist
           cd ../..
 
