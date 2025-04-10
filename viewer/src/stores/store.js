@@ -211,6 +211,88 @@ const useStore = create(devtools((set, get) => ({
     };
   },
 
+  // Add new item to a list
+  addListItem: (path, newItem) => set((state) => {
+    const childName = path[0];
+    if (!state.namedChildren.hasOwnProperty(childName)) {
+      return { error: 'Child not found in namedChildren store' };
+    }
+
+    const childToUpdate = state.namedChildren[childName];
+    const configToUpdate = typeof childToUpdate.config === 'string' 
+      ? JSON.parse(childToUpdate.config)
+      : childToUpdate.config;
+
+    // Remove the child name from path to get the path to the list
+    const listPath = path.slice(1);
+    
+    // Get the target list using the path
+    let targetList = configToUpdate;
+    for (let i = 0; i < listPath.length; i++) {
+      targetList = targetList[listPath[i]];
+    }
+
+    // Ensure targetList is an array
+    if (!Array.isArray(targetList)) {
+      return { error: 'Target path does not point to a list' };
+    }
+
+    // Add new item to the list
+    targetList.push(newItem);
+
+    return {
+      namedChildren: {
+        ...state.namedChildren,
+        [childName]: {
+          ...childToUpdate,
+          config: configToUpdate,
+          status: childToUpdate.status === 'New' ? 'New' : 'Modified'
+        }
+      }
+    };
+  }),
+
+  // Add new property to an object
+  addObjectProperty: (path, propertyName, propertyValue) => set((state) => {
+    const childName = path[0];
+    if (!state.namedChildren.hasOwnProperty(childName)) {
+      return { error: 'Child not found in namedChildren store' };
+    }
+
+    const childToUpdate = state.namedChildren[childName];
+    const configToUpdate = typeof childToUpdate.config === 'string' 
+      ? JSON.parse(childToUpdate.config)
+      : childToUpdate.config;
+
+    // Remove the child name from path to get the path to the object
+    const objectPath = path.slice(1);
+    
+    // Get the target object using the path
+    let targetObject = configToUpdate;
+    for (let i = 0; i < objectPath.length; i++) {
+      targetObject = targetObject[objectPath[i]];
+    }
+
+    // Ensure targetObject is an object
+    if (typeof targetObject !== 'object' || targetObject === null || Array.isArray(targetObject)) {
+      return { error: 'Target path does not point to an object' };
+    }
+
+    // Add new property to the object
+    targetObject[propertyName] = propertyValue;
+
+    return {
+      namedChildren: {
+        ...state.namedChildren,
+        [childName]: {
+          ...childToUpdate,
+          config: configToUpdate,
+          status: childToUpdate.status === 'New' ? 'New' : 'Modified'
+        }
+      }
+    };
+  }),
+
 })));
 
 export default useStore;
