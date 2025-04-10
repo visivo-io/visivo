@@ -6,7 +6,7 @@ import CreateObjectModal from './CreateObjectModal';
 
 const ObjectsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('');
+  const [selectedTypeKey, setSelectedTypeKey] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   // Use the store for state management
@@ -23,17 +23,17 @@ const ObjectsPanel = () => {
   }, [namedChildrenAndType]);
 
   const uniqueTypes = useMemo(() => {
-    const types = [...new Set(Object.values(namedChildrenAndType).map(item => item.type))];
-    return types.sort();
+    const type_keys = [...new Set(Object.values(namedChildrenAndType).map(item => item.type_key))];
+    return type_keys.sort();
   }, [namedChildrenAndType]);
 
   const filteredObjects = useMemo(() => {
     return objectNames.filter(name => {
       const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !selectedType || namedChildrenAndType[name].type === selectedType;
+      const matchesType = !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
       return matchesSearch && matchesType;
     });
-  }, [objectNames, namedChildrenAndType, searchTerm, selectedType]);
+  }, [objectNames, namedChildrenAndType, searchTerm, selectedTypeKey]);
 
   if (isLoading) {
     return (
@@ -62,12 +62,12 @@ const ObjectsPanel = () => {
       />
       <select
         className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
-        value={selectedType}
-        onChange={(e) => setSelectedType(e.target.value)}
+        value={selectedTypeKey}
+        onChange={(e) => setSelectedTypeKey(e.target.value)}
       >
         <option value="">All Types</option>
         {uniqueTypes.map(type => (
-          <option key={type} value={type}>{type}</option>
+          <option key={type} value={type}>{type === "na" ? "Project" : type.charAt(0).toUpperCase() + type.slice(1)}</option>
         ))}
       </select>
       <div className="overflow-y-auto flex-1">
