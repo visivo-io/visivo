@@ -80,7 +80,7 @@ class Project(NamedModel, ParentModel):
                 is_named = False
             if is_named and (Project.is_project_child(node) or isinstance(node, Project)):
                 fully_referenced_model_dump = Project._fully_referenced_model_dump(node)
-                file_path = fully_referenced_model_dump.pop("file_path", "Not Found")
+                file_path = fully_referenced_model_dump.pop("file_path", self.project_file_path)
                 path = fully_referenced_model_dump.pop("path", "Not Found")
                 inline_dependent_objects = fully_referenced_model_dump.pop("inline_dependent_objects", [])
                 _ = fully_referenced_model_dump.pop("changed", "Not Found")
