@@ -1,3 +1,31 @@
+function getRelativePath(base, target) {
+  // Remove leading slashes and split by '/'
+  const baseParts = base.replace(/^\//, '').split('/');
+  const targetParts = target.replace(/^\//, '').split('/');
+
+  // Find the first index where parts differ
+  let samePartsLength = 0;
+  while (
+    samePartsLength < baseParts.length &&
+    samePartsLength < targetParts.length &&
+    baseParts[samePartsLength] === targetParts[samePartsLength]
+  ) {
+    samePartsLength++;
+  }
+
+  // Count how many directories we need to go up from base
+  const upwardMoves = baseParts.length - samePartsLength;
+  const relativeParts = Array(upwardMoves).fill('.');
+
+  // Append the parts of target that didn't match
+  const nonMatchingTargetParts = targetParts.slice(samePartsLength);
+  if (base === target) {
+    return "./" + target.split('/').pop();
+  } else {
+    return [...relativeParts, ...nonMatchingTargetParts].join('/');
+  }
+};
+
 function updateNestedValue(obj, path, newValue) {
     if (!Array.isArray(path) || path.length === 0) {
       throw new Error("Path must be a non-empty array");
@@ -19,7 +47,7 @@ function updateNestedValue(obj, path, newValue) {
   
     // Update the value at the last key in the path
     current[path[path.length - 1]] = newValue;
-  }
+  };
 
-  export { updateNestedValue };
+  export { updateNestedValue, getRelativePath };
   

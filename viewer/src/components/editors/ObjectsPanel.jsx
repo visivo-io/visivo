@@ -2,10 +2,12 @@ import React, { useState, useMemo } from 'react';
 import ObjectPill from './ObjectPill';
 import useStore from '../../stores/store';
 import { shallow } from 'zustand/shallow';
+import CreateObjectModal from './CreateObjectModal';
 
 const ObjectsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('');
+  const [selectedTypeKey, setSelectedTypeKey] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   // Use the store for state management
   const isLoading = useStore((state) => state.isLoading);
@@ -21,17 +23,17 @@ const ObjectsPanel = () => {
   }, [namedChildrenAndType]);
 
   const uniqueTypes = useMemo(() => {
-    const types = [...new Set(Object.values(namedChildrenAndType).map(item => item.type))];
-    return types.sort();
+    const type_keys = [...new Set(Object.values(namedChildrenAndType).map(item => item.type_key))];
+    return type_keys.sort();
   }, [namedChildrenAndType]);
 
   const filteredObjects = useMemo(() => {
     return objectNames.filter(name => {
       const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !selectedType || namedChildrenAndType[name].type === selectedType;
+      const matchesType = !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
       return matchesSearch && matchesType;
     });
-  }, [objectNames, namedChildrenAndType, searchTerm, selectedType]);
+  }, [objectNames, namedChildrenAndType, searchTerm, selectedTypeKey]);
 
   if (isLoading) {
     return (
@@ -60,12 +62,12 @@ const ObjectsPanel = () => {
       />
       <select
         className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
-        value={selectedType}
-        onChange={(e) => setSelectedType(e.target.value)}
+        value={selectedTypeKey}
+        onChange={(e) => setSelectedTypeKey(e.target.value)}
       >
         <option value="">All Types</option>
         {uniqueTypes.map(type => (
-          <option key={type} value={type}>{type}</option>
+          <option key={type} value={type}>{type === "na" ? "Project" : type.charAt(0).toUpperCase() + type.slice(1)}</option>
         ))}
       </select>
       <div className="overflow-y-auto flex-1">
@@ -82,6 +84,22 @@ const ObjectsPanel = () => {
           ))
         )}
       </div>
+
+      {/* New create button section */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="w-full py-2 px-4 bg-[#713B57] text-white rounded-lg hover:bg-[#5A2F46] hover:scale-101 flex items-center justify-center"
+        >
+          <span className="mr-2">+</span>
+          Create New Object
+        </button>
+      </div>
+
+      <CreateObjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
     </div>
   );
 };

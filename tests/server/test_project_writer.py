@@ -41,6 +41,7 @@ def simple_project_file(temp_project_dir):
     project_file = temp_yml_file(initial_content, name="simple_project.yml", output_dir=temp_project_dir)
     return str(project_file)
 
+
 @pytest.fixture
 def simple_writer(temp_project_dir, simple_project_file):
     """Create a ProjectWriter instance with minimal configuration"""
@@ -52,6 +53,37 @@ def simple_writer(temp_project_dir, simple_project_file):
         }
     }
     return ProjectWriter(named_children)
+
+@pytest.fixture
+def nested_project_file(temp_project_dir):
+    """Create a simple project file for testing"""
+    initial_content = {
+        "components": [
+            {"name": "Existing Component", "value": "original", "sub_components": [
+                {"name": "Sub Component", "value": "sub_original"}
+            ]}
+        ]
+    }
+    project_file = temp_yml_file(initial_content, name="nested_components_project.yml", output_dir=temp_project_dir)
+    return str(project_file)
+
+@pytest.fixture
+def nested_writer(temp_project_dir, nested_project_file):
+    """Create a ProjectWriter instance with minimal configuration"""
+    named_children = {
+        "Existing Component": {
+            "status": "Modified",
+            "file_path": nested_project_file,
+            "config": {"name": "Existing Component", "value": "original"}
+        },
+        "Sub Component": {
+            "status": "Modified",
+            "file_path": nested_project_file,
+            "config": {"name": "Sub Component", "value": "sub_original"}
+        }
+    }
+    return ProjectWriter(named_children)
+
 
 def test_initial_files_to_write_map(writer, sample_named_children):
     """Test that the initial files to write map is created correctly"""
@@ -172,7 +204,7 @@ def test_delete_named_child_with_reference(simple_writer, simple_project_file):
     assert len(components) == 1
     assert components[0] == "${ref(Existing Component)}"
 
-def test_move_named_child(simple_writer, simple_project_file, temp_project_dir):
+def test_move_top_level_named_child(simple_writer, simple_project_file, temp_project_dir):
     """Test moving a named child"""
     new_file_path = os.path.join(temp_project_dir, "new_project.yml")
     
@@ -180,7 +212,8 @@ def test_move_named_child(simple_writer, simple_project_file, temp_project_dir):
     simple_writer.named_children["Existing Component"].update({
         "status": "Moved",
         "new_file_path": new_file_path,
-        "type_key": "components"
+        "type_key": "components", 
+        "is_inline_defined": False
     })
     
     # Initialize the new file in files_to_write
@@ -192,14 +225,45 @@ def test_move_named_child(simple_writer, simple_project_file, temp_project_dir):
     old_components = simple_writer.files_to_write[simple_project_file]["components"]
     new_components = simple_writer.files_to_write[new_file_path]["components"]
     
-    # Check that old location has reference
-    assert len(old_components) == 1
-    assert old_components[0] == "${ref(Existing Component)}"
+    # Check that old location no longer has component
+    assert len(old_components) == 0
     
     # Check that new location has actual component
     assert len(new_components) == 1
     assert new_components[0]["name"] == "Existing Component"
     assert new_components[0]["value"] == "original"
+
+
+def test_move_nested_named_child(nested_writer, nested_project_file, temp_project_dir):
+    """Test moving a named child"""
+    new_file_path = os.path.join(temp_project_dir, "new_project.yml")
+    
+    # Set up the component to be moved
+    nested_writer.named_children["Sub Component"].update({
+        "status": "Moved",
+        "new_file_path": new_file_path,
+        "type_key": "components",
+        "is_inline_defined": True
+    })
+    
+    # Initialize the new file in files_to_write
+    nested_writer.files_to_write[new_file_path] = {"components": []}
+    
+    nested_writer._move("Sub Component")
+    
+    # Verify the component was moved
+    old_components = nested_writer.files_to_write[nested_project_file]["components"]
+    new_components = nested_writer.files_to_write[new_file_path]["components"]
+    
+    # Check that old location no longer has component
+    assert len(old_components) == 1
+    assert old_components[0]["sub_components"][0] == "${ref(Sub Component)}"
+    
+    # Check that new location has actual component
+    assert len(new_components) == 1
+    assert new_components[0]["name"] == "Sub Component"
+    assert new_components[0]["value"] == "sub_original"
+
 
 def test_update_file_contents(simple_writer, simple_project_file, temp_project_dir):
     """Test the update_file_contents method handles all operations correctly"""
