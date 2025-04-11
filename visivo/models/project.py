@@ -84,6 +84,8 @@ class Project(NamedModel, ParentModel):
                 path = fully_referenced_model_dump.pop("path", "Not Found")
                 inline_dependent_objects = fully_referenced_model_dump.pop("inline_dependent_objects", [])
                 _ = fully_referenced_model_dump.pop("changed", "Not Found")
+                direct_children = dag.get_named_children(node.name)
+                direct_parents = dag.get_named_parents(node.name)
                 contents = {
                     "type": node.__class__.__name__,
                     "type_key": Project.get_key_for_project_child_class(node.__class__.__name__),
@@ -93,7 +95,9 @@ class Project(NamedModel, ParentModel):
                     "path": path,
                     "inline_dependent_objects": inline_dependent_objects,
                     "inline_object_parents": [],  # Initialize empty list for parents
-                    "is_inline_defined": False
+                    "is_inline_defined": False,
+                    "direct_children": direct_children,
+                    "direct_parents": direct_parents
                 }
                 named_nodes[node.name] = contents
         
