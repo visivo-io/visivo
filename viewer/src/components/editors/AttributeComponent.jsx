@@ -154,7 +154,6 @@ function AttributeComponent({ name, value, path,}) {
       // Double click detected
       clearTimeout(clickTimeout);
       setClickTimeout(null);
-      // Don't do anything here - let the ObjectPill handle double click
     } else {
       // Set timeout for single click
       const timeout = setTimeout(() => {
@@ -165,6 +164,30 @@ function AttributeComponent({ name, value, path,}) {
           setIsJsonObject(false);
           setParsedObject(null);
           debouncedUpdateFn(atReference);
+          
+          // Filter children based on the current pill's name
+          const searchTerm = parsedObject.name.toLowerCase();
+          const filtered = Object.keys(namedChildren).filter(
+            child => child.toLowerCase().includes(searchTerm)
+          );
+          setFilteredChildren(filtered);
+          setShowDropdown(true);
+          
+          // Find and set the index of the current item in the filtered list
+          const currentIndex = filtered.findIndex(
+            child => child.toLowerCase() === searchTerm
+          );
+          setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
+
+          // Focus the input element after a brief delay to ensure the input is rendered
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+              // Place cursor at the end of the input
+              const length = atReference.length;
+              inputRef.current.setSelectionRange(length, length);
+            }
+          }, 0);
         }
         setClickTimeout(null);
       }, 200); // 200ms threshold for double click

@@ -6,7 +6,7 @@ import { WorksheetProvider } from './contexts/WorksheetContext'
 import { fetchTracesQuery } from "./queries/traces"
 import { fetchDashboardQuery } from "./queries/dashboards"
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
+import { StoreProvider } from './StoreProvider'
 const queryClient = new QueryClient()
 
 export default function LocalProviders() {
@@ -14,7 +14,9 @@ export default function LocalProviders() {
         <QueryClientProvider client={queryClient}>
             <QueryProvider value={{ fetchTracesQuery, fetchDashboardQuery }}>
                 <WorksheetProvider>
-                    <RouterProvider router={LocalRouter} />
+                    <StoreProvider>
+                        <RouterProvider router={LocalRouter} />
+                    </StoreProvider>
                 </WorksheetProvider>
             </QueryProvider>
         </QueryClientProvider>
