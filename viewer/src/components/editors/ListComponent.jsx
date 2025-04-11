@@ -1,17 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import renderValue from './renderValue';
 import { HiPlus } from 'react-icons/hi';
 import AddItemModal from './AddItemModal';
 import useStore from '../../stores/store';
+import ContextMenu from './ContextMenu';
 
 function ListComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addListItem = useStore((state) => state.addListItem);
+  const [contextMenu, setContextMenu] = useState(null);
+  const deleteNamedChildAttribute = useStore((state) => state.deleteNamedChildAttribute);
 
   const handleAddItem = (newItem) => {
     addListItem(path, newItem);
     setIsModalOpen(false);
   };
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
+
+  const handleDelete = () => {
+    console.log('Deleting path:', path);
+    deleteNamedChildAttribute(path);
+    setContextMenu(null);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
 
   // Return null if data is null or undefined
   if (data === null || data === undefined || data.length === 0) {
@@ -19,7 +45,7 @@ function ListComponent({ name, data, path }) {
   }
 
   return (
-    <div className="flex flex-col p-1">
+    <div className="flex flex-col p-1" onContextMenu={handleContextMenu}>
       <div className="flex justify-between items-center">
         {name && isNaN(parseInt(name)) && typeof name === 'string' && (
           <div className="text-md font-medium text-purple-600">{name}</div>
@@ -55,6 +81,15 @@ function ListComponent({ name, data, path }) {
         onAdd={handleAddItem}
         isObjectMode={false}
       />
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onDelete={handleDelete}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

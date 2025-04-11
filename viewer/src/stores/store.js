@@ -293,6 +293,63 @@ const useStore = create(devtools((set, get) => ({
     };
   }),
 
+  deleteNamedChildAttribute: (path) => set((state) => {
+    const childName = path[0];
+    if (!state.namedChildren.hasOwnProperty(childName)) {
+      console.warn('Child not found in namedChildren store');
+      return state;
+    }
+
+    const childToUpdate = {...state.namedChildren[childName]}; // Create a copy
+    let configToUpdate = typeof childToUpdate.config === 'string' 
+      ? JSON.parse(childToUpdate.config)
+      : {...childToUpdate.config}; // Create a copy
+
+    // Remove the child name from path
+    const attributePath = path.slice(1);
+    
+    // Handle root level deletion
+    if (attributePath.length === 1) {
+      delete configToUpdate[attributePath[0]];
+    } else {
+      // Get the parent object and key to delete
+      let parent = configToUpdate;
+      for (let i = 0; i < attributePath.length - 1; i++) {
+        parent = parent[attributePath[i]];
+        if (!parent) {
+          console.warn('Invalid path');
+          return state;
+        }
+      }
+      
+      const keyToDelete = attributePath[attributePath.length - 1];
+
+      // Handle arrays differently than objects
+      if (Array.isArray(parent)) {
+        // Don't delete if it's the last item in the array
+        if (parent.length <= 1) return state;
+        parent.splice(keyToDelete, 1);
+      } else {
+        delete parent[keyToDelete];
+      }
+    }
+
+    // Create new namedChildren object with updated config
+    const updatedNamedChildren = {
+      ...state.namedChildren,
+      [childName]: {
+        ...childToUpdate,
+        config: configToUpdate,
+        status: childToUpdate.status === 'New' ? 'New' : 'Modified'
+      }
+    };
+
+    console.log('Deleting path:', path);
+    console.log('Updated config:', configToUpdate);
+
+    return { namedChildren: updatedNamedChildren };
+  }),
+
 })));
 
 export default useStore;

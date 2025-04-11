@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import renderValue from './renderValue';
 import { HiPlus } from 'react-icons/hi';
 import AddItemModal from './AddItemModal';
 import useStore from '../../stores/store';
+import ContextMenu from './ContextMenu';
 
 function ObjectComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const addObjectProperty = useStore((state) => state.addObjectProperty);
+  const [contextMenu, setContextMenu] = useState(null);
+  const deleteNamedChildAttribute = useStore((state) => state.deleteNamedChildAttribute);
 
   const handleAddProperty = ({ name: propertyName, value }) => {
     addObjectProperty(path, propertyName, value);
@@ -29,8 +32,33 @@ function ObjectComponent({ name, data, path }) {
     });
   const sortedObject = Object.fromEntries(objectEntries);
 
+  // Update the handler to match AttributeComponent
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Add this to prevent event bubbling
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
+
+  const handleDelete = () => {
+    console.log('Deleting path:', path); // Debug log
+    deleteNamedChildAttribute(path);
+    setContextMenu(null);
+  };
+
+  // Add useEffect for clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
+
   return (
-    <div className="flex flex-col p-1 rounded-md">
+    <div className="flex flex-col p-1 rounded-md" onContextMenu={handleContextMenu}>
       <div className="flex justify-between items-center">
         {name && isNaN(parseInt(name)) && typeof name === 'string' && (
           <div className="text-md font-medium pb-1 text-yellow-800">{name}</div>
@@ -89,6 +117,15 @@ function ObjectComponent({ name, data, path }) {
         onAdd={handleAddProperty}
         isObjectMode={true}
       />
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onDelete={handleDelete}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }

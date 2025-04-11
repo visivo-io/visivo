@@ -4,6 +4,7 @@ import debounce from 'lodash/debounce'; // You'll need to install lodash if not 
 import ObjectPill from './ObjectPill'; // You'll need to create this component if it doesn't exist
 import { createPortal } from 'react-dom';
 import QueryPill from './QueryPill'; // You'll need to create this component if it doesn't exist
+import ContextMenu from './ContextMenu';
 
 function AttributeComponent({ name, value, path,}) {
   const updateNamedChildAttribute = useStore((state) => state.updateNamedChildAttribute);
@@ -20,6 +21,8 @@ function AttributeComponent({ name, value, path,}) {
   const [clickTimeout, setClickTimeout] = useState(null);
   const [isQueryValue, setIsQueryValue] = useState(false);
   const [queryType, setQueryType] = useState(null); // 'function' or 'bracket'
+  const [contextMenu, setContextMenu] = useState(null);
+  const deleteNamedChildAttribute = useStore((state) => state.deleteNamedChildAttribute);
 
   // Check if value is valid JSON object with required structure
   const checkAndParseJson = useCallback((val) => {
@@ -243,11 +246,36 @@ function AttributeComponent({ name, value, path,}) {
     };
   }, [clickTimeout]);
 
+  // Add handler
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
+
+  const handleDelete = () => {
+    console.log('Deleting path:', path); // Debug log
+    deleteNamedChildAttribute(path);
+    setContextMenu(null);
+  };
+
+  // Add useEffect for clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
+
   // Determine flex direction based on name type
   const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
 
   return (
-    <div className={`flex ${flexDirection}`}>
+    <div className={`flex ${flexDirection}`} onContextMenu={handleContextMenu}>
        <span className="text-sm p-1 font-medium text-grey-400">{name}</span>
       
       {isJsonObject && parsedObject ? (
@@ -312,6 +340,15 @@ function AttributeComponent({ name, value, path,}) {
             document.body
           )}
         </div>
+      )}
+      
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onDelete={handleDelete}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   );
