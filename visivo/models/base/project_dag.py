@@ -95,7 +95,7 @@ class ProjectDag(DiGraph):
 
         return named_dag
 
-    def get_named_parents(self, node_name: str) -> List[str]:
+    def get_named_children(self, node_name: str) -> List[str]:
         """
         Returns a list of names of all named parent nodes for the given node name.
         Uses the named nodes subgraph to determine relationships.
@@ -109,7 +109,7 @@ class ProjectDag(DiGraph):
         except ValueError:
             return []
 
-    def get_named_children(self, node_name: str) -> List[str]:
+    def get_named_parents(self, node_name: str) -> List[str]:
         """
         Returns a list of names of all named child nodes for the given node name.
         Uses the named nodes subgraph to determine relationships.
