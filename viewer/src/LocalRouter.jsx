@@ -11,7 +11,7 @@ import Home from './components/Home'
 import ProjectContainer from './components/ProjectContainer'
 import BreadcrumbLink from './components/styled/BreadcrumbLink'
 import ErrorPage from './components/ErrorPage'
-import Dag from './components/Dag'
+import LineageGraph from './components/lineage/LineageGraph'
 import QueryExplorer from './components/QueryExplorer'
 import Editor from './components/Editor'
 
@@ -25,7 +25,7 @@ const LocalRouter = createBrowserRouter(
       <Route
         id="dag"
         path="/dag"
-        element={<Dag />}
+        element={<LineageGraph />}
         loader={loadDag}
         handle={{ crumb: () => <BreadcrumbLink to="/dag">DAG Explorer</BreadcrumbLink> }}
       />
