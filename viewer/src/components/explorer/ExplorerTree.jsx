@@ -3,7 +3,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import ObjectPill from '../editors/ObjectPill';
+import Pill from '../styled/Pill';
 
 const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   const validData = React.useMemo(() => {
@@ -34,15 +34,8 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
 
     return (
       // <ObjectPill name={node.name} type={node.type} />
-      <li key={node.id} className="mb-1">
-        <div
-          className="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 cursor-pointer group"
-          onClick={() => onItemClick(node)}
-        >
-          <div className="flex items-center flex-1 min-w-0">
-            {getIcon()}
-            <span className="ml-3 text-sm font-medium truncate">{node.name}</span>
-          </div>
+      <div key={node.id} className="mb-2">
+        <Pill name={node.name} type={node.type} onClick={() => onItemClick(node)}>
           <button
             onClick={(e) => handleCopyName(e, node.name)}
             className="relative inline-flex items-center p-1 text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-hidden opacity-0 group-hover:opacity-100"
@@ -50,7 +43,7 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
             <ContentCopyIcon className="w-4 h-4" />
             <span className="sr-only">Copy name</span>
           </button>
-        </div>
+        </Pill>
         {Array.isArray(node.children) && node.children.length > 0 && (
           <ul className="pl-6 mt-1">
             {node.children
@@ -58,7 +51,7 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
               .map(child => renderTreeItem(child))}
           </ul>
         )}
-      </li>
+      </div>
     );
   }, [getIcon, handleCopyName, onItemClick]);
 
@@ -71,10 +64,10 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   }
 
   return (
-    <div className="overflow-y-auto h-full">
-      <ul className="space-y-1">
+    <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex flex-col">
+      <div className="flex flex-col">
         {validData.map(item => renderTreeItem(item))}
-      </ul>
+      </div>
     </div>
   );
 });
