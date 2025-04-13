@@ -8,6 +8,8 @@ from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
+from visivo.server.text_editors import get_editor_configs
+import subprocess
 
 
 class FlaskApp:
@@ -69,16 +71,30 @@ class FlaskApp:
                 return jsonify(named_children)
             else:
                 return jsonify({})
+            
+        @self.app.route("/api/project/project_file_path", methods=["GET"])
+        def project_file_path():
+            project_file_path = self._project.project_file_path
+            if project_file_path:
+                return jsonify(project_file_path)
+            else:
+                return jsonify({})
 
         @self.app.route("/api/project/write_changes", methods=["POST"])
         def write_changes():
-            from time import sleep
 
             data = request.get_json()
             if not data:
                 return jsonify({"message": "No data provided"}), 400
-            sleep(3)
-            return jsonify({"message": "Changes written successfully"}), 200
+            
+            try: 
+                project_writer = ProjectWriter(data)
+                project_writer.update_file_contents()
+                project_writer.write() 
+                return jsonify({"message": "Changes written successfully"}), 200
+            except Exception as e:
+                Logger.instance().error(f"Error writing changes: {str(e)}")
+                return jsonify({"message": str(e)}), 500
 
         @self.app.route("/api/query/<project_id>", methods=["POST"])
         def execute_query(project_id):
@@ -337,6 +353,70 @@ class FlaskApp:
             except Exception as e:
                 Logger.instance().error(f"Error updating session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
+
+
+        @self.app.route("/api/editors/installed", methods=["GET"])
+        def get_installed_editors():
+            editors, platform = get_editor_configs()
+            
+            # Check which editors are installed
+            installed_editors = []
+            for editor in editors:
+                # Skip editors that don't support this platform
+                if not editor["paths"][platform]:
+                    continue
+                    
+                for path in editor["paths"][platform]:
+                    if os.path.exists(path):
+                        # Only send back safe information to the client
+                        installed_editors.append({
+                            "name": editor["name"],
+                            "id": editor["id"]
+                        })
+                        break
+            
+            return jsonify(installed_editors)
+
+        @self.app.route("/api/editors/open", methods=["POST"])
+        def open_in_editor():
+            data = request.get_json()
+            if not data or "editorId" not in data or "filePath" not in data:
+                return jsonify({"error": "Missing required parameters"}), 400
+                
+            editor_id = data["editorId"]
+            file_path = data["filePath"]
+            
+            # Validate file path exists
+            if not os.path.exists(file_path):
+                return jsonify({"error": "File not found"}), 404
+            
+            # Get editor configurations
+            editors, platform = get_editor_configs()
+            
+            # Find the selected editor
+            editor_config = next((e for e in editors if e["id"] == editor_id), None)
+            if not editor_config or not editor_config["commands"][platform]:
+                return jsonify({"error": "Invalid editor for this platform"}), 400
+                
+            try:
+                # Get the command for the selected editor
+                command = editor_config["commands"][platform]
+                
+                # Special handling for VS Code on macOS
+                if platform == "mac" and editor_id == "vscode":
+                    if command[0] == "open":
+                        # When using 'open' command, file path goes at the end
+                        subprocess.Popen(command + ["--", file_path])
+                    else:
+                        # When using 'code' command directly
+                        subprocess.Popen(command + [file_path])
+                else:
+                    # Normal handling for other editors
+                    subprocess.Popen(command + [file_path])
+                    
+                return jsonify({"message": "File opened successfully"}), 200
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
 
     @property
     def project(self):

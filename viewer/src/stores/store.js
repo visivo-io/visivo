@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware'
 import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
-import { updateNestedValue } from './utils';
+import { fetchProjectFilePath } from '../api/projectFilePath';
+import { updateNestedValue, getRelativePath } from './utils';
+
 
 const useStore = create(devtools((set, get) => ({
   projectData: {}, // Holds the fetched project data
@@ -12,11 +14,14 @@ const useStore = create(devtools((set, get) => ({
   isLoading: false,
   error: null,
   writeError: null,
+  projectFilePath: null,
+  projectFileObjects: [],
   
   // New tab-related state
   tabs: [],
   activeTabId: null,
   
+
   // Write modified files
   writeModifiedFiles: async () => {
     const state = get();
@@ -28,9 +33,6 @@ const useStore = create(devtools((set, get) => ({
     try {
       // Make API call to write files
       const response = await writeNamedChildren(state.namedChildren);
-      console.log('writeNamedChildren response', response);
-      console.log('writeNamedChildren response', response.status);
-      
       if (response.status !== 200) {
         throw new Error('Failed to write files');
       }
@@ -55,9 +57,56 @@ const useStore = create(devtools((set, get) => ({
     }
   },
   
+  CreateProjectFileObjects: async () => {
+    const state = get();
+    const projectFilePath = state.projectFilePath;
+    const namedChildren = state.namedChildren;
+    // Create a Map to store unique file paths with their objects
+    const uniqueFilePaths = new Map();
+    
+    // Helper function to create path object and calculate relative path
+    const createPathObject = (fullPath) => {
+      const relativePath = getRelativePath(projectFilePath, fullPath);
+      return {
+        status: "existing",
+        full_path: fullPath,
+        relative_path: relativePath 
+      };
+    };
+    
+    // Add the project file path if it exists
+    if (projectFilePath) {
+      uniqueFilePaths.set(projectFilePath, createPathObject(projectFilePath));
+    }
+    
+    // Loop through namedChildren to collect file paths
+    for (const key in namedChildren) {
+      if (namedChildren.hasOwnProperty(key)) {
+        const child = namedChildren[key];
+        
+        // Add file_path if it exists
+        if (child.file_path) {
+          uniqueFilePaths.set(child.file_path, createPathObject(child.file_path));
+        }
+        
+        // Add new_file_path if it exists
+        if (child.new_file_path) {
+          uniqueFilePaths.set(child.new_file_path, createPathObject(child.new_file_path));
+        }
+      }
+    }
+    
+    // Convert Map values to array for easier handling
+    const projectFileObjects = Array.from(uniqueFilePaths.values());
+    set({ projectFileObjects: projectFileObjects });
+  },
   // Fetch actions for namedChildren
+  fetchProjectFilePath: async () => {
+    const data = await fetchProjectFilePath();
+    set({ projectFilePath: data});
+  },
+  
   fetchNamedChildren: async () => {
-    console.log('fetchNamedChildren called');
     set({ isLoading: true, error: null });
     try {
       const data = await fetchNamedChildren();
@@ -82,10 +131,8 @@ const useStore = create(devtools((set, get) => ({
   // New update attribute for namedChildren
   updateNamedChildAttribute: (path, newValue) => 
     set((state) => {
-      console.log('updateNamedChildAttribute called', path, newValue);
       const childName = path.shift();
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        console.log(`childName:${childName} not found in namedChildren store`, state.namedChildren);
         return { error: 'Child not found in namedChildren store', isLoading: false };
       }
       
@@ -95,7 +142,6 @@ const useStore = create(devtools((set, get) => ({
         : childToUpdate.config;
 
       updateNestedValue(configToUpdate, path, newValue);
-      console.log('post update configToUpdate', configToUpdate);
       
       return { 
         namedChildren: {
@@ -103,7 +149,8 @@ const useStore = create(devtools((set, get) => ({
           [childName]: {
             ...childToUpdate,
             config: configToUpdate,
-            status: 'Modified'
+            // Only set status to 'Modified' if it's not already 'New'
+            status: childToUpdate.status === 'New' ? 'New' : 'Modified'
           }
         }
       };
@@ -151,7 +198,6 @@ const useStore = create(devtools((set, get) => ({
   getActiveTab: () => {
     const state = get();
     const activeTab = state.tabs.find(tab => tab.id === state.activeTabId);
-    console.log('getActiveTab called', activeTab);
     if (!activeTab) return null;
     
     // Get current config from namedChildren
@@ -163,7 +209,147 @@ const useStore = create(devtools((set, get) => ({
       ...activeTab,
       config: namedChild.config
     };
-  }
+  },
+
+  // Add new item to a list
+  addListItem: (path, newItem) => set((state) => {
+    const childName = path[0];
+    if (!state.namedChildren.hasOwnProperty(childName)) {
+      return { error: 'Child not found in namedChildren store' };
+    }
+
+    const childToUpdate = state.namedChildren[childName];
+    const configToUpdate = typeof childToUpdate.config === 'string' 
+      ? JSON.parse(childToUpdate.config)
+      : childToUpdate.config;
+
+    // Remove the child name from path to get the path to the list
+    const listPath = path.slice(1);
+    
+    // Get the target list using the path
+    let targetList = configToUpdate;
+    for (let i = 0; i < listPath.length; i++) {
+      targetList = targetList[listPath[i]];
+    }
+
+    // Ensure targetList is an array
+    if (!Array.isArray(targetList)) {
+      return { error: 'Target path does not point to a list' };
+    }
+
+    // Add new item to the list
+    targetList.push(newItem);
+
+    return {
+      namedChildren: {
+        ...state.namedChildren,
+        [childName]: {
+          ...childToUpdate,
+          config: configToUpdate,
+          status: childToUpdate.status === 'New' ? 'New' : 'Modified'
+        }
+      }
+    };
+  }),
+
+  // Add new property to an object
+  addObjectProperty: (path, propertyName, propertyValue) => set((state) => {
+    const childName = path[0];
+    if (!state.namedChildren.hasOwnProperty(childName)) {
+      return { error: 'Child not found in namedChildren store' };
+    }
+
+    const childToUpdate = state.namedChildren[childName];
+    const configToUpdate = typeof childToUpdate.config === 'string' 
+      ? JSON.parse(childToUpdate.config)
+      : childToUpdate.config;
+
+    // Remove the child name from path to get the path to the object
+    const objectPath = path.slice(1);
+    
+    // Get the target object using the path
+    let targetObject = configToUpdate;
+    for (let i = 0; i < objectPath.length; i++) {
+      targetObject = targetObject[objectPath[i]];
+    }
+
+    // Ensure targetObject is an object
+    if (typeof targetObject !== 'object' || targetObject === null || Array.isArray(targetObject)) {
+      return { error: 'Target path does not point to an object' };
+    }
+
+    // Add new property to the object
+    targetObject[propertyName] = propertyValue;
+
+    return {
+      namedChildren: {
+        ...state.namedChildren,
+        [childName]: {
+          ...childToUpdate,
+          config: configToUpdate,
+          status: childToUpdate.status === 'New' ? 'New' : 'Modified'
+        }
+      }
+    };
+  }),
+
+  deleteNamedChildAttribute: (path) => set((state) => {
+    const childName = path[0];
+    if (!state.namedChildren.hasOwnProperty(childName)) {
+      console.warn('Child not found in namedChildren store');
+      return state;
+    }
+
+    const childToUpdate = {...state.namedChildren[childName]}; // Create a copy
+    let configToUpdate = typeof childToUpdate.config === 'string' 
+      ? JSON.parse(childToUpdate.config)
+      : {...childToUpdate.config}; // Create a copy
+
+    // Remove the child name from path
+    const attributePath = path.slice(1);
+    
+    // Handle root level deletion
+    if (attributePath.length === 1) {
+      delete configToUpdate[attributePath[0]];
+    } else {
+      // Get the parent object and key to delete
+      let parent = configToUpdate;
+      for (let i = 0; i < attributePath.length - 1; i++) {
+        parent = parent[attributePath[i]];
+        if (!parent) {
+          console.warn('Invalid path');
+          return state;
+        }
+      }
+      
+      const keyToDelete = attributePath[attributePath.length - 1];
+
+      // Handle arrays differently than objects
+      if (Array.isArray(parent)) {
+        // Don't delete if it's the last item in the array
+        if (parent.length <= 1) return state;
+        parent.splice(keyToDelete, 1);
+      } else {
+        delete parent[keyToDelete];
+      }
+    }
+
+    // Create new namedChildren object with updated config
+    const updatedNamedChildren = {
+      ...state.namedChildren,
+      [childName]: {
+        ...childToUpdate,
+        config: configToUpdate,
+        status: childToUpdate.status === 'New' ? 'New' : 'Modified'
+      }
+    };
+
+    console.log('Deleting path:', path);
+    console.log('Updated config:', configToUpdate);
+
+    return { namedChildren: updatedNamedChildren };
+  }),
+
 })));
 
 export default useStore;

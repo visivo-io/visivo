@@ -11,7 +11,7 @@ const TopNav = () => {
             <img src={logo} alt="V" className="h-5" />
           </Link>
           <Link to="/dag" className="text-white hover:text-gray-300">
-            DAG
+            Lineage
           </Link>
           <Link to="/query" className="text-white hover:text-gray-300">
             Explorer

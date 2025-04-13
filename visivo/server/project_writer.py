@@ -48,12 +48,15 @@ class ProjectWriter:
     It's a three step process to write changes to the project files:
 
         1. Re-build the named child to reflect how the information sits in the project files.
-        2. Make changes to project files using a special round trip yaml parser that preserves comments and spacing.
-        3. Write the changes to the project files. 
+        2. Run `update_file_contents` to make changes to project files using a special round trip yaml parser that preserves comments and spacing.
+        3. Run `write` to write the changes to the project files. 
     """
     def __init__(self, named_children: dict):
         self.named_children = named_children
         self.yaml = ruamel.yaml.YAML(typ='rt') 
+        self.yaml.indent(mapping=2, sequence=4, offset=2)
+        self.yaml.preserve_quotes = True
+        self.yaml.width = float('inf')
         self.files_to_write = self.__set_initial_files_to_write_map(named_children)
     
     def update_file_contents(self):
@@ -159,7 +162,10 @@ class ProjectWriter:
         If the new file path is the same as the old file path, it will move the named child to 
         a flat list in the project file.
         """
-        self._delete(child_name, replace_with_reference=True)
+        # Check if the object is defined inline by looking at its config
+        is_inline = self.named_children[child_name].get("is_inline_defined", False)
+        
+        self._delete(child_name, replace_with_reference=is_inline)
         self._new(child_name)
 
     def _rename(self, old_child_name: str, new_child_name: str):
