@@ -3,6 +3,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ObjectPill from '../editors/ObjectPill';
 
 const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   const validData = React.useMemo(() => {
@@ -32,6 +33,7 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
     if (!node || !node.id || !node.name) return null;
 
     return (
+      // <ObjectPill name={node.name} type={node.type} />
       <li key={node.id} className="mb-1">
         <div
           className="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 cursor-pointer group"

@@ -89,6 +89,7 @@ class FlaskApp:
 
                 query = data["query"]
                 source_name = data.get("source")
+                Logger.instance().info(f"Executing query with source: {source_name}")
                 worksheet_id = data.get(
                     "worksheet_id"
                 )  # New: Get worksheet_id if provided
@@ -124,6 +125,7 @@ class FlaskApp:
                 Logger.instance().info(f"Executing query with source: {source.name}")
 
                 # Execute the query using read_sql
+                breakpoint()
                 result = source.read_sql(query)
 
                 # Transform the result into the expected format
