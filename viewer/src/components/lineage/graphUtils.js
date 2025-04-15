@@ -98,7 +98,7 @@ export const parseSelector = (selector, namedChildren) => {
     let selected = new Set();
   
     terms.forEach((term) => {
-      const match = term.match(/^(?:(\d*)(\+))?([^\+]+)(?:(\+)(\d*)?)?$/);
+      const match = term.match(/^(?:(\d*)(+))?([^+]+)(?:(+)(\d*)?)?$/);
       if (match && namedChildren[match[3]]) {
         const ancestorDigits = match[1]; // e.g., '2' in '2+join_table'
         const hasAncestorPlus = match[2] === '+';
