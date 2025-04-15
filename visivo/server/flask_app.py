@@ -66,7 +66,11 @@ class FlaskApp:
 
         @self.app.route("/api/project/named_children", methods=["GET"])
         def named_children():
+            from time import time
+            start_time = time()
             named_children = self._project.named_child_nodes()
+            end_time = time()
+            Logger.instance().info(f"Named children called- Time taken: {end_time - start_time} seconds")
             if named_children:
                 return jsonify(named_children)
             else:
