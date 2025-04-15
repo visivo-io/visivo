@@ -34,11 +34,11 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
 
     return (
       // <ObjectPill name={node.name} type={node.type} />
-      <div key={node.id} className="mb-2">
+      <div key={node.id} className="mb-2 mr-1 ml-1">
         <Pill name={node.name} type={node.type} onClick={() => onItemClick(node)}>
           <button
             onClick={(e) => handleCopyName(e, node.name)}
-            className="relative inline-flex items-center p-1 text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-hidden opacity-0 group-hover:opacity-100"
+            className="relative inline-flex items-center text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-hidden opacity-0 group-hover:opacity-100"
           >
             <ContentCopyIcon className="w-4 h-4" />
             <span className="sr-only">Copy name</span>
@@ -64,11 +64,9 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   }
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex flex-col">
-      <div className="flex flex-col">
+      <div className="overflow-y-auto flex-1">
         {validData.map(item => renderTreeItem(item))}
       </div>
-    </div>
   );
 });
 

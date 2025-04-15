@@ -11,7 +11,7 @@ import TopNav from './TopNav';
 import { useWorksheets } from '../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../hooks/useQueryHotkeys';
 import WorksheetTabManager from './worksheets/WorksheetTabManager';
-
+import { Sidebar } from './styled/Sidebar';
 const Container = tw.div`
   h-screen
   bg-gray-100
@@ -25,39 +25,22 @@ const Container = tw.div`
 
 const MainContent = tw.div`
   flex
-  gap-4
   flex-1
   min-h-0
   overflow-hidden
-  p-4
-`;
-
-const LeftPanel = tw.div`
-  w-72
-  bg-white
-  rounded-lg
-  shadow-md
-  p-4
-  flex
-  flex-col
-  overflow-hidden
-  min-h-0
 `;
 
 const RightPanel = tw.div`
   flex-1
   flex
   flex-col
-  gap-4
   min-h-0
   overflow-hidden
 `;
 
 const Panel = tw.div`
   bg-white
-  rounded-lg
-  shadow-md
-  p-4
+  p-2
   flex-1
   flex
   flex-col
@@ -396,44 +379,21 @@ const QueryExplorer = () => {
           </div>
         </div>
         <MainContent>
-          <LeftPanel>
-            <h2 className="text-lg font-semibold mb-4">Explorer</h2>
-            <div className="border-b border-gray-200">
-              <ul className="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500">
-                <li className="mr-2">
-                  <button
-                    className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
-                      selectedTab === 0
-                        ? 'text-blue-600 border-blue-600'
-                        : 'hover:text-gray-600 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleTabChange(0)}
-                  >
-                    Models
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className={`inline-flex items-center justify-center p-4 border-b-2 rounded-t-lg group ${
-                      selectedTab === 1
-                        ? 'text-blue-600 border-blue-600'
-                        : 'hover:text-gray-600 hover:border-gray-300'
-                    }`}
-                    onClick={() => handleTabChange(1)}
-                  >
-                    Traces
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div className="mt-4 flex-1 min-h-0">
-              <ExplorerTree
-                data={treeData}
-                type={selectedTab === 0 ? 'models' : 'traces'}
-                onItemClick={handleItemClick}
-              />
-            </div>
-          </LeftPanel>
+          <Sidebar>
+            <select
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+              value={selectedTab}
+              onChange={(e) => handleTabChange(e.target.value)}
+            >
+              <option value="model">Models</option>
+              <option value="trace">Traces</option>
+            </select>
+            <ExplorerTree
+              data={treeData}
+              type={selectedTab === 0 ? 'models' : 'traces'}
+              onItemClick={handleItemClick}
+            />
+          </Sidebar>
 
           <RightPanel id="right-panel">
             <Panel style={{ flex: splitRatio }}>

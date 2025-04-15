@@ -12,7 +12,7 @@ import ProjectContainer from './components/ProjectContainer'
 import BreadcrumbLink from './components/styled/BreadcrumbLink'
 import ErrorPage from './components/ErrorPage'
 import LineageGraph from './components/lineage/LineageGraph'
-import QueryExplorer from './components/QueryExplorer'
+import Explorer from './components/Explorer'
 import Editor from './components/Editor'
 
 const LocalRouter = createBrowserRouter(
@@ -32,7 +32,7 @@ const LocalRouter = createBrowserRouter(
       <Route
         id="query"
         path="/query"
-        element={<QueryExplorer />}
+        element={<Explorer />}
         loader={loadProject}
         handle={{ crumb: () => <BreadcrumbLink to="/query">Query Explorer</BreadcrumbLink> }}
       />
