@@ -1,25 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLoaderData } from 'react-router-dom';
 import MonacoEditor from '@monaco-editor/react';
-import ExplorerTree from './explorer/ExplorerTree';
+import ExplorerTree from './ExplorerTree';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import Table from './items/Table';
-import { executeQuery, fetchTraceQuery } from '../services/queryService';
-import { fetchExplorer } from '../api/explorer';
+import Table from '../items/Table';
+import { executeQuery, fetchTraceQuery } from '../../services/queryService';
+import { fetchExplorer } from '../../api/explorer';
 import tw from "tailwind-styled-components";
-import TopNav from './TopNav';
-import { useWorksheets } from '../contexts/WorksheetContext';
-import { useQueryHotkeys } from '../hooks/useQueryHotkeys';
-import WorksheetTabManager from './worksheets/WorksheetTabManager';
-import { Sidebar } from './styled/Sidebar';
+import { useWorksheets } from '../../contexts/WorksheetContext';
+import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
+import WorksheetTabManager from '../worksheets/WorksheetTabManager';
+import { Sidebar } from '../styled/Sidebar';
+
 const Container = tw.div`
-  h-screen
-  bg-gray-100
+  flex h-[calc(100vh-50px)] 
+  bg-gray-50 
   flex
   flex-col
   overflow-hidden
   m-0
-  fixed
   inset-0
 `;
 
@@ -51,7 +50,7 @@ const Panel = tw.div`
 
 const QueryExplorer = () => {
   const project = useLoaderData();
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState("models");
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [treeData, setTreeData] = useState([]);
@@ -152,7 +151,7 @@ const QueryExplorer = () => {
     const data = [];
 
     switch (selectedTab) {
-      case 0: // Models
+      case "models": // Models
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
@@ -165,7 +164,7 @@ const QueryExplorer = () => {
           data.push(...modelItems);
         }
         break;
-      case 1: // Traces
+      case "traces": // Traces
         if (explorerData.traces) {
           const traceItems = explorerData.traces
             .filter(trace => trace && typeof trace === 'object' && trace.name)
@@ -372,12 +371,6 @@ const QueryExplorer = () => {
   return (
     <Container>
       <div className="flex flex-col h-full">
-        <div className="flex-none">
-          <TopNav project={project} />
-          <div className="mx-2">
-            
-          </div>
-        </div>
         <MainContent>
           <Sidebar>
             <select
@@ -385,12 +378,12 @@ const QueryExplorer = () => {
               value={selectedTab}
               onChange={(e) => handleTabChange(e.target.value)}
             >
-              <option value="model">Models</option>
-              <option value="trace">Traces</option>
+              <option value="models">Models</option>
+              <option value="traces">Traces</option>
             </select>
             <ExplorerTree
               data={treeData}
-              type={selectedTab === 0 ? 'models' : 'traces'}
+              type={selectedTab}
               onItemClick={handleItemClick}
             />
           </Sidebar>

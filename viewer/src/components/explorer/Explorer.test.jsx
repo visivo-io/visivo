@@ -2,12 +2,12 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useLoaderData, BrowserRouter } from 'react-router-dom';
-import { WorksheetProvider } from '../contexts/WorksheetContext';
-import { QueryProvider } from '../contexts/QueryContext';
+import { WorksheetProvider } from '../../contexts/WorksheetContext';
+import { QueryProvider } from '../../contexts/QueryContext';
 import QueryExplorer from './QueryExplorer';
-import * as queryService from '../services/queryService';
-import { fetchExplorer } from '../api/explorer';
-import * as api from '../api/worksheet';
+import * as queryService from '../../services/queryService';
+import { fetchExplorer } from '../../api/explorer';
+import * as api from '../../api/worksheet';
 
 // Mock dependencies
 jest.mock('react-router-dom', () => ({

@@ -11,7 +11,7 @@ import {
 
 const nodeTypes = { objectPill: ObjectPillNode };
 
-const LineageGraph = ({ defaultSelector = '' }) => {
+const Lineage = ({ defaultSelector = '' }) => {
   const namedChildren = UseStore((state) => state.namedChildren);
   const [selector, setSelector] = useState(defaultSelector);
 
@@ -42,7 +42,7 @@ const LineageGraph = ({ defaultSelector = '' }) => {
         value={selector}
         onChange={(e) => setSelector(e.target.value)}
         placeholder="e.g., 'test table+2, +3join_table'"
-        style={{ marginBottom: '10px', padding: '5px' }}
+        className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
       />
       <ReactFlow
         nodes={filteredNodes.map((node) => ({ ...node, type: 'objectPill' }))}
@@ -55,4 +55,4 @@ const LineageGraph = ({ defaultSelector = '' }) => {
   );
 };
 
-export default LineageGraph;
+export default Lineage;
