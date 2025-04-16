@@ -6,6 +6,7 @@ export const StoreProvider = ({ children }) => {
   const fetchNamedChildren = useStore((state) => state.fetchNamedChildren);
   const fetchProjectFilePath = useStore((state) => state.fetchProjectFilePath);
   const CreateProjectFileObjects = useStore((state) => state.CreateProjectFileObjects);
+  const fetchSchema = useStore((state) => state.fetchSchema);
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -23,13 +24,14 @@ export const StoreProvider = ({ children }) => {
 
     const initializeStore = async () => {
       await fetchProjectFilePath();
+      await fetchSchema();
       await fetchProjectData();
       await fetchNamedChildren();
       await CreateProjectFileObjects();
     };
 
     initializeStore();
-  }, [fetchNamedChildren, setProjectData, fetchProjectFilePath, CreateProjectFileObjects]);
+  }, [fetchNamedChildren, setProjectData, fetchProjectFilePath, CreateProjectFileObjects, fetchSchema]);
 
   return children;
 }; 
