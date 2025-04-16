@@ -98,6 +98,7 @@ export const parseSelector = (selector, namedChildren) => {
     let selected = new Set();
   
     terms.forEach((term) => {
+      // eslint-disable-next-line no-useless-escape
       const match = term.match(/^(?:(\d*)(\+))?([^\+]+)(?:(\+)(\d*)?)?$/);
       if (match && namedChildren[match[3]]) {
         const ancestorDigits = match[1]; // e.g., '2' in '2+join_table'
@@ -158,14 +159,13 @@ export const filterGraph = (nodes, edges, selectedNodes) => {
     );
     return { nodes: filteredNodes, edges: filteredEdges };
 };
-
 // Compute node positions using dagre
 export const computeLayout = (nodes, edges) => {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: 'LR' }); // Left-to-right layout
   graph.setDefaultEdgeLabel(() => ({}));
   nodes.forEach((node) => {
-    graph.setNode(node.id, { width: 150, height: 50 }); // Adjust based on ObjectPill size
+    graph.setNode(node.id, { width: 300, height: 20 }); // Adjust based on ObjectPill size
   });
   edges.forEach((edge) => {
     graph.setEdge(edge.source, edge.target);

@@ -65,7 +65,7 @@ class FlaskApp:
                 )
 
         @self.app.route("/api/project/named_children", methods=["GET"])
-        def named_children():
+        def named_children(): 
             named_children = self._project.named_child_nodes()
             if named_children:
                 return jsonify(named_children)

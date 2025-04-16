@@ -7,6 +7,16 @@ class ProjectDag(DiGraph):
     """
     Custom implementation of a DiGraph that adds additional methods for validation & data extraction. 
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._named_nodes_subgraph = None
+        
+    def get_named_nodes_subgraph(self):
+        """Creates the named nodes subgraph if it doesn't exist"""
+        if self._named_nodes_subgraph is None:
+            self._named_nodes_subgraph = self.__compute_named_nodes_subgraph()
+        return self._named_nodes_subgraph
+
     def validate_dag(self):
         if is_directed_acyclic_graph(self):
             return True
@@ -63,7 +73,7 @@ class ProjectDag(DiGraph):
                     nodes.append(node)
         return nodes
 
-    def get_named_nodes_subgraph(self) -> 'ProjectDag':
+    def __compute_named_nodes_subgraph(self) -> 'ProjectDag':
         """
         Creates a new DAG containing only named nodes, preserving direct relationships
         between named nodes even when connected through unnamed nodes.
@@ -92,7 +102,8 @@ class ProjectDag(DiGraph):
                     # If unnamed node, continue searching its children
                     for child in self.successors(current):
                         stack.append((current_parent, child))
-
+        project = named_dag.get_root_nodes()[0]
+        named_dag.remove_node(project)
         return named_dag
 
     def get_named_children(self, node_name: str) -> List[str]:
@@ -101,11 +112,14 @@ class ProjectDag(DiGraph):
         Uses the named nodes subgraph to determine relationships.
         """
         named_dag = self.get_named_nodes_subgraph()
-        project = named_dag.get_root_nodes()[0]
-        named_dag.remove_node(project)
+        
         try:
             node = named_dag.get_node_by_name(node_name)
-            return [pred.name for pred in named_dag.predecessors(node)]
+            nodes = []
+            for predecessor in named_dag.predecessors(node):
+                if hasattr(predecessor, "name") and predecessor.name is not None:
+                    nodes.append(predecessor.name)
+            return nodes
         except ValueError:
             return []
 
@@ -115,8 +129,7 @@ class ProjectDag(DiGraph):
         Uses the named nodes subgraph to determine relationships.
         """
         named_dag = self.get_named_nodes_subgraph()
-        project = named_dag.get_root_nodes()[0]
-        named_dag.remove_node(project)
+        
         try:
             node = named_dag.get_node_by_name(node_name)
             nodes = []

@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { TYPE_STYLE_MAP } from '../../components/styled/VisivoObjectStyles';
 import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
 import useStore from '../../stores/store';
-import { fetchSchema } from '../../api/schema';
 
 const CreateObjectModal = ({ isOpen, onClose }) => {
-  const [schema, setSchema] = useState(null);
   const [step, setStep] = useState('property'); // 'property' | 'type' | 'name' | 'attributes'
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
@@ -13,14 +11,12 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   const [attributes, setAttributes] = useState({});
   const [selectedFilePath, setSelectedFilePath] = useState('');
   
+  const schema = useStore(state => state.schema);
   const openTab = useStore(state => state.openTab);
   const namedChildren = useStore(state => state.namedChildren);
   
   const projectFileObjects = useStore(state => state.projectFileObjects);
   const projectFilePath = useStore(state => state.projectFilePath);
-
-  // Get unique file paths for the dropdown
-  
 
   // Reset all state to initial values
   const resetState = () => {
@@ -38,20 +34,6 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
       resetState();
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    const loadSchema = async () => {
-      
-      try {
-        const schemaData = await fetchSchema();
-        setSchema(schemaData);
-      } catch (error) {
-        console.error('Error fetching schema:', error);
-      }
-    };
-    loadSchema();
-  }, []);
-
 
   const getValidTypesForProperty = (prop) => {
     if (!schema?.properties) return [];

@@ -3,11 +3,25 @@ import { devtools } from 'zustand/middleware'
 import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
 import { fetchProjectFilePath } from '../api/projectFilePath';
 import { updateNestedValue, getRelativePath } from './utils';
+import { fetchSchema } from '../api/schema';
 
 
 const useStore = create(devtools((set, get) => ({
   projectData: {}, // Holds the fetched project data
   setProjectData: (data) => set({ projectData: data }),
+  
+  // Add schema state
+  schema: null,
+  
+  // Add schema fetch action
+  fetchSchema: async () => {
+    try {
+      const data = await fetchSchema();
+      set({ schema: data });
+    } catch (e) {
+      console.error('Error fetching schema:', e);
+    }
+  },
   
   // New namedChildren state
   namedChildren: {},
