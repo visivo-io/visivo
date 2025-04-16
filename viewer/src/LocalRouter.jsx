@@ -23,18 +23,18 @@ const LocalRouter = createBrowserRouter(
       handle={{ crumb: () => <a href="/">Home</a> }}
     >
       <Route
-        id="dag"
-        path="/dag"
+        id="lineage"
+        path="/lineage"
         element={<Lineage />}
         loader={loadDag}
-        handle={{ crumb: () => <BreadcrumbLink to="/dag">Lineage</BreadcrumbLink> }}
+        handle={{ crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink> }}
       />
       <Route
-        id="query"
-        path="/query"
+        id="explorer"
+        path="/explorer"
         element={<Explorer />}
         loader={loadProject}
-        handle={{ crumb: () => <BreadcrumbLink to="/query">Explorer</BreadcrumbLink> }}
+        handle={{ crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink> }}
       />
       <Route
         id="editor"
