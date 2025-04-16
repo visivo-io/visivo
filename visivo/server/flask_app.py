@@ -109,6 +109,7 @@ class FlaskApp:
 
                 query = data["query"]
                 source_name = data.get("source")
+                Logger.instance().info(f"Executing query with source: {source_name}")
                 worksheet_id = data.get(
                     "worksheet_id"
                 )  # New: Get worksheet_id if provided

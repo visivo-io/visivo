@@ -4,7 +4,7 @@ import { TYPE_STYLE_MAP } from './VisivoObjectStyles';
 import { HiOutlineDatabase } from "react-icons/hi";
 import { PiArrowsInLineHorizontal } from "react-icons/pi";
 
-const ObjectPill = ({name, onDoubleClick, children, inline = false}) => {
+const ObjectPill = ({name, onClick, onDoubleClick, children, inline = false}) => {
   const type = useStore((state) => state.namedChildren[name]?.type);
   
   const typeConfig = TYPE_STYLE_MAP[type] || {
@@ -17,19 +17,22 @@ const ObjectPill = ({name, onDoubleClick, children, inline = false}) => {
 
   return (
     <div
-      className={`flex items-center p-2 shadow-md rounded-2xl border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 hover:shadow-lg transition-opacity`}
+      className={`flex items-center justify-between p-2 shadow-md rounded-2xl border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 hover:shadow-lg transition-opacity`}
       style={{ minWidth: '30px', maxWidth: '400px', flex: '1 1 auto' }}
+      onClick={onClick}
       onDoubleClick={onDoubleClick}
     >
-      <div className="group relative">
-        <Icon className={`w-5 h-5 mr-2 ${typeConfig.text}`} />
-        <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-xs py-1 px-2 -left-1 -bottom-8 whitespace-nowrap">
-          {type || 'Unknown Type'}
+      <div className="flex items-center">
+        <div className="group relative">
+          <Icon className={`w-5 h-5 mr-2 ${typeConfig.text}`} />
+          <div className="absolute z-10 invisible group-hover:visible bg-gray-900 text-white text-xs rounded-xs py-1 px-2 -left-1 -bottom-8 whitespace-nowrap">
+            {type || 'Unknown Type'}
+          </div>
         </div>
+        <span className={`text-sm font-medium ${typeConfig.text} truncate`}>
+          {name}
+        </span>
       </div>
-      <span className={`text-sm font-medium ${typeConfig.text} truncate`}>
-        {name}
-      </span>
       {children}
       {inline && (
         <div className="group relative ml-auto">

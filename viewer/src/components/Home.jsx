@@ -11,7 +11,7 @@ const Home = () => {
   const error = useLoaderData();
   const location = useLocation();
   const isRoot = location.pathname === '/';
-  const isEditor = location.pathname === '/editor';
+  const isProject = location.pathname.startsWith('/project');
 
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">
@@ -67,10 +67,10 @@ const Home = () => {
 
   return (
     <SearchParamsProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="visivo-home min-h-screen bg-gray-50">
         <TopNav />
-        <div className={isEditor ? "" : "mx-4"}>
-          {!isEditor && (
+        <div className={isProject ? "" : "mx-4"}>
+          {isProject && (
             <div className="flex flex-row justify-between items-center whitespace-nowrap py-4">
               <Breadcrumbs />
               <ProjectHistory />

@@ -1,8 +1,6 @@
 import React from 'react';
-import StorageIcon from '@mui/icons-material/Storage';
-import TableChartIcon from '@mui/icons-material/TableChart';
-import TimelineIcon from '@mui/icons-material/Timeline';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { HiOutlineClipboardCopy } from "react-icons/hi";
+import Pill from '../styled/Pill';
 
 const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   const validData = React.useMemo(() => {
@@ -10,18 +8,6 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
     return data.filter(item => item && typeof item === 'object' && item.name);
   }, [data]);
 
-  const getIcon = React.useCallback(() => {
-    switch (type) {
-      case 'sources':
-        return <StorageIcon className="w-4 h-4 text-gray-500" />;
-      case 'models':
-        return <TableChartIcon className="w-4 h-4 text-gray-500" />;
-      case 'traces':
-        return <TimelineIcon className="w-4 h-4 text-gray-500" />;
-      default:
-        return null;
-    }
-  }, [type]);
 
   const handleCopyName = React.useCallback((e, name) => {
     e.stopPropagation();
@@ -32,23 +18,16 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
     if (!node || !node.id || !node.name) return null;
 
     return (
-      <li key={node.id} className="mb-1">
-        <div
-          className="flex items-center p-2 text-gray-900 rounded-lg hover:bg-gray-100 cursor-pointer group"
-          onClick={() => onItemClick(node)}
-        >
-          <div className="flex items-center flex-1 min-w-0">
-            {getIcon()}
-            <span className="ml-3 text-sm font-medium truncate">{node.name}</span>
-          </div>
+      // <ObjectPill name={node.name} type={node.type} />
+      <div key={node.id} className="mb-2 mr-1 ml-1">
+        <Pill name={node.name} type={node.type} onClick={() => onItemClick(node)}>
           <button
             onClick={(e) => handleCopyName(e, node.name)}
-            className="relative inline-flex items-center p-1 text-sm font-medium text-center text-gray-500 rounded-lg hover:bg-gray-200 focus:outline-hidden opacity-0 group-hover:opacity-100"
           >
-            <ContentCopyIcon className="w-4 h-4" />
+            <HiOutlineClipboardCopy className="w-4 h-4" />
             <span className="sr-only">Copy name</span>
           </button>
-        </div>
+        </Pill>
         {Array.isArray(node.children) && node.children.length > 0 && (
           <ul className="pl-6 mt-1">
             {node.children
@@ -56,9 +35,9 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
               .map(child => renderTreeItem(child))}
           </ul>
         )}
-      </li>
+      </div>
     );
-  }, [getIcon, handleCopyName, onItemClick]);
+  }, [handleCopyName, onItemClick]);
 
   if (!validData.length) {
     return (
@@ -69,11 +48,9 @@ const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   }
 
   return (
-    <div className="overflow-y-auto h-full">
-      <ul className="space-y-1">
+      <div className="overflow-y-auto flex-1">
         {validData.map(item => renderTreeItem(item))}
-      </ul>
-    </div>
+      </div>
   );
 });
 

@@ -38,16 +38,18 @@ def generate_thumbnail(
         encoded_dashboard_name = quote(dashboard.name)
         navigate_to = f"{server_url}/project/{encoded_dashboard_name}"
         # Navigate to dashboard
-        if os.environ.get("DEBUG"):
-            Logger.instance().info(f"   Navigating to {navigate_to}")
+        Logger.instance().debug(f"   Navigating to {navigate_to}")
         page.goto(navigate_to)
 
         check_loading = """
             () => {
-                // First check if any plots are rendered
-                const plots = document.querySelectorAll('.js-plotly-plot');
-                if (plots.length === 0) return { loaded: true, total: 0, loaded_count: 0, states: [], message: 'No plots found' };
+                const home = document.querySelectorAll('.visivo-home');
+                if (home.length === 0) return { loaded: false, total: 0, loaded_count: 0, states: [], message: 'No root element found' };
+
+                let loaders = document.querySelectorAll('.loading-spinner');
+                if (loaders.length !== 0) return { loaded: false, total: 0, loaded_count: 0, states: [], message: 'No plots found' };
                 
+                const plots = document.querySelectorAll('.js-plotly-plot');
                 // Then check their loading states
                 const chartStates = Array.from(plots).map(plot => {
                     // Get the parent chart component
@@ -67,8 +69,11 @@ def generate_thumbnail(
                 
                 const loadedCount = chartStates.filter(s => s.isLoaded).length;
                 
+                loaders = document.querySelectorAll('.loading-spinner');
+                if (loaders.length !== 0) return { loaded: false, total: 0, loaded_count: 0, states: [], message: 'No plots found' };
+
                 return {
-                    loaded: loadedCount === plots.length,
+                    loaded: loadedCount === plots.length && loaders.length === 0,
                     total: plots.length,
                     loaded_count: loadedCount,
                     states: chartStates,
@@ -78,17 +83,20 @@ def generate_thumbnail(
         """
 
         try:
-            if os.environ.get("STACKTRACE"):
-                initial_state = page.evaluate(check_loading)
-                Logger.instance().info(
-                    f"Initial chart states: Total: {initial_state['total']}, Loaded: {initial_state['loaded_count']}"
+            initial_state = page.evaluate(check_loading)
+            Logger.instance().debug(f"Current page HTML: {page.content()}")
+            Logger.instance().debug(
+                f"Initial chart states: Total: {initial_state['total']}, Loaded: {initial_state['loaded_count']}, message: {initial_state['message']}"
+            )
+            for chart in initial_state["states"]:
+                Logger.instance().debug(
+                    f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}"
                 )
-                for chart in initial_state["states"]:
-                    Logger.instance().info(
-                        f"Chart {chart['testid']}: {'loaded' if chart['isLoaded'] else 'loading'}"
-                    )
 
             # Wait for all charts to finish loading
+            Logger.instance().debug(
+                f"Waiting for charts to load on {dashboard.name}, current time: {time()}"
+            )
             page.wait_for_function(
                 """
                 () => {
@@ -99,19 +107,28 @@ def generate_thumbnail(
                 % check_loading,
                 timeout=timeout_ms,
             )
+            Logger.instance().debug(
+                f"Done waiting for charts to load on {dashboard.name}, current time: {time()}"
+            )
             # Wait for 350ms to ensure the page is fully loaded
-            page.wait_for_timeout(1200)
+            page.wait_for_timeout(200)
             # Log final state before screenshot
-            if os.environ.get("STACKTRACE"):
-                final_state = page.evaluate(check_loading)
-                Logger.instance().info(
-                    f"Final chart states: Total: {final_state['total']}, Loaded: {final_state['loaded_count']}"
-                )
+            final_state = page.evaluate(check_loading)
+            Logger.instance().debug(
+                f"Final chart states: Total: {final_state['total']}, Loaded: {final_state['loaded_count']}"
+            )
 
             # Take screenshot
             page.screenshot(
                 timeout=timeout_ms, path=thumbnail_path, type="png", full_page=False
             )
+            # Resize the screenshot to 512 px wide while keeping the proportions
+            from PIL import Image
+
+            img = Image.open(thumbnail_path)
+            img.thumbnail((512, 512), Image.Resampling.LANCZOS)
+            img.save(thumbnail_path)
+
         except TimeoutError as e:
             # Get final state of charts before failing
             error_state = page.evaluate(check_loading)
@@ -200,7 +217,7 @@ def job(
     output_dir: str,
     thumbnail_mode: str = None,
     server_url: str = None,
-    timeout_ms: int = 10000,
+    timeout_ms: int = 30000,
 ) -> Job:
     return Job(
         item=dashboard,

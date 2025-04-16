@@ -1,15 +1,7 @@
+import tw from "tailwind-styled-components";
 
-import tw from "tailwind-styled-components"
-
-export const Sidebar = tw.aside`
-   z-40
-   w-64
-   h-screen
-   px-3
-   py-4
-   overflow-y-auto
-   rounded-lg
-   mr-2
+export const Sidebar = tw.div`
+   w-64 bg-white border-r border-gray-200 p-4 h-full flex flex-col
 `;
 
 export const SidebarList = tw.aside`
