@@ -1,6 +1,6 @@
 import React from 'react';
 import useStore from '../../stores/store';
-import { TYPE_STYLE_MAP } from './VisivoObjectStyles';
+import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
 import { HiOutlineDatabase } from "react-icons/hi";
 import { PiArrowsInLineHorizontal } from "react-icons/pi";
 

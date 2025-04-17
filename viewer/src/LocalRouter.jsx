@@ -8,12 +8,12 @@ import { loadProject } from './loaders/project'
 import { loadDag } from './loaders/dag'
 import { loadError } from './loaders/error'
 import Home from './components/Home'
-import ProjectContainer from './components/ProjectContainer'
-import BreadcrumbLink from './components/styled/BreadcrumbLink'
-import ErrorPage from './components/ErrorPage'
+import ProjectContainer from './components/project/ProjectContainer'
+import BreadcrumbLink from './components/common/BreadcrumbLink'
+import ErrorPage from './components/common/ErrorPage'
 import Lineage from './components/lineage/Lineage'
 import Explorer from './components/explorer/Explorer'
-import Editor from './components/Editor'
+import Editor from './components/editors/Editor'
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(

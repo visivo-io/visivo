@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Dashboard from './Dashboard';
-import { withProviders } from '../utils/test-utils';
+import { withProviders } from '../../utils/test-utils';
 
 const getProject = (items) => {
   return {

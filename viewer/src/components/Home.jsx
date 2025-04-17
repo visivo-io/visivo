@@ -1,10 +1,10 @@
 import { Outlet, useLocation, Link } from 'react-router-dom';
-import Breadcrumbs from './Breadcrumbs';
-import ProjectHistory from './ProjectHistory';
+import Breadcrumbs from './common/Breadcrumbs';
+import ProjectHistory from './project/ProjectHistory';
 import { useLoaderData } from 'react-router-dom';
 import Error from './styled/Error';
 import { SearchParamsProvider } from '../contexts/SearchParamsContext';
-import TopNav from './TopNav';
+import TopNav from './common/TopNav';
 import { HiTemplate, HiOutlineDatabase, HiOutlineSearch } from 'react-icons/hi';
 
 const Home = () => {

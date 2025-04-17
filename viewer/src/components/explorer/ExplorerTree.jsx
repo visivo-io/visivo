@@ -1,6 +1,6 @@
 import React from 'react';
 import { HiOutlineClipboardCopy } from "react-icons/hi";
-import Pill from '../styled/Pill';
+import Pill from '../common/Pill';
 
 const ExplorerTree = React.memo(({ data, type, onItemClick }) => {
   const validData = React.useMemo(() => {

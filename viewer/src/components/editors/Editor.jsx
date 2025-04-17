@@ -1,8 +1,8 @@
 import React from 'react';
-import ObjectsPanel from './editors/ObjectsPanel';
-import EditorPanel from './editors/EditorPanel';
-import PreviewPanel from './editors/PreviewPanel';
-import useStore from '../stores/store';
+import ObjectsPanel from './ObjectsPanel';
+import EditorPanel from './EditorPanel';
+import PreviewPanel from './PreviewPanel';
+import useStore from '../../stores/store';
 
 const Editor = () => {
   const projectData = useStore((state) => state.projectData);

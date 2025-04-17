@@ -1,4 +1,4 @@
-import Loading from "../Loading";
+import Loading from "../common/Loading";
 import Menu from "./Menu"
 import Plot from 'react-plotly.js';
 import React, { useState, useMemo, useRef, useImperativeHandle } from "react";

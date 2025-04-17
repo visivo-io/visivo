@@ -1,6 +1,6 @@
 import React from 'react';
 import Chart from '../items/Chart';
-import Dashboard from '../Dashboard';
+import Dashboard from '../project/Dashboard';
 import useStore from '../../stores/store';
 
 const selectTabs = state => state.tabs;

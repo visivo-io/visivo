@@ -1,6 +1,6 @@
 import React from 'react';
 import useStore from '../../stores/store';
-import Pill from '../styled/Pill';
+import Pill from '../common/Pill';
 
 const ObjectPill = ({name, inline = false}) => {
   const openTab = useStore((state) => state.openTab);
