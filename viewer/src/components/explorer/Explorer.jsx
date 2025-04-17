@@ -10,7 +10,6 @@ import tw from "tailwind-styled-components";
 import { useWorksheets } from '../../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
 import WorksheetTabManager from '../worksheets/WorksheetTabManager';
-import { Sidebar } from '../styled/Sidebar';
 
 const Container = tw.div`
   flex h-[calc(100vh-50px)] 
@@ -372,21 +371,12 @@ const QueryExplorer = () => {
     <Container>
       <div className="flex flex-col h-full">
         <MainContent>
-          <Sidebar>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
-              value={selectedTab}
-              onChange={(e) => handleTabChange(e.target.value)}
-            >
-              <option value="models">Models</option>
-              <option value="traces">Traces</option>
-            </select>
-            <ExplorerTree
-              data={treeData}
-              type={selectedTab}
-              onItemClick={handleItemClick}
-            />
-          </Sidebar>
+          <ExplorerTree
+            data={treeData}
+            selectedTab={selectedTab}
+            onTypeChange={handleTabChange}
+            onItemClick={handleItemClick}
+          />
 
           <RightPanel id="right-panel">
             <Panel style={{ flex: splitRatio }}>
