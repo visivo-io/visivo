@@ -10,6 +10,9 @@ import tw from "tailwind-styled-components";
 import { useWorksheets } from '../../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
 import WorksheetTabManager from '../worksheets/WorksheetTabManager';
+import QueryPanel from './QueryPanel';
+import Divider from './Divider';
+import ResultsPanel from './ResultsPanel';
 
 const Container = tw.div`
   flex h-[calc(100vh-50px)] 
@@ -379,149 +382,9 @@ const QueryExplorer = () => {
           />
 
           <RightPanel id="right-panel">
-            <Panel style={{ flex: splitRatio }}>
-              <WorksheetTabManager
-                worksheets={visibleWorksheets}
-                activeWorksheetId={activeWorksheetId}
-                onWorksheetSelect={setActiveWorksheetId}
-                onWorksheetCreate={createWorksheet}
-                onWorksheetRename={(id, name) => updateWorksheet(id, { name })}
-                isLoading={isLoading || isWorksheetLoading}
-              />
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex-1 flex items-center justify-between min-w-0 relative">
-                  <h2 className="text-lg font-semibold">SQL Query</h2>
-                  {combinedError && (
-                    <div className="absolute left-32 right-32 px-4 py-2 text-sm text-red-800 rounded-lg bg-red-50 shadow-lg z-10 flex items-center justify-between">
-                      {combinedError}
-                      <button
-                        type="button"
-                        className="ml-2 inline-flex items-center"
-                        onClick={() => {
-                          setError(null);
-                          clearWorksheetError();
-                        }}
-                      >
-                        <span className="sr-only">Dismiss</span>
-                        <svg className="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1.5 mx-4">
-                    {explorerData?.sources?.map((source) => (
-                      <button
-                        key={source.name}
-                        onClick={() => {
-                          setSelectedSource(source);
-                        }}
-                        className={`px-2 py-1 text-xs font-medium rounded-md ${
-                          selectedSource?.name === source.name
-                            ? 'bg-[#D25946] text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {source.name}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    className={`text-white ${
-                      isLoading ? 'bg-[#A06C86]' : 'bg-[#713B57] hover:bg-[#5A2E46]'
-                    } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-hidden`}
-                    onClick={handleRunQuery}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
-                        Running...
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <PlayArrowIcon className="mr-2" />
-                        Run Query
-                      </div>
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 min-h-0 bg-[#1E1E1E] rounded-md ring-1 ring-gray-700/10 overflow-hidden">
-                <MonacoEditor
-                  height="100%"
-                  language="sql"
-                  theme="vs-dark"
-                  value={query}
-                  onChange={handleEditorChange}
-                  options={{
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    fontSize: 14,
-                    readOnly: isLoading,
-                    automaticLayout: true,
-                    quickSuggestions: true,
-                    wordWrap: 'on',
-                    padding: { top: 16, bottom: 8 },
-                    fixedOverflowWidgets: true
-                  }}
-                  onMount={(editor, monaco) => {
-                    editorRef.current = editor;
-                    monacoRef.current = monaco;
-                    
-                    // Add resize handler
-                    const resizeHandler = () => {
-                      editor.layout();
-                    };
-                    window.addEventListener('resize', resizeHandler);
-                    
-                    // Return cleanup for resize handler
-                    editor.onDidDispose(() => {
-                      window.removeEventListener('resize', resizeHandler);
-                    });
-                  }}
-                />
-              </div>
-            </Panel>
-
-            <div
-              className={`h-1 bg-gray-200 hover:bg-gray-300 cursor-ns-resize flex items-center justify-center group ${
-                isDragging ? 'bg-gray-400' : ''
-              }`}
-              onMouseDown={handleMouseDown}
-            >
-              <div className="w-8 h-1 bg-gray-400 group-hover:bg-gray-500 rounded-full"></div>
-            </div>
-
-            <Panel style={{ flex: 1 - splitRatio }}>
-              <div className="flex justify-between items-center mb-4 w-full">
-                <h2 className="text-lg font-semibold">Results</h2>
-                {queryStats && (
-                  <div className="text-sm text-gray-600 font-medium">
-                    {queryStats && (
-                      <>
-                        {`Last Run at ${new Date(queryStats.timestamp).toLocaleTimeString([], { 
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        })} • ${queryStats.executionTime}s`}
-                        {queryStats.source && ` • Source: ${queryStats.source}`}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-h-0 overflow-auto">
-                {results && (
-                  <Table
-                    table={results}
-                    project={project}
-                    height="100%"
-                  />
-                )}
-              </div>
-            </Panel>
+            <QueryPanel />
+            <Divider isDragging={isDragging} handleMouseDown={handleMouseDown} />
+            <ResultsPanel queryStats={queryStats} results={results} project={project} splitRatio={splitRatio} />
           </RightPanel>
         </MainContent>
       </div>
