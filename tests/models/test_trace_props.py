@@ -154,7 +154,6 @@ def test_valid_trace_prop_isosurface():
         "model": {"name": "awesome-model", "sql": "select * from table"},
     }
     trace = Trace(**data)
-    # breakpoint()
     props = trace.props
     assert props.model_dump()["slices"]["z"]["locations"] == [-0.1]
     assert isinstance(props, TracePropsFieldUnion)

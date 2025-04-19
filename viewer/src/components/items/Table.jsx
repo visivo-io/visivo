@@ -1,4 +1,4 @@
-import Loading from "../Loading";
+import Loading from "../common/Loading";
 import React, { useEffect, useState } from "react";
 import { tableDataFromCohortData, tableColumnsWithDot, tableColumnsWithUnderscores } from '../../models/Table';
 import { createTheme, ThemeProvider, Box, Button } from '@mui/material';

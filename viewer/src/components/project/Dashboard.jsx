@@ -1,11 +1,11 @@
-import Chart from './items/Chart'
-import Table from './items/Table'
-import Selector from './items/Selector'
+import Chart from '../items/Chart'
+import Table from '../items/Table'
+import Selector from '../items/Selector'
 import Markdown from 'react-markdown'
 import useDimensions from "react-cool-dimensions";
-import { throwError } from "../api/utils";
+import { throwError } from "../../api/utils";
 import { useSearchParams } from "react-router-dom";
-import { getSelectorByOptionName } from "../models/Project";
+import { getSelectorByOptionName } from "../../models/Project";
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';

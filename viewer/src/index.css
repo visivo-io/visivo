@@ -2,6 +2,8 @@
 
 @plugin '@tailwindcss/typography';
 
+
+
 @theme {
   --color-primary-100: #e2d7dd;
   --color-primary-200: #c6b0bb;
@@ -71,6 +73,9 @@
   }
 }
 
+input {
+  @apply bg-white;
+}
 
 body {
   margin: 0;
@@ -87,23 +92,15 @@ code {
 }
 
 .btn {
-  @apply font-bold py-1 px-2 rounded-xs;
+  @apply font-bold py-2 px-4 rounded-lg transition-all duration-200 ease-in-out;
 }
 
 .btn-primary {
-  @apply bg-primary text-white;
-}
-
-.btn-primary:hover {
-  @apply bg-primary text-slate-300;
+  @apply bg-primary text-white hover:bg-primary-600 hover:scale-101;
 }
 
 .btn-destroy {
-  @apply bg-highlight text-white;
-}
-
-.btn-destroy:hover {
-  @apply bg-highlight text-slate-300;
+  @apply bg-highlight text-white hover:bg-highlight-600 hover:scale-101;
 }
 
 .grow-1 {
@@ -185,4 +182,27 @@ code {
 .text-right ol > li {
     direction: ltr;
     text-align: right;
+}
+
+@layer utilities {
+  /* Override Flowbite's drawer and modal backdrop */
+  #flowbite-backdrop,
+  [backdrop],
+  .fixed.inset-0.bg-gray-900.bg-opacity-50,
+  .fixed.inset-0.z-40.bg-gray-900.bg-opacity-50 {
+    --tw-bg-opacity: 0.3 !important;
+    background-color: rgb(107 114 128 / var(--tw-bg-opacity)) !important;
+  }
+}
+
+@layer components {
+  /* Global modal backdrop styling */
+  .fixed.inset-0[class*='bg-black'],
+  .fixed.inset-0[class*='bg-gray-900'],
+  .backdrop {
+    @apply bg-gray-500/30 backdrop-blur-sm z-50;
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+
+  }
 }

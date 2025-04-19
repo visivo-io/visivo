@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useContext } from "react";
 import Dashboard from "./Dashboard";
-import Loading from "./Loading";
-import { Container } from "./styled/Container";
+import Loading from "../common/Loading";
+import { Container } from "../styled/Container";
 import { HiTemplate } from 'react-icons/hi';
-import DashboardSection, { organizeDashboardsByLevel } from './dashboard/DashboardSection';
-import FilterBar from './dashboard/FilterBar';
-import QueryContext from "../contexts/QueryContext";
-import { fetchDashboardThumbnail } from "../queries/dashboardThumbnails";
+import DashboardSection, { organizeDashboardsByLevel } from './DashboardSection';
+import FilterBar from './FilterBar';
+import QueryContext from "../../contexts/QueryContext";
+import { fetchDashboardThumbnail } from "../../queries/dashboardThumbnails";
 import { useQuery } from '@tanstack/react-query';
 
 function Project(props) {
