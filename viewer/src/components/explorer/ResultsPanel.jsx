@@ -1,5 +1,6 @@
-import { Panel } from "react-split";
-import Table from "../common/Table";
+import Table from "../items/Table";
+import { Panel } from "../styled/Panel";
+
 const ResultsPanel = ({ queryStats, results, project, splitRatio }) => {
   return (
     <Panel style={{ flex: 1 - splitRatio }}>

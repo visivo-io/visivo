@@ -53,6 +53,7 @@
     "react-plotly.js": "^2.6.0",
     "react-router-dom": "^6.26.2",
     "react-select": "^5.8.0",
+    "react-split": "^2.0.14",
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.0",

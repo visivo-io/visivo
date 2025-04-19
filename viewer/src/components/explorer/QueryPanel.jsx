@@ -1,24 +1,56 @@
-import { Panel } from "react-split";
+import { useEffect } from "react";
+import { Panel } from "../styled/Panel";
 import MonacoEditor from "@monaco-editor/react";
 import WorksheetTabManager from "../worksheets/WorksheetTabManager";
 import { useWorksheets } from "../../contexts/WorksheetContext";
-import { PlayArrowIcon } from "@mui/icons-material";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
-const QueryPanel = ({ splitRatio }) => {
+const QueryPanel = ({
+  splitRatio,
+  explorerData,
+  setSelectedSource,
+  selectedSource,
+  handleRunQuery,
+  query,
+  handleEditorChange,
+  editorRef,
+  monacoRef,
+  error,
+  setError,
+  isLoading,
+}) => {
+  // Use the worksheet context
   const {
     worksheets,
     activeWorksheetId,
-    setActiveWorksheetId,
-    createWorksheet,
-    updateWorksheet,
-    isLoading,
-    isWorksheetLoading,
-    combinedError,
-    setError,
-    clearWorksheetError,
+    error: worksheetError,
+    isLoading: isWorksheetLoading,
+    actions: {
+      createWorksheet,
+      updateWorksheet,
+      setActiveWorksheetId,
+      clearError: clearWorksheetError,
+    },
   } = useWorksheets();
 
   const visibleWorksheets = worksheets.filter((w) => w.is_visible);
+
+  // Add this useEffect hook to track source changes
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.getModel()?.deltaDecorations([], []);
+      const resizeHandler = () => {
+        editorRef.current?.layout();
+      };
+      window.addEventListener("resize", resizeHandler);
+
+      return () => {
+        window.removeEventListener("resize", resizeHandler);
+      };
+    }
+  }, [editorRef]);
+
+  const combinedError = worksheetError || error;
 
   return (
     <Panel style={{ flex: splitRatio }}>
@@ -30,7 +62,7 @@ const QueryPanel = ({ splitRatio }) => {
         onWorksheetRename={(id, name) => updateWorksheet(id, { name })}
         isLoading={isLoading || isWorksheetLoading}
       />
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 mt-1">
         <div className="flex-1 flex items-center justify-between min-w-0 relative">
           <h2 className="text-lg font-semibold">SQL Query</h2>
           {combinedError && (
@@ -72,7 +104,7 @@ const QueryPanel = ({ splitRatio }) => {
                 }}
                 className={`px-2 py-1 text-xs font-medium rounded-md ${
                   selectedSource?.name === source.name
-                    ? "bg-[#D25946] text-white"
+                    ? "bg-highlight text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
