@@ -1,24 +1,25 @@
-import { useEffect } from "react";
+import React from "react";
+import Editor from "@monaco-editor/react";
 import { Panel } from "../styled/Panel";
-import MonacoEditor from "@monaco-editor/react";
+import useExplorerStore from "../../stores/explorerStore";
 import WorksheetTabManager from "../worksheets/WorksheetTabManager";
 import { useWorksheets } from "../../contexts/WorksheetContext";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
-const QueryPanel = ({
-  splitRatio,
-  explorerData,
-  setSelectedSource,
-  selectedSource,
-  handleRunQuery,
-  query,
-  handleEditorChange,
-  editorRef,
-  monacoRef,
-  error,
-  setError,
-  isLoading,
-}) => {
+const QueryPanel = ({ editorRef, monacoRef }) => {
+  const {
+    query,
+    setQuery,
+    error,
+    setError,
+    isLoading,
+    explorerData,
+    selectedSource,
+    setSelectedSource,
+    handleRunQuery,
+    splitRatio,
+  } = useExplorerStore();
+
   // Use the worksheet context
   const {
     worksheets,
@@ -34,23 +35,13 @@ const QueryPanel = ({
   } = useWorksheets();
 
   const visibleWorksheets = worksheets.filter((w) => w.is_visible);
-
-  // Add this useEffect hook to track source changes
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.getModel()?.deltaDecorations([], []);
-      const resizeHandler = () => {
-        editorRef.current?.layout();
-      };
-      window.addEventListener("resize", resizeHandler);
-
-      return () => {
-        window.removeEventListener("resize", resizeHandler);
-      };
-    }
-  }, [editorRef]);
-
   const combinedError = worksheetError || error;
+
+  const handleEditorChange = (value) => {
+    if (value !== undefined) {
+      setQuery(value);
+    }
+  };
 
   return (
     <Panel style={{ flex: splitRatio }}>
@@ -135,7 +126,7 @@ const QueryPanel = ({
         </div>
       </div>
       <div className="flex-1 min-h-0 bg-[#1E1E1E] rounded-md ring-1 ring-gray-700/10 overflow-hidden">
-        <MonacoEditor
+        <Editor
           height="100%"
           language="sql"
           theme="vs-dark"

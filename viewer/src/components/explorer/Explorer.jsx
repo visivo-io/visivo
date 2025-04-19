@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useLoaderData } from "react-router-dom";
 import ExplorerTree from "./ExplorerTree";
 import { executeQuery, fetchTraceQuery } from "../../services/queryService";
@@ -9,6 +9,7 @@ import { useQueryHotkeys } from "../../hooks/useQueryHotkeys";
 import QueryPanel from "./QueryPanel";
 import Divider from "./Divider";
 import ResultsPanel from "./ResultsPanel";
+import useExplorerStore from "../../stores/explorerStore";
 
 const Container = tw.div`
   flex h-[calc(100vh-50px)] 
@@ -37,19 +38,34 @@ const RightPanel = tw.div`
 
 const QueryExplorer = () => {
   const project = useLoaderData();
-  const [selectedTab, setSelectedTab] = useState("models");
-  const [query, setQuery] = useState("");
-  const [error, setError] = useState(null);
-  const [results, setResults] = useState(null);
-  const [treeData, setTreeData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [explorerData, setExplorerData] = useState(null);
-  const [queryStats, setQueryStats] = useState(null);
-  const [splitRatio, setSplitRatio] = useState(0.5);
-  const [isDragging, setIsDragging] = useState(false);
-  const [selectedSource, setSelectedSource] = useState(null);
   const editorRef = React.useRef(null);
   const monacoRef = React.useRef(null);
+
+  // Use the Zustand store
+  const {
+    // State values
+    isDragging,
+    explorerData,
+    selectedType,
+    treeData,
+    selectedSource,
+    query,
+    isLoading,
+    // State setters
+    setQuery,
+    setError,
+    setResults,
+    setIsLoading,
+    setTreeData,
+    setSelectedType,
+    setExplorerData,
+    setSelectedSource,
+    setQueryStats,
+    setSplitRatio,
+    setIsDragging,
+    setProject,
+    setActiveWorksheetId,
+  } = useExplorerStore();
 
   // Use the worksheet context
   const {
@@ -57,6 +73,12 @@ const QueryExplorer = () => {
     activeWorksheetId,
     actions: { updateWorksheet, loadWorksheetResults },
   } = useWorksheets();
+
+  // Set project and activeWorksheetId in store
+  useEffect(() => {
+    setProject(project);
+    setActiveWorksheetId(activeWorksheetId);
+  }, [project, activeWorksheetId, setProject, setActiveWorksheetId]);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);
@@ -92,7 +114,7 @@ const QueryExplorer = () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, setIsDragging, setSplitRatio]);
 
   useEffect(() => {
     const loadExplorerData = async () => {
@@ -121,15 +143,15 @@ const QueryExplorer = () => {
       }
     };
     loadExplorerData();
-  }, []);
+  }, [setExplorerData, setSelectedSource, setError]);
 
   const transformData = React.useCallback(() => {
     if (!explorerData) return [];
 
     const data = [];
 
-    switch (selectedTab) {
-      case "models": // Models
+    switch (selectedType) {
+      case "models":
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter((model) => model && typeof model === "object" && model.name)
@@ -142,7 +164,7 @@ const QueryExplorer = () => {
           data.push(...modelItems);
         }
         break;
-      case "traces": // Traces
+      case "traces":
         if (explorerData.traces) {
           const traceItems = explorerData.traces
             .filter((trace) => trace && typeof trace === "object" && trace.name)
@@ -159,20 +181,14 @@ const QueryExplorer = () => {
         break;
     }
     return data;
-  }, [selectedTab, explorerData]);
+  }, [selectedType, explorerData]);
 
   useEffect(() => {
     setTreeData(transformData());
-  }, [transformData]);
+  }, [transformData, setTreeData]);
 
-  const handleTabChange = (tab) => {
-    setSelectedTab(tab);
-  };
-
-  const handleEditorChange = (value) => {
-    if (value !== undefined) {
-      setQuery(value);
-    }
+  const handleTabChange = (type) => {
+    setSelectedType(type);
   };
 
   const handleItemClick = async (item) => {
@@ -257,7 +273,7 @@ const QueryExplorer = () => {
         throw err;
       }
     },
-    [selectedSource, project.id, activeWorksheetId]
+    [selectedSource, project.id, activeWorksheetId, setQueryStats]
   );
 
   const executeQueryAndUpdateState = useCallback(
@@ -314,6 +330,10 @@ const QueryExplorer = () => {
       activeWorksheetId,
       selectedSource?.name,
       updateWorksheet,
+      setQuery,
+      setError,
+      setResults,
+      setIsLoading,
     ]
   );
 
@@ -336,7 +356,13 @@ const QueryExplorer = () => {
         if (source) setSelectedSource(source);
       }
     }
-  }, [activeWorksheetId, worksheets, explorerData?.sources]);
+  }, [
+    activeWorksheetId,
+    worksheets,
+    explorerData?.sources,
+    setQuery,
+    setSelectedSource,
+  ]);
 
   // Effect to load results when active worksheet changes
   useEffect(() => {
@@ -356,9 +382,7 @@ const QueryExplorer = () => {
         }
       );
     }
-  }, [activeWorksheetId, loadWorksheetResults]);
-
-  // Combine errors from both worksheet context and local state
+  }, [activeWorksheetId, loadWorksheetResults, setResults, setQueryStats]);
 
   return (
     <Container>
@@ -366,36 +390,18 @@ const QueryExplorer = () => {
         <MainContent>
           <ExplorerTree
             data={treeData}
-            selectedTab={selectedTab}
+            selectedTab={selectedType}
             onTypeChange={handleTabChange}
             onItemClick={handleItemClick}
           />
 
           <RightPanel id="right-panel">
-            <QueryPanel
-              splitRatio={splitRatio}
-              explorerData={explorerData}
-              setSelectedSource={setSelectedSource}
-              selectedSource={selectedSource}
-              handleRunQuery={handleRunQuery}
-              query={query}
-              handleEditorChange={handleEditorChange}
-              editorRef={editorRef}
-              monacoRef={monacoRef}
-              error={error}
-              setError={setError}
-              isLoading={isLoading}
-            />
+            <QueryPanel editorRef={editorRef} monacoRef={monacoRef} />
             <Divider
               isDragging={isDragging}
               handleMouseDown={handleMouseDown}
             />
-            <ResultsPanel
-              queryStats={queryStats}
-              results={results}
-              project={project}
-              splitRatio={splitRatio}
-            />
+            <ResultsPanel project={project} />
           </RightPanel>
         </MainContent>
       </div>

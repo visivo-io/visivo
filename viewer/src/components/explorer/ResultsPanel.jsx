@@ -1,7 +1,11 @@
-import Table from "../items/Table";
+import React from "react";
 import { Panel } from "../styled/Panel";
+import Table from "../items/Table";
+import useExplorerStore from "../../stores/explorerStore";
 
-const ResultsPanel = ({ queryStats, results, project, splitRatio }) => {
+const ResultsPanel = ({ project }) => {
+  const { results, queryStats, splitRatio } = useExplorerStore();
+
   return (
     <Panel style={{ flex: 1 - splitRatio }}>
       <div className="flex justify-between items-center mb-4 w-full">
