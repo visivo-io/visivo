@@ -1,4 +1,4 @@
-import Loading from "../Loading";
+import Loading from "../common/Loading";
 import React from "react";
 import CohortSelect from "./CohortSelect";
 import tw from "tailwind-styled-components"

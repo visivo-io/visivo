@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import logo from '../images/logo.png';
+import logo from '../../images/logo.png';
 
 const TopNav = () => {
   return (
@@ -10,10 +10,10 @@ const TopNav = () => {
           <Link to="/" className="flex items-center">
             <img src={logo} alt="V" className="h-5" />
           </Link>
-          <Link to="/dag" className="text-white hover:text-gray-300">
-            DAG
+          <Link to="/lineage" className="text-white hover:text-gray-300">
+            Lineage
           </Link>
-          <Link to="/query" className="text-white hover:text-gray-300">
+          <Link to="/explorer" className="text-white hover:text-gray-300">
             Explorer
           </Link>
           <Link to="/editor" className="text-white hover:text-gray-300">

@@ -8,12 +8,12 @@ import { loadProject } from './loaders/project'
 import { loadDag } from './loaders/dag'
 import { loadError } from './loaders/error'
 import Home from './components/Home'
-import ProjectContainer from './components/ProjectContainer'
-import BreadcrumbLink from './components/styled/BreadcrumbLink'
-import ErrorPage from './components/ErrorPage'
-import Dag from './components/Dag'
-import QueryExplorer from './components/QueryExplorer'
-import Editor from './components/Editor'
+import ProjectContainer from './components/project/ProjectContainer'
+import BreadcrumbLink from './components/common/BreadcrumbLink'
+import ErrorPage from './components/common/ErrorPage'
+import Lineage from './components/lineage/Lineage'
+import Explorer from './components/explorer/Explorer'
+import Editor from './components/editors/Editor'
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(
@@ -23,18 +23,18 @@ const LocalRouter = createBrowserRouter(
       handle={{ crumb: () => <a href="/">Home</a> }}
     >
       <Route
-        id="dag"
-        path="/dag"
-        element={<Dag />}
+        id="lineage"
+        path="/lineage"
+        element={<Lineage />}
         loader={loadDag}
-        handle={{ crumb: () => <BreadcrumbLink to="/dag">DAG Explorer</BreadcrumbLink> }}
+        handle={{ crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink> }}
       />
       <Route
-        id="query"
-        path="/query"
-        element={<QueryExplorer />}
+        id="explorer"
+        path="/explorer"
+        element={<Explorer />}
         loader={loadProject}
-        handle={{ crumb: () => <BreadcrumbLink to="/query">Query Explorer</BreadcrumbLink> }}
+        handle={{ crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink> }}
       />
       <Route
         id="editor"

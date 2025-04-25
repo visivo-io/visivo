@@ -9,6 +9,10 @@ on:
         deploy: ${{ event.github.pull_request.pull_request.merged == false && event.github.pull_request.pull_request.state == 'open' }}
         archive: ${{ event.github.pull_request.pull_request.merged == true && event.github.pull_request.pull_request.state == 'closed' }}
 
+base:
+  os: ubuntu 22.04
+  tag: 1.0
+
 tasks:
   - key: code
     call: mint/git-clone 1.2.8
