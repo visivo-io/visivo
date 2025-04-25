@@ -18,7 +18,7 @@ test('renders loading state correctly', () => {
   }));
 
   render(<ObjectsPanel />);
-  expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toBeInTheDocument();
 });
 
 test('renders error state correctly', () => {
