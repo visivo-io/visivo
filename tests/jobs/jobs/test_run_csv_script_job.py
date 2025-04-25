@@ -3,7 +3,7 @@ from tests.factories.model_factories import (
     ProjectFactory,
 )
 from tests.support.utils import temp_folder
-from visivo.query.jobs.run_csv_script_job import job
+from visivo.jobs.run_csv_script_job import job
 
 
 def test_job():
@@ -29,6 +29,7 @@ def test_csv_script_job_changed():
         csv_script_model=csv_model,
     )
     assert csv_job.output_changed == False
+
 
 def test_csv_script_job_not_changed():
     output_dir = temp_folder()

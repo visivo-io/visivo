@@ -1,5 +1,5 @@
 from tests.factories.model_factories import JobFactory
-from visivo.query.job_tracker import JobTracker
+from visivo.jobs.job_tracker import JobTracker
 
 
 class MockFuture:

@@ -19,7 +19,7 @@ from visivo.models.table import Table
 from visivo.models.trace_props.scatter import Scatter
 from visivo.models.trace_props.surface import Surface
 from visivo.models.row import Row, HeightEnum
-from visivo.query.jobs.job import Job
+from visivo.jobs.job import Job
 from visivo.models.dbt import Dbt
 
 

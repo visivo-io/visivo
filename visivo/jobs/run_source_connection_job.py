@@ -1,6 +1,6 @@
 from visivo.logging.logger import Logger
 from visivo.models.sources.source import Source
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,

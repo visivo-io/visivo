@@ -1,6 +1,6 @@
 from tests.factories.model_factories import DashboardFactory, ProjectFactory
 from tests.support.utils import temp_folder
-from visivo.query.jobs.run_trace_job import job
+from visivo.jobs.run_trace_job import job
 
 
 def test_job():

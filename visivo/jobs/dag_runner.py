@@ -12,51 +12,17 @@ from concurrent.futures import Future, ThreadPoolExecutor
 import queue
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
-from visivo.query.jobs.job import JobResult
+from visivo.jobs.job import JobResult
 
-from visivo.query.jobs.run_csv_script_job import job as csv_script_job
-from visivo.query.jobs.run_trace_job import job as trace_job
-from visivo.query.jobs.run_local_merge_job import job as local_merge_job
-from visivo.query.jobs.run_source_connection_job import job as source_connection_job
-from visivo.query.jobs.run_thumbnail_job import job as thumbnail_job
-from visivo.query.job_tracker import JobTracker
+from visivo.jobs.run_csv_script_job import job as csv_script_job
+from visivo.jobs.run_trace_job import job as trace_job
+from visivo.jobs.run_local_merge_job import job as local_merge_job
+from visivo.jobs.run_source_connection_job import job as source_connection_job
+from visivo.jobs.run_thumbnail_job import job as thumbnail_job
+from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
 warnings.filterwarnings("ignore")
-
-
-class FilteredRunner:
-    def __init__(
-        self,
-        project: Project,
-        output_dir: str,
-        threads: int = 8,
-        soft_failure: bool = False,
-        dag_filter: str = None,
-        thumbnail_mode: str = None,
-        server_url: str = None,
-    ):
-        self.project = project
-        self.output_dir = output_dir
-        self.threads = threads
-        self.soft_failure = soft_failure
-        self.dag_filter = dag_filter
-        self.thumbnail_mode = thumbnail_mode
-        self.server_url = server_url
-        self.project_dag = project.dag()
-
-    def run(self):
-        for job_dag in self.project_dag.filter_dag(self.dag_filter):
-            dag_runner = DagRunner(
-                project=self.project,
-                output_dir=self.output_dir,
-                threads=self.threads,
-                soft_failure=self.soft_failure,
-                thumbnail_mode=self.thumbnail_mode,
-                server_url=self.server_url,
-                job_dag=job_dag,
-            )
-            dag_runner.run()
 
 
 class DagRunner:

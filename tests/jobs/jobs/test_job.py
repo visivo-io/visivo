@@ -1,7 +1,7 @@
 import os
 from time import time
 from tests.support.utils import temp_file
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     CachedFuture,
     JobResult,
     format_message_failure,

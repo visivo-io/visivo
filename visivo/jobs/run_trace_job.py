@@ -7,7 +7,7 @@ from visivo.models.project import Project
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,

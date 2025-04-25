@@ -16,7 +16,7 @@ def run_phase(
     server_url: str = None,
 ):
     from visivo.logging.logger import Logger
-    from visivo.query.runner import FilteredRunner
+    from visivo.jobs.dag_runner import FilteredRunner
     from time import time
     
     if not server_url and thumbnail_mode == "all":

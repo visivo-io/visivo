@@ -11,7 +11,7 @@ from tests.factories.model_factories import (
     ProjectFactory,
     SourceFactory,
 )
-from visivo.query.runner import FilteredRunner
+from visivo.jobs.filtered_runner import FilteredRunner
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database

@@ -1,5 +1,5 @@
 import os
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,

@@ -1,7 +1,7 @@
 import hashlib
 import os
 import pytest
-from visivo.query.jobs.run_thumbnail_job import job, action
+from visivo.jobs.run_thumbnail_job import job, action
 from tests.factories.model_factories import ProjectFactory, DashboardFactory
 from tests.support.utils import temp_folder
 from visivo.utils import sanitize_filename

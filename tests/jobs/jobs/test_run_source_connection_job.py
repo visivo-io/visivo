@@ -1,7 +1,7 @@
 from tests.factories.model_factories import SourceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
-from visivo.query.jobs.run_source_connection_job import job, action
+from visivo.jobs.run_source_connection_job import job, action
 
 
 def test_job_changed():
