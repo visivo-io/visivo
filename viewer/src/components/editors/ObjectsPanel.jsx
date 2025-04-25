@@ -38,7 +38,10 @@ const ObjectsPanel = () => {
   if (isLoading) {
     return (
       <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div 
+          data-testid="loading-spinner"
+          className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"
+        ></div>
       </div>
     );
   }

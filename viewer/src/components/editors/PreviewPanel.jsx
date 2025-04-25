@@ -77,7 +77,7 @@ const PreviewPanel = ({ project }) => {
   return (
     <div className="h-1/2 bg-white p-4 border-t border-gray-200 overflow-hidden flex flex-col min-h-0">
       <div className="text-sm font-medium text-gray-700 mb-2">
-        {activeTab ? `Preview: ${activeTab.name}` : 'No preview available'}
+        {activeTab ? `Preview: ${activeTab.name}` : ''}
       </div>
       <div className="flex-1 overflow-auto min-h-0">
         {renderPreview()}
