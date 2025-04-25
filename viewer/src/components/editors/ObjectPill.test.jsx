@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ObjectPill from './ObjectPill';
 import useStore from '../../stores/store';
 
@@ -15,8 +15,8 @@ test('renders ObjectPill with correct name', () => {
     })
   );
 
-  const { getByText } = render(<ObjectPill name="test-object" />);
-  expect(getByText('test-object')).toBeInTheDocument();
+  render(<ObjectPill name="test-object" />);
+  expect(screen.getByText('test-object')).toBeInTheDocument();
 });
 
 test('calls openTab when double clicked', () => {
@@ -30,9 +30,8 @@ test('calls openTab when double clicked', () => {
     })
   );
 
-  const { getByText } = render(<ObjectPill name="test-object" />);
-  
-  fireEvent.doubleClick(getByText('test-object'));
+  render(<ObjectPill name="test-object" />);
+  fireEvent.doubleClick(screen.getByText('test-object'));
   expect(mockOpenTab).toHaveBeenCalledWith('test-object', 'test-type');
 });
 
@@ -45,6 +44,6 @@ test('handles missing type in namedChildren gracefully', () => {
     })
   );
 
-  const { getByText } = render(<ObjectPill name="test-object" />);
-  expect(getByText('test-object')).toBeInTheDocument();
+  render(<ObjectPill name="test-object" />);
+  expect(screen.getByText('test-object')).toBeInTheDocument();
 }); 
