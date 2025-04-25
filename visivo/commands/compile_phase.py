@@ -6,9 +6,8 @@ from visivo.logging.logger import Logger
 Logger.instance().debug("Compiling project...")
 import os
 import json
-from visivo.utils import get_dashboards_dir
 
-from visivo.models.dag import all_descendants_of_type, filter_dag
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.sources.source import Source
@@ -76,7 +75,7 @@ def compile_phase(
     traces_start = time()
     Logger.instance().debug("    Writing trace queries...")
     dag = project.dag()
-    filtered_dag = filter_dag(dag, dag_filter)
+    filtered_dag = dag.filter_dag(dag_filter)
     traces = all_descendants_of_type(type=Trace, dag=filtered_dag)
     for trace in traces:
         model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]

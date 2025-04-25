@@ -1,4 +1,5 @@
 from visivo.models.base.context_string import ContextString
+from visivo.models.base.project_dag import ProjectDag
 from visivo.models.dag import show_dag_fig
 from visivo.models.models.model import Model
 from visivo.models.row import Row
@@ -247,3 +248,59 @@ def test_trace_with_test_Project_dag():
     assert networkx.is_directed_acyclic_graph(dag)
     assert len(project.descendants()) == 5
     assert project.descendants_of_type(type=Test) == [test]
+
+
+def test_filter_dag():
+    dag = ProjectDag()
+
+    grandparent1 = Model(name="grandparent1")
+    grandparent2 = Model(name="grandparent2")
+    parent = Model(name="parent")
+    model = Model(name="model")
+    child = Model(name="child")
+    grandchild1 = Model(name="grandchild1")
+    grandchild2 = Model(name="grandchild2")
+    dag.add_node(grandparent1)
+    dag.add_edge(grandparent1, parent)
+    dag.add_edge(grandparent2, parent)
+    dag.add_edge(parent, model)
+    dag.add_edge(model, child)
+    dag.add_edge(child, grandchild1)
+    dag.add_edge(child, grandchild2)
+
+    filtered_dag = dag.filter_dag("1+model+1")
+    assert len(filtered_dag) == 1
+    assert len(filtered_dag[0].nodes) == 3
+    assert len(filtered_dag[0].edges) == 2
+
+    filtered_dag = dag.filter_dag("2+model+1")
+    assert len(filtered_dag) == 1
+    assert len(filtered_dag[0].nodes) == 5
+    assert len(filtered_dag[0].edges) == 4
+
+    filtered_dag = dag.filter_dag("+model+1")
+    assert len(filtered_dag) == 1
+    assert len(filtered_dag[0].nodes) == 5
+    assert len(filtered_dag[0].edges) == 4
+
+    filtered_dag = dag.filter_dag("1+model+")
+    assert len(filtered_dag) == 1
+    assert len(filtered_dag[0].nodes) == 5
+    assert len(filtered_dag[0].edges) == 4
+
+    filtered_dag = dag.filter_dag("model+")
+    assert len(filtered_dag) == 1
+    assert len(filtered_dag[0].nodes) == 4
+    assert len(filtered_dag[0].edges) == 3
+
+    filtered_dag = dag.filter_dag("model")
+    assert len(filtered_dag) == 1
+    assert len(filtered_dag[0].nodes) == 1
+    assert len(filtered_dag[0].edges) == 0
+
+    filtered_dag = dag.filter_dag("grandparent1, grandparent2")
+    assert len(filtered_dag) == 2
+    assert len(filtered_dag[0].nodes) == 1
+    assert len(filtered_dag[0].edges) == 0
+    assert len(filtered_dag[1].nodes) == 1
+    assert len(filtered_dag[1].edges) == 0

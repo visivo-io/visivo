@@ -16,7 +16,7 @@ def run_phase(
     server_url: str = None,
 ):
     from visivo.logging.logger import Logger
-    from visivo.query.runner import Runner
+    from visivo.query.runner import FilteredRunner
     from time import time
     
     if not server_url and thumbnail_mode == "all":
@@ -66,7 +66,7 @@ def run_phase(
     )
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
-    runner = Runner(
+    runner = FilteredRunner(
         project=project,
         output_dir=output_dir,
         threads=threads,
