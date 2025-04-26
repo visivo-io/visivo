@@ -4,6 +4,7 @@
   "private": true,
   "proxy": "http://0.0.0.0:8000",
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.29.1-dev132.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
@@ -41,6 +42,7 @@
     "material-react-table": "^2.0.5",
     "md5": "^2.3.0",
     "monaco-editor": "^0.52.2",
+    "papaparse": "^5.5.2",
     "plotly.js": "^2.35.2",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
