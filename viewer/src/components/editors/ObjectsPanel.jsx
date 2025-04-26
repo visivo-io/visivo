@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import ObjectPill from './ObjectPill';
 import useStore from '../../stores/store';
+import Loading from '../common/Loading';
 import { shallow } from 'zustand/shallow';
 import CreateObjectModal from './CreateObjectModal';
 
@@ -37,9 +38,7 @@ const ObjectsPanel = () => {
 
   if (isLoading) {
     return (
-      <div className="w-64 bg-white border-r border-gray-200 p-4 h-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
+      <Loading text="Loading Project..." width={64} />
     );
   }
 
