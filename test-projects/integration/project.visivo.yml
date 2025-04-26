@@ -1,4 +1,5 @@
-name: project
+path: project
+name: integration
 
 includes:
   - path: models.visivo.yml
