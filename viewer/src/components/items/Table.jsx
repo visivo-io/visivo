@@ -1,5 +1,10 @@
 import Loading from '../common/Loading';
 import React, { useEffect, useState } from 'react';
+import Loading from "../Loading";
+
+import React, { useEffect, useState, useCallback } from "react";
+import PivotColumnSelection from "./table-components/pivot-column-selection/PivotColumnSelection";
+import sanitizeColumnName from "./table-helpers/sanitizeColumnName";
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -9,6 +14,19 @@ import { createTheme, ThemeProvider, Box, Button } from '@mui/material';
 import { useTracesData } from '../../hooks/useTracesData';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
+import {
+  createTheme,
+  ThemeProvider,
+  Box,
+  Button,
+  IconButton,
+  CircularProgress,
+  Backdrop,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { useTracesData } from "../../hooks/useTracesData";
+import { ItemContainer } from "./ItemContainer";
+import CohortSelect from "../select/CohortSelect";
 /* eslint-disable react/jsx-pascal-case */
 import {
   MRT_ShowHideColumnsButton,
@@ -28,7 +46,21 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 
+/* eslint-enable react/jsx-pascal-case */
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import PivotTableChartIcon from "@mui/icons-material/PivotTableChart";
+import { mkConfig, generateCsv } from "export-to-csv";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+
 const Table = ({ table, project, itemWidth, height, width }) => {
+  const [db, setDb] = useState(null);
+  const [duckDBStatus, setDuckDBStatus] = useState({
+    state: "idle",
+    progress: 0,
+  });
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   // Always call the hook, but with empty array if it's a direct query
   const tracesData = useTracesData(
@@ -218,16 +250,30 @@ const Table = ({ table, project, itemWidth, height, width }) => {
             </Box>
           </Box>
 
-          <MRT_TableContainer
-            table={useTable}
-            sx={{ width: width, maxHeight: `${height - 120}px` }}
-          />
+          <Box sx={{ position: "relative" }}>
+            <Backdrop
+              sx={{
+                color: "#fff",
+                zIndex: (theme) => theme.zIndex.drawer + 1,
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+              }}
+              open={pivotLoading}
+            >
+              <CircularProgress color="inherit" />
+            </Backdrop>
 
+            <MRT_TableContainer
+              table={useTable}
+              sx={{ width: width, maxHeight: `${height - 120}px` }}
+            />
+          </Box>
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
               <MRT_TablePagination table={useTable} />
             </Box>
-            <Box sx={{ display: 'grid', width: '100%' }}>
+            <Box sx={{ display: "grid", width: "100%" }}>
               <MRT_ToolbarAlertBanner stackAlertBanner table={useTable} />
             </Box>
           </Box>
