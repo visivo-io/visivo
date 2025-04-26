@@ -107,7 +107,7 @@ def test_thumbnail_job_sanitizes_filenames(test_project, output_dir, server_url)
         return thumbnail_path
 
     # Temporarily replace the generate_thumbnail function
-    import visivo.query.jobs.run_thumbnail_job as thumbnail_module
+    import visivo.jobs.run_thumbnail_job as thumbnail_module
 
     original_generate = thumbnail_module.generate_thumbnail
     thumbnail_module.generate_thumbnail = mock_generate

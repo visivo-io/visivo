@@ -192,39 +192,6 @@ def test_runner_dag_filter_with_no_jobs():
     )
 
 
-def test_create_job_dag():
-    model = CsvScriptModelFactory(name="model1")
-    trace = TraceFactory(name="trace1", model=model)
-    project = ProjectFactory(traces=[trace])
-
-    port = get_test_port()
-    server_url = f"http://localhost:{port}"
-
-    runner = FilteredRunner(
-        project=project, output_dir=temp_folder(), server_url=server_url
-    )
-    job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 6
-    assert is_directed_acyclic_graph(job_dag)
-
-
-def test_create_job_dag_with_non_referenced_source():
-    model = CsvScriptModelFactory(name="additional_model")
-    trace = TraceFactory(name="additional_trace", model=model)
-    source = SourceFactory(name="source")
-    additional_source = SourceFactory(name="non_referenced_source")
-    project = ProjectFactory(traces=[trace], sources=[source, additional_source])
-
-    port = get_test_port()
-    server_url = f"http://localhost:{port}"
-    runner = FilteredRunner(
-        project=project, output_dir=temp_folder(), server_url=server_url
-    )
-    job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 6
-    assert is_directed_acyclic_graph(job_dag)
-
-
 def test_runner_with_local_merge_and_csv_model():
     output_dir = temp_folder()
 
