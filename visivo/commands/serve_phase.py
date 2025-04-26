@@ -36,7 +36,6 @@ def serve_phase(
                 working_dir=working_dir,
                 default_source=default_source,
                 dag_filter=dag_filter,
-                run_only_changed=True,
                 threads=threads,
                 soft_failure=True,
                 thumbnail_mode=thumbnail_mode,
