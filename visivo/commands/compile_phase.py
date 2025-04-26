@@ -75,23 +75,30 @@ def compile_phase(
     traces_start = time()
     Logger.instance().debug("    Writing trace queries...")
     dag = project.dag()
-    filtered_dag = dag.filter_dag(dag_filter)
-    traces = all_descendants_of_type(type=Trace, dag=filtered_dag)
-    for trace in traces:
-        model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-        if isinstance(model, CsvScriptModel):
-            source = model.get_duckdb_source(output_dir=output_dir)
-        elif isinstance(model, LocalMergeModel):
-            source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-        else:
-            source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
-        tokenized_trace = TraceTokenizer(
-            trace=trace, model=model, source=source
-        ).tokenize()
-        query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
-        QueryWriter(
-            trace=trace, query_string=query_string, output_dir=output_dir
-        ).write()
+    filtered_dags = dag.filter_dag(dag_filter)
+    for filtered_dag in filtered_dags:
+        traces = all_descendants_of_type(type=Trace, dag=filtered_dag)
+        for trace in traces:
+            model = all_descendants_of_type(
+                type=Model, dag=filtered_dag, from_node=trace
+            )[0]
+            if isinstance(model, CsvScriptModel):
+                source = model.get_duckdb_source(output_dir=output_dir)
+            elif isinstance(model, LocalMergeModel):
+                source = model.get_duckdb_source(
+                    output_dir=output_dir, dag=filtered_dag
+                )
+            else:
+                source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[
+                    0
+                ]
+            tokenized_trace = TraceTokenizer(
+                trace=trace, model=model, source=source
+            ).tokenize()
+            query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
+            QueryWriter(
+                trace=trace, query_string=query_string, output_dir=output_dir
+            ).write()
     traces_duration = round(time() - traces_start, 2)
     if os.environ.get("STACKTRACE"):
         Logger.instance().info(f"Trace queries written in {traces_duration}s")

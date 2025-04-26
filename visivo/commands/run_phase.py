@@ -1,5 +1,7 @@
 from visivo.models.project import Project
-import os 
+import os
+
+
 def run_phase(
     default_source: str,
     output_dir: str,
@@ -7,7 +9,7 @@ def run_phase(
     dag_filter: str = None,
     run_only_changed: bool = False,
     threads: int = None,
-    soft_failure=False,
+    soft_failure: bool = False,
     dbt_profile: str = None,
     dbt_target: str = None,
     thumbnail_mode: str = None,
@@ -16,19 +18,25 @@ def run_phase(
     server_url: str = None,
 ):
     from visivo.logging.logger import Logger
-    from visivo.jobs.dag_runner import FilteredRunner
+    from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
-    
+
     if not server_url and thumbnail_mode == "all":
-        raise Exception("Thumbnail mode is set to 'all', but no server URL is provided. A running server is required to generate thumbnails.")
-    #Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
+        raise Exception(
+            "Thumbnail mode is set to 'all', but no server URL is provided. A running server is required to generate thumbnails."
+        )
+    # Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
     if project and skip_compile:
         if os.environ.get("STACKTRACE"):
-            Logger.instance().info(f"Using provided project {project.name}. skip_compile is {skip_compile}")
+            Logger.instance().info(
+                f"Using provided project {project.name}. skip_compile is {skip_compile}"
+            )
         else:
             Logger.instance().debug("Using provided project")
     elif project is None and skip_compile:
+        # TODO: This says it is unreachable... investigate
         from visivo.commands.parse_project_phase import parse_project_phase
+
         Logger.instance().info("Parsing project...")
         start_time = time()
         project = parse_project_phase(
@@ -39,7 +47,7 @@ def run_phase(
             dbt_target=dbt_target,
         )
         Logger.instance().info(f"Parsing project took {round(time() - start_time, 2)}s")
-    else: 
+    else:
         from visivo.commands.compile_phase import compile_phase
 
         project = compile_phase(
@@ -49,7 +57,7 @@ def run_phase(
             dag_filter=dag_filter,
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
-            project=project, # Passing the project to save on re-parsing if it's available.
+            project=project,  # Passing the project to save on re-parsing if it's available.
         )
 
     # Initialize project defaults if not present
