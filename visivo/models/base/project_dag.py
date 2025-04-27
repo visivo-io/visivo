@@ -205,11 +205,10 @@ class ProjectDag(DiGraph):
                     combined_dags.append(dag)
             return combined_dags
 
-        len_after = 0
         combined_dags = filtered_dags.copy()
-        len_before = len(combined_dags)
-        while len_before != len_after:
+        while True:
             len_before = len(combined_dags)
             combined_dags = combine_dags(combined_dags)
-            len_after = len(combined_dags)
+            if len_before == len(combined_dags):
+                break
         return combined_dags
