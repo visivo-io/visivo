@@ -1,3 +1,4 @@
+from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
 import os
 
@@ -26,12 +27,9 @@ def run_phase(
         )
     # Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
     if project and skip_compile:
-        if os.environ.get("STACKTRACE"):
-            Logger.instance().info(
-                f"Using provided project {project.name}. skip_compile is {skip_compile}"
-            )
-        else:
-            Logger.instance().debug("Using provided project")
+        Logger.instance().debug(
+            f"Using provided project {project.name}. skip_compile is {skip_compile}"
+        )
     elif project is None and skip_compile:
         # TODO: This says it is unreachable... investigate
         from visivo.commands.parse_project_phase import parse_project_phase
@@ -59,6 +57,15 @@ def run_phase(
             project=project,  # Passing the project to save on re-parsing if it's available.
         )
 
+    if not dag_filter:
+        dag_filter = ",".join(
+            map(
+                lambda x: f"+{x.name}+",
+                project.dag().get_nodes_by_types([Dashboard], True),
+            )
+        )
+
+    Logger.instance().debug(f"DAG filter: {dag_filter}")
     # Initialize project defaults if not present
     if thumbnail_mode is None and project.defaults and project.defaults.thumbnail_mode:
         thumbnail_mode = project.defaults.thumbnail_mode
