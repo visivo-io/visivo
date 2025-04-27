@@ -1,7 +1,7 @@
 import re
 from networkx import DiGraph, simple_cycles, is_directed_acyclic_graph
 from visivo.models.dag import all_descendants_with_name, parse_filter_str
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional
 
 
 class ProjectDag(DiGraph):
@@ -142,7 +142,13 @@ class ProjectDag(DiGraph):
             return []
 
     def filter_dag(self, filter_str) -> List["ProjectDag"]:
-        from networkx import subgraph, shortest_path_length, descendants, ancestors
+        from networkx import (
+            subgraph,
+            shortest_path_length,
+            descendants,
+            ancestors,
+            compose,
+        )
 
         if not filter_str:
             return [self]
@@ -185,4 +191,25 @@ class ProjectDag(DiGraph):
 
             filtered_dags.append(subgraph(self, filtered_nodes))
 
-        return filtered_dags
+        def combine_dags(dags):
+            combined_dags = []
+            while dags:
+                dag = dags.pop()
+                combined = False
+                for i, combined_dag in enumerate(combined_dags):
+                    if combined_dag.nodes & dag.nodes:
+                        combined_dags[i] = compose(dag, combined_dag)
+                        combined = True
+                        break
+                if not combined:
+                    combined_dags.append(dag)
+            return combined_dags
+
+        len_after = 0
+        combined_dags = filtered_dags.copy()
+        len_before = len(combined_dags)
+        while len_before != len_after:
+            len_before = len(combined_dags)
+            combined_dags = combine_dags(combined_dags)
+            len_after = len(combined_dags)
+        return combined_dags
