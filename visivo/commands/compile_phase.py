@@ -38,7 +38,6 @@ def compile_phase(
     dag_filter: str = None,
     dbt_profile: str = None,
     dbt_target: str = None,
-    project: Project = None,
 ):
     # Track dbt phase
 

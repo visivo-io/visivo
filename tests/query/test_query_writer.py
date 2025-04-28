@@ -1,3 +1,4 @@
+import os
 from visivo.query.query_writer import QueryWriter
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
@@ -12,7 +13,4 @@ def test_QueryWriter():
     )
 
     query_writer.write()
-    assert trace.changed == True
-
-    query_writer.write()
-    assert trace.changed == False
+    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")

@@ -30,8 +30,7 @@ def run_phase(
         Logger.instance().debug(
             f"Using provided project {project.name}. skip_compile is {skip_compile}"
         )
-    elif project is None and skip_compile:
-        # TODO: This says it is unreachable... investigate
+    elif not project and skip_compile:
         from visivo.commands.parse_project_phase import parse_project_phase
 
         Logger.instance().info("Parsing project...")
@@ -54,7 +53,6 @@ def run_phase(
             dag_filter=dag_filter,
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
-            project=project,  # Passing the project to save on re-parsing if it's available.
         )
 
     if not dag_filter:

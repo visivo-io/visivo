@@ -3,6 +3,7 @@ import os
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
+from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logging.logger import Logger
@@ -13,7 +14,7 @@ import subprocess
 
 
 class FlaskApp:
-    def __init__(self, output_dir, dag_filter, project):
+    def __init__(self, output_dir, project: Project):
         self.app = Flask(
             __name__,
             static_folder=output_dir,
@@ -65,13 +66,13 @@ class FlaskApp:
                 )
 
         @self.app.route("/api/project/named_children", methods=["GET"])
-        def named_children(): 
+        def named_children():
             named_children = self._project.named_child_nodes()
             if named_children:
                 return jsonify(named_children)
             else:
                 return jsonify({})
-            
+
         @self.app.route("/api/project/project_file_path", methods=["GET"])
         def project_file_path():
             project_file_path = self._project.project_file_path
@@ -86,11 +87,11 @@ class FlaskApp:
             data = request.get_json()
             if not data:
                 return jsonify({"message": "No data provided"}), 400
-            
-            try: 
+
+            try:
                 project_writer = ProjectWriter(data)
                 project_writer.update_file_contents()
-                project_writer.write() 
+                project_writer.write()
                 return jsonify({"message": "Changes written successfully"}), 200
             except Exception as e:
                 Logger.instance().error(f"Error writing changes: {str(e)}")
@@ -353,27 +354,25 @@ class FlaskApp:
                 Logger.instance().error(f"Error updating session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-
         @self.app.route("/api/editors/installed", methods=["GET"])
         def get_installed_editors():
             editors, platform = get_editor_configs()
-            
+
             # Check which editors are installed
             installed_editors = []
             for editor in editors:
                 # Skip editors that don't support this platform
                 if not editor["paths"][platform]:
                     continue
-                    
+
                 for path in editor["paths"][platform]:
                     if os.path.exists(path):
                         # Only send back safe information to the client
-                        installed_editors.append({
-                            "name": editor["name"],
-                            "id": editor["id"]
-                        })
+                        installed_editors.append(
+                            {"name": editor["name"], "id": editor["id"]}
+                        )
                         break
-            
+
             return jsonify(installed_editors)
 
         @self.app.route("/api/editors/open", methods=["POST"])
@@ -381,26 +380,26 @@ class FlaskApp:
             data = request.get_json()
             if not data or "editorId" not in data or "filePath" not in data:
                 return jsonify({"error": "Missing required parameters"}), 400
-                
+
             editor_id = data["editorId"]
             file_path = data["filePath"]
-            
+
             # Validate file path exists
             if not os.path.exists(file_path):
                 return jsonify({"error": "File not found"}), 404
-            
+
             # Get editor configurations
             editors, platform = get_editor_configs()
-            
+
             # Find the selected editor
             editor_config = next((e for e in editors if e["id"] == editor_id), None)
             if not editor_config or not editor_config["commands"][platform]:
                 return jsonify({"error": "Invalid editor for this platform"}), 400
-                
+
             try:
                 # Get the command for the selected editor
                 command = editor_config["commands"][platform]
-                
+
                 # Special handling for VS Code on macOS
                 if platform == "mac" and editor_id == "vscode":
                     if command[0] == "open":
@@ -412,7 +411,7 @@ class FlaskApp:
                 else:
                     # Normal handling for other editors
                     subprocess.Popen(command + [file_path])
-                    
+
                 return jsonify({"message": "File opened successfully"}), 200
             except Exception as e:
                 return jsonify({"error": str(e)}), 500

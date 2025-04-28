@@ -1,6 +1,7 @@
+import json
 import re
 from networkx import DiGraph, simple_cycles, is_directed_acyclic_graph
-from visivo.models.dag import all_descendants_with_name, parse_filter_str
+from visivo.models.dag import all_descendants_with_name, parse_filter_str, show_dag_fig
 from typing import List, Optional
 
 
@@ -156,7 +157,7 @@ class ProjectDag(DiGraph):
         filtered_dags = []
         filters = parse_filter_str(filter_str)
         for filter in filters:
-            pre, name, post = filter
+            post, name, pre = filter
             item = all_descendants_with_name(name=name, dag=self)
             if len(item) == 1:
                 item = item[0]
@@ -212,3 +213,29 @@ class ProjectDag(DiGraph):
             if len_before == len(combined_dags):
                 break
         return combined_dags
+
+    def get_diff_dag_filter(self, existing_project, existing_dag_filter):
+        existing_dags = (
+            existing_project.dag()
+            .get_named_nodes_subgraph()
+            .filter_dag(existing_dag_filter)
+        )
+        existing_nodes = [node for dag in existing_dags for node in dag.nodes()]
+        new_dag = self.get_named_nodes_subgraph()
+        changed_dag_filter = []
+        for new_node in new_dag.nodes():
+            existing_node = next(
+                (n for n in existing_nodes if n.name == new_node.name), None
+            )
+            if existing_node:
+                if json.dumps(
+                    existing_node.model_dump_json(), sort_keys=True
+                ) != json.dumps(new_node.model_dump_json(), sort_keys=True):
+                    changed_dag_filter.append(f"{new_node.name}+")
+            else:
+                changed_dag_filter.append(f"{new_node.name}+")
+
+        return ",".join(changed_dag_filter)
+
+    def show(self):
+        show_dag_fig(self)

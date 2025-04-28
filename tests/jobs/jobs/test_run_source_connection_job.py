@@ -4,12 +4,6 @@ from visivo.commands.utils import create_file_database
 from visivo.jobs.run_source_connection_job import job, action
 
 
-def test_job_changed():
-    source = SourceFactory()
-    trace_job = job(source=source)
-    assert trace_job.output_changed == True
-
-
 def test_success_action():
     output_dir = temp_folder()
     source = SourceFactory(database=f"{output_dir}/test.sqlite")

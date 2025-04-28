@@ -209,7 +209,7 @@ dashboards:
                   #cohort_on: "?{'Fibonacci times 2'}"
                   model:
                     name: nested-and-name
-                    sql: "SELECT x, y*3 as y FROM test_table"
+                    sql: "SELECT x, y*2 as y FROM test_table"
                   props:
                     type: scatter
                     x: ?{x}

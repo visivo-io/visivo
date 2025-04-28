@@ -44,6 +44,7 @@ class DagRunner:
         self.server_url = server_url
         self.job_dag = job_dag
         self.job_tracking_dag = job_dag.copy()
+        self.project_dag = project.dag()
         self.failed_job_results = []
         self.successful_job_results = []
         self.lock = Lock()
@@ -133,12 +134,12 @@ class DagRunner:
 
     def create_jobs_from_item(self, item: ParentModel):
         if isinstance(item, Trace):
-            return trace_job(trace=item, output_dir=self.output_dir, dag=self.job_dag)
+            return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, CsvScriptModel):
             return csv_script_job(csv_script_model=item, output_dir=self.output_dir)
         elif isinstance(item, LocalMergeModel):
             return local_merge_job(
-                local_merge_model=item, output_dir=self.output_dir, dag=self.job_dag
+                local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item)

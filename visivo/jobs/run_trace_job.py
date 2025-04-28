@@ -76,7 +76,6 @@ def job(dag, output_dir: str, trace: Trace):
     source = _get_source(trace, dag, output_dir)
     return Job(
         item=trace,
-        output_changed=trace.changed,
         source=source,
         action=action,
         trace=trace,
