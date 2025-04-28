@@ -305,12 +305,12 @@ def test_filter_dag():
     assert len(filtered_dag[1].nodes) == 1
     assert len(filtered_dag[1].edges) == 0
 
-    filtered_dag = dag.filter_dag("grandparent1+1, grandparent2+1, parent")
+    filtered_dag = dag.filter_dag("1+grandparent1, 1+grandparent2, parent")
     assert len(filtered_dag) == 1
     assert len(filtered_dag[0].nodes) == 3
     assert len(filtered_dag[0].edges) == 2
 
-    filtered_dag = dag.filter_dag("grandparent1, grandparent2, parent, 2+model")
+    filtered_dag = dag.filter_dag("grandparent1, grandparent2, parent, model+2")
     assert len(filtered_dag) == 1
     assert len(filtered_dag[0].nodes) == 4
     assert len(filtered_dag[0].edges) == 3

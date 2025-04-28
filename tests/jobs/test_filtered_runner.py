@@ -179,7 +179,7 @@ def test_runner_dag_filter_with_no_jobs():
     runner = FilteredRunner(
         project=project,
         output_dir=output_dir,
-        dag_filter="+dashboard",
+        dag_filter="dashboard+",
         thumbnail_mode="none",
         server_url=server_url,
     )
