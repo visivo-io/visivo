@@ -9,6 +9,8 @@ def test_generate_schema_replaces_unsupported_javascript():
     assert "?P<column_name>" not in schema
     assert "?P<query_statement>" not in schema
 
+    assert "https://json-schema.org/draft/2020-12/schema" in schema
+
     tmp = temp_file(name="visivo_schema.json", contents=schema)
 
     assert tmp.exists()
