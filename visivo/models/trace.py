@@ -92,10 +92,6 @@ class Trace(NamedModel, ParentModel):
         alias="name",
         description="The unique name of the object across the entire project.",
     )
-    changed: Optional[bool] = Field(
-        True,
-        description="**NOT A CONFIGURATION** attribute is used by the cli to determine if the trace should be re-run",
-    )
     model: ModelRefField = Field(
         ...,
         description="The model or model ref that Visivo should use to build the trace.",

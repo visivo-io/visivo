@@ -47,3 +47,4 @@ const ObjectPill = ({name, onClick, onDoubleClick, children, inline = false}) =>
 };
 
 export default ObjectPill;
+

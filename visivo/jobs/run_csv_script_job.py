@@ -3,7 +3,7 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.project import Project
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,
@@ -43,7 +43,6 @@ def job(csv_script_model, output_dir: str):
         item=csv_script_model,
         source=csv_script_model.get_duckdb_source(output_dir),
         action=action,
-        output_changed=csv_script_model.changed,
         csv_script_model=csv_script_model,
         output_dir=output_dir,
     )

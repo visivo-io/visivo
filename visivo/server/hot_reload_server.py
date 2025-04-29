@@ -31,6 +31,7 @@ class ProjectChangeHandler(FileSystemEventHandler):
 
         current_time = time.time()
         if current_time - self.last_event_time > self.debounce_seconds:
+            Logger.instance().debug(f"Triggering file modified: {event.src_path}")
             self.last_event_time = current_time
             self.callback()
 
@@ -58,8 +59,8 @@ class HotReloadServer:
         self.server_thread = None
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*")
-        
-        if not os.environ.get('DEBUG'):
+
+        if not os.environ.get("DEBUG"):
             # Suppress Flask logging
             log = logging.getLogger("werkzeug")
             log.setLevel(logging.ERROR)

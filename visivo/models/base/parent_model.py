@@ -19,20 +19,20 @@ from visivo.models.sources.source import DefaultSource
 
 
 class ParentModel(ABC):
-    @model_serializer(mode='wrap')
+    @model_serializer(mode="wrap")
     def wrap_serializer(self, serializer, info):
         # Get the default serialized output
         serialized = serializer(self)
         # Check the context to decide whether to include the class type
-        if info.context and info.context.get('include_type', False):
-            serialized['__type__'] = self.__class__.__name__
+        if info.context and info.context.get("include_type", False):
+            serialized["__type__"] = self.__class__.__name__
         return serialized
-    
+
     @abstractmethod
     def child_items(self):
         return []
 
-    def dag(self, node_permit_list=None):
+    def dag(self, node_permit_list=None) -> ProjectDag:
 
         dag = ProjectDag()
         dag.add_node(self)

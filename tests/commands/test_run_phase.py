@@ -5,8 +5,7 @@ from tests.support.utils import temp_folder, temp_yml_file
 from visivo.commands.run_phase import run_phase
 from visivo.commands.utils import create_file_database
 from visivo.models.defaults import Defaults
-from visivo.parsers.file_names import PROFILE_FILE_NAME, PROJECT_FILE_NAME
-from unittest.mock import ANY
+from visivo.parsers.file_names import PROJECT_FILE_NAME
 
 
 def test_run_phase():
@@ -37,7 +36,7 @@ def test_run_phase():
         working_dir=working_dir,
         output_dir=output_dir,
         dag_filter="+dashboard+",
-        thumbnail_mode='none'
+        thumbnail_mode="none",
     )
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")

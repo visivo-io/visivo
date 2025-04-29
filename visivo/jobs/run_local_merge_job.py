@@ -1,5 +1,5 @@
 from visivo.models.models.local_merge_model import LocalMergeModel
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,
@@ -14,9 +14,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
     Logger.instance().info(start_message("LocalMergeModel", local_merge_model))
     try:
         start_time = time()
-        local_merge_model.insert_duckdb_data(
-            output_dir=output_dir, dag=dag
-        )
+        local_merge_model.insert_duckdb_data(output_dir=output_dir, dag=dag)
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
@@ -44,5 +42,5 @@ def job(dag, output_dir: str, local_merge_model: LocalMergeModel):
         action=action,
         local_merge_model=local_merge_model,
         output_dir=output_dir,
-        dag=dag, #PR question: Why are we passing the dag here to local merge, trace models but not csv script models? It seems like it gets what it needs from the source pass no?
+        dag=dag,  # PR question: Why are we passing the dag here to local merge, trace models but not csv script models? It seems like it gets what it needs from the source pass no?
     )

@@ -7,7 +7,7 @@ from visivo.models.project import Project
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
-from visivo.query.jobs.job import (
+from visivo.jobs.job import (
     Job,
     JobResult,
     format_message_failure,
@@ -76,7 +76,6 @@ def job(dag, output_dir: str, trace: Trace):
     source = _get_source(trace, dag, output_dir)
     return Job(
         item=trace,
-        output_changed=trace.changed,
         source=source,
         action=action,
         trace=trace,

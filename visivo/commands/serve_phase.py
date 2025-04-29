@@ -1,3 +1,4 @@
+from visivo.commands.compile_phase import compile_phase
 from visivo.logging.logger import Logger
 
 from visivo.server.hot_reload_server import HotReloadServer
@@ -22,7 +23,6 @@ def serve_phase(
 
     app = FlaskApp(
         output_dir=output_dir,
-        dag_filter=dag_filter,
         project=project,
     )
 
@@ -31,17 +31,30 @@ def serve_phase(
             Logger.instance().info(
                 "Server has detected changes to the project. Re-running project..."
             )
+            project = compile_phase(
+                default_source=default_source,
+                working_dir=working_dir,
+                output_dir=output_dir,
+                dag_filter=dag_filter,
+            )
+
+            changed_dag_filter = project.dag().get_diff_dag_filter(
+                existing_project=app.project, existing_dag_filter=dag_filter
+            )
+            if not changed_dag_filter:
+                Logger.instance().info("No changes to the project.")
+                return
+
             runner = run_phase(
                 output_dir=output_dir,
                 working_dir=working_dir,
                 default_source=default_source,
-                dag_filter=dag_filter,
-                run_only_changed=True,
+                dag_filter=changed_dag_filter,
                 threads=threads,
                 soft_failure=True,
                 thumbnail_mode=thumbnail_mode,
-                skip_compile=False,  # Always recompile on changes
-                project=None,  # Don't reuse project instance
+                skip_compile=True,  # Don't recompile on changes, passing in just compiled one.
+                project=project,
                 server_url=server_url,
             )
             app.project = runner.project

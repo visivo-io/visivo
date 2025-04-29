@@ -11,15 +11,17 @@ from tests.factories.model_factories import (
     ProjectFactory,
     SourceFactory,
 )
-from visivo.query.runner import Runner
+from visivo.jobs.filtered_runner import FilteredRunner
 from tests.factories.model_factories import TraceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
 from visivo.server.hot_reload_server import HotReloadServer
 
+
 def get_test_port():
     """Get an available port for testing"""
     return HotReloadServer.find_available_port()
+
 
 def test_Runner_trace_with_default():
     output_dir = temp_folder()
@@ -39,7 +41,9 @@ def test_Runner_trace_with_default():
 
     port = get_test_port()
     server_url = f"http://localhost:{port}"
-    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
+    runner = FilteredRunner(
+        project=project, output_dir=output_dir, server_url=server_url
+    )
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -60,7 +64,9 @@ def test_Runner_trace_given_source():
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
-    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
+    runner = FilteredRunner(
+        project=project, output_dir=output_dir, server_url=server_url
+    )
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -78,7 +84,9 @@ def test_runner_with_csv_script_model():
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write(f"select *, 'value' as 'cohort_on' from {model.table_name}")
 
-    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
+    runner = FilteredRunner(
+        project=project, output_dir=output_dir, server_url=server_url
+    )
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -97,20 +105,20 @@ def test_runner_with_local_merge_model():
     create_file_database(url=source2.url(), output_dir=output_dir)
 
     model = LocalMergeModelFactory(
-        name="local_merge_model", 
+        name="local_merge_model",
         sql="select t1.x as x, t2.y as y, 'values' as 'cohort_on' from model1.model t1 JOIN model2.model t2 on t1.x=t2.x",
-        models=[sub_model1, sub_model2]
+        models=[sub_model1, sub_model2],
     )
     trace = TraceFactory(name="trace1", model=model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
 
     os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
-        fp.write(
-            "SELECT * FROM local_merge_model.model"
-        )
+        fp.write("SELECT * FROM local_merge_model.model")
 
-    runner = Runner(project=project, output_dir=output_dir, server_url=server_url)
+    runner = FilteredRunner(
+        project=project, output_dir=output_dir, server_url=server_url
+    )
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -143,16 +151,16 @@ def test_runner_dag_filter():
     os.makedirs(f"{output_dir}/Additional Trace", exist_ok=True)
     with open(f"{output_dir}/Additional Trace/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from no_exist")
-    
+
     port = get_test_port()
     server_url = f"http://localhost:{port}"
 
-    runner = Runner(
-        project=project, 
-        output_dir=output_dir, 
-        dag_filter="+dashboard+", 
-        thumbnail_mode="none", 
-        server_url=server_url
+    runner = FilteredRunner(
+        project=project,
+        output_dir=output_dir,
+        dag_filter="+dashboard+",
+        thumbnail_mode="none",
+        server_url=server_url,
     )
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
@@ -168,12 +176,12 @@ def test_runner_dag_filter_with_no_jobs():
 
     port = get_test_port()
     server_url = f"http://localhost:{port}"
-    runner = Runner(
-        project=project, 
-        output_dir=output_dir, 
-        dag_filter="+dashboard", 
-        thumbnail_mode="none", 
-        server_url=server_url
+    runner = FilteredRunner(
+        project=project,
+        output_dir=output_dir,
+        dag_filter="dashboard+",
+        thumbnail_mode="none",
+        server_url=server_url,
     )
     runner.run()
 
@@ -184,59 +192,29 @@ def test_runner_dag_filter_with_no_jobs():
     )
 
 
-def test_create_job_dag():
-    model = CsvScriptModelFactory(name="model1")
-    trace = TraceFactory(name="trace1", model=model)
-    project = ProjectFactory(traces=[trace])
-
-    port = get_test_port()
-    server_url = f"http://localhost:{port}"
-
-    runner = Runner(project=project, output_dir=temp_folder(), server_url=server_url)
-    job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 6
-    assert is_directed_acyclic_graph(job_dag)
-
-
-def test_create_job_dag_with_non_referenced_source():
-    model = CsvScriptModelFactory(name="additional_model")
-    trace = TraceFactory(name="additional_trace", model=model)
-    source = SourceFactory(name="source")
-    additional_source = SourceFactory(name="non_referenced_source")
-    project = ProjectFactory(traces=[trace], sources=[source, additional_source])
-
-    port = get_test_port()
-    server_url = f"http://localhost:{port}"
-    runner = Runner(project=project, output_dir=temp_folder(), server_url=server_url)
-    job_dag = runner.create_job_dag()
-    assert len(job_dag.nodes()) == 6
-    assert is_directed_acyclic_graph(job_dag)
-
-
 def test_runner_with_local_merge_and_csv_model():
     output_dir = temp_folder()
-    
+
     csv_model = CsvScriptModelFactory(
-        name="csv_model",
-        args=["echo", "x,y\n1,2\n3,4\n5,6"]
+        name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"]
     )
-    
+
     local_merge_model = LocalMergeModelFactory(
         name="local_merge_model",
         sql="SELECT * FROM csv_model.model",
-        models=[csv_model]
+        models=[csv_model],
     )
-    
+
     trace = TraceFactory(name="trace1", model=local_merge_model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
-    
+
     os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("SELECT x, y, 'values' as cohort_on FROM csv_model.model")
-    
-    runner = Runner(project=project, output_dir=output_dir)
+
+    runner = FilteredRunner(project=project, output_dir=output_dir)
     runner.run()
-    
+
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
     assert os.path.exists(f"{output_dir}/csv_model.duckdb")
@@ -245,30 +223,29 @@ def test_runner_with_local_merge_and_csv_model():
 
 def test_runner_with_nested_local_merge_models():
     output_dir = temp_folder()
-    
+
     # Create a base CSV model
     csv_model = CsvScriptModelFactory(
-        name="csv_model",
-        args=["echo", "x,y\n1,2\n3,4\n5,6"]
+        name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"]
     )
-    
+
     # Create inner local merge model that uses the CSV model
     inner_merge_model = LocalMergeModelFactory(
         name="inner_merge_model",
         sql="SELECT x, y FROM csv_model.model",
-        models=[csv_model]
+        models=[csv_model],
     )
-    
+
     # Create outer local merge model that uses the inner merge model
     outer_merge_model = LocalMergeModelFactory(
         name="outer_merge_model",
         sql="SELECT x, y FROM inner_merge_model.model",
-        models=[inner_merge_model]
+        models=[inner_merge_model],
     )
-    
+
     trace = TraceFactory(name="trace1", model=outer_merge_model)
     project = ProjectFactory(sources=[], traces=[trace], dashboards=[], models=[])
-    
+
     os.makedirs(f"{output_dir}/traces/{trace.name}", exist_ok=True)
     trace_query_sql = """
         WITH 
@@ -293,10 +270,10 @@ def test_runner_with_nested_local_merge_models():
     """
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write(trace_query_sql)
-    
-    runner = Runner(project=project, output_dir=output_dir)
+
+    runner = FilteredRunner(project=project, output_dir=output_dir)
     runner.run()
-    
+
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
     assert os.path.exists(f"{output_dir}/csv_model.duckdb")

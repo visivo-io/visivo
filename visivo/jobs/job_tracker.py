@@ -1,7 +1,7 @@
 from queue import Queue
 from typing import List
 from visivo.models.sources.source import Source
-from visivo.query.jobs.job import Job
+from visivo.jobs.job import Job
 
 
 class JobTracker:

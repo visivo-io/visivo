@@ -1,16 +1,19 @@
-from networkx import DiGraph, simple_cycles, is_directed_acyclic_graph, shortest_path
-from visivo.models.dag import all_descendants_of_type
-from typing import List, Optional, Set
+import json
+import re
+from networkx import DiGraph, simple_cycles, is_directed_acyclic_graph
+from visivo.models.dag import all_descendants_with_name, parse_filter_str, show_dag_fig
+from typing import List, Optional
 
 
 class ProjectDag(DiGraph):
     """
-    Custom implementation of a DiGraph that adds additional methods for validation & data extraction. 
+    Custom implementation of a DiGraph that adds additional methods for validation & data extraction.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._named_nodes_subgraph = None
-        
+
     def get_named_nodes_subgraph(self):
         """Creates the named nodes subgraph if it doesn't exist"""
         if self._named_nodes_subgraph is None:
@@ -20,12 +23,10 @@ class ProjectDag(DiGraph):
     def validate_dag(self):
         if is_directed_acyclic_graph(self):
             return True
-    
+
         circular_references = list(simple_cycles(self))
         if len(circular_references) > 0:
-            circle = " -> ".join(
-                list(map(lambda cr: cr.id(), circular_references[0]))
-            )
+            circle = " -> ".join(list(map(lambda cr: cr.id(), circular_references[0])))
             circle += f" -> {circular_references[0][0].id()}."
             raise ValueError(f"Project contains a circular reference: {circle}")
         raise ValueError("Project is not a valid DAG.")
@@ -50,17 +51,18 @@ class ProjectDag(DiGraph):
 
     def get_nodes_by_types(self, types: List, is_named=Optional[bool]):
         nodes = []
+
         def node_match(node, type) -> bool:
             if not isinstance(node, type):
                 return False
             if is_named is None:
                 return True
-            elif is_named==True:
+            elif is_named == True:
                 if hasattr(node, "name"):
                     return True
                 else:
                     return False
-            elif is_named==False:
+            elif is_named == False:
                 if not hasattr(node, "name"):
                     return True
                 else:
@@ -73,7 +75,7 @@ class ProjectDag(DiGraph):
                     nodes.append(node)
         return nodes
 
-    def __compute_named_nodes_subgraph(self) -> 'ProjectDag':
+    def __compute_named_nodes_subgraph(self) -> "ProjectDag":
         """
         Creates a new DAG containing only named nodes, preserving direct relationships
         between named nodes even when connected through unnamed nodes.
@@ -112,7 +114,7 @@ class ProjectDag(DiGraph):
         Uses the named nodes subgraph to determine relationships.
         """
         named_dag = self.get_named_nodes_subgraph()
-        
+
         try:
             node = named_dag.get_node_by_name(node_name)
             nodes = []
@@ -129,7 +131,7 @@ class ProjectDag(DiGraph):
         Uses the named nodes subgraph to determine relationships.
         """
         named_dag = self.get_named_nodes_subgraph()
-        
+
         try:
             node = named_dag.get_node_by_name(node_name)
             nodes = []
@@ -140,3 +142,112 @@ class ProjectDag(DiGraph):
         except ValueError:
             return []
 
+    def filter_dag(self, filter_str) -> List["ProjectDag"]:
+        from networkx import (
+            subgraph,
+            shortest_path_length,
+            descendants,
+            ancestors,
+            compose,
+        )
+
+        if not filter_str:
+            return [self]
+
+        filtered_dags = []
+        filters = parse_filter_str(filter_str)
+        for filter in filters:
+            post, name, pre = filter
+            item = all_descendants_with_name(name=name, dag=self)
+            if len(item) == 1:
+                item = item[0]
+            else:
+                continue
+            pre_length = 0
+            post_length = 0
+            a = ancestors(self, item)
+            d = descendants(self, item)
+            if pre == "+":
+                pre_length = len(a)
+            elif pre:
+                pre_length = int(pre.replace("+", ""))
+            if post == "+":
+                post_length = len(d)
+            elif post:
+                post_length = int(post.replace("+", ""))
+
+            def matches_length_and_side(node):
+                return (
+                    (node in a and shortest_path_length(self, node, item) <= pre_length)
+                    or (
+                        node in d
+                        and shortest_path_length(self, item, node) <= post_length
+                    )
+                    or node == item
+                )
+
+            filtered_nodes = [
+                node for node in self.nodes if matches_length_and_side(node)
+            ]
+
+            filtered_dags.append(subgraph(self, filtered_nodes))
+
+        def combine_dags(dags):
+            combined_dags = []
+            while dags:
+                dag = dags.pop()
+                combined = False
+                for i, combined_dag in enumerate(combined_dags):
+                    if combined_dag.nodes & dag.nodes:
+                        combined_dags[i] = compose(dag, combined_dag)
+                        combined = True
+                        break
+                if not combined:
+                    combined_dags.append(dag)
+            return combined_dags
+
+        combined_dags = filtered_dags.copy()
+        while True:
+            len_before = len(combined_dags)
+            combined_dags = combine_dags(combined_dags)
+            if len_before == len(combined_dags):
+                break
+        return combined_dags
+
+    def get_diff_dag_filter(self, existing_project, existing_dag_filter):
+        """
+        Compares this project DAG with the existing project's DAG filtered by the existing filter.
+        It identifies nodes that have changed or are new and returns a filter string that includes these nodes.
+
+        Parameters:
+        - existing_project (Project): The existing project to compare with.
+        - existing_dag_filter (str): The filter string used to filter the existing project's DAG.
+
+        Returns:
+        - str: A comma-separated filter string that selects all nodes that are dependent on the changed nodes.
+        """
+        existing_dags = (
+            existing_project.dag()
+            .get_named_nodes_subgraph()
+            .filter_dag(existing_dag_filter)
+        )
+        existing_nodes = [node for dag in existing_dags for node in dag.nodes()]
+        new_dags = self.get_named_nodes_subgraph().filter_dag(existing_dag_filter)
+        new_nodes = [node for dag in new_dags for node in dag.nodes()]
+        changed_dag_filter = []
+        for new_node in new_nodes:
+            existing_node = next(
+                (n for n in existing_nodes if n.name == new_node.name), None
+            )
+            if existing_node:
+                if json.dumps(
+                    existing_node.model_dump_json(), sort_keys=True
+                ) != json.dumps(new_node.model_dump_json(), sort_keys=True):
+                    changed_dag_filter.append(f"{new_node.name}+")
+            else:
+                changed_dag_filter.append(f"{new_node.name}+")
+
+        return ",".join(changed_dag_filter)
+
+    def show(self):
+        show_dag_fig(self)

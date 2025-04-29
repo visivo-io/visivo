@@ -32,13 +32,11 @@ class Job:
         item: NamedModel,
         source: Source,
         action,
-        output_changed: bool = True,
         **kwargs,
     ):
         self.item = item
         self.source = source #PR question: Why do we need this? It seems like it might some uneeded imports and runs
         self.action = action
-        self.output_changed = output_changed
         self.kwargs = kwargs  # These get passed to the action when it is run
         self.future: Future = None
 

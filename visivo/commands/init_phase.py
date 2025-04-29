@@ -152,7 +152,7 @@ def init_phase(project_name=None):
 
     model = SqlModel(name="Example Model", sql="select * from test_table")
     props = Scatter(type="scatter", x="query(x)", y="?{y}")
-    trace = Trace(name="Example Trace", model=model, props=props, changed=None)
+    trace = Trace(name="Example Trace", model=model, props=props)
     chart = Chart(name="Example Chart", traces=[trace])
     item = Item(chart=chart)
     row = Row(items=[item])

@@ -23,7 +23,7 @@ def app(output_dir):
     create_file_database(url=source.url(), output_dir=output_dir)
     
     # Create the Flask app with output_dir as static_folder
-    app = FlaskApp(output_dir, None, project)
+    app = FlaskApp(output_dir, project)
     app.app.config['TESTING'] = True
     return app.app
 
@@ -290,7 +290,7 @@ def test_execute_query_no_sources(client, worksheet_repo):
     os.makedirs(new_output_dir, exist_ok=True)
     
     # Create the Flask app with the new output directory
-    app = FlaskApp(new_output_dir, None, minimal_project)
+    app = FlaskApp(new_output_dir, minimal_project)
     test_client = app.app.test_client()
     
     # Test query execution with no available sources
