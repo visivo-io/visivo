@@ -215,15 +215,27 @@ class ProjectDag(DiGraph):
         return combined_dags
 
     def get_diff_dag_filter(self, existing_project, existing_dag_filter):
+        """
+        Compares this project DAG with the existing project's DAG filtered by the existing filter.
+        It identifies nodes that have changed or are new and returns a filter string that includes these nodes.
+
+        Parameters:
+        - existing_project (Project): The existing project to compare with.
+        - existing_dag_filter (str): The filter string used to filter the existing project's DAG.
+
+        Returns:
+        - str: A comma-separated filter string that selects all nodes that are dependent on the changed nodes.
+        """
         existing_dags = (
             existing_project.dag()
             .get_named_nodes_subgraph()
             .filter_dag(existing_dag_filter)
         )
         existing_nodes = [node for dag in existing_dags for node in dag.nodes()]
-        new_dag = self.get_named_nodes_subgraph()
+        new_dags = self.get_named_nodes_subgraph().filter_dag(existing_dag_filter)
+        new_nodes = [node for dag in new_dags for node in dag.nodes()]
         changed_dag_filter = []
-        for new_node in new_dag.nodes():
+        for new_node in new_nodes:
             existing_node = next(
                 (n for n in existing_nodes if n.name == new_node.name), None
             )

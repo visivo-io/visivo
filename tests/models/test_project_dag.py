@@ -314,3 +314,24 @@ def test_filter_dag():
     assert len(filtered_dag) == 1
     assert len(filtered_dag[0].nodes) == 4
     assert len(filtered_dag[0].edges) == 3
+
+
+def test_get_diff_dag_filter():
+    existing_project = ProjectFactory()
+    new_project = ProjectFactory()
+    other_dashboard = DashboardFactory(name="other_dashboard", rows=[])
+    existing_filter = f"+{existing_project.dashboards[0].name}+"
+
+    project_dag = new_project.dag()
+    diff_filter = project_dag.get_diff_dag_filter(existing_project, existing_filter)
+    assert diff_filter == ""
+
+    new_project.dashboards.append(other_dashboard)
+    project_dag = new_project.dag()
+    diff_filter = project_dag.get_diff_dag_filter(existing_project, existing_filter)
+    assert diff_filter == ""
+
+    new_project.dashboards[0].rows[0].items[0].chart.traces[0].model.sql = "updated sql"
+    project_dag = new_project.dag()
+    diff_filter = project_dag.get_diff_dag_filter(existing_project, existing_filter)
+    assert diff_filter == "dashboard+,row+,item+,chart+,trace+,model+"
