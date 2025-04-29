@@ -30,7 +30,7 @@ const Home = () => {
             </div>
           </div>
         </Link>
-        <Link to="/query" className="col-span-1">
+        <Link to="/explorer" className="col-span-1">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200">
             <div className="flex flex-col items-center p-8">
               <PiMagnifyingGlass className="w-12 h-12 mb-4 text-gray-700" />
