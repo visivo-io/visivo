@@ -6,7 +6,7 @@ import Error from "./styled/Error";
 import { SearchParamsProvider } from "../contexts/SearchParamsContext";
 import TopNav from "./common/TopNav";
 import { HiTemplate } from "react-icons/hi";
-import { PiTreeStructure, PiMagnifyingGlass } from "react-icons/pi";
+import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from "react-icons/pi";
 
 const Home = () => {
   const error = useLoaderData();
@@ -16,9 +16,9 @@ const Home = () => {
 
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         <Link to="/lineage" className="col-span-1">
-          <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200">
+          <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
             <div className="flex flex-col items-center p-8">
               <PiTreeStructure className="w-12 h-12 mb-4 text-gray-700" />
               <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-xs">
@@ -31,7 +31,7 @@ const Home = () => {
           </div>
         </Link>
         <Link to="/explorer" className="col-span-1">
-          <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200">
+          <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
             <div className="flex flex-col items-center p-8">
               <PiMagnifyingGlass className="w-12 h-12 mb-4 text-gray-700" />
               <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-xs">
@@ -43,7 +43,20 @@ const Home = () => {
             </div>
           </div>
         </Link>
-        <Link to="/project" className="col-span-1 md:col-span-2">
+        <Link to="/editor" className="col-span-1">
+          <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200 min-h-60">
+            <div className="flex flex-col items-center p-8">
+              <PiPencil className="w-12 h-12 mb-4 text-gray-700" />
+              <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-xs">
+                <h5 className="text-xl font-medium text-gray-900">Editor</h5>
+              </div>
+              <p className="mt-4 text-gray-600 text-center">
+                Modify your project and preview changes
+              </p>
+            </div>
+          </div>
+        </Link>
+        <Link to="/project" className="col-span-1 md:col-span-3">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200">
             <div className="flex flex-col items-center p-8">
               <HiTemplate className="w-12 h-12 mb-4 text-gray-700" />
