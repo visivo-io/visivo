@@ -5,14 +5,14 @@ let dbPromise = null;
 // Track initialization status
 let initStatus = { state: "idle", progress: 0, message: "" };
 
+const wasmTimeOutDownloadInms = 100 * 1000;
+
 // Get current initialization status
 export function getDuckDBStatus() {
   return { ...initStatus };
 }
 
-// Create an async function that initializes DuckDB
 export function initializeDuckDB(onStatusChange) {
-  // Update status and notify listener
   const updateStatus = (newStatus) => {
     initStatus = { ...initStatus, ...newStatus };
     if (onStatusChange) {
@@ -92,9 +92,15 @@ export function initializeDuckDB(onStatusChange) {
         }
       );
 
-      // Add a timeout to ensure we don't get stuck
+      // Add a timeout for downloading the WASM modules
+      // perhaps this should be configurable based on internet speed?
+      // 100 seconds should be enough for most cases
+      // but we can always increase it if needed
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Download timeout")), 30000);
+        setTimeout(
+          () => reject(new Error("Download timeout")),
+          wasmTimeOutDownloadInms
+        );
       });
 
       // Wait for download or timeout

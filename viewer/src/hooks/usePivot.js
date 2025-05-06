@@ -62,10 +62,6 @@ const usePivot = (db, tableData, columns) => {
         const safeColFields = columnFields.filter(Boolean).map(localFindDbCol);
         const safeValField = localFindDbCol(valueField);
 
-        console.log("Safe row fields:", safeRowFields);
-        console.log("Safe column fields:", safeColFields);
-        console.log("Safe value field:", safeValField);
-
         if (safeRowFields.length === 0) {
           throw new Error("No valid row fields selected");
         }
