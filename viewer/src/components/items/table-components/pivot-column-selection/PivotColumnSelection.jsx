@@ -24,6 +24,7 @@ import { useState, useCallback, useEffect } from "react";
 import RowFieldsSelector from "../RowFieldsSelector";
 import AggregateFunctionSelector from "../AggregateFunctionSelector";
 import ColumnFieldsSelector from "../ColumnFieldsSelector";
+import PivotFields from "../PivotFields";
 
 // import DuckDBCacheStatus from "../../duckdb-wasm-init/DuckDBCacheStatus";
 
@@ -609,32 +610,17 @@ const PivotColumnSelection = ({
           )}
           <DuckDBStatus duckDBStatus={duckDBStatus} db={db} />
         </Box>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-          {/* Row Fields Selection */}
-          <RowFieldsSelector
-            rowFields={rowFields}
-            columns={columns}
-            onChange={handleRowFieldsChange}
-          />
-          {/* Column Fields Selection */}
-          <ColumnFieldsSelector
-            columnFields={columnFields}
-            columns={columns}
-            onChange={handleColumnFieldsChange}
-          />
-          <ValueFieldDropdown
-            valueField={valueField}
-            handleValueFieldChange={handleValueFieldChange}
-            columns={columns}
-            aggregateFunc={aggregateFunc}
-            tableData={tableData}
-          />
-          {/* Aggregate Function Selection */}
-          <AggregateFunctionSelector
-            aggregateFunc={aggregateFunc}
-            onChange={handleAggregateFuncChange}
-          />
-        </Box>
+        <PivotFields
+          rowFields={rowFields}
+          columnFields={columnFields}
+          valueField={valueField}
+          aggregateFunc={aggregateFunc}
+          columns={columns}
+          handleRowFieldsChange={handleRowFieldsChange}
+          handleColumnFieldsChange={handleColumnFieldsChange}
+          handleValueFieldChange={handleValueFieldChange}
+          handleAggregateFuncChange={handleAggregateFuncChange}
+        />
         <Button
           variant="contained"
           color="primary"
