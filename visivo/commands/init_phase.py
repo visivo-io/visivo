@@ -1,3 +1,4 @@
+from importlib.metadata import version
 from typing import get_args
 import click
 import yaml
@@ -158,8 +159,10 @@ def init_phase(project_name=None):
     row = Row(items=[item])
     dashboard = Dashboard(name="Example Dashboard", rows=[row])
     defaults = Defaults(source_name=source.name)
+
+    current_version = version("visivo")
     includes = Include(
-        path="visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml"
+        path=f"visivo-io/visivo.git@v{current_version} -- test-projects/demo/dashboards/welcome.visivo.yml"
     )
     project = Project(
         name=project_name,
