@@ -6,11 +6,16 @@ const useExplorerStore = create((set, get) => ({
   query: "",
   setQuery: (query) => set({ query }),
 
-  // Results and error state
   results: null,
   setResults: (results) => set({ results }),
   error: null,
   setError: (error) => set({ error }),
+  info: null,
+  setInfo: (info) => {
+    console.log("info", info);
+    set({ info });
+    setTimeout(() => set({ info: null }), 5000);
+  },
 
   // Loading state
   isLoading: false,
