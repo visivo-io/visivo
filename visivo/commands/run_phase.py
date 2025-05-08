@@ -73,9 +73,7 @@ def run_phase(
     else:
         threads = int(threads)
 
-    source_details = (
-        "\n" if default_source == None else f" and default source {default_source}\n"
-    )
+    source_details = "\n" if default_source == None else f" and default source {default_source}\n"
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
     runner = FilteredRunner(

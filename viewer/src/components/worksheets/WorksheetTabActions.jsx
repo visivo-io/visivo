@@ -13,19 +13,15 @@ const ActionButton = tw.button`
   p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed
 `;
 
-const WorksheetTabActions = ({
-  onWorksheetCreate,
-  onWorksheetOpen,
-  isLoading
-}) => {
+const WorksheetTabActions = ({ onWorksheetCreate, onWorksheetOpen, isLoading }) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const { allWorksheets, activeWorksheetId, actions } = useWorksheets();
 
-  const handleCreate = (e) => {
+  const handleCreate = e => {
     onWorksheetCreate();
   };
 
-  const handleOpen = (e) => {
+  const handleOpen = e => {
     setIsPopupOpen(true);
     if (onWorksheetOpen) {
       onWorksheetOpen();
@@ -59,7 +55,7 @@ const WorksheetTabActions = ({
           activeWorksheetId={activeWorksheetId}
           onSelect={actions.setActiveWorksheetId}
           onClose={() => setIsPopupOpen(false)}
-          onToggleVisibility={(id, isVisible) => 
+          onToggleVisibility={(id, isVisible) =>
             actions.updateWorksheet(id, { is_visible: isVisible })
           }
           onDelete={actions.deleteWorksheet}
@@ -69,4 +65,4 @@ const WorksheetTabActions = ({
   );
 };
 
-export default WorksheetTabActions; 
+export default WorksheetTabActions;

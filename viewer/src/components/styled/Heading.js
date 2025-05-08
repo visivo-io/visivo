@@ -1,4 +1,4 @@
-import tw from "tailwind-styled-components"
+import tw from 'tailwind-styled-components';
 
 const Heading = tw.div`
     flex

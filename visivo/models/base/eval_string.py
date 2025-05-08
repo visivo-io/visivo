@@ -38,18 +38,12 @@ class EvalString:
         )
 
     def get_references(self) -> List[str]:
-        return list(
-            filter(None, map(lambda c: c.get_reference(), self.get_context_strings()))
-        )
+        return list(filter(None, map(lambda c: c.get_reference(), self.get_context_strings())))
 
     def get_paths(self) -> List[str]:
-        return list(
-            filter(None, map(lambda c: c.get_path(), self.get_context_strings()))
-        )
+        return list(filter(None, map(lambda c: c.get_path(), self.get_context_strings())))
 
-    def evaluate(
-        self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None
-    ) -> Any:
+    def evaluate(self, dag: Any, project: Any, output_dir: str, test_run: TestRun = None) -> Any:
         expression = re.match(EVAL_STRING_REGEX, self.value.strip()).group(1).strip()
         expression = self.__replace_context_strings(expression=expression, dag=dag)
         return evaluate_expression(
@@ -71,9 +65,7 @@ class EvalString:
                     path = path + props_path
                 expression = expression.replace(context_string.value, path)
             else:
-                expression = expression.replace(
-                    context_string.value, context_string.get_path()
-                )
+                expression = expression.replace(context_string.value, context_string.get_path())
         return expression
 
     @classmethod

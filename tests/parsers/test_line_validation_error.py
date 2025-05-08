@@ -28,9 +28,7 @@ def test_found_line_number():
         with open(file, "r") as stream:
             Missing(**yaml.safe_load(stream))
 
-    line_validation_error = LineValidationError(
-        validation_error=exc_info.value, files=[file]
-    )
+    line_validation_error = LineValidationError(validation_error=exc_info.value, files=[file])
 
     assert ":3" in str(line_validation_error)
 
@@ -47,9 +45,7 @@ def test_found_int_line_number():
         with open(file, "r") as stream:
             Missing(**yaml.safe_load(stream))
 
-    line_validation_error = LineValidationError(
-        validation_error=exc_info.value, files=[file]
-    )
+    line_validation_error = LineValidationError(validation_error=exc_info.value, files=[file])
 
     assert ":2" in str(line_validation_error)
 
@@ -58,9 +54,7 @@ def test_extra_input_no_found_line_number():
     setup_yaml_ordered_dict()
     output_dir = temp_folder()
     file = temp_file(
-        contents=yaml.dump(
-            {"required": "value", "other_required": "value", "z_extra": "value"}
-        ),
+        contents=yaml.dump({"required": "value", "other_required": "value", "z_extra": "value"}),
         output_dir=output_dir,
         name="model.yml",
     )
@@ -68,8 +62,6 @@ def test_extra_input_no_found_line_number():
         with open(file, "r") as stream:
             Missing(**yaml.safe_load(stream))
 
-    line_validation_error = LineValidationError(
-        validation_error=exc_info.value, files=[file]
-    )
+    line_validation_error = LineValidationError(validation_error=exc_info.value, files=[file])
 
     assert ":3" in str(line_validation_error)

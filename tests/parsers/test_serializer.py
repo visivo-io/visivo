@@ -38,10 +38,7 @@ def test_Serializer_with_source_ref():
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.sources == []
-    assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].model.source.name
-        == "source"
-    )
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].model.source.name == "source"
 
 
 def test_Serializer_with_default_source():
@@ -51,10 +48,7 @@ def test_Serializer_with_default_source():
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.sources == []
-    assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].model.source.name
-        == "source"
-    )
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].model.source.name == "source"
 
 
 def test_Serializer_with_chart_ref():
@@ -93,10 +87,7 @@ def test_Serializer_with_model_ref():
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.traces == []
-    assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].model.name
-        == "model_name"
-    )
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].model.name == "model_name"
 
 
 def test_Serializer_with_table_model_ref():
@@ -106,10 +97,7 @@ def test_Serializer_with_table_model_ref():
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.traces == []
-    assert (
-        project.dashboards[0].rows[0].items[0].table.traces[0].model.name
-        == "model_name"
-    )
+    assert project.dashboards[0].rows[0].items[0].table.traces[0].model.name == "model_name"
 
 
 def test_Serializer_with_selector_model_ref():
@@ -122,9 +110,7 @@ def test_Serializer_with_selector_model_ref():
     assert project.name == "project"
     assert project.selectors == []
     assert project.dashboards[0].rows[0].items[0].chart.selector.name == "selector_name"
-    assert (
-        project.dashboards[0].rows[0].items[0].chart.selector.options[0].name == "trace"
-    )
+    assert project.dashboards[0].rows[0].items[0].chart.selector.options[0].name == "trace"
 
 
 def test_Serializer_with_refs_does_not_change_original():
@@ -188,9 +174,7 @@ def test_Serializer_with_multiple_use_of_same_ref():
     item_2 = ItemFactory(chart="ref(chart_name)", name="item_2")
     row = RowFactory(items=[item_1, item_2])
     dashboard = DashboardFactory(rows=[row])
-    project = ProjectFactory(
-        dashboards=[dashboard], models=[model], traces=[trace], charts=[chart]
-    )
+    project = ProjectFactory(dashboards=[dashboard], models=[model], traces=[trace], charts=[chart])
     project = Serializer(project=project).dereference()
     assert project.name == "project"
     assert project.sources == []
@@ -199,38 +183,29 @@ def test_Serializer_with_multiple_use_of_same_ref():
     assert project.models == []
     assert project.dashboards[0].rows[0].items[0].chart.name == "chart_name"
     assert project.dashboards[0].rows[0].items[0].chart.traces[0].name == "trace_name"
-    assert (
-        project.dashboards[0].rows[0].items[0].chart.traces[0].model.name
-        == "model_name"
-    )
+    assert project.dashboards[0].rows[0].items[0].chart.traces[0].model.name == "model_name"
     assert project.dashboards[0].rows[0].items[1].chart.name == "chart_name"
     assert project.dashboards[0].rows[0].items[1].chart.traces[0].name == "trace_name"
-    assert (
-        project.dashboards[0].rows[0].items[1].chart.traces[0].model.name
-        == "model_name"
-    )
+    assert project.dashboards[0].rows[0].items[1].chart.traces[0].model.name == "model_name"
 
 
 def test_create_flattened_project():
     """Test the new create_flattened_project method"""
     project = ProjectFactory()
-    
+
     # Add some additional objects to make the test more comprehensive
     model = SqlModelFactory(name="test_model")
     trace = TraceFactory(name="test_trace", model=model)
     chart = ChartFactory(name="test_chart", traces=[trace])
     dashboard = DashboardFactory(
-        name="Test Dashboard",
-        level="L1",
-        tags=["test", "metrics"],
-        description="A test dashboard"
+        name="Test Dashboard", level="L1", tags=["test", "metrics"], description="A test dashboard"
     )
     dashboard.rows[0].items[0].chart = chart
     project.dashboards.append(dashboard)
-    
+
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()
-    
+
     # Verify structure
     assert isinstance(flattened, dict)
     assert "name" in flattened
@@ -241,7 +216,7 @@ def test_create_flattened_project():
     assert "charts" in flattened
     assert "tables" in flattened
     assert "selectors" in flattened
-    
+
     # Verify content
     assert flattened["name"] == project.name
     assert len(flattened["sources"]) > 0
@@ -254,12 +229,12 @@ def test_create_flattened_project_with_default_source():
     """Test flattened project with default source"""
     # Create a project with a source named 'default_source'
     project = ProjectFactory()
-    
+
     # Ensure the source exists and is properly referenced
     source = project.sources[0]
     source.name = "default_source"
     project.defaults = DefaultsFactory(source_name="default_source")
-    
+
     # Update any model references to use this source
     for dashboard in project.dashboards:
         for row in dashboard.rows:
@@ -268,10 +243,10 @@ def test_create_flattened_project_with_default_source():
                     for trace in item.chart.traces:
                         if trace.model:
                             trace.model.source = source
-    
+
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()
-    
+
     assert "default_source" in flattened
     assert flattened["default_source"] == "default_source"
 
@@ -279,7 +254,7 @@ def test_create_flattened_project_with_default_source():
 def test_create_flattened_project_maintains_references():
     """Test that the flattened project maintains proper references between objects"""
     project = ProjectFactory()
-    
+
     # Create a chain of references: Model -> Trace -> Chart -> Dashboard
     model = SqlModelFactory(name="ref_model")
     trace = TraceFactory(name="ref_trace", model=model)
@@ -287,15 +262,15 @@ def test_create_flattened_project_maintains_references():
     dashboard = DashboardFactory(name="ref_dashboard")
     dashboard.rows[0].items[0].chart = chart
     project.dashboards = [dashboard]
-    
+
     serializer = Serializer(project=project)
     flattened = serializer.create_flattened_project()
-    
+
     # Find the chart in flattened data
     chart_data = next(c for c in flattened["charts"] if c["name"] == "ref_chart")
     # Verify it references the correct trace
     assert any(t["name"] == "ref_trace" for t in flattened["traces"])
-    
+
     # Find the trace in flattened data
     trace_data = next(t for t in flattened["traces"] if t["name"] == "ref_trace")
     # Verify it references the correct model

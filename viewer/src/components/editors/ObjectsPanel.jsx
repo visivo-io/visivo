@@ -9,15 +9,12 @@ const ObjectsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTypeKey, setSelectedTypeKey] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  
-  // Use the store for state management
-  const isLoading = useStore((state) => state.isLoading);
-  const error = useStore((state) => state.error);
 
-  const namedChildrenAndType = useStore(
-    (state) => state.namedChildren,
-    shallow
-  );
+  // Use the store for state management
+  const isLoading = useStore(state => state.isLoading);
+  const error = useStore(state => state.error);
+
+  const namedChildrenAndType = useStore(state => state.namedChildren, shallow);
 
   const objectNames = useMemo(() => {
     return Object.keys(namedChildrenAndType);
@@ -31,15 +28,14 @@ const ObjectsPanel = () => {
   const filteredObjects = useMemo(() => {
     return objectNames.filter(name => {
       const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
+      const matchesType =
+        !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
       return matchesSearch && matchesType;
     });
   }, [objectNames, namedChildrenAndType, searchTerm, selectedTypeKey]);
 
   if (isLoading) {
-    return (
-      <Loading text="Loading Project..." width={64} />
-    );
+    return <Loading text="Loading Project..." width={64} />;
   }
 
   if (error) {
@@ -57,16 +53,18 @@ const ObjectsPanel = () => {
         placeholder="Search objects..."
         className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={e => setSearchTerm(e.target.value)}
       />
       <select
         className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
         value={selectedTypeKey}
-        onChange={(e) => setSelectedTypeKey(e.target.value)}
+        onChange={e => setSelectedTypeKey(e.target.value)}
       >
         <option value="">All Types</option>
         {uniqueTypes.map(type => (
-          <option key={type} value={type}>{type === "na" ? "Project" : type.charAt(0).toUpperCase() + type.slice(1)}</option>
+          <option key={type} value={type}>
+            {type === 'na' ? 'Project' : type.charAt(0).toUpperCase() + type.slice(1)}
+          </option>
         ))}
       </select>
       <div className="overflow-y-auto flex-1">
@@ -75,10 +73,7 @@ const ObjectsPanel = () => {
         ) : (
           filteredObjects.map(name => (
             <div key={name} className="mb-2 mr-1 ml-1">
-              <ObjectPill 
-                key={name}
-                name={name}
-              />
+              <ObjectPill key={name} name={name} />
             </div>
           ))
         )}
@@ -95,12 +90,9 @@ const ObjectsPanel = () => {
         </button>
       </div>
 
-      <CreateObjectModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
+      <CreateObjectModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
     </div>
   );
 };
 
-export default ObjectsPanel; 
+export default ObjectsPanel;

@@ -97,9 +97,7 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
             data_file = f"{output_dir}/{file_name}"
             additional_headers = {}
             if "localhost" in upload_url:
-                additional_headers["Content-Disposition"] = (
-                    f"inline;filename={file_name}"
-                )
+                additional_headers["Content-Disposition"] = f"inline;filename={file_name}"
             async with httpx.AsyncClient(timeout=30) as client:
                 async with aiofiles.open(data_file, "rb") as f:
                     response = await client.put(
@@ -212,9 +210,7 @@ async def create_dashboard_records(
             raise
 
 
-async def process_traces_async(
-    traces, output_dir, project_id, form_headers, json_headers, host
-):
+async def process_traces_async(traces, output_dir, project_id, form_headers, json_headers, host):
     """
     Coordinates the asynchronous upload of trace data files and the creation of trace records.
     """
@@ -263,9 +259,7 @@ async def process_traces_async(
     tasks = []
     for i in range(0, len(data_file_ids), batch_size):
         batch = data_file_ids[i : i + batch_size]
-        create_trace_files_task = finish_files(
-            batch, "trace", form_headers, host, progress
-        )
+        create_trace_files_task = finish_files(batch, "trace", form_headers, host, progress)
         tasks.append(create_trace_files_task)
 
     response_items = await asyncio.gather(*tasks, return_exceptions=True)
@@ -313,22 +307,15 @@ async def process_dashboards_async(
         file_names.append(f"{sanitized_name}.png")
 
     # Create thumbnail files
-    create_thumbnail_files_task = start_files(
-        file_names, "thumbnail", form_headers, host, progress
-    )
+    create_thumbnail_files_task = start_files(file_names, "thumbnail", form_headers, host, progress)
 
     thumbnail_file_uploads_nested = await asyncio.gather(
         create_thumbnail_files_task, return_exceptions=True
     )
-    if any(
-        isinstance(data_file_id, Exception)
-        for data_file_id in thumbnail_file_uploads_nested
-    ):
+    if any(isinstance(data_file_id, Exception) for data_file_id in thumbnail_file_uploads_nested):
         raise click.ClickException("Failed to create thumbnail files.")
 
-    thumbnail_file_uploads = [
-        item for sublist in thumbnail_file_uploads_nested for item in sublist
-    ]
+    thumbnail_file_uploads = [item for sublist in thumbnail_file_uploads_nested for item in sublist]
 
     tasks = []
     for thumbnail_file_upload in thumbnail_file_uploads:
@@ -389,20 +376,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     # Discover and parse project details
     Logger.instance().info("")
     Logger.instance().debug("Compiling project details...")
-    discover = Discover(
-        working_dir=working_dir, home_dir=user_dir, output_dir=output_dir
-    )
-    parser = ParserFactory().build(
-        project_file=discover.project_file, files=discover.files
-    )
+    discover = Discover(working_dir=working_dir, home_dir=user_dir, output_dir=output_dir)
+    parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
     project = parser.parse()
     serializer = Serializer(project=project)
-    project_json = json.loads(
-        serializer.dereference().model_dump_json(exclude_none=True)
-    )
-    Logger.instance().success(
-        f"Project Compiled in {time() - deploy_start_time:.2f} seconds"
-    )
+    project_json = json.loads(serializer.dereference().model_dump_json(exclude_none=True))
+    Logger.instance().success(f"Project Compiled in {time() - deploy_start_time:.2f} seconds")
 
     # Prepare request payloads and headers
     body = {
@@ -485,13 +464,9 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
                 f"Deployment completed in {time() - deploy_start_time:.2f} seconds"
             )
         else:
-            Logger.instance().info(
-                f"Deployment failed in {time() - deploy_start_time:.2f} seconds"
-            )
+            Logger.instance().info(f"Deployment failed in {time() - deploy_start_time:.2f} seconds")
             sys.exit(1)
         return project_url
     else:
-        Logger.instance().info(
-            f"Deployment failed in {time() - deploy_start_time:.2f} seconds"
-        )
+        Logger.instance().info(f"Deployment failed in {time() - deploy_start_time:.2f} seconds")
         raise click.ClickException(f"There was an unexpected error: {response.content}")

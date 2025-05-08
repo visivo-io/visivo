@@ -35,9 +35,7 @@ def setup_project(output_dir):
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
     return project, working_dir
 
@@ -48,9 +46,7 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
     # First run the project to generate data
     from visivo.commands.run import run
 
-    run_result = runner.invoke(
-        run, ["-w", working_dir, "-o", output_dir, "-s", "source"]
-    )
+    run_result = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
     assert run_result.exit_code == 0
 
     # Then run dist to package it
@@ -85,9 +81,7 @@ def test_dist_errors_without_data(setup_project, output_dir, dist_dir):
 
 
 def test_dist_errors_with_invalid_working_dir(output_dir, dist_dir):
-    result = runner.invoke(
-        dist, ["--output-dir", "nonexistent_dir", "--dist-dir", dist_dir]
-    )
+    result = runner.invoke(dist, ["--output-dir", "nonexistent_dir", "--dist-dir", dist_dir])
 
     # Check for error message instead of exit code
     assert "Error creating dist" in result.output

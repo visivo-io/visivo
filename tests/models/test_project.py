@@ -20,9 +20,10 @@ def test_Project_simple_data():
     project = Project(**data)
     assert project.name == "development"
 
+
 def test_Project_dashboard_parsing():
     external_dashboard = ExternalDashboardFactory(href="https://example.com")
-    
+
     ref = "ref(trace_name)"
     chart = ChartFactory(traces=[ref])
     source = SourceFactory()
@@ -31,15 +32,19 @@ def test_Project_dashboard_parsing():
     row = RowFactory(items=[item])
     dashboard = DashboardFactory(rows=[row])
 
-    data = {"name": "development", "traces": [trace], "dashboards": [external_dashboard, dashboard], "sources": [source]}
+    data = {
+        "name": "development",
+        "traces": [trace],
+        "dashboards": [external_dashboard, dashboard],
+        "sources": [source],
+    }
     project = Project(**data)
     assert project.dashboards[0].type == "external"
     assert project.dashboards[0].href == HttpUrl("https://example.com")
     assert project.dashboards[1].type == "internal"
     assert hasattr(project.dashboards[1], "rows")
-    assert not( hasattr(project.dashboards[0], "rows"))
-    
-    
+    assert not (hasattr(project.dashboards[0], "rows"))
+
 
 def test_Project_validate_project_trace_refs():
     ref = "ref(trace_name)"
@@ -113,10 +118,7 @@ def test_Project_validate_dashboard_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert (
-        error["msg"]
-        == f"Value error, Dashboard name 'dashboard' is not unique in the project"
-    )
+    assert error["msg"] == f"Value error, Dashboard name 'dashboard' is not unique in the project"
     assert error["type"] == "value_error"
 
 
@@ -134,9 +136,7 @@ def test_Project_validate_chart_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert (
-        error["msg"] == f"Value error, Chart name 'chart' is not unique in the project"
-    )
+    assert error["msg"] == f"Value error, Chart name 'chart' is not unique in the project"
     assert error["type"] == "value_error"
 
 
@@ -157,9 +157,7 @@ def test_Project_validate_trace_names():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert (
-        error["msg"] == f"Value error, Trace name 'trace' is not unique in the project"
-    )
+    assert error["msg"] == f"Value error, Trace name 'trace' is not unique in the project"
     assert error["type"] == "value_error"
 
 
@@ -219,9 +217,7 @@ def test_Project_validate_table_single():
     source = SourceFactory()
     data = {
         "name": "development",
-        "tables": [
-            {"name": "Table", "selector": {"name": "selector", "type": "multiple"}}
-        ],
+        "tables": [{"name": "Table", "selector": {"name": "selector", "type": "multiple"}}],
     }
     with pytest.raises(ValidationError) as exc_info:
         Project(**data)
@@ -261,6 +257,7 @@ def test_set_paths_on_models():
     assert project.dashboards[0].path == "project.dashboards[0]"
     assert project.dashboards[0].rows[0].path == "project.dashboards[0].rows[0]"
 
+
 def test_get_child_objects():
     project_children_fields = Project.get_child_objects()
     assert "dashboards" in project_children_fields
@@ -281,7 +278,12 @@ def test_named_child_nodes():
     row = RowFactory(items=[item])
     dashboard = DashboardFactory(rows=[row])
 
-    data = {"name": "development", "traces": [trace], "dashboards": [dashboard], "sources": [source]}
+    data = {
+        "name": "development",
+        "traces": [trace],
+        "dashboards": [dashboard],
+        "sources": [source],
+    }
     project = Project(**data)
     named_nodes = project.named_child_nodes()
 

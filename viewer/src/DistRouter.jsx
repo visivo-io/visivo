@@ -1,16 +1,12 @@
-import React from "react";
-import {
-  Route,
-  createBrowserRouter,
-  createRoutesFromElements,
-} from "react-router-dom";
-import { loadProject } from "./loaders/project";
-import ProjectContainer from "./components/project/ProjectContainer";
-import BreadcrumbLink from "./components/common/BreadcrumbLink";
-import ErrorPage from "./components/common/ErrorPage";
-import DistHome from "./components/DistHome";
-import { loadError } from "./loaders/error";
-import logo from "./images/logo.png";
+import React from 'react';
+import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { loadProject } from './loaders/project';
+import ProjectContainer from './components/project/ProjectContainer';
+import BreadcrumbLink from './components/common/BreadcrumbLink';
+import ErrorPage from './components/common/ErrorPage';
+import DistHome from './components/DistHome';
+import { loadError } from './loaders/error';
+import logo from './images/logo.png';
 
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
@@ -44,7 +40,7 @@ const DistRouter = createBrowserRouter(
           loader={loadProject}
           shouldRevalidate={() => false}
           handle={{
-            crumb: (match) => (
+            crumb: match => (
               <BreadcrumbLink to={`/${match.params.dashboardName}`}>
                 {match.params.dashboardName}
               </BreadcrumbLink>

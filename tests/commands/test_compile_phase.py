@@ -20,19 +20,13 @@ def test_filtered_dashboard():
     additional_dashboard.rows[0].name = "Additional Row"
     additional_dashboard.rows[0].items[0].name = "Additional Item"
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
-    additional_dashboard.rows[0].items[
-        0
-    ].chart.selector.name = "Additional Chart Selector"
+    additional_dashboard.rows[0].items[0].chart.selector.name = "Additional Chart Selector"
     additional_dashboard.rows[0].items[0].chart.traces[0].name = "Additional Trace"
-    additional_dashboard.rows[0].items[0].chart.traces[
-        0
-    ].model.name = "Additional Model"
+    additional_dashboard.rows[0].items[0].chart.traces[0].model.name = "Additional Model"
     project.dashboards.append(additional_dashboard)
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
@@ -51,13 +45,9 @@ def test_compile_csv_script_model():
     project.sources = []
     model = CsvScriptModelFactory(name="csv_script_model")
     project.dashboards[0].rows[0].items[0].chart.traces[0].model = model
-    create_file_database(
-        url=model.get_duckdb_source(output_dir).url(), output_dir=output_dir
-    )
+    create_file_database(url=model.get_duckdb_source(output_dir).url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
@@ -77,9 +67,7 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
     project.sources = []
 
     # Create a base CSV model
-    csv_model = CsvScriptModelFactory(
-        name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"]
-    )
+    csv_model = CsvScriptModelFactory(name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"])
 
     # Create inner local merge model that uses the CSV model
     inner_merge_model = LocalMergeModelFactory(
@@ -105,9 +93,7 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
         output_dir=output_dir,
     )
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     compile_phase(
@@ -166,9 +152,7 @@ def test_explorer_json_creation():
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     compile_phase(

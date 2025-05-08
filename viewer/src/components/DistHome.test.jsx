@@ -1,24 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import DistHome from './DistHome';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 const loadError = () => {
-  return { message: "Error Message" }
-}
+  return { message: 'Error Message' };
+};
 
 const routes = [
   {
-    path: "/",
+    path: '/',
     element: <DistHome />,
-    loader: loadError
+    loader: loadError,
   },
 ];
 
 const router = createMemoryRouter(routes, {
-  initialEntries: ["/"],
+  initialEntries: ['/'],
   initialIndex: 0,
 });
 

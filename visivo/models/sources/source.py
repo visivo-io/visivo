@@ -28,9 +28,7 @@ class Source(ABC, NamedModel):
 
     @abstractmethod
     def get_connection(self):
-        raise NotImplementedError(
-            f"No get_connection method implemented for {self.type}"
-        )
+        raise NotImplementedError(f"No get_connection method implemented for {self.type}")
 
     @abstractmethod
     def read_sql(self, query: str):

@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
-import Project from "./Project";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import QueryContext from "../../contexts/QueryContext";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from '@testing-library/react';
+import Project from './Project';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import QueryContext from '../../contexts/QueryContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock window.scrollTo
 beforeAll(() => {
@@ -13,16 +13,16 @@ afterAll(() => {
   window.scrollTo.mockRestore();
 });
 
-const getProject = (items) => {
+const getProject = items => {
   return {
     project_json: {
       selectors: [],
       dashboards: [
         {
-          name: "dashboard",
+          name: 'dashboard',
           rows: [
             {
-              height: "medium",
+              height: 'medium',
               items: items,
             },
           ],
@@ -49,12 +49,12 @@ const queryClient = new QueryClient({
   },
 });
 
-test("renders dashboard names without dashboard name param", async () => {
-  const project = getProject([{ width: 1, markdown: "First Markdown" }]);
+test('renders dashboard names without dashboard name param', async () => {
+  const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
   render(
     <QueryClientProvider client={queryClient}>
       <QueryContext.Provider value={mockQueryContext}>
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        <MemoryRouter initialEntries={['/dashboard']}>
           <Routes>
             <Route
               path="/:dashboardName?"
@@ -63,7 +63,7 @@ test("renders dashboard names without dashboard name param", async () => {
                   project={project}
                   fetchTraces={fetchTraces}
                   dashboardName={null}
-                  dashboards={[{ name: "dashboard", path: "/dashboard" }]}
+                  dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
                 />
               }
             />
@@ -74,20 +74,20 @@ test("renders dashboard names without dashboard name param", async () => {
     </QueryClientProvider>
   );
 
-  const text = await screen.findByRole("heading", {
+  const text = await screen.findByRole('heading', {
     name: /dashboard/i,
     level: 3,
   });
   expect(text).toBeInTheDocument();
 });
 
-test("renders dashboard with dashboard name param", async () => {
-  const project = getProject([{ width: 1, markdown: "First Markdown" }]);
+test('renders dashboard with dashboard name param', async () => {
+  const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
 
   render(
     <QueryClientProvider client={queryClient}>
       <QueryContext.Provider value={mockQueryContext}>
-        <MemoryRouter initialEntries={["/dashboard"]}>
+        <MemoryRouter initialEntries={['/dashboard']}>
           <Routes>
             <Route
               path="/:dashboardName?"
@@ -95,8 +95,8 @@ test("renders dashboard with dashboard name param", async () => {
                 <Project
                   project={project}
                   fetchTraces={fetchTraces}
-                  dashboardName={"dashboard"}
-                  dashboards={[{ name: "dashboard", path: "/dashboard" }]}
+                  dashboardName={'dashboard'}
+                  dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
                 />
               }
             />

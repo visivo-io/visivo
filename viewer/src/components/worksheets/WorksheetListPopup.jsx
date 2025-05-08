@@ -35,8 +35,8 @@ const WorksheetList = tw.div`
 
 const WorksheetItem = tw.div`
   flex items-center justify-between p-3 rounded-lg cursor-pointer group transition-all duration-200
-  ${props => props.$isVisible ? 'bg-gray-50' : 'bg-white'}
-  ${props => props.$isActive ? 'bg-gray-100' : ''}
+  ${props => (props.$isVisible ? 'bg-gray-50' : 'bg-white')}
+  ${props => (props.$isActive ? 'bg-gray-100' : '')}
   hover:bg-gray-100
 `;
 
@@ -63,18 +63,16 @@ const WorksheetListPopup = ({
   onSelect,
   onClose,
   onToggleVisibility,
-  onDelete
+  onDelete,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingIds, setDeletingIds] = useState(new Set());
 
   const filteredWorksheets = worksheets
     .filter(worksheet => !deletingIds.has(worksheet.id))
-    .filter(worksheet =>
-      worksheet.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    .filter(worksheet => worksheet.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const handleSelect = async (worksheet) => {
+  const handleSelect = async worksheet => {
     try {
       // If the worksheet is already visible, just select it and close the popup
       if (worksheet.is_visible) {
@@ -85,8 +83,8 @@ const WorksheetListPopup = ({
 
       // If worksheet is not visible, make it visible and update its state
       await onToggleVisibility(worksheet.id, true);
-      
-      // Select the worksheet (this will trigger the useEffect in QueryExplorer 
+
+      // Select the worksheet (this will trigger the useEffect in QueryExplorer
       // that loads the worksheet's query and results)
       onSelect(worksheet.id);
       onClose();
@@ -98,13 +96,13 @@ const WorksheetListPopup = ({
   const handleDelete = async (e, worksheetId) => {
     e.stopPropagation();
     setDeletingIds(prev => new Set([...prev, worksheetId]));
-    
+
     // Wait for animation to complete before deleting
     try {
       // Start animation
       const animationDuration = 300; // matches the CSS animation duration
       await new Promise(resolve => setTimeout(resolve, animationDuration));
-      
+
       // Delete worksheet
       await onDelete(worksheetId);
     } catch (err) {
@@ -151,7 +149,7 @@ const WorksheetListPopup = ({
                   {worksheet.is_visible && <VisibilityIcon fontSize="small" />}
                 </VisibilityIndicator>
                 <IconButton
-                  onClick={(e) => handleDelete(e, worksheet.id)}
+                  onClick={e => handleDelete(e, worksheet.id)}
                   aria-label="Delete worksheet"
                   disabled={deletingIds.has(worksheet.id)}
                 >
@@ -161,9 +159,7 @@ const WorksheetListPopup = ({
             </WorksheetItem>
           ))}
           {filteredWorksheets.length === 0 && (
-            <div className="text-center text-gray-500 py-4">
-              No worksheets found
-            </div>
+            <div className="text-center text-gray-500 py-4">No worksheets found</div>
           )}
         </WorksheetList>
       </PopupContent>
@@ -171,4 +167,4 @@ const WorksheetListPopup = ({
   );
 };
 
-export default WorksheetListPopup; 
+export default WorksheetListPopup;

@@ -12,9 +12,7 @@ def test_yml_to_dict():
     expected_return = {"this": ["is", "a", "yaml"], "file": "to read"}
     assert expected_return == func_recturn
 
-    response = yml_to_dict(
-        "tests/fixtures/folder_with_yamls/nested_folder/nested_yaml_file.yaml"
-    )
+    response = yml_to_dict("tests/fixtures/folder_with_yamls/nested_folder/nested_yaml_file.yaml")
     expected_response = {
         "dashboards": [
             {

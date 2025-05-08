@@ -178,9 +178,7 @@ def all_nodes_including_named_node_in_graph(name: str, dag):
 
 
 def parse_filter_str(filter_str) -> List[Tuple[str, str, str]]:
-    pattern = (
-        r"((?P<pre>\d*\+)?\s*(?P<name>[a-zA-Z0-9\s'\"\-_]+)\s*(?P<post>\+\d*)?)(,|$)"
-    )
+    pattern = r"((?P<pre>\d*\+)?\s*(?P<name>[a-zA-Z0-9\s'\"\-_]+)\s*(?P<post>\+\d*)?)(,|$)"
     matches = re.finditer(pattern, filter_str)
 
     filters = []

@@ -71,10 +71,7 @@ def test_Trace_column_root_validation_with_reference_missing():
         Trace(**data)
 
     error = exc_info.value.errors()[0]
-    assert (
-        error["msg"]
-        == "Value error, referenced column name 'y' is not in columns definition"
-    )
+    assert error["msg"] == "Value error, referenced column name 'y' is not in columns definition"
     assert error["type"] == "value_error"
 
 

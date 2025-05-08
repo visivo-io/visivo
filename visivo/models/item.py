@@ -121,16 +121,12 @@ class Item(NamedModel, ParentModel):
         1,
         description="The width of the Item determines is evaluated relative to the other items in a row.",
     )
-    markdown: Optional[str] = Field(
-        None, description="Markdown text to include in the dashboard."
-    )
+    markdown: Optional[str] = Field(None, description="Markdown text to include in the dashboard.")
     align: Optional[Literal["left", "center", "right"]] = Field(
         None,
         description="Alignment of markdown content. Only valid when markdown is set. Options are 'left', 'center', or 'right'.",
     )
-    justify: Optional[
-        Literal["start", "end", "center", "between", "around", "evenly"]
-    ] = Field(
+    justify: Optional[Literal["start", "end", "center", "between", "around", "evenly"]] = Field(
         None,
         description="Justification of markdown content within its container. Options are 'start', 'end', 'center', 'between', 'around', or 'evenly'.",
     )

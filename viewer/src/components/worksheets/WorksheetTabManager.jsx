@@ -20,22 +20,20 @@ const WorksheetTabManager = ({
   onWorksheetOpen,
   onWorksheetRename,
   onWorksheetClose,
-  isLoading
+  isLoading,
 }) => {
   const { actions } = useWorksheets();
 
-  const handleWorksheetClose = (worksheetId) => {
+  const handleWorksheetClose = worksheetId => {
     if (onWorksheetClose) {
       onWorksheetClose(worksheetId);
     } else {
       // Hide the worksheet instead of deleting it
       actions.updateWorksheet(worksheetId, { is_visible: false });
-      
+
       // If we're closing the active worksheet, switch to another visible one
       if (worksheetId === activeWorksheetId) {
-        const nextVisibleWorksheet = worksheets.find(w => 
-          w.id !== worksheetId && w.is_visible
-        );
+        const nextVisibleWorksheet = worksheets.find(w => w.id !== worksheetId && w.is_visible);
         if (nextVisibleWorksheet) {
           onWorksheetSelect(nextVisibleWorksheet.id);
         }
@@ -70,4 +68,4 @@ const WorksheetTabManager = ({
   );
 };
 
-export default WorksheetTabManager; 
+export default WorksheetTabManager;

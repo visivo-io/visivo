@@ -98,15 +98,11 @@ class TraceTokenizer:
             order_by = []
             for statement in self.order_by:
                 statement_lower = statement.lower()
-                statement_clean = (
-                    statement_lower.replace("asc", "").replace("desc", "").strip()
-                )
+                statement_clean = statement_lower.replace("asc", "").replace("desc", "").strip()
                 order_by.append(statement_clean)
         else:
             order_by = []
-        query_statements = (
-            list(self.select_items.values()) + order_by + [self._get_cohort_on()]
-        )
+        query_statements = list(self.select_items.values()) + order_by + [self._get_cohort_on()]
         groupby = []
         for statement in query_statements:
             if re.findall(r"^\s*'.*'\s*$", statement):

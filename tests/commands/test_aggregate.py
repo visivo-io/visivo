@@ -21,9 +21,7 @@ def test_aggregate():
     )
     json_file.close()
 
-    response = runner.invoke(
-        aggregate, ["-j", f"{output_dir}/temp.json", "-o", output_dir]
-    )
+    response = runner.invoke(aggregate, ["-j", f"{output_dir}/temp.json", "-o", output_dir])
 
     assert "Aggregating" in response.output
     assert response.exit_code == 0

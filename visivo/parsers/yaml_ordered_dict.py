@@ -40,12 +40,8 @@ class YamlOrderedDict(OrderedDict):
 
 def setup_yaml_ordered_dict():
     # Use YamlOrderedDict objects for yaml maps instead of normal dict
-    yaml.add_representer(
-        OrderedDict, lambda dumper, data: dumper.represent_dict(data.items())
-    )
-    yaml.add_representer(
-        YamlOrderedDict, lambda dumper, data: dumper.represent_dict(data.items())
-    )
+    yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_dict(data.items()))
+    yaml.add_representer(YamlOrderedDict, lambda dumper, data: dumper.represent_dict(data.items()))
 
     def _load_YamlOrderedDict(loader, node):
         rv = YamlOrderedDict(loader.construct_pairs(node))

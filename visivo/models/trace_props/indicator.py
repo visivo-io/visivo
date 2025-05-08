@@ -178,9 +178,7 @@ class IndicatorGaugeAxis(TracePropsAttribute):
         None,
         description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """,
     )
-    tickcolor: Optional[str] = Field(
-        None, description=""" color<br>Sets the tick color. """
-    )
+    tickcolor: Optional[str] = Field(None, description=""" color<br>Sets the tick color. """)
     tickfont: Optional[
         TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGrouptitlefont1
     ] = Field(
@@ -207,16 +205,12 @@ class IndicatorGaugeAxis(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "auto" | "linear" | "array" )<br>Sets the tick mode for this axis. If "auto", the number of ticks is set via `nticks`. If "linear", the placement of the ticks is determined by a starting position `tick0` and a tick step `dtick` ("linear" is the default value if `tick0` and `dtick` are provided). If "array", the placement of the ticks is set via `tickvals` and the tick text is `ticktext`. ("array" is the default value if `tickvals` is provided). """,
     )
-    tickprefix: Optional[str] = Field(
-        None, description=""" string<br>Sets a tick label prefix. """
-    )
+    tickprefix: Optional[str] = Field(None, description=""" string<br>Sets a tick label prefix. """)
     ticks: Optional[str] = Field(
         None,
         description=""" enumerated , one of ( "outside" | "inside" | "" )<br>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. """,
     )
-    ticksuffix: Optional[str] = Field(
-        None, description=""" string<br>Sets a tick label suffix. """
-    )
+    ticksuffix: Optional[str] = Field(None, description=""" string<br>Sets a tick label suffix. """)
     ticktext: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,

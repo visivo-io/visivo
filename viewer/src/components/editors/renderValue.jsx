@@ -5,11 +5,7 @@ import AttributeComponent from './AttributeComponent';
 function renderValue(key, value, path) {
   // Handle null or undefined values
   if (value === null || value === undefined) {
-    return (
-      <div className="text-sm text-gray-500 italic">
-        {key ? `${key}: ` : ''}null
-      </div>
-    );
+    return <div className="text-sm text-gray-500 italic">{key ? `${key}: ` : ''}null</div>;
   }
 
   if (typeof value === 'object') {

@@ -1,4 +1,4 @@
-import tw from "tailwind-styled-components"
+import tw from 'tailwind-styled-components';
 
 const Link = tw.span`
     block 
@@ -7,14 +7,12 @@ const Link = tw.span`
     hover:bg-gray-100 
 `;
 
-
 const MenuItem = ({ children, onClick }) => {
-    return (
-        <li>
-            <Link onClick={onClick}>{children}</Link>
-        </li>
-    )
-}
+  return (
+    <li>
+      <Link onClick={onClick}>{children}</Link>
+    </li>
+  );
+};
 
-export default MenuItem
-
+export default MenuItem;
