@@ -9,8 +9,9 @@ import click
 import os
 from time import time
 
+
 def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target):
-    
+
     # Run and Track dbt phase
     dbt_start = time()
     Logger.instance().debug("    Running dbt phase...")
@@ -20,10 +21,8 @@ def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, db
         Logger.instance().info(f"dbt phase completed in {dbt_duration}s")
 
     discover = Discover(working_dir=working_dir, output_dir=output_dir)
-    parser = ParserFactory().build(
-        project_file=discover.project_file, files=discover.files
-    )
-    
+    parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
+
     project = None
     try:
         project = parser.parse()
@@ -42,8 +41,6 @@ def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, db
         if hasattr(e, "problem_mark"):
             mark = e.problem_mark
             message = f"\n Error position: line:{mark.line+1} column:{mark.column+1}\n"
-        raise click.ClickException(
-            f"There was an error parsing the yml file(s):{message} {e}"
-        )
+        raise click.ClickException(f"There was an error parsing the yml file(s):{message} {e}")
 
     return project

@@ -114,10 +114,7 @@ def test_dbt_with_missing_profile():
             dbt_profile="does_not_exist",
             dbt_target=None,
         )
-        assert (
-            exc_info.value.message
-            == f"Profile 'does_not_exist' not found in profiles.yml"
-        )
+        assert exc_info.value.message == f"Profile 'does_not_exist' not found in profiles.yml"
 
 
 def test_dbt_with_missing_target():
@@ -132,10 +129,7 @@ def test_dbt_with_missing_target():
             dbt_profile=None,
             dbt_target="does_not_exist",
         )
-        assert (
-            exc_info.value.message
-            == f"Target'does_not_exist' not found in profiles.yml"
-        )
+        assert exc_info.value.message == f"Target'does_not_exist' not found in profiles.yml"
 
 
 def test_dbt_with_missing_manifest():

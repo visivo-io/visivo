@@ -38,9 +38,7 @@ def authorize(host):
 
     existing_token = get_existing_token()
     if existing_token:
-        Logger.instance().info(
-            f"A token already exists in your profile: {existing_token}"
-        )
+        Logger.instance().info(f"A token already exists in your profile: {existing_token}")
         if not click.confirm("Do you want to add a new token?"):
             Logger.instance().info("Authorization cancelled. Using the existing token.")
             return
@@ -86,9 +84,7 @@ def authorize(host):
                 )
                 return
             else:
-                Logger.instance().info(
-                    "Continuing to wait for token. Press Ctrl+C to cancel."
-                )
+                Logger.instance().info("Continuing to wait for token. Press Ctrl+C to cancel.")
                 token_received_event.wait()  # Wait indefinitely.
     except KeyboardInterrupt:
         Logger.instance().info("Authorization process cancelled by user.")

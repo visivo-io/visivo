@@ -2,13 +2,18 @@ import { executeQuery } from "../services/queryService";
 
 const createExplorerSlice = (set, get) => ({
   // Query related state
-  query: "",
-  setQuery: (query) => set({ query }),
+  query: '',
+  setQuery: query => set({ query }),
 
   results: null,
-  setResults: (results) => set({ results }),
+  setResults: results => set({ results }),
   error: null,
-  setError: (error) => set({ error }),
+  setError: error => set({ error }),
+  info: null,
+  setInfo: info => {
+    set({ info });
+    setTimeout(() => set({ info: null }), 5000);
+  },
   info: null,
   setInfo: (info) => {
     console.log("info", info);
@@ -18,42 +23,42 @@ const createExplorerSlice = (set, get) => ({
 
   // Loading state
   isLoading: false,
-  setIsLoading: (isLoading) => set({ isLoading }),
+  setIsLoading: isLoading => set({ isLoading }),
 
   // Explorer data state
   explorerData: null,
-  setExplorerData: (explorerData) => set({ explorerData }),
+  setExplorerData: explorerData => set({ explorerData }),
 
   // Tree data state
   treeData: [],
-  setTreeData: (treeData) => set({ treeData }),
+  setTreeData: treeData => set({ treeData }),
 
   // Tab selection
-  selectedType: "models",
-  setSelectedType: (selectedType) => set({ selectedType }),
+  selectedType: 'models',
+  setSelectedType: selectedType => set({ selectedType }),
 
   // Source selection
   selectedSource: null,
-  setSelectedSource: (selectedSource) => set({ selectedSource }),
+  setSelectedSource: selectedSource => set({ selectedSource }),
 
   // Query stats
   queryStats: null,
-  setQueryStats: (queryStats) => set({ queryStats }),
+  setQueryStats: queryStats => set({ queryStats }),
 
   // Split ratio for panels
   splitRatio: 0.5,
-  setSplitRatio: (splitRatio) => set({ splitRatio }),
+  setSplitRatio: splitRatio => set({ splitRatio }),
 
   // Dragging state
   isDragging: false,
-  setIsDragging: (isDragging) => set({ isDragging }),
+  setIsDragging: isDragging => set({ isDragging }),
 
   // Project and worksheet context
   project: null,
-  setProject: (project) => set({ project }),
+  setProject: project => set({ project }),
 
   activeWorksheetId: null,
-  setActiveWorksheetId: (activeWorksheetId) => set({ activeWorksheetId }),
+  setActiveWorksheetId: activeWorksheetId => set({ activeWorksheetId }),
 
   // Query execution
   handleRunQuery: async () => {
@@ -69,7 +74,7 @@ const createExplorerSlice = (set, get) => ({
     } = get();
 
     if (!query?.trim()) {
-      setError("Please enter a query");
+      setError('Please enter a query');
       return;
     }
 
@@ -98,16 +103,16 @@ const createExplorerSlice = (set, get) => ({
       });
 
       const formattedResults = {
-        name: "Query Results",
+        name: 'Query Results',
         traces: [
           {
-            name: "results",
+            name: 'results',
             props: {},
             data: queryResults.data.map((row, index) => ({
               id: index,
               ...row,
             })),
-            columns: queryResults.columns.map((col) => ({
+            columns: queryResults.columns.map(col => ({
               header: col,
               key: col,
               accessorKey: col,
@@ -119,7 +124,7 @@ const createExplorerSlice = (set, get) => ({
 
       setResults(formattedResults);
     } catch (err) {
-      setError(err.message || "Failed to execute query");
+      setError(err.message || 'Failed to execute query');
     } finally {
       setIsLoading(false);
     }

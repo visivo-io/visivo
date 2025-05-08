@@ -117,9 +117,8 @@ KEYWORDS = {
             "min_by",
             "product",
             "string_agg",
-            "sum"
-    },
-
+            "sum",
+        },
     },
     "comparison": {
         "all": {">", "<", "=", ">=", "<=", "<>", "!=", "like", "in", "is"},
@@ -129,7 +128,7 @@ KEYWORDS = {
         "mysql": {},
         "sqlite": {},
         "duckdb": {"ilike"},
-    }
+    },
 }
 
 

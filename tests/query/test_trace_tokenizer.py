@@ -84,9 +84,7 @@ def test_tokenization_with_column_functions():
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.cohort_on == "widget"
     assert tokenized_trace.select_items["columns.x"] == "sum(amount)"
-    assert (
-        tokenized_trace.select_items["columns.y"] == "date_trunc('week', completed_at)"
-    )
+    assert tokenized_trace.select_items["columns.y"] == "date_trunc('week', completed_at)"
     assert len(tokenized_trace.groupby_statements) == 2
     assert "date_trunc('week', completed_at)" in tokenized_trace.groupby_statements
 
@@ -167,10 +165,7 @@ def test_tokenization_order_by_window():
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
     assert "count(completed_at)OVER(PARTITION BY widget)" in tokenized_trace.order_by
-    assert (
-        "count(completed_at)over(partition by widget)"
-        in tokenized_trace.groupby_statements
-    )
+    assert "count(completed_at)over(partition by widget)" in tokenized_trace.groupby_statements
 
 
 def test_tokenization_filter_window_agg_vanilla():
@@ -188,10 +183,7 @@ def test_tokenization_filter_window_agg_vanilla():
     source = SnowflakeSourceFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
-    assert (
-        "count(completed_at)OVER(PARTITION BY widget) > 2"
-        in tokenized_trace.filter_by["window"]
-    )
+    assert "count(completed_at)OVER(PARTITION BY widget) > 2" in tokenized_trace.filter_by["window"]
     assert "count(distinct another_column)>2" in tokenized_trace.filter_by["aggregate"]
     assert "a_different_column = 'value'" in tokenized_trace.filter_by["vanilla"]
 

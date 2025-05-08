@@ -42,7 +42,7 @@ class Mkdocs:
 
         def add_line_area_links(updated_mkdocs_nav):
             """Modifies the mkdocs nav object to include links to the line and area pages from the scatter page."""
-            scatter_path = find_path(updated_mkdocs_nav, 'Scatter')
+            scatter_path = find_path(updated_mkdocs_nav, "Scatter")
             scatter_markdown_file = get_using_path(updated_mkdocs_nav, scatter_path)
             props_path = scatter_path[:-2]
             props_list = get_using_path(updated_mkdocs_nav, props_path)
@@ -50,8 +50,11 @@ class Mkdocs:
                 {"Line": scatter_markdown_file},
                 {"Area": scatter_markdown_file},
             ]
-            props_list = sorted(props_list, key=lambda d: next(iter(d))) #sort by key alphabetically
+            props_list = sorted(
+                props_list, key=lambda d: next(iter(d))
+            )  # sort by key alphabetically
             replace_using_path(updated_mkdocs_nav, props_path, props_list)
+
         add_line_area_links(updated_mkdocs_nav)
         mkdocs_yaml_object["nav"] = updated_mkdocs_nav
         return mkdocs_yaml_object

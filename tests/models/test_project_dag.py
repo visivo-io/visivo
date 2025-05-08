@@ -135,9 +135,7 @@ def test_ref_selector_item_Project_dag():
         item.chart.traces[0],
     ]
     assert project.descendants_of_type(type=Table) == [project.tables[0]]
-    assert project.descendants_of_type(type=Chart) == [
-        project.dashboards[0].rows[0].items[0].chart
-    ]
+    assert project.descendants_of_type(type=Chart) == [project.dashboards[0].rows[0].items[0].chart]
 
 
 def test_ref_selector_row_item_Project_dag():
@@ -173,9 +171,8 @@ def test_invalid_ref_Project_dag():
         # It is an incomplete reference from the level of dashboards.
         project.dashboards[0].descendants()
 
-    assert (
-        'The reference "ref(table_name)" on item "item" does not point to an object.'
-        in str(exc_info.value)
+    assert 'The reference "ref(table_name)" on item "item" does not point to an object.' in str(
+        exc_info.value
     )
 
 

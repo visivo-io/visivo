@@ -29,9 +29,7 @@ class CoreParser:
         try:
             project = Project(**data)
         except ValidationError as validation_error:
-            raise LineValidationError(
-                validation_error=validation_error, files=self.files
-            )
+            raise LineValidationError(validation_error=validation_error, files=self.files)
         return project
 
     def __merged_project_data(self):
@@ -43,9 +41,7 @@ class CoreParser:
                 continue
             data_files[file] = load_yaml_file(file)
 
-        return self.__merge_data_into_project(
-            project_data=project_data, data_files=data_files
-        )
+        return self.__merge_data_into_project(project_data=project_data, data_files=data_files)
 
     def __merge_data_into_project(self, project_data: dict, data_files: dict):
         for index, (file_path, data_file) in enumerate(data_files.items()):
@@ -55,22 +51,13 @@ class CoreParser:
                     if key_to_merge in project_data:
                         base_merge = project_data[key_to_merge]
                         if index == 0:
-                            self.__recursively_add_file_path(
-                                base_merge, 
-                                self.project_file
-                            )
+                            self.__recursively_add_file_path(base_merge, self.project_file)
                     file_to_merge = data_file[key_to_merge]
-                    self.__recursively_add_file_path(
-                        file_to_merge, 
-                        file_path
-                    )
-                    project_data[key_to_merge] = always_merger.merge(
-                        base_merge, 
-                        file_to_merge
-                    )
+                    self.__recursively_add_file_path(file_to_merge, file_path)
+                    project_data[key_to_merge] = always_merger.merge(base_merge, file_to_merge)
         return project_data
-    
-    def __recursively_add_file_path(self, obj, file_path:str):
+
+    def __recursively_add_file_path(self, obj, file_path: str):
         """
         Modifies the input object by adding the file path to the named model objects.
         """
@@ -82,5 +69,5 @@ class CoreParser:
         elif isinstance(obj, list):
             for item in obj:
                 self.__recursively_add_file_path(item, file_path)
-        else: 
-            pass 
+        else:
+            pass

@@ -37,9 +37,7 @@ class AlertFactory(factory.Factory):
 
     name = "alert"
     if_ = ">{ True }"
-    destinations = factory.List(
-        [factory.SubFactory(DestinationFactory) for _ in range(1)]
-    )
+    destinations = factory.List([factory.SubFactory(DestinationFactory) for _ in range(1)])
 
 
 class TestFactory(factory.Factory):
@@ -134,9 +132,7 @@ class TraceFactory(factory.Factory):
                 {"not_null": {"attributes": ["y", "x"]}},
             ]
         )
-        surface_props = factory.Trait(
-            props=factory.SubFactory(SurfaceTracePropsFactory)
-        )
+        surface_props = factory.Trait(props=factory.SubFactory(SurfaceTracePropsFactory))
 
 
 class JobFactory(factory.Factory):
@@ -194,12 +190,8 @@ class ItemFactory(factory.Factory):
     name = "item"
 
     class Params:
-        model_ref = factory.Trait(
-            chart=factory.SubFactory(ChartFactory, model_ref=True)
-        )
-        trace_ref = factory.Trait(
-            chart=factory.SubFactory(ChartFactory, trace_ref=True)
-        )
+        model_ref = factory.Trait(chart=factory.SubFactory(ChartFactory, model_ref=True))
+        trace_ref = factory.Trait(chart=factory.SubFactory(ChartFactory, trace_ref=True))
         chart_ref = factory.Trait(chart="ref(chart_name)")
         table_item = factory.Trait(chart=None, table=factory.SubFactory(TableFactory))
         table_ref = factory.Trait(chart=None, table="ref(table_name)")
@@ -215,29 +207,19 @@ class RowFactory(factory.Factory):
 
     class Params:
         model_ref = factory.Trait(
-            items=factory.List(
-                [factory.SubFactory(ItemFactory, model_ref=True) for _ in range(1)]
-            )
+            items=factory.List([factory.SubFactory(ItemFactory, model_ref=True) for _ in range(1)])
         )
         trace_ref = factory.Trait(
-            items=factory.List(
-                [factory.SubFactory(ItemFactory, trace_ref=True) for _ in range(1)]
-            )
+            items=factory.List([factory.SubFactory(ItemFactory, trace_ref=True) for _ in range(1)])
         )
         chart_ref = factory.Trait(
-            items=factory.List(
-                [factory.SubFactory(ItemFactory, chart_ref=True) for _ in range(1)]
-            )
+            items=factory.List([factory.SubFactory(ItemFactory, chart_ref=True) for _ in range(1)])
         )
         table_ref = factory.Trait(
-            items=factory.List(
-                [factory.SubFactory(ItemFactory, table_ref=True) for _ in range(1)]
-            )
+            items=factory.List([factory.SubFactory(ItemFactory, table_ref=True) for _ in range(1)])
         )
         table_item = factory.Trait(
-            items=factory.List(
-                [factory.SubFactory(ItemFactory, table_item=True) for _ in range(1)]
-            )
+            items=factory.List([factory.SubFactory(ItemFactory, table_item=True) for _ in range(1)])
         )
 
 
@@ -259,29 +241,19 @@ class DashboardFactory(factory.Factory):
 
     class Params:
         model_ref = factory.Trait(
-            rows=factory.List(
-                [factory.SubFactory(RowFactory, model_ref=True) for _ in range(1)]
-            )
+            rows=factory.List([factory.SubFactory(RowFactory, model_ref=True) for _ in range(1)])
         )
         trace_ref = factory.Trait(
-            rows=factory.List(
-                [factory.SubFactory(RowFactory, trace_ref=True) for _ in range(1)]
-            )
+            rows=factory.List([factory.SubFactory(RowFactory, trace_ref=True) for _ in range(1)])
         )
         chart_ref = factory.Trait(
-            rows=factory.List(
-                [factory.SubFactory(RowFactory, chart_ref=True) for _ in range(1)]
-            )
+            rows=factory.List([factory.SubFactory(RowFactory, chart_ref=True) for _ in range(1)])
         )
         table_ref = factory.Trait(
-            rows=factory.List(
-                [factory.SubFactory(RowFactory, table_ref=True) for _ in range(1)]
-            )
+            rows=factory.List([factory.SubFactory(RowFactory, table_ref=True) for _ in range(1)])
         )
         table_item = factory.Trait(
-            rows=factory.List(
-                [factory.SubFactory(RowFactory, table_item=True) for _ in range(1)]
-            )
+            rows=factory.List([factory.SubFactory(RowFactory, table_item=True) for _ in range(1)])
         )
 
 
@@ -338,10 +310,7 @@ class ProjectFactory(factory.Factory):
         )
         model_ref = factory.Trait(
             models=factory.List(
-                [
-                    factory.SubFactory(SqlModelFactory, name="model_name")
-                    for _ in range(1)
-                ]
+                [factory.SubFactory(SqlModelFactory, name="model_name") for _ in range(1)]
             ),
             dashboards=factory.List(
                 [factory.SubFactory(DashboardFactory, model_ref=True) for _ in range(1)]
@@ -349,9 +318,6 @@ class ProjectFactory(factory.Factory):
         )
         table_item = factory.Trait(
             dashboards=factory.List(
-                [
-                    factory.SubFactory(DashboardFactory, table_item=True)
-                    for _ in range(1)
-                ]
+                [factory.SubFactory(DashboardFactory, table_item=True) for _ in range(1)]
             ),
         )

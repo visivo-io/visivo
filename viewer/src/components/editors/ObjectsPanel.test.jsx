@@ -53,6 +53,9 @@ test("filters objects based on search input", async () => {
   );
 
   render(<ObjectsPanel />);
+(??)  
+(??)  const searchInput = screen.getByPlaceholderText('Search objects...');
+(??)  await userEvent.type(searchInput, 'object');
 
   const searchInput = screen.getByPlaceholderText("Search objects...");
   await userEvent.type(searchInput, "object");
@@ -78,6 +81,9 @@ test("filters objects based on type selection", async () => {
   );
 
   render(<ObjectsPanel />);
+(??)  
+(??)  const typeSelect = screen.getByRole('combobox');
+(??)  await userEvent.selectOptions(typeSelect, 'type1');
 
   const typeSelect = screen.getByRole("combobox");
   await userEvent.selectOptions(typeSelect, "type1");
@@ -125,6 +131,9 @@ test('displays "No objects found" when filter returns no results', async () => {
   );
 
   render(<ObjectsPanel />);
+(??)  
+(??)  const searchInput = screen.getByPlaceholderText('Search objects...');
+(??)  await userEvent.type(searchInput, 'nonexistent');
 
   const searchInput = screen.getByPlaceholderText("Search objects...");
   await userEvent.type(searchInput, "nonexistent");

@@ -38,9 +38,7 @@ class Row(NamedModel, ParentModel):
             | xxlarge | 1024 |
     """
 
-    height: HeightEnum = Field(
-        HeightEnum.medium, description="Sets the height of the row."
-    )
+    height: HeightEnum = Field(HeightEnum.medium, description="Sets the height of the row.")
     items: List[Item] = Field(
         None,
         description="A list of items containing tables, charts or markdown. Items are placed in the row in the order that they are listed from left to right.",

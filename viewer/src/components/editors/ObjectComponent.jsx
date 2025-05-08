@@ -7,7 +7,7 @@ import ContextMenu from "./ContextMenu";
 
 function ObjectComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const addObjectProperty = useStore((state) => state.addObjectProperty);
+  const addObjectProperty = useStore(state => state.addObjectProperty);
   const [contextMenu, setContextMenu] = useState(null);
   const deleteNamedChildAttribute = useStore(
     (state) => state.deleteNamedChildAttribute
@@ -35,7 +35,7 @@ function ObjectComponent({ name, data, path }) {
   const sortedObject = Object.fromEntries(objectEntries);
 
   // Update the handler to match AttributeComponent
-  const handleContextMenu = (e) => {
+  const handleContextMenu = e => {
     e.preventDefault();
     e.stopPropagation(); // Add this to prevent event bubbling
     setContextMenu({

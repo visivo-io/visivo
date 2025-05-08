@@ -63,9 +63,7 @@ def test_thumbnail_job_skips_if_exists(test_project, dashboard, output_dir, serv
     assert "already exists" in result.message
 
 
-def test_thumbnail_job_handles_browser_errors(
-    test_project, dashboard, output_dir, server_url
-):
+def test_thumbnail_job_handles_browser_errors(test_project, dashboard, output_dir, server_url):
     # Create a dashboard that will cause browser errors by having empty rows
     # This will cause a timeout waiting for .dashboard-row selector
     dashboard.rows = []
@@ -116,9 +114,7 @@ def test_thumbnail_job_sanitizes_filenames(test_project, output_dir, server_url)
         result = job_instance.action(**job_instance.kwargs)
         assert result.success
         assert os.path.exists(
-            os.path.join(
-                output_dir, "dashboard-thumbnails", "Test_Special_Chars_Dashboard.png"
-            )
+            os.path.join(output_dir, "dashboard-thumbnails", "Test_Special_Chars_Dashboard.png")
         )
     finally:
         # Restore the original function

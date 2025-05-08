@@ -20,10 +20,7 @@ const Lineage = ({ defaultSelector = "" }) => {
     [namedChildren]
   );
 
-  const layoutNodes = useMemo(
-    () => computeLayout(fullNodes, fullEdges),
-    [fullNodes, fullEdges]
-  );
+  const layoutNodes = useMemo(() => computeLayout(fullNodes, fullEdges), [fullNodes, fullEdges]);
 
   const selectedNodes = useMemo(
     () => parseSelector(selector, namedChildren),
@@ -40,7 +37,7 @@ const Lineage = ({ defaultSelector = "" }) => {
       <input
         type="text"
         value={selector}
-        onChange={(e) => setSelector(e.target.value)}
+        onChange={e => setSelector(e.target.value)}
         placeholder="e.g., 'test table+2, +3join_table'"
         className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
       />

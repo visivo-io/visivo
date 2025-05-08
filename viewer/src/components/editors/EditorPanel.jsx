@@ -78,7 +78,7 @@ const EditorPanel = () => {
     <div className="flex-1 bg-white border-b border-gray-200 p-2 overflow-hidden flex flex-col min-h-0">
       <div className="flex items-center justify-between border-b border-gray-200">
         <div className="flex space-x-1 overflow-x-auto">
-          {tabs.map((tab) => (
+          {tabs.map(tab => (
             <div
               key={tab.id}
               className={`flex items-center px-4 py-2 rounded-t-lg  cursor-pointer border-b-2 ${
@@ -88,12 +88,10 @@ const EditorPanel = () => {
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="text-sm font-medium truncate max-w-xs">
-                {tab.name}
-              </span>
+              <span className="text-sm font-medium truncate max-w-xs">{tab.name}</span>
               <button
                 className="ml-2 p-1 hover:bg-blue-100 rounded-xs"
-                onClick={(e) => {
+                onClick={e => {
                   e.stopPropagation();
                   closeTab(tab.id);
                 }}

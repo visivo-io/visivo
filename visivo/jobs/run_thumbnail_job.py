@@ -21,9 +21,7 @@ def get_thumbnail_path(dashboard_name: str, output_dir: str):
     return os.path.join(thumbnail_dir, f"{safe_name}.png")
 
 
-def generate_thumbnail(
-    dashboard: Dashboard, output_dir: str, timeout_ms: int, server_url: str
-):
+def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int, server_url: str):
     from playwright.sync_api import sync_playwright, TimeoutError
 
     thumbnail_path = get_thumbnail_path(dashboard.name, output_dir)
@@ -119,9 +117,7 @@ def generate_thumbnail(
             )
 
             # Take screenshot
-            page.screenshot(
-                timeout=timeout_ms, path=thumbnail_path, type="png", full_page=False
-            )
+            page.screenshot(timeout=timeout_ms, path=thumbnail_path, type="png", full_page=False)
             # Resize the screenshot to 512 px wide while keeping the proportions
             from PIL import Image
 
@@ -152,7 +148,7 @@ def action(
     dashboard: Dashboard,
     output_dir: str,
     thumbnail_mode: str,
-    timeout_ms: int = 30000,
+    timeout_ms: int = 60000,
     server_url: str = None,
 ):
     Logger.instance().info(start_message("Dashboard", dashboard))
@@ -174,9 +170,7 @@ def action(
             raise Exception("Cannot generate thumbnail when no server URL is provided")
 
         try:
-            thumbnail_path = generate_thumbnail(
-                dashboard, output_dir, timeout_ms, server_url
-            )
+            thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
         except Exception as e:
             if "BrowserType.launch: Executable doesn't exist" in str(e):
                 Logger.instance().info(
@@ -186,9 +180,7 @@ def action(
 
                 subprocess.run(["playwright", "install", "webkit"], check=True)
                 # Retry with newly installed browser
-                thumbnail_path = generate_thumbnail(
-                    dashboard, output_dir, timeout_ms, server_url
-                )
+                thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
             else:
                 raise ClickException(
                     f"Error generating thumbnail for dashboard {dashboard.name}: {str(e)}"
@@ -217,7 +209,7 @@ def job(
     output_dir: str,
     thumbnail_mode: str = None,
     server_url: str = None,
-    timeout_ms: int = 30000,
+    timeout_ms: int = 60000,
 ) -> Job:
     return Job(
         item=dashboard,

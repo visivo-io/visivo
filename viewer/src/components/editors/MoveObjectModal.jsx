@@ -78,7 +78,7 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
             </label>
             <select
               value={selectedPath}
-              onChange={(e) => setSelectedPath(e.target.value)}
+              onChange={e => setSelectedPath(e.target.value)}
               disabled={isCustomPath}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 disabled:bg-gray-100"
             >
@@ -106,7 +106,7 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
             <input
               type="text"
               value={customPath}
-              onChange={(e) => setCustomPath(e.target.value)}
+              onChange={e => setCustomPath(e.target.value)}
               disabled={!isCustomPath}
               placeholder="Enter custom file path..."
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 disabled:bg-gray-100"

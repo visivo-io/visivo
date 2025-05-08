@@ -135,18 +135,16 @@ def test_example_in_docs_read_json_file():
     output_dir = os.path.join(os.path.dirname(__file__), temp_folder())
     filepath = "iterables.json"
     path = temp_file(contents=contents, name=filepath, output_dir=output_dir)
-    template = (
-        "{% set accounts = read_json_file("
-        + f"'{path}'"
-        + ")['accounts'] %}{{ accounts }}"
-    )
+    template = "{% set accounts = read_json_file(" + f"'{path}'" + ")['accounts'] %}{{ accounts }}"
     rendered = render_yaml(template)
 
     assert rendered == "['Acme Co', 'Knights of Ni LTD']"
 
 
 def test_timedelta_interactions():
-    template_string = "{% set datetime = to_unix('2022-01-01 00:00:00') %}{{ datetime - timedelta(days=1) }}"
+    template_string = (
+        "{% set datetime = to_unix('2022-01-01 00:00:00') %}{{ datetime - timedelta(days=1) }}"
+    )
     rendered_template = render_yaml(template_string)
     assert rendered_template == "1640908800.0"
 

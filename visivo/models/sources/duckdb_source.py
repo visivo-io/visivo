@@ -4,7 +4,9 @@ from visivo.models.sources.source import Source
 from pydantic import Field
 import click
 import duckdb
+
 DuckdbType = Literal["duckdb"]
+
 
 class DuckdbAttachment(BaseModel):
     schema_name: str = Field("Name of the schema to attach the source under.")
@@ -12,6 +14,7 @@ class DuckdbAttachment(BaseModel):
         None,
         description="Local Duckdb database source to attach in the connection that will be available in the base SQL query.",
     )
+
 
 class DuckdbSource(Source):
     """
@@ -43,19 +46,18 @@ class DuckdbSource(Source):
         description="List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.",
     )
 
-
     def get_connection(self, read_only: bool = False):
         try:
-            
+
             connection = duckdb.connect(self.database, read_only=read_only)
-            
+
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
                         f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name}"
                     )
-            
-            return connection 
+
+            return connection
 
         except Exception as err:
             raise click.ClickException(
@@ -68,15 +70,14 @@ class DuckdbSource(Source):
                 result = connection.execute(query).fetchdf()
                 return result
         except Exception as err:
-            raise click.ClickException(
-                f"Error executing query on source '{self.name}': {str(err)}"
-            )
+            raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
 
     def connect(self, read_only: bool = False):
         return DuckDBConnection(source=self, read_only=read_only)
 
     def get_dialect(self):
         return "duckdb"
+
 
 class DuckDBConnection:
     def __init__(self, source: DuckdbSource, read_only: bool = False):

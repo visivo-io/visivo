@@ -16,7 +16,7 @@ class NamedModel(BaseModel):
     name: Optional[str] = pydantic.Field(
         None, description="The unique name of the object across the entire project."
     )
-    
+
     file_path: Optional[str] = pydantic.Field(
         None, description="The path to the file that contains the object definition."
     )

@@ -1,15 +1,15 @@
 import dagre from "dagre";
 
 // Build nodes and edges from namedChildren
-export const buildGraph = (namedChildren) => {
-  const nodes = Object.keys(namedChildren).map((name) => ({
+export const buildGraph = namedChildren => {
+  const nodes = Object.keys(namedChildren).map(name => ({
     id: name,
     data: { name },
   }));
   const edges = [];
   Object.entries(namedChildren).forEach(([name, config]) => {
     const children = config.direct_children || [];
-    children.forEach((child) => {
+    children.forEach(child => {
       edges.push({
         id: `${name}-${child}`,
         source: name,
@@ -174,14 +174,14 @@ export const computeLayout = (nodes, edges) => {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: "LR" }); // Left-to-right layout
   graph.setDefaultEdgeLabel(() => ({}));
-  nodes.forEach((node) => {
+  nodes.forEach(node => {
     graph.setNode(node.id, { width: 300, height: 20 }); // Adjust based on ObjectPill size
   });
-  edges.forEach((edge) => {
+  edges.forEach(edge => {
     graph.setEdge(edge.source, edge.target);
   });
   dagre.layout(graph);
-  return nodes.map((node) => {
+  return nodes.map(node => {
     const nodeWithPosition = graph.node(node.id);
     return {
       ...node,

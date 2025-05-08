@@ -24,9 +24,7 @@ class Domain2(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -60,10 +58,7 @@ class SankeyHoverlabel(TracePropsAttribute):
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
     namelength: Optional[
-        int
-        | constr(pattern=INDEXED_STATEMENT_REGEX)
-        | constr(pattern=STATEMENT_REGEX)
-        | List[int]
+        int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]
     ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
@@ -121,9 +116,7 @@ class Colorscales1(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -157,10 +150,7 @@ class SankeyLinkHoverlabel(TracePropsAttribute):
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
     namelength: Optional[
-        int
-        | constr(pattern=INDEXED_STATEMENT_REGEX)
-        | constr(pattern=STATEMENT_REGEX)
-        | List[int]
+        int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]
     ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
@@ -233,9 +223,7 @@ class SankeyLink(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -269,10 +257,7 @@ class SankeyNodeHoverlabel(TracePropsAttribute):
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
     namelength: Optional[
-        int
-        | constr(pattern=INDEXED_STATEMENT_REGEX)
-        | constr(pattern=STATEMENT_REGEX)
-        | List[int]
+        int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]
     ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,

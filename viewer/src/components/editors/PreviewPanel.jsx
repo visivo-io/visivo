@@ -52,9 +52,7 @@ const PreviewPanel = ({ project }) => {
 
       default:
         return (
-          <div className="text-gray-500">
-            Preview not available for {activeTab.type} objects
-          </div>
+          <div className="text-gray-500">Preview not available for {activeTab.type} objects</div>
         );
     }
   };

@@ -14,11 +14,9 @@ const ResultsPanel = ({ project }) => {
           <div className="text-sm text-gray-600 font-medium">
             {queryStats && (
               <>
-                {`Last Run at ${new Date(
-                  queryStats.timestamp
-                ).toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
+                {`Last Run at ${new Date(queryStats.timestamp).toLocaleTimeString([], {
+                  hour: 'numeric',
+                  minute: '2-digit',
                   hour12: true,
                 })} • ${queryStats.executionTime}s`}
                 {queryStats.source && ` • Source: ${queryStats.source}`}

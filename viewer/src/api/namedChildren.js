@@ -5,13 +5,13 @@ export const fetchNamedChildren = async () => {
   } else {
     return null;
   }
-}; 
+};
 
-export const writeNamedChildren = async (namedChildren) => {
+export const writeNamedChildren = async namedChildren => {
   const response = await fetch('/api/project/write_changes', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(namedChildren),
   });

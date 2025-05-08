@@ -16,13 +16,9 @@ def test_test():
     output_dir = temp_folder()
     project = ProjectFactory()
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
-    response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-s", "source"]
-    )
+    response = runner.invoke(test, ["-o", output_dir, "-w", working_dir, "-s", "source"])
     assert "tests run" in response.output
     assert response.exit_code == 0
 
@@ -30,13 +26,9 @@ def test_test():
 def test_test_failure():
     output_dir = temp_folder()
     project = ProjectFactory()
-    project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [
-        Test(assertions=[">{ False }"])
-    ]
+    project.dashboards[0].rows[0].items[0].chart.traces[0].tests = [Test(assertions=[">{ False }"])]
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
     data = {"trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
     folders = f"{output_dir}/trace"
@@ -44,9 +36,7 @@ def test_test_failure():
     json_file = open(f"{folders}/data.json", "w")
     json_file.write(json.dumps(data))
     json_file.close()
-    response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-s", "source"]
-    )
+    response = runner.invoke(test, ["-o", output_dir, "-w", working_dir, "-s", "source"])
     assert "tests run" in response.output
     assert response.exit_code == 1
 
@@ -56,13 +46,9 @@ def test_test_alert():
     alert = AlertFactory(if_=">{ True }")
     project = ProjectFactory(alerts=[alert])
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
-    response = runner.invoke(
-        test, ["-o", output_dir, "-w", working_dir, "-s", "source"]
-    )
+    response = runner.invoke(test, ["-o", output_dir, "-w", working_dir, "-s", "source"])
     assert "tests run" in response.output
     assert "Console Destination Run" in response.output
     assert response.exit_code == 0

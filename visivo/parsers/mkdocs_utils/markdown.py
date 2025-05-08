@@ -70,14 +70,10 @@ def handle_items(attribute_property_object: dict):
 
 
 def handle_discriminator(attribute_property_object: dict):
-    default_key = attribute_property_object.get("discriminator", {}).get(
-        "propertyName", ""
-    )
+    default_key = attribute_property_object.get("discriminator", {}).get("propertyName", "")
     default_value = attribute_property_object.get("default", {}).get(default_key)
     default = (
-        attribute_property_object.get("discriminator", {})
-        .get("mapping", {})
-        .get(default_value)
+        attribute_property_object.get("discriminator", {}).get("mapping", {}).get(default_value)
     )
     refs = find_refs(attribute_property_object.get("oneOf", []))
     if refs:
@@ -123,12 +119,10 @@ def from_pydantic_model(model_defs: dict, model_name: str) -> str:
     if not model_def:
         raise KeyError(f"Schema missing model: {model_name}")
     model_properties = model_def.get("properties", {})
-    model_md = (
-        ""
-        if not model_def.get("description", {})
-        else dedent(model_def.get("description"))
+    model_md = "" if not model_def.get("description", {}) else dedent(model_def.get("description"))
+    md_table = (
+        "| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n"
     )
-    md_table = "| Field | Type | Default | Description |\n|-------|------|---------|-------------|\n"
 
     for property_name, property_object in model_properties.items():
         field_type, field_description, field_default = handle_attribute_properties(
@@ -139,9 +133,7 @@ def from_pydantic_model(model_defs: dict, model_name: str) -> str:
     return f"# {model_name}" + "\n" + model_md + "\n## Attributes\n" + md_table
 
 
-def _get_traceprop_nested_structure(
-    model_defs: dict, model_name: str, details: list = []
-) -> str:
+def _get_traceprop_nested_structure(model_defs: dict, model_name: str, details: list = []) -> str:
     """Generates Trace Props reference dictionary that will later be converted into yaml for the md file"""
     model_properties = model_defs.get(model_name, {}).get("properties", {})
     if not model_properties:
@@ -189,17 +181,13 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
     if not model_def:
         raise KeyError(f"Schema missing model: {model_name}")
     model_md = (
-        ""
-        if not model_def.get("description", {})
-        else dedent(model_def.get("description")) + "\n"
+        "" if not model_def.get("description", {}) else dedent(model_def.get("description")) + "\n"
     )
     if model_name.lower() == "layout":
         description = "These attributes apply to the `chart.layout` object.\n"
     else:
         description = f"These attributes apply to traces where `trace.props.type` is set to `{model_name.lower()}`. You would configure these attributes on the trace with the `trace.props` object.\n"
-    nested_structure, details = _get_traceprop_nested_structure(
-        model_defs, model_name, details=[]
-    )
+    nested_structure, details = _get_traceprop_nested_structure(model_defs, model_name, details=[])
     if model_name.lower() == "scatter":
         title = "Scatter (line, area & scatter)"
     else:

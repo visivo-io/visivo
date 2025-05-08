@@ -17,9 +17,7 @@ def test_deploy_upload_trace_data_failure(requests_mock, capsys):
     project = ProjectFactory()
     # create_file_database(url=project.sources[0].url(), output_dir=output_dir)
     project.traces.append(TraceFactory(name="trace-two", model="ref(model)"))
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
     temp_file(PROFILE_FILE_NAME, "token: value", working_dir + "/.visivo")
 
@@ -84,9 +82,7 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     with open(thumbnail_path, "wb") as f:
         f.write(b"dummy data")
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
     temp_file(PROFILE_FILE_NAME, "token: value", working_dir + "/.visivo")
 

@@ -13,8 +13,6 @@ def test_Test_missing_data():
 
 
 def test_Test_child_items():
-    test = Test(
-        **{"if": ">{ ${project.name } }", "assertions": [">{ ${ project.name } }"]}
-    )
+    test = Test(**{"if": ">{ ${project.name } }", "assertions": [">{ ${ project.name } }"]})
     assert len(test.child_items()) == 1
     assert test.child_items()[0].value == "${ project.name }"

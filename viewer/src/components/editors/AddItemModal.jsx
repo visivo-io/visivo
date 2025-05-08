@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 const ITEM_TYPES = {
   ATTRIBUTE: 'attribute',
   LIST: 'list',
-  OBJECT: 'object'
+  OBJECT: 'object',
 };
 
 function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
@@ -11,11 +11,11 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
   const [name, setName] = useState('');
   const [value, setValue] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
-    
+
     let processedValue = value;
-    
+
     // Process value based on type
     switch (itemType) {
       case ITEM_TYPES.LIST:
@@ -53,9 +53,7 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
     <div className="fixed inset-0 backdrop flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 w-[750px]">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">
-            Add New {isObjectMode ? 'Property' : 'Item'}
-          </h2>
+          <h2 className="text-xl font-semibold">Add New {isObjectMode ? 'Property' : 'Item'}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             ×
           </button>
@@ -63,13 +61,11 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Type
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Type</label>
             <select
               id="type"
               value={itemType}
-              onChange={(e) => setItemType(e.target.value)}
+              onChange={e => setItemType(e.target.value)}
               required
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#713B57] focus:border-[#713B57]"
             >
@@ -81,13 +77,11 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
 
           {isObjectMode && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Property Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Property Name</label>
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={e => setName(e.target.value)}
                 required
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#713B57] focus:border-[#713B57]"
                 placeholder="Enter property name..."
@@ -97,13 +91,11 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
 
           {itemType === ITEM_TYPES.ATTRIBUTE && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Value
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Value</label>
               <input
                 type="text"
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={e => setValue(e.target.value)}
                 required
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#713B57] focus:border-[#713B57]"
                 placeholder="Enter value..."
@@ -131,4 +123,4 @@ function AddItemModal({ isOpen, onClose, onAdd, isObjectMode }) {
   );
 }
 
-export default AddItemModal; 
+export default AddItemModal;

@@ -11,13 +11,10 @@ const ObjectsPanel = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Use the store for state management
-  const isLoading = useStore((state) => state.isLoading);
-  const error = useStore((state) => state.error);
+  const isLoading = useStore(state => state.isLoading);
+  const error = useStore(state => state.error);
 
-  const namedChildrenAndType = useStore(
-    (state) => state.namedChildren,
-    shallow
-  );
+  const namedChildrenAndType = useStore(state => state.namedChildren, shallow);
 
   const objectNames = useMemo(() => {
     return Object.keys(namedChildrenAndType);
@@ -63,12 +60,12 @@ const ObjectsPanel = () => {
         placeholder="Search objects..."
         className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
         value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
+        onChange={e => setSearchTerm(e.target.value)}
       />
       <select
         className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
         value={selectedTypeKey}
-        onChange={(e) => setSelectedTypeKey(e.target.value)}
+        onChange={e => setSelectedTypeKey(e.target.value)}
       >
         <option value="">All Types</option>
         {uniqueTypes.map((type) => (
@@ -102,10 +99,7 @@ const ObjectsPanel = () => {
         </button>
       </div>
 
-      <CreateObjectModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-      />
+      <CreateObjectModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
     </div>
   );
 };

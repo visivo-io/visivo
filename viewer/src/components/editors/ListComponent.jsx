@@ -7,18 +7,18 @@ import ContextMenu from "./ContextMenu";
 
 function ListComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const addListItem = useStore((state) => state.addListItem);
+  const addListItem = useStore(state => state.addListItem);
   const [contextMenu, setContextMenu] = useState(null);
   const deleteNamedChildAttribute = useStore(
     (state) => state.deleteNamedChildAttribute
   );
 
-  const handleAddItem = (newItem) => {
+  const handleAddItem = newItem => {
     addListItem(path, newItem);
     setIsModalOpen(false);
   };
 
-  const handleContextMenu = (e) => {
+  const handleContextMenu = e => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({

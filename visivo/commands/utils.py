@@ -23,7 +23,6 @@ def get_source_types():
     return [postgresql_type, mysql_type, sqlite_type, snowflake_type, bigquery_type, duckdb_type]
 
 
-
 def get_profile_token(profile_file):
     profile_token = os.getenv("VISIVO_TOKEN")
     if profile_token:

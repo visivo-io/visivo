@@ -35,7 +35,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  const getValidTypesForProperty = (prop) => {
+  const getValidTypesForProperty = prop => {
     if (!schema?.properties) return [];
 
     const propSchema = schema.properties[prop];
@@ -56,7 +56,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     return [];
   };
 
-  const handlePropertySelect = (prop) => {
+  const handlePropertySelect = prop => {
     setSelectedProperty(prop);
     const validTypes = getValidTypesForProperty(prop);
     if (validTypes.length === 1) {
@@ -67,12 +67,12 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleTypeSelect = (type) => {
+  const handleTypeSelect = type => {
     setSelectedType(type);
     setStep("name");
   };
 
-  const getRequiredAttributes = (type) => {
+  const getRequiredAttributes = type => {
     if (!schema?.$defs?.[type]) return [];
 
     const typeSchema = schema.$defs[type];
@@ -180,9 +180,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                     className={`p-3 border rounded-lg hover:opacity-80 flex flex-col items-center ${style.bg} ${style.border}`}
                   >
                     {Icon && <Icon className={`text-2xl mb-1 ${style.text}`} />}
-                    <span className={`font-medium ${style.text}`}>
-                      {style.displayName || prop}
-                    </span>
+                    <span className={`font-medium ${style.text}`}>{style.displayName || prop}</span>
                     <span className="text-xs text-gray-600 mt-1 text-center">
                       {style.description ||
                         schema.properties[prop]?.description ||
@@ -219,25 +217,21 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
         {step === "name" && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
               <input
                 type="text"
                 value={objectName}
-                onChange={(e) => setObjectName(e.target.value)}
+                onChange={e => setObjectName(e.target.value)}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 placeholder={`Enter ${displayName.toLowerCase()} name...`}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                File Path
-              </label>
+              <label className="block text-sm font-medium text-gray-700">File Path</label>
               <select
                 value={selectedFilePath}
-                onChange={(e) => setSelectedFilePath(e.target.value)}
+                onChange={e => setSelectedFilePath(e.target.value)}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
               >
                 <option value="">Select a file...</option>
@@ -320,7 +314,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                         <input
                           type="text"
                           value={item}
-                          onChange={(e) => {
+                          onChange={e => {
                             const newArray = [...(attributes[attr.name] || [])];
                             newArray[index] = e.target.value;
                             setAttributes((prev) => ({

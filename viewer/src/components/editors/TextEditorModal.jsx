@@ -44,7 +44,7 @@ const TextEditorModal = ({ isOpen, onClose, objectName }) => {
     }
   }, [isOpen]);
 
-  const handleEditorSelect = async (editor) => {
+  const handleEditorSelect = async editor => {
     if (!objectName || !namedChildren[objectName]) return;
 
     const filePath = namedChildren[objectName].file_path;
@@ -117,7 +117,7 @@ const TextEditorModal = ({ isOpen, onClose, objectName }) => {
               {isLoading ? "Loading editors..." : "No text editors found"}
             </p>
           ) : (
-            editors.map((editor) => (
+            editors.map(editor => (
               <button
                 key={editor.id}
                 onClick={() => handleEditorSelect(editor)}

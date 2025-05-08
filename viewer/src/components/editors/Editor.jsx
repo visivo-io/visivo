@@ -5,7 +5,7 @@ import PreviewPanel from "./PreviewPanel";
 import useStore from "../../stores/store";
 
 const Editor = () => {
-  const projectData = useStore((state) => state.projectData);
+  const projectData = useStore(state => state.projectData);
 
   return (
     <div className="flex h-[calc(100vh-50px)] bg-gray-50 overflow-hidden">

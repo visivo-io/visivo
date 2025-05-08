@@ -56,7 +56,5 @@ def test_tokenization_query_string_order_by():
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
-    assert "ORDER BY a_different_column desc, count(amount) desc" in format_sql(
-        query_string
-    )
+    assert "ORDER BY a_different_column desc, count(amount) desc" in format_sql(query_string)
     assert f"-- source: {source.name}" in format_sql(query_string)

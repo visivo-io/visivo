@@ -5,42 +5,42 @@ import { useContext, useEffect } from 'react';
 import SearchParamsContext from './SearchParamsContext';
 
 const TestComponent = ({ value }) => {
-    const [searchParams, setStateSearchParam] = useContext(SearchParamsContext);
+  const [searchParams, setStateSearchParam] = useContext(SearchParamsContext);
 
-    useEffect(() => {
-        setStateSearchParam('test', value);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  useEffect(() => {
+    setStateSearchParam('test', value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return <div>{searchParams.get('test')}</div>
-}
+  return <div>{searchParams.get('test')}</div>;
+};
 
 describe('SearchParamsContext', () => {
-    it('should set and get search parameters', async () => {
-        render(
-            <MemoryRouter initialEntries={['/?test=123']}>
-                <SearchParamsProvider>
-                    <TestComponent value={"123"} />
-                </SearchParamsProvider>
-            </MemoryRouter>
-        );
+  it('should set and get search parameters', async () => {
+    render(
+      <MemoryRouter initialEntries={['/?test=123']}>
+        <SearchParamsProvider>
+          <TestComponent value={'123'} />
+        </SearchParamsProvider>
+      </MemoryRouter>
+    );
 
-        await waitFor(() => {
-            expect(screen.getByText('123')).toBeInTheDocument();
-        });
+    await waitFor(() => {
+      expect(screen.getByText('123')).toBeInTheDocument();
     });
+  });
 
-    it('should clear the default parameter', async () => {
-        render(
-            <MemoryRouter initialEntries={['/?test=123']}>
-                <SearchParamsProvider>
-                    <TestComponent value={null} />
-                </SearchParamsProvider>
-            </MemoryRouter>
-        );
+  it('should clear the default parameter', async () => {
+    render(
+      <MemoryRouter initialEntries={['/?test=123']}>
+        <SearchParamsProvider>
+          <TestComponent value={null} />
+        </SearchParamsProvider>
+      </MemoryRouter>
+    );
 
-        await waitFor(() => {
-            expect(screen.queryByText('123')).not.toBeInTheDocument();
-        });
+    await waitFor(() => {
+      expect(screen.queryByText('123')).not.toBeInTheDocument();
     });
+  });
 });

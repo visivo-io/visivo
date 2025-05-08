@@ -44,9 +44,7 @@ class TestRun(pydantic.BaseModel):
         return (self.finished_at - self.started_at).seconds
 
     def summary(self):
-        summary = (
-            f"Testing complete. {self.count()} tests run in {self.duration()} seconds."
-        )
+        summary = f"Testing complete. {self.count()} tests run in {self.duration()} seconds."
         if self.failures:
             summary += "\nFailures:"
         for failure in self.failures:

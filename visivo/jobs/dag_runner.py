@@ -80,9 +80,7 @@ class DagRunner:
                 Logger.instance().error(str(result.message))
             if not self.soft_failure:
                 exit(1)
-        elif (
-            len(self.successful_job_results) == 0 and len(self.failed_job_results) == 0
-        ):
+        elif len(self.successful_job_results) == 0 and len(self.failed_job_results) == 0:
             Logger.instance().error(
                 f"\nNo jobs run. Ensure your filter contains nodes that are runnable."
             )
@@ -114,8 +112,7 @@ class DagRunner:
                     self.job_tracking_dag.remove_node(terminal_node)
                     continue
                 elif any(
-                    job_tracker.is_job_name_failed(descendant.name)
-                    for descendant in descendants
+                    job_tracker.is_job_name_failed(descendant.name) for descendant in descendants
                 ):
                     Logger.instance().info(
                         f"Skipping job for '{terminal_node.name}' because it has a failed dependency"

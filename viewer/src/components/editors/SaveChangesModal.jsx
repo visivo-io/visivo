@@ -5,17 +5,17 @@ import { Toast } from "flowbite-react";
 import { HiCheck, HiX, HiExclamation } from "react-icons/hi";
 
 const SaveChangesModal = ({ isOpen, onClose }) => {
-  const namedChildren = useStore((state) => state.namedChildren);
-  const isLoading = useStore((state) => state.isLoading);
-  const writeError = useStore((state) => state.writeError);
-  const writeModifiedFiles = useStore((state) => state.writeModifiedFiles);
+  const namedChildren = useStore(state => state.namedChildren);
+  const isLoading = useStore(state => state.isLoading);
+  const writeError = useStore(state => state.writeError);
+  const writeModifiedFiles = useStore(state => state.writeModifiedFiles);
   const [showSavingToast, setShowSavingToast] = React.useState(false);
   const [showSuccessToast, setShowSuccessToast] = React.useState(false);
   const [showErrorToast, setShowErrorToast] = React.useState(false);
 
   // Filter only modified items
   const modifiedItems = Object.entries(namedChildren).filter(
-    ([_, value]) => value.status !== "Unchanged"
+    ([_, value]) => value.status !== 'Unchanged'
   );
 
   const handleWriteFiles = async () => {

@@ -4,14 +4,15 @@ from pydantic import Field
 from .row import Row
 from typing import List, Literal
 
+
 class Dashboard(BaseDashboard, ParentModel):
     """
-    Dashboards are lists of [rows](./Row/) that enable you to build your dashboard grid. 
+    Dashboards are lists of [rows](./Row/) that enable you to build your dashboard grid.
 
-    !!! tip 
-        
-        By leveraging [`visivo serve`](../../cli/#serve) while building you can quickly optimize your layout. Simply re-size your row heights and item widths, save the file and quickly see the new layout of your dashboard on localhost:8000. 
-    
+    !!! tip
+
+        By leveraging [`visivo serve`](../../cli/#serve) while building you can quickly optimize your layout. Simply re-size your row heights and item widths, save the file and quickly see the new layout of your dashboard on localhost:8000.
+
     Within the [rows](./Row/) you are able to organize and display `charts`, `tables`, `selectors` and `markdown` from your project as [items](./Row/Item/).
 
     <div class="grid" markdown>
@@ -19,7 +20,7 @@ class Dashboard(BaseDashboard, ParentModel):
     ![](../../../assets/dashboard_layout.png)
 
     !!! note
-    
+
         ``` yaml title="visivo.project.yml"
         dashboards:
           - name: Layout Example
@@ -29,26 +30,26 @@ class Dashboard(BaseDashboard, ParentModel):
                   - chart: ...
                   - chart: ...
                   - chart: ...
-              - height: large 
-                items: 
-                  - width: 2 
+              - height: large
+                items:
+                  - width: 2
                     table: ...
                   - width: 1
                     markdown: ...
-              - height: small 
-                items: 
-                  - width: 2 
+              - height: small
+                items:
+                  - width: 2
                     selector: ...
                   - chart: ...
                   - chart: ...
                   - width: 2
-                    chart: ...         
+                    chart: ...
         ```
 
     </div>
 
     Above you can see how changing the row heights and item widths impacts the layout of the dashboard.
-    
+
     !!! example
 
         `row.height` defaults to `medium` and `item.width` defaults to `1`. Specifying those fields are optional if you want to use the default values
@@ -73,10 +74,12 @@ class Dashboard(BaseDashboard, ParentModel):
 
     def child_items(self):
         return self.rows
-  
+
     rows: List[Row] = Field([], description="A list of `Row` objects")
 
-    type: Literal["internal"] = Field("internal", description="The type of dashboard (always 'internal')")
+    type: Literal["internal"] = Field(
+        "internal", description="The type of dashboard (always 'internal')"
+    )
 
     def for_each_item(self, function):
         for row in self.rows:

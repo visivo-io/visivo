@@ -84,9 +84,7 @@ class ParentModel(ABC):
                         root=root,
                     )
 
-    def __dereference_items(
-        self, items: List, parent_item, dag, node_permit_list, root
-    ):
+    def __dereference_items(self, items: List, parent_item, dag, node_permit_list, root):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
                 if BaseModel.is_ref(item):
@@ -141,9 +139,7 @@ class ParentModel(ABC):
         show_dag_fig(self.dag())
 
     def __get_dereferenced_item_by_name(self, name, dag, root, item, parent_item):
-        dereferenced_items = all_descendants_with_name(
-            name=name, dag=dag, from_node=root
-        )
+        dereferenced_items = all_descendants_with_name(name=name, dag=dag, from_node=root)
         if len(dereferenced_items) == 1:
             return dereferenced_items[0]
         else:
@@ -153,9 +149,7 @@ class ParentModel(ABC):
                 parent_item.model_dump(),
             )
 
-    def __get_dereferenced_item_by_context_string(
-        self, context_string, dag, root, parent_item
-    ):
+    def __get_dereferenced_item_by_context_string(self, context_string, dag, root, parent_item):
         if context_string.get_reference():
             return self.__get_dereferenced_item_by_name(
                 item=context_string,
@@ -166,9 +160,7 @@ class ParentModel(ABC):
             )
         elif context_string.get_path():
             path = context_string.get_path()
-            dereferenced_items = all_descendants_with_path_match(
-                path=path, dag=dag, from_node=root
-            )
+            dereferenced_items = all_descendants_with_path_match(path=path, dag=dag, from_node=root)
             dereferenced_items.sort(key=lambda x: len(x.path), reverse=True)
 
             if len(dereferenced_items) > 0:
