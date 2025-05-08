@@ -1,5 +1,4 @@
 import React, { useEffect, useCallback } from "react";
-import { useLoaderData } from "react-router-dom";
 import ExplorerTree from "./ExplorerTree";
 import { executeQuery, fetchTraceQuery } from "../../services/queryService";
 import { fetchExplorer } from "../../api/explorer";
@@ -9,7 +8,7 @@ import { useQueryHotkeys } from "../../hooks/useQueryHotkeys";
 import QueryPanel from "./QueryPanel";
 import Divider from "./Divider";
 import ResultsPanel from "./ResultsPanel";
-import useExplorerStore from "../../stores/explorerStore";
+import useStore from "../../stores/store";
 import useStore from "../../stores/store";
 import { getAncestors } from "../lineage/graphUtils";
 
@@ -56,7 +55,6 @@ const Info = tw.div`
 const HIDDEN_MODEL_TYPES = ["CsvScriptModel", "LocalMergeModel"];
 
 const QueryExplorer = () => {
-  const project = useLoaderData();
   const editorRef = React.useRef(null);
   const monacoRef = React.useRef(null);
 
@@ -82,9 +80,8 @@ const QueryExplorer = () => {
     setQueryStats,
     setSplitRatio,
     setIsDragging,
-    setProject,
     setActiveWorksheetId,
-  } = useExplorerStore();
+  } = useStore();
 
   const { namedChildren } = useStore();
 
@@ -96,9 +93,8 @@ const QueryExplorer = () => {
 
   // Set project and activeWorksheetId in store
   useEffect(() => {
-    setProject(project);
     setActiveWorksheetId(activeWorksheetId);
-  }, [project, activeWorksheetId, setProject, setActiveWorksheetId]);
+  }, [activeWorksheetId, setActiveWorksheetId]);
 
   const handleMouseDown = (e) => {
     setIsDragging(true);

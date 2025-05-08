@@ -1,7 +1,7 @@
 import React from "react";
 import Editor from "@monaco-editor/react";
 import { Panel } from "../styled/Panel";
-import useExplorerStore from "../../stores/explorerStore";
+import useStore from "../../stores/store";
 import WorksheetTabManager from "../worksheets/WorksheetTabManager";
 import { useWorksheets } from "../../contexts/WorksheetContext";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
@@ -18,7 +18,7 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
     setSelectedSource,
     handleRunQuery,
     splitRatio,
-  } = useExplorerStore();
+  } = useStore();
 
   // Use the worksheet context
   const {

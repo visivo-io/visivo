@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import useStore from '../../stores/store';
+import React, { useState } from "react";
+import useStore from "../../stores/store";
 
 const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
-  const projectFileObjects = useStore(state => state.projectFileObjects);
-  const namedChildren = useStore(state => state.namedChildren);
-  const [selectedPath, setSelectedPath] = useState('');
-  const [customPath, setCustomPath] = useState('');
+  const projectFileObjects = useStore((state) => state.projectFileObjects);
+  const namedChildren = useStore((state) => state.namedChildren);
+  const [selectedPath, setSelectedPath] = useState("");
+  const [customPath, setCustomPath] = useState("");
   const [isCustomPath, setIsCustomPath] = useState(false);
 
   const handleMove = () => {
@@ -18,10 +18,10 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
         ...namedChildren,
         [objectName]: {
           ...namedChildren[objectName],
-          status: 'Moved',
-          new_file_path: newPath
-        }
-      }
+          status: "Moved",
+          new_file_path: newPath,
+        },
+      },
     });
 
     onClose();
@@ -38,8 +38,18 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -62,7 +72,9 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
                 onChange={() => setIsCustomPath(false)}
                 className="mr-2"
               />
-              <span className="text-sm font-medium text-gray-700">Select existing location</span>
+              <span className="text-sm font-medium text-gray-700">
+                Select existing location
+              </span>
             </label>
             <select
               value={selectedPath}
@@ -71,7 +83,7 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 disabled:bg-gray-100"
             >
               <option value="">Select a location...</option>
-              {projectFileObjects.map(pathObj => (
+              {projectFileObjects.map((pathObj) => (
                 <option key={pathObj.full_path} value={pathObj.full_path}>
                   {pathObj.relative_path}
                 </option>
@@ -87,7 +99,9 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
                 onChange={() => setIsCustomPath(true)}
                 className="mr-2"
               />
-              <span className="text-sm font-medium text-gray-700">Enter custom location</span>
+              <span className="text-sm font-medium text-gray-700">
+                Enter custom location
+              </span>
             </label>
             <input
               type="text"
@@ -120,4 +134,4 @@ const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
   );
 };
 
-export default MoveObjectModal; 
+export default MoveObjectModal;

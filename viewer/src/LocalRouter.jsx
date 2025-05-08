@@ -3,21 +3,22 @@ import {
   Route,
   createBrowserRouter,
   createRoutesFromElements,
-} from 'react-router-dom';
-import { loadProject } from './loaders/project'
-import { loadDag } from './loaders/dag'
-import { loadError } from './loaders/error'
-import Home from './components/Home'
-import ProjectContainer from './components/project/ProjectContainer'
-import BreadcrumbLink from './components/common/BreadcrumbLink'
-import ErrorPage from './components/common/ErrorPage'
-import Lineage from './components/lineage/Lineage'
-import Explorer from './components/explorer/Explorer'
-import Editor from './components/editors/Editor'
+} from "react-router-dom";
+import { loadProject } from "./loaders/project";
+import { loadDag } from "./loaders/dag";
+import { loadError } from "./loaders/error";
+import Home from "./components/Home";
+import ProjectContainer from "./components/project/ProjectContainer";
+import BreadcrumbLink from "./components/common/BreadcrumbLink";
+import ErrorPage from "./components/common/ErrorPage";
+import Lineage from "./components/lineage/Lineage";
+import Explorer from "./components/explorer/Explorer";
+import Editor from "./components/editors/Editor";
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(
-    <Route path="/"
+    <Route
+      path="/"
       element={<Home />}
       loader={loadError}
       handle={{ crumb: () => <a href="/">Home</a> }}
@@ -26,22 +27,27 @@ const LocalRouter = createBrowserRouter(
         id="lineage"
         path="/lineage"
         element={<Lineage />}
-        loader={loadDag}
-        handle={{ crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink> }}
+        handle={{
+          crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
+        }}
       />
       <Route
         id="explorer"
         path="/explorer"
         element={<Explorer />}
         loader={loadProject}
-        handle={{ crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink> }}
+        handle={{
+          crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
+        }}
       />
       <Route
         id="editor"
         path="/editor"
         element={<Editor />}
         loader={loadProject}
-        handle={{ crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink> }}
+        handle={{
+          crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
+        }}
       />
       <Route
         path="/project"
@@ -49,7 +55,9 @@ const LocalRouter = createBrowserRouter(
         errorElement={<ErrorPage />}
         shouldRevalidate={() => false}
         loader={loadProject}
-        handle={{ crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink> }}
+        handle={{
+          crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink>,
+        }}
       >
         <Route index element={<ProjectContainer />} />
         <Route
@@ -58,7 +66,13 @@ const LocalRouter = createBrowserRouter(
           element={<ProjectContainer />}
           loader={loadProject}
           shouldRevalidate={() => false}
-          handle={{ crumb: (match) => <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>{match.params.dashboardName}</BreadcrumbLink> }}
+          handle={{
+            crumb: (match) => (
+              <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>
+                {match.params.dashboardName}
+              </BreadcrumbLink>
+            ),
+          }}
         />
       </Route>
     </Route>

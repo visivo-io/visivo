@@ -1,13 +1,15 @@
-import useStore from '../../stores/store'; // Adjust path to Zustand store
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import debounce from 'lodash/debounce'; // You'll need to install lodash if not already present
-import ObjectPill from './ObjectPill'; // You'll need to create this component if it doesn't exist
-import { createPortal } from 'react-dom';
-import QueryPill from './QueryPill'; // You'll need to create this component if it doesn't exist
-import ContextMenu from './ContextMenu';
+import useStore from "../../stores/store"; // Adjust path to Zustand store
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import debounce from "lodash/debounce"; // You'll need to install lodash if not already present
+import ObjectPill from "./ObjectPill"; // You'll need to create this component if it doesn't exist
+import { createPortal } from "react-dom";
+import QueryPill from "./QueryPill"; // You'll need to create this component if it doesn't exist
+import ContextMenu from "./ContextMenu";
 
-function AttributeComponent({ name, value, path,}) {
-  const updateNamedChildAttribute = useStore((state) => state.updateNamedChildAttribute);
+function AttributeComponent({ name, value, path }) {
+  const updateNamedChildAttribute = useStore(
+    (state) => state.updateNamedChildAttribute
+  );
   const namedChildren = useStore((state) => state.namedChildren);
   const [localValue, setLocalValue] = useState(value);
   const [isJsonObject, setIsJsonObject] = useState(false);
@@ -22,7 +24,9 @@ function AttributeComponent({ name, value, path,}) {
   const [isQueryValue, setIsQueryValue] = useState(false);
   const [queryType, setQueryType] = useState(null); // 'function' or 'bracket'
   const [contextMenu, setContextMenu] = useState(null);
-  const deleteNamedChildAttribute = useStore((state) => state.deleteNamedChildAttribute);
+  const deleteNamedChildAttribute = useStore(
+    (state) => state.deleteNamedChildAttribute
+  );
 
   // Check if value is valid JSON object with required structure
   const checkAndParseJson = useCallback((val) => {
@@ -32,7 +36,7 @@ function AttributeComponent({ name, value, path,}) {
 
     if (queryFunctionPattern.test(val) || queryBracketPattern.test(val)) {
       setIsQueryValue(true);
-      setQueryType(queryFunctionPattern.test(val) ? 'function' : 'bracket');
+      setQueryType(queryFunctionPattern.test(val) ? "function" : "bracket");
       setIsJsonObject(false);
       setParsedObject(null);
       return false;
@@ -40,7 +44,7 @@ function AttributeComponent({ name, value, path,}) {
 
     try {
       const parsed = JSON.parse(val);
-      if (parsed && typeof parsed === 'object' && parsed.name) {
+      if (parsed && typeof parsed === "object" && parsed.name) {
         setParsedObject(parsed);
         setIsJsonObject(true);
         return true;
@@ -73,10 +77,10 @@ function AttributeComponent({ name, value, path,}) {
     setLocalValue(newValue);
 
     // Handle @ mentions
-    if (newValue.includes('@')) {
-      const searchTerm = newValue.split('@').pop()?.toLowerCase() || '';
-      const filtered = Object.keys(namedChildren).filter(
-        child => child.toLowerCase().includes(searchTerm)
+    if (newValue.includes("@")) {
+      const searchTerm = newValue.split("@").pop()?.toLowerCase() || "";
+      const filtered = Object.keys(namedChildren).filter((child) =>
+        child.toLowerCase().includes(searchTerm)
       );
       setFilteredChildren(filtered);
       setShowDropdown(filtered.length > 0);
@@ -92,10 +96,10 @@ function AttributeComponent({ name, value, path,}) {
   // Add this function to handle scrolling
   const scrollSelectedIntoView = useCallback((index) => {
     if (!dropdownRef.current) return;
-    
+
     const dropdown = dropdownRef.current;
     const selectedElement = dropdown.children[index];
-    
+
     if (!selectedElement) return;
 
     const dropdownRect = dropdown.getBoundingClientRect();
@@ -103,10 +107,10 @@ function AttributeComponent({ name, value, path,}) {
 
     if (selectedRect.bottom > dropdownRect.bottom) {
       // Scroll down if selected item is below viewport
-      selectedElement.scrollIntoView({ block: 'nearest' });
+      selectedElement.scrollIntoView({ block: "nearest" });
     } else if (selectedRect.top < dropdownRect.top) {
       // Scroll up if selected item is above viewport
-      selectedElement.scrollIntoView({ block: 'nearest' });
+      selectedElement.scrollIntoView({ block: "nearest" });
     }
   }, []);
 
@@ -115,19 +119,22 @@ function AttributeComponent({ name, value, path,}) {
     if (!showDropdown) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
-        const nextIndex = Math.min(selectedIndex + 1, filteredChildren.length - 1);
+        const nextIndex = Math.min(
+          selectedIndex + 1,
+          filteredChildren.length - 1
+        );
         setSelectedIndex(nextIndex);
         scrollSelectedIntoView(nextIndex);
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
         const prevIndex = Math.max(selectedIndex - 1, 0);
         setSelectedIndex(prevIndex);
         scrollSelectedIntoView(prevIndex);
         break;
-      case 'Enter':
+      case "Enter":
         e.preventDefault();
         if (filteredChildren[selectedIndex]) {
           const selectedChild = filteredChildren[selectedIndex];
@@ -142,7 +149,7 @@ function AttributeComponent({ name, value, path,}) {
           setShowDropdown(false);
         }
         break;
-      case 'Escape':
+      case "Escape":
         setShowDropdown(false);
         break;
       default:
@@ -152,7 +159,7 @@ function AttributeComponent({ name, value, path,}) {
 
   const handlePillClick = (e) => {
     e.preventDefault();
-    
+
     if (clickTimeout) {
       // Double click detected
       clearTimeout(clickTimeout);
@@ -167,18 +174,18 @@ function AttributeComponent({ name, value, path,}) {
           setIsJsonObject(false);
           setParsedObject(null);
           debouncedUpdateFn(atReference);
-          
+
           // Filter children based on the current pill's name
           const searchTerm = parsedObject.name.toLowerCase();
-          const filtered = Object.keys(namedChildren).filter(
-            child => child.toLowerCase().includes(searchTerm)
+          const filtered = Object.keys(namedChildren).filter((child) =>
+            child.toLowerCase().includes(searchTerm)
           );
           setFilteredChildren(filtered);
           setShowDropdown(true);
-          
+
           // Find and set the index of the current item in the filtered list
           const currentIndex = filtered.findIndex(
-            child => child.toLowerCase() === searchTerm
+            (child) => child.toLowerCase() === searchTerm
           );
           setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
 
@@ -200,12 +207,12 @@ function AttributeComponent({ name, value, path,}) {
   };
 
   const handleQueryChange = (newValue) => {
-    if (newValue === 'none') {
+    if (newValue === "none") {
       // Reset all states
       setIsQueryValue(false);
       setQueryType(null);
-      setLocalValue('');
-      debouncedUpdateFn('');
+      setLocalValue("");
+      debouncedUpdateFn("");
     } else {
       setLocalValue(newValue);
       debouncedUpdateFn(newValue);
@@ -232,7 +239,7 @@ function AttributeComponent({ name, value, path,}) {
       setDropdownPosition({
         top: rect.bottom + window.scrollY,
         left: rect.left + window.scrollX,
-        width: rect.width
+        width: rect.width,
       });
     }
   }, [showDropdown, localValue]);
@@ -252,12 +259,12 @@ function AttributeComponent({ name, value, path,}) {
     e.stopPropagation(); // Prevent event bubbling
     setContextMenu({
       x: e.clientX,
-      y: e.clientY
+      y: e.clientY,
     });
   };
 
   const handleDelete = () => {
-    console.log('Deleting path:', path); // Debug log
+    console.log("Deleting path:", path); // Debug log
     deleteNamedChildAttribute(path);
     setContextMenu(null);
   };
@@ -266,22 +273,22 @@ function AttributeComponent({ name, value, path,}) {
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
     if (contextMenu) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
     }
   }, [contextMenu]);
 
   // Determine flex direction based on name type
-  const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
+  const flexDirection = typeof name === "string" ? "flex-col" : "flex-row";
 
   return (
     <div className={`flex ${flexDirection}`} onContextMenu={handleContextMenu}>
-       <span className="text-sm p-1 font-medium text-grey-400">{name}</span>
-      
+      <span className="text-sm p-1 font-medium text-grey-400">{name}</span>
+
       {isJsonObject && parsedObject ? (
         <div onClick={handlePillClick} className="cursor-text">
-          <ObjectPill 
-            name={parsedObject.name} 
+          <ObjectPill
+            name={parsedObject.name}
             inline={parsedObject.is_inline_defined}
           />
         </div>
@@ -289,7 +296,7 @@ function AttributeComponent({ name, value, path,}) {
         <QueryPill
           value={localValue}
           onChange={handleQueryChange}
-          isQueryFunction={queryType === 'function'}
+          isQueryFunction={queryType === "function"}
         />
       ) : (
         <div className="relative w-full">
@@ -301,47 +308,48 @@ function AttributeComponent({ name, value, path,}) {
             onKeyDown={handleKeyDown}
             className="w-full border border-gray-300 rounded-md shadow-md focus:ring-blue-500 focus:border-blue-500 p-2"
           />
-          {showDropdown && createPortal(
-            <div 
-              className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto p-1"
-              style={{
-                top: dropdownPosition.top + 4,
-                left: dropdownPosition.left,
-                width: dropdownPosition.width,
-              }}
-              ref={dropdownRef}
-            >
-              {filteredChildren.map((child, index) => (
-                <div
-                  key={child}
-                  className={`p-1 cursor-pointer rounded-md ${
-                    index === selectedIndex ? 'bg-gray-100' : ''
-                  }`}
-                  onClick={() => {
-                    const reference = JSON.stringify({
-                      name: child,
-                      is_inline_defined: false,
-                      original_value: `\${ref(${child})}`,
-                    });
-                    setLocalValue(reference);
-                    checkAndParseJson(reference);
-                    debouncedUpdateFn(reference);
-                    setShowDropdown(false);
-                  }}
-                >
-                  <ObjectPill 
-                    name={child} 
-                    inline={false}
-                    disableDoubleClick={true}
-                  />
-                </div>
-              ))}
-            </div>,
-            document.body
-          )}
+          {showDropdown &&
+            createPortal(
+              <div
+                className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto p-1"
+                style={{
+                  top: dropdownPosition.top + 4,
+                  left: dropdownPosition.left,
+                  width: dropdownPosition.width,
+                }}
+                ref={dropdownRef}
+              >
+                {filteredChildren.map((child, index) => (
+                  <div
+                    key={child}
+                    className={`p-1 cursor-pointer rounded-md ${
+                      index === selectedIndex ? "bg-gray-100" : ""
+                    }`}
+                    onClick={() => {
+                      const reference = JSON.stringify({
+                        name: child,
+                        is_inline_defined: false,
+                        original_value: `\${ref(${child})}`,
+                      });
+                      setLocalValue(reference);
+                      checkAndParseJson(reference);
+                      debouncedUpdateFn(reference);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <ObjectPill
+                      name={child}
+                      inline={false}
+                      disableDoubleClick={true}
+                    />
+                  </div>
+                ))}
+              </div>,
+              document.body
+            )}
         </div>
       )}
-      
+
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

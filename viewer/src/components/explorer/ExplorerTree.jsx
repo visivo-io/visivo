@@ -2,11 +2,11 @@ import React from "react";
 import { HiOutlineClipboardCopy } from "react-icons/hi";
 import Pill from "../common/Pill";
 import { Sidebar } from "../styled/Sidebar";
-import useExplorerStore from "../../stores/explorerStore";
+import useStore from "../../stores/store";
 
 const ExplorerTree = React.memo(
   ({ data, selectedTab, onTypeChange, onItemClick }) => {
-    const { setInfo } = useExplorerStore();
+    const { setInfo } = useStore();
 
     const validData = React.useMemo(() => {
       if (!Array.isArray(data)) return [];
@@ -15,11 +15,14 @@ const ExplorerTree = React.memo(
       );
     }, [data]);
 
-    const handleCopyName = React.useCallback((e, name) => {
-      e.stopPropagation();
-      setInfo(`Copied "${name}" to clipboard`);
-      navigator.clipboard.writeText(name);
-    }, [setInfo]);
+    const handleCopyName = React.useCallback(
+      (e, name) => {
+        e.stopPropagation();
+        setInfo(`Copied "${name}" to clipboard`);
+        navigator.clipboard.writeText(name);
+      },
+      [setInfo]
+    );
 
     const renderTreeItem = React.useCallback(
       (node) => {

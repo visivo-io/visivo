@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { TYPE_STYLE_MAP } from '../../components/styled/VisivoObjectStyles';
-import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
-import useStore from '../../stores/store';
+import React, { useState, useEffect } from "react";
+import { TYPE_STYLE_MAP } from "../../components/styled/VisivoObjectStyles";
+import { PROPERTY_STYLE_MAP } from "../../components/styled/PropertyStyles";
+import useStore from "../../stores/store";
 
 const CreateObjectModal = ({ isOpen, onClose }) => {
-  const [step, setStep] = useState('property'); // 'property' | 'type' | 'name' | 'attributes'
+  const [step, setStep] = useState("property"); // 'property' | 'type' | 'name' | 'attributes'
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
-  const [objectName, setObjectName] = useState('');
+  const [objectName, setObjectName] = useState("");
   const [attributes, setAttributes] = useState({});
-  const [selectedFilePath, setSelectedFilePath] = useState('');
-  
-  const schema = useStore(state => state.schema);
-  const openTab = useStore(state => state.openTab);
-  const namedChildren = useStore(state => state.namedChildren);
-  
-  const projectFileObjects = useStore(state => state.projectFileObjects);
-  const projectFilePath = useStore(state => state.projectFilePath);
+  const [selectedFilePath, setSelectedFilePath] = useState("");
+
+  const schema = useStore((state) => state.schema);
+  const openTab = useStore((state) => state.openTab);
+  const namedChildren = useStore((state) => state.namedChildren);
+
+  const projectFileObjects = useStore((state) => state.projectFileObjects);
+  const projectFilePath = useStore((state) => state.projectFilePath);
 
   // Reset all state to initial values
   const resetState = () => {
-    setStep('property');
+    setStep("property");
     setSelectedProperty(null);
     setSelectedType(null);
-    setObjectName('');
+    setObjectName("");
     setAttributes({});
-    setSelectedFilePath('');
+    setSelectedFilePath("");
   };
 
   // Add effect to reset state when modal closes
@@ -37,20 +37,20 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
 
   const getValidTypesForProperty = (prop) => {
     if (!schema?.properties) return [];
-    
+
     const propSchema = schema.properties[prop];
-    
+
     if (propSchema?.items?.oneOf) {
-      const types = propSchema.items.oneOf.map(item => {
-        const typePath = item.$ref.split('/');
+      const types = propSchema.items.oneOf.map((item) => {
+        const typePath = item.$ref.split("/");
         return typePath[typePath.length - 1];
       });
-      
+
       return types;
     } else if (propSchema?.items?.$ref) {
-      const typePath = propSchema.items.$ref.split('/');
+      const typePath = propSchema.items.$ref.split("/");
       const type = typePath[typePath.length - 1];
-      
+
       return [type];
     }
     return [];
@@ -61,28 +61,28 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     const validTypes = getValidTypesForProperty(prop);
     if (validTypes.length === 1) {
       setSelectedType(validTypes[0]);
-      setStep('name');
+      setStep("name");
     } else {
-      setStep('type');
+      setStep("type");
     }
   };
 
   const handleTypeSelect = (type) => {
     setSelectedType(type);
-    setStep('name');
+    setStep("name");
   };
 
   const getRequiredAttributes = (type) => {
     if (!schema?.$defs?.[type]) return [];
-    
+
     const typeSchema = schema.$defs[type];
     const required = typeSchema.required || [];
     const properties = typeSchema.properties || {};
 
     // Filter out 'name' since we already have it
     return required
-      .filter(key => key !== 'name')
-      .map(key => ({
+      .filter((key) => key !== "name")
+      .map((key) => ({
         name: key,
         ...properties[key],
       }));
@@ -91,7 +91,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   const handleNameSubmit = () => {
     const requiredAttributes = getRequiredAttributes(selectedType);
     if (requiredAttributes.length > 0) {
-      setStep('attributes');
+      setStep("attributes");
     } else {
       handleCreate();
     }
@@ -113,20 +113,20 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
       type_key: type_key,
       config: {
         name: objectName,
-        ...attributes
+        ...attributes,
       },
-      status: 'New', // Set status to New for new objects
+      status: "New", // Set status to New for new objects
       file_path: selectedFilePath || projectFilePath, // defaults to existing project file path
       new_file_path: selectedFilePath || projectFilePath,
-      path: null
+      path: null,
     };
 
     // Update store with new object
     useStore.setState({
       namedChildren: {
         ...namedChildren,
-        [objectName]: newObject
-      }
+        [objectName]: newObject,
+      },
     });
 
     // Open the new object in a tab
@@ -141,9 +141,11 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
       return TYPE_STYLE_MAP[selectedType]?.displayName || selectedType;
     } else if (selectedProperty) {
       // If we only have a property selected, use its singular form
-      return PROPERTY_STYLE_MAP[selectedProperty]?.displayName || selectedProperty;
+      return (
+        PROPERTY_STYLE_MAP[selectedProperty]?.displayName || selectedProperty
+      );
     }
-    return 'Object';
+    return "Object";
   };
 
   if (!isOpen) return null;
@@ -154,22 +156,23 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 backdrop flex items-center justify-center">
       <div className="bg-white rounded-lg p-6 w-[750px]">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">
-            Create New {displayName}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h2 className="text-xl font-semibold">Create New {displayName}</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
             ×
           </button>
         </div>
 
-        {step === 'property' && schema && (
+        {step === "property" && schema && (
           <div className="grid grid-cols-3 gap-4">
             {Object.keys(schema.properties)
-              .filter(key => schema.properties[key]?.type === 'array')
-              .map(prop => {
+              .filter((key) => schema.properties[key]?.type === "array")
+              .map((prop) => {
                 const style = PROPERTY_STYLE_MAP[prop] || {};
                 const Icon = style.icon;
-                
+
                 return (
                   <button
                     key={prop}
@@ -181,7 +184,9 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                       {style.displayName || prop}
                     </span>
                     <span className="text-xs text-gray-600 mt-1 text-center">
-                      {style.description || schema.properties[prop]?.description || `Create a new ${prop} object`}
+                      {style.description ||
+                        schema.properties[prop]?.description ||
+                        `Create a new ${prop} object`}
                     </span>
                   </button>
                 );
@@ -189,12 +194,12 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {step === 'type' && (
+        {step === "type" && (
           <div className="grid grid-cols-2 gap-4">
-            {getValidTypesForProperty(selectedProperty).map(type => {
+            {getValidTypesForProperty(selectedProperty).map((type) => {
               const style = TYPE_STYLE_MAP[type] || {};
               const Icon = style.icon;
-              
+
               return (
                 <button
                   key={type}
@@ -202,14 +207,16 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                   className={`p-4 border rounded-lg hover:opacity-80 flex flex-col items-center ${style.bg} ${style.border}`}
                 >
                   {Icon && <Icon className={`text-2xl ${style.text}`} />}
-                  <span className={`mt-2 font-medium ${style.text}`}>{type}</span>
+                  <span className={`mt-2 font-medium ${style.text}`}>
+                    {type}
+                  </span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {step === 'name' && (
+        {step === "name" && (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
@@ -223,7 +230,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                 placeholder={`Enter ${displayName.toLowerCase()} name...`}
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 File Path
@@ -234,14 +241,15 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
               >
                 <option value="">Select a file...</option>
-                {projectFileObjects.map(pathObj => (
+                {projectFileObjects.map((pathObj) => (
                   <option key={pathObj.full_path} value={pathObj.full_path}>
                     {pathObj.relative_path}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Select the file where you want to save this {displayName.toLowerCase()}. Default is the project file path.
+                Select the file where you want to save this{" "}
+                {displayName.toLowerCase()}. Default is the project file path.
               </p>
             </div>
 
@@ -255,28 +263,34 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
           </div>
         )}
 
-        {step === 'attributes' && (
+        {step === "attributes" && (
           <div className="space-y-4">
-            {getRequiredAttributes(selectedType).map(attr => (
+            {getRequiredAttributes(selectedType).map((attr) => (
               <div key={attr.name} className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
                   {attr.title || attr.name}
                 </label>
                 {attr.description && (
-                  <p className="text-xs text-gray-500 mb-1">{attr.description}</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {attr.description}
+                  </p>
                 )}
 
                 {/* String input */}
-                {(attr.type === 'string' || !attr.type) && (
+                {(attr.type === "string" || !attr.type) && (
                   <input
                     type="text"
-                    value={attributes[attr.name] || ''}
-                    onChange={(e) => setAttributes(prev => ({
-                      ...prev,
-                      [attr.name]: e.target.value
-                    }))}
+                    value={attributes[attr.name] || ""}
+                    onChange={(e) =>
+                      setAttributes((prev) => ({
+                        ...prev,
+                        [attr.name]: e.target.value,
+                      }))
+                    }
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    placeholder={`Enter ${(attr.title || attr.name).toLowerCase()}...`}
+                    placeholder={`Enter ${(
+                      attr.title || attr.name
+                    ).toLowerCase()}...`}
                   />
                 )}
 
@@ -284,18 +298,22 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                 {attr.$ref && (
                   <input
                     type="text"
-                    value={attributes[attr.name] || ''}
-                    onChange={(e) => setAttributes(prev => ({
-                      ...prev,
-                      [attr.name]: e.target.value
-                    }))}
+                    value={attributes[attr.name] || ""}
+                    onChange={(e) =>
+                      setAttributes((prev) => ({
+                        ...prev,
+                        [attr.name]: e.target.value,
+                      }))
+                    }
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                    placeholder={`Enter ${(attr.title || attr.name).toLowerCase()}...`}
+                    placeholder={`Enter ${(
+                      attr.title || attr.name
+                    ).toLowerCase()}...`}
                   />
                 )}
 
                 {/* Array input */}
-                {attr.type === 'array' && (
+                {attr.type === "array" && (
                   <div className="space-y-2">
                     {(attributes[attr.name] || []).map((item, index) => (
                       <div key={index} className="flex items-center gap-2">
@@ -305,9 +323,9 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                           onChange={(e) => {
                             const newArray = [...(attributes[attr.name] || [])];
                             newArray[index] = e.target.value;
-                            setAttributes(prev => ({
+                            setAttributes((prev) => ({
                               ...prev,
-                              [attr.name]: newArray
+                              [attr.name]: newArray,
                             }));
                           }}
                           className="flex-1 border border-gray-300 rounded-md shadow-sm p-2"
@@ -317,9 +335,9 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                           onClick={() => {
                             const newArray = [...(attributes[attr.name] || [])];
                             newArray.splice(index, 1);
-                            setAttributes(prev => ({
+                            setAttributes((prev) => ({
                               ...prev,
-                              [attr.name]: newArray
+                              [attr.name]: newArray,
                             }));
                           }}
                           className="text-red-500 hover:text-red-700"
@@ -330,39 +348,43 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                     ))}
                     <button
                       onClick={() => {
-                        setAttributes(prev => ({
+                        setAttributes((prev) => ({
                           ...prev,
-                          [attr.name]: [...(prev[attr.name] || []), '']
+                          [attr.name]: [...(prev[attr.name] || []), ""],
                         }));
                       }}
                       className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
-                      <span>+</span> Add {attr.items?.title || 'Item'}
+                      <span>+</span> Add {attr.items?.title || "Item"}
                     </button>
                   </div>
                 )}
 
                 {/* Number input */}
-                {attr.type === 'number' && (
+                {attr.type === "number" && (
                   <input
                     type="number"
-                    value={attributes[attr.name] || ''}
-                    onChange={(e) => setAttributes(prev => ({
-                      ...prev,
-                      [attr.name]: parseFloat(e.target.value)
-                    }))}
+                    value={attributes[attr.name] || ""}
+                    onChange={(e) =>
+                      setAttributes((prev) => ({
+                        ...prev,
+                        [attr.name]: parseFloat(e.target.value),
+                      }))
+                    }
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   />
                 )}
 
                 {/* Boolean input */}
-                {attr.type === 'boolean' && (
+                {attr.type === "boolean" && (
                   <select
                     value={attributes[attr.name] || false}
-                    onChange={(e) => setAttributes(prev => ({
-                      ...prev,
-                      [attr.name]: e.target.value === 'true'
-                    }))}
+                    onChange={(e) =>
+                      setAttributes((prev) => ({
+                        ...prev,
+                        [attr.name]: e.target.value === "true",
+                      }))
+                    }
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   >
                     <option value="false">No</option>
@@ -384,4 +406,4 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   );
 };
 
-export default CreateObjectModal; 
+export default CreateObjectModal;

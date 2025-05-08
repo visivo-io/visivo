@@ -1,7 +1,6 @@
-import { create } from "zustand";
 import { executeQuery } from "../services/queryService";
 
-const useExplorerStore = create((set, get) => ({
+const createExplorerSlice = (set, get) => ({
   // Query related state
   query: "",
   setQuery: (query) => set({ query }),
@@ -52,6 +51,7 @@ const useExplorerStore = create((set, get) => ({
   // Project and worksheet context
   project: null,
   setProject: (project) => set({ project }),
+
   activeWorksheetId: null,
   setActiveWorksheetId: (activeWorksheetId) => set({ activeWorksheetId }),
 
@@ -124,6 +124,6 @@ const useExplorerStore = create((set, get) => ({
       setIsLoading(false);
     }
   },
-}));
+});
 
-export default useExplorerStore;
+export default createExplorerSlice;
