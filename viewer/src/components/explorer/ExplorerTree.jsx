@@ -17,9 +17,9 @@ const ExplorerTree = React.memo(
 
     const handleCopyName = React.useCallback((e, name) => {
       e.stopPropagation();
-      setInfo(`Copied ${name} to clipboard`);
+      setInfo(`Copied "${name}" to clipboard`);
       navigator.clipboard.writeText(name);
-    }, []);
+    }, [setInfo]);
 
     const renderTreeItem = React.useCallback(
       (node) => {
