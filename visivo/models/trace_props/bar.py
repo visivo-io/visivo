@@ -104,9 +104,7 @@ class BarError_y(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -140,10 +138,7 @@ class BarHoverlabel(TracePropsAttribute):
         description=""" object containing one or more of the keys listed below.<br>Sets the font used in hover labels. """,
     )
     namelength: Optional[
-        int
-        | constr(pattern=INDEXED_STATEMENT_REGEX)
-        | constr(pattern=STATEMENT_REGEX)
-        | List[int]
+        int | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List[int]
     ] = Field(
         None,
         description=""" integer or array of integers greater than or equal to -1<br>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis. """,
@@ -151,9 +146,7 @@ class BarHoverlabel(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -264,9 +257,7 @@ class BarMarkerColorbar(TracePropsAttribute):
     bgcolor: Optional[str] = Field(
         None, description=""" color<br>Sets the color of padded area. """
     )
-    bordercolor: Optional[str] = Field(
-        None, description=""" color<br>Sets the axis line color. """
-    )
+    bordercolor: Optional[str] = Field(None, description=""" color<br>Sets the axis line color. """)
     borderwidth: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
         description=""" number greater than or equal to 0<br>Sets the width (in px) or the border enclosing this color bar. """,
@@ -342,9 +333,7 @@ class BarMarkerColorbar(TracePropsAttribute):
         None,
         description=""" angle<br>Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically. """,
     )
-    tickcolor: Optional[str] = Field(
-        None, description=""" color<br>Sets the tick color. """
-    )
+    tickcolor: Optional[str] = Field(None, description=""" color<br>Sets the tick color. """)
     tickfont: Optional[
         TextfontLabelfontTickfontInsidetextfontRangefontOutsidetextfontFontGrouptitlefont1
     ] = Field(
@@ -379,16 +368,12 @@ class BarMarkerColorbar(TracePropsAttribute):
         None,
         description=""" enumerated , one of ( "auto" | "linear" | "array" )<br>Sets the tick mode for this axis. If "auto", the number of ticks is set via `nticks`. If "linear", the placement of the ticks is determined by a starting position `tick0` and a tick step `dtick` ("linear" is the default value if `tick0` and `dtick` are provided). If "array", the placement of the ticks is set via `tickvals` and the tick text is `ticktext`. ("array" is the default value if `tickvals` is provided). """,
     )
-    tickprefix: Optional[str] = Field(
-        None, description=""" string<br>Sets a tick label prefix. """
-    )
+    tickprefix: Optional[str] = Field(None, description=""" string<br>Sets a tick label prefix. """)
     ticks: Optional[str] = Field(
         None,
         description=""" enumerated , one of ( "outside" | "inside" | "" )<br>Determines whether ticks are drawn or not. If "", this axis' ticks are not drawn. If "outside" ("inside"), this axis' are drawn outside (inside) the axis lines. """,
     )
-    ticksuffix: Optional[str] = Field(
-        None, description=""" string<br>Sets a tick label suffix. """
-    )
+    ticksuffix: Optional[str] = Field(None, description=""" string<br>Sets a tick label suffix. """)
     ticktext: Optional[constr(pattern=STATEMENT_REGEX) | List] = Field(
         None,
         description=""" data array<br>Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to "array". Used with `tickvals`. """,
@@ -557,9 +542,11 @@ class BarMarker(TracePropsAttribute):
         None,
         description=""" colorscale<br>Sets the colorscale. Has an effect only if in `marker.color` is set to a numerical array. The colorscale must be an array containing arrays mapping a normalized value to an rgb, rgba, hex, hsl, hsv, or named color string. At minimum, a mapping for the lowest (0) and highest (1) values are required. For example, `[[0, 'rgb(0,0,255)'], [1, 'rgb(255,0,0)']]`. To control the bounds of the colorscale in color space, use `marker.cmin` and `marker.cmax`. Alternatively, `colorscale` may be a palette name string of the following list: Blackbody,Bluered,Blues,Cividis,Earth,Electric,Greens,Greys,Hot,Jet,Picnic,Portland,Rainbow,RdBu,Reds,Viridis,YlGnBu,YlOrRd. """,
     )
-    cornerradius: Optional[float | constr(pattern= r"^\d+%$") | constr(pattern=INDEXED_STATEMENT_REGEX)]= Field(
+    cornerradius: Optional[
+        float | constr(pattern=r"^\d+%$") | constr(pattern=INDEXED_STATEMENT_REGEX)
+    ] = Field(
         None,
-        description=""" number or categorical coordinate string<br>Sets the rounding of bar corners. May be an integer number of pixels, or a percentage of bar width (as a string ending in %)"""
+        description=""" number or categorical coordinate string<br>Sets the rounding of bar corners. May be an integer number of pixels, or a percentage of bar width (as a string ending in %)""",
     )
     line: Optional[Line1] = Field(
         None,
@@ -589,9 +576,7 @@ class BarMarker(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -635,9 +620,7 @@ class BarSelected(TracePropsAttribute):
 
 
 class FontInsidetextfontTextfontOutsidetextfont1(TracePropsAttribute):
-    color: Optional[str | List[str]] = Field(
-        None, description=""" color or array of colors<br> """
-    )
+    color: Optional[str | List[str]] = Field(None, description=""" color or array of colors<br> """)
     family: Optional[str | List[str]] = Field(
         None,
         description=""" string or array of strings<br>HTML font family - the typeface that will be applied by the web browser. The web browser will only be able to apply a font if it is available on the system which it operates. Provide multiple font families, separated by commas, to indicate the preference in which to apply fonts if they aren't available on the system. The Chart Studio Cloud (at https://chart-studio.plotly.com or on-premise) generates images on a server, where only a select number of fonts are installed and supported. These include "Arial", "Balto", "Courier New", "Droid Sans",, "Droid Serif", "Droid Sans Mono", "Gravitas One", "Old Standard TT", "Open Sans", "Overpass", "PT Sans Narrow", "Raleway", "Times New Roman". """,
@@ -687,7 +670,9 @@ class Bar(TraceProps):
         None,
         description=""" string<br>Set several traces linked to the same position axis or matching axes to the same alignmentgroup. This controls whether bars compute their positional range dependently or independently. """,
     )
-    base: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List] = Field(
+    base: Optional[
+        float | constr(pattern=INDEXED_STATEMENT_REGEX) | constr(pattern=STATEMENT_REGEX) | List
+    ] = Field(
         None,
         description=""" number or categorical coordinate string<br>Sets where the bar base is drawn (in position axis units). In "stack" or "relative" barmode, traces that set "base" will be excluded and drawn in "overlay" mode instead. """,
     )

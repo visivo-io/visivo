@@ -21,9 +21,7 @@ def test_deploy_with_no_profile():
     project = ProjectFactory()
     port = get_test_port()
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
     temp_file(PROFILE_FILE_NAME, "key: value", working_dir + "/.visivo")
 
@@ -52,9 +50,7 @@ def test_deploy_with_whitespace_stage():
     project = ProjectFactory()
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     port = get_test_port()
@@ -84,9 +80,7 @@ def test_deploy_with_symbol_stage():
     project = ProjectFactory()
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     port = get_test_port()

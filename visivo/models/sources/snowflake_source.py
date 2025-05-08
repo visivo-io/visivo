@@ -55,6 +55,7 @@ class SnowflakeSource(SqlalchemySource):
 
     def url(self):
         from snowflake.sqlalchemy import URL
+
         url_attributes = {
             "user": self.username,
             "password": self.get_password(),

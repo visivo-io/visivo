@@ -7,6 +7,7 @@ from visivo.models.dashboards.external_dashboard import ExternalDashboard
 from visivo.logging.logger import Logger
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
+
 def get_dashboard_discriminator_value(value: Any) -> str:
     if isinstance(value, (dict, YamlOrderedDict)):
         if "href" in value:
@@ -19,10 +20,11 @@ def get_dashboard_discriminator_value(value: Any) -> str:
         return "internal"
     return "internal"
 
+
 DashboardField = Annotated[
     Union[
         Annotated[Dashboard, Tag("internal")],
         Annotated[ExternalDashboard, Tag("external")],
     ],
     Discriminator(get_dashboard_discriminator_value),
-] 
+]

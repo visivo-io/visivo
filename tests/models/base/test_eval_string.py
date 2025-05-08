@@ -108,9 +108,7 @@ def test_evaluate():
     project.dashboards[0].rows[0].items[0].chart.traces[
         0
     ].path = "project.dashboards[0].rows[0].items[0].chart.traces[0]"
-    project.dashboards[0].rows[0].items[
-        0
-    ].path = "project.dashboards[0].rows[0].items[0]"
+    project.dashboards[0].rows[0].items[0].path = "project.dashboards[0].rows[0].items[0]"
     dag = project.dag()
     output_dir = "tmp"
 

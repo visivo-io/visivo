@@ -29,9 +29,7 @@ def test_Runner_trace_with_default():
     model = SqlModelFactory(name="model1", source=None)
     trace = TraceFactory(name="trace1", model=model)
     defaults = DefaultsFactory(source_name=source.name)
-    project = ProjectFactory(
-        defaults=defaults, sources=[source], traces=[trace], dashboards=[]
-    )
+    project = ProjectFactory(defaults=defaults, sources=[source], traces=[trace], dashboards=[])
 
     create_file_database(url=source.url(), output_dir=output_dir)
 
@@ -41,9 +39,7 @@ def test_Runner_trace_with_default():
 
     port = get_test_port()
     server_url = f"http://localhost:{port}"
-    runner = FilteredRunner(
-        project=project, output_dir=output_dir, server_url=server_url
-    )
+    runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -64,9 +60,7 @@ def test_Runner_trace_given_source():
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("select *, 'values' as 'cohort_on' from test_table")
 
-    runner = FilteredRunner(
-        project=project, output_dir=output_dir, server_url=server_url
-    )
+    runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -84,9 +78,7 @@ def test_runner_with_csv_script_model():
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write(f"select *, 'value' as 'cohort_on' from {model.table_name}")
 
-    runner = FilteredRunner(
-        project=project, output_dir=output_dir, server_url=server_url
-    )
+    runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -116,9 +108,7 @@ def test_runner_with_local_merge_model():
     with open(f"{output_dir}/traces/{trace.name}/query.sql", "w") as fp:
         fp.write("SELECT * FROM local_merge_model.model")
 
-    runner = FilteredRunner(
-        project=project, output_dir=output_dir, server_url=server_url
-    )
+    runner = FilteredRunner(project=project, output_dir=output_dir, server_url=server_url)
     runner.run()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/data.json")
@@ -136,9 +126,7 @@ def test_runner_dag_filter():
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
     additional_dashboard.rows[0].items[0].chart.traces[0].name = "Additional Trace"
     additional_dashboard.rows[0].items[0].chart.traces[0].model.name = "Other Model"
-    additional_dashboard.rows[0].items[0].chart.traces[
-        0
-    ].model.sql = "select * from no_exist"
+    additional_dashboard.rows[0].items[0].chart.traces[0].model.sql = "select * from no_exist"
     additional_dashboard.rows[0].items[0].chart.traces[0].model.source = source
     project.dashboards.append(additional_dashboard)
 
@@ -195,9 +183,7 @@ def test_runner_dag_filter_with_no_jobs():
 def test_runner_with_local_merge_and_csv_model():
     output_dir = temp_folder()
 
-    csv_model = CsvScriptModelFactory(
-        name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"]
-    )
+    csv_model = CsvScriptModelFactory(name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"])
 
     local_merge_model = LocalMergeModelFactory(
         name="local_merge_model",
@@ -225,9 +211,7 @@ def test_runner_with_nested_local_merge_models():
     output_dir = temp_folder()
 
     # Create a base CSV model
-    csv_model = CsvScriptModelFactory(
-        name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"]
-    )
+    csv_model = CsvScriptModelFactory(name="csv_model", args=["echo", "x,y\n1,2\n3,4\n5,6"])
 
     # Create inner local merge model that uses the CSV model
     inner_merge_model = LocalMergeModelFactory(

@@ -27,9 +27,7 @@ class FlaskApp:
         self._project = project
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-        self.worksheet_repo = WorksheetRepository(
-            os.path.join(output_dir, "worksheets.db")
-        )
+        self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
 
         @self.app.route("/data/<trace_name>/data.json")
         def serve_trace_data(trace_name):
@@ -37,9 +35,7 @@ class FlaskApp:
                 trace_dir = os.path.join(output_dir, "traces", trace_name)
                 if not os.path.exists(trace_dir):
                     return (
-                        jsonify(
-                            {"message": f"Trace directory not found: {trace_name}"}
-                        ),
+                        jsonify({"message": f"Trace directory not found: {trace_name}"}),
                         404,
                     )
                 return send_from_directory(trace_dir, "data.json")
@@ -107,9 +103,7 @@ class FlaskApp:
                 query = data["query"]
                 source_name = data.get("source")
                 Logger.instance().info(f"Executing query with source: {source_name}")
-                worksheet_id = data.get(
-                    "worksheet_id"
-                )  # New: Get worksheet_id if provided
+                worksheet_id = data.get("worksheet_id")  # New: Get worksheet_id if provided
 
                 # Get the appropriate source based on the request
                 source = None
@@ -119,11 +113,7 @@ class FlaskApp:
                         None,
                     )
 
-                if (
-                    not source
-                    and self._project.defaults
-                    and self._project.defaults.source_name
-                ):
+                if not source and self._project.defaults and self._project.defaults.source_name:
                     source = next(
                         (
                             s
@@ -175,9 +165,7 @@ class FlaskApp:
                 query_file_path = f"{output_dir}/traces/{trace_name}/query.sql"
                 if not os.path.exists(query_file_path):
                     return (
-                        jsonify(
-                            {"message": f"Query file not found for trace: {trace_name}"}
-                        ),
+                        jsonify({"message": f"Query file not found for trace: {trace_name}"}),
                         404,
                     )
 
@@ -244,13 +232,9 @@ class FlaskApp:
         def get_thumbnail(dashboard_name_hash):
             try:
                 # Since static_url_path="/data" maps to output_dir, we can use send_from_directory with output_dir
-                thumbnail_path = os.path.join(
-                    "dashboards", f"{dashboard_name_hash}.png"
-                )
+                thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
                 if not os.path.exists(os.path.join(output_dir, thumbnail_path)):
-                    Logger.instance().debug(
-                        f"Thumbnail not found at path: {thumbnail_path}"
-                    )
+                    Logger.instance().debug(f"Thumbnail not found at path: {thumbnail_path}")
                     return Response(status=404)
 
                 return send_from_directory(output_dir, thumbnail_path)
@@ -368,9 +352,7 @@ class FlaskApp:
                 for path in editor["paths"][platform]:
                     if os.path.exists(path):
                         # Only send back safe information to the client
-                        installed_editors.append(
-                            {"name": editor["name"], "id": editor["id"]}
-                        )
+                        installed_editors.append({"name": editor["name"], "id": editor["id"]})
                         break
 
             return jsonify(installed_editors)

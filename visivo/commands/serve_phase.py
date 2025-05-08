@@ -111,8 +111,6 @@ def serve_phase(
             ignore_patterns.append(dbt_file)
 
     # Create and return the hot reload server
-    server = HotReloadServer(
-        app=app.app, watch_path=working_dir, ignore_patterns=ignore_patterns
-    )
+    server = HotReloadServer(app=app.app, watch_path=working_dir, ignore_patterns=ignore_patterns)
 
     return server, on_project_change, on_server_ready

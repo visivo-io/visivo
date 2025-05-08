@@ -55,9 +55,7 @@ def test_generate_success_html_response():
     timeout = 10
     html = generate_success_html_response(base_url, timeout=timeout)
 
-    expected_meta = (
-        f'<meta http-equiv="refresh" content="{timeout};url={base_url}/profile" />'
-    )
+    expected_meta = f'<meta http-equiv="refresh" content="{timeout};url={base_url}/profile" />'
     assert expected_meta in html
 
     assert "<title>Authorization Successful</title>" in html

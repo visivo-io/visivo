@@ -47,9 +47,7 @@ class HotReloadServer:
                     return port
             except OSError:
                 continue
-        raise RuntimeError(
-            f"Could not find an available port after {max_attempts} attempts"
-        )
+        raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
 
     def __init__(self, app: Flask, watch_path: str, ignore_patterns=None):
         self.app = app
@@ -84,9 +82,7 @@ class HotReloadServer:
         self.observer = Observer()
         self.observer.schedule(event_handler, self.watch_path, recursive=True)
         self.observer.start()
-        Logger.instance().debug(
-            f"Started file watcher for YML files on {self.watch_path}"
-        )
+        Logger.instance().debug(f"Started file watcher for YML files on {self.watch_path}")
 
     def run_server(self, host: str, port: int):
         """Run the Flask server in a separate thread"""

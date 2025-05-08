@@ -1,6 +1,8 @@
 from time import time
+
 start_time = time()
 from visivo.logging.logger import Logger, TypeEnum
+
 Logger.instance().info("Starting Visivo...")
 import click
 import os

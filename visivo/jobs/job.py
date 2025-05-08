@@ -35,7 +35,7 @@ class Job:
         **kwargs,
     ):
         self.item = item
-        self.source = source #PR question: Why do we need this? It seems like it might some uneeded imports and runs
+        self.source = source  # PR question: Why do we need this? It seems like it might some uneeded imports and runs
         self.action = action
         self.kwargs = kwargs  # These get passed to the action when it is run
         self.future: Future = None
@@ -81,9 +81,7 @@ def _format_message(details, status, full_path=None, error_msg=None):
     elif relative_path.endswith(".png"):
         action = "thumbnail: "
 
-    return (
-        f"{details}{dots}[{status}]\n\t\033[2m{action}{relative_path}\033[0m{error_str}"
-    )
+    return f"{details}{dots}[{status}]\n\t\033[2m{action}{relative_path}\033[0m{error_str}"
 
 
 def format_message_success(details, start_time, full_path):
@@ -93,6 +91,4 @@ def format_message_success(details, start_time, full_path):
 
 def format_message_failure(details, start_time, full_path, error_msg):
     status = colored(f"FAILURE {round(time()-start_time,2)}s", "red")
-    return _format_message(
-        details=details, status=status, full_path=full_path, error_msg=error_msg
-    )
+    return _format_message(details=details, status=status, full_path=full_path, error_msg=error_msg)

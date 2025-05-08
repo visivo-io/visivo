@@ -17,7 +17,7 @@ def dist(output_dir, dist_dir):
     Creates a distributable version of this dashboard and stores it in a 'dist' folder.
     This folder can be statically deployed to any web server, hosting service, or bucket storage.
 
-    Note: Make sure to run `visivo run` before running `visivo dist`. 
+    Note: Make sure to run `visivo run` before running `visivo dist`.
     """
     from visivo.logging.logger import Logger
 

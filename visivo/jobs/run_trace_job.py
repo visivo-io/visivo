@@ -40,9 +40,7 @@ def action(trace, dag, output_dir):
                 start_time=start_time,
                 full_path=trace_query_file,
             )
-            Aggregator.aggregate_data_frame(
-                data_frame=data_frame, trace_dir=trace_directory
-            )
+            Aggregator.aggregate_data_frame(data_frame=data_frame, trace_dir=trace_directory)
             return JobResult(item=trace, success=True, message=success_message)
         except Exception as e:
             if hasattr(e, "message"):

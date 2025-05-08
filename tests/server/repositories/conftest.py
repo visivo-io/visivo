@@ -4,6 +4,7 @@ import tempfile
 from sqlalchemy import create_engine
 from visivo.server.models.base import Base
 
+
 @pytest.fixture(scope="function")
 def db_path():
     """Create a temporary database file for testing."""
@@ -15,4 +16,4 @@ def db_path():
         yield db_path
         # Clean up
         if os.path.exists(db_path):
-            os.remove(db_path) 
+            os.remove(db_path)

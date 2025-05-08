@@ -8,15 +8,15 @@ BigQueryType = Literal["bigquery"]
 
 class BigQuerySource(SqlalchemySource):
     """
-    BigQuerySources hold the connection information to Google BigQuery instances. 
+    BigQuerySources hold the connection information to Google BigQuery instances.
 
     !!! info "BigQuery Authentication"
-        You can authenticate BigQuery in one of two ways: 
+        You can authenticate BigQuery in one of two ways:
          1. Pass a base64 encoded service account key to the `credentials_base64` field.
          2. Set the absolute file path to the credentials file in a environment variable named `GOOGLE_APPLICATION_CREDENTIALS`.
 
         === "Base64 Encoded Credentials"
-            Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery 
+            Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery
             without logging into Google Cloud Console each time and makes it easier to manage credentials in CI/CD pipelines.
 
             However utilizing base64 encoding requires a few extra steps:
@@ -39,20 +39,20 @@ class BigQuerySource(SqlalchemySource):
                 ```bash
                 # On Linux/Mac
                 python -m base64 < credentials.json > encoded.txt
-                
+
                 # On Windows PowerShell
                 [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("credentials.json")) > encoded.txt
                 ```
             4. Use the contents of encoded.txt as your credentials_base64 value. You can store the single line key in your untracked env file and use the `{% raw %}{{ env_var('VAR_NAME') }}{% endraw %}` syntax to reference the environment variable in your Visivo config.
 
         === "`GOOGLE_APPLICATION_CREDENTIALS` Environment Variable"
-            If you use gcloud locally you probably have this environment variable configured already. 
+            If you use gcloud locally you probably have this environment variable configured already.
 
-            Run `echo $GOOGLE_APPLICATION_CREDENTIALS` in your terminal. If it returns your crendetials then 
+            Run `echo $GOOGLE_APPLICATION_CREDENTIALS` in your terminal. If it returns your crendetials then
             you're all set. and can configure a BigQuerySource without the `credentials_base64` field.
 
             If you don't have the environment variable, follow these steps:
-            
+
             1. Create a Google Cloud Service Account
                 1. Go to the [Google Cloud Console](https://console.cloud.google.com)
                 2. Select your project
@@ -68,7 +68,7 @@ class BigQuerySource(SqlalchemySource):
                 4. Choose JSON format
                 5. Click "Create" - this downloads your credentials file
             3. Set the environment variable
-                You can set the environment variable in your shell profile file. 
+                You can set the environment variable in your shell profile file.
                 ```bash
                 export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/credentials.json"
                 ```
@@ -78,7 +78,7 @@ class BigQuerySource(SqlalchemySource):
                 ```
             This method is easier to manage and does not require any extra steps to authenticate.
 
-        The service account needs at minimum the "BigQuery User" role to execute queries. 
+        The service account needs at minimum the "BigQuery User" role to execute queries.
         For more restricted access, you can create a custom role with just the required permissions:
 
         - bigquery.jobs.create
@@ -105,7 +105,7 @@ class BigQuerySource(SqlalchemySource):
     project: str = Field(
         description="The Google Cloud project ID that contains your BigQuery dataset."
     )
-    
+
     credentials_base64: Optional[SecretStr] = Field(
         None,
         description="The Google Cloud service account credentials JSON string base64 encoded. Turn your JSON into a base64 string in the command line with `python -m base64 < credentials.json > encoded.txt`. Not required if GOOGLE_APPLICATION_CREDENTIALS environment variable is set. ",
@@ -129,16 +129,18 @@ class BigQuerySource(SqlalchemySource):
         if self.database:
             base_url += f"/{self.database}"
 
-        credentials = self.credentials_base64.get_secret_value() if self.credentials_base64 else None
-        
+        credentials = (
+            self.credentials_base64.get_secret_value() if self.credentials_base64 else None
+        )
+
         # Check for either credentials_base64 or GOOGLE_APPLICATION_CREDENTIALS
         if not credentials and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
             raise ValueError(
                 "Authentication credentials not found. Either provide credentials_base64 or set GOOGLE_APPLICATION_CREDENTIALS environment variable."
             )
-            
-        # Only append credentials to URL if using base64 method 
+
+        # Only append credentials to URL if using base64 method
         if credentials:
             base_url += f"?credentials_base64={credentials}"
-            
+
         return base_url

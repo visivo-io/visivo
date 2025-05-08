@@ -99,9 +99,8 @@ class CsvScriptModel(Model):
         "model", description="The name to give the resulting models table"
     )
 
-    args: List[str] = Field(
-        description="An array of the variables that build your command to run."
-    )
+    args: List[str] = Field(description="An array of the variables that build your command to run.")
+
     @property
     def sql(self):
         return f"select * from {self.table_name}"
@@ -127,9 +126,7 @@ class CsvScriptModel(Model):
                     f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM data_frame"
                 )
                 connection.execute(f"DELETE FROM {self.table_name}")
-                connection.execute(
-                    f"INSERT INTO {self.table_name} SELECT * FROM data_frame"
-                )
+                connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
         except Exception as e:
             raise click.ClickException(
                 f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."

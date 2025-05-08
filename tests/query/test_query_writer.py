@@ -8,9 +8,7 @@ def test_QueryWriter():
     output_dir = temp_folder()
     query_string = "query string"
     trace = TraceFactory()
-    query_writer = QueryWriter(
-        trace=trace, query_string=query_string, output_dir=output_dir
-    )
+    query_writer = QueryWriter(trace=trace, query_string=query_string, output_dir=output_dir)
 
     query_writer.write()
     assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")

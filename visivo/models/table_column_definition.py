@@ -5,6 +5,7 @@ from enum import Enum
 
 from visivo.models.base.base_model import BaseModel
 
+
 class AggregationEnum(Enum):
     """
     The options for aggregating table columns. Details on the calculations below:<br>
@@ -27,6 +28,7 @@ class AggregationEnum(Enum):
 
         **unique** - Finds the unique values of a group of rows
     """
+
     count = "count"
     extent = "extent"
     max = "max"
@@ -36,6 +38,8 @@ class AggregationEnum(Enum):
     sum = "sum"
     uniqueCount = "uniqueCount"
     unique = "unique"
+
+
 class TableColumn(BaseModel):
     header: Optional[str] = Field(
         None,
@@ -46,12 +50,12 @@ class TableColumn(BaseModel):
         description="The key to the data that will pull back the value.",
     )
     aggregation: Optional[AggregationEnum] = Field(
-        None, 
-        description = "The aggregate function that will apply to the column when a user groups the table by a different column. Defaults to none."
+        None,
+        description="The aggregate function that will apply to the column when a user groups the table by a different column. Defaults to none.",
     )
     markdown: Optional[bool] = Field(
         False,
-        description="If true, the column content will be rendered as markdown. Defaults to false."
+        description="If true, the column content will be rendered as markdown. Defaults to false.",
     )
 
 

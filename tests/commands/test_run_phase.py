@@ -15,20 +15,14 @@ def test_run_phase():
     additional_dashboard = DashboardFactory(name="Other Dashboard")
     additional_dashboard.rows[0].items[0].name = "Additional Item"
     additional_dashboard.rows[0].name = "Additional Row"
-    additional_dashboard.rows[0].items[
-        0
-    ].chart.selector.name = "Additional Chart Selector"
+    additional_dashboard.rows[0].items[0].chart.selector.name = "Additional Chart Selector"
     additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
     additional_dashboard.rows[0].items[0].chart.traces[0].name = "Additional Trace"
-    additional_dashboard.rows[0].items[0].chart.traces[
-        0
-    ].model.name = "Additional Model"
+    additional_dashboard.rows[0].items[0].chart.traces[0].model.name = "Additional Model"
     project.dashboards.append(additional_dashboard)
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
 
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     run_phase(

@@ -16,5 +16,3 @@ def test_job():
         csv_script_model=csv_model,
     )
     assert csv_job.item == csv_model
-
-

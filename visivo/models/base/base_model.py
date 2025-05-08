@@ -14,7 +14,9 @@ from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX
 
 REF_REGEX = r"^ref\(\s*(?P<ref_name>[a-zA-Z0-9\s'\"\-_]+)\)$"
 QUERY_REGEX = r"^\s*query\(\s*(?P<query_statement>.+)\)\s*$"
-COLUMN_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
+COLUMN_REGEX = (
+    r"^\s*column\(\s*(?P<column_name>.+)\)(?:\[(?:-?\d*:-?\d+|-?\d+:-?\d*|:-?\d+|-?\d+:)\])?\s*$"
+)
 STATEMENT_REGEX = rf"{QUERY_REGEX}|{COLUMN_REGEX}|{QUERY_STRING_VALUE_REGEX}"
 INDEXED_STATEMENT_REGEX = r"^\s*column\(\s*(?P<column_name>.+)\)\[(-?\d*)\]\s*$"
 

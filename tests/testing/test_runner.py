@@ -37,18 +37,14 @@ def test_TestQueryStringFactory_errors(capsys):
     trace = Trace(**data)
     output_dir = temp_folder()
     folders = f"{output_dir}/two_test_trace"
-    data = {
-        "two_test_trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}
-    }
+    data = {"two_test_trace": {"props.x": [1, 2, 3, 4, 5, 6], "props.y": [1, 1, 2, 3, 5, 8]}}
     os.makedirs(folders, exist_ok=True)
     json_file = open(f"{folders}/data.json", "w")
     json_file.write(json.dumps(data))
     json_file.close()
 
     alert = AlertFactory()
-    project = ProjectFactory(
-        traces=[trace], dashboards=[DashboardFactory()], alerts=[alert]
-    )
+    project = ProjectFactory(traces=[trace], dashboards=[DashboardFactory()], alerts=[alert])
 
     # Trigger set_path_on_named_models
     project = Project(**project.model_dump())

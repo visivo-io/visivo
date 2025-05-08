@@ -1,9 +1,8 @@
 from visivo.logging.logger import Logger
 from time import time
+
 start_job = time()
-Logger.instance().debug(
-    "Parsing & Processing Pydantic Doc Strings for mkdocs Configuration..."
-)
+Logger.instance().debug("Parsing & Processing Pydantic Doc Strings for mkdocs Configuration...")
 from visivo.parsers.mkdocs import Mkdocs
 import os
 import shutil
@@ -40,9 +39,7 @@ def modify_mkdocs_yaml():
         "!!python/name:", "placeholder_for_python_name"
     )
     mkdocs_yaml_object = yaml.safe_load(cleaned_mkdocs_yml_content)
-    updated_mkdocs_yaml_object = mkdocs.update_mkdocs_yaml_configuration(
-        mkdocs_yaml_object
-    )
+    updated_mkdocs_yaml_object = mkdocs.update_mkdocs_yaml_configuration(mkdocs_yaml_object)
     unprocessed_final_mkdocs_yml = yaml.dump(
         updated_mkdocs_yaml_object,
         default_flow_style=False,

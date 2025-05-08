@@ -12,9 +12,7 @@ def find_line_string_start(file_path, input_dict):
         file_content = file.read()
 
     file_lines = re.sub(r"^[ \t-]+", "", file_content, flags=re.MULTILINE).split("\n")
-    input_line = re.sub(
-        r"^[\s-]+", "", yaml.dump(input_dict), flags=re.MULTILINE
-    ).split("\n")[0]
+    input_line = re.sub(r"^[\s-]+", "", yaml.dump(input_dict), flags=re.MULTILINE).split("\n")[0]
     for line_number, file_line in enumerate(file_lines):
         if input_line in file_line:
             return line_number + 1
@@ -44,10 +42,7 @@ class LineValidationError(Exception):
         message = f"{self.validation_error.error_count()} validation errors in {self.validation_error.title}\n\n"
         file_found = False
         for i, error in enumerate(self.validation_error.errors(), start=1):
-            message = (
-                message
-                + f"  {i}. Object: {'.'.join(map(lambda l: str(l), error['loc']))}\n"
-            )
+            message = message + f"  {i}. Object: {'.'.join(map(lambda l: str(l), error['loc']))}\n"
             message = message + f"     Message: {error['msg']}\n"
             line_message = self.get_line_message(error)
             message = message + f"     The input used: ({error['input']})\n"

@@ -14,16 +14,12 @@ def test_Selector_serialize_data():
     selector = Selector(name="selector")
     selector.options = [trace]
     assert selector.serialize_model()["name"] == "selector"
-    assert selector.serialize_model()["options"] == [
-        {"name": "trace name", "type": "trace"}
-    ]
+    assert selector.serialize_model()["options"] == [{"name": "trace name", "type": "trace"}]
     assert selector.serialize_model()["type"] == "multiple"
     assert selector.serialize_model()["parent_name"] == "selector"
     row = RowFactory(name="row name")
     selector.options = [row]
-    assert selector.serialize_model()["options"] == [
-        {"name": "row name", "type": "row"}
-    ]
+    assert selector.serialize_model()["options"] == [{"name": "row name", "type": "row"}]
     selector.options = ["ref(row name)"]
     assert selector.serialize_model()["options"] == ["ref(row name)"]
 
