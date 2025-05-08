@@ -1,19 +1,15 @@
-import React from "react";
-import {
-  Route,
-  createBrowserRouter,
-  createRoutesFromElements,
-} from "react-router-dom";
-import { loadProject } from "./loaders/project";
-import { loadDag } from "./loaders/dag";
-import { loadError } from "./loaders/error";
-import Home from "./components/Home";
-import ProjectContainer from "./components/project/ProjectContainer";
-import BreadcrumbLink from "./components/common/BreadcrumbLink";
-import ErrorPage from "./components/common/ErrorPage";
-import Lineage from "./components/lineage/Lineage";
-import Explorer from "./components/explorer/Explorer";
-import Editor from "./components/editors/Editor";
+import React from 'react';
+import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { loadProject } from './loaders/project';
+import { loadDag } from './loaders/dag';
+import { loadError } from './loaders/error';
+import Home from './components/Home';
+import ProjectContainer from './components/project/ProjectContainer';
+import BreadcrumbLink from './components/common/BreadcrumbLink';
+import ErrorPage from './components/common/ErrorPage';
+import Lineage from './components/lineage/Lineage';
+import Explorer from './components/explorer/Explorer';
+import Editor from './components/editors/Editor';
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(
@@ -67,7 +63,7 @@ const LocalRouter = createBrowserRouter(
           loader={loadProject}
           shouldRevalidate={() => false}
           handle={{
-            crumb: (match) => (
+            crumb: match => (
               <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>
                 {match.params.dashboardName}
               </BreadcrumbLink>

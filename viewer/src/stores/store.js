@@ -1,8 +1,8 @@
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 
-import { createEditorSlice } from "./editorStore";
-import { createExplorerSlice } from "./explorerStore";
+import { createEditorSlice } from './editorStore';
+import { createExplorerSlice } from './explorerStore';
 
 const useStore = create(
   devtools((...a) => ({

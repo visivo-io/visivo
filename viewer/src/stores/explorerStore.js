@@ -1,4 +1,4 @@
-import { executeQuery } from "../services/queryService";
+import { executeQuery } from '../services/queryService';
 
 const createExplorerSlice = (set, get) => ({
   // Query related state
@@ -15,8 +15,8 @@ const createExplorerSlice = (set, get) => ({
     setTimeout(() => set({ info: null }), 5000);
   },
   info: null,
-  setInfo: (info) => {
-    console.log("info", info);
+  setInfo: info => {
+    console.log('info', info);
     set({ info });
     setTimeout(() => set({ info: null }), 5000);
   },

@@ -1,10 +1,10 @@
-import React from "react";
-import useStore from "../../stores/store";
-import Pill from "../common/Pill";
+import React from 'react';
+import useStore from '../../stores/store';
+import Pill from '../common/Pill';
 
 const ObjectPill = ({ name, inline = false }) => {
-  const openTab = useStore((state) => state.openTab);
-  const type = useStore((state) => state.namedChildren[name]?.type);
+  const openTab = useStore(state => state.openTab);
+  const type = useStore(state => state.namedChildren[name]?.type);
 
   const handleObjectOpen = () => {
     openTab(name, type);

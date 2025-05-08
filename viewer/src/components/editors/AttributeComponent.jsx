@@ -1,16 +1,14 @@
-import useStore from "../../stores/store"; // Adjust path to Zustand store
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import debounce from "lodash/debounce"; // You'll need to install lodash if not already present
-import ObjectPill from "./ObjectPill"; // You'll need to create this component if it doesn't exist
-import { createPortal } from "react-dom";
-import QueryPill from "./QueryPill"; // You'll need to create this component if it doesn't exist
-import ContextMenu from "./ContextMenu";
+import useStore from '../../stores/store'; // Adjust path to Zustand store
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import debounce from 'lodash/debounce'; // You'll need to install lodash if not already present
+import ObjectPill from './ObjectPill'; // You'll need to create this component if it doesn't exist
+import { createPortal } from 'react-dom';
+import QueryPill from './QueryPill'; // You'll need to create this component if it doesn't exist
+import ContextMenu from './ContextMenu';
 
 function AttributeComponent({ name, value, path }) {
-  const updateNamedChildAttribute = useStore(
-    (state) => state.updateNamedChildAttribute
-  );
-  const namedChildren = useStore((state) => state.namedChildren);
+  const updateNamedChildAttribute = useStore(state => state.updateNamedChildAttribute);
+  const namedChildren = useStore(state => state.namedChildren);
   const [localValue, setLocalValue] = useState(value);
   const [isJsonObject, setIsJsonObject] = useState(false);
   const [parsedObject, setParsedObject] = useState(null);
@@ -24,19 +22,17 @@ function AttributeComponent({ name, value, path }) {
   const [isQueryValue, setIsQueryValue] = useState(false);
   const [queryType, setQueryType] = useState(null); // 'function' or 'bracket'
   const [contextMenu, setContextMenu] = useState(null);
-  const deleteNamedChildAttribute = useStore(
-    (state) => state.deleteNamedChildAttribute
-  );
+  const deleteNamedChildAttribute = useStore(state => state.deleteNamedChildAttribute);
 
   // Check if value is valid JSON object with required structure
-  const checkAndParseJson = useCallback((val) => {
+  const checkAndParseJson = useCallback(val => {
     // Check for query patterns first
     const queryFunctionPattern = /^query\((.*)\)$/;
     const queryBracketPattern = /^\?\{(.*)\}$/;
 
     if (queryFunctionPattern.test(val) || queryBracketPattern.test(val)) {
       setIsQueryValue(true);
-      setQueryType(queryFunctionPattern.test(val) ? "function" : "bracket");
+      setQueryType(queryFunctionPattern.test(val) ? 'function' : 'bracket');
       setIsJsonObject(false);
       setParsedObject(null);
       return false;
@@ -44,7 +40,7 @@ function AttributeComponent({ name, value, path }) {
 
     try {
       const parsed = JSON.parse(val);
-      if (parsed && typeof parsed === "object" && parsed.name) {
+      if (parsed && typeof parsed === 'object' && parsed.name) {
         setParsedObject(parsed);
         setIsJsonObject(true);
         return true;
@@ -59,27 +55,24 @@ function AttributeComponent({ name, value, path }) {
 
   // Create a debounced update function
   const debouncedUpdate = useCallback(
-    (newValue) => {
+    newValue => {
       updateNamedChildAttribute(path, newValue);
     },
     [path, updateNamedChildAttribute]
   );
 
   // Create the debounced version outside the callback
-  const debouncedUpdateFn = useMemo(
-    () => debounce(debouncedUpdate, 300),
-    [debouncedUpdate]
-  );
+  const debouncedUpdateFn = useMemo(() => debounce(debouncedUpdate, 300), [debouncedUpdate]);
 
   // Update local value immediately but debounce the store update
-  const handleChange = (e) => {
+  const handleChange = e => {
     const newValue = e.target.value;
     setLocalValue(newValue);
 
     // Handle @ mentions
-    if (newValue.includes("@")) {
-      const searchTerm = newValue.split("@").pop()?.toLowerCase() || "";
-      const filtered = Object.keys(namedChildren).filter((child) =>
+    if (newValue.includes('@')) {
+      const searchTerm = newValue.split('@').pop()?.toLowerCase() || '';
+      const filtered = Object.keys(namedChildren).filter(child =>
         child.toLowerCase().includes(searchTerm)
       );
       setFilteredChildren(filtered);
@@ -94,7 +87,7 @@ function AttributeComponent({ name, value, path }) {
   };
 
   // Add this function to handle scrolling
-  const scrollSelectedIntoView = useCallback((index) => {
+  const scrollSelectedIntoView = useCallback(index => {
     if (!dropdownRef.current) return;
 
     const dropdown = dropdownRef.current;
@@ -107,34 +100,31 @@ function AttributeComponent({ name, value, path }) {
 
     if (selectedRect.bottom > dropdownRect.bottom) {
       // Scroll down if selected item is below viewport
-      selectedElement.scrollIntoView({ block: "nearest" });
+      selectedElement.scrollIntoView({ block: 'nearest' });
     } else if (selectedRect.top < dropdownRect.top) {
       // Scroll up if selected item is above viewport
-      selectedElement.scrollIntoView({ block: "nearest" });
+      selectedElement.scrollIntoView({ block: 'nearest' });
     }
   }, []);
 
   // Modify handleKeyDown to include scrolling
-  const handleKeyDown = (e) => {
+  const handleKeyDown = e => {
     if (!showDropdown) return;
 
     switch (e.key) {
-      case "ArrowDown":
+      case 'ArrowDown':
         e.preventDefault();
-        const nextIndex = Math.min(
-          selectedIndex + 1,
-          filteredChildren.length - 1
-        );
+        const nextIndex = Math.min(selectedIndex + 1, filteredChildren.length - 1);
         setSelectedIndex(nextIndex);
         scrollSelectedIntoView(nextIndex);
         break;
-      case "ArrowUp":
+      case 'ArrowUp':
         e.preventDefault();
         const prevIndex = Math.max(selectedIndex - 1, 0);
         setSelectedIndex(prevIndex);
         scrollSelectedIntoView(prevIndex);
         break;
-      case "Enter":
+      case 'Enter':
         e.preventDefault();
         if (filteredChildren[selectedIndex]) {
           const selectedChild = filteredChildren[selectedIndex];
@@ -149,7 +139,7 @@ function AttributeComponent({ name, value, path }) {
           setShowDropdown(false);
         }
         break;
-      case "Escape":
+      case 'Escape':
         setShowDropdown(false);
         break;
       default:
@@ -157,7 +147,7 @@ function AttributeComponent({ name, value, path }) {
     }
   };
 
-  const handlePillClick = (e) => {
+  const handlePillClick = e => {
     e.preventDefault();
 
     if (clickTimeout) {
@@ -177,16 +167,14 @@ function AttributeComponent({ name, value, path }) {
 
           // Filter children based on the current pill's name
           const searchTerm = parsedObject.name.toLowerCase();
-          const filtered = Object.keys(namedChildren).filter((child) =>
+          const filtered = Object.keys(namedChildren).filter(child =>
             child.toLowerCase().includes(searchTerm)
           );
           setFilteredChildren(filtered);
           setShowDropdown(true);
 
           // Find and set the index of the current item in the filtered list
-          const currentIndex = filtered.findIndex(
-            (child) => child.toLowerCase() === searchTerm
-          );
+          const currentIndex = filtered.findIndex(child => child.toLowerCase() === searchTerm);
           setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
 
           // Focus the input element after a brief delay to ensure the input is rendered
@@ -206,13 +194,13 @@ function AttributeComponent({ name, value, path }) {
     }
   };
 
-  const handleQueryChange = (newValue) => {
-    if (newValue === "none") {
+  const handleQueryChange = newValue => {
+    if (newValue === 'none') {
       // Reset all states
       setIsQueryValue(false);
       setQueryType(null);
-      setLocalValue("");
-      debouncedUpdateFn("");
+      setLocalValue('');
+      debouncedUpdateFn('');
     } else {
       setLocalValue(newValue);
       debouncedUpdateFn(newValue);
@@ -254,7 +242,7 @@ function AttributeComponent({ name, value, path }) {
   }, [clickTimeout]);
 
   // Add handler
-  const handleContextMenu = (e) => {
+  const handleContextMenu = e => {
     e.preventDefault();
     e.stopPropagation(); // Prevent event bubbling
     setContextMenu({
@@ -264,7 +252,7 @@ function AttributeComponent({ name, value, path }) {
   };
 
   const handleDelete = () => {
-    console.log("Deleting path:", path); // Debug log
+    console.log('Deleting path:', path); // Debug log
     deleteNamedChildAttribute(path);
     setContextMenu(null);
   };
@@ -273,13 +261,13 @@ function AttributeComponent({ name, value, path }) {
   useEffect(() => {
     const handleClickOutside = () => setContextMenu(null);
     if (contextMenu) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [contextMenu]);
 
   // Determine flex direction based on name type
-  const flexDirection = typeof name === "string" ? "flex-col" : "flex-row";
+  const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
 
   return (
     <div className={`flex ${flexDirection}`} onContextMenu={handleContextMenu}>
@@ -287,16 +275,13 @@ function AttributeComponent({ name, value, path }) {
 
       {isJsonObject && parsedObject ? (
         <div onClick={handlePillClick} className="cursor-text">
-          <ObjectPill
-            name={parsedObject.name}
-            inline={parsedObject.is_inline_defined}
-          />
+          <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
         </div>
       ) : isQueryValue ? (
         <QueryPill
           value={localValue}
           onChange={handleQueryChange}
-          isQueryFunction={queryType === "function"}
+          isQueryFunction={queryType === 'function'}
         />
       ) : (
         <div className="relative w-full">
@@ -323,7 +308,7 @@ function AttributeComponent({ name, value, path }) {
                   <div
                     key={child}
                     className={`p-1 cursor-pointer rounded-md ${
-                      index === selectedIndex ? "bg-gray-100" : ""
+                      index === selectedIndex ? 'bg-gray-100' : ''
                     }`}
                     onClick={() => {
                       const reference = JSON.stringify({
@@ -337,11 +322,7 @@ function AttributeComponent({ name, value, path }) {
                       setShowDropdown(false);
                     }}
                   >
-                    <ObjectPill
-                      name={child}
-                      inline={false}
-                      disableDoubleClick={true}
-                    />
+                    <ObjectPill name={child} inline={false} disableDoubleClick={true} />
                   </div>
                 ))}
               </div>,

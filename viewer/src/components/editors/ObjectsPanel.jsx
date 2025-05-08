@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from "react";
-import ObjectPill from "./ObjectPill";
-import useStore from "../../stores/store";
-import Loading from "../common/Loading";
-import { shallow } from "zustand/shallow";
-import CreateObjectModal from "./CreateObjectModal";
+import React, { useState, useMemo } from 'react';
+import ObjectPill from './ObjectPill';
+import useStore from '../../stores/store';
+import Loading from '../common/Loading';
+import { shallow } from 'zustand/shallow';
+import CreateObjectModal from './CreateObjectModal';
 
 const ObjectsPanel = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTypeKey, setSelectedTypeKey] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTypeKey, setSelectedTypeKey] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Use the store for state management
@@ -21,22 +21,15 @@ const ObjectsPanel = () => {
   }, [namedChildrenAndType]);
 
   const uniqueTypes = useMemo(() => {
-    const type_keys = [
-      ...new Set(
-        Object.values(namedChildrenAndType).map((item) => item.type_key)
-      ),
-    ];
+    const type_keys = [...new Set(Object.values(namedChildrenAndType).map(item => item.type_key))];
     return type_keys.sort();
   }, [namedChildrenAndType]);
 
   const filteredObjects = useMemo(() => {
-    return objectNames.filter((name) => {
-      const matchesSearch = name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+    return objectNames.filter(name => {
+      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType =
-        !selectedTypeKey ||
-        namedChildrenAndType[name].type_key === selectedTypeKey;
+        !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
       return matchesSearch && matchesType;
     });
   }, [objectNames, namedChildrenAndType, searchTerm, selectedTypeKey]);
@@ -68,11 +61,9 @@ const ObjectsPanel = () => {
         onChange={e => setSelectedTypeKey(e.target.value)}
       >
         <option value="">All Types</option>
-        {uniqueTypes.map((type) => (
+        {uniqueTypes.map(type => (
           <option key={type} value={type}>
-            {type === "na"
-              ? "Project"
-              : type.charAt(0).toUpperCase() + type.slice(1)}
+            {type === 'na' ? 'Project' : type.charAt(0).toUpperCase() + type.slice(1)}
           </option>
         ))}
       </select>
@@ -80,7 +71,7 @@ const ObjectsPanel = () => {
         {filteredObjects.length === 0 ? (
           <div className="text-gray-500 text-sm">No objects found</div>
         ) : (
-          filteredObjects.map((name) => (
+          filteredObjects.map(name => (
             <div key={name} className="mb-2 mr-1 ml-1">
               <ObjectPill key={name} name={name} />
             </div>

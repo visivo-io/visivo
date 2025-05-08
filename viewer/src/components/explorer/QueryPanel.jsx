@@ -1,10 +1,10 @@
-import React from "react";
-import Editor from "@monaco-editor/react";
-import { Panel } from "../styled/Panel";
-import useStore from "../../stores/store";
-import WorksheetTabManager from "../worksheets/WorksheetTabManager";
-import { useWorksheets } from "../../contexts/WorksheetContext";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import React from 'react';
+import Editor from '@monaco-editor/react';
+import { Panel } from '../styled/Panel';
+import useStore from '../../stores/store';
+import WorksheetTabManager from '../worksheets/WorksheetTabManager';
+import { useWorksheets } from '../../contexts/WorksheetContext';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 const QueryPanel = ({ editorRef, monacoRef }) => {
   const {

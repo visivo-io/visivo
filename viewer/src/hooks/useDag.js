@@ -1,9 +1,9 @@
-import { useMemo } from "react";
-import useStore from "../stores/store";
-import dagre from "dagre";
+import { useMemo } from 'react';
+import useStore from '../stores/store';
+import dagre from 'dagre';
 
 export default function useDag() {
-  const namedChildren = useStore((state) => state.namedChildren);
+  const namedChildren = useStore(state => state.namedChildren);
 
   const dag = useMemo(() => {
     const dag = new dagre.graphlib.Graph();

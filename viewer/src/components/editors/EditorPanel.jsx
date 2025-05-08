@@ -1,16 +1,16 @@
-import React from "react";
-import { HiX, HiDotsVertical } from "react-icons/hi";
-import ObjectComponent from "./ObjectComponent";
-import SaveChangesModal from "./SaveChangesModal";
-import useStore from "../../stores/store";
-import MoveObjectModal from "./MoveObjectModal";
-import DeleteObjectModal from "./DeleteObjectModal";
-import TextEditorModal from "./TextEditorModal";
+import React from 'react';
+import { HiX, HiDotsVertical } from 'react-icons/hi';
+import ObjectComponent from './ObjectComponent';
+import SaveChangesModal from './SaveChangesModal';
+import useStore from '../../stores/store';
+import MoveObjectModal from './MoveObjectModal';
+import DeleteObjectModal from './DeleteObjectModal';
+import TextEditorModal from './TextEditorModal';
 
 // Split into smaller, more focused selectors
-const selectTabs = (state) => state.tabs;
-const selectActiveTabId = (state) => state.activeTabId;
-const selectNamedChildren = (state) => state.namedChildren;
+const selectTabs = state => state.tabs;
+const selectActiveTabId = state => state.activeTabId;
+const selectNamedChildren = state => state.namedChildren;
 
 const EditorPanel = () => {
   // Get basic tab state
@@ -19,8 +19,8 @@ const EditorPanel = () => {
   const namedChildren = useStore(selectNamedChildren);
 
   // Get actions directly
-  const setActiveTab = useStore((state) => state.setActiveTab);
-  const closeTab = useStore((state) => state.closeTab);
+  const setActiveTab = useStore(state => state.setActiveTab);
+  const closeTab = useStore(state => state.closeTab);
 
   // Add state for modal
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -29,12 +29,9 @@ const EditorPanel = () => {
   const [isMoveModalOpen, setIsMoveModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [isTextEditorModalOpen, setIsTextEditorModalOpen] =
-    React.useState(false);
+  const [isTextEditorModalOpen, setIsTextEditorModalOpen] = React.useState(false);
 
-  const activeTab = activeTabId
-    ? tabs.find((tab) => tab.id === activeTabId)
-    : null;
+  const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;
 
   // Add ref for scroll container
@@ -64,7 +61,7 @@ const EditorPanel = () => {
         ...namedChildren,
         [activeTab.name]: {
           ...namedChildren[activeTab.name],
-          status: "Deleted",
+          status: 'Deleted',
         },
       },
     });
@@ -83,8 +80,8 @@ const EditorPanel = () => {
               key={tab.id}
               className={`flex items-center px-4 py-2 rounded-t-lg  cursor-pointer border-b-2 ${
                 activeTabId === tab.id
-                  ? "text-blue-600 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700 border-transparent"
+                  ? 'text-blue-600 border-blue-600 bg-blue-50'
+                  : 'text-gray-500 hover:text-gray-700 border-transparent'
               }`}
               onClick={() => setActiveTab(tab.id)}
             >
@@ -163,17 +160,9 @@ const EditorPanel = () => {
           </button>
         </div>
       </div>
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto min-h-0"
-      >
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto min-h-0">
         {activeTabId && activeConfig ? (
-          <ObjectComponent
-            key={activeTab.name}
-            data={activeConfig}
-            path={[activeTab.name]}
-          />
+          <ObjectComponent key={activeTab.name} data={activeConfig} path={[activeTab.name]} />
         ) : (
           <div className="text-gray-500 text-sm text-center mt-8">
             Double-click an object from the left panel to edit its configuration
@@ -185,9 +174,7 @@ const EditorPanel = () => {
         isOpen={isMoveModalOpen}
         onClose={() => setIsMoveModalOpen(false)}
         objectName={activeTab?.name}
-        currentPath={
-          activeTab?.name ? namedChildren[activeTab.name]?.file_path : ""
-        }
+        currentPath={activeTab?.name ? namedChildren[activeTab.name]?.file_path : ''}
       />
 
       <DeleteObjectModal
@@ -203,10 +190,7 @@ const EditorPanel = () => {
         objectName={activeTab?.name}
       />
 
-      <SaveChangesModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <SaveChangesModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 };

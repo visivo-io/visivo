@@ -1,4 +1,4 @@
-import dagre from "dagre";
+import dagre from 'dagre';
 
 // Build nodes and edges from namedChildren
 export const buildGraph = namedChildren => {
@@ -62,9 +62,7 @@ export const getAncestorsLimited = (startNode, namedChildren, generations) => {
       ancestors.add(node);
       if (depth < generations) {
         const parents = namedChildren[node]?.direct_parents || [];
-        queue.push(
-          ...parents.map((parent) => ({ node: parent, depth: depth + 1 }))
-        );
+        queue.push(...parents.map(parent => ({ node: parent, depth: depth + 1 })));
       }
     }
   }
@@ -72,11 +70,7 @@ export const getAncestorsLimited = (startNode, namedChildren, generations) => {
 };
 
 // Get descendants up to N generations
-export const getDescendantsLimited = (
-  startNode,
-  namedChildren,
-  generations
-) => {
+export const getDescendantsLimited = (startNode, namedChildren, generations) => {
   const descendants = new Set();
   const queue = [{ node: startNode, depth: 0 }];
   while (queue.length > 0) {
@@ -86,9 +80,7 @@ export const getDescendantsLimited = (
       descendants.add(node);
       if (depth < generations) {
         const children = namedChildren[node]?.direct_children || [];
-        queue.push(
-          ...children.map((child) => ({ node: child, depth: depth + 1 }))
-        );
+        queue.push(...children.map(child => ({ node: child, depth: depth + 1 })));
       }
     }
   }
@@ -101,24 +93,24 @@ export const parseSelector = (selector, namedChildren) => {
     return new Set(Object.keys(namedChildren));
   }
 
-  const terms = selector.split(",").map((term) => term.trim());
+  const terms = selector.split(',').map(term => term.trim());
   let selected = new Set();
 
-  terms.forEach((term) => {
+  terms.forEach(term => {
     // eslint-disable-next-line no-useless-escape
     const match = term.match(/^(?:(\d*)(\+))?([^\+]+)(?:(\+)(\d*)?)?$/);
     if (match && namedChildren[match[3]]) {
       const ancestorDigits = match[1]; // e.g., '2' in '2+join_table'
-      const hasAncestorPlus = match[2] === "+";
+      const hasAncestorPlus = match[2] === '+';
       const node = match[3]; // e.g., 'join_table'
-      const hasDescendantPlus = match[4] === "+";
+      const hasDescendantPlus = match[4] === '+';
       const descendantDigits = match[5]; // e.g., '3' in 'join_table+3'
 
       // Determine ancestor generations
       let ancestorGen = 0;
       if (hasAncestorPlus) {
         ancestorGen =
-          ancestorDigits === "" || ancestorDigits === undefined
+          ancestorDigits === '' || ancestorDigits === undefined
             ? Infinity
             : parseInt(ancestorDigits, 10);
       }
@@ -127,7 +119,7 @@ export const parseSelector = (selector, namedChildren) => {
       let descendantGen = 0;
       if (hasDescendantPlus) {
         descendantGen =
-          descendantDigits === "" || descendantDigits === undefined
+          descendantDigits === '' || descendantDigits === undefined
             ? Infinity
             : parseInt(descendantDigits, 10);
       }
@@ -152,8 +144,8 @@ export const parseSelector = (selector, namedChildren) => {
 
       // Add the node itself and its ancestors/descendants
       selected.add(node);
-      ancestorsSet.forEach((n) => selected.add(n));
-      descendantsSet.forEach((n) => selected.add(n));
+      ancestorsSet.forEach(n => selected.add(n));
+      descendantsSet.forEach(n => selected.add(n));
     } else if (namedChildren[term]) {
       selected.add(term); // Handle plain node names
     }
@@ -163,16 +155,16 @@ export const parseSelector = (selector, namedChildren) => {
 };
 
 export const filterGraph = (nodes, edges, selectedNodes) => {
-  const filteredNodes = nodes.filter((node) => selectedNodes.has(node.id));
+  const filteredNodes = nodes.filter(node => selectedNodes.has(node.id));
   const filteredEdges = edges.filter(
-    (edge) => selectedNodes.has(edge.source) && selectedNodes.has(edge.target)
+    edge => selectedNodes.has(edge.source) && selectedNodes.has(edge.target)
   );
   return { nodes: filteredNodes, edges: filteredEdges };
 };
 
 export const computeLayout = (nodes, edges) => {
   const graph = new dagre.graphlib.Graph();
-  graph.setGraph({ rankdir: "LR" }); // Left-to-right layout
+  graph.setGraph({ rankdir: 'LR' }); // Left-to-right layout
   graph.setDefaultEdgeLabel(() => ({}));
   nodes.forEach(node => {
     graph.setNode(node.id, { width: 300, height: 20 }); // Adjust based on ObjectPill size

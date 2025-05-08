@@ -1,14 +1,14 @@
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
-import { useLoaderData, BrowserRouter } from "react-router-dom";
-import { WorksheetProvider } from "../../contexts/WorksheetContext";
-import { QueryProvider } from "../../contexts/QueryContext";
-import Explorer from "./Explorer";
-import * as queryService from "../../services/queryService";
-import { fetchExplorer } from "../../api/explorer";
-import * as api from "../../api/worksheet";
-import useStore from "../../stores/store";
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { useLoaderData, BrowserRouter } from 'react-router-dom';
+import { WorksheetProvider } from '../../contexts/WorksheetContext';
+import { QueryProvider } from '../../contexts/QueryContext';
+import Explorer from './Explorer';
+import * as queryService from '../../services/queryService';
+import { fetchExplorer } from '../../api/explorer';
+import * as api from '../../api/worksheet';
+import useStore from '../../stores/store';
 
 let mockDefaultStore = {
   // State values
@@ -40,7 +40,7 @@ let mockDefaultStore = {
   handleRunQuery: jest.fn(),
 };
 // Mock Zustand store
-jest.mock("../../stores/store", () => ({
+jest.mock('../../stores/store', () => ({
   __esModule: true,
   default: jest.fn(() => ({
     ...mockDefaultStore,

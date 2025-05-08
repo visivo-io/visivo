@@ -1,7 +1,7 @@
-import React from "react";
-import { Panel } from "../styled/Panel";
-import Table from "../items/Table";
-import useStore from "../../stores/store";
+import React from 'react';
+import { Panel } from '../styled/Panel';
+import Table from '../items/Table';
+import useStore from '../../stores/store';
 
 const ResultsPanel = ({ project }) => {
   const { results, queryStats, splitRatio } = useStore();

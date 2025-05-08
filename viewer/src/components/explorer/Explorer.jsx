@@ -1,16 +1,16 @@
-import React, { useEffect, useCallback } from "react";
-import ExplorerTree from "./ExplorerTree";
-import { executeQuery, fetchTraceQuery } from "../../services/queryService";
-import { fetchExplorer } from "../../api/explorer";
-import tw from "tailwind-styled-components";
-import { useWorksheets } from "../../contexts/WorksheetContext";
-import { useQueryHotkeys } from "../../hooks/useQueryHotkeys";
-import QueryPanel from "./QueryPanel";
-import Divider from "./Divider";
-import ResultsPanel from "./ResultsPanel";
-import useStore from "../../stores/store";
-import useStore from "../../stores/store";
-import { getAncestors } from "../lineage/graphUtils";
+import React, { useEffect, useCallback } from 'react';
+import ExplorerTree from './ExplorerTree';
+import { executeQuery, fetchTraceQuery } from '../../services/queryService';
+import { fetchExplorer } from '../../api/explorer';
+import tw from 'tailwind-styled-components';
+import { useWorksheets } from '../../contexts/WorksheetContext';
+import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
+import QueryPanel from './QueryPanel';
+import Divider from './Divider';
+import ResultsPanel from './ResultsPanel';
+import useStore from '../../stores/store';
+import useStore from '../../stores/store';
+import { getAncestors } from '../lineage/graphUtils';
 
 const Container = tw.div`
   flex h-[calc(100vh-50px)] 
@@ -52,7 +52,7 @@ const Info = tw.div`
   overflow-hidden
 `;
 
-const HIDDEN_MODEL_TYPES = ["CsvScriptModel", "LocalMergeModel"];
+const HIDDEN_MODEL_TYPES = ['CsvScriptModel', 'LocalMergeModel'];
 
 const QueryExplorer = () => {
   const editorRef = React.useRef(null);
@@ -170,10 +170,7 @@ const QueryExplorer = () => {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
             .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
-            .filter(
-              (model) =>
-                !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type)
-            )
+            .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .map((model, index) => ({
               id: `model-${model.name}-${index}`,
               name: model.name,
@@ -186,10 +183,10 @@ const QueryExplorer = () => {
       case 'traces':
         if (explorerData.traces) {
           const traceItems = explorerData.traces
-            .filter((trace) => trace && typeof trace === "object" && trace.name)
-            .filter((trace) => {
+            .filter(trace => trace && typeof trace === 'object' && trace.name)
+            .filter(trace => {
               const ancestors = getAncestors(trace.name, namedChildren);
-              return ![...ancestors].some((ancestor) =>
+              return ![...ancestors].some(ancestor =>
                 HIDDEN_MODEL_TYPES.includes(namedChildren[ancestor]?.type)
               );
             })

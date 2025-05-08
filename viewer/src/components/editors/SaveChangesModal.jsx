@@ -1,8 +1,8 @@
-import React from "react";
-import useStore from "../../stores/store";
-import ObjectPill from "./ObjectPill";
-import { Toast } from "flowbite-react";
-import { HiCheck, HiX, HiExclamation } from "react-icons/hi";
+import React from 'react';
+import useStore from '../../stores/store';
+import ObjectPill from './ObjectPill';
+import { Toast } from 'flowbite-react';
+import { HiCheck, HiX, HiExclamation } from 'react-icons/hi';
 
 const SaveChangesModal = ({ isOpen, onClose }) => {
   const namedChildren = useStore(state => state.namedChildren);
@@ -74,10 +74,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
             <div className="inline-flex items-center">
               <HiExclamation className="h-4 w-4 mr-3" />
               Error saving changes
-              <button
-                onClick={() => setShowErrorToast(false)}
-                className="ml-3 hover:text-gray-200"
-              >
+              <button onClick={() => setShowErrorToast(false)} className="ml-3 hover:text-gray-200">
                 <HiX className="h-4 w-4" />
               </button>
             </div>
@@ -88,20 +85,13 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
       <div className="fixed inset-0 backdrop flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Modified Items
-            </h2>
+            <h2 className="text-xl font-semibold text-gray-900">Modified Items</h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700"
               disabled={isLoading}
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -120,9 +110,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
             )}
 
             {modifiedItems.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
-                No modified items to save
-              </p>
+              <p className="text-gray-500 text-center py-4">No modified items to save</p>
             ) : (
               <div className="space-y-3">
                 {modifiedItems.map(([key, value]) => (
@@ -130,9 +118,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
                     <div className="font-medium text-gray-900">
                       <ObjectPill name={key} inline={value.is_inline_defined} />
                     </div>
-                    <div className="text-sm text-gray-500">
-                      Status: {value.status}
-                    </div>
+                    <div className="text-sm text-gray-500">Status: {value.status}</div>
                   </div>
                 ))}
               </div>
@@ -177,7 +163,7 @@ const SaveChangesModal = ({ isOpen, onClose }) => {
                   Saving...
                 </>
               ) : (
-                "Write To Files"
+                'Write To Files'
               )}
             </button>
           </div>

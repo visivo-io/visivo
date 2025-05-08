@@ -1,18 +1,13 @@
-import React, { useState, useMemo } from "react";
-import ReactFlow from "react-flow-renderer";
-import useStore from "../../stores/store"; // Adjust path to your store
-import ObjectPillNode from "./ObjectPillNode";
-import {
-  buildGraph,
-  parseSelector,
-  filterGraph,
-  computeLayout,
-} from "./graphUtils";
+import React, { useState, useMemo } from 'react';
+import ReactFlow from 'react-flow-renderer';
+import useStore from '../../stores/store'; // Adjust path to your store
+import ObjectPillNode from './ObjectPillNode';
+import { buildGraph, parseSelector, filterGraph, computeLayout } from './graphUtils';
 
 const nodeTypes = { objectPill: ObjectPillNode };
 
-const Lineage = ({ defaultSelector = "" }) => {
-  const namedChildren = useStore((state) => state.namedChildren);
+const Lineage = ({ defaultSelector = '' }) => {
+  const namedChildren = useStore(state => state.namedChildren);
   const [selector, setSelector] = useState(defaultSelector);
 
   const { nodes: fullNodes, edges: fullEdges } = useMemo(
@@ -33,7 +28,7 @@ const Lineage = ({ defaultSelector = "" }) => {
   );
 
   return (
-    <div style={{ height: "80vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: '80vh', display: 'flex', flexDirection: 'column' }}>
       <input
         type="text"
         value={selector}
@@ -42,7 +37,7 @@ const Lineage = ({ defaultSelector = "" }) => {
         className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
       />
       <ReactFlow
-        nodes={filteredNodes.map((node) => ({ ...node, type: "objectPill" }))}
+        nodes={filteredNodes.map(node => ({ ...node, type: 'objectPill' }))}
         edges={filteredEdges}
         nodeTypes={nodeTypes}
         fitView

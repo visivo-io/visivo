@@ -1,11 +1,11 @@
-import { fetchNamedChildren, writeNamedChildren } from "../api/namedChildren";
-import { fetchProjectFilePath } from "../api/projectFilePath";
-import { updateNestedValue, getRelativePath } from "./utils";
-import { fetchSchema } from "../api/schema";
+import { fetchNamedChildren, writeNamedChildren } from '../api/namedChildren';
+import { fetchProjectFilePath } from '../api/projectFilePath';
+import { updateNestedValue, getRelativePath } from './utils';
+import { fetchSchema } from '../api/schema';
 
 const createEditorSlice = (set, get) => ({
   projectData: {}, // Holds the fetched project data
-  setProjectData: (data) => set({ projectData: data }),
+  setProjectData: data => set({ projectData: data }),
 
   schema: null,
   fetchSchema: async () => {
@@ -13,7 +13,7 @@ const createEditorSlice = (set, get) => ({
       const data = await fetchSchema();
       set({ schema: data });
     } catch (e) {
-      console.error("Error fetching schema:", e);
+      console.error('Error fetching schema:', e);
     }
   },
 
@@ -32,7 +32,7 @@ const createEditorSlice = (set, get) => ({
   writeModifiedFiles: async () => {
     const state = get();
     const modifiedItems = Object.entries(state.namedChildren).filter(
-      ([_, value]) => value.status !== "Unchanged"
+      ([_, value]) => value.status !== 'Unchanged'
     );
 
     if (modifiedItems.length === 0) return;
@@ -41,7 +41,7 @@ const createEditorSlice = (set, get) => ({
       // Make API call to write files
       const response = await writeNamedChildren(state.namedChildren);
       if (response.status !== 200) {
-        throw new Error("Failed to write files");
+        throw new Error('Failed to write files');
       }
 
       // Update status of written items to Unchanged
@@ -49,7 +49,7 @@ const createEditorSlice = (set, get) => ({
       modifiedItems.forEach(([key]) => {
         updatedNamedChildren[key] = {
           ...updatedNamedChildren[key],
-          status: "Unchanged",
+          status: 'Unchanged',
         };
       });
 
@@ -58,9 +58,9 @@ const createEditorSlice = (set, get) => ({
         isLoading: false,
       });
     } catch (e) {
-      console.error("Error writing files:", e);
+      console.error('Error writing files:', e);
       set({
-        writeError: e.message || "Failed to write files",
+        writeError: e.message || 'Failed to write files',
         isLoading: false,
       });
     }
@@ -74,10 +74,10 @@ const createEditorSlice = (set, get) => ({
     const uniqueFilePaths = new Map();
 
     // Helper function to create path object and calculate relative path
-    const createPathObject = (fullPath) => {
+    const createPathObject = fullPath => {
       const relativePath = getRelativePath(projectFilePath, fullPath);
       return {
-        status: "existing",
+        status: 'existing',
         full_path: fullPath,
         relative_path: relativePath,
       };
@@ -95,18 +95,12 @@ const createEditorSlice = (set, get) => ({
 
         // Add file_path if it exists
         if (child.file_path) {
-          uniqueFilePaths.set(
-            child.file_path,
-            createPathObject(child.file_path)
-          );
+          uniqueFilePaths.set(child.file_path, createPathObject(child.file_path));
         }
 
         // Add new_file_path if it exists
         if (child.new_file_path) {
-          uniqueFilePaths.set(
-            child.new_file_path,
-            createPathObject(child.new_file_path)
-          );
+          uniqueFilePaths.set(child.new_file_path, createPathObject(child.new_file_path));
         }
       }
     }
@@ -129,33 +123,33 @@ const createEditorSlice = (set, get) => ({
       if (data) {
         for (const key in data) {
           if (data.hasOwnProperty(key)) {
-            data[key].status = "Unchanged";
+            data[key].status = 'Unchanged';
           }
         }
         set({ namedChildren: data, isLoading: false });
       } else {
-        set({ error: "Failed to fetch data", isLoading: false });
+        set({ error: 'Failed to fetch data', isLoading: false });
       }
     } catch (e) {
-      console.error("Error fetching named children", e);
-      set({ error: e.message || "An error occurred", isLoading: false });
+      console.error('Error fetching named children', e);
+      set({ error: e.message || 'An error occurred', isLoading: false });
     }
   },
 
   // New update attribute for namedChildren
   updateNamedChildAttribute: (path, newValue) =>
-    set((state) => {
+    set(state => {
       const childName = path.shift();
       if (!state.namedChildren.hasOwnProperty(childName)) {
         return {
-          error: "Child not found in namedChildren store",
+          error: 'Child not found in namedChildren store',
           isLoading: false,
         };
       }
 
       const childToUpdate = state.namedChildren[childName];
       const configToUpdate =
-        typeof childToUpdate.config === "string"
+        typeof childToUpdate.config === 'string'
           ? JSON.parse(childToUpdate.config)
           : childToUpdate.config;
 
@@ -168,7 +162,7 @@ const createEditorSlice = (set, get) => ({
             ...childToUpdate,
             config: configToUpdate,
             // Only set status to 'Modified' if it's not already 'New'
-            status: childToUpdate.status === "New" ? "New" : "Modified",
+            status: childToUpdate.status === 'New' ? 'New' : 'Modified',
           },
         },
       };
@@ -176,9 +170,9 @@ const createEditorSlice = (set, get) => ({
 
   // New tab management actions
   openTab: (name, type) =>
-    set((state) => {
+    set(state => {
       // Check if tab already exists
-      const existingTab = state.tabs.find((tab) => tab.name === name);
+      const existingTab = state.tabs.find(tab => tab.name === name);
       if (existingTab) {
         return { activeTabId: existingTab.id };
       }
@@ -196,15 +190,14 @@ const createEditorSlice = (set, get) => ({
       };
     }),
 
-  closeTab: (tabId) =>
-    set((state) => {
-      const newTabs = state.tabs.filter((tab) => tab.id !== tabId);
+  closeTab: tabId =>
+    set(state => {
+      const newTabs = state.tabs.filter(tab => tab.id !== tabId);
       let newActiveTabId = state.activeTabId;
 
       // If we're closing the active tab, activate the last remaining tab
       if (state.activeTabId === tabId) {
-        newActiveTabId =
-          newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+        newActiveTabId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
       }
 
       return {
@@ -213,12 +206,12 @@ const createEditorSlice = (set, get) => ({
       };
     }),
 
-  setActiveTab: (tabId) => set({ activeTabId: tabId }),
+  setActiveTab: tabId => set({ activeTabId: tabId }),
 
   // Selectors (can be used with useStore directly)
   getActiveTab: () => {
     const state = get();
-    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+    const activeTab = state.tabs.find(tab => tab.id === state.activeTabId);
     if (!activeTab) return null;
 
     // Get current config from namedChildren
@@ -234,15 +227,15 @@ const createEditorSlice = (set, get) => ({
 
   // Add new item to a list
   addListItem: (path, newItem) =>
-    set((state) => {
+    set(state => {
       const childName = path[0];
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        return { error: "Child not found in namedChildren store" };
+        return { error: 'Child not found in namedChildren store' };
       }
 
       const childToUpdate = state.namedChildren[childName];
       const configToUpdate =
-        typeof childToUpdate.config === "string"
+        typeof childToUpdate.config === 'string'
           ? JSON.parse(childToUpdate.config)
           : childToUpdate.config;
 
@@ -257,7 +250,7 @@ const createEditorSlice = (set, get) => ({
 
       // Ensure targetList is an array
       if (!Array.isArray(targetList)) {
-        return { error: "Target path does not point to a list" };
+        return { error: 'Target path does not point to a list' };
       }
 
       // Add new item to the list
@@ -269,7 +262,7 @@ const createEditorSlice = (set, get) => ({
           [childName]: {
             ...childToUpdate,
             config: configToUpdate,
-            status: childToUpdate.status === "New" ? "New" : "Modified",
+            status: childToUpdate.status === 'New' ? 'New' : 'Modified',
           },
         },
       };
@@ -277,15 +270,15 @@ const createEditorSlice = (set, get) => ({
 
   // Add new property to an object
   addObjectProperty: (path, propertyName, propertyValue) =>
-    set((state) => {
+    set(state => {
       const childName = path[0];
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        return { error: "Child not found in namedChildren store" };
+        return { error: 'Child not found in namedChildren store' };
       }
 
       const childToUpdate = state.namedChildren[childName];
       const configToUpdate =
-        typeof childToUpdate.config === "string"
+        typeof childToUpdate.config === 'string'
           ? JSON.parse(childToUpdate.config)
           : childToUpdate.config;
 
@@ -300,11 +293,11 @@ const createEditorSlice = (set, get) => ({
 
       // Ensure targetObject is an object
       if (
-        typeof targetObject !== "object" ||
+        typeof targetObject !== 'object' ||
         targetObject === null ||
         Array.isArray(targetObject)
       ) {
-        return { error: "Target path does not point to an object" };
+        return { error: 'Target path does not point to an object' };
       }
 
       // Add new property to the object
@@ -316,23 +309,23 @@ const createEditorSlice = (set, get) => ({
           [childName]: {
             ...childToUpdate,
             config: configToUpdate,
-            status: childToUpdate.status === "New" ? "New" : "Modified",
+            status: childToUpdate.status === 'New' ? 'New' : 'Modified',
           },
         },
       };
     }),
 
-  deleteNamedChildAttribute: (path) =>
-    set((state) => {
+  deleteNamedChildAttribute: path =>
+    set(state => {
       const childName = path[0];
       if (!state.namedChildren.hasOwnProperty(childName)) {
-        console.warn("Child not found in namedChildren store");
+        console.warn('Child not found in namedChildren store');
         return state;
       }
 
       const childToUpdate = { ...state.namedChildren[childName] }; // Create a copy
       let configToUpdate =
-        typeof childToUpdate.config === "string"
+        typeof childToUpdate.config === 'string'
           ? JSON.parse(childToUpdate.config)
           : { ...childToUpdate.config }; // Create a copy
 
@@ -348,7 +341,7 @@ const createEditorSlice = (set, get) => ({
         for (let i = 0; i < attributePath.length - 1; i++) {
           parent = parent[attributePath[i]];
           if (!parent) {
-            console.warn("Invalid path");
+            console.warn('Invalid path');
             return state;
           }
         }
@@ -371,12 +364,12 @@ const createEditorSlice = (set, get) => ({
         [childName]: {
           ...childToUpdate,
           config: configToUpdate,
-          status: childToUpdate.status === "New" ? "New" : "Modified",
+          status: childToUpdate.status === 'New' ? 'New' : 'Modified',
         },
       };
 
-      console.log("Deleting path:", path);
-      console.log("Updated config:", configToUpdate);
+      console.log('Deleting path:', path);
+      console.log('Updated config:', configToUpdate);
 
       return { namedChildren: updatedNamedChildren };
     }),
