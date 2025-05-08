@@ -10,10 +10,7 @@ const useStore = create(
     projectData: {}, // Holds the fetched project data
     setProjectData: data => set({ projectData: data }),
 
-    // Add schema state
     schema: null,
-
-    // Add schema fetch action
     fetchSchema: async () => {
       try {
         const data = await fetchSchema();
@@ -66,11 +63,14 @@ const useStore = create(
         });
       } catch (e) {
         console.error('Error writing files:', e);
-        set({ writeError: e.message || 'Failed to write files', isLoading: false });
+        set({
+          writeError: e.message || 'Failed to write files',
+          isLoading: false,
+        });
       }
     },
 
-    CreateProjectFileObjects: async () => {
+    createProjectFileObjects: async () => {
       const state = get();
       const projectFilePath = state.projectFilePath;
       const namedChildren = state.namedChildren;
@@ -113,7 +113,7 @@ const useStore = create(
       const projectFileObjects = Array.from(uniqueFilePaths.values());
       set({ projectFileObjects: projectFileObjects });
     },
-    // Fetch actions for namedChildren
+
     fetchProjectFilePath: async () => {
       const data = await fetchProjectFilePath();
       set({ projectFilePath: data });
@@ -145,7 +145,10 @@ const useStore = create(
       set(state => {
         const childName = path.shift();
         if (!state.namedChildren.hasOwnProperty(childName)) {
-          return { error: 'Child not found in namedChildren store', isLoading: false };
+          return {
+            error: 'Child not found in namedChildren store',
+            isLoading: false,
+          };
         }
 
         const childToUpdate = state.namedChildren[childName];

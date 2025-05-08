@@ -161,7 +161,7 @@ export const filterGraph = (nodes, edges, selectedNodes) => {
   );
   return { nodes: filteredNodes, edges: filteredEdges };
 };
-// Compute node positions using dagre
+
 export const computeLayout = (nodes, edges) => {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: 'LR' }); // Left-to-right layout

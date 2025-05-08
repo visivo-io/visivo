@@ -2,17 +2,24 @@ import React from 'react';
 import { HiOutlineClipboardCopy } from 'react-icons/hi';
 import Pill from '../common/Pill';
 import { Sidebar } from '../styled/Sidebar';
+import useExplorerStore from '../../stores/explorerStore';
 
 const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick }) => {
+  const { setInfo } = useExplorerStore();
+
   const validData = React.useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data.filter(item => item && typeof item === 'object' && item.name);
   }, [data]);
 
-  const handleCopyName = React.useCallback((e, name) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(name);
-  }, []);
+  const handleCopyName = React.useCallback(
+    (e, name) => {
+      e.stopPropagation();
+      setInfo(`Copied "${name}" to clipboard`);
+      navigator.clipboard.writeText(name);
+    },
+    [setInfo]
+  );
 
   const renderTreeItem = React.useCallback(
     node => {
@@ -50,8 +57,8 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
         value={selectedTab}
         onChange={e => onTypeChange(e.target.value)}
       >
-        <option value="models">Models</option>
-        <option value="traces">Traces</option>
+        <option value="models">SQL Models</option>
+        <option value="traces">SQL Traces</option>
       </select>
       {validData.map(item => renderTreeItem(item))}
     </Sidebar>

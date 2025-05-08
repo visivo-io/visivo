@@ -10,6 +10,8 @@ import QueryPanel from './QueryPanel';
 import Divider from './Divider';
 import ResultsPanel from './ResultsPanel';
 import useExplorerStore from '../../stores/explorerStore';
+import useStore from '../../stores/store';
+import { getAncestors } from '../lineage/graphUtils';
 
 const Container = tw.div`
   flex h-[calc(100vh-50px)] 
@@ -36,12 +38,28 @@ const RightPanel = tw.div`
   overflow-hidden
 `;
 
+const Info = tw.div`
+  absolute
+  z-10
+  bottom-10
+  right-10
+  flex
+  flex-1
+  bg-highlight
+  text-white
+  rounded-md
+  p-2
+  shadow-md
+  overflow-hidden
+`;
+
+const HIDDEN_MODEL_TYPES = ['CsvScriptModel', 'LocalMergeModel'];
+
 const QueryExplorer = () => {
   const project = useLoaderData();
   const editorRef = React.useRef(null);
   const monacoRef = React.useRef(null);
 
-  // Use the Zustand store
   const {
     // State values
     isDragging,
@@ -50,6 +68,7 @@ const QueryExplorer = () => {
     treeData,
     selectedSource,
     query,
+    info,
     isLoading,
     // State setters
     setQuery,
@@ -67,7 +86,8 @@ const QueryExplorer = () => {
     setActiveWorksheetId,
   } = useExplorerStore();
 
-  // Use the worksheet context
+  const { namedChildren } = useStore();
+
   const {
     worksheets,
     activeWorksheetId,
@@ -153,6 +173,7 @@ const QueryExplorer = () => {
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
+            .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .map((model, index) => ({
               id: `model-${model.name}-${index}`,
               name: model.name,
@@ -166,6 +187,12 @@ const QueryExplorer = () => {
         if (explorerData.traces) {
           const traceItems = explorerData.traces
             .filter(trace => trace && typeof trace === 'object' && trace.name)
+            .filter(trace => {
+              const ancestors = getAncestors(trace.name, namedChildren);
+              return ![...ancestors].some(ancestor =>
+                HIDDEN_MODEL_TYPES.includes(namedChildren[ancestor]?.type)
+              );
+            })
             .map((trace, index) => ({
               id: `trace-${trace.name}-${index}`,
               name: trace.name,
@@ -179,7 +206,7 @@ const QueryExplorer = () => {
         break;
     }
     return data;
-  }, [selectedType, explorerData]);
+  }, [selectedType, explorerData, namedChildren]);
 
   useEffect(() => {
     setTreeData(transformData());
@@ -371,6 +398,11 @@ const QueryExplorer = () => {
   return (
     <Container>
       <div className="flex flex-col h-full">
+        {info && (
+          <Info>
+            <p>{info}</p>
+          </Info>
+        )}
         <MainContent>
           <ExplorerTree
             data={treeData}
