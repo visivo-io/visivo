@@ -7,22 +7,26 @@ let chart;
 
 beforeEach(() => {
   chart = {
-    name: "name",
-    selector: { type: "single", name: "selector", parent_name: "name" },
-    traces: []
-  }
+    name: 'name',
+    selector: { type: 'single', name: 'selector', parent_name: 'name' },
+    traces: [],
+  };
 });
 
 const tracesData = {
-  "Trace Name 1": {
-    "Cohort Name 1": {},
+  'Trace Name 1': {
+    'Cohort Name 1': {},
   },
 };
 
-describe("Chart", () => {
+describe('Chart', () => {
   test('renders chart with selector when name matches', async () => {
-    jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (tracesData));
-    jest.spyOn(Trace, 'chartDataFromCohortData').mockImplementation((cohortData, trace, cohortName) => ({}));
+    jest
+      .spyOn(useTracesData, 'useTracesData')
+      .mockImplementation((projectId, traceNames) => tracesData);
+    jest
+      .spyOn(Trace, 'chartDataFromCohortData')
+      .mockImplementation((cohortData, trace, cohortName) => ({}));
     render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
 
     await waitFor(() => {
@@ -32,9 +36,13 @@ describe("Chart", () => {
   });
 
   test('renders chart without selector when name does not match', async () => {
-    jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (tracesData));
-    jest.spyOn(Trace, 'chartDataFromCohortData').mockImplementation((cohortData, trace, cohortName) => ({}));
-    chart.selector.parent_name = "other"
+    jest
+      .spyOn(useTracesData, 'useTracesData')
+      .mockImplementation((projectId, traceNames) => tracesData);
+    jest
+      .spyOn(Trace, 'chartDataFromCohortData')
+      .mockImplementation((cohortData, trace, cohortName) => ({}));
+    chart.selector.parent_name = 'other';
     render(<Chart chart={chart} project={{ id: 1 }} />, { wrapper: withProviders });
 
     await waitFor(() => {

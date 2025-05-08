@@ -5,4 +5,4 @@ export const fetchSchema = async () => {
   } else {
     return null;
   }
-}; 
+};

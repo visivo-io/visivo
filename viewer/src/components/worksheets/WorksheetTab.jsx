@@ -30,15 +30,7 @@ const CloseButton = tw.button`
   p-1 rounded-full hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity
 `;
 
-const WorksheetTab = ({
-  worksheet,
-  index,
-  isActive,
-  onSelect,
-  onClose,
-  onRename,
-  isLoading
-}) => {
+const WorksheetTab = ({ worksheet, index, isActive, onSelect, onClose, onRename, isLoading }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(worksheet.name);
   const inputRef = useRef(null);
@@ -50,7 +42,7 @@ const WorksheetTab = ({
     }
   }, [isEditing]);
 
-  const handleClose = (e) => {
+  const handleClose = e => {
     e.stopPropagation();
     onClose(worksheet.id);
   };
@@ -61,14 +53,14 @@ const WorksheetTab = ({
     }
   };
 
-  const handleDoubleClick = (e) => {
+  const handleDoubleClick = e => {
     e.stopPropagation();
     if (!isLoading) {
       setIsEditing(true);
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = e => {
     setEditValue(e.target.value);
   };
 
@@ -76,7 +68,7 @@ const WorksheetTab = ({
     handleRename();
   };
 
-  const handleInputKeyDown = (e) => {
+  const handleInputKeyDown = e => {
     if (e.key === 'Enter') {
       handleRename();
     } else if (e.key === 'Escape') {
@@ -96,11 +88,7 @@ const WorksheetTab = ({
   const TabComponent = isActive ? ActiveTab : InactiveTab;
 
   return (
-    <div
-      data-testid={`worksheet-tab-${worksheet.id}`}
-      onClick={handleSelect}
-      className="group"
-    >
+    <div data-testid={`worksheet-tab-${worksheet.id}`} onClick={handleSelect} className="group">
       <TabComponent>
         <TabContent>
           {isEditing ? (
@@ -110,7 +98,7 @@ const WorksheetTab = ({
               onChange={handleInputChange}
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
               style={{ maxWidth: '200px' }}
             />
           ) : (
@@ -135,4 +123,4 @@ const WorksheetTab = ({
   );
 };
 
-export default WorksheetTab; 
+export default WorksheetTab;

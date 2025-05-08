@@ -1,17 +1,17 @@
 import React from 'react';
 import useStore from '../../stores/store';
 import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
-import { HiOutlineDatabase } from "react-icons/hi";
-import { PiArrowsInLineHorizontal } from "react-icons/pi";
+import { HiOutlineDatabase } from 'react-icons/hi';
+import { PiArrowsInLineHorizontal } from 'react-icons/pi';
 
-const ObjectPill = ({name, onClick, onDoubleClick, children, inline = false}) => {
-  const type = useStore((state) => state.namedChildren[name]?.type);
-  
+const ObjectPill = ({ name, onClick, onDoubleClick, children, inline = false }) => {
+  const type = useStore(state => state.namedChildren[name]?.type);
+
   const typeConfig = TYPE_STYLE_MAP[type] || {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
     border: 'border-gray-200',
-    icon: HiOutlineDatabase
+    icon: HiOutlineDatabase,
   };
   const Icon = typeConfig.icon;
 
@@ -29,9 +29,7 @@ const ObjectPill = ({name, onClick, onDoubleClick, children, inline = false}) =>
             {type || 'Unknown Type'}
           </div>
         </div>
-        <span className={`text-sm font-medium ${typeConfig.text} truncate`}>
-          {name}
-        </span>
+        <span className={`text-sm font-medium ${typeConfig.text} truncate`}>{name}</span>
       </div>
       {children}
       {inline && (
@@ -47,4 +45,3 @@ const ObjectPill = ({name, onClick, onDoubleClick, children, inline = false}) =>
 };
 
 export default ObjectPill;
-

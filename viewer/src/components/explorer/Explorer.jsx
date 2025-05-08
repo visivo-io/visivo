@@ -1,15 +1,15 @@
-import React, { useEffect, useCallback } from "react";
-import { useLoaderData } from "react-router-dom";
-import ExplorerTree from "./ExplorerTree";
-import { executeQuery, fetchTraceQuery } from "../../services/queryService";
-import { fetchExplorer } from "../../api/explorer";
-import tw from "tailwind-styled-components";
-import { useWorksheets } from "../../contexts/WorksheetContext";
-import { useQueryHotkeys } from "../../hooks/useQueryHotkeys";
-import QueryPanel from "./QueryPanel";
-import Divider from "./Divider";
-import ResultsPanel from "./ResultsPanel";
-import useExplorerStore from "../../stores/explorerStore";
+import React, { useEffect, useCallback } from 'react';
+import { useLoaderData } from 'react-router-dom';
+import ExplorerTree from './ExplorerTree';
+import { executeQuery, fetchTraceQuery } from '../../services/queryService';
+import { fetchExplorer } from '../../api/explorer';
+import tw from 'tailwind-styled-components';
+import { useWorksheets } from '../../contexts/WorksheetContext';
+import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
+import QueryPanel from './QueryPanel';
+import Divider from './Divider';
+import ResultsPanel from './ResultsPanel';
+import useExplorerStore from '../../stores/explorerStore';
 
 const Container = tw.div`
   flex h-[calc(100vh-50px)] 
@@ -80,16 +80,16 @@ const QueryExplorer = () => {
     setActiveWorksheetId(activeWorksheetId);
   }, [project, activeWorksheetId, setProject, setActiveWorksheetId]);
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = e => {
     setIsDragging(true);
     e.preventDefault();
   };
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = e => {
       if (!isDragging) return;
 
-      const container = document.getElementById("right-panel");
+      const container = document.getElementById('right-panel');
       if (!container) return;
 
       const containerRect = container.getBoundingClientRect();
@@ -106,13 +106,13 @@ const QueryExplorer = () => {
     };
 
     if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, setIsDragging, setSplitRatio]);
 
@@ -124,9 +124,7 @@ const QueryExplorer = () => {
           setExplorerData(data);
           if (data.sources && data.sources.length > 0) {
             if (data.default_source) {
-              const defaultSource = data.sources.find(
-                (s) => s.name === data.default_source
-              );
+              const defaultSource = data.sources.find(s => s.name === data.default_source);
               if (defaultSource) {
                 setSelectedSource(defaultSource);
               } else {
@@ -138,8 +136,8 @@ const QueryExplorer = () => {
           }
         }
       } catch (err) {
-        console.error("Error loading explorer data:", err);
-        setError("Failed to load explorer data");
+        console.error('Error loading explorer data:', err);
+        setError('Failed to load explorer data');
       }
     };
     loadExplorerData();
@@ -151,27 +149,27 @@ const QueryExplorer = () => {
     const data = [];
 
     switch (selectedType) {
-      case "models":
+      case 'models':
         if (explorerData.models) {
           const modelItems = explorerData.models
-            .filter((model) => model && typeof model === "object" && model.name)
+            .filter(model => model && typeof model === 'object' && model.name)
             .map((model, index) => ({
               id: `model-${model.name}-${index}`,
               name: model.name,
-              type: "model",
+              type: 'model',
               config: model,
             }));
           data.push(...modelItems);
         }
         break;
-      case "traces":
+      case 'traces':
         if (explorerData.traces) {
           const traceItems = explorerData.traces
-            .filter((trace) => trace && typeof trace === "object" && trace.name)
+            .filter(trace => trace && typeof trace === 'object' && trace.name)
             .map((trace, index) => ({
               id: `trace-${trace.name}-${index}`,
               name: trace.name,
-              type: "trace",
+              type: 'trace',
               config: trace,
             }));
           data.push(...traceItems);
@@ -187,45 +185,39 @@ const QueryExplorer = () => {
     setTreeData(transformData());
   }, [transformData, setTreeData]);
 
-  const handleTabChange = (type) => {
+  const handleTabChange = type => {
     setSelectedType(type);
   };
 
-  const handleItemClick = async (item) => {
-    let newQuery = "";
+  const handleItemClick = async item => {
+    let newQuery = '';
     let newSource = selectedSource;
 
     try {
       switch (item.type) {
-        case "model":
-          if (
-            item.config.type === "CsvScriptModel" ||
-            item.config.type === "LocalMergeModel"
-          ) {
-            newSource =
-              explorerData?.sources?.find((s) => s.type === "duckdb") ||
-              selectedSource;
+        case 'model':
+          if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
+            newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
           } else if (item.config.source) {
             newSource =
-              explorerData?.sources?.find(
-                (s) => s.name === item.config.source.name
-              ) || selectedSource;
+              explorerData?.sources?.find(s => s.name === item.config.source.name) ||
+              selectedSource;
           } else {
             newSource = explorerData?.sources?.[0] || selectedSource;
           }
           newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
           break;
-        case "trace":
+        case 'trace':
           try {
             newQuery = await fetchTraceQuery(item.name);
           } catch (err) {
-            console.error("Failed to fetch trace query:", err);
+            console.error('Failed to fetch trace query:', err);
             setError(`Failed to fetch trace query: ${err.message}`);
             return;
           }
           break;
         default:
-          newQuery = "";
+          newQuery = '';
           break;
       }
 
@@ -242,13 +234,13 @@ const QueryExplorer = () => {
         });
       }
     } catch (err) {
-      console.error("Error in handleItemClick:", err);
-      setError(err.message || "Failed to process item click");
+      console.error('Error in handleItemClick:', err);
+      setError(err.message || 'Failed to process item click');
     }
   };
 
   const executeQueryWithStats = React.useCallback(
-    async (queryString) => {
+    async queryString => {
       const startTime = performance.now();
       const timestamp = new Date();
 
@@ -277,9 +269,9 @@ const QueryExplorer = () => {
   );
 
   const executeQueryAndUpdateState = useCallback(
-    async (queryString) => {
+    async queryString => {
       if (!queryString?.trim()) {
-        setError("Please enter a query");
+        setError('Please enter a query');
         return;
       }
 
@@ -299,16 +291,16 @@ const QueryExplorer = () => {
 
         setQuery(queryString);
         const formattedResults = {
-          name: "Query Results",
+          name: 'Query Results',
           traces: [
             {
-              name: "results",
+              name: 'results',
               props: {},
               data: queryResults.data.map((row, index) => ({
                 id: index,
                 ...row,
               })),
-              columns: queryResults.columns.map((col) => ({
+              columns: queryResults.columns.map(col => ({
                 header: col,
                 key: col,
                 accessorKey: col,
@@ -320,7 +312,7 @@ const QueryExplorer = () => {
 
         setResults(formattedResults);
       } catch (err) {
-        setError(err.message || "Failed to execute query");
+        setError(err.message || 'Failed to execute query');
       } finally {
         setIsLoading(false);
       }
@@ -346,23 +338,15 @@ const QueryExplorer = () => {
 
   // Effect to update query when active worksheet changes
   useEffect(() => {
-    const activeWorksheet = worksheets.find((w) => w.id === activeWorksheetId);
+    const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
     if (activeWorksheet) {
-      setQuery(activeWorksheet.query || "");
+      setQuery(activeWorksheet.query || '');
       if (activeWorksheet.selected_source) {
-        const source = explorerData?.sources?.find(
-          (s) => s.name === activeWorksheet.selected_source
-        );
+        const source = explorerData?.sources?.find(s => s.name === activeWorksheet.selected_source);
         if (source) setSelectedSource(source);
       }
     }
-  }, [
-    activeWorksheetId,
-    worksheets,
-    explorerData?.sources,
-    setQuery,
-    setSelectedSource,
-  ]);
+  }, [activeWorksheetId, worksheets, explorerData?.sources, setQuery, setSelectedSource]);
 
   // Effect to load results when active worksheet changes
   useEffect(() => {
@@ -397,10 +381,7 @@ const QueryExplorer = () => {
 
           <RightPanel id="right-panel">
             <QueryPanel editorRef={editorRef} monacoRef={monacoRef} />
-            <Divider
-              isDragging={isDragging}
-              handleMouseDown={handleMouseDown}
-            />
+            <Divider isDragging={isDragging} handleMouseDown={handleMouseDown} />
             <ResultsPanel project={project} />
           </RightPanel>
         </MainContent>

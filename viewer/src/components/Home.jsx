@@ -21,9 +21,7 @@ const Home = () => {
             <div className="flex flex-col items-center p-8">
               <HiOutlineDatabase className="w-12 h-12 mb-4 text-gray-700" />
               <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-xs">
-                <h5 className="text-xl font-medium text-gray-900">
-                  DAG Explorer
-                </h5>
+                <h5 className="text-xl font-medium text-gray-900">DAG Explorer</h5>
               </div>
               <p className="mt-4 text-gray-600 text-center">
                 Visualize and explore your data lineage
@@ -36,13 +34,9 @@ const Home = () => {
             <div className="flex flex-col items-center p-8">
               <HiOutlineSearch className="w-12 h-12 mb-4 text-gray-700" />
               <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-xs">
-                <h5 className="text-xl font-medium text-gray-900">
-                  Query Explorer
-                </h5>
+                <h5 className="text-xl font-medium text-gray-900">Query Explorer</h5>
               </div>
-              <p className="mt-4 text-gray-600 text-center">
-                Explore and analyze your data
-              </p>
+              <p className="mt-4 text-gray-600 text-center">Explore and analyze your data</p>
             </div>
           </div>
         </Link>
@@ -51,12 +45,11 @@ const Home = () => {
             <div className="flex flex-col items-center p-8">
               <HiTemplate className="w-12 h-12 mb-4 text-gray-700" />
               <div className="bg-[#E6EDF8] w-full text-center py-2 rounded-xs">
-                <h5 className="text-xl font-medium text-gray-900">
-                  Project
-                </h5>
+                <h5 className="text-xl font-medium text-gray-900">Project</h5>
               </div>
               <p className="mt-4 text-gray-600 text-center">
-                 View your project's dashboards and visualizations. Get live updates when you change your configurations.
+                View your project's dashboards and visualizations. Get live updates when you change
+                your configurations.
               </p>
             </div>
           </div>
@@ -69,21 +62,19 @@ const Home = () => {
     <SearchParamsProvider>
       <div className="visivo-home min-h-screen bg-gray-50">
         <TopNav />
-        <div className={isProject ? "" : "mx-4"}>
+        <div className={isProject ? '' : 'mx-4'}>
           {isProject && (
             <div className="flex flex-row justify-between items-center whitespace-nowrap py-4">
               <Breadcrumbs />
               <ProjectHistory />
             </div>
           )}
-          {error && error.message && (
-            <Error>{error.message}</Error>
-          )}
+          {error && error.message && <Error>{error.message}</Error>}
           {isRoot ? renderNavigationCards() : <Outlet />}
         </div>
       </div>
     </SearchParamsProvider>
   );
-}
+};
 
 export default Home;

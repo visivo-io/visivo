@@ -1,12 +1,12 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
-import Dashboard from "./Dashboard";
-import Loading from "../common/Loading";
-import { Container } from "../styled/Container";
+import React, { useState, useMemo, useEffect, useContext } from 'react';
+import Dashboard from './Dashboard';
+import Loading from '../common/Loading';
+import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
 import DashboardSection, { organizeDashboardsByLevel } from './DashboardSection';
 import FilterBar from './FilterBar';
-import QueryContext from "../../contexts/QueryContext";
-import { fetchDashboardThumbnail } from "../../queries/dashboardThumbnails";
+import QueryContext from '../../contexts/QueryContext';
+import { fetchDashboardThumbnail } from '../../queries/dashboardThumbnails';
 import { useQuery } from '@tanstack/react-query';
 
 function Project(props) {
@@ -60,7 +60,7 @@ function Project(props) {
       return Object.fromEntries(results.filter(Boolean));
     },
     enabled: Boolean(projectId) && dashboardNames.length > 0,
-    staleTime: 1000 * 60 * 5
+    staleTime: 1000 * 60 * 5,
   });
 
   const availableTags = useMemo(() => {
@@ -77,16 +77,19 @@ function Project(props) {
   const filteredDashboards = useMemo(() => {
     if (!allDashboards.length) return [];
     return allDashboards.filter(dashboard => {
-      const matchesSearch = dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (dashboard.description && dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesTags = selectedTags.length === 0 ||
+      const matchesSearch =
+        dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (dashboard.description &&
+          dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesTags =
+        selectedTags.length === 0 ||
         (dashboard.tags && selectedTags.every(tag => dashboard.tags.includes(tag)));
       return matchesSearch && matchesTags;
     });
   }, [allDashboards, searchTerm, selectedTags]);
 
-  const dashboardsByLevel = useMemo(() =>
-    organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.defaults),
+  const dashboardsByLevel = useMemo(
+    () => organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.defaults),
     [filteredDashboards, props.project?.project_json?.defaults]
   );
 
@@ -114,7 +117,7 @@ function Project(props) {
                 title={level}
                 dashboards={dashboards.map(dashboard => ({
                   ...dashboard,
-                  thumbnail: thumbnails[dashboard.name]
+                  thumbnail: thumbnails[dashboard.name],
                 }))}
                 searchTerm={searchTerm}
                 hasLevels={dashboardsByLevel.length > 0}
@@ -126,7 +129,9 @@ function Project(props) {
               <div className="w-full text-center py-8 bg-white rounded-lg shadow-2xs border border-gray-200">
                 <HiTemplate className="mx-auto h-10 w-10 text-gray-400" />
                 <h3 className="mt-2 text-sm font-medium text-gray-900">No dashboards found</h3>
-                <p className="mt-1 text-sm text-gray-500">No dashboards match your search criteria.</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  No dashboards match your search criteria.
+                </p>
               </div>
             )}
           </div>
@@ -135,10 +140,8 @@ function Project(props) {
     );
   };
 
-  const renderDashboard = (project) => {
-    return (
-      <Dashboard project={project} dashboardName={props.dashboardName} />
-    );
+  const renderDashboard = project => {
+    return <Dashboard project={project} dashboardName={props.dashboardName} />;
   };
 
   if (props.project && !props.dashboardName) {
@@ -151,4 +154,3 @@ function Project(props) {
 }
 
 export default Project;
-

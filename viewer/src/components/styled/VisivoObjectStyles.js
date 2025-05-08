@@ -1,107 +1,112 @@
-import { HiOutlineChartBar, HiOutlineDatabase, HiOutlineViewGrid, HiOutlineSelector, HiOutlineTable } from 'react-icons/hi';
+import {
+  HiOutlineChartBar,
+  HiOutlineDatabase,
+  HiOutlineViewGrid,
+  HiOutlineSelector,
+  HiOutlineTable,
+} from 'react-icons/hi';
 import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
-import { FaExternalLinkAlt } from "react-icons/fa";
-import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery } from "react-icons/si";
-import { TbAlertCircle, TbBrandMysql } from "react-icons/tb";
-import { GrDocumentCsv } from "react-icons/gr";
-
+import { FaExternalLinkAlt } from 'react-icons/fa';
+import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery } from 'react-icons/si';
+import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
+import { GrDocumentCsv } from 'react-icons/gr';
 
 export const TYPE_STYLE_MAP = {
-  'Chart': {
+  Chart: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
     border: 'border-blue-200',
-    icon: HiOutlineChartBar
+    icon: HiOutlineChartBar,
   },
-  'CsvScriptModel': {
+  CsvScriptModel: {
     bg: 'bg-green-100',
     text: 'text-green-800',
     border: 'border-green-200',
-    icon: GrDocumentCsv
+    icon: GrDocumentCsv,
   },
-  'Dashboard': {
+  Dashboard: {
     bg: 'bg-purple-100',
     text: 'text-purple-800',
     border: 'border-purple-200',
-    icon: HiOutlineViewGrid
+    icon: HiOutlineViewGrid,
   },
-  'Selector': {
+  Selector: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
     border: 'border-yellow-200',
-    icon: HiOutlineSelector
+    icon: HiOutlineSelector,
   },
-  'Table': {
+  Table: {
     bg: 'bg-pink-100',
     text: 'text-pink-800',
     border: 'border-pink-200',
-    icon: HiOutlineTable
+    icon: HiOutlineTable,
   },
-  'Trace': {
+  Trace: {
     bg: 'bg-orange-100',
     text: 'text-orange-800',
     border: 'border-orange-200',
-    icon: MdScatterPlot
+    icon: MdScatterPlot,
   },
-  'ExternalDashboard': {
+  ExternalDashboard: {
     bg: 'bg-black-100',
     text: 'text-black-800',
     border: 'border-black-200',
-    icon: FaExternalLinkAlt
+    icon: FaExternalLinkAlt,
   },
-  'Alert': {
+  Alert: {
     bg: 'bg-red-100',
     text: 'text-red-800',
     border: 'border-red-200',
-    icon: TbAlertCircle
+    icon: TbAlertCircle,
   },
-  
-  'DuckdbSource': {
+
+  DuckdbSource: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
     border: 'border-yellow-200',
-    icon: SiDuckdb
+    icon: SiDuckdb,
   },
-  'LocalMergeModel': {
+  LocalMergeModel: {
     bg: 'bg-indigo-100',
     text: 'text-indigo-800',
     border: 'border-indigo-200',
-    icon: MdOutlineTableView
+    icon: MdOutlineTableView,
   },
-  'MysqlSource': {
+  MysqlSource: {
     bg: 'bg-orange-100',
     text: 'text-orange-800',
     border: 'border-orange-200',
-    icon: TbBrandMysql
+    icon: TbBrandMysql,
   },
-  'BigQuerySource': {
+  BigQuerySource: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
     border: 'border-blue-200',
-    icon: SiGooglebigquery
+    icon: SiGooglebigquery,
   },
-  'PostgresqlSource': {
+  PostgresqlSource: {
     bg: 'bg-blue-100',
     text: 'text-blue-800',
     border: 'border-blue-200',
-    icon: SiPostgresql
+    icon: SiPostgresql,
   },
-  'SnowflakeSource': {
+  SnowflakeSource: {
     bg: 'bg-cyan-100',
     text: 'text-cyan-800',
     border: 'border-cyan-200',
-    icon: SiSnowflake
+    icon: SiSnowflake,
   },
-  'SqlModel': {
+  SqlModel: {
     bg: 'bg-violet-100',
     text: 'text-violet-800',
     border: 'border-violet-200',
-    icon: HiOutlineDatabase
+    icon: HiOutlineDatabase,
   },
-  'SqliteSource': {
+  SqliteSource: {
     bg: 'bg-slate-100',
     text: 'text-slate-800',
     border: 'border-slate-200',
-    icon: SiSqlite
-  }
+    icon: SiSqlite,
+  },
 };

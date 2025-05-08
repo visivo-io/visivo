@@ -1,29 +1,29 @@
 import { render, screen } from '@testing-library/react';
 import Breadcrumbs from './Breadcrumbs';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-
-
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
 test('renders dashboard chart', async () => {
   const routes = [
     {
-      path: "/:parent",
+      path: '/:parent',
       element: <Breadcrumbs />,
       handle: {
-        crumb: () => "Parent"
+        crumb: () => 'Parent',
       },
-      children: [{
-        path: ":child",
-        element: <Breadcrumbs />,
-        handle: {
-          crumb: () => "Child"
+      children: [
+        {
+          path: ':child',
+          element: <Breadcrumbs />,
+          handle: {
+            crumb: () => 'Child',
+          },
         },
-      }]
+      ],
     },
   ];
 
   const router = createMemoryRouter(routes, {
-    initialEntries: ["/", "/crumb/child"],
+    initialEntries: ['/', '/crumb/child'],
     initialIndex: 1,
   });
 

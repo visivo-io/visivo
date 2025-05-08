@@ -1,7 +1,7 @@
-import React from "react";
-import { Panel } from "../styled/Panel";
-import Table from "../items/Table";
-import useExplorerStore from "../../stores/explorerStore";
+import React from 'react';
+import { Panel } from '../styled/Panel';
+import Table from '../items/Table';
+import useExplorerStore from '../../stores/explorerStore';
 
 const ResultsPanel = ({ project }) => {
   const { results, queryStats, splitRatio } = useExplorerStore();
@@ -14,11 +14,9 @@ const ResultsPanel = ({ project }) => {
           <div className="text-sm text-gray-600 font-medium">
             {queryStats && (
               <>
-                {`Last Run at ${new Date(
-                  queryStats.timestamp
-                ).toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
+                {`Last Run at ${new Date(queryStats.timestamp).toLocaleTimeString([], {
+                  hour: 'numeric',
+                  minute: '2-digit',
                   hour12: true,
                 })} • ${queryStats.executionTime}s`}
                 {queryStats.source && ` • Source: ${queryStats.source}`}

@@ -7,9 +7,9 @@ import ContextMenu from './ContextMenu';
 
 function ObjectComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const addObjectProperty = useStore((state) => state.addObjectProperty);
+  const addObjectProperty = useStore(state => state.addObjectProperty);
   const [contextMenu, setContextMenu] = useState(null);
-  const deleteNamedChildAttribute = useStore((state) => state.deleteNamedChildAttribute);
+  const deleteNamedChildAttribute = useStore(state => state.deleteNamedChildAttribute);
 
   const handleAddProperty = ({ name: propertyName, value }) => {
     addObjectProperty(path, propertyName, value);
@@ -21,7 +21,7 @@ function ObjectComponent({ name, data, path }) {
     .filter(([_, value]) => typeof value !== 'object' || value === null)
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
   const sortedNonObject = Object.fromEntries(sortedNonObjectEntries);
-  
+
   // Get the remaining entries (objects)
   const objectEntries = Object.entries(data)
     .filter(([_, value]) => typeof value === 'object' && value !== null)
@@ -33,12 +33,12 @@ function ObjectComponent({ name, data, path }) {
   const sortedObject = Object.fromEntries(objectEntries);
 
   // Update the handler to match AttributeComponent
-  const handleContextMenu = (e) => {
+  const handleContextMenu = e => {
     e.preventDefault();
     e.stopPropagation(); // Add this to prevent event bubbling
     setContextMenu({
       x: e.clientX,
-      y: e.clientY
+      y: e.clientY,
     });
   };
 

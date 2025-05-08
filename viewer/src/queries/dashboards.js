@@ -1,7 +1,7 @@
-import md5 from "md5";
+import md5 from 'md5';
 
 export const fetchDashboardQuery = (projectId, name) => ({
-  queryKey: ["dashboard", projectId, name],
+  queryKey: ['dashboard', projectId, name],
   queryFn: async () => {
     const hash = md5(name);
 

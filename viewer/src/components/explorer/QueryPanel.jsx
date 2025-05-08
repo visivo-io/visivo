@@ -1,10 +1,10 @@
-import React from "react";
-import Editor from "@monaco-editor/react";
-import { Panel } from "../styled/Panel";
-import useExplorerStore from "../../stores/explorerStore";
-import WorksheetTabManager from "../worksheets/WorksheetTabManager";
-import { useWorksheets } from "../../contexts/WorksheetContext";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import React from 'react';
+import Editor from '@monaco-editor/react';
+import { Panel } from '../styled/Panel';
+import useExplorerStore from '../../stores/explorerStore';
+import WorksheetTabManager from '../worksheets/WorksheetTabManager';
+import { useWorksheets } from '../../contexts/WorksheetContext';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 const QueryPanel = ({ editorRef, monacoRef }) => {
   const {
@@ -34,10 +34,10 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
     },
   } = useWorksheets();
 
-  const visibleWorksheets = worksheets.filter((w) => w.is_visible);
+  const visibleWorksheets = worksheets.filter(w => w.is_visible);
   const combinedError = worksheetError || error;
 
-  const handleEditorChange = (value) => {
+  const handleEditorChange = value => {
     if (value !== undefined) {
       setQuery(value);
     }
@@ -87,7 +87,7 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
             </div>
           )}
           <div className="flex items-center gap-1.5 mx-4">
-            {explorerData?.sources?.map((source) => (
+            {explorerData?.sources?.map(source => (
               <button
                 key={source.name}
                 onClick={() => {
@@ -95,8 +95,8 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
                 }}
                 className={`px-2 py-1 text-xs font-medium rounded-md ${
                   selectedSource?.name === source.name
-                    ? "bg-highlight text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? 'bg-highlight text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {source.name}
@@ -106,7 +106,7 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
           <button
             type="button"
             className={`text-white ${
-              isLoading ? "bg-[#A06C86]" : "bg-[#713B57] hover:bg-[#5A2E46]"
+              isLoading ? 'bg-[#A06C86]' : 'bg-[#713B57] hover:bg-[#5A2E46]'
             } focus:ring-4 focus:ring-[#A06C86] font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-hidden`}
             onClick={handleRunQuery}
             disabled={isLoading}
@@ -139,7 +139,7 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
             readOnly: isLoading,
             automaticLayout: true,
             quickSuggestions: true,
-            wordWrap: "on",
+            wordWrap: 'on',
             padding: { top: 16, bottom: 8 },
             fixedOverflowWidgets: true,
           }}
@@ -151,11 +151,11 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
             const resizeHandler = () => {
               editor.layout();
             };
-            window.addEventListener("resize", resizeHandler);
+            window.addEventListener('resize', resizeHandler);
 
             // Return cleanup for resize handler
             editor.onDidDispose(() => {
-              window.removeEventListener("resize", resizeHandler);
+              window.removeEventListener('resize', resizeHandler);
             });
           }}
         />

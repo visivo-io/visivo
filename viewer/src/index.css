@@ -2,8 +2,6 @@
 
 @plugin '@tailwindcss/typography';
 
-
-
 @theme {
   --color-primary-100: #e2d7dd;
   --color-primary-200: #c6b0bb;
@@ -79,16 +77,15 @@ input {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 .btn {
@@ -140,7 +137,7 @@ code {
 }
 
 .MuiPaper-root {
-  @apply overflow-auto m-1
+  @apply overflow-auto m-1;
 }
 
 .node rect {
@@ -158,30 +155,30 @@ code {
 .text-right blockquote,
 .text-right ul,
 .text-right ol {
-    margin-left: auto;
-    margin-right: 0;
-    text-align: right;
+  margin-left: auto;
+  margin-right: 0;
+  text-align: right;
 }
 
 .text-right blockquote {
-    border-left: none;
-    border-right: 4px solid #e5e7eb;
-    padding-left: 0;
-    padding-right: 1rem;
+  border-left: none;
+  border-right: 4px solid #e5e7eb;
+  padding-left: 0;
+  padding-right: 1rem;
 }
 
 .text-right ul,
 .text-right ol {
-    padding-left: 0;
-    padding-right: 2.5em;
-    list-style-position: inside;
-    direction: ltr;
+  padding-left: 0;
+  padding-right: 2.5em;
+  list-style-position: inside;
+  direction: ltr;
 }
 
 .text-right ul > li,
 .text-right ol > li {
-    direction: ltr;
-    text-align: right;
+  direction: ltr;
+  text-align: right;
 }
 
 @layer utilities {
@@ -203,6 +200,5 @@ code {
     @apply bg-gray-500/30 backdrop-blur-sm z-50;
     -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
-
   }
 }

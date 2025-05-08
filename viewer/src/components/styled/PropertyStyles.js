@@ -1,80 +1,85 @@
-import { HiOutlineChartBar, HiOutlineViewGrid, HiOutlineSelector, HiOutlineTable } from 'react-icons/hi';
+import {
+  HiOutlineChartBar,
+  HiOutlineViewGrid,
+  HiOutlineSelector,
+  HiOutlineTable,
+} from 'react-icons/hi';
 import { MdScatterPlot } from 'react-icons/md';
-import { TbAlertCircle, TbSourceCode } from "react-icons/tb";
-import { BiData } from "react-icons/bi";
-import { AiOutlineDeploymentUnit } from "react-icons/ai";
+import { TbAlertCircle, TbSourceCode } from 'react-icons/tb';
+import { BiData } from 'react-icons/bi';
+import { AiOutlineDeploymentUnit } from 'react-icons/ai';
 
 export const PROPERTY_STYLE_MAP = {
-  'sources': {
+  sources: {
     displayName: 'Source',
     bg: 'bg-blue-100',
     text: 'text-blue-800',
     border: 'border-blue-200',
     icon: TbSourceCode,
-    description: 'Create a new data source connection'
+    description: 'Create a new data source connection',
   },
-  'models': {
+  models: {
     displayName: 'Model',
     bg: 'bg-purple-100',
     text: 'text-purple-800',
     border: 'border-purple-200',
     icon: BiData,
-    description: 'Create a new data model'
+    description: 'Create a new data model',
   },
-  'traces': {
+  traces: {
     displayName: 'Trace',
     bg: 'bg-orange-100',
     text: 'text-orange-800',
     border: 'border-orange-200',
     icon: MdScatterPlot,
-    description: 'Create a new trace visualization'
+    description: 'Create a new trace visualization',
   },
-  'charts': {
+  charts: {
     displayName: 'Chart',
     bg: 'bg-green-100',
     text: 'text-green-800',
     border: 'border-green-200',
     icon: HiOutlineChartBar,
-    description: 'Create a new chart visualization'
+    description: 'Create a new chart visualization',
   },
-  'tables': {
+  tables: {
     displayName: 'Table',
     bg: 'bg-pink-100',
     text: 'text-pink-800',
     border: 'border-pink-200',
     icon: HiOutlineTable,
-    description: 'Create a new table view'
+    description: 'Create a new table view',
   },
-  'selectors': {
+  selectors: {
     displayName: 'Selector',
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
     border: 'border-yellow-200',
     icon: HiOutlineSelector,
-    description: 'Create a new data selector'
+    description: 'Create a new data selector',
   },
-  'dashboards': {
+  dashboards: {
     displayName: 'Dashboard',
     bg: 'bg-indigo-100',
     text: 'text-indigo-800',
     border: 'border-indigo-200',
     icon: HiOutlineViewGrid,
-    description: 'Create a new dashboard'
+    description: 'Create a new dashboard',
   },
-  'alerts': {
+  alerts: {
     displayName: 'Alert',
     bg: 'bg-red-100',
     text: 'text-red-800',
     border: 'border-red-200',
     icon: TbAlertCircle,
-    description: 'Create a new alert'
+    description: 'Create a new alert',
   },
-  'destinations': {
+  destinations: {
     displayName: 'Destination',
     bg: 'bg-cyan-100',
     text: 'text-cyan-800',
     border: 'border-cyan-200',
     icon: AiOutlineDeploymentUnit,
-    description: 'Create a new alert destination'
-  }
-}; 
+    description: 'Create a new alert destination',
+  },
+};

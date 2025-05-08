@@ -1,16 +1,16 @@
-import React from "react";
+import React from 'react';
 import { useParams, useLoaderData } from 'react-router-dom';
-import Project from "./Project";
+import Project from './Project';
 
 function ProjectContainer() {
   const { dashboardName } = useParams();
   const project = useLoaderData();
 
-  const dashboards = (project) => {
+  const dashboards = project => {
     if (!project) {
       return [];
     }
-    return project.project_json.dashboards.map((dashboard) => {
+    return project.project_json.dashboards.map(dashboard => {
       return {
         name: dashboard.name,
         description: dashboard.description,
@@ -18,16 +18,14 @@ function ProjectContainer() {
         level: dashboard.level,
         type: dashboard.type,
         href: dashboard.href || null,
-        path: ""
-      }
+        path: '',
+      };
     });
-  }
+  };
 
   return (
-    <Project project={project}
-      dashboards={dashboards(project)}
-      dashboardName={dashboardName} />)
+    <Project project={project} dashboards={dashboards(project)} dashboardName={dashboardName} />
+  );
 }
 
 export default ProjectContainer;
-

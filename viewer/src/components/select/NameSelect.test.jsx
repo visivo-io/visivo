@@ -1,51 +1,59 @@
 import { render, screen, waitFor, act } from '@testing-library/react';
-import NameSelect, { generateNewSearchParam, getOptionsFromValues } from './NameSelect'
-import selectEvent from 'react-select-event'
+import NameSelect, { generateNewSearchParam, getOptionsFromValues } from './NameSelect';
+import selectEvent from 'react-select-event';
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
 import { unstable_HistoryRouter as HistoryRouter } from 'react-router-dom';
 import { SearchParamsProvider } from '../../contexts/SearchParamsContext';
 
-
 test('renders without selector', async () => {
   let selectedNames = null;
-  const onChange = (value) => { selectedNames = value }
-  render(<NameSelect
-    names={["name1", "name2"]}
-    showLabel
-    parentType={"table"}
-    onChange={onChange} />, { wrapper: withProviders });
+  const onChange = value => {
+    selectedNames = value;
+  };
+  render(
+    <NameSelect names={['name1', 'name2']} showLabel parentType={'table'} onChange={onChange} />,
+    { wrapper: withProviders }
+  );
 
-  const selectWrapper = screen.getByLabelText('Selector')
+  const selectWrapper = screen.getByLabelText('Selector');
   await act(() => selectEvent.select(selectWrapper, 'name1'));
 
   await waitFor(() => {
-    expect(selectedNames).toEqual("name1")
-  })
+    expect(selectedNames).toEqual('name1');
+  });
   await act(() => selectEvent.select(selectWrapper, 'name2'));
   await waitFor(() => {
-    expect(selectedNames).toEqual(["name2"])
-  })
+    expect(selectedNames).toEqual(['name2']);
+  });
 });
 
 test('renders single select', async () => {
   let selectedNames = null;
-  const onChange = (value) => { selectedNames = value }
+  const onChange = value => {
+    selectedNames = value;
+  };
   let visible = null;
-  const onVisible = (value) => { visible = value }
-  render(<NameSelect
-    names={["name1", "name2"]}
-    showLabel
-    onVisible={onVisible}
-    selector={{ type: "single", name: "selector" }}
-    onChange={onChange} />, { wrapper: withProviders });
+  const onVisible = value => {
+    visible = value;
+  };
+  render(
+    <NameSelect
+      names={['name1', 'name2']}
+      showLabel
+      onVisible={onVisible}
+      selector={{ type: 'single', name: 'selector' }}
+      onChange={onChange}
+    />,
+    { wrapper: withProviders }
+  );
 
-  const selectWrapper = screen.getByLabelText('Selector')
+  const selectWrapper = screen.getByLabelText('Selector');
   await act(() => selectEvent.select(selectWrapper, 'name1'));
 
   await waitFor(() => {
-    expect(selectedNames).toEqual("name1")
-  })
+    expect(selectedNames).toEqual('name1');
+  });
   expect(visible).toEqual(true);
 });
 
@@ -55,96 +63,110 @@ test('renders with push to history', async () => {
     <HistoryRouter history={history}>
       <SearchParamsProvider>
         <NameSelect
-          names={["name1", "name2"]}
+          names={['name1', 'name2']}
           showLabel
           alwaysPushSelectionToUrl={true}
-          onVisible={() => { }}
-          selector={{ type: "single", name: "selector" }}
-          onChange={() => { }} />
+          onVisible={() => {}}
+          selector={{ type: 'single', name: 'selector' }}
+          onChange={() => {}}
+        />
       </SearchParamsProvider>
-    </HistoryRouter>);
+    </HistoryRouter>
+  );
 
-  const selectWrapper = screen.getByLabelText('Selector')
+  const selectWrapper = screen.getByLabelText('Selector');
   await act(() => selectEvent.select(selectWrapper, 'name1'));
 
   await waitFor(() => {
-    expect(history.location.search).toEqual('?selector=name1')
+    expect(history.location.search).toEqual('?selector=name1');
   });
 });
 
 test('renders multiselect select', async () => {
   let selectedNames = null;
-  const onChange = (value) => { selectedNames = value }
-  render(<NameSelect
-    names={["name1", "name2"]}
-    isMulti
-    showLabel
-    onChange={onChange}
-    selector={{ type: "multiple", name: "multiple" }}
-    name={"Chart"} />, { wrapper: withProviders });
+  const onChange = value => {
+    selectedNames = value;
+  };
+  render(
+    <NameSelect
+      names={['name1', 'name2']}
+      isMulti
+      showLabel
+      onChange={onChange}
+      selector={{ type: 'multiple', name: 'multiple' }}
+      name={'Chart'}
+    />,
+    { wrapper: withProviders }
+  );
 
   await waitFor(() => {
-    expect(selectedNames).toEqual(["name1", "name2"])
-  })
+    expect(selectedNames).toEqual(['name1', 'name2']);
+  });
   expect(screen.getByText('name1')).toBeInTheDocument();
-  const selectWrapper = screen.getByLabelText('Selector')
+  const selectWrapper = screen.getByLabelText('Selector');
   await act(() => selectEvent.select(selectWrapper, 'name2'));
 });
 
 test('renders not visible', async () => {
   let visible = null;
-  const onVisible = (value) => { visible = value }
-  const onChange = () => { }
-  render(<NameSelect
-    names={["name1", "name2"]}
-    showLabel
-    onChange={onChange}
-    parentName={"selectorParentName"}
-    onVisible={onVisible}
-    selector={{ type: "single", name: "multiple", parent: { name: "parentName" } }}
-    name={"Chart"} />, { wrapper: withProviders });
+  const onVisible = value => {
+    visible = value;
+  };
+  const onChange = () => {};
+  render(
+    <NameSelect
+      names={['name1', 'name2']}
+      showLabel
+      onChange={onChange}
+      parentName={'selectorParentName'}
+      onVisible={onVisible}
+      selector={{ type: 'single', name: 'multiple', parent: { name: 'parentName' } }}
+      name={'Chart'}
+    />,
+    { wrapper: withProviders }
+  );
 
   await waitFor(() => {
-    expect(visible).toEqual(false)
-  })
+    expect(visible).toEqual(false);
+  });
 });
 
 describe('generateNewSearchParam', () => {
   test('selects single choice', async () => {
-    const selectedOptions = { value: "selected", label: "selected" }
-    const defaultOptions = { value: "default", label: "default" }
-    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
+    const selectedOptions = { value: 'selected', label: 'selected' };
+    const defaultOptions = { value: 'default', label: 'default' };
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions);
 
-    expect(newSearchParams).toEqual("selected")
+    expect(newSearchParams).toEqual('selected');
   });
 
   test('selects nothing when equal to default', async () => {
-    const selectedOptions = { value: "default", label: "default" }
-    const defaultOptions = { value: "default", label: "default" }
-    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
+    const selectedOptions = { value: 'default', label: 'default' };
+    const defaultOptions = { value: 'default', label: 'default' };
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions);
 
-    expect(newSearchParams).toEqual(null)
+    expect(newSearchParams).toEqual(null);
   });
 
   test('selects multi choice', async () => {
-    const selectedOptions = [{ value: "selected", label: "selected" }]
-    const defaultOptions = [{ value: "default", label: "default" }]
-    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
+    const selectedOptions = [{ value: 'selected', label: 'selected' }];
+    const defaultOptions = [{ value: 'default', label: 'default' }];
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions);
 
-    expect(newSearchParams).toEqual(["selected"])
+    expect(newSearchParams).toEqual(['selected']);
   });
 
   test('selects no choices', async () => {
-    const selectedOptions = []
-    const defaultOptions = [{ value: "default", label: "default" }]
-    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions)
+    const selectedOptions = [];
+    const defaultOptions = [{ value: 'default', label: 'default' }];
+    const newSearchParams = generateNewSearchParam(selectedOptions, defaultOptions);
 
-    expect(newSearchParams).toEqual("NoCohorts")
+    expect(newSearchParams).toEqual('NoCohorts');
   });
 });
 
 describe('getOptionsFromValues', () => {
   test('returns null if passed null', async () => {
-    expect(getOptionsFromValues(null)).toEqual(null)
+    expect(getOptionsFromValues(null)).toEqual(null);
   });
 });
