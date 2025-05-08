@@ -80,6 +80,11 @@ tasks:
     env:
       STACKTRACE: true
 
+  - key: lint-cli
+    use: [cli-dependencies]
+    run: |
+      poetry run black --check .
+
   - key: yarn
     use: node
     run: npm install --global yarn
@@ -108,6 +113,7 @@ tasks:
     run: |
       cd viewer
       yarn run lint --max-warnings=0
+      yarn run prettier --check
     filter: [viewer]
     outputs:
       problems:

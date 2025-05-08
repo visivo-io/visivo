@@ -148,7 +148,7 @@ def action(
     dashboard: Dashboard,
     output_dir: str,
     thumbnail_mode: str,
-    timeout_ms: int = 30000,
+    timeout_ms: int = 60000,
     server_url: str = None,
 ):
     Logger.instance().info(start_message("Dashboard", dashboard))
@@ -209,7 +209,7 @@ def job(
     output_dir: str,
     thumbnail_mode: str = None,
     server_url: str = None,
-    timeout_ms: int = 30000,
+    timeout_ms: int = 60000,
 ) -> Job:
     return Job(
         item=dashboard,
