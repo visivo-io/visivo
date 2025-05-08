@@ -35,9 +35,7 @@ class JobTracker:
     def is_job_name_failed(self, job_name: str) -> bool:
         self.__update()
         failed_jobs = list(
-            filter(
-                lambda job: job.future and not job.future.result().success, self.done
-            )
+            filter(lambda job: job.future and not job.future.result().success, self.done)
         )
         return job_name in set(map(lambda job: job.name, failed_jobs))
 

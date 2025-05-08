@@ -41,9 +41,7 @@ class Discover:
         if "dbt" in data and data["dbt"]:
             dbt = Dbt(**data["dbt"])
             if dbt.enabled:
-                return dbt.get_output_file(
-                    output_dir=self.output_dir, working_dir=self.working_dir
-                )
+                return dbt.get_output_file(output_dir=self.output_dir, working_dir=self.working_dir)
 
     def __add_includes(self, files, file):
         from visivo.models.include import Include
@@ -60,9 +58,7 @@ class Discover:
                 include = Include(**include_data)
                 include_path = f"{base_path}/{include.path}"
                 if ".git" in include.path:
-                    include_path = self.__get_project_file_from_git(
-                        git_url=include.path
-                    )
+                    include_path = self.__get_project_file_from_git(git_url=include.path)
 
                 if not os.path.exists(include_path):
                     raise click.ClickException(
@@ -96,9 +92,7 @@ class Discover:
         else:
             file = None
 
-        local_folder = (
-            f"{deps_folder}/{git_url.split('@')[0].replace('.git', '')}@{version}"
-        )
+        local_folder = f"{deps_folder}/{git_url.split('@')[0].replace('.git', '')}@{version}"
         if os.path.exists(local_folder):
             repo = Repo(local_folder)
         else:

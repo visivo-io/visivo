@@ -72,7 +72,8 @@
     "deploy": "yarn run deploy:local && yarn run deploy:dist",
     "deploy:local": "cp src/LocalProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/local && cp -Rv build/ ../visivo/viewers/local/",
     "deploy:dist": "cp src/DistProviders.jsx src/Providers.jsx && yarn run build && rm -rf ../visivo/viewers/dist && cp -Rv build/ ../visivo/viewers/dist/",
-    "lint": "eslint src --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
   },
   "jest": {
     "testEnvironment": "jest-environment-jsdom",
@@ -121,6 +122,9 @@
     "jest-environment-jsdom": "^29.7.0",
     "jsdom": "^26.0.0",
     "postcss": "^8.4.47",
+    "prettier": "^3.2.5",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
     "react-select-event": "^5.5.1",
     "react-test-renderer": "^19.0.0",
     "unist-util-visit-parents": "^5.0.0",

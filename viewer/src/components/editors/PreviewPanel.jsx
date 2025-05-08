@@ -12,8 +12,6 @@ const PreviewPanel = ({ project }) => {
   const activeTabId = useStore(selectActiveTabId);
   const namedChildren = useStore(selectNamedChildren);
 
-  
-  
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab ? namedChildren[activeTab.name]?.config : null;
   if (!project) {
@@ -31,13 +29,7 @@ const PreviewPanel = ({ project }) => {
     }
     switch (activeTab.type) {
       case 'Chart':
-        return (
-          <Chart
-            chart={activeConfig}
-            project={project}
-            height={300}
-          />
-        );
+        return <Chart chart={activeConfig} project={project} height={300} />;
 
       case 'Trace':
         // Create a temporary chart with just this trace
@@ -46,30 +38,17 @@ const PreviewPanel = ({ project }) => {
           traces: [activeConfig],
           layout: {
             showlegend: true,
-            margin: { t: 30, r: 10, b: 30, l: 60 }
-          }
+            margin: { t: 30, r: 10, b: 30, l: 60 },
+          },
         };
-        return (
-          <Chart
-            chart={chartConfig}
-            project={project}
-            height={300}
-          />
-        );
+        return <Chart chart={chartConfig} project={project} height={300} />;
 
       case 'Dashboard':
-        return (
-          <Dashboard
-            project={project}
-            dashboardName={activeTab.name}
-          />
-        );
+        return <Dashboard project={project} dashboardName={activeTab.name} />;
 
       default:
         return (
-          <div className="text-gray-500">
-            Preview not available for {activeTab.type} objects
-          </div>
+          <div className="text-gray-500">Preview not available for {activeTab.type} objects</div>
         );
     }
   };
@@ -79,11 +58,9 @@ const PreviewPanel = ({ project }) => {
       <div className="text-sm font-medium text-gray-700 mb-2">
         {activeTab ? `Preview: ${activeTab.name}` : ''}
       </div>
-      <div className="flex-1 overflow-auto min-h-0">
-        {renderPreview()}
-      </div>
+      <div className="flex-1 overflow-auto min-h-0">{renderPreview()}</div>
     </div>
   );
 };
 
-export default PreviewPanel; 
+export default PreviewPanel;

@@ -24,10 +24,20 @@ const TopNav = () => {
           </Link>
         </div>
         <div className="flex items-center gap-8">
-          <a href="https://docs.visivo.io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-gray-300">
+          <a
+            href="https://docs.visivo.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white hover:text-gray-300"
+          >
             Docs
           </a>
-          <a href="https://app.visivo.io" target="_blank" rel="noopener noreferrer" className="text-white hover:text-gray-300">
+          <a
+            href="https://app.visivo.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white hover:text-gray-300"
+          >
             App
           </a>
         </div>
@@ -36,4 +46,4 @@ const TopNav = () => {
   );
 };
 
-export default TopNav; 
+export default TopNav;

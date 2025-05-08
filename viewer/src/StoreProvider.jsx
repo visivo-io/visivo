@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 import useStore from './stores/store';
 
 export const StoreProvider = ({ children }) => {
-  const setProjectData = useStore((state) => state.setProjectData);
-  const fetchNamedChildren = useStore((state) => state.fetchNamedChildren);
-  const fetchProjectFilePath = useStore((state) => state.fetchProjectFilePath);
-  const CreateProjectFileObjects = useStore((state) => state.CreateProjectFileObjects);
-  const fetchSchema = useStore((state) => state.fetchSchema);
+  const setProjectData = useStore(state => state.setProjectData);
+  const fetchNamedChildren = useStore(state => state.fetchNamedChildren);
+  const fetchProjectFilePath = useStore(state => state.fetchProjectFilePath);
+  const CreateProjectFileObjects = useStore(state => state.CreateProjectFileObjects);
+  const fetchSchema = useStore(state => state.fetchSchema);
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -31,7 +31,13 @@ export const StoreProvider = ({ children }) => {
     };
 
     initializeStore();
-  }, [fetchNamedChildren, setProjectData, fetchProjectFilePath, CreateProjectFileObjects, fetchSchema]);
+  }, [
+    fetchNamedChildren,
+    setProjectData,
+    fetchProjectFilePath,
+    CreateProjectFileObjects,
+    fetchSchema,
+  ]);
 
   return children;
-}; 
+};

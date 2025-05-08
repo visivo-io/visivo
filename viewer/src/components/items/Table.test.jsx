@@ -7,46 +7,44 @@ let table;
 
 beforeEach(() => {
   table = {
-    name: "name",
+    name: 'name',
     props: { enable_column_dragging: true },
     column_defs: [
       {
-        trace_name: "traceName",
+        trace_name: 'traceName',
         columns: [
           {
-            header: "Regular Column",
-            key: "columns.regular_data"
+            header: 'Regular Column',
+            key: 'columns.regular_data',
           },
           {
-            header: "Markdown Column",
-            key: "columns.markdown_data",
-            markdown: true
-          }
-        ]
-      }
+            header: 'Markdown Column',
+            key: 'columns.markdown_data',
+            markdown: true,
+          },
+        ],
+      },
     ],
     rows_per_page: 50,
-    traces: [{ name: "traceName", columns: { regular_data: "regular", markdown_data: "markdown" } }],
-    selector: { name: "selector", type: "single", parent_name: "name" }
-  }
+    traces: [
+      { name: 'traceName', columns: { regular_data: 'regular', markdown_data: 'markdown' } },
+    ],
+    selector: { name: 'selector', type: 'single', parent_name: 'name' },
+  };
 });
 
 test('renders table', async () => {
   const traceData = {
-    "traceName": {
-      "cohortName": {
-        "columns.regular_data": [
-          "plain text",
-          "more plain text"
-        ],
-        "columns.markdown_data": [
-          "**bold text**",
-          "# heading"
-        ]
-      }
-    }
+    traceName: {
+      cohortName: {
+        'columns.regular_data': ['plain text', 'more plain text'],
+        'columns.markdown_data': ['**bold text**', '# heading'],
+      },
+    },
   };
-  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+  jest
+    .spyOn(useTracesData, 'useTracesData')
+    .mockImplementation((projectId, traceNames) => traceData);
 
   //Have it return traces.
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
@@ -61,9 +59,11 @@ test('renders table', async () => {
 
 test('renders table when no data returned', async () => {
   const traceData = {
-    "traceName": {}
+    traceName: {},
   };
-  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+  jest
+    .spyOn(useTracesData, 'useTracesData')
+    .mockImplementation((projectId, traceNames) => traceData);
 
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
@@ -74,20 +74,16 @@ test('renders table when no data returned', async () => {
 
 test('exports table data as CSV when export button is clicked', async () => {
   const traceData = {
-    "traceName": {
-      "cohortName": {
-        "columns.regular_data": [
-          "plain text",
-          "more plain text"
-        ],
-        "columns.markdown_data": [
-          "**bold text**",
-          "# heading"
-        ]
-      }
-    }
+    traceName: {
+      cohortName: {
+        'columns.regular_data': ['plain text', 'more plain text'],
+        'columns.markdown_data': ['**bold text**', '# heading'],
+      },
+    },
   };
-  jest.spyOn(useTracesData, 'useTracesData').mockImplementation((projectId, traceNames) => (traceData));
+  jest
+    .spyOn(useTracesData, 'useTracesData')
+    .mockImplementation((projectId, traceNames) => traceData);
 
   render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
 
@@ -101,24 +97,20 @@ test('exports table data as CSV when export button is clicked', async () => {
   const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
   fireEvent.click(exportButton);
 
-  expect(global.Blob).toHaveBeenCalledWith([expect.any(String)], { type: 'text/csv;charset=utf-8;' });
+  expect(global.Blob).toHaveBeenCalledWith([expect.any(String)], {
+    type: 'text/csv;charset=utf-8;',
+  });
   expect(global.URL.createObjectURL).toHaveBeenCalled();
 });
 
 test('renders markdown formatted cells', async () => {
   const traceData = {
-    "traceName": {
-      "cohortName": {
-        "columns.regular_data": [
-          "plain text",
-          "more plain text"
-        ],
-        "columns.markdown_data": [
-          "**bold text**",
-          "# heading"
-        ]
-      }
-    }
+    traceName: {
+      cohortName: {
+        'columns.regular_data': ['plain text', 'more plain text'],
+        'columns.markdown_data': ['**bold text**', '# heading'],
+      },
+    },
   };
 
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
@@ -140,15 +132,11 @@ test('renders markdown formatted cells', async () => {
 
 test('handles non-string values in markdown cells', async () => {
   const traceData = {
-    "traceName": {
-      "cohortName": {
-        "columns.markdown_data": [
-          123,
-          null,
-          undefined
-        ]
-      }
-    }
+    traceName: {
+      cohortName: {
+        'columns.markdown_data': [123, null, undefined],
+      },
+    },
   };
 
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
@@ -162,15 +150,11 @@ test('handles non-string values in markdown cells', async () => {
 
 test('handles number values in cells', async () => {
   const traceData = {
-    "traceName": {
-      "cohortName": {
-        "columns.regular_data": [
-          123,
-          12345678901234567,
-          1234567890.123456
-        ]
-      }
-    }
+    traceName: {
+      cohortName: {
+        'columns.regular_data': [123, 12345678901234567, 1234567890.123456],
+      },
+    },
   };
 
   jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);

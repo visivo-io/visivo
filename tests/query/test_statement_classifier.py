@@ -25,6 +25,7 @@ def test_statement_classifier():
     statement = "top_countries"
     assert statement_classifier.classify(statement) == StatementEnum.vanilla
 
+
 def test_statement_classifier_snowflake():
     dialect = Dialect(type="snowflake")
     statement_classifier = StatementClassifier(dialect=dialect)

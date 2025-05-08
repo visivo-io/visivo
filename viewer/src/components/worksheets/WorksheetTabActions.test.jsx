@@ -14,29 +14,27 @@ jest.mock('../../api/worksheet');
 const TestWrapper = ({ children }) => (
   <BrowserRouter>
     <QueryProvider value={{ fetchTracesQuery: jest.fn(), fetchDashboardQuery: jest.fn() }}>
-      <WorksheetProvider>
-        {children}
-      </WorksheetProvider>
+      <WorksheetProvider>{children}</WorksheetProvider>
     </QueryProvider>
   </BrowserRouter>
 );
 
 describe('WorksheetTabActions', () => {
   const mockWorksheets = [
-    { 
+    {
       worksheet: { id: '1', name: 'Worksheet 1' },
-      session_state: { worksheet_id: '1', is_visible: true }
+      session_state: { worksheet_id: '1', is_visible: true },
     },
-    { 
+    {
       worksheet: { id: '2', name: 'Worksheet 2' },
-      session_state: { worksheet_id: '2', is_visible: true }
-    }
+      session_state: { worksheet_id: '2', is_visible: true },
+    },
   ];
 
   const defaultProps = {
     onWorksheetCreate: jest.fn(),
     onWorksheetOpen: jest.fn(),
-    isLoading: false
+    isLoading: false,
   };
 
   const renderComponent = async (props = {}) => {
@@ -98,8 +96,8 @@ describe('WorksheetTabActions', () => {
     await renderComponent();
     const createButton = screen.getByTestId('create-worksheet');
     const openButton = screen.getByTestId('open-worksheet');
-    
+
     expect(createButton).toHaveClass('p-2');
     expect(openButton).toHaveClass('p-2');
   });
-}); 
+});

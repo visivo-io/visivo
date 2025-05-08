@@ -31,7 +31,6 @@ class Serializer:
         all_tables = []
         all_selectors = []
 
-
         # Process all objects in the DAG
         for node in dag.nodes():
             if isinstance(node, Source):
@@ -71,17 +70,14 @@ class Serializer:
         dag = project.dag()
 
         for dashboard in project.dashboards:
+
             def replace_item_ref(item):
                 if item.chart or item.table:
                     if item.chart:
-                        item.chart = all_descendants_of_type(
-                            type=Chart, dag=dag, from_node=item
-                        )[0]
+                        item.chart = all_descendants_of_type(type=Chart, dag=dag, from_node=item)[0]
                         component = item.chart
                     else:
-                        item.table = all_descendants_of_type(
-                            type=Table, dag=dag, from_node=item
-                        )[0]
+                        item.table = all_descendants_of_type(type=Table, dag=dag, from_node=item)[0]
                         component = item.table
 
                     component.traces = all_descendants_of_type(
@@ -98,9 +94,9 @@ class Serializer:
                             depth=1,
                         )
                     for trace in component.traces:
-                        trace.model = all_descendants_of_type(
-                            type=Model, dag=dag, from_node=trace
-                        )[0]
+                        trace.model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[
+                            0
+                        ]
                         if hasattr(trace.model, "source"):
                             trace.model.source = all_descendants_of_type(
                                 type=Source, dag=dag, from_node=trace.model
@@ -115,9 +111,7 @@ class Serializer:
                     )[0]
                     options = [
                         option
-                        for option in all_descendants(
-                            dag=dag, from_node=item.selector, depth=1
-                        )
+                        for option in all_descendants(dag=dag, from_node=item.selector, depth=1)
                         if not isinstance(option, Selector)
                     ]
                     item.selector.options = options

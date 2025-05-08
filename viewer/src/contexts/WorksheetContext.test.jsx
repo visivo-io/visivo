@@ -14,7 +14,7 @@ jest.mock('../api/worksheet', () => ({
   updateWorksheet: jest.fn(),
   deleteWorksheet: jest.fn(),
   getSessionState: jest.fn(),
-  updateSessionState: jest.fn()
+  updateSessionState: jest.fn(),
 }));
 
 // Mock fetch for network requests
@@ -30,14 +30,14 @@ jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
   useQuery: jest.fn().mockReturnValue({
     data: null,
-    isLoading: false
-  })
+    isLoading: false,
+  }),
 }));
 
 // Test component that uses the context
 const TestComponent = () => {
   const context = useWorksheets();
-  
+
   // Expose context through data-testid attributes for testing
   return (
     <div data-testid="worksheet-context">
@@ -48,25 +48,21 @@ const TestComponent = () => {
           </div>
         ))}
       </div>
-      <button 
-        data-testid="create-button"
-        onClick={() => context.actions.createWorksheet()}
-      >
+      <button data-testid="create-button" onClick={() => context.actions.createWorksheet()}>
         Create Worksheet
       </button>
       <button
         data-testid="update-button"
-        onClick={() => context.actions.updateWorksheet('ws1', {
-          name: 'Updated Name',
-          query: 'SELECT * FROM updated'
-        })}
+        onClick={() =>
+          context.actions.updateWorksheet('ws1', {
+            name: 'Updated Name',
+            query: 'SELECT * FROM updated',
+          })
+        }
       >
         Update Worksheet
       </button>
-      <button
-        data-testid="delete-button"
-        onClick={() => context.actions.deleteWorksheet('ws1')}
-      >
+      <button data-testid="delete-button" onClick={() => context.actions.deleteWorksheet('ws1')}>
         Delete Worksheet
       </button>
       <button
@@ -92,18 +88,16 @@ const TestComponent = () => {
 };
 
 // Wrap component with necessary providers
-const renderWithProviders = (ui) => {
+const renderWithProviders = ui => {
   const mockQueryContext = {
     fetchTracesQuery: jest.fn(),
-    fetchDashboardQuery: jest.fn()
+    fetchDashboardQuery: jest.fn(),
   };
 
   return render(
     <BrowserRouter>
       <QueryProvider value={mockQueryContext}>
-        <WorksheetProvider>
-          {ui}
-        </WorksheetProvider>
+        <WorksheetProvider>{ui}</WorksheetProvider>
       </QueryProvider>
     </BrowserRouter>
   );
@@ -116,13 +110,13 @@ describe('WorksheetContext', () => {
       id: 'ws1',
       name: 'Worksheet 1',
       query: 'SELECT * FROM test1',
-      selected_source: 'source1'
+      selected_source: 'source1',
     },
     session_state: {
       worksheet_id: 'ws1',
       is_visible: true,
-      tab_order: 1
-    }
+      tab_order: 1,
+    },
   };
 
   const mockWorksheet2 = {
@@ -130,13 +124,13 @@ describe('WorksheetContext', () => {
       id: 'ws2',
       name: 'Worksheet 2',
       query: '',
-      selected_source: 'source1'
+      selected_source: 'source1',
     },
     session_state: {
       worksheet_id: 'ws2',
       is_visible: true,
-      tab_order: 2
-    }
+      tab_order: 2,
+    },
   };
 
   const mockWorksheets = [mockWorksheet1];
@@ -146,12 +140,12 @@ describe('WorksheetContext', () => {
     // Reset to initial state with just one worksheet
     worksheetApi.listWorksheets.mockResolvedValue([mockWorksheet1]);
     worksheetApi.getSessionState.mockResolvedValue([mockWorksheet1.session_state]);
-    worksheetApi.updateSessionState.mockImplementation(async (newState) => newState);
+    worksheetApi.updateSessionState.mockImplementation(async newState => newState);
     worksheetApi.updateWorksheet.mockImplementation(async (id, updates) => {
       const baseWorksheet = id === 'ws1' ? mockWorksheet1 : mockWorksheet2;
       return {
         worksheet: { ...baseWorksheet.worksheet, ...updates },
-        session_state: baseWorksheet.session_state
+        session_state: baseWorksheet.session_state,
       };
     });
   });
@@ -180,14 +174,14 @@ describe('WorksheetContext', () => {
     await waitFor(() => {
       expect(screen.getByText('Worksheet 1')).toBeInTheDocument();
     });
-    
+
     await waitFor(() => {
       expect(screen.queryByText('Worksheet 2')).not.toBeInTheDocument();
     });
 
     // Setup the creation response
     worksheetApi.createWorksheet.mockResolvedValue(mockWorksheet2);
-    
+
     // Prepare the new state after creation
     const updatedWorksheets = [mockWorksheet1, mockWorksheet2];
     worksheetApi.listWorksheets.mockResolvedValue(updatedWorksheets);
@@ -215,20 +209,20 @@ describe('WorksheetContext', () => {
       worksheet: {
         id: 'ws1',
         name: 'Updated Name',
-        query: 'SELECT * FROM updated'
+        query: 'SELECT * FROM updated',
       },
       session_state: {
         worksheet_id: 'ws1',
         is_visible: true,
-        tab_order: 1
-      }
+        tab_order: 1,
+      },
     };
-    
+
     // Start with original worksheet
     worksheetApi.listWorksheets.mockResolvedValue(mockWorksheets);
-    
+
     renderWithProviders(<TestComponent />);
-    
+
     // Wait for initial render with original name
     await waitFor(() => {
       expect(screen.getByText('Worksheet 1')).toBeInTheDocument();
@@ -245,7 +239,7 @@ describe('WorksheetContext', () => {
     await waitFor(() => {
       expect(worksheetApi.updateWorksheet).toHaveBeenCalledWith('ws1', {
         name: 'Updated Name',
-        query: 'SELECT * FROM updated'
+        query: 'SELECT * FROM updated',
       });
     });
 
@@ -262,7 +256,7 @@ describe('WorksheetContext', () => {
 
   it('deletes a worksheet', async () => {
     renderWithProviders(<TestComponent />);
-    
+
     // Wait for initial render
     await waitFor(() => {
       expect(screen.getByText('Worksheet 1')).toBeInTheDocument();
@@ -271,7 +265,7 @@ describe('WorksheetContext', () => {
     worksheetApi.deleteWorksheet.mockResolvedValue({});
     worksheetApi.listWorksheets.mockImplementation(async () => []);
     worksheetApi.updateSessionState.mockResolvedValue([]);
-    
+
     const deleteButton = screen.getByTestId('delete-button');
     fireEvent.click(deleteButton);
 
@@ -288,15 +282,15 @@ describe('WorksheetContext', () => {
     // Start with both worksheets in initial order
     const initialWorksheets = [mockWorksheet1, mockWorksheet2];
     worksheetApi.listWorksheets.mockResolvedValue(initialWorksheets);
-    
+
     const { unmount } = renderWithProviders(<TestComponent />);
-    
+
     // Wait for initial render of both worksheets
     await waitFor(() => {
       const worksheet1 = screen.getByText('Worksheet 1');
       expect(worksheet1).toBeInTheDocument();
     });
-    
+
     await waitFor(() => {
       const worksheet2 = screen.getByText('Worksheet 2');
       expect(worksheet2).toBeInTheDocument();
@@ -305,13 +299,13 @@ describe('WorksheetContext', () => {
     // Prepare the reordered state
     const reorderedWorksheets = [mockWorksheet2, mockWorksheet1];
     worksheetApi.listWorksheets.mockResolvedValue(reorderedWorksheets);
-    
+
     const reorderedSessionState = [
       { ...mockWorksheet2.session_state, tab_order: 1 },
-      { ...mockWorksheet1.session_state, tab_order: 2 }
+      { ...mockWorksheet1.session_state, tab_order: 2 },
     ];
     worksheetApi.updateSessionState.mockResolvedValue(reorderedSessionState);
-    
+
     // Trigger reorder
     const reorderButton = screen.getByTestId('reorder-button');
     fireEvent.click(reorderButton);
@@ -321,7 +315,7 @@ describe('WorksheetContext', () => {
       expect(worksheetApi.updateSessionState).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ worksheet_id: 'ws2', tab_order: 1 }),
-          expect.objectContaining({ worksheet_id: 'ws1', tab_order: 2 })
+          expect.objectContaining({ worksheet_id: 'ws1', tab_order: 2 }),
         ])
       );
     });
@@ -332,23 +326,27 @@ describe('WorksheetContext', () => {
 
   it('manages worksheet visibility', async () => {
     renderWithProviders(<TestComponent />);
-    
+
     // Wait for initial render
     await waitFor(() => {
       expect(screen.getByText('Worksheet 1')).toBeInTheDocument();
     });
 
-    const updatedSessionState = [{
-      worksheet_id: 'ws1',
-      is_visible: false,
-      tab_order: 1
-    }];
-    
+    const updatedSessionState = [
+      {
+        worksheet_id: 'ws1',
+        is_visible: false,
+        tab_order: 1,
+      },
+    ];
+
     worksheetApi.updateSessionState.mockResolvedValue(updatedSessionState);
-    worksheetApi.listWorksheets.mockImplementation(async () => [{
-      ...mockWorksheets[0],
-      session_state: updatedSessionState[0]
-    }]);
+    worksheetApi.listWorksheets.mockImplementation(async () => [
+      {
+        ...mockWorksheets[0],
+        session_state: updatedSessionState[0],
+      },
+    ]);
 
     const toggleButton = screen.getByTestId('toggle-visibility-button');
     fireEvent.click(toggleButton);
@@ -356,10 +354,10 @@ describe('WorksheetContext', () => {
     await waitFor(() => {
       expect(worksheetApi.updateSessionState).toHaveBeenCalledWith(
         expect.arrayContaining([
-          expect.objectContaining({ 
+          expect.objectContaining({
             worksheet_id: 'ws1',
-            is_visible: false
-          })
+            is_visible: false,
+          }),
         ])
       );
     });
@@ -374,20 +372,20 @@ describe('WorksheetContext', () => {
       results: {
         results_json: JSON.stringify({
           columns: ['col1', 'col2'],
-          rows: [{ col1: 'value1', col2: 'value2' }]
+          rows: [{ col1: 'value1', col2: 'value2' }],
         }),
         query_stats_json: JSON.stringify({
           timestamp: '2024-03-20T10:00:00',
           source: 'test',
-          executionTime: '1.23'
-        })
-      }
+          executionTime: '1.23',
+        }),
+      },
     };
 
     worksheetApi.getWorksheet.mockResolvedValue(mockResults);
-    
+
     renderWithProviders(<TestComponent />);
-    
+
     const loadResultsButton = screen.getByTestId('load-results-button');
     fireEvent.click(loadResultsButton);
 
@@ -395,4 +393,4 @@ describe('WorksheetContext', () => {
       expect(worksheetApi.getWorksheet).toHaveBeenCalledWith('ws1');
     });
   });
-}); 
+});

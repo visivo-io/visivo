@@ -27,9 +27,7 @@ class EmailDestination(Destination):
     """
 
     type: Literal["email"] = Field(None, description="The type of alert destination.")
-    subject: str = Field(
-        "Visivo Destination", description="Subject of the alert email."
-    )
+    subject: str = Field("Visivo Destination", description="Subject of the alert email.")
     to: str = Field(None, description="The email to send the alert to.")
     port: int = Field(
         2525,
@@ -39,12 +37,8 @@ class EmailDestination(Destination):
         None,
         description="The host of the email server that the destination is connecting to.",
     )
-    username: str = Field(
-        None, description="The username for authenticating the email server."
-    )
-    password: str = Field(
-        None, description="The password for authenticating the email server."
-    )
+    username: str = Field(None, description="The username for authenticating the email server.")
+    password: str = Field(None, description="The password for authenticating the email server.")
 
     def alert(self, test_run: TestRun):
         if not test_run.failures:

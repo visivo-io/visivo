@@ -142,10 +142,11 @@ def thumbnail_mode(function):
         "-tm",
         "--thumbnail-mode",
         help="Mode for thumbnail generation: 'none' to disable, 'missing' to generate only missing thumbnails, 'all' to generate all thumbnails, 'refresh' to force regeneration of all thumbnails",
-        type=click.Choice(['none', 'missing', 'all']),
+        type=click.Choice(["none", "missing", "all"]),
         default=None,
     )(function)
     return function
+
 
 def skip_compile(function):
     click.option(

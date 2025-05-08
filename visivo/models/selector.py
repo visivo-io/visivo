@@ -51,9 +51,7 @@ class Selector(ParentModel, NamedModel, BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    type: SelectorType = Field(
-        SelectorType.multiple, description="Single or multiple selector"
-    )
+    type: SelectorType = Field(SelectorType.multiple, description="Single or multiple selector")
     options: List[
         Annotated[
             Union[

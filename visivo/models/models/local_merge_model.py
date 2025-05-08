@@ -18,7 +18,7 @@ class LocalMergeModel(Model, ParentModel):
 
     !!! note
 
-        Any joining is done in a local DuckDB database. While more efficient than SQLite, 
+        Any joining is done in a local DuckDB database. While more efficient than SQLite,
         it's still primarily designed for medium-sized datasets.
 
     !!! example {% raw %}
@@ -66,9 +66,9 @@ class LocalMergeModel(Model, ParentModel):
     def _insert_dependent_models_to_duckdb(self, output_dir, dag):
         for model in self._get_dereferenced_models(dag):
             if isinstance(model, CsvScriptModel):
-                continue  # CsvScriptModels are attached from their existing duckdb file. 
+                continue  # CsvScriptModels are attached from their existing duckdb file.
             elif isinstance(model, LocalMergeModel):
-                continue # LocalMergeModels are attached from their existing duckdb file. 
+                continue  # LocalMergeModels are attached from their existing duckdb file.
             else:
                 duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
                 source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
@@ -81,9 +81,11 @@ class LocalMergeModel(Model, ParentModel):
         try:
             self._insert_dependent_models_to_duckdb(output_dir, dag)
         except Exception as e:
-            raise click.ClickException(f"Failed to insert dependent models to duckdb for model {self.name}. Error: {str(e)}")
+            raise click.ClickException(
+                f"Failed to insert dependent models to duckdb for model {self.name}. Error: {str(e)}"
+            )
 
-        duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)    
+        duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
         with duckdb_source.connect() as connection:
             data_frame = connection.execute(self.sql).fetchdf()
             connection.execute("DROP TABLE IF EXISTS model")

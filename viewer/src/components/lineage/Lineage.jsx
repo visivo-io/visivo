@@ -2,17 +2,12 @@ import React, { useState, useMemo } from 'react';
 import ReactFlow from 'react-flow-renderer';
 import UseStore from '../../stores/store'; // Adjust path to your store
 import ObjectPillNode from './ObjectPillNode';
-import {
-  buildGraph,
-  parseSelector,
-  filterGraph,
-  computeLayout,
-} from './graphUtils';
+import { buildGraph, parseSelector, filterGraph, computeLayout } from './graphUtils';
 
 const nodeTypes = { objectPill: ObjectPillNode };
 
 const Lineage = ({ defaultSelector = '' }) => {
-  const namedChildren = UseStore((state) => state.namedChildren);
+  const namedChildren = UseStore(state => state.namedChildren);
   const [selector, setSelector] = useState(defaultSelector);
 
   const { nodes: fullNodes, edges: fullEdges } = useMemo(
@@ -20,10 +15,7 @@ const Lineage = ({ defaultSelector = '' }) => {
     [namedChildren]
   );
 
-  const layoutNodes = useMemo(
-    () => computeLayout(fullNodes, fullEdges),
-    [fullNodes, fullEdges]
-  );
+  const layoutNodes = useMemo(() => computeLayout(fullNodes, fullEdges), [fullNodes, fullEdges]);
 
   const selectedNodes = useMemo(
     () => parseSelector(selector, namedChildren),
@@ -40,12 +32,12 @@ const Lineage = ({ defaultSelector = '' }) => {
       <input
         type="text"
         value={selector}
-        onChange={(e) => setSelector(e.target.value)}
+        onChange={e => setSelector(e.target.value)}
         placeholder="e.g., 'test table+2, +3join_table'"
         className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg"
       />
       <ReactFlow
-        nodes={filteredNodes.map((node) => ({ ...node, type: 'objectPill' }))}
+        nodes={filteredNodes.map(node => ({ ...node, type: 'objectPill' }))}
         edges={filteredEdges}
         nodeTypes={nodeTypes}
         fitView

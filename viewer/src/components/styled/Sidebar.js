@@ -1,4 +1,4 @@
-import tw from "tailwind-styled-components";
+import tw from 'tailwind-styled-components';
 
 export const Sidebar = tw.div`
    w-64 bg-white border-r border-gray-200 p-4 h-full flex flex-col

@@ -23,9 +23,7 @@ def test_init_with_sqlite():
 def test_init_with_sqlite_and_project_name():
     tmp = temp_folder()
 
-    response = runner.invoke(
-        init, args=["--project-name", tmp], input=f"sqlite\ntoken\n"
-    )
+    response = runner.invoke(init, args=["--project-name", tmp], input=f"sqlite\ntoken\n")
     assert f"Created project in '{tmp}'" in response.output
     assert response.exit_code == 0
     assert Path(f"{tmp}/.env").read_text() == "DB_PASSWORD=EXAMPLE_password_l0cation"
@@ -56,9 +54,7 @@ def test_init_with_postgres():
     assert os.path.exists(f"{tmp}/project.visivo.yml")
     assert "username" in Path(f"{tmp}/project.visivo.yml").read_text()
     assert "postgresql" in Path(f"{tmp}/project.visivo.yml").read_text()
-    assert (
-        "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
-    )
+    assert "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
 
 
 def test_init_with_mysql():
@@ -82,9 +78,7 @@ def test_init_with_mysql():
     assert os.path.exists(f"{tmp}/project.visivo.yml")
     assert "username" in Path(f"{tmp}/project.visivo.yml").read_text()
     assert "mysql" in Path(f"{tmp}/project.visivo.yml").read_text()
-    assert (
-        "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
-    )
+    assert "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
 
 
 def test_init_with_snowflake():
@@ -110,9 +104,7 @@ def test_init_with_snowflake():
     assert "username" in Path(f"{tmp}/project.visivo.yml").read_text()
     assert "snowflake" in Path(f"{tmp}/project.visivo.yml").read_text()
     assert "warehouse" in Path(f"{tmp}/project.visivo.yml").read_text()
-    assert (
-        "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
-    )
+    assert "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
 
 
 def test_init_with_bigquery():
@@ -135,9 +127,7 @@ def test_init_with_bigquery():
     assert os.path.exists(f"{tmp}/project.visivo.yml")
     assert "project" in Path(f"{tmp}/project.visivo.yml").read_text()
     assert "bigquery" in Path(f"{tmp}/project.visivo.yml").read_text()
-    assert (
-        "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
-    )
+    assert "{{ env_var('DB_PASSWORD') }}" in Path(f"{tmp}/project.visivo.yml").read_text()
 
 
 def test_init_with_duckdb():

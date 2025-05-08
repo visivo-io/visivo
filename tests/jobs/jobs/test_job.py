@@ -13,9 +13,7 @@ def test_runner_message_success():
     details = "Testing Details"
     full_path = temp_file("test.duckdb", "file")
 
-    message = format_message_success(
-        details=details, start_time=time(), full_path=full_path
-    )
+    message = format_message_success(details=details, start_time=time(), full_path=full_path)
     assert "database file: tmp" in message
     assert (
         "Testing Details ..........................................................................[SUCCESS"

@@ -43,9 +43,7 @@ def test_handle_attribute_properties_allOf():
         "default": "medium",
         "description": "Sets the height of the row.",
     }
-    type, description, default = markdown.handle_attribute_properties(
-        MODEL_DEFS, allOf_property
-    )
+    type, description, default = markdown.handle_attribute_properties(MODEL_DEFS, allOf_property)
     assert type == "Enumerated - one of: small, medium, large"
     assert description == "Sets the height of the row."
     assert default == "medium"
@@ -60,14 +58,9 @@ def test_handle_attribute_properties_anyOf():
         "description": "The model or model ref that visivo should use to build the trace.",
         "title": "Model",
     }
-    type, description, default = markdown.handle_attribute_properties(
-        MODEL_DEFS, anyOf_property
-    )
+    type, description, default = markdown.handle_attribute_properties(MODEL_DEFS, anyOf_property)
     assert type == "#/$defs/Model"
-    assert (
-        description
-        == "The model or model ref that visivo should use to build the trace."
-    )
+    assert description == "The model or model ref that visivo should use to build the trace."
     assert default == "None"
 
 
@@ -79,9 +72,7 @@ def test_handle_attribute_properties_items():
         "title": "Items",
         "type": "array",
     }
-    type, description, default = markdown.handle_attribute_properties(
-        MODEL_DEFS, items_property
-    )
+    type, description, default = markdown.handle_attribute_properties(MODEL_DEFS, items_property)
     assert type == "Array of #/$defs/Item"
     assert (
         description
@@ -116,8 +107,6 @@ def test_handle_attribute_properties_discriminator():
     type, description, default = markdown.handle_attribute_properties(
         MODEL_DEFS, discriminator_property
     )
-    assert (
-        type == "One of:<br>  •#/$defs/Bar<br>  •#/$defs/Barpolar<br>  •#/$defs/Scatter"
-    )
+    assert type == "One of:<br>  •#/$defs/Bar<br>  •#/$defs/Barpolar<br>  •#/$defs/Scatter"
     assert description == ""
     assert default == "#/$defs/Scatter"

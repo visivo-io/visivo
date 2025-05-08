@@ -64,9 +64,7 @@ def test_Core_Parser_combines_different_files():
     project_file = temp_yml_file(
         {
             "name": "project",
-            "sources": [
-                {"name": "source", "database": "project_url", "type": "sqlite"}
-            ],
+            "sources": [{"name": "source", "database": "project_url", "type": "sqlite"}],
         },
         name=PROJECT_FILE_NAME,
     )
@@ -79,9 +77,7 @@ def test_Core_Parser_combines_different_files():
         name="other.yml",
     )
 
-    core_parser = CoreParser(
-        project_file=project_file, files=[project_file, other_file]
-    )
+    core_parser = CoreParser(project_file=project_file, files=[project_file, other_file])
     project = core_parser.parse()
     assert len(project.sources) == 2
     assert project.sources[0].database == "project_url"

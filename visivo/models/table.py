@@ -10,12 +10,13 @@ from .base.base_model import REF_REGEX, generate_ref_field
 from pydantic import model_validator
 from enum import IntEnum
 
+
 class RowsPerPageEnum(IntEnum):
     three = 3
     five = 5
     ten = 15
-    twenty_five = 25 
-    fifty = 50 
+    twenty_five = 25
+    fifty = 50
     one_hundred = 100
     five_hundred = 500
     one_thousand = 1000
@@ -95,8 +96,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     rows_per_page: RowsPerPageEnum = Field(
-        RowsPerPageEnum.fifty, 
-        description= "The number of rows to show per page. Default is 50 rows"
+        RowsPerPageEnum.fifty, description="The number of rows to show per page. Default is 50 rows"
     )
 
     def child_items(self):

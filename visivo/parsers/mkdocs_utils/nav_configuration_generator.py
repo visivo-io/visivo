@@ -57,8 +57,8 @@ def _process_model(schema, model_data, processed_models):
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
                 if field == "props":
                     directory = "Props"
-                #Create a nested directory for the props and layout
-                    try: 
+                    # Create a nested directory for the props and layout
+                    try:
                         nested_structure[directory][nested_model_name] = {}
                     except KeyError:
                         nested_structure[directory] = {}
@@ -71,9 +71,9 @@ def _process_model(schema, model_data, processed_models):
             for ref in refs:
                 nested_model_name = ref.split("/")[-1]
                 nested_model_data = schema.get("$defs", {}).get(nested_model_name, {})
-                nested_structure[field.capitalize()][
-                    nested_model_name
-                ] = _process_model(schema, nested_model_data, processed_models)
+                nested_structure[field.capitalize()][nested_model_name] = _process_model(
+                    schema, nested_model_data, processed_models
+                )
         else:
             nested_structure[field] = field_data.get("type", "unknown")
 
@@ -85,7 +85,7 @@ def _generate_structure(schema):
 
 
 def _to_mkdocs_yaml(schema, structure, base_path="reference/configuration"):
-    """Handles taking the flat structure and turning it into the mkdocs yaml format that will 
+    """Handles taking the flat structure and turning it into the mkdocs yaml format that will
     point to the correct file locations where the model docs will be written."""
     output = []
 
@@ -94,8 +94,7 @@ def _to_mkdocs_yaml(schema, structure, base_path="reference/configuration"):
             sub_path = f"{base_path}/{model}"
             if schema.get("$defs", {}).get(model, {}):
                 model_content = {
-                    model: [f"{sub_path}/index.md"]
-                    + _to_mkdocs_yaml(schema, contents, sub_path)
+                    model: [f"{sub_path}/index.md"] + _to_mkdocs_yaml(schema, contents, sub_path)
                 }
                 output.append(model_content)
             else:
@@ -104,14 +103,17 @@ def _to_mkdocs_yaml(schema, structure, base_path="reference/configuration"):
 
     return output
 
+
 def remove_empty_terminal_nodes(data):
     """Function nested to remove the list and then the dict at an arbitary depth"""
+
     def _remove_empty_terminal_nodes(data):
         if isinstance(data, list):
             return [remove_empty_terminal_nodes(item) for item in data if item != {}]
         elif isinstance(data, dict):
             return {k: remove_empty_terminal_nodes(v) for k, v in data.items() if v != []}
         return data
+
     return _remove_empty_terminal_nodes(_remove_empty_terminal_nodes(data))
 
 
@@ -127,9 +129,9 @@ def _pop_nested_path(dictionary: dict, path: list):
 
 
 def _pop_list_of_nested_paths(dictionary: dict, paths: list):
-    """Removes a list of nested paths from a dictionary. This is needed because the schema 
-    is generated with all the models deeply nested within each other. This function 
-    removes the nested paths to a model so that the nav configuration is not cluttered 
+    """Removes a list of nested paths from a dictionary. This is needed because the schema
+    is generated with all the models deeply nested within each other. This function
+    removes the nested paths to a model so that the nav configuration is not cluttered
     with duplicate models."""
     for path in paths:
         _pop_nested_path(dictionary, path)
@@ -163,7 +165,7 @@ def _consolidate_paths(paths: list) -> dict:
 def _get_paths_to_remove(consolidated_paths: dict) -> list:
     """Creates a list of all the paths to a model that are not the shortest path. This is needed because
     The schema is generated with all the models deeply nested within each other. This function
-    removes the nested paths to a model so that the nav configuration is not cluttered with 
+    removes the nested paths to a model so that the nav configuration is not cluttered with
     duplicate models."""
     to_remove = []
     for model, paths in consolidated_paths.items():
@@ -182,16 +184,16 @@ def _get_paths_to_remove(consolidated_paths: dict) -> list:
 
 def mkdocs_pydantic_nav(schema: dict) -> list:
     """Takes the pydantic generated schema and returns the nav configuration that can be used to generate the configuration nav and determines the paths of the model docs files."""
-    #Nested structure with all the models deeply nested within each other. 
+    # Nested structure with all the models deeply nested within each other.
     nested_structure = _generate_structure(schema)
-    #All the paths in the nested structure
+    # All the paths in the nested structure
     all_key_paths = _get_all_key_paths(nested_structure)
     consolidated_paths = _consolidate_paths(all_key_paths)
     paths_to_remove = _get_paths_to_remove(consolidated_paths)
     _pop_list_of_nested_paths(nested_structure, paths=paths_to_remove)
-    #After removing the nested paths, the structure is flattened and ready to be converted to mkdocs yaml
+    # After removing the nested paths, the structure is flattened and ready to be converted to mkdocs yaml
     yaml_output = _to_mkdocs_yaml(schema, nested_structure)
-    #Remove the empty terminal nodes that are just empty lists, which create empty pages in mkdocs
+    # Remove the empty terminal nodes that are just empty lists, which create empty pages in mkdocs
     cleaned_yaml_output = remove_empty_terminal_nodes(yaml_output.copy())
     return cleaned_yaml_output
 
@@ -220,9 +222,7 @@ def get_model_to_page_mapping(nav_configuration: list) -> dict:
     for path in file_paths:
         model = path.split("/")[-2]
         key = "#/$defs/" + model
-        markdown_link = (
-            f"[{model}]" + "(https://docs.visivo.io/" + path.replace("index.md", ")")
-        )
+        markdown_link = f"[{model}]" + "(https://docs.visivo.io/" + path.replace("index.md", ")")
         mapping[key] = markdown_link
     return mapping
 
@@ -272,6 +272,7 @@ def replace_using_path(object, path, new_value):
         else:
             raise ValueError("Invalid path or object structure")
     return object
+
 
 def get_using_path(object, path):
     current = object

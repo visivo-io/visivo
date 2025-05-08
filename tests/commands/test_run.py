@@ -16,22 +16,24 @@ from visivo.server.hot_reload_server import HotReloadServer
 
 runner = CliRunner()
 
+
 def get_test_port():
     """Get an available port for testing"""
     return HotReloadServer.find_available_port()
+
 
 def test_run():
     output_dir = temp_folder()
     project = ProjectFactory()
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     port = get_test_port()
-    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)])
+    response = runner.invoke(
+        run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)]
+    )
 
     assert "Running project across 8 threads" in response.output
     assert response.exit_code == 0
@@ -42,9 +44,7 @@ def test_run_with_threads():
     project = ProjectFactory()
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     port = get_test_port()
@@ -61,13 +61,13 @@ def test_run_with_model_ref():
     project = ProjectFactory(model_ref=True)
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     port = get_test_port()
-    response = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)])
+    response = runner.invoke(
+        run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)]
+    )
 
     assert "Running project" in response.output
     assert response.exit_code == 0
@@ -85,9 +85,7 @@ def test_run_by_with_passing_new_defaults():
     project.sources.append(alternate_source)
 
     create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    tmp = temp_yml_file(
-        dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME
-    )
+    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
 
     port = get_test_port()

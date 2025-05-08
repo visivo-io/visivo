@@ -21,18 +21,14 @@ def action(csv_script_model: CsvScriptModel, output_dir):
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{csv_script_model.name}\033[0m",
             start_time=start_time,
-            full_path=csv_script_model.get_duckdb_source(
-                output_dir=output_dir
-            ).database,
+            full_path=csv_script_model.get_duckdb_source(output_dir=output_dir).database,
         )
         return JobResult(item=csv_script_model, success=True, message=success_message)
     except Exception as e:
         failure_message = format_message_failure(
             details=f"Failed query for model \033[4m{csv_script_model.name}\033[0m",
             start_time=start_time,
-            full_path=csv_script_model.get_duckdb_source(
-                output_dir=output_dir
-            ).database,
+            full_path=csv_script_model.get_duckdb_source(output_dir=output_dir).database,
             error_msg=str(repr(e)),
         )
         return JobResult(item=csv_script_model, success=False, message=failure_message)

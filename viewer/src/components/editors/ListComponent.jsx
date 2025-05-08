@@ -7,21 +7,21 @@ import ContextMenu from './ContextMenu';
 
 function ListComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const addListItem = useStore((state) => state.addListItem);
+  const addListItem = useStore(state => state.addListItem);
   const [contextMenu, setContextMenu] = useState(null);
-  const deleteNamedChildAttribute = useStore((state) => state.deleteNamedChildAttribute);
+  const deleteNamedChildAttribute = useStore(state => state.deleteNamedChildAttribute);
 
-  const handleAddItem = (newItem) => {
+  const handleAddItem = newItem => {
     addListItem(path, newItem);
     setIsModalOpen(false);
   };
 
-  const handleContextMenu = (e) => {
+  const handleContextMenu = e => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({
       x: e.clientX,
-      y: e.clientY
+      y: e.clientY,
     });
   };
 
@@ -57,14 +57,14 @@ function ListComponent({ name, data, path }) {
           <HiPlus className="h-5 w-5" />
         </button>
       </div>
-      
+
       <div className="rounded-md">
         <div className="flex flex-wrap gap-2">
           {data.map((item, index) => {
             const childPath = [...path, index];
             return (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className="border-gray-200 border bg-purple-50 pt-2 pb-2 pr-2 rounded-md"
                 style={{ minWidth: '30px', maxWidth: '400px', flex: '1 1 auto' }}
               >

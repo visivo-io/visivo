@@ -142,8 +142,6 @@ class TraceColumns(BaseModel):
     def validate_unique_item_types(cls, data: any):
         # TODO 1.1: This validator can throw and error
         for field_name, field_value in data.items():
-            if isinstance(field_value, str) and re.match(
-                QUERY_STRING_VALUE_REGEX, field_value
-            ):
+            if isinstance(field_value, str) and re.match(QUERY_STRING_VALUE_REGEX, field_value):
                 data[field_name] = QueryString(field_value)
         return data

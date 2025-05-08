@@ -44,9 +44,7 @@ class Runner:
                         test_run.add_success(success=success)
                     else:
                         click.echo(click.style("F", fg="red"), nl=False)
-                        failure = TestFailure(
-                            test_id=test.path, message=assertion.value
-                        )
+                        failure = TestFailure(test_id=test.path, message=assertion.value)
                         test_run.add_failure(failure=failure)
                 except Exception as e:
                     failure = TestFailure(test_id=test.path, message=str(e))

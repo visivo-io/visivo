@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen} from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ObjectsPanel from './ObjectsPanel';
 import useStore from '../../stores/store';
@@ -7,15 +7,17 @@ import useStore from '../../stores/store';
 // Mock the store
 jest.mock('../../stores/store', () => ({
   __esModule: true,
-  default: jest.fn()
+  default: jest.fn(),
 }));
 
 test('renders loading state correctly', () => {
-  useStore.mockImplementation((selector) => selector({
-    isLoading: true,
-    error: null,
-    namedChildren: {}
-  }));
+  useStore.mockImplementation(selector =>
+    selector({
+      isLoading: true,
+      error: null,
+      namedChildren: {},
+    })
+  );
 
   render(<ObjectsPanel />);
   expect(screen.getByRole('status')).toBeInTheDocument();
@@ -23,11 +25,13 @@ test('renders loading state correctly', () => {
 
 test('renders error state correctly', () => {
   const errorMessage = 'Test error message';
-  useStore.mockImplementation((selector) => selector({
-    isLoading: false,
-    error: errorMessage,
-    namedChildren: {}
-  }));
+  useStore.mockImplementation(selector =>
+    selector({
+      isLoading: false,
+      error: errorMessage,
+      namedChildren: {},
+    })
+  );
 
   render(<ObjectsPanel />);
   expect(screen.getByText(errorMessage)).toBeInTheDocument();
@@ -35,19 +39,21 @@ test('renders error state correctly', () => {
 
 test('filters objects based on search input', async () => {
   const mockNamedChildren = {
-    'object1': { type_key: 'type1' },
-    'object2': { type_key: 'type2' },
-    'test3': { type_key: 'type1' }
+    object1: { type_key: 'type1' },
+    object2: { type_key: 'type2' },
+    test3: { type_key: 'type1' },
   };
 
-  useStore.mockImplementation((selector) => selector({
-    isLoading: false,
-    error: null,
-    namedChildren: mockNamedChildren
-  }));
+  useStore.mockImplementation(selector =>
+    selector({
+      isLoading: false,
+      error: null,
+      namedChildren: mockNamedChildren,
+    })
+  );
 
   render(<ObjectsPanel />);
-  
+
   const searchInput = screen.getByPlaceholderText('Search objects...');
   await userEvent.type(searchInput, 'object');
 
@@ -58,19 +64,21 @@ test('filters objects based on search input', async () => {
 
 test('filters objects based on type selection', async () => {
   const mockNamedChildren = {
-    'object1': { type_key: 'type1' },
-    'object2': { type_key: 'type2' },
-    'object3': { type_key: 'type1' }
+    object1: { type_key: 'type1' },
+    object2: { type_key: 'type2' },
+    object3: { type_key: 'type1' },
   };
 
-  useStore.mockImplementation((selector) => selector({
-    isLoading: false,
-    error: null,
-    namedChildren: mockNamedChildren
-  }));
+  useStore.mockImplementation(selector =>
+    selector({
+      isLoading: false,
+      error: null,
+      namedChildren: mockNamedChildren,
+    })
+  );
 
   render(<ObjectsPanel />);
-  
+
   const typeSelect = screen.getByRole('combobox');
   await userEvent.selectOptions(typeSelect, 'type1');
 
@@ -80,14 +88,16 @@ test('filters objects based on type selection', async () => {
 });
 
 test('opens create modal when create button is clicked', async () => {
-  useStore.mockImplementation((selector) => selector({
-    isLoading: false,
-    error: null,
-    namedChildren: {}
-  }));
+  useStore.mockImplementation(selector =>
+    selector({
+      isLoading: false,
+      error: null,
+      namedChildren: {},
+    })
+  );
 
   render(<ObjectsPanel />);
-  
+
   const createButton = screen.getByRole('button', { name: /\+ Create New Object/i });
   await userEvent.click(createButton);
 
@@ -98,20 +108,22 @@ test('opens create modal when create button is clicked', async () => {
 
 test('displays "No objects found" when filter returns no results', async () => {
   const mockNamedChildren = {
-    'object1': { type_key: 'type1' },
-    'object2': { type_key: 'type2' }
+    object1: { type_key: 'type1' },
+    object2: { type_key: 'type2' },
   };
 
-  useStore.mockImplementation((selector) => selector({
-    isLoading: false,
-    error: null,
-    namedChildren: mockNamedChildren
-  }));
+  useStore.mockImplementation(selector =>
+    selector({
+      isLoading: false,
+      error: null,
+      namedChildren: mockNamedChildren,
+    })
+  );
 
   render(<ObjectsPanel />);
-  
+
   const searchInput = screen.getByPlaceholderText('Search objects...');
   await userEvent.type(searchInput, 'nonexistent');
 
   expect(screen.getByText('No objects found')).toBeInTheDocument();
-}); 
+});
