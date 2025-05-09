@@ -39,7 +39,9 @@ tasks:
 
   - key: Deploy-mkdocs-to-docs-site
     use: [Generate-Configuration-Files]
-    run: PYTHONPATH=$PWD poetry run mkdocs build && PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
+    run: |
+      PYTHONPATH=$PWD poetry run mkdocs build
+      PYTHONPATH=$PWD poetry run mkdocs gh-deploy --force
     env:
       GITHUB_ACCESS_TOKEN: ${{ secrets.VISIVO_GITHUB_GENERAL_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.VISIVO_GITHUB_GENERAL_TOKEN }}
