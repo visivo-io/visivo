@@ -4,9 +4,6 @@ import { updateNestedValue, getRelativePath } from './utils';
 import { fetchSchema } from '../api/schema';
 
 const createEditorSlice = (set, get) => ({
-  projectData: {}, // Holds the fetched project data
-  setProjectData: data => set({ projectData: data }),
-
   schema: null,
   fetchSchema: async () => {
     try {

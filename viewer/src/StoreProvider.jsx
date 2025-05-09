@@ -1,28 +1,18 @@
 import { useEffect } from 'react';
 import useStore from './stores/store';
-import { fetchProject } from './api/project';
 
 export const StoreProvider = ({ children }) => {
-  const setProjectData = useStore(state => state.setProjectData);
+  const fetchProject = useStore(state => state.fetchProject);
   const fetchNamedChildren = useStore(state => state.fetchNamedChildren);
   const fetchProjectFilePath = useStore(state => state.fetchProjectFilePath);
   const createProjectFileObjects = useStore(state => state.createProjectFileObjects);
   const fetchSchema = useStore(state => state.fetchSchema);
 
   useEffect(() => {
-    const fetchProjectData = async () => {
-      try {
-        const data = await fetchProject();
-        setProjectData(data);
-      } catch (error) {
-        console.error('Error fetching project data:', error);
-      }
-    };
-
     const initializeStore = async () => {
       await fetchProjectFilePath();
       await fetchSchema();
-      await fetchProjectData();
+      await fetchProject();
       await fetchNamedChildren();
       await createProjectFileObjects();
     };
@@ -30,7 +20,7 @@ export const StoreProvider = ({ children }) => {
     initializeStore();
   }, [
     fetchNamedChildren,
-    setProjectData,
+    fetchProject,
     fetchProjectFilePath,
     createProjectFileObjects,
     fetchSchema,

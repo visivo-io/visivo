@@ -1,7 +1,6 @@
 import React from 'react';
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
 import { loadProject } from './loaders/project';
-import { loadDag } from './loaders/dag';
 import { loadError } from './loaders/error';
 import Home from './components/Home';
 import ProjectContainer from './components/project/ProjectContainer';

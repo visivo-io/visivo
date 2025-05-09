@@ -54,7 +54,6 @@ const Home = () => {
             </div>
           </div>
         </Link>
-        (??)
         <Link to="/project" className="col-span-1 md:col-span-3">
           <div className="bg-white rounded-lg shadow-2xs hover:shadow-md transition-shadow duration-200">
             <div className="flex flex-col items-center p-8">

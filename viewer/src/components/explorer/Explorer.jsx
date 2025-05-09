@@ -9,7 +9,6 @@ import QueryPanel from './QueryPanel';
 import Divider from './Divider';
 import ResultsPanel from './ResultsPanel';
 import useStore from '../../stores/store';
-import useStore from '../../stores/store';
 import { getAncestors } from '../lineage/graphUtils';
 
 const Container = tw.div`
@@ -59,16 +58,6 @@ const QueryExplorer = () => {
   const monacoRef = React.useRef(null);
 
   const {
-    // State values
-    isDragging,
-    explorerData,
-    selectedType,
-    treeData,
-    selectedSource,
-    query,
-    info,
-    isLoading,
-    // State setters
     setQuery,
     setError,
     setResults,
@@ -83,7 +72,16 @@ const QueryExplorer = () => {
     setActiveWorksheetId,
   } = useStore();
 
-  const { namedChildren } = useStore();
+  const project = useStore(state => state.project);
+  const namedChildren = useStore(state => state.namedChildren);
+  const isLoading = useStore(state => state.isLoading);
+  const isDragging = useStore(state => state.isDragging);
+  const query = useStore(state => state.query);
+  const info = useStore(state => state.info);
+  const explorerData = useStore(state => state.explorerData);
+  const selectedSource = useStore(state => state.selectedSource);
+  const selectedType = useStore(state => state.selectedType);
+  const treeData = useStore(state => state.treeData);
 
   const {
     worksheets,
