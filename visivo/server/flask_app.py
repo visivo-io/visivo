@@ -43,13 +43,6 @@ class FlaskApp:
                 Logger.instance().error(f"Error serving trace data: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/data/explorer.json")
-        def explorer():
-            if os.path.exists(f"{output_dir}/explorer.json"):
-                with open(f"{output_dir}/explorer.json", "r") as f:
-                    return json.load(f)
-            else:
-                return json.dumps({})
 
         @self.app.route("/data/schema.json")
         def schema():
@@ -201,12 +194,6 @@ class FlaskApp:
                     "created_at": datetime.datetime.now().isoformat(),
                 }
             ]
-
-        @self.app.route("/data/dag.json")
-        def dag():
-            with open(f"{output_dir}/dag.json", "r") as f:
-                dag_json = json.load(f)
-                return dag_json
 
         @self.app.route("/", defaults={"path": "index.html"})
         @self.app.route("/<path:path>")
