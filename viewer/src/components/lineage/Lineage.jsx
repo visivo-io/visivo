@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import ReactFlow from 'react-flow-renderer';
-import UseStore from '../../stores/store'; // Adjust path to your store
+import useStore from '../../stores/store'; // Adjust path to your store
 import ObjectPillNode from './ObjectPillNode';
 import { buildGraph, parseSelector, filterGraph, computeLayout } from './graphUtils';
 
 const nodeTypes = { objectPill: ObjectPillNode };
 
 const Lineage = ({ defaultSelector = '' }) => {
-  const namedChildren = UseStore(state => state.namedChildren);
+  const namedChildren = useStore(state => state.namedChildren);
   const [selector, setSelector] = useState(defaultSelector);
 
   const { nodes: fullNodes, edges: fullEdges } = useMemo(

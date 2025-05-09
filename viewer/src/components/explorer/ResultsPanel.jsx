@@ -1,10 +1,10 @@
 import React from 'react';
 import { Panel } from '../styled/Panel';
 import Table from '../items/Table';
-import useExplorerStore from '../../stores/explorerStore';
+import useStore from '../../stores/store';
 
 const ResultsPanel = ({ project }) => {
-  const { results, queryStats, splitRatio } = useExplorerStore();
+  const { results, queryStats, splitRatio } = useStore();
 
   return (
     <Panel style={{ flex: 1 - splitRatio }}>
