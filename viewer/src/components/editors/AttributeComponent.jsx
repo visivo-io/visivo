@@ -274,7 +274,7 @@ function AttributeComponent({ name, value, path }) {
       <span className="text-sm p-1 font-medium text-grey-400">{name}</span>
 
       {isJsonObject && parsedObject ? (
-        <div onClick={handlePillClick} className="cursor-text">
+        <div onClick={handlePillClick} className="cursor-text p-2" >
           <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
         </div>
       ) : isQueryValue ? (
