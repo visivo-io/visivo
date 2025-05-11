@@ -274,13 +274,13 @@ function AttributeComponent({ name, value, path }) {
   return (
     <div className={`flex ${flexDirection} gap-2 items-center`} onContextMenu={handleContextMenu}>
       {isJsonObject && parsedObject ? (
-        <InputShell>
+        <InputShell label={name} hasContent={!!parsedObject}>
           <div onClick={handlePillClick} className="cursor-text">
             <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
           </div>
         </InputShell>
       ) : isQueryValue ? (
-        <InputShell>
+        <InputShell label={name} hasContent={!!localValue}>
           <QueryPill
             value={localValue}
             onChange={handleQueryChange}
