@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import QueryPill from './QueryPill'; // You'll need to create this component if it doesn't exist
 import ContextMenu from './ContextMenu';
 import Input from '../styled/Input';
+import InputShell from '../styled/InputShell';
 
 function AttributeComponent({ name, value, path }) {
   const updateNamedChildAttribute = useStore(state => state.updateNamedChildAttribute);
@@ -272,18 +273,20 @@ function AttributeComponent({ name, value, path }) {
 
   return (
     <div className={`flex ${flexDirection} gap-2 items-center`} onContextMenu={handleContextMenu}>
-      <span className="text-sm font-medium text-primary-500 mb-1">{name}</span>
-
       {isJsonObject && parsedObject ? (
-        <div onClick={handlePillClick} className="cursor-text">
-          <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
-        </div>
+        <InputShell>
+          <div onClick={handlePillClick} className="cursor-text">
+            <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
+          </div>
+        </InputShell>
       ) : isQueryValue ? (
-        <QueryPill
-          value={localValue}
-          onChange={handleQueryChange}
-          isQueryFunction={queryType === 'function'}
-        />
+        <InputShell>
+          <QueryPill
+            value={localValue}
+            onChange={handleQueryChange}
+            isQueryFunction={queryType === 'function'}
+          />
+        </InputShell>
       ) : (
         <div className="relative w-full">
           <Input
