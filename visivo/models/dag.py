@@ -1,5 +1,7 @@
 import re
 from typing import List, Tuple
+from networkx import descendants, ancestors
+from networkx.algorithms.traversal import depth_first_search
 
 
 def show_dag_fig(dag):
@@ -116,9 +118,13 @@ def create_dag_dict(dag):
 
 
 def all_descendants(dag, from_node=None, depth=None):
-    import networkx.algorithms.traversal.depth_first_search as dfs
+    # if not from_node:
+    #     return set(dag.nodes())
 
-    return dfs.dfs_tree(dag, from_node, depth_limit=depth)
+    # if not depth:
+    #     return set(list(descendants(dag, from_node)))
+
+    return depth_first_search.dfs_tree(dag, from_node, depth_limit=depth)
 
 
 def all_descendants_of_type(type, dag, from_node=None, depth=None):
@@ -151,8 +157,6 @@ def all_descendants_with_path_match(path: str, dag, from_node=None):
 
 
 def family_tree_contains_named_node(item, name: str, dag):
-    from networkx import descendants, ancestors
-
     d = descendants(dag, item)
     a = ancestors(dag, item)
     items = d.union(a)
@@ -160,7 +164,6 @@ def family_tree_contains_named_node(item, name: str, dag):
 
 
 def all_nodes_including_named_node_in_graph(name: str, dag):
-    from networkx import descendants, ancestors
     import click
 
     item = all_descendants_with_name(name=name, dag=dag)

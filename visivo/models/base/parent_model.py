@@ -16,9 +16,13 @@ from visivo.models.dag import (
     show_dag_fig,
 )
 from visivo.models.sources.source import DefaultSource
+from visivo.logging.logger import Logger
+import traceback
 
 
 class ParentModel(ABC):
+    _dag: ProjectDag = None
+
     @model_serializer(mode="wrap")
     def wrap_serializer(self, serializer, info):
         # Get the default serialized output
@@ -33,24 +37,24 @@ class ParentModel(ABC):
         return []
 
     def dag(self, node_permit_list=None) -> ProjectDag:
-
-        dag = ProjectDag()
-        dag.add_node(self)
-        self.__build_dag(
-            items=self.child_items(),
-            parent_item=self,
-            dag=dag,
-            node_permit_list=node_permit_list,
-            root=self,
-        )
-        self.__dereference_items(
-            items=self.child_items(),
-            parent_item=self,
-            dag=dag,
-            node_permit_list=node_permit_list,
-            root=self,
-        )
-        return dag
+        if self._dag is None:
+            self._dag = ProjectDag()
+            self._dag.add_node(self)
+            self.__build_dag(
+                items=self.child_items(),
+                parent_item=self,
+                dag=self._dag,
+                node_permit_list=node_permit_list,
+                root=self,
+            )
+            self.__dereference_items(
+                items=self.child_items(),
+                parent_item=self,
+                dag=self._dag,
+                node_permit_list=node_permit_list,
+                root=self,
+            )
+        return self._dag
 
     def __build_dag(self, items: List, parent_item, dag, node_permit_list, root):
         for item in items:

@@ -26,11 +26,6 @@ if os.environ.get("STACKTRACE"):
     Logger.instance().info(f"Compile Import completed in {import_duration}s")
 
 
-def write_dag(project, output_dir):
-    with open(f"{output_dir}/dag.json", "w") as fp:
-        fp.write(json.dumps(project.dag_dict()))
-
-
 def compile_phase(
     default_source: str,
     working_dir: str,
@@ -52,7 +47,6 @@ def compile_phase(
     # Track artifacts writing
     artifacts_start = time()
     Logger.instance().debug("    Writing artifacts...")
-    write_dag(project=project, output_dir=output_dir)
 
     # Write the original project.json
     with open(f"{output_dir}/project.json", "w") as fp:

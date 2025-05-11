@@ -7,6 +7,7 @@ Logger.instance().info("Starting Visivo...")
 import click
 import os
 import importlib
+import cProfile
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
@@ -76,6 +77,8 @@ def load_env(env_file):
 
 
 def safe_visivo():
+    pr = cProfile.Profile()
+    pr.enable()
     try:
         visivo(standalone_mode=False)
         Logger.instance().info(f"Visivo execution time: {round(time() - start_time, 2)}s")
@@ -91,6 +94,9 @@ def safe_visivo():
             "To print more error information add the 'STACKTRACE=true' environment variable."
         )
         exit(1)
+    finally:
+        pr.disable()
+        pr.dump_stats("visivo-profile.dmp")
 
 
 if __name__ == "__main__":
