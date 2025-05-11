@@ -118,12 +118,14 @@ def create_dag_dict(dag):
 
 
 def all_descendants(dag, from_node=None, depth=None):
-    # if not from_node:
-    #     return set(dag.nodes())
+    if not from_node:
+        return set(dag.nodes())
 
-    # if not depth:
-    #     return set(list(descendants(dag, from_node)))
-
+    if not depth:
+        descendants_list = list(descendants(dag, from_node))
+        descendants_list.append(from_node)
+        return set(descendants_list)
+    # depth_first_search.dfs_tree is slow, so it is only used when 
     return depth_first_search.dfs_tree(dag, from_node, depth_limit=depth)
 
 

@@ -34,9 +34,9 @@ def test_all_descendants():
     dag.add_edge(parent, child)
     dag.add_edge(child, grandchild)
     dfs = dfs_tree(dag, parent)
-    assert all_descendants(dag, parent) == set(dfs.nodes())
+    assert set(all_descendants(dag, parent)) == set(dfs.nodes())
     dfs = dfs_tree(dag, child)
-    assert all_descendants(dag, child) == set(dfs.nodes())
+    assert set(all_descendants(dag, child)) == set(dfs.nodes())
 
 
 def test_all_descendants_with_depth():
@@ -52,8 +52,8 @@ def test_all_descendants_with_depth():
     dag.add_edge(child, grandchild)
 
     dfs = dfs_tree(dag, parent, depth_limit=1)
-    assert all_descendants(dag, parent, 1) == set(dfs.nodes())
+    assert set(all_descendants(dag, parent, 1)) == set(dfs.nodes())
     dfs = dfs_tree(dag, parent, depth_limit=2)
-    assert all_descendants(dag, parent, 2) == set(dfs.nodes())
+    assert set(all_descendants(dag, parent, 2)) == set(dfs.nodes())
     dfs = dfs_tree(dag, parent, depth_limit=3)
-    assert all_descendants(dag, parent, 3) == set(dfs.nodes())
+    assert set(all_descendants(dag, parent, 3)) == set(dfs.nodes())
