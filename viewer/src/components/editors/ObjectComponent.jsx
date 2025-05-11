@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import renderValue from './renderValue';
-import { HiPlus } from 'react-icons/hi';
+import { HiPlus, HiOutlineCube } from 'react-icons/hi';
 import AddItemModal from './AddItemModal';
 import useStore from '../../stores/store';
 import ContextMenu from './ContextMenu';
@@ -59,18 +59,20 @@ function ObjectComponent({ name, data, path }) {
 
   return (
     <div className="flex flex-col gap-3 p-3 bg-white rounded-lg shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
-      <div className="flex justify-between items-center mb-2">
-        {name && isNaN(parseInt(name)) && typeof name === 'string' && (
+      <div className="flex items-center gap-2 mb-2 justify-between">
+        <div className="flex items-center gap-2">
+          <HiOutlineCube className="text-primary-500 w-5 h-5" />
           <div className="text-md font-semibold text-primary-500 pb-1">{name}</div>
-        )}
+        </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="p-2 text-white bg-primary-500 hover:bg-primary-600 rounded-full shadow transition-colors focus:ring-2 focus:ring-primary-200 focus:outline-none"
+          className="p-0.5 text-white bg-primary-500 hover:bg-primary-600 rounded-full shadow transition-colors focus:ring-2 focus:ring-primary-200 focus:outline-none"
+          
         >
-          <HiPlus className="h-5 w-5" />
+          <HiPlus className="h-4 w-4" />
         </button>
       </div>
-
+      <div className="border-b border-primary-100 mb-2" />
       {/* Non-Object Section */}
       {Object.keys(sortedNonObject).length > 0 && (
         <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto w-full">
@@ -89,7 +91,6 @@ function ObjectComponent({ name, data, path }) {
           })}
         </div>
       )}
-
       {/* Object Section */}
       {Object.keys(sortedObject).length > 0 && (
         <div className="flex flex-wrap gap-4 w-full">
@@ -110,14 +111,12 @@ function ObjectComponent({ name, data, path }) {
           })}
         </div>
       )}
-
       <AddItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handleAddProperty}
         isObjectMode={true}
       />
-
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
