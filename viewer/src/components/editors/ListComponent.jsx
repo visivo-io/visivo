@@ -64,11 +64,7 @@ function ListComponent({ name, data, path }) {
           {data.map((item, index) => {
             const childPath = [...path, index];
             return (
-              <div
-                key={index}
-                className="border border-primary-100 bg-primary-50 pt-2 pb-2 pr-2 rounded-md shadow-sm"
-                style={{ minWidth: '30px', maxWidth: '400px', flex: '1 1 auto' }}
-              >
+              <div key={index} className="flex-1 min-w-[200px]">
                 {renderValue(index, item, childPath)}
               </div>
             );

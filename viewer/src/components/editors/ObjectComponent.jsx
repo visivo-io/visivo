@@ -58,8 +58,8 @@ function ObjectComponent({ name, data, path }) {
   }, [contextMenu]);
 
   return (
-    <div className="flex flex-col gap-3 p-3 bg-white rounded-lg shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
-      <div className="flex items-center gap-2 mb-2 justify-between">
+    <div className="flex flex-col gap-3 p-3 bg-white rounded-lg border-primary-100 bg-primary-50 shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
+      <div className="flex items-center  justify-between">
         <div className="flex items-center gap-2">
           <HiOutlineCube className="text-primary-500 w-5 h-5" />
           <div className="text-md font-semibold text-primary-500 pb-1">{name}</div>
@@ -80,11 +80,7 @@ function ObjectComponent({ name, data, path }) {
             if (key === 'changed' || key === 'path' || key === 'name' || key === '__v') return null;
             const childPath = [...path, key];
             return (
-              <div
-                key={key}
-                className="border border-highlight-100 bg-highlight-50 pl-2 pr-2 pb-2 mb-2 rounded-md shadow-sm"
-                style={{ minWidth: '30px', maxWidth: '400px', flex: '1 0 auto' }}
-              >
+              <div key={key} className="flex-1 min-w-[200px]">
                 {renderValue(key, value, childPath)}
               </div>
             );
@@ -102,7 +98,7 @@ function ObjectComponent({ name, data, path }) {
             return (
               <div
                 key={key}
-                className="border border-primary-100 bg-primary-50 pb-2 pr-2 pl-2 rounded-lg shadow-md"
+                
                 style={{ width: `${sizeFactor}px`, minWidth: '200px' }}
               >
                 {renderValue(key, value, childPath)}

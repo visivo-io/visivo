@@ -271,11 +271,11 @@ function AttributeComponent({ name, value, path }) {
   const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
 
   return (
-    <div className={`flex ${flexDirection} gap-2 bg-white rounded-lg shadow p-3 my-2 border border-gray-100`} onContextMenu={handleContextMenu}>
+    <div className={`flex ${flexDirection} gap-2 items-center`} onContextMenu={handleContextMenu}>
       <span className="text-sm font-medium text-primary-500 mb-1">{name}</span>
 
       {isJsonObject && parsedObject ? (
-        <div onClick={handlePillClick} className="cursor-text p-2">
+        <div onClick={handlePillClick} className="cursor-text">
           <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
         </div>
       ) : isQueryValue ? (
