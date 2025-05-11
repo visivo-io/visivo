@@ -1,18 +1,17 @@
 import React from 'react';
 
 const InputShell = ({ label, children, hasContent }) => (
-  <div className="relative">
-    <div className="block px-2 pb-1 pt-2.5 w-full text-sm text-gray-900 bg-transparent rounded-md border border-gray-300 appearance-none focus-within:border-primary">
+  <div className="relative w-full">
+    <div className="flex items-center w-full px-2 pt-2.5 pb-1 text-sm text-gray-900 bg-transparent rounded-md border border-gray-300 appearance-none focus-within:border-primary min-h-[42px]">
       {children}
     </div>
     <label
       className={
-        `absolute text-sm text-gray-500 duration-300 transform z-10 origin-[0] bg-white px-2 left-1 ` +
+        `absolute text-sm text-gray-500 duration-300 transform z-10 origin-[0] bg-white px-2 py-0 left-1 pointer-events-none ` +
         (hasContent
-          ? '-translate-y-4 scale-75 top-2'
-          : 'peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 top-2')
+          ? '-translate-y-4 scale-75 top-1'
+          : 'scale-100 top-4')
       }
-      style={{ pointerEvents: 'none' }}
     >
       {label}
     </label>
