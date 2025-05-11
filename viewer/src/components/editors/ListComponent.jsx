@@ -45,14 +45,14 @@ function ListComponent({ name, data, path }) {
   }
 
   return (
-    <div className="flex flex-col p-1" onContextMenu={handleContextMenu}>
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col gap-3 p-3 bg-white rounded-lg shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
+      <div className="flex justify-between items-center mb-2">
         {name && isNaN(parseInt(name)) && typeof name === 'string' && (
-          <div className="text-md font-medium text-purple-600">{name}</div>
+          <div className="text-md font-semibold text-primary-500">{name}</div>
         )}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="p-1 text-purple-600 hover:text-purple-800 rounded-full hover:bg-purple-100"
+          className="p-2 text-white bg-primary-500 hover:bg-primary-600 rounded-full shadow transition-colors focus:ring-2 focus:ring-primary-200 focus:outline-none"
         >
           <HiPlus className="h-5 w-5" />
         </button>
@@ -65,12 +65,8 @@ function ListComponent({ name, data, path }) {
             return (
               <div
                 key={index}
-                className="border-gray-200 border bg-purple-50 pt-2 pb-2 pr-2 rounded-md"
-                style={{
-                  minWidth: '30px',
-                  maxWidth: '400px',
-                  flex: '1 1 auto',
-                }}
+                className="border border-primary-100 bg-primary-50 pt-2 pb-2 pr-2 rounded-md shadow-sm"
+                style={{ minWidth: '30px', maxWidth: '400px', flex: '1 1 auto' }}
               >
                 {renderValue(index, item, childPath)}
               </div>

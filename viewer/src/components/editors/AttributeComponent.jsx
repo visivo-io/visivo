@@ -5,6 +5,7 @@ import ObjectPill from './ObjectPill'; // You'll need to create this component i
 import { createPortal } from 'react-dom';
 import QueryPill from './QueryPill'; // You'll need to create this component if it doesn't exist
 import ContextMenu from './ContextMenu';
+import Input from '../styled/Input';
 
 function AttributeComponent({ name, value, path }) {
   const updateNamedChildAttribute = useStore(state => state.updateNamedChildAttribute);
@@ -270,11 +271,11 @@ function AttributeComponent({ name, value, path }) {
   const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
 
   return (
-    <div className={`flex ${flexDirection}`} onContextMenu={handleContextMenu}>
-      <span className="text-sm p-1 font-medium text-grey-400">{name}</span>
+    <div className={`flex ${flexDirection} gap-2 bg-white rounded-lg shadow p-3 my-2 border border-gray-100`} onContextMenu={handleContextMenu}>
+      <span className="text-sm font-medium text-primary-500 mb-1">{name}</span>
 
       {isJsonObject && parsedObject ? (
-        <div onClick={handlePillClick} className="cursor-text p-2" >
+        <div onClick={handlePillClick} className="cursor-text p-2">
           <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
         </div>
       ) : isQueryValue ? (
@@ -285,18 +286,18 @@ function AttributeComponent({ name, value, path }) {
         />
       ) : (
         <div className="relative w-full">
-          <input
+          <Input
             ref={inputRef}
-            type="text"
             value={localValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            className="w-full border border-gray-300 rounded-md shadow-md focus:ring-blue-500 focus:border-blue-500 p-2"
+            name={name}
+            label={name}
           />
           {showDropdown &&
             createPortal(
               <div
-                className="fixed z-50 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto p-1"
+                className="fixed z-50 bg-white border border-primary-100 rounded-lg shadow-lg max-h-60 overflow-auto p-1"
                 style={{
                   top: dropdownPosition.top + 4,
                   left: dropdownPosition.left,
@@ -307,8 +308,8 @@ function AttributeComponent({ name, value, path }) {
                 {filteredChildren.map((child, index) => (
                   <div
                     key={child}
-                    className={`p-1 cursor-pointer rounded-md ${
-                      index === selectedIndex ? 'bg-gray-100' : ''
+                    className={`p-1 cursor-pointer rounded-md transition-colors ${
+                      index === selectedIndex ? 'bg-primary-100 text-primary-700' : 'hover:bg-primary-50'
                     }`}
                     onClick={() => {
                       const reference = JSON.stringify({

@@ -58,14 +58,14 @@ function ObjectComponent({ name, data, path }) {
   }, [contextMenu]);
 
   return (
-    <div className="flex flex-col p-1 rounded-md" onContextMenu={handleContextMenu}>
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col gap-3 p-3 bg-white rounded-lg shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
+      <div className="flex justify-between items-center mb-2">
         {name && isNaN(parseInt(name)) && typeof name === 'string' && (
-          <div className="text-md font-medium pb-1 text-yellow-800">{name}</div>
+          <div className="text-md font-semibold text-primary-500 pb-1">{name}</div>
         )}
         <button
           onClick={() => setIsModalOpen(true)}
-          className="p-1 text-yellow-800 hover:text-yellow-900 rounded-full hover:bg-yellow-100"
+          className="p-2 text-white bg-primary-500 hover:bg-primary-600 rounded-full shadow transition-colors focus:ring-2 focus:ring-primary-200 focus:outline-none"
         >
           <HiPlus className="h-5 w-5" />
         </button>
@@ -80,12 +80,8 @@ function ObjectComponent({ name, data, path }) {
             return (
               <div
                 key={key}
-                className="border-gray-200 border bg-red-50 pl-2 pr-2 pb-2 mb-2 rounded-md text-"
-                style={{
-                  minWidth: '30px',
-                  maxWidth: '400px',
-                  flex: '1 0 auto',
-                }}
+                className="border border-highlight-100 bg-highlight-50 pl-2 pr-2 pb-2 mb-2 rounded-md shadow-sm"
+                style={{ minWidth: '30px', maxWidth: '400px', flex: '1 0 auto' }}
               >
                 {renderValue(key, value, childPath)}
               </div>
@@ -105,7 +101,7 @@ function ObjectComponent({ name, data, path }) {
             return (
               <div
                 key={key}
-                className="border-gray-400 border bg-blue-50 pb-2 pr-2 pl-2 rounded-lg shadow-xs"
+                className="border border-primary-100 bg-primary-50 pb-2 pr-2 pl-2 rounded-lg shadow-md"
                 style={{ width: `${sizeFactor}px`, minWidth: '200px' }}
               >
                 {renderValue(key, value, childPath)}
