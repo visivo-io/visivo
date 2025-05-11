@@ -57,12 +57,14 @@ function ObjectComponent({ name, data, path }) {
     }
   }, [contextMenu]);
 
+  const label = name ? name : data.name;
+
   return (
-    <div className="flex flex-col gap-3 p-3 bg-white rounded-lg border-primary-100 bg-primary-50 shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
+    <div className="flex flex-col  p-2 bg-white rounded-lg border-primary-100 bg-primary-50 shadow border border-gray-100 mt-2" onContextMenu={handleContextMenu}>
       <div className="flex items-center  justify-between">
         <div className="flex items-center gap-2">
-          <HiOutlineCube className="text-primary-500 w-5 h-5" />
-          <div className="text-md font-semibold text-primary-500 pb-1">{name}</div>
+          <HiOutlineCube className="text-primary-500 w-5 h-5 " />
+          <div className="text-md font-semibold text-primary-500 pb-1">{label}</div>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -75,12 +77,12 @@ function ObjectComponent({ name, data, path }) {
       <div className="border-b border-primary-100 mb-2" />
       {/* Non-Object Section */}
       {Object.keys(sortedNonObject).length > 0 && (
-        <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto w-full">
+        <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto w-full">
           {Object.entries(sortedNonObject).map(([key, value]) => {
             if (key === 'changed' || key === 'path' || key === 'name' || key === '__v') return null;
             const childPath = [...path, key];
             return (
-              <div key={key} className="flex-1 min-w-[200px]">
+              <div key={key} className="flex-1 min-w-[100px]">
                 {renderValue(key, value, childPath)}
               </div>
             );

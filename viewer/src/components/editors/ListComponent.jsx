@@ -45,8 +45,8 @@ function ListComponent({ name, data, path }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 p-3 bg-white rounded-lg shadow border border-gray-100 my-2" onContextMenu={handleContextMenu}>
-      <div className="flex items-center gap-2 mb-2 justify-between">
+    <div className="flex flex-col  p-1 bg-white rounded-lg shadow-sm border border-secondary-100 mt-2" onContextMenu={handleContextMenu}>
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <HiOutlineCollection className="text-secondary-500 w-5 h-5" />
           <div className="text-md font-semibold text-secondary-700 pb-1">{name}</div>
@@ -54,6 +54,7 @@ function ListComponent({ name, data, path }) {
         <button
           onClick={() => setIsModalOpen(true)}
           className="p-0.5 text-white bg-secondary-400 hover:bg-secondary-500 rounded-full shadow transition-colors focus:ring-2 focus:ring-gray-200 focus:outline-none"
+          
         >
           <HiPlus className="h-4 w-4" />
         </button>

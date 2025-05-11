@@ -25,6 +25,7 @@ function AttributeComponent({ name, value, path }) {
   const [queryType, setQueryType] = useState(null); // 'function' or 'bracket'
   const [contextMenu, setContextMenu] = useState(null);
   const deleteNamedChildAttribute = useStore(state => state.deleteNamedChildAttribute);
+  const pillRef = useRef(null);
 
   // Check if value is valid JSON object with required structure
   const checkAndParseJson = useCallback(val => {
@@ -179,6 +180,16 @@ function AttributeComponent({ name, value, path }) {
           const currentIndex = filtered.findIndex(child => child.toLowerCase() === searchTerm);
           setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
 
+          // Update dropdown position based on the pill's position
+          if (pillRef.current) {
+            const rect = pillRef.current.getBoundingClientRect();
+            setDropdownPosition({
+              top: rect.bottom,
+              left: rect.left,
+              width: rect.width,
+            });
+          }
+
           // Focus the input element after a brief delay to ensure the input is rendered
           setTimeout(() => {
             if (inputRef.current) {
@@ -227,9 +238,9 @@ function AttributeComponent({ name, value, path }) {
     if (showDropdown && inputRef.current) {
       const rect = inputRef.current.getBoundingClientRect();
       setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width+10,
       });
     }
   }, [showDropdown, localValue]);
@@ -272,10 +283,10 @@ function AttributeComponent({ name, value, path }) {
   const flexDirection = typeof name === 'string' ? 'flex-col' : 'flex-row';
 
   return (
-    <div className={`flex ${flexDirection} gap-2 items-center`} onContextMenu={handleContextMenu}>
+    <div className={`flex ${flexDirection} items-center`} onContextMenu={handleContextMenu}>
       {isJsonObject && parsedObject ? (
         <InputShell label={name} hasContent={!!parsedObject}>
-          <div onClick={handlePillClick} className="cursor-text">
+          <div onClick={handlePillClick} className="cursor-text" ref={pillRef}>
             <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
           </div>
         </InputShell>
@@ -302,7 +313,7 @@ function AttributeComponent({ name, value, path }) {
               <div
                 className="fixed z-50 bg-white border border-primary-100 rounded-lg shadow-lg max-h-60 overflow-auto p-1"
                 style={{
-                  top: dropdownPosition.top + 4,
+                  top: dropdownPosition.top ,
                   left: dropdownPosition.left,
                   width: dropdownPosition.width,
                 }}
