@@ -1,5 +1,4 @@
 import React, { useEffect, useCallback } from 'react';
-import { useLoaderData } from 'react-router-dom';
 import ExplorerTree from './ExplorerTree';
 import { executeQuery, fetchTraceQuery } from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
@@ -9,7 +8,6 @@ import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
 import QueryPanel from './QueryPanel';
 import Divider from './Divider';
 import ResultsPanel from './ResultsPanel';
-import useExplorerStore from '../../stores/explorerStore';
 import useStore from '../../stores/store';
 import { getAncestors } from '../lineage/graphUtils';
 
@@ -56,21 +54,10 @@ const Info = tw.div`
 const HIDDEN_MODEL_TYPES = ['CsvScriptModel', 'LocalMergeModel'];
 
 const QueryExplorer = () => {
-  const project = useLoaderData();
   const editorRef = React.useRef(null);
   const monacoRef = React.useRef(null);
 
   const {
-    // State values
-    isDragging,
-    explorerData,
-    selectedType,
-    treeData,
-    selectedSource,
-    query,
-    info,
-    isLoading,
-    // State setters
     setQuery,
     setError,
     setResults,
@@ -82,11 +69,19 @@ const QueryExplorer = () => {
     setQueryStats,
     setSplitRatio,
     setIsDragging,
-    setProject,
     setActiveWorksheetId,
-  } = useExplorerStore();
+  } = useStore();
 
-  const { namedChildren } = useStore();
+  const project = useStore(state => state.project);
+  const namedChildren = useStore(state => state.namedChildren);
+  const isLoading = useStore(state => state.isLoading);
+  const isDragging = useStore(state => state.isDragging);
+  const query = useStore(state => state.query);
+  const info = useStore(state => state.info);
+  const explorerData = useStore(state => state.explorerData);
+  const selectedSource = useStore(state => state.selectedSource);
+  const selectedType = useStore(state => state.selectedType);
+  const treeData = useStore(state => state.treeData);
 
   const {
     worksheets,
@@ -96,9 +91,8 @@ const QueryExplorer = () => {
 
   // Set project and activeWorksheetId in store
   useEffect(() => {
-    setProject(project);
     setActiveWorksheetId(activeWorksheetId);
-  }, [project, activeWorksheetId, setProject, setActiveWorksheetId]);
+  }, [activeWorksheetId, setActiveWorksheetId]);
 
   const handleMouseDown = e => {
     setIsDragging(true);
@@ -173,6 +167,7 @@ const QueryExplorer = () => {
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
+            .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .map((model, index) => ({
               id: `model-${model.name}-${index}`,
@@ -400,7 +395,7 @@ const QueryExplorer = () => {
       <div className="flex flex-col h-full">
         {info && (
           <Info>
-            <p>{info}</p>
+            <p>{query}</p>
           </Info>
         )}
         <MainContent>

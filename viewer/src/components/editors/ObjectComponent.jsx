@@ -81,7 +81,11 @@ function ObjectComponent({ name, data, path }) {
               <div
                 key={key}
                 className="border-gray-200 border bg-red-50 pl-2 pr-2 pb-2 mb-2 rounded-md text-"
-                style={{ minWidth: '30px', maxWidth: '400px', flex: '1 0 auto' }}
+                style={{
+                  minWidth: '30px',
+                  maxWidth: '400px',
+                  flex: '1 0 auto',
+                }}
               >
                 {renderValue(key, value, childPath)}
               </div>

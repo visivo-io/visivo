@@ -33,7 +33,6 @@ class ParentModel(ABC):
         return []
 
     def dag(self, node_permit_list=None) -> ProjectDag:
-
         dag = ProjectDag()
         dag.add_node(self)
         self.__build_dag(

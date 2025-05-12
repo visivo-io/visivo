@@ -202,12 +202,6 @@ class FlaskApp:
                 }
             ]
 
-        @self.app.route("/data/dag.json")
-        def dag():
-            with open(f"{output_dir}/dag.json", "r") as f:
-                dag_json = json.load(f)
-                return dag_json
-
         @self.app.route("/", defaults={"path": "index.html"})
         @self.app.route("/<path:path>")
         def viewer_file(path):

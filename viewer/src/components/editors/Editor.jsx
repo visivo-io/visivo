@@ -5,14 +5,14 @@ import PreviewPanel from './PreviewPanel';
 import useStore from '../../stores/store';
 
 const Editor = () => {
-  const projectData = useStore(state => state.projectData);
+  const project = useStore(state => state.project);
 
   return (
     <div className="flex h-[calc(100vh-50px)] bg-gray-50 overflow-hidden">
       <ObjectsPanel />
       <div className="flex-1 flex flex-col overflow-hidden">
         <EditorPanel />
-        <PreviewPanel project={projectData} />
+        <PreviewPanel project={project} />
       </div>
     </div>
   );

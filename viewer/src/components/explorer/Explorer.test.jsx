@@ -8,7 +8,7 @@ import Explorer from './Explorer';
 import * as queryService from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
 import * as api from '../../api/worksheet';
-import useExplorerStore from '../../stores/explorerStore';
+import useStore from '../../stores/store';
 
 let mockDefaultStore = {
   // State values
@@ -23,6 +23,16 @@ let mockDefaultStore = {
   queryStats: null,
   splitRatio: 0.5,
   error: null,
+  project: {
+    id: 'test-project',
+  },
+  namedChildren: {
+    model1: {
+      id: 'model1',
+      name: 'model1',
+      type: 'model',
+    },
+  },
   // State setters
   setQuery: jest.fn(),
   setError: jest.fn(),
@@ -40,11 +50,14 @@ let mockDefaultStore = {
   handleRunQuery: jest.fn(),
 };
 // Mock Zustand store
-jest.mock('../../stores/explorerStore', () => ({
+jest.mock('../../stores/store', () => ({
   __esModule: true,
-  default: jest.fn(() => ({
-    ...mockDefaultStore,
-  })),
+  default: jest.fn(passedFunction => {
+    if (passedFunction) {
+      return passedFunction(mockDefaultStore);
+    }
+    return mockDefaultStore;
+  }),
 }));
 
 // Mock dependencies
@@ -274,7 +287,7 @@ describe('Explorer', () => {
   });
 
   it('loads model queries when clicking on models', async () => {
-    const mockStore = useExplorerStore();
+    const mockStore = useStore();
     mockStore.explorerData = mockExplorerData;
 
     queryService.executeQuery.mockResolvedValue({

@@ -7,6 +7,7 @@ Logger.instance().info("Starting Visivo...")
 import click
 import os
 import importlib
+import cProfile
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
@@ -26,7 +27,7 @@ from .commands.authorize import authorize
 
 
 @click.group()
-@click.option("--profile", is_flag=True)
+@click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
 @click.option("-fcpl", "--force-complete-property-loading", is_flag=True)
 @click.version_option(version=importlib.metadata.version("visivo"))
@@ -35,11 +36,13 @@ def visivo(env_file, profile, force_complete_property_loading):
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
-    # https://github.com/nschloe/tuna
+    # Profiling can be done with https://github.com/nschloe/tuna
+    #  `tuna visivo-profile.dmp`
+    # If you need to profile the import time, you can use the following command:
+    #  `python -X importtime -m visivo.command_line compile 2> import.log`
+    #  `tuna import.log`
     if profile:
         import cProfile
-        import pstats
-        import io
         import atexit
 
         Logger.instance().info("Profiling...")
@@ -49,9 +52,7 @@ def visivo(env_file, profile, force_complete_property_loading):
         def exit():
             pr.disable()
             Logger.instance().info("Profiling completed")
-            s = io.StringIO()
-            pstats.Stats(pr, stream=s).sort_stats("cumulative")
-            pstats.dump_stats("visivo-profile.dmp")
+            pr.dump_stats("visivo-profile.dmp")
 
         atexit.register(exit)
 

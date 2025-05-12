@@ -98,7 +98,9 @@ test('opens create modal when create button is clicked', async () => {
 
   render(<ObjectsPanel />);
 
-  const createButton = screen.getByRole('button', { name: /\+ Create New Object/i });
+  const createButton = screen.getByRole('button', {
+    name: /\+ Create New Object/i,
+  });
   await userEvent.click(createButton);
 
   // Look for the modal header specifically
