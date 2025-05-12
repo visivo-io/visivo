@@ -395,7 +395,7 @@ const QueryExplorer = () => {
       <div className="flex flex-col h-full">
         {info && (
           <Info>
-            <p>{info}</p>
+            <p>{query}</p>
           </Info>
         )}
         <MainContent>
