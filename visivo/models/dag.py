@@ -125,7 +125,8 @@ def all_descendants(dag, from_node=None, depth=None):
         descendants_list = list(descendants(dag, from_node))
         descendants_list.append(from_node)
         return set(descendants_list)
-    # depth_first_search.dfs_tree is slow, so it is only used when 
+
+    # depth_first_search.dfs_tree is slow, so it is only used when depth is not None
     return depth_first_search.dfs_tree(dag, from_node, depth_limit=depth)
 
 
