@@ -26,11 +26,9 @@ tasks:
     run: |
       cat .python-version | tee $MINT_VALUES/python
       cat viewer/.nvmrc | sed 's/^v//' | tee $MINT_VALUES/node
-      cat test-projects/ror/.ruby-version | tee $MINT_VALUES/ruby
     filter:
       - .python-version
       - viewer/.nvmrc
-      - test-projects/ror/.ruby-version
 
   - key: python
     call: mint/install-python 1.2.1
@@ -41,11 +39,6 @@ tasks:
     call: mint/install-node 1.0.10
     with:
       node-version: ${{ tasks.versions.values.node }}
-
-  - key: ruby
-    call: mint/install-ruby 1.1.1
-    with:
-      ruby-version: ${{ tasks.versions.values.ruby }}
 
   - key: poetry
     use: python
@@ -233,23 +226,6 @@ tasks:
       - test-projects/integration
       - tests/setup/populate_ci_mysql.sql
 
-  - key: gems
-    use: [ruby, code]
-    run: |
-      cd test-projects/ror
-      bundle install
-    filter:
-      - test-projects/ror/Gemfile
-      - test-projects/ror/Gemfile.lock
-
-  - key: test-ruby-on-rails
-    use: [gems, visivo-install]
-    run: |
-      cd test-projects/ror
-      bundle exec rspec --format json --out rspec.json --format progress
-    outputs:
-      test-results:
-        - path: test-projects/ror/rspec.json
 
   - key: dbt-dependencies
     use: [code, poetry]
