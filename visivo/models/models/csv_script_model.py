@@ -1,10 +1,10 @@
-import hashlib
-from typing import List, Optional
+from typing import List
 from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
 from visivo.models.sources.duckdb_source import DuckdbSource
 import io
 import click
+import os
 
 
 class CsvScriptModel(Model):
@@ -106,9 +106,10 @@ class CsvScriptModel(Model):
         return f"select * from {self.table_name}"
 
     def get_duckdb_source(self, output_dir) -> DuckdbSource:
+        os.makedirs(f"{output_dir}/models", exist_ok=True)
         return DuckdbSource(
             name=f"model_{self.name}_generated_source",
-            database=f"{output_dir}/{self.name}.duckdb",
+            database=f"{output_dir}/models/{self.name}.duckdb",
             type="duckdb",
         )
 

@@ -20,13 +20,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      
+
       - name: Setup Poetry
         uses: Gr1N/setup-poetry@v9
-      
+
       - name: Build App
         run: |
           cd viewer && yarn install && yarn deploy && cd ..
+          poetry install
           EXCLUDE_TRACE_PROPS=False poetry run write-schema-json
           poetry version ${{ inputs.version }}
 
@@ -35,8 +36,8 @@ jobs:
         with:
           author_name: Visivo
           author_email: info@visivo.io
-          message: 'Build viewer for Python package'
-     
+          message: "Build viewer for Python package"
+
       - name: Add and push tag
         run: |
           git config --global user.email "info@visivo.io"
@@ -47,7 +48,6 @@ jobs:
           git push origin :refs/tags/latest
           git tag -a latest -m "Latest versioned release"
           git push origin tag latest
-
 
       - name: Create GitHub release
         run: |

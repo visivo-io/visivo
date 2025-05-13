@@ -46,6 +46,7 @@ class LocalMergeModel(Model, ParentModel):
     )
 
     def get_duckdb_source(self, output_dir, dag) -> DuckdbSource:
+        os.makedirs(f"{output_dir}/models", exist_ok=True)
         attach = list(
             map(
                 lambda model: DuckdbAttachment(
@@ -58,7 +59,7 @@ class LocalMergeModel(Model, ParentModel):
 
         return DuckdbSource(
             name=f"model_{self.name}_generated_source",
-            database=f"{output_dir}/{self.name}.duckdb",
+            database=f"{output_dir}/models/{self.name}.duckdb",
             type="duckdb",
             attach=attach,
         )
@@ -97,9 +98,10 @@ class LocalMergeModel(Model, ParentModel):
         elif isinstance(model, LocalMergeModel):
             return model.get_duckdb_source(output_dir=output_dir, dag=dag)
         else:
+            os.makedirs(f"{output_dir}/models", exist_ok=True)
             return DuckdbSource(
                 name=f"model_{model.name}_generated_source",
-                database=f"{output_dir}/{model.name}.duckdb",
+                database=f"{output_dir}/models/{model.name}.duckdb",
                 type="duckdb",
             )
 
