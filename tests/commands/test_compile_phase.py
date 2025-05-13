@@ -33,7 +33,6 @@ def test_filtered_dashboard():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter="+dashboard+",
     )
     assert "Additional Trace" not in os.listdir(f"{output_dir}/traces")
     assert "trace" in os.listdir(f"{output_dir}/traces")
@@ -54,7 +53,6 @@ def test_compile_csv_script_model():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter="+dashboard+",
     )
     assert "trace" in os.listdir(f"{output_dir}/traces")
     with open(f"{output_dir}/traces/trace/query.sql") as f:
@@ -100,7 +98,6 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter="+dashboard+",
     )
     assert "trace" in os.listdir(f"{output_dir}/traces")
     with open(f"{output_dir}/traces/trace/query.sql") as f:
@@ -159,7 +156,6 @@ def test_explorer_json_creation():
         default_source="source",
         working_dir=working_dir,
         output_dir=output_dir,
-        dag_filter=None,
     )
 
     # Verify explorer.json was created

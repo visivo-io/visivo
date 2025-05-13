@@ -30,19 +30,15 @@ def compile_phase(
     default_source: str,
     working_dir: str,
     output_dir: str,
-    dag_filter: str = None,
     dbt_profile: str = None,
     dbt_target: str = None,
 ):
-    # Track dbt phase
-
     # Track parse project
     parse_start = time()
     Logger.instance().debug("    Running parse project phase...")
     project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
     parse_duration = round(time() - parse_start, 2)
-    if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"Project parsing completed in {parse_duration}s")
+    Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
 
     # Track artifacts writing
     artifacts_start = time()
@@ -59,40 +55,18 @@ def compile_phase(
         explorer_data = serializer.create_flattened_project()
         json.dump(explorer_data, fp)
     artifacts_duration = round(time() - artifacts_start, 2)
-    if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"Project artifacts written in {artifacts_duration}s")
-
-    # Track trace query writing
-    traces_start = time()
-    Logger.instance().debug("    Writing trace queries...")
-    dag = project.dag()
-    filtered_dags = dag.filter_dag(dag_filter)
-    for filtered_dag in filtered_dags:
-        traces = all_descendants_of_type(type=Trace, dag=filtered_dag)
-        for trace in traces:
-            model = all_descendants_of_type(type=Model, dag=filtered_dag, from_node=trace)[0]
-            if isinstance(model, CsvScriptModel):
-                source = model.get_duckdb_source(output_dir=output_dir)
-            elif isinstance(model, LocalMergeModel):
-                source = model.get_duckdb_source(output_dir=output_dir, dag=filtered_dag)
-            else:
-                source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
-            tokenized_trace = TraceTokenizer(trace=trace, model=model, source=source).tokenize()
-            query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
-            QueryWriter(trace=trace, query_string=query_string, output_dir=output_dir).write()
-    traces_duration = round(time() - traces_start, 2)
-    if os.environ.get("STACKTRACE"):
-        Logger.instance().info(f"Trace queries written in {traces_duration}s")
+    Logger.instance().debug(f"Project artifacts written in {artifacts_duration}s")
 
     total_duration = round(time() - compile_import_start, 2)
+
     with open(f"{output_dir}/error.json", "w") as error_file:
         error_file.write(json.dumps({}))
+
     Logger.instance().success(
         f"Compile completed in {total_duration}s "
-        f"(imports: {import_duration}s, "
+        f"imports: {import_duration}s, "
         f"parse: {parse_duration}s, "
         f"artifacts: {artifacts_duration}s, "
-        f"traces: {traces_duration}s)"
     )
 
     return project
