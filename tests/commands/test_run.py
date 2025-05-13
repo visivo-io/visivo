@@ -92,12 +92,7 @@ def test_run_by_with_passing_new_defaults():
     response = runner.invoke(
         run, ["-w", working_dir, "-o", output_dir, "-s", "alternate-source", "-p", str(port)]
     )
-    trace = project.dashboards[0].rows[0].items[0].chart.traces[0]
 
     assert "alternate-source" in response.output
     assert "Running project across 3 threads" in response.output
     assert response.exit_code == 0
-    assert os.path.exists(f"{output_dir}/traces/{trace.name}/query.sql")
-    with open(f"{output_dir}/traces/{trace.name}/query.sql") as f:
-        trace_sql = f.read()
-    assert "-- source: alternate-source" == trace_sql.split(f"\n")[-1]

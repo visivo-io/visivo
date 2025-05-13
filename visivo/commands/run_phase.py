@@ -50,7 +50,6 @@ def run_phase(
             default_source=default_source,
             working_dir=working_dir,
             output_dir=output_dir,
-            dag_filter=dag_filter,
             dbt_profile=dbt_profile,
             dbt_target=dbt_target,
         )

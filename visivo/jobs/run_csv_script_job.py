@@ -1,8 +1,5 @@
 from visivo.logging.logger import Logger
-from visivo.models.base.parent_model import ParentModel
-from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.project import Project
 from visivo.jobs.job import (
     Job,
     JobResult,

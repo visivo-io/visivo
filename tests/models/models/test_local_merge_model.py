@@ -41,8 +41,8 @@ def test_insert_dependent_models_successfully_inserts_to_duckdb(mocker):
 
     local_merge_model._insert_dependent_models_to_duckdb(output_dir, local_merge_model.dag())
 
-    assert os.path.exists(f"{output_dir}/model1.duckdb")
-    assert os.path.exists(f"{output_dir}/model2.duckdb")
+    assert os.path.exists(f"{output_dir}/models/model1.duckdb")
+    assert os.path.exists(f"{output_dir}/models/model2.duckdb")
 
 
 def test_local_merge_model_get_duckdb_source():
@@ -62,7 +62,11 @@ def test_local_merge_model_get_duckdb_source():
     local_merge_model_source = local_merge_model.get_duckdb_source(
         output_dir=output_dir, dag=local_merge_model.dag()
     )
-    assert local_merge_model_source.attach[0].source.database == f"{output_dir}/model1.duckdb"
+    assert (
+        local_merge_model_source.attach[0].source.database == f"{output_dir}/models/model1.duckdb"
+    )
     assert local_merge_model_source.attach[0].schema_name == "model1"
-    assert local_merge_model_source.attach[1].source.database == f"{output_dir}/model2.duckdb"
+    assert (
+        local_merge_model_source.attach[1].source.database == f"{output_dir}/models/model2.duckdb"
+    )
     assert local_merge_model_source.attach[1].schema_name == "model2"

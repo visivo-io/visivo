@@ -35,7 +35,6 @@ def serve_phase(
                 default_source=default_source,
                 working_dir=working_dir,
                 output_dir=output_dir,
-                dag_filter=dag_filter,
             )
 
             changed_dag_filter = project.dag().get_diff_dag_filter(
