@@ -65,7 +65,7 @@ class Serializer:
         return flattened
 
     def dereference(self) -> Project:
-        project = self.project.model_copy(deep=True)
+        project = Project(**self.project.model_dump())
         project.cli_version = version("visivo")
         dag = project.dag()
 
