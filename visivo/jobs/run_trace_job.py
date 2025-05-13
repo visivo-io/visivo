@@ -61,7 +61,7 @@ def _get_query_string(trace, dag, output_dir):
     if isinstance(model, CsvScriptModel):
         source = model.get_duckdb_source(output_dir=output_dir)
     elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=filtered_dag)
+        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
     else:
         source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
     tokenized_trace = TraceTokenizer(trace=trace, model=model, source=source).tokenize()

@@ -4,26 +4,13 @@ compile_import_start = time()
 from visivo.logging.logger import Logger
 
 Logger.instance().debug("Compiling project...")
-import os
 import json
 
-from visivo.models.dag import all_descendants_of_type
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.models.local_merge_model import LocalMergeModel
-from visivo.models.sources.source import Source
-from visivo.models.models.model import Model
-from visivo.models.trace import Trace
-from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
-from visivo.query.query_string_factory import QueryStringFactory
-from visivo.query.trace_tokenizer import TraceTokenizer
-from visivo.query.query_writer import QueryWriter
-
 from visivo.commands.parse_project_phase import parse_project_phase
 
 import_duration = round(time() - compile_import_start, 2)
-if os.environ.get("STACKTRACE"):
-    Logger.instance().info(f"Compile Import completed in {import_duration}s")
+Logger.instance().debug(f"Compile Import completed in {import_duration}s")
 
 
 def compile_phase(

@@ -3,7 +3,6 @@ from .options import (
     output_dir,
     working_dir,
     source,
-    dag_filter,
     dbt_profile,
     dbt_target,
 )

@@ -13,31 +13,6 @@ from visivo.models.defaults import Defaults
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 
 
-def test_filtered_dashboard():
-    output_dir = temp_folder()
-    project = ProjectFactory(defaults=Defaults(source_name="source"))
-    additional_dashboard = DashboardFactory(name="Other Dashboard")
-    additional_dashboard.rows[0].name = "Additional Row"
-    additional_dashboard.rows[0].items[0].name = "Additional Item"
-    additional_dashboard.rows[0].items[0].chart.name = "Additional Chart"
-    additional_dashboard.rows[0].items[0].chart.selector.name = "Additional Chart Selector"
-    additional_dashboard.rows[0].items[0].chart.traces[0].name = "Additional Trace"
-    additional_dashboard.rows[0].items[0].chart.traces[0].model.name = "Additional Model"
-    project.dashboards.append(additional_dashboard)
-    create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-
-    tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
-    working_dir = os.path.dirname(tmp)
-
-    compile_phase(
-        default_source="source",
-        working_dir=working_dir,
-        output_dir=output_dir,
-    )
-    assert "Additional Trace" not in os.listdir(f"{output_dir}/traces")
-    assert "trace" in os.listdir(f"{output_dir}/traces")
-
-
 def test_compile_csv_script_model():
     output_dir = temp_folder()
     project = ProjectFactory()
@@ -54,9 +29,7 @@ def test_compile_csv_script_model():
         working_dir=working_dir,
         output_dir=output_dir,
     )
-    assert "trace" in os.listdir(f"{output_dir}/traces")
-    with open(f"{output_dir}/traces/trace/query.sql") as f:
-        assert model.name in f.read()
+    assert "project.json" in os.listdir(f"{output_dir}")
 
 
 def test_compile_csv_script_model_with_nested_local_merge_model():
@@ -99,9 +72,7 @@ def test_compile_csv_script_model_with_nested_local_merge_model():
         working_dir=working_dir,
         output_dir=output_dir,
     )
-    assert "trace" in os.listdir(f"{output_dir}/traces")
-    with open(f"{output_dir}/traces/trace/query.sql") as f:
-        assert outer_merge_model.name in f.read()
+    assert "project.json" in os.listdir(f"{output_dir}")
 
 
 def test_explorer_json_creation():
