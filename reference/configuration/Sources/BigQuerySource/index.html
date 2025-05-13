@@ -6125,16 +6125,16 @@
 
 
 <div><h1 id="bigquerysource">BigQuerySource</h1>
-<p>BigQuerySources hold the connection information to Google BigQuery instances. </p>
+<p>BigQuerySources hold the connection information to Google BigQuery instances.</p>
 <div class="admonition info">
 <p class="admonition-title">BigQuery Authentication</p>
-<p>You can authenticate BigQuery in one of two ways: 
+<p>You can authenticate BigQuery in one of two ways:
  1. Pass a base64 encoded service account key to the <code>credentials_base64</code> field.
  2. Set the absolute file path to the credentials file in a environment variable named <code>GOOGLE_APPLICATION_CREDENTIALS</code>.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Base64 Encoded Credentials</label><label for="__tabbed_1_2"><code>GOOGLE_APPLICATION_CREDENTIALS</code> Environment Variable</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery 
+<p>Using encoding the service key json credential file to base64 can be a useful way to authenticate BigQuery
 without logging into Google Cloud Console each time and makes it easier to manage credentials in CI/CD pipelines.</p>
 <p>However utilizing base64 encoding requires a few extra steps:</p>
 <ol>
@@ -6167,8 +6167,8 @@ python<span class="w"> </span>-m<span class="w"> </span>base64<span class="w"> <
 </ol>
 </div>
 <div class="tabbed-block">
-<p>If you use gcloud locally you probably have this environment variable configured already. </p>
-<p>Run <code>echo $GOOGLE_APPLICATION_CREDENTIALS</code> in your terminal. If it returns your crendetials then 
+<p>If you use gcloud locally you probably have this environment variable configured already.</p>
+<p>Run <code>echo $GOOGLE_APPLICATION_CREDENTIALS</code> in your terminal. If it returns your crendetials then
 you're all set. and can configure a BigQuerySource without the <code>credentials_base64</code> field.</p>
 <p>If you don't have the environment variable, follow these steps:</p>
 <ol>
@@ -6191,7 +6191,7 @@ you're all set. and can configure a BigQuerySource without the <code>credentials
 </ol>
 </li>
 <li>Set the environment variable
-    You can set the environment variable in your shell profile file. 
+    You can set the environment variable in your shell profile file.
     <div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">GOOGLE_APPLICATION_CREDENTIALS</span><span class="o">=</span><span class="s2">"/path/to/your/credentials.json"</span>
 </code></pre></div>
     or in your untracked .env file.
@@ -6202,7 +6202,7 @@ This method is easier to manage and does not require any extra steps to authenti
 </div>
 </div>
 </div>
-<p>The service account needs at minimum the "BigQuery User" role to execute queries. 
+<p>The service account needs at minimum the "BigQuery User" role to execute queries.
 For more restricted access, you can create a custom role with just the required permissions:</p>
 <ul>
 <li>bigquery.jobs.create</li>
@@ -6252,6 +6252,12 @@ For more restricted access, you can create a custom role with just the required 
 <td>The unique name of the object across the entire project.</td>
 </tr>
 <tr>
+<td>file_path</td>
+<td>string</td>
+<td>None</td>
+<td>The path to the file that contains the object definition.</td>
+</tr>
+<tr>
 <td>host</td>
 <td>string</td>
 <td>None</td>
@@ -6286,6 +6292,12 @@ For more restricted access, you can create a custom role with just the required 
 <td>string</td>
 <td>None</td>
 <td>The schema that the Visivo project will use in queries.</td>
+</tr>
+<tr>
+<td>after_connect</td>
+<td>string</td>
+<td>None</td>
+<td></td>
 </tr>
 <tr>
 <td>project</td>

@@ -6182,11 +6182,11 @@
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(waterfall-data)</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waterfall</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(label)</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(value)</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{label}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{value}</span>
 <span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"initial"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"total"</span><span class="p p-Indicator">]</span>
 <span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( idx asc)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ idx asc}</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Waterfall Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
@@ -6216,8 +6216,8 @@
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(waterfall-data-colors)</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waterfall</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(label)</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(value)</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{label}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{value}</span>
 <span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"initial"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"relative"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"total"</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">marker</span><span class="p">:</span><span class="w"> </span>
@@ -6232,7 +6232,7 @@
 <span class="w">            </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'orange'</span>
 <span class="w">            </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span>
 <span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( idx asc)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ idx asc}</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Waterfall Chart with Custom Colors</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
@@ -6264,10 +6264,10 @@
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">waterfall</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(half)</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(quarter)</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(value)</span>
-<span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(mode)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{half}</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{quarter}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{value}</span>
+<span class="w">      </span><span class="nt">measure</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{mode}</span>
 <span class="w">      </span><span class="nt">hovertemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"%{x}:</span><span class="nv"> </span><span class="s">%{y:$.2f}"</span>
 <span class="w">      </span><span class="nt">texttemplate</span><span class="p">:</span><span class="w"> </span><span class="s">"%{delta:$.2f}"</span>
 <span class="w">      </span><span class="nt">textposition</span><span class="p">:</span><span class="w"> </span><span class="s">"outside"</span>
@@ -6276,7 +6276,7 @@
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">"orange"</span>
 <span class="w">          </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
 <span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( idx asc)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ idx asc}</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Waterfall Chart with Connectors</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>

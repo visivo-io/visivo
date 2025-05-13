@@ -6139,7 +6139,7 @@
 <span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
 <span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 <span class="w">  </span><span class="w w-Error">  </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(date_column between '{{ seven_days_ago }}'::date and '{{ current_timestamp }}'::date )</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{date_column between '{{ seven_days_ago }}'::date and '{{ current_timestamp }}'::date }</span>
 </code></pre></div>
 </div>
 <p>It also gives you to the ability to store configurations and reuse them. </p>

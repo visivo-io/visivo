@@ -6177,14 +6177,14 @@
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="s">'SELECT</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">finance_data_atlas.FINANCE.CMCCD2019'</span>
 <span class="w">    </span><span class="nt">source_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">remote-snowflake</span>
-<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( "Cryptocurrency Name" )</span>
+<span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ "Cryptocurrency Name" }</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', "Date")::date::varchar )</span>
-<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( max_by("Value", "Date") )</span>
-<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( max("Value") )</span>
-<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( min("Value") )</span>
-<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( min_by("Value", "Date") )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', "Date")::date::varchar }</span>
+<span class="w">      </span><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ max_by("Value", "Date") }</span>
+<span class="w">      </span><span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ max("Value") }</span>
+<span class="w">      </span><span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ min("Value") }</span>
+<span class="w">      </span><span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ min_by("Value", "Date") }</span>
 <span class="w">      </span><span class="nt">increasing</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'green'</span>
@@ -6194,9 +6194,9 @@
 <span class="w">      </span><span class="nt">xaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'x'</span>
 <span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'y'</span>
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query("Date" &gt;= '2015-01-01')</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') )</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( "Measure Name" = 'Price, USD' )</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{"Date" &gt;= '2015-01-01'}</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') }</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ "Measure Name" = 'Price, USD' }</span>
 </code></pre></div>
 <h2 id="attributes">Attributes</h2>
 <table>
@@ -6222,10 +6222,10 @@
 <td>The unique name of the object across the entire project.</td>
 </tr>
 <tr>
-<td>changed</td>
-<td>boolean</td>
-<td>True</td>
-<td><strong>NOT A CONFIGURATION</strong> attribute is used by the cli to determine if the trace should be re-run</td>
+<td>file_path</td>
+<td>string</td>
+<td>None</td>
+<td>The path to the file that contains the object definition.</td>
 </tr>
 <tr>
 <td>model</td>
@@ -6243,13 +6243,13 @@
 <td>order_by</td>
 <td>array</td>
 <td>None</td>
-<td>Takes a <code>column()</code> or <code>query()</code> reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using <code>asc</code> and <code>desc</code>.</td>
+<td>Takes a <code>column()</code> or <code>?{}</code> reference. Orders the dataset so that information is presented in the correct order when the trace is added to a chart. Order by query statements support using <code>asc</code> and <code>desc</code>.</td>
 </tr>
 <tr>
 <td>filters</td>
 <td>array</td>
 <td>None</td>
-<td>A list of <code>column()</code> or <code>query()</code> functions that evaluate to <code>true</code> or <code>false</code>. Can include aggregations in the sql statement.</td>
+<td>A list of <code>column()</code> or <code>?{}</code> functions that evaluate to <code>true</code> or <code>false</code>. Can include aggregations in the sql statement.</td>
 </tr>
 <tr>
 <td>tests</td>

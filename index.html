@@ -6476,10 +6476,10 @@ Now you have access to the <code>visivo</code> CLI!
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(widget_sales)</span>
 <span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', completed_at) )</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( sum(amount) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', completed_at) }</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ sum(amount) }</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case sum(amount) &gt; 200 then 'green' else 'blue' end )</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ case sum(amount) &gt; 200 then 'green' else 'blue' end }</span>
 <span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">square</span>
 <span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">'lines'</span>
 <span class="nt">charts</span><span class="p">:</span>
@@ -6544,10 +6544,10 @@ Then you can just run <code>visivo test</code> and Visivo will default to remote
 <span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( date_trunc('week', completed_at) )</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( sum(amount) )</span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', completed_at) }</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ sum(amount) }</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( case sum(amount) &gt; 200 then 'green' else 'blue' end )</span>
+<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ case sum(amount) &gt; 200 then 'green' else 'blue' end }</span>
 <span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">square</span>
 <span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">'lines'</span>
 </code></pre></div>
@@ -6555,8 +6555,8 @@ We won't go into all of the details of the trace here, but a few things to note:
 <ul>
 <li><strong><code>type</code></strong> tells Visivo how to plot the data. Visivo utilizes plotly.js and you can use most plotly trace types for this attribute. </li>
 <li><strong><code>cohort_on</code></strong> let's Visivo know that you would like cut your chart by the <code>widget</code> column from the <code>widget_sales</code> table. Thus you will get as many lines as you have distinct <code>widget</code> types in the table from this trace. </li>
-<li><strong><code>query( )</code></strong> is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. </li>
-<li>When <strong><code>query()</code></strong> is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. </li>
+<li><strong><code>?{ }</code></strong> is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. </li>
+<li>When <strong><code>?{}</code></strong> is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. </li>
 </ul>
 <p>Traces are able to be sourced from different sources. You can set the default source at the trace level by specifying a source name in the <code>source_name</code> attribute of the source. </p>
 <h3 id="create-a-chart">Create a Chart</h3>

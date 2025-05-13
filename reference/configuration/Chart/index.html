@@ -6175,13 +6175,13 @@
 
 <div><h1 id="chart">Chart</h1>
 <h2 id="overview">Overview</h2>
-<p>Charts enable you to combine one or more <a href="../Trace/">traces</a> with <a href="./Layout/">layout</a> configurations <em>(titles, axis labels, ect.)</em>. </p>
+<p>Charts enable you to combine one or more <a href="../Trace/">traces</a> with <a href="./Layout/">layout</a> configurations <em>(titles, axis labels, ect.)</em>.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>You can add traces of <strong>different types</strong> to a chart. For example, you may want to display an <a href="../Trace/Props/Indicator/"><code>indicator</code></a> 
+<p>You can add traces of <strong>different types</strong> to a chart. For example, you may want to display an <a href="../Trace/Props/Indicator/"><code>indicator</code></a>
 on top of a <a href="../Trace/Props/Bar/"><code>bar</code></a> to show how what the bars add up to.</p>
 </div>
-<p>You can also configure interactivity in your charts by setting up a  <a href="../Selector/"><code>selector</code></a>. </p>
+<p>You can also configure interactivity in your charts by setting up a  <a href="../Selector/"><code>selector</code></a>.</p>
 <h2 id="common-configurations">Common Configurations</h2>
 <h3 id="single-trace">Single Trace</h3>
 <p>This is the most common and simplest chart setup. You will use this when you want to display a single trace.</p>
@@ -6190,41 +6190,41 @@ on top of a <a href="../Trace/Props/Bar/"><code>bar</code></a> to show how what 
 <details class="note">
 <summary>Code</summary>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Array of Numbers</span><span class="w"> </span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Array of Numbers</span>
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"curl"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"-s"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"</span><span class="p p-Indicator">]</span>
 
 <span class="nt">traces</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scatter</span><span class="w"> </span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scatter</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Array of Numbers)</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
-<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( ln(numbers_column))</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(numbers_column)</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">markers</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ ln(numbers_column)}</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{numbers_column}</span>
+<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">markers</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( abs(sin(exp(numbers_column) - 5)*100) )</span>
-<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( abs(cos(exp(numbers_column) - 5)*100)/100 )</span>
-<span class="w">    </span><span class="nt">filters</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( numbers_column &lt; 400 )</span>
-<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(numbers_column)</span>
+<span class="w">        </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ abs(sin(exp(numbers_column) - 5)*100) }</span>
+<span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ abs(cos(exp(numbers_column) - 5)*100)/100 }</span>
+<span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ numbers_column &lt; 400 }</span>
+<span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{numbers_column}</span>
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Single Trace Chart</span>
-<span class="w">    </span><span class="nt">traces</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Scatter)</span>
-<span class="w">    </span><span class="nt">layout</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Single</span><span class="nv"> </span><span class="s">Trace"</span>
 </code></pre></div>
 </details>
 <p><img alt="" src="../../../assets/example-charts/single-trace.png"></p>
 </div>
 <h3 id="duel-axis">Duel Axis</h3>
-<p>When you want to display two different types of data on the same chart, duel axis can come in handy. </p>
+<p>When you want to display two different types of data on the same chart, duel axis can come in handy.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>You can actually create a third, and fourth axis (<a href="https://plotly.com/javascript/multiple-axes/#multiple-y-axes">see plotly docs</a>), however, we do not recommended using more than two yaxes. </p>
+<p>You can actually create a third, and fourth axis (<a href="https://plotly.com/javascript/multiple-axes/#multiple-y-axes">see plotly docs</a>), however, we do not recommended using more than two yaxes.</p>
 </div>
 <p>Here's a working example that you can copy and paste into your project:</p>
 <div class="admonition example">
@@ -6232,125 +6232,125 @@ on top of a <a href="../Trace/Props/Bar/"><code>bar</code></a> to show how what 
 <details class="note">
 <summary>Code</summary>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Series of Numbers</span><span class="w"> </span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Series of Numbers</span>
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"curl"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"-s"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"</span><span class="p p-Indicator">]</span>
 
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Yaxis Trace</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Series of Numbers)</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(numbers_column)</span>
-<span class="w">      </span><span class="nt">marker</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{numbers_column}</span>
+<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'#713B57'</span>
 <span class="w">        </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.7</span>
 <span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(numbers_column)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{numbers_column}</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Yaxis2 Trace</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Series of Numbers)</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query( (500 -  numbers_column) )</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ (500 -  numbers_column) }</span>
 <span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'y2'</span>
-<span class="w">      </span><span class="nt">line</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spline</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">line</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spline</span>
 <span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.1</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orange</span>
 
 <span class="w">    </span><span class="nt">order_by</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(numbers_column)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{numbers_column}</span>
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Duel Axis</span>
-<span class="w">    </span><span class="nt">traces</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Yaxis2 Trace)</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Yaxis Trace)</span>
-<span class="w">    </span><span class="nt">layout</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Dual</span><span class="nv"> </span><span class="s">Axis"</span>
-<span class="w">      </span><span class="nt">legend</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">legend</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">orientation</span><span class="p">:</span><span class="w"> </span><span class="s">"h"</span>
-<span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">yaxis</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"yaxis</span><span class="nv"> </span><span class="s">title"</span>
-<span class="w">          </span><span class="nt">font</span><span class="p">:</span><span class="w"> </span>
+<span class="w">          </span><span class="nt">font</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">18</span>
 <span class="w">            </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'#713B57'</span>
-<span class="w">      </span><span class="nt">yaxis2</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">yaxis2</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"yaxis2</span><span class="nv"> </span><span class="s">title"</span>
-<span class="w">          </span><span class="nt">font</span><span class="p">:</span><span class="w"> </span>
+<span class="w">          </span><span class="nt">font</span><span class="p">:</span>
 <span class="w">            </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">18</span>
 <span class="w">            </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orange</span>
-<span class="w">        </span><span class="nt">side</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">right</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">side</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">right</span>
 <span class="w">        </span><span class="nt">overlaying</span><span class="p">:</span><span class="w"> </span><span class="s">'y'</span>
 <span class="w">        </span><span class="nt">anchor</span><span class="p">:</span><span class="w"> </span><span class="s">'y'</span>
-<span class="w">        </span><span class="nt">showgrid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"> </span>
+<span class="w">        </span><span class="nt">showgrid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
 </details>
 <p><img alt="" src="../../../assets/example-charts/duel-axis.png"></p>
 </div>
 <h3 id="position-traces-with-domains">Position Traces with Domains</h3>
 <p>You can use domains to position traces on your chart. This is useful when you want to display multiple traces on your chart.
-The <code>domain</code> attribute in the trace props enables you to position your traces relative to 0,0 coordinates of the chart. </p>
+The <code>domain</code> attribute in the trace props enables you to position your traces relative to 0,0 coordinates of the chart.</p>
 <p>Here's some working examples that you can copy and paste into your project:</p>
 <div class="admonition example">
 <p class="admonition-title">Trend Line + Multiple Indicators</p>
 <details class="note">
 <summary>Code</summary>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Numbers From Remote CSV</span><span class="w"> </span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Numbers From Remote CSV</span>
 <span class="w">    </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"curl"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"-s"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/y_values.csv"</span><span class="p p-Indicator">]</span>
 
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Line Trace</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Numbers From Remote CSV)</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span><span class="w">    </span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">query(numbers_column)</span>
-<span class="w">      </span><span class="nt">line</span><span class="p">:</span><span class="w">   </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
+<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{numbers_column}</span>
+<span class="w">      </span><span class="nt">line</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">shape</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">spline</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orange</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Average Value</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Numbers From Remote CSV)</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">avg_numbers_column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">avg(numbers_column)</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator</span>
 <span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(avg_numbers_column)[0]</span>
-<span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">font</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">number</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">font</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">35</span>
 <span class="w">        </span><span class="nt">suffix</span><span class="p">:</span><span class="w"> </span><span class="s">"</span><span class="nv"> </span><span class="s">avg"</span>
-<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">.7</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
 
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Total Value</span>
 <span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Numbers From Remote CSV)</span>
-<span class="w">    </span><span class="nt">columns</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">sum_numbers_column</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sum(numbers_column)</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">indicator</span>
 <span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">column(sum_numbers_column)[0]</span>
-<span class="w">      </span><span class="nt">number</span><span class="p">:</span><span class="w"> </span>
-<span class="w">        </span><span class="nt">font</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">number</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">font</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">35</span>
 <span class="w">        </span><span class="nt">suffix</span><span class="p">:</span><span class="w"> </span><span class="s">"</span><span class="nv"> </span><span class="s">sum"</span>
-<span class="w">      </span><span class="nt">domain</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="nt">domain</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">.2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">.5</span><span class="p p-Indicator">]</span>
 
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Big Number Over Line Chart</span>
-<span class="w">    </span><span class="nt">traces</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Average Value)</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Total Value)</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Line Trace)</span>
-<span class="w">    </span><span class="nt">layout</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span>
+<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Indicator</span><span class="nv"> </span><span class="s">+</span><span class="nv"> </span><span class="s">Scatter</span><span class="nv"> </span><span class="s">Plot"</span>
 </code></pre></div>
 </details>
@@ -6378,6 +6378,12 @@ The <code>domain</code> attribute in the trace props enables you to position you
 <td>string</td>
 <td>None</td>
 <td>The unique name of the object across the entire project.</td>
+</tr>
+<tr>
+<td>file_path</td>
+<td>string</td>
+<td>None</td>
+<td>The path to the file that contains the object definition.</td>
 </tr>
 <tr>
 <td>selector</td>

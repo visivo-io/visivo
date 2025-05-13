@@ -6352,7 +6352,7 @@
 <div class="highlight"><pre><span></span><code>visivo [OPTIONS] COMMAND [ARGS]...
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  --profile
+<div class="highlight"><pre><span></span><code>  -p, --profile
   -e, --env-file TEXT
   -fcpl, --force-complete-property-loading
   --version                       Show the version and exit.
@@ -6405,9 +6405,6 @@ If the callback is not received, you will be prompted to cancel or continue wait
                            overrides the default source in the project.
   -w, --working-dir TEXT   Directory to run the command
   -o, --output-dir TEXT    Directory to output results
-  -df, --dag-filter TEXT   Run the command with the given dag filter. ie `-df
-                           'dashboard-name'+` will only run the dashboard
-                           named 'dashboard-name' and it's children
   -dp, --dbt-profile TEXT  The dbt profile to use
   -dt, --dbt-target TEXT   The dbt target to use
   --help                   Show this message and exit.
@@ -6441,7 +6438,7 @@ If the callback is not received, you will be prompted to cancel or continue wait
 <h2 id="dist">dist</h2>
 <p>Creates a distributable version of this dashboard and stores it in a 'dist' folder.
 This folder can be statically deployed to any web server, hosting service, or bucket storage.</p>
-<p>Note: Make sure to run <code>visivo run</code> before running <code>visivo dist</code>. </p>
+<p>Note: Make sure to run <code>visivo run</code> before running <code>visivo dist</code>.</p>
 <p><strong>Usage:</strong></p>
 <div class="highlight"><pre><span></span><code>visivo dist [OPTIONS]
 </code></pre></div>
@@ -6456,7 +6453,8 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo init [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  --help  Show this message and exit.
+<div class="highlight"><pre><span></span><code>  --project-name TEXT  The name of the project to initialize
+  --help               Show this message and exit.
 </code></pre></div>
 <h2 id="run">run</h2>
 <p>Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.</p>

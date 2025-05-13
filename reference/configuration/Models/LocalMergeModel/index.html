@@ -6128,7 +6128,7 @@
 <p>Local Merge Models are models that allow you to merge data from multiple other models locally.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Any joining is done in a local DuckDB database. While more efficient than SQLite, 
+<p>Any joining is done in a local DuckDB database. While more efficient than SQLite,
 it's still primarily designed for medium-sized datasets.</p>
 </div>
 <div class="admonition example">
@@ -6170,6 +6170,12 @@ it's still primarily designed for medium-sized datasets.</p>
 <td>string</td>
 <td>None</td>
 <td>The unique name of the object across the entire project.</td>
+</tr>
+<tr>
+<td>file_path</td>
+<td>string</td>
+<td>None</td>
+<td>The path to the file that contains the object definition.</td>
 </tr>
 <tr>
 <td>sql</td>
