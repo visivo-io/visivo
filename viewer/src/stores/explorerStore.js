@@ -93,7 +93,10 @@ const createExplorerSlice = (set, get) => ({
             props: {},
             data: queryResults.data.map((row, index) => ({
               id: index,
-              ...row,
+              ...Object.keys(row).reduce((acc, key) => {
+                acc[key] = String(row[key]);
+                return acc;
+              }, {}),
             })),
             columns: queryResults.columns.map(col => ({
               header: col,
