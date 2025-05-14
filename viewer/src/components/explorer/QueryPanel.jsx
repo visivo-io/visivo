@@ -113,7 +113,7 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
           >
             {isLoading ? (
               <div className="flex items-center">
-                <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                <PlayArrowIcon className="mr-2 animate-spin" />
                 Running...
               </div>
             ) : (

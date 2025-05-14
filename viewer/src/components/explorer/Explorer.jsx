@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import ExplorerTree from './ExplorerTree';
-import { executeQuery, fetchTraceQuery } from '../../services/queryService';
+import { fetchTraceQuery } from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
 import { useWorksheets } from '../../contexts/WorksheetContext';
@@ -61,7 +61,7 @@ const QueryExplorer = () => {
     setQuery,
     setError,
     setResults,
-    setIsLoading,
+    handleRunQuery,
     setTreeData,
     setSelectedType,
     setExplorerData,
@@ -261,104 +261,8 @@ const QueryExplorer = () => {
     }
   };
 
-  const executeQueryWithStats = React.useCallback(
-    async queryString => {
-      const startTime = performance.now();
-      const timestamp = new Date();
-
-      try {
-        const queryResults = await executeQuery(
-          queryString,
-          project.id,
-          selectedSource?.name,
-          activeWorksheetId
-        );
-        const endTime = performance.now();
-        const executionTime = ((endTime - startTime) / 1000).toFixed(2);
-
-        setQueryStats({
-          timestamp: timestamp,
-          executionTime: executionTime,
-          source: selectedSource?.name,
-        });
-
-        return queryResults;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [selectedSource, project.id, activeWorksheetId, setQueryStats]
-  );
-
-  const executeQueryAndUpdateState = useCallback(
-    async queryString => {
-      if (!queryString?.trim()) {
-        setError('Please enter a query');
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-      setResults(null);
-
-      try {
-        const queryResults = await executeQueryWithStats(queryString);
-
-        if (activeWorksheetId) {
-          await updateWorksheet(activeWorksheetId, {
-            query: queryString,
-            selected_source: selectedSource?.name,
-          });
-        }
-
-        setQuery(queryString);
-        const formattedResults = {
-          name: 'Query Results',
-          traces: [
-            {
-              name: 'results',
-              props: {},
-              data: queryResults.data.map((row, index) => ({
-                id: index,
-                ...row,
-              })),
-              columns: queryResults.columns.map(col => ({
-                header: col,
-                key: col,
-                accessorKey: col,
-                markdown: false,
-              })),
-            },
-          ],
-        };
-
-        setResults(formattedResults);
-      } catch (err) {
-        setError(err.message || 'Failed to execute query');
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [
-      executeQueryWithStats,
-      activeWorksheetId,
-      selectedSource?.name,
-      updateWorksheet,
-      setQuery,
-      setError,
-      setResults,
-      setIsLoading,
-    ]
-  );
-
-  const handleRunQuery = useCallback(() => {
-    executeQueryAndUpdateState(query);
-  }, [executeQueryAndUpdateState, query]);
-
-  // Use the new hook for hotkeys
   useQueryHotkeys(handleRunQuery, isLoading, editorRef, monacoRef);
 
-  // Effect to update query when active worksheet changes
   useEffect(() => {
     const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
     if (activeWorksheet) {
