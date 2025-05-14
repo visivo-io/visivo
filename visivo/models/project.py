@@ -180,7 +180,7 @@ class Project(NamedModel, ParentModel):
     def validate_cli_version(self):
         if self.cli_version != VISIVO_VERSION:
             raise ClickException(
-                f"The project specifies {self.cli_version}, but the current version of visivo installed is {version('visivo')}. Your project version needs to match your CLI version."
+                f"The project specifies {self.cli_version}, but the current version of visivo installed is {VISIVO_VERSION}. Your project version needs to match your CLI version."
             )
         return self
 
