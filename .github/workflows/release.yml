@@ -30,6 +30,7 @@ jobs:
           poetry install
           EXCLUDE_TRACE_PROPS=False poetry run write-schema-json
           poetry version ${{ inputs.version }}
+          echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9

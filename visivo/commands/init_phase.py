@@ -1,4 +1,3 @@
-from importlib.metadata import version
 from typing import get_args
 import click
 import yaml
@@ -26,6 +25,7 @@ from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.commands.utils import get_source_types
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
+from visivo.version import VISIVO_VERSION
 
 
 def init_phase(project_name=None):
@@ -160,7 +160,7 @@ def init_phase(project_name=None):
     dashboard = Dashboard(name="Example Dashboard", rows=[row])
     defaults = Defaults(source_name=source.name)
 
-    current_version = version("visivo")
+    current_version = VISIVO_VERSION
     includes = Include(
         path=f"visivo-io/visivo.git@v{current_version} -- test-projects/demo/dashboards/welcome.visivo.yml"
     )
