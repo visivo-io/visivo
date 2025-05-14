@@ -13,6 +13,17 @@ def test_CsvScriptModel_simple_data():
     assert model.name == "model"
 
 
+def test_CsvScriptModel_no_name():
+    data = {"args": ["echo", "hello"]}
+    with pytest.raises(ValidationError) as exc_info:
+        CsvScriptModel(**data)
+
+    error = exc_info.value.errors()[0]
+
+    assert "Field required" in error["msg"]
+    assert error["type"] == "missing"
+
+
 def test_CsvScriptModel_insert_data():
     model = CsvScriptModelFactory()
     output_dir = temp_folder()
