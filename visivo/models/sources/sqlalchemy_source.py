@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 import click
+from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.pool import NullPool
+from visivo.logging.logger import Logger
+from pandas import DataFrame
+from copy import deepcopy
 
 
 class SqlalchemySource(Source, ABC):
 
-    _engine: Any = None
+    _engine: Any = PrivateAttr(default=None)
     after_connect: Optional[str] = None
 
     @abstractmethod
@@ -14,8 +20,6 @@ class SqlalchemySource(Source, ABC):
         raise NotImplementedError(f"No dialect method implemented for {self.type}")
 
     def read_sql(self, query: str):
-        from pandas import DataFrame
-        from sqlalchemy import text
 
         with self.connect() as connection:
             query = text(query)
@@ -27,7 +31,6 @@ class SqlalchemySource(Source, ABC):
         return DataFrame(data, columns=columns)
 
     def get_connection(self):
-        from sqlalchemy import text
 
         try:
             connection = (
@@ -47,11 +50,8 @@ class SqlalchemySource(Source, ABC):
             )
 
     def get_engine(self):
-        from sqlalchemy import create_engine, event
-        from visivo.logging.logger import Logger
 
         if not self._engine:
-            from sqlalchemy.pool import NullPool
 
             Logger.instance().debug(f"Creating engine for Source: {self.name}")
             self._engine = create_engine(self.url(), poolclass=NullPool)
@@ -64,3 +64,11 @@ class SqlalchemySource(Source, ABC):
                     cursor_obj.close()
 
         return self._engine
+
+    def __deepcopy__(self, memo):
+        copied = self.model_copy(deep=False)
+        # manually deepcopy only safe attrs
+        for name, val in self.__dict__.items():
+            if name != "_plugin_module":
+                setattr(copied, name, deepcopy(val, memo))
+        return copied
