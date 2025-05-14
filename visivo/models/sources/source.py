@@ -1,7 +1,7 @@
 from typing import Optional
 from ..base.named_model import NamedModel
 from abc import ABC, abstractmethod
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, ConfigDict
 
 
 class DefaultSource:
@@ -13,6 +13,7 @@ class Source(ABC, NamedModel):
     Sources hold the connection information to your data sources.
     """
 
+    model_config = ConfigDict(extra="allow")
     host: Optional[str] = Field(None, description="The host url of the database.")
     port: Optional[int] = Field(None, description="The port of the database.")
     database: str = Field(

@@ -44,7 +44,7 @@ def compile_phase(
     artifacts_duration = round(time() - artifacts_start, 2)
     Logger.instance().debug(f"Project artifacts written in {artifacts_duration}s")
 
-    total_duration = round(time() - compile_import_start, 2)
+    total_duration = round(time() - parse_start, 2)
 
     with open(f"{output_dir}/error.json", "w") as error_file:
         error_file.write(json.dumps({}))
