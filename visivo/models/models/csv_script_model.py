@@ -1,4 +1,6 @@
 from typing import List
+
+import pydantic
 from visivo.models.models.model import Model, TableModelName
 from pydantic import Field
 from visivo.models.sources.duckdb_source import DuckdbSource
@@ -94,6 +96,10 @@ class CsvScriptModel(Model):
 
     The args are python subprocess list args and you can read their source [documentation here](https://docs.python.org/3/library/subprocess.html#subprocess.CompletedProcess.args).
     """
+
+    name: str = pydantic.Field(
+        required=True, description="The unique name of the object across the entire project."
+    )
 
     table_name: TableModelName = Field(
         "model", description="The name to give the resulting models table"
