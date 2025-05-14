@@ -50,7 +50,7 @@ class SqlalchemySource(Source, ABC):
             )
 
     def get_engine(self):
-        
+
         if not self._engine:
 
             Logger.instance().debug(f"Creating engine for Source: {self.name}")
