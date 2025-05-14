@@ -6,8 +6,6 @@ from visivo.logging.logger import Logger, TypeEnum
 Logger.instance().info("Starting Visivo...")
 import click
 import os
-import importlib
-import cProfile
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
@@ -24,13 +22,14 @@ from .commands.test import test
 from .commands.aggregate import aggregate
 from .commands.archive import archive
 from .commands.authorize import authorize
+from .version import VISIVO_VERSION
 
 
 @click.group()
 @click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
 @click.option("-fcpl", "--force-complete-property-loading", is_flag=True)
-@click.version_option(version=importlib.metadata.version("visivo"))
+@click.version_option(version=VISIVO_VERSION)
 def visivo(env_file, profile, force_complete_property_loading):
     os.environ["EXCLUDE_TRACE_PROPS"] = str(not force_complete_property_loading)
     Logger.instance().set_type(TypeEnum.spinner)

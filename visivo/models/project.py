@@ -24,8 +24,8 @@ from .base.named_model import NamedModel
 from .base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
 from visivo.utils import PROJECT_CHILDREN
-from importlib.metadata import version
 from click import ClickException
+from visivo.version import VISIVO_VERSION
 
 
 class Project(NamedModel, ParentModel):
@@ -35,7 +35,7 @@ class Project(NamedModel, ParentModel):
     dbt: Optional[Dbt] = None
     project_file_path: Optional[str] = None
     cli_version: Optional[str] = Field(
-        default=version("visivo"),
+        default=VISIVO_VERSION,
         description="The version of the CLI that created the project.",
     )
     includes: List[Include] = []
@@ -178,7 +178,7 @@ class Project(NamedModel, ParentModel):
 
     @model_validator(mode="after")
     def validate_cli_version(self):
-        if self.cli_version != version("visivo"):
+        if self.cli_version != VISIVO_VERSION:
             raise ClickException(
                 f"The project specifies {self.cli_version}, but the current version of visivo installed is {version('visivo')}. Your project version needs to match your CLI version."
             )

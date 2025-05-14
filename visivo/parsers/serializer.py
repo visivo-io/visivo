@@ -7,9 +7,7 @@ from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.models.models.model import Model
-from importlib.metadata import version
-from pydantic import SecretStr
-
+from visivo.version import VISIVO_VERSION
 
 class Serializer:
     def __init__(self, project: Project):
@@ -66,7 +64,7 @@ class Serializer:
 
     def dereference(self) -> Project:
         project = self.project.model_copy(deep=True)
-        project.cli_version = version("visivo")
+        project.cli_version = VISIVO_VERSION
         dag = project.dag()
 
         for dashboard in project.dashboards:
