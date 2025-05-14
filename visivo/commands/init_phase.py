@@ -27,6 +27,7 @@ from visivo.commands.utils import get_source_types
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 from visivo.version import VISIVO_VERSION
 
+
 def init_phase(project_name=None):
     """Enables a quick set up by writing your source & api credentials to an env file."""
     user_home = os.path.expanduser("~")

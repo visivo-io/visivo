@@ -2,12 +2,12 @@ from visivo.models.dag import all_descendants, all_descendants_of_type
 from visivo.models.selector import Selector
 from visivo.models.sources.source import Source
 from ..models.project import Project
-from ..models.base.parent_model import ParentModel
 from visivo.models.chart import Chart
 from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.models.models.model import Model
 from visivo.version import VISIVO_VERSION
+
 
 class Serializer:
     def __init__(self, project: Project):
