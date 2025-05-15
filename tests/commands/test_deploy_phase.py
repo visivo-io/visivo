@@ -16,7 +16,9 @@ def test_deploy_upload_trace_data_failure(requests_mock, capsys):
     output_dir = temp_folder()
     project = ProjectFactory()
     # create_file_database(url=project.sources[0].url(), output_dir=output_dir)
-    project.traces.append(TraceFactory(name="trace-two", model="ref(model)"))
+    project.dashboards[0].rows[0].items[0].chart.traces.append(
+        TraceFactory(name="trace-two", model="ref(model)")
+    )
     tmp = temp_yml_file(dict=json.loads(project.model_dump_json()), name=PROJECT_FILE_NAME)
     working_dir = os.path.dirname(tmp)
     temp_file(PROFILE_FILE_NAME, "token: value", working_dir + "/.visivo")
@@ -53,11 +55,6 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
             "name": "trace.json",
             "id": "id1",
             "upload_url": "http://google/upload/id1",
-        },
-        {
-            "name": "trace-two.json",
-            "id": "id2",
-            "upload_url": "http://google/upload/id2",
         },
     ]
     sanitized_name = sanitize_filename(project.dashboards[0].name)
@@ -99,11 +96,6 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     httpx_mock.add_response(
         method="PUT",
         url="http://google/upload/id1",
-        status_code=200,
-    )
-    httpx_mock.add_response(
-        method="PUT",
-        url="http://google/upload/id2",
         status_code=200,
     )
     httpx_mock.add_response(
@@ -156,5 +148,6 @@ def test_deploy_success(requests_mock, httpx_mock, capsys):
     assert "/url" == url
     assert "Processing trace uploads and record creations..." in stdout
     assert "Deployment completed in" in stdout
+    print(stdout)
     assert stdout.count("Skipping") == 0
-    assert stdout.count("[5/5]") == 1
+    assert stdout.count("[4/4]") == 2

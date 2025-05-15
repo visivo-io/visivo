@@ -1,3 +1,4 @@
+from visivo.models.dag import all_descendants_of_type
 from visivo.models.dashboard import Dashboard
 from visivo.models.trace import Trace
 import click
@@ -297,7 +298,7 @@ async def process_dashboards_async(
         return
 
     total_operations = len(thumbnail_files)  # Each thumbnail has a data upload
-    total_operations += 2  # For create and finish operations
+    total_operations += 3  # For create, upload and dashboard record creation
     progress = {"completed": 0, "total": total_operations}
 
     # Prepare thumbnail data for creation
@@ -420,7 +421,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
         Logger.instance().info("Processing trace uploads and record creations...")
         process_traces_start_time = time()
 
-        traces = project.descendants_of_type(type=Trace)
+        traces = []
+        dag = project.dag()
+        dashboards = all_descendants_of_type(type=Dashboard, dag=dag)
+        for dashboard in dashboards:
+            traces.extend(all_descendants_of_type(type=Trace, dag=dag, from_node=dashboard))
+        traces = list(set(traces))
         asyncio.run(
             process_traces_async(
                 traces=traces,
