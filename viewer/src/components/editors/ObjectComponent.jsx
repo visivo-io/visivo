@@ -82,7 +82,7 @@ function ObjectComponent({ name, data, path }) {
             if (key === 'changed' || key === 'path' || key === 'name' || key === '__v') return null;
             const childPath = [...path, key];
             return (
-              <div key={key} className="flex-1 min-w-[100px]">
+              <div key={key} className="flex-1 min-w-[200px]">
                 {renderValue(key, value, childPath)}
               </div>
             );
@@ -91,7 +91,7 @@ function ObjectComponent({ name, data, path }) {
       )}
       {/* Object Section */}
       {Object.keys(sortedObject).length > 0 && (
-        <div className="flex flex-wrap gap-4 w-full">
+        <div className="flex flex-wrap gap-2 w-full">
           {objectEntries.map(([key, value]) => {
             if (key === 'changed' || key === 'path' || key === 'name' || key === '__v') return null;
             const childPath = [...path, key];

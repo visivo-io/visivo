@@ -45,10 +45,10 @@ function ListComponent({ name, data, path }) {
   }
 
   return (
-    <div className="flex flex-col  p-1 bg-white rounded-lg shadow-sm border border-secondary-100 mt-2" onContextMenu={handleContextMenu}>
+    <div className="flex flex-col  p-1 bg-white rounded-lg shadow-sm border border-secondary-100 mt-1" onContextMenu={handleContextMenu}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <HiOutlineCollection className="text-secondary-500 w-5 h-5" />
+          <HiOutlineCollection className="text-secondary-500 w-4 h-4" />
           <div className="text-md font-semibold text-secondary-700 pb-1">{name}</div>
         </div>
         <button
