@@ -4,7 +4,7 @@ import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
 import { HiOutlineDatabase } from 'react-icons/hi';
 import { PiArrowsInLineHorizontal } from 'react-icons/pi';
 
-const ObjectPill = ({ name, onClick, onDoubleClick, children, inline = false }) => {
+const ObjectPill = ({ name, onClick, onDoubleClick, children, inline = false, className = '' }) => {
   const type = useStore(state => state.namedChildren[name]?.type);
 
   const typeConfig = TYPE_STYLE_MAP[type] || {
@@ -17,7 +17,7 @@ const ObjectPill = ({ name, onClick, onDoubleClick, children, inline = false }) 
 
   return (
     <div
-      className={`flex items-center justify-between p-2 shadow-md rounded-2xl border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 hover:shadow-lg transition-opacity`}
+      className={`flex items-center justify-between p-2 shadow-md rounded-2xl border ${typeConfig.bg} ${typeConfig.border} cursor-pointer hover:opacity-80 hover:shadow-lg transition-opacity ${className}`}
       style={{ minWidth: '30px', maxWidth: '400px', flex: '1 1 auto' }}
       onClick={onClick}
       onDoubleClick={onDoubleClick}

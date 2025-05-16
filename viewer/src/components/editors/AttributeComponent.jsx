@@ -286,8 +286,8 @@ function AttributeComponent({ name, value, path }) {
     <div className={`flex ${flexDirection} items-center`} onContextMenu={handleContextMenu}>
       {isJsonObject && parsedObject ? (
         <InputShell label={name} hasContent={!!parsedObject}>
-          <div onClick={handlePillClick} className="cursor-text" ref={pillRef}>
-            <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} />
+          <div onClick={handlePillClick} className="cursor-text w-full overflow-hidden whitespace-nowrap text-ellipsis" ref={pillRef}>
+            <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} className="w-full overflow-hidden whitespace-nowrap text-ellipsis" />
           </div>
         </InputShell>
       ) : isQueryValue ? (
