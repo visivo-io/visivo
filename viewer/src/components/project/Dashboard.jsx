@@ -95,7 +95,7 @@ const Dashboard = ({ project, dashboardName }) => {
     return (
       <div
         key={`row-${rowIndex}`}
-        className="dashboard-row"
+        className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
           margin: '0.1rem',
           display: isColumn ? 'flex' : 'grid',
@@ -108,12 +108,13 @@ const Dashboard = ({ project, dashboardName }) => {
         {visibleItems.map((item, itemIndex) => (
           <div
             key={`item-${rowIndex}-${itemIndex}-${item.chart?.path || item.table?.path || item.selector?.path}`}
+            className={isColumn ? "w-full max-w-full" : ""}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+            <div className="flex items-center h-full w-full max-w-full">
               {renderComponent(item, row, itemIndex, rowIndex)}
             </div>
           </div>
@@ -213,7 +214,7 @@ const Dashboard = ({ project, dashboardName }) => {
     <div
       ref={observe}
       data-testid={`dashboard_${dashboardName}`}
-      className="flex grow flex-col justify-items-stretch"
+      className="flex grow flex-col justify-items-stretch w-full max-w-full overflow-x-hidden px-4"
     >
       {dashboard.rows.map(renderRow)}
     </div>

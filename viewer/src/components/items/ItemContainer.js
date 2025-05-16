@@ -9,6 +9,7 @@ export const ItemContainer = tw.div`
     overflow-hidden
     hover:shadow-lg     // Increases shadow on hover for the "pop out" effect
     hover:z-40
+    hover:border-gray-300
     border
-    border-gray-100
+    border-gray-150
 `;
