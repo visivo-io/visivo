@@ -17,6 +17,7 @@ const Input = forwardRef((props, ref) => {
         value={props.value}
         onChange={props.onChange}
         name={props.name}
+        autoComplete="off"
         className="block px-2 pb-1 pt-2.5 w-full text-sm text-gray-900 bg-transparent rounded-md border border-gray-300 appearance-none focus:outline-hidden focus:ring-0 focus:border-primary peer"
         placeholder=" "
       />

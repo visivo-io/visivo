@@ -13,14 +13,12 @@ export const useAttributeDropdown = (namedChildren) => {
     switch (e.key) {
       case 'ArrowDown': {
         e.preventDefault();
-        const nextIndex = Math.min(selectedIndex + 1, filteredChildren.length - 1);
-        setSelectedIndex(nextIndex);
+        setSelectedIndex(prev => Math.min(prev + 1, filteredChildren.length - 1));
         break;
       }
       case 'ArrowUp': {
         e.preventDefault();
-        const prevIndex = Math.max(selectedIndex - 1, 0);
-        setSelectedIndex(prevIndex);
+        setSelectedIndex(prev => Math.max(prev - 1, 0));
         break;
       }
       case 'Escape':
@@ -29,7 +27,7 @@ export const useAttributeDropdown = (namedChildren) => {
       default:
         break;
     }
-  }, [showDropdown, selectedIndex, filteredChildren.length]);
+  }, [showDropdown, filteredChildren.length]);
 
   const handleMentionSearch = useCallback((searchTerm) => {
     const filtered = Object.keys(namedChildren).filter(child =>
