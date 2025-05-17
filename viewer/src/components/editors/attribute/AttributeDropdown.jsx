@@ -1,25 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ObjectPill from '../ObjectPill';
 
 const AttributeDropdown = ({
   showDropdown,
-  dropdownPosition,
+  anchorRef,
   dropdownRef,
   filteredChildren,
   selectedIndex,
   onSelect,
 }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (showDropdown && anchorRef?.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: 'fixed',
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 50,
+      });
+    }
+  }, [showDropdown, anchorRef]);
+
   if (!showDropdown) return null;
 
   return createPortal(
     <div
-      className="fixed z-50 bg-white border border-primary-100 rounded-lg shadow-lg max-h-60 overflow-auto p-1"
-      style={{
-        top: dropdownPosition.top,
-        left: dropdownPosition.left,
-        width: dropdownPosition.width,
-      }}
+      className="bg-white border border-primary-100 rounded-lg shadow-lg max-h-60 overflow-auto p-1"
+      style={style}
       ref={dropdownRef}
     >
       {filteredChildren.map((child, index) => (

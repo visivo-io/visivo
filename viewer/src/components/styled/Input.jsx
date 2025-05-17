@@ -1,7 +1,8 @@
-import { useRef } from 'react';
+import React, { useRef, forwardRef } from 'react';
 
-const Input = props => {
-  const inputRef = useRef();
+const Input = forwardRef((props, ref) => {
+  const innerRef = useRef();
+  const inputRef = ref || innerRef;
 
   const onClickLabel = () => {
     inputRef.current.focus();
@@ -28,6 +29,6 @@ const Input = props => {
       </label>
     </div>
   );
-};
+});
 
 export default Input;

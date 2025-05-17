@@ -38,12 +38,10 @@ function AttributeComponent({ name, value, path }) {
     filteredChildren,
     selectedIndex,
     setSelectedIndex,
-    dropdownPosition,
     dropdownRef,
     inputRef,
     handleKeyDown,
-    handleMentionSearch,
-    updateDropdownPosition
+    handleMentionSearch
   } = useAttributeDropdown(namedChildren);
 
   const {
@@ -99,9 +97,7 @@ function AttributeComponent({ name, value, path }) {
           );
           setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
 
-          if (pillRef.current) {
-            updateDropdownPosition();
-          }
+          setShowDropdown(true);
 
           setTimeout(() => {
             if (inputRef.current) {
@@ -191,7 +187,7 @@ function AttributeComponent({ name, value, path }) {
           />
           <AttributeDropdown
             showDropdown={showDropdown}
-            dropdownPosition={dropdownPosition}
+            anchorRef={isJsonObject && parsedObject ? pillRef : inputRef}
             dropdownRef={dropdownRef}
             filteredChildren={filteredChildren}
             selectedIndex={selectedIndex}
