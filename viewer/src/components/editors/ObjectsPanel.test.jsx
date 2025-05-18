@@ -88,6 +88,8 @@ test('filters objects based on type selection', async () => {
 });
 
 test('opens create modal when create button is clicked', async () => {
+  const mockOnOpenCreateModal = jest.fn();
+  
   useStore.mockImplementation(selector =>
     selector({
       isLoading: false,
@@ -96,16 +98,14 @@ test('opens create modal when create button is clicked', async () => {
     })
   );
 
-  render(<ObjectsPanel />);
+  render(<ObjectsPanel onOpenCreateModal={mockOnOpenCreateModal} />);
 
   const createButton = screen.getByRole('button', {
     name: /\+ Create New Object/i,
   });
   await userEvent.click(createButton);
 
-  // Look for the modal header specifically
-  expect(screen.getByRole('heading', { name: /Create New Object/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '×' })).toBeInTheDocument();
+  expect(mockOnOpenCreateModal).toHaveBeenCalled();
 });
 
 test('displays "No objects found" when filter returns no results', async () => {
