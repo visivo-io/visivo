@@ -1455,6 +1455,63 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jsonschema-rs"
+version = "0.30.0"
+description = "A high-performance JSON Schema validator for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:13ce30e646043a765496c685f3c99e392041ebbe9c08f273a4873130175eab2a"},
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:a97ac8114d0e684b157b35e8c5cd0fdbaa5a44d5a75f7a64973d63aff9d3bba5"},
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:cd0ff855c52741b85183bd8129dd229ae962a4e8cefd5eba39bd9cae052fee98"},
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d7a1bab58a763bd71773cb1e00efdcdf06a6c00a04e903ece27efa70d58cb6f4"},
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1edde221d0f3769b1e446101a8d9d13a4486b121c19688112ee2cc8dfc1d0f80"},
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-win32.whl", hash = "sha256:e8c3387b49ad73155fab6b555199d9d7424456ac8088ec9c5c73842db393491a"},
+    {file = "jsonschema_rs-0.30.0-cp310-cp310-win_amd64.whl", hash = "sha256:f8a52eb7ecd38059cdf7096a639f9599da46b4f971b667ad0241c98d0b359a6a"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:a29f577d1f691c9dd306852da5fda2e20bcca17a94bbf49d890e1ecf2b3fe340"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:d9ab11ce8ba0d674cb7929f1cc58e2dac990ac1816de79f7a4331510e0542fc3"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:d7acd91a46c8584784c486cdbd3a9ed38977aa72bde35c0dd3af1935bfc327ab"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:13cd64c2ee0b1d792a3a1d5f055cb946b18efb8c58537b92cdd7ffac9f44d76d"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:22868fc882a95e52c9b21aced1e4b1adbb9fda5851baa116f4e090fbe18e4af2"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-win32.whl", hash = "sha256:680035c56ab0ae958507baf6164f0af5481858bc973079d4806f517b0a2fe4ee"},
+    {file = "jsonschema_rs-0.30.0-cp311-cp311-win_amd64.whl", hash = "sha256:18d6fcba3e62ae91c84a41d82736faab9dd8481fc671963b60ad697f5db30fa4"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:55d073c7282dc1ac7261f4be731c4d0e95db451b9dabd863cf43dd447a891c3e"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:44afa01051706b6a89f2877d88cbd4e6c96f686d410505d375afa4deaf9d35ce"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:018388b71317f3dca3fb00c2f8856b45dcdb9feb2439873acde3d8d05da196b6"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:de8ae8af10bed747f7e3102bcb1512a58226cb68c5ecf9101d03cd5a66fe5ca4"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b9ec5130459298f2dc0d87f078d8c31de1e428a4a8f41e47100ce54d834a78ea"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-win32.whl", hash = "sha256:687eb362cc79632c81e86a09b1f54bd4bfdb6340bc291b413d651dc9415ac520"},
+    {file = "jsonschema_rs-0.30.0-cp312-cp312-win_amd64.whl", hash = "sha256:4b970bebd1732e839c2f6acd53e24138a34c4b2f282f66b12f64bd4d8bd2e974"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:4a6509b02f842aafa6bf9c40a26b10a85814e9e593fe56cd41e7fc7f7e7e02a6"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:32e19f6f834a0fa43c85d60834c0f41c424a60e579a6d5f80fcc8cbe693c3e6e"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:bae276fd38e410d0b5dd276cc306d1acbf57b3494e2589a67eea16df2291e677"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9eef21fa1732faffa53b4d85117bfa664a9eba6608c28b1a57d465b2e68b0408"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dea2ec14105c148509b4599c5911fc181db956ca339f76e232752e251e88541c"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-win32.whl", hash = "sha256:d875c8b37f0731be4e776f581311dd299c07aa1c2503a5cb560fc55a0fb5fa5a"},
+    {file = "jsonschema_rs-0.30.0-cp313-cp313-win_amd64.whl", hash = "sha256:4f9f7c2107d3b74c78d5a6ac0602f151e7984113481884f367a4e1b825989b0c"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:0d701ef9c6f9d58d9ce3403264b6e652d5023666abbd111687b84dcf9ec25677"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-macosx_10_12_x86_64.whl", hash = "sha256:819e6bd72b66cc1b4f2b4c895339a87567cb6b4a6e612e923a7ebc3f3490e618"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:27afbe40caf8cf3454ecab2e1c6d11a6528f29b77950a125ef644ff0d92bdee1"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d5c88bb527d49aedd13c7e99d9f4af937ee362c9e34c2e2d95d54c963f9e6336"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c5c9b3031843762e0cdd81bb425d6a313da80d4c7eef93044a92057b6605f244"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-win32.whl", hash = "sha256:3bdee94e4742c3a9670051ada8127df12c8a2e5c20a66b650cc00a18630ab90d"},
+    {file = "jsonschema_rs-0.30.0-cp38-cp38-win_amd64.whl", hash = "sha256:2031b5968e1d7c8c3dee2dc2c0650b0afb9a66b7b52839c60b1990c38d8e7b4d"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:703fde78c4713c5c82f6ff66c8bb64fe6edf3130297d45c20571385b7ecfb50f"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-macosx_10_12_x86_64.whl", hash = "sha256:7d0115365d9aaa358aac65fa7f78fc901116d32a260e2bfa821319d0fa513e1f"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:f45745c7c61a84518d48eca9cbc330285370c2d9ccd013f622b11ccec5b621e4"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2673c0b408a5e8fefad633dea94f72c5eec25e698205ac3116a3f579ac12df1f"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d8261a49af9862687d2d3dc99e2837bd84ece669931340633eea3d0e466e26ce"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-win32.whl", hash = "sha256:af230808981fd305d5616c8f3dbdbd8e066fae49156c1ed415865b1449c585b0"},
+    {file = "jsonschema_rs-0.30.0-cp39-cp39-win_amd64.whl", hash = "sha256:6785a8df855e0517837716d526a8fb10b6ea78463dab5add4a734e936cee87bc"},
+    {file = "jsonschema_rs-0.30.0.tar.gz", hash = "sha256:29f988d229371d6aefd560c5b13e71bf1c91c972a0d83a66c5eb941ce47d3193"},
+]
+
+[package.extras]
+bench = ["fastjsonschema (>=2.20.0)", "jsonschema (>=4.23.0)", "pytest-benchmark (>=4.0.0)"]
+tests = ["flask (>=2.2.5)", "hypothesis (>=6.79.4)", "pytest (>=7.4.4)"]
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.7"
 description = "A fast implementation of the Cassowary constraint solver"
@@ -3965,4 +4022,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = " >=3.10,<3.13"
-content-hash = "99ca6ccad9b688ba2ae5a4d73f46b39db93378fbedc0b7ecf1f463869813e5ea"
+content-hash = "944d30f47a4aa015b3daf8ad8d05984294a10a75206a48f5805cfe86fe777b2f"

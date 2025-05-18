@@ -1,7 +1,8 @@
-from visivo.models.trace_props.fields import TracePropsFieldUnion
 from visivo.models.trace import Trace
 from pydantic import ValidationError
 import pytest
+
+from visivo.models.trace_props.trace_props import TraceProps
 
 
 def test_invalid_trace_prop_mesh3d():
@@ -46,7 +47,7 @@ def test_valid_trace_prop_mesh3d():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_barpolar():
@@ -57,7 +58,7 @@ def test_valid_trace_prop_barpolar():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scattersmith():
@@ -68,7 +69,7 @@ def test_valid_trace_prop_scattersmith():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_streamtube():
@@ -79,7 +80,7 @@ def test_valid_trace_prop_streamtube():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_cone():
@@ -90,7 +91,7 @@ def test_valid_trace_prop_cone():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scattermapbox():
@@ -101,7 +102,7 @@ def test_valid_trace_prop_scattermapbox():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scattergeo():
@@ -112,7 +113,7 @@ def test_valid_trace_prop_scattergeo():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scatterpolar():
@@ -123,7 +124,7 @@ def test_valid_trace_prop_scatterpolar():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_sunburst():
@@ -134,7 +135,7 @@ def test_valid_trace_prop_sunburst():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_isosurface():
@@ -156,7 +157,7 @@ def test_valid_trace_prop_isosurface():
     trace = Trace(**data)
     props = trace.props
     assert props.model_dump()["slices"]["z"]["locations"] == [-0.1]
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_violin():
@@ -167,7 +168,7 @@ def test_valid_trace_prop_violin():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scatter():
@@ -178,7 +179,7 @@ def test_valid_trace_prop_scatter():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_image():
@@ -189,7 +190,7 @@ def test_valid_trace_prop_image():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_volume():
@@ -200,7 +201,7 @@ def test_valid_trace_prop_volume():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_indicator():
@@ -211,7 +212,7 @@ def test_valid_trace_prop_indicator():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_funnelarea():
@@ -222,7 +223,7 @@ def test_valid_trace_prop_funnelarea():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_icicle():
@@ -233,7 +234,7 @@ def test_valid_trace_prop_icicle():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scatterternary():
@@ -244,7 +245,7 @@ def test_valid_trace_prop_scatterternary():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_sankey():
@@ -255,7 +256,7 @@ def test_valid_trace_prop_sankey():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_parcats():
@@ -266,7 +267,7 @@ def test_valid_trace_prop_parcats():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scattercarpet():
@@ -277,7 +278,7 @@ def test_valid_trace_prop_scattercarpet():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_treemap():
@@ -288,7 +289,7 @@ def test_valid_trace_prop_treemap():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_contourcarpet():
@@ -299,7 +300,7 @@ def test_valid_trace_prop_contourcarpet():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_candlestick():
@@ -310,7 +311,7 @@ def test_valid_trace_prop_candlestick():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_pie():
@@ -321,7 +322,7 @@ def test_valid_trace_prop_pie():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scatterpolargl():
@@ -332,7 +333,7 @@ def test_valid_trace_prop_scatterpolargl():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scatter3d():
@@ -343,7 +344,7 @@ def test_valid_trace_prop_scatter3d():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_bar():
@@ -354,7 +355,7 @@ def test_valid_trace_prop_bar():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_box():
@@ -365,7 +366,7 @@ def test_valid_trace_prop_box():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_histogram2d():
@@ -376,7 +377,7 @@ def test_valid_trace_prop_histogram2d():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_histogram():
@@ -387,7 +388,7 @@ def test_valid_trace_prop_histogram():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_ohlc():
@@ -398,7 +399,7 @@ def test_valid_trace_prop_ohlc():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_heatmapgl():
@@ -409,7 +410,7 @@ def test_valid_trace_prop_heatmapgl():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_surface():
@@ -420,7 +421,7 @@ def test_valid_trace_prop_surface():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_choroplethmapbox():
@@ -431,7 +432,7 @@ def test_valid_trace_prop_choroplethmapbox():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_parcoords():
@@ -442,7 +443,7 @@ def test_valid_trace_prop_parcoords():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_scattergl():
@@ -453,7 +454,7 @@ def test_valid_trace_prop_scattergl():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_choropleth():
@@ -464,7 +465,7 @@ def test_valid_trace_prop_choropleth():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_densitymapbox():
@@ -475,7 +476,7 @@ def test_valid_trace_prop_densitymapbox():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_heatmap():
@@ -486,7 +487,7 @@ def test_valid_trace_prop_heatmap():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_carpet():
@@ -497,7 +498,7 @@ def test_valid_trace_prop_carpet():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_contour():
@@ -508,7 +509,7 @@ def test_valid_trace_prop_contour():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_funnel():
@@ -519,7 +520,7 @@ def test_valid_trace_prop_funnel():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_histogram2dcontour():
@@ -530,7 +531,7 @@ def test_valid_trace_prop_histogram2dcontour():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_waterfall():
@@ -541,7 +542,7 @@ def test_valid_trace_prop_waterfall():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)
 
 
 def test_valid_trace_prop_splom():
@@ -552,4 +553,4 @@ def test_valid_trace_prop_splom():
     }
     trace = Trace(**data)
     props = trace.props
-    assert isinstance(props, TracePropsFieldUnion)
+    assert isinstance(props, TraceProps)

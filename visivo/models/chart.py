@@ -1,5 +1,5 @@
-from typing import Any, List, Optional
-from pydantic import Field, model_validator
+from typing import List, Optional
+from pydantic import Field
 
 from visivo.models.base.selector_model import SelectorModel
 from .base.named_model import NamedModel
@@ -211,5 +211,5 @@ class Chart(SelectorModel, NamedModel, ParentModel):
 
     layout: Optional[Layout] = Field(
         None,
-        description="The layout attribute of the chart accepts any valid plotly layout configurations.",
+        description="A layout configuration that must adhere to the layout.schema.json file.",
     )

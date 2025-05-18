@@ -1,0 +1,1012 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visivo.io/trace-properties/schema",
+  "description": "A schema to validate plotly trace properties",
+  "$defs": {
+    "color": {
+      "type": "string",
+      "oneOf": [
+        {
+          "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
+          "description": "Hex color (e.g., #d3d3d3 or #fff)"
+        },
+        {
+          "pattern": "^rgb\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*\\)$",
+          "description": "RGB color (e.g., rgb(255, 0, 0))"
+        },
+        {
+          "pattern": "^rgba\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(0|1|0?\\.\\d+)\\s*\\)$",
+          "description": "RGBA color (e.g., rgba(255, 0, 0, 0.5))"
+        },
+        {
+          "pattern": "^hsl\\(\\s*\\d{1,3}\\s*,\\s*\\d{1,3}%\\s*,\\s*\\d{1,3}%\\s*\\)$",
+          "description": "HSL color (e.g., hsl(0, 100%, 50%))"
+        },
+        {
+          "pattern": "^hsv\\(\\s*\\d{1,3}\\s*,\\s*\\d{1,3}%\\s*,\\s*\\d{1,3}%\\s*\\)$",
+          "description": "HSV color (e.g., hsv(0, 100%, 100%))"
+        },
+        {
+          "pattern": "^(aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen)$",
+          "description": "Named CSS color"
+        }
+      ]
+    },
+    "colorscale": {
+      "description": "A Plotly colorscale either by name or a custom array of [value, color] pairs.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "Greys",
+            "YlGnBu",
+            "Greens",
+            "YlOrRd",
+            "Bluered",
+            "RdBu",
+            "Reds",
+            "Blues",
+            "Picnic",
+            "Rainbow",
+            "Portland",
+            "Jet",
+            "Hot",
+            "Blackbody",
+            "Earth",
+            "Electric",
+            "Viridis",
+            "Cividis"
+          ],
+          "description": "Predefined Plotly colorscale name"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            }
+          },
+          "description": "Custom colorscale as an array of [value, color] pairs"
+        }
+      ]
+    },
+    "query-string": {
+      "type": "string",
+      "description": "A string that will pull the value from the traces query results.",
+      "oneOf": [
+        {
+          "pattern": "^\\?\\{.*\\}$",
+          "description": "String in the format ?{ x } where x can be anything"
+        },
+        {
+          "pattern": "^query\\(.*\\)$",
+          "description": "String in the format query( x ) where x can be anything"
+        },
+        {
+          "pattern": "^column\\(.*\\)(?:\\[\\d+\\])?$",
+          "description": "String in the format column( x ) or column( x )[n] where x can be anything and n is a number"
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "type": {
+      "oneOf": [
+        {
+          "const": "parcoords"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "customdata": {
+      "oneOf": [
+        {
+          "description": "Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, *scatter* traces also appends customdata items in the markers DOM elements",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "customdatasrc": {
+      "oneOf": [
+        {
+          "description": "Sets the source reference on Chart Studio Cloud for `customdata`.",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "domain": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "oneOf": [
+            {
+              "description": "If there is a layout grid, use the domain for this column in the grid for this parcoords trace .",
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "row": {
+          "oneOf": [
+            {
+              "description": "If there is a layout grid, use the domain for this row in the grid for this parcoords trace .",
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "x": {
+          "oneOf": [
+            {
+              "description": "Sets the horizontal domain of this parcoords trace (in plot fraction).",
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "default": [
+                0,
+                1
+              ]
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "y": {
+          "oneOf": [
+            {
+              "description": "Sets the vertical domain of this parcoords trace (in plot fraction).",
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  }
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2,
+              "default": [
+                0,
+                1
+              ]
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "ids": {
+      "oneOf": [
+        {
+          "description": "Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "idssrc": {
+      "oneOf": [
+        {
+          "description": "Sets the source reference on Chart Studio Cloud for `ids`.",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "labelangle": {
+      "oneOf": [
+        {
+          "description": "Sets the angle of the labels with respect to the horizontal. For example, a `tickangle` of -90 draws the labels vertically. Tilted labels with *labelangle* may be positioned better inside margins when `labelposition` is set to *bottom*.",
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "default": 0
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "labelfont": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/color",
+              "default": "#444"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "family": {
+          "oneOf": [
+            {
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "type": "string",
+              "pattern": ".*\\S.*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "lineposition": {
+          "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ],
+          "default": "none"
+        },
+        "shadow": {
+          "oneOf": [
+            {
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "type": "string",
+              "default": "none"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "size": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 1
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "style": {
+          "oneOf": [
+            {
+              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+              "enum": [
+                "normal",
+                "italic"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "textcase": {
+          "oneOf": [
+            {
+              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+              "enum": [
+                "normal",
+                "word caps",
+                "upper",
+                "lower"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "variant": {
+          "oneOf": [
+            {
+              "description": "Sets the variant of the font.",
+              "enum": [
+                "normal",
+                "small-caps",
+                "all-small-caps",
+                "all-petite-caps",
+                "petite-caps",
+                "unicase"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "weight": {
+          "oneOf": [
+            {
+              "description": "Sets the weight (or boldness) of the font.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "labelside": {
+      "oneOf": [
+        {
+          "description": "Specifies the location of the `label`. *top* positions labels above, next to the title *bottom* positions labels below the graph Tilted labels with *labelangle* may be positioned better inside margins when `labelposition` is set to *bottom*.",
+          "enum": [
+            "top",
+            "bottom"
+          ],
+          "default": "top"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "legend": {
+      "oneOf": [
+        {
+          "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
+          "type": "string",
+          "pattern": "^legend([2-9]|[1-9][0-9]+)?$",
+          "default": "legend"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "legendgrouptitle": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "oneOf": [
+            {
+              "description": "Sets the title of the legend group.",
+              "type": "string",
+              "default": ""
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "legendrank": {
+      "oneOf": [
+        {
+          "description": "Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with *reversed* `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout.",
+          "type": "number",
+          "default": 1000
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "legendwidth": {
+      "oneOf": [
+        {
+          "description": "Sets the width (in px or fraction) of the legend for this trace.",
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "line": {
+      "type": "object",
+      "properties": {
+        "autocolorscale": {
+          "oneOf": [
+            {
+              "description": "Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `line.colorscale`. Has an effect only if in `line.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "cauto": {
+          "oneOf": [
+            {
+              "description": "Determines whether or not the color domain is computed with respect to the input data (here in `line.color`) or the bounds set in `line.cmin` and `line.cmax` Has an effect only if in `line.color` is set to a numerical array. Defaults to `false` when `line.cmin` and `line.cmax` are set by the user.",
+              "type": "boolean",
+              "default": true
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "cmax": {
+          "oneOf": [
+            {
+              "description": "Sets the upper bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmin` must be set as well.",
+              "type": "number",
+              "default": null
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "cmid": {
+          "oneOf": [
+            {
+              "description": "Sets the mid-point of the color domain by scaling `line.cmin` and/or `line.cmax` to be equidistant to this point. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color`. Has no effect when `line.cauto` is `false`.",
+              "type": "number",
+              "default": null
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "cmin": {
+          "oneOf": [
+            {
+              "description": "Sets the lower bound of the color domain. Has an effect only if in `line.color` is set to a numerical array. Value should have the same units as in `line.color` and if set, `line.cmax` must be set as well.",
+              "type": "number",
+              "default": null
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "$ref": "#/$defs/color",
+              "default": "#444"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/color",
+                "default": "#444"
+              }
+            }
+          ]
+        },
+        "coloraxis": {
+          "oneOf": [
+            {
+              "description": "Sets a reference to a shared color axis. References to these shared color axes are *coloraxis*, *coloraxis2*, *coloraxis3*, etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis.",
+              "type": "string",
+              "pattern": "/^coloraxis([2-9]|[1-9][0-9]+)?$/",
+              "default": null
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "colorscale": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/colorscale",
+              "default": [
+                [
+                  0,
+                  "rgb(5,10,172)"
+                ],
+                [
+                  0.35,
+                  "rgb(40,60,190)"
+                ],
+                [
+                  0.5,
+                  "rgb(70,100,245)"
+                ],
+                [
+                  0.6,
+                  "rgb(90,120,245)"
+                ],
+                [
+                  0.7,
+                  "rgb(106,137,247)"
+                ],
+                [
+                  1,
+                  "rgb(220,220,220)"
+                ]
+              ]
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "colorsrc": {
+          "oneOf": [
+            {
+              "description": "Sets the source reference on Chart Studio Cloud for `color`.",
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "reversescale": {
+          "oneOf": [
+            {
+              "description": "Reverses the color mapping if true. Has an effect only if in `line.color` is set to a numerical array. If true, `line.cmin` will correspond to the last color in the array and `line.cmax` will correspond to the first color.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "showscale": {
+          "oneOf": [
+            {
+              "description": "Determines whether or not a colorbar is displayed for this trace. Has an effect only if in `line.color` is set to a numerical array.",
+              "type": "boolean",
+              "default": false
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "metasrc": {
+      "oneOf": [
+        {
+          "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "name": {
+      "oneOf": [
+        {
+          "description": "Sets the trace name. The trace name appears as the legend item and on hover.",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "rangefont": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/color",
+              "default": "#444"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "family": {
+          "oneOf": [
+            {
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "type": "string",
+              "pattern": ".*\\S.*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "lineposition": {
+          "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ],
+          "default": "none"
+        },
+        "shadow": {
+          "oneOf": [
+            {
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "type": "string",
+              "default": "none"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "size": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 1
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "style": {
+          "oneOf": [
+            {
+              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+              "enum": [
+                "normal",
+                "italic"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "textcase": {
+          "oneOf": [
+            {
+              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+              "enum": [
+                "normal",
+                "word caps",
+                "upper",
+                "lower"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "variant": {
+          "oneOf": [
+            {
+              "description": "Sets the variant of the font.",
+              "enum": [
+                "normal",
+                "small-caps",
+                "all-small-caps",
+                "all-petite-caps",
+                "petite-caps",
+                "unicase"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "weight": {
+          "oneOf": [
+            {
+              "description": "Sets the weight (or boldness) of the font.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "stream": {
+      "type": "object",
+      "properties": {
+        "maxpoints": {
+          "oneOf": [
+            {
+              "description": "Sets the maximum number of points to keep on the plots from an incoming stream. If `maxpoints` is set to *50*, only the newest 50 points will be displayed on the plot.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 500
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "token": {
+          "oneOf": [
+            {
+              "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
+              "type": "string",
+              "pattern": ".*\\S.*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "tickfont": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/color",
+              "default": "#444"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "family": {
+          "oneOf": [
+            {
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "type": "string",
+              "pattern": ".*\\S.*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "lineposition": {
+          "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ],
+          "default": "none"
+        },
+        "shadow": {
+          "oneOf": [
+            {
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "type": "string",
+              "default": "auto"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "size": {
+          "oneOf": [
+            {
+              "type": "number",
+              "minimum": 1
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "style": {
+          "oneOf": [
+            {
+              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+              "enum": [
+                "normal",
+                "italic"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "textcase": {
+          "oneOf": [
+            {
+              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+              "enum": [
+                "normal",
+                "word caps",
+                "upper",
+                "lower"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "variant": {
+          "oneOf": [
+            {
+              "description": "Sets the variant of the font.",
+              "enum": [
+                "normal",
+                "small-caps",
+                "all-small-caps",
+                "all-petite-caps",
+                "petite-caps",
+                "unicase"
+              ],
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        },
+        "weight": {
+          "oneOf": [
+            {
+              "description": "Sets the weight (or boldness) of the font.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": "normal"
+            },
+            {
+              "$ref": "#/$defs/query-string"
+            }
+          ]
+        }
+      }
+    },
+    "uid": {
+      "oneOf": [
+        {
+          "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    },
+    "uirevision": {
+      "description": "Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves."
+    },
+    "visible": {
+      "oneOf": [
+        {
+          "description": "Determines whether or not this trace is visible. If *legendonly*, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible).",
+          "enum": [
+            true,
+            false,
+            "legendonly"
+          ],
+          "default": true
+        },
+        {
+          "$ref": "#/$defs/query-string"
+        }
+      ]
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false
+}
