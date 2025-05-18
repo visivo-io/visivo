@@ -63,7 +63,7 @@ const Editor = () => {
         <>
           {/* Floating expand button (top left) */}
           <button
-            className="fixed top-6 left-6 z-50 bg-white border border-gray-300 shadow-lg text-[#713B57] hover:bg-gray-100 rounded-full p-3 flex items-center justify-center transition-colors group"
+            className="fixed top-15 left-1 z-50 bg-white border border-gray-300 shadow-lg text-[#713B57] hover:bg-gray-100 rounded-full p-3 flex items-center justify-center transition-colors group"
             onClick={() => setIsObjectsPanelCollapsed(false)}
             aria-label="Show Objects Panel"
           >

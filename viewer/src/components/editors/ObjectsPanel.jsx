@@ -48,17 +48,17 @@ const ObjectsPanel = ({ isCollapsed, onCollapse, onOpenCreateModal }) => {
     <div className={panelClasses}>
       {/* Collapse icon */}
       <button
-        className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 p-1 rounded-full transition-colors z-10"
+        className="absolute top-6 right-5 text-primary-400 bg-primary-100 hover:text-gray-700 p-0 rounded-full transition-colors z-10"
         onClick={onCollapse}
         aria-label="Collapse Objects Panel"
         tabIndex={isCollapsed ? -1 : 0}
       >
-        <HiChevronLeft className="w-6 h-6" />
+        <HiChevronLeft className="w-6 h-6 mr-0" />
       </button>
       <input
         type="text"
         placeholder="Search objects..."
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 mr-4"
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
       />
