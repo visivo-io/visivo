@@ -16,7 +16,7 @@ const PreviewPanel = ({ project }) => {
   const activeConfig = activeTab ? namedChildren[activeTab.name]?.config : null;
   if (!project) {
     return (
-      <div className="h-1/2 bg-white p-4 border-t border-gray-200 overflow-hidden min-h-0">
+      <div className="flex-1 h-full bg-white p-4 border-t border-gray-200 overflow-hidden min-h-0 flex flex-col">
         <div className="text-gray-500">Preview will appear here for supported objects</div>
       </div>
     );
@@ -25,7 +25,7 @@ const PreviewPanel = ({ project }) => {
   // Render preview based on object type
   const renderPreview = () => {
     if (!activeTab) {
-      return <div className="text-gray-500">No preview available</div>;
+      return <div className="text-gray-500">Click on a dashboard, trace, or chart to see a preview</div>;
     }
     switch (activeTab.type) {
       case 'Chart':
@@ -54,10 +54,8 @@ const PreviewPanel = ({ project }) => {
   };
 
   return (
-    <div className="h-1/2 bg-white p-4 border-t border-gray-200 overflow-hidden flex flex-col min-h-0">
-      <div className="text-sm font-medium text-gray-700 mb-2">
-        {activeTab ? `Preview: ${activeTab.name}` : ''}
-      </div>
+    <div className="flex-1 h-full bg-white p-4 border-t border-gray-200 overflow-hidden flex flex-col min-h-0">
+      
       <div className="flex-1 overflow-auto min-h-0">{renderPreview()}</div>
     </div>
   );
