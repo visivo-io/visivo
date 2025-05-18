@@ -1,6 +1,6 @@
 import React from 'react';
 import ObjectsPanel from './ObjectsPanel';
-import EditorPanel from './EditorPanel';
+import EditorPanel from './editorPanel/index';
 import PreviewPanel from './PreviewPanel';
 import useStore from '../../stores/store';
 

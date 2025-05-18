@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import useStore from '../../stores/store';
+import useStore from '../../../../stores/store';
 
 const editorIcons = {
   vscode:
