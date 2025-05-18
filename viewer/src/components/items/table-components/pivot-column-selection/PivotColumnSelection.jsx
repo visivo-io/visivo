@@ -1,32 +1,22 @@
 import {
-  Collapse,
   Box,
   LinearProgress,
   Button,
   Typography,
-  Select,
-  Chip,
-  MenuItem,
-  OutlinedInput,
-  FormControl,
   Drawer,
   TextField,
-  InputLabel,
 } from "@mui/material";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import CSVUploadButton from "../CSVUploadButton";
 import DuckDBStatus from "../DuckDBStatus";
-import ValueFieldDropdown from "../ValueFieldDropdown";
 import { initializeDuckDB } from "../../duckdb-wasm-init/duckDBWasmInit";
 import createSanitizedValueSql from "../../table-helpers/create-sanitized-value-sql/createSanitizedValueSql";
 import sanitizeColumnName from "../../table-helpers/sanitizeColumnName";
 import { useState, useCallback, useEffect } from "react";
-import RowFieldsSelector from "../RowFieldsSelector";
-import AggregateFunctionSelector from "../AggregateFunctionSelector";
-import ColumnFieldsSelector from "../ColumnFieldsSelector";
 import PivotFields from "../PivotFields";
+import { useDuckDBInitialization } from "../../../../hooks/useDuckDb";
+import { useLoadDataToDuckDB } from "../../../../hooks/useLoadDataToDuckDb";
 
-// import DuckDBCacheStatus from "../../duckdb-wasm-init/DuckDBCacheStatus";
 
 const bigIntReplacer = (key, value) =>
   typeof value === "bigint" ? value.toString() : value;
@@ -48,54 +38,61 @@ const PivotColumnSelection = ({
   const [customQuery, setCustomQuery] = useState("");
   const [showQueryDrawer, setShowQueryDrawer] = useState(false);
   const [pivotLoading, setPivotLoading] = useState(false);
-  const [duckDBLoaded, setDuckDBLoaded] = useState(false);
-  const [isLoadingDuckDB, setIsLoadingDuckDB] = useState(false);
-  const [duckDBStatus, setDuckDBStatus] = useState({
-    state: "idle",
-    message: "",
-    progress: 0,
-  });
   const [debugInformation] = useState(false);
-  const [db, setDb] = useState(null);
   const [tableData, setTableData] = useState(initialData);
   const [columns, setColumns] = useState(initialColumns);
-  const [isDevMode] = useState(false);
+  const [isDevMode] = useState(true);
   const [localPivotedData, setLocalPivotedData] = useState([]);
   const [localPivotedColumns, setLocalPivotedColumns] = useState([]);
   const [localIsPivoted, setLocalIsPivoted] = useState(false);
+  const dataLoadedRef = useRef(false);
+  // Use the custom hook instead of separate states
+  const {
+    db,
+    setDb,
+    isLoadingDuckDB,
+    setIsLoadingDuckDB,
+    duckDBStatus,
+  } = useDuckDBInitialization();
 
+  const loadDataToDuckDB = useLoadDataToDuckDB({
+    setIsLoadingDuckDB,
+    tableData,
+    minimalLogging: process.env.NODE_ENV !== 'development'
+  });
+  // Fix: Only load data once instead of on every render
   useEffect(() => {
-    if (!db) {
-      console.log("Starting DuckDB initialization on component mount");
+    if (db && tableData && tableData.length > 0 && !isLoadingDuckDB && !dataLoadedRef.current) {
+      // Mark as loaded to prevent reload
+      dataLoadedRef.current = true;
 
-      // Call the initialization function directly
-      initializeDuckDB(setDuckDBStatus)
-        .then((dbInstance) => {
-          console.log("DuckDB initialized successfully");
-          setDb(dbInstance);
+      // Silent logging during this operation
+      const originalConsole = {
+        log: console.log,
+        error: console.error
+      };
 
-          // Load data if already available
-          if (tableData && tableData.length > 0) {
-            loadDataToDuckDB(dbInstance);
-          }
-        })
-        .catch((error) => {
-          console.error("DuckDB initialization failed:", error);
-        });
+      if (process.env.NODE_ENV !== 'development') {
+        console.log = () => { };
+        console.error = () => { };
+      }
+
+      loadDataToDuckDB(db).finally(() => {
+        // Restore console
+        if (process.env.NODE_ENV !== 'development') {
+          console.log = originalConsole.log;
+          console.error = originalConsole.error;
+        }
+      });
     }
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, [db, tableData, isLoadingDuckDB]);
 
+  // Reset the loaded flag when table data changes
   useEffect(() => {
-    // This one is reasonable to keep since it handles external state
-    // im not sure it is
-    if (duckDBStatus.state === "done") {
-      setDuckDBLoaded(true);
-    } else if (duckDBStatus.state === "error") {
-      setDuckDBLoaded(false);
-    }
-  }, [duckDBStatus]);
+    dataLoadedRef.current = false;
+  }, [tableData]);
 
-  const updatePivotData = (data, columns) => {
+  const updatePivotData = useCallback((data, columns) => {
     // Update local state
     setLocalPivotedData(data);
     setLocalPivotedColumns(columns);
@@ -105,151 +102,18 @@ const PivotColumnSelection = ({
     if (setPivotedData) setPivotedData(data);
     if (setPivotedColumns) setPivotedColumns(columns);
     if (setIsPivoted) setIsPivoted(true);
-  };
+  }, [setPivotedData, setPivotedColumns, setIsPivoted]);
 
   // Reset pivot data - both local and parent
-  const resetPivotData = () => {
-    console.log(
-      "🔄 RESET called - THIS SHOULD ONLY HAPPEN WHEN BUTTON CLICKED"
-    );
-    console.log("Current local state:", {
-      tableData: tableData?.length || 0,
-      columns: columns?.length || 0,
-      localIsPivoted,
-      localPivotedData: localPivotedData?.length || 0,
-    });
+  const resetPivotData = useCallback(() => {
     setLocalIsPivoted(false);
     setLocalPivotedData([]);
     setLocalPivotedColumns([]);
 
-    // Also reset parent state
     if (setIsPivoted) setIsPivoted(false);
-    if (setPivotedData) {
-      console.log("Setting parent pivotedData to EMPTY ARRAY instead of null");
-      setPivotedData([]); // Empty array instead of null
-    }
-    if (setPivotedColumns) {
-      setPivotedColumns([]); // Empty array instead of null
-    }
-  };
-
-  const loadDataToDuckDB = useCallback(
-    async (dbInstance, dataToLoad) => {
-      if (isLoadingDuckDB) {
-        console.log("DuckDB load already in progress, skipping");
-        return;
-      }
-
-      try {
-        setIsLoadingDuckDB(true);
-        const data = dataToLoad || tableData;
-        if (!data.length) {
-          console.log("No table data to load into DuckDB");
-          return;
-        }
-
-        const conn = await dbInstance.connect();
-
-        try {
-          await conn.query(`DROP TABLE IF EXISTS table_data`);
-          console.log("Dropped existing table_data");
-        } catch (dropErr) {
-          console.error("Error dropping existing table:", dropErr);
-        }
-
-        const columnTypes = {};
-        Object.keys(data[0] || {}).forEach((key) => {
-          const allValues = data
-            .map((row) => row[key])
-            .filter((v) => v !== null && v !== undefined);
-          const allNumeric =
-            allValues.length > 0 &&
-            allValues.every(
-              (value) =>
-                typeof value === "number" ||
-                (typeof value === "string" &&
-                  value !== "-" &&
-                  value.trim() !== "" &&
-                  !isNaN(Number(value.replace(/[$,\s]/g, ""))))
-            );
-
-          columnTypes[key] = allNumeric ? "DOUBLE" : "VARCHAR";
-        });
-
-        const columnDefs = Object.entries(columnTypes)
-          .map(([key, type]) => `"${key}" ${type}`)
-          .join(", ");
-
-        await conn.query(`CREATE TABLE table_data (${columnDefs})`);
-
-        let insertedRows = 0;
-        let errorRows = 0;
-
-        for (const row of data) {
-          try {
-            const columns = Object.keys(row).join('", "');
-            const values = Object.values(row)
-              .map((value, index) => {
-                if (value === null || value === undefined) return "NULL";
-
-                const key = Object.keys(row)[index];
-
-                if (columnTypes[key] === "DOUBLE") {
-                  if (typeof value === "number") {
-                    return value;
-                  } else if (typeof value === "string") {
-                    if (value === "-" || value.trim() === "") {
-                      return "NULL";
-                    }
-                    const cleanValue = value.replace(/[$,\s]/g, "");
-                    return !isNaN(Number(cleanValue))
-                      ? Number(cleanValue)
-                      : "NULL";
-                  }
-                  return "NULL";
-                } else {
-                  // Normalize strings: trim and convert to lowercase
-                  return `'${String(value)
-                    .trim()
-                    .toLowerCase()
-                    .replace(/'/g, "''")}'`;
-                }
-              })
-              .join(", ");
-
-            await conn.query(
-              `INSERT INTO table_data ("${columns}") VALUES (${values})`
-            );
-            insertedRows++;
-          } catch (insertErr) {
-            console.error(`Error inserting row:`, insertErr, { row });
-            errorRows++;
-          }
-        }
-        console.log(
-          `Inserted ${insertedRows} rows successfully, ${errorRows} rows failed`
-        );
-
-        try {
-          const verifyResult = await conn.query(
-            "SELECT COUNT(*) FROM table_data"
-          );
-          const count = await verifyResult.toArray();
-          console.log(`DuckDB table now contains ${count[0]} rows`);
-        } catch (verifyErr) {
-          console.error("Error verifying data count:", verifyErr);
-        }
-
-        await conn.close();
-        console.log("DuckDB connection closed");
-      } catch (e) {
-        console.error("Error loading data to DuckDB:", e);
-      } finally {
-        setIsLoadingDuckDB(false);
-      }
-    },
-    [tableData]
-  );
+    if (setPivotedData) setPivotedData([]);
+    if (setPivotedColumns) setPivotedColumns([]);
+  }, [setIsPivoted, setPivotedData, setPivotedColumns]);
 
   const toggleQueryDrawer = (open) => () => {
     console.log("Toggling Query Drawer:", open);
@@ -264,8 +128,6 @@ const PivotColumnSelection = ({
 
     try {
       const conn = await db.connect();
-      // console.log("Executing query:", customQuery);
-
       const result = await conn.query(customQuery);
       const data = await result.toArray();
 
@@ -432,8 +294,6 @@ const PivotColumnSelection = ({
           header: field.name,
           accessorKey: sanitizeColumnName(field.name),
         }));
-        // stringify the data for better readability
-        // const stringifiedData = JSON.stringify(pivotedData, bigIntReplacer, 2);
 
         updatePivotData(convertedData, pivotedColumns);
       } else {
@@ -514,11 +374,6 @@ const PivotColumnSelection = ({
             </Box>
           )}
 
-          {/* Add DuckDBCacheStatus here */}
-          {/* <Box sx={{ display: "flex", flexDirection: "column", gap: "10px" }}> */}
-          {/* <DuckDBStatus duckDBStatus={duckDBStatus} db={db} /> */}
-          {/* <DuckDBCacheStatus /> */}
-          {/* </Box> */}
           {isDevMode && (
             <Box sx={{ mt: 1, mb: 2 }}>
               <Button
@@ -554,7 +409,6 @@ const PivotColumnSelection = ({
               db={db}
               useTable={useTableFromParent}
               loadDataToDuckDB={loadDataToDuckDB}
-              initializeDuckDB={initializeDuckDB}
               setDb={setDb}
               setColumns={(cols) => {
                 console.log("Setting columns from CSV:", cols?.length);
@@ -632,8 +486,8 @@ const PivotColumnSelection = ({
           {pivotLoading
             ? "Processing..."
             : localIsPivoted
-            ? "Update Pivot"
-            : "Apply Pivot"}
+              ? "Update Pivot"
+              : "Apply Pivot"}
         </Button>
         {localIsPivoted && (
           <Button variant="outlined" onClick={resetPivotData}>

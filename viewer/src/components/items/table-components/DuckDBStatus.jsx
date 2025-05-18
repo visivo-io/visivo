@@ -1,5 +1,3 @@
-import React from "react";
-
 const DuckDBStatus = ({ duckDBStatus, db }) => {
   return (
     <div className="flex items-center gap-2 p-2.5 bg-white rounded border border-gray-200">

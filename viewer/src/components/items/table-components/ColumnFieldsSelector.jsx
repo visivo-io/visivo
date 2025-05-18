@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo, useCallback } from "react";
 import {
   FormControl,
   InputLabel,
@@ -9,8 +9,23 @@ import {
   Chip,
 } from "@mui/material";
 
+const findColumnHeader = (columns, value) => 
+  columns.find((col) => col.accessorKey === value || col.id === value)?.header || value;
+
 const ColumnFieldsSelector = memo(
   ({ columnFields = [], columns = [], onChange }) => {
+
+    const renderValue = useCallback((selected) => (
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+        {selected.map((value) => (
+          <Chip
+            key={value}
+            label={findColumnHeader(columns, value)}
+            size="small"
+          />
+        ))}
+      </Box>
+    ), [columns]);
     return (
       <FormControl sx={{ minWidth: 200, maxWidth: 300 }}>
         <InputLabel id="column-fields-label">Column Fields</InputLabel>
@@ -23,21 +38,7 @@ const ColumnFieldsSelector = memo(
           input={
             <OutlinedInput id="select-column-fields" label="Column Fields" />
           }
-          renderValue={(selected) => (
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-              {selected.map((value) => (
-                <Chip
-                  key={value}
-                  label={
-                    columns.find(
-                      (col) => col.accessorKey === value || col.id === value
-                    )?.header || value
-                  }
-                  size="small"
-                />
-              ))}
-            </Box>
-          )}
+          renderValue={renderValue}
         >
           {columns.map((column) => (
             <MenuItem
