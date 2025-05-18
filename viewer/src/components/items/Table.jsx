@@ -68,24 +68,6 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     decimalSeparator: ".",
     useKeysAsHeaders: true,
   });
-  // Add this effect to preserve the original data before pivoting
-  // Replace your current useEffect with this:
-  // Add this useEffect right after your other useEffect blocks:
-  useEffect(() => {
-    // Debug when tableData changes
-    console.log(`TableData changed: ${tableData?.length || 0} rows`);
-  }, [tableData]);
-
-  // Add this to track when pivotedData changes
-  useEffect(() => {
-    // Debug when pivotedData changes
-    console.log(`PivotedData changed: ${pivotedData?.length || 0} rows`);
-  }, [pivotedData]);
-
-  // Add this to monitor isPivoted changes
-  useEffect(() => {
-    console.log(`isPivoted changed to: ${isPivoted}`);
-  }, [isPivoted]);
 
   useEffect(() => {
     if (selectedTableCohort && tracesData) {
@@ -407,23 +389,3 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 };
 
 export default Table;
-
-// TODO refactor all the things
-
-// make loading duck db laoding nice
-
-// add all the tests - likely need to update the existing table tests
-// don't push the sub heading down
-// don'l overlap the panel underneath
-
-// Done
-// Add the clear pivot back
-// Perhaps have query results in the console log or a better ui
-// or qdd a button to load duckdb
-// and you are inside the pivot table
-// auto load duckdb if you hit the query button
-// or only have the query button if duckdb is loaded
-// add loader spinner to loading csv and
-// maybe a modal in the top corner - or
-// There is data loaded, then it's wiped and then loaded again - fix this
-// duckdb loading and duckdb status need to be in the same place in the UI

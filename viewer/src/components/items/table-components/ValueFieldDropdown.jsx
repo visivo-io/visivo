@@ -1,4 +1,4 @@
-import canBeAggregated from "../table-helpers/can-be-aggregated/canBeAggregated";
+import canBeAggregated from "../table-helpers/is-aggregatable/isAggregatable";
 import { FormControl } from "@mui/material";
 import InputLabel from "@mui/material/InputLabel";
 import Select from "@mui/material/Select";

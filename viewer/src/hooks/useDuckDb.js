@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { initializeDuckDB } from "../components/items/duckdb-wasm-init/duckDBWasmInit";
 
-export const useDuckDBInitialization= () =>{
+const DUCK_DB_COMPLETED_LOADING_STATUS = "done";
+
+export const useDuckDBInitialization = () => {
   const [db, setDb] = useState(null);
-  const [duckDBLoaded, setDuckDBLoaded] = useState(false);
   const [isLoadingDuckDB, setIsLoadingDuckDB] = useState(false);
   const [duckDBStatus, setDuckDBStatus] = useState({
     state: "idle",
@@ -25,18 +26,15 @@ export const useDuckDBInitialization= () =>{
           console.error("DuckDB initialization failed:", error);
         });
     }
+
+    return () => {
+      if (db) {
+        db.close().catch(e => console.error("Error closing DuckDB:", e));
+      }
+    };
   }, [db]);
 
-  // this should retry for an error
-  // or display an error message
-  // internet issue perhaps
-  useEffect(() => {
-    if (duckDBStatus.state === "done") {
-      setDuckDBLoaded(true);
-    } else if (duckDBStatus.state === "error") {
-      setDuckDBLoaded(false);
-    }
-  }, [duckDBStatus]);
+  const duckDBLoaded = duckDBStatus.state === DUCK_DB_COMPLETED_LOADING_STATUS
 
   return {
     db,

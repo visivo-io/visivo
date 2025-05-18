@@ -1,4 +1,4 @@
-const canBeAggregated = (value) => {
+const isAggregatable = (value) => {
   // Handle nulls and undefined
   if (value === null || value === undefined) return false;
 
@@ -19,4 +19,4 @@ const canBeAggregated = (value) => {
   return false;
 };
 
-export default canBeAggregated;
+export default isAggregatable;

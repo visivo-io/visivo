@@ -58,7 +58,6 @@ const PivotColumnSelection = ({
   const loadDataToDuckDB = useLoadDataToDuckDB({
     setIsLoadingDuckDB,
     tableData,
-    minimalLogging: process.env.NODE_ENV !== 'development'
   });
   // Fix: Only load data once instead of on every render
   useEffect(() => {
@@ -66,24 +65,6 @@ const PivotColumnSelection = ({
       // Mark as loaded to prevent reload
       dataLoadedRef.current = true;
 
-      // Silent logging during this operation
-      const originalConsole = {
-        log: console.log,
-        error: console.error
-      };
-
-      if (process.env.NODE_ENV !== 'development') {
-        console.log = () => { };
-        console.error = () => { };
-      }
-
-      loadDataToDuckDB(db).finally(() => {
-        // Restore console
-        if (process.env.NODE_ENV !== 'development') {
-          console.log = originalConsole.log;
-          console.error = originalConsole.error;
-        }
-      });
     }
   }, [db, tableData, isLoadingDuckDB]);
 
@@ -132,10 +113,10 @@ const PivotColumnSelection = ({
       const data = await result.toArray();
 
       // Log the viewable data
-      console.log(
-        "Query result (viewable):",
-        JSON.stringify(data, bigIntReplacer, 2)
-      );
+      // console.log(
+      //   "Query result (viewable):",
+      //   JSON.stringify(data, bigIntReplacer, 2)
+      // );
       await conn.close();
     } catch (error) {
       console.error("Error executing query:", error);
@@ -203,11 +184,6 @@ const PivotColumnSelection = ({
         // Convert Proxy(StructRow) to plain objects
         const plainCombos = combos.map((row) => ({ ...row }));
 
-        console.log(
-          "Distinct column combinations (plain objects):",
-          plainCombos
-        );
-
         const groupedLabels = {}; // Track labels and their corresponding conditions
         plainCombos.forEach((combo) => {
           // Generate a label for the combination
@@ -269,8 +245,6 @@ const PivotColumnSelection = ({
             GROUP BY ${groupBy}
             ORDER BY ${groupBy}
           `;
-
-        console.log("Generated SQL query:", sql);
 
         // Execute the pivot query
         const result = await conn.query(sql);
@@ -396,10 +370,7 @@ const PivotColumnSelection = ({
               duckDBStatus={duckDBStatus}
               setIsPivoted={setIsPivoted}
               setPivotedData={(data) => {
-                console.log(
-                  "CSV setting pivotedData:",
-                  data ? "has data" : "null/empty"
-                );
+
                 setPivotedData(data || []); // Never set to null, use empty array
               }}
               setPivotedColumns={(cols) => {
@@ -411,7 +382,6 @@ const PivotColumnSelection = ({
               loadDataToDuckDB={loadDataToDuckDB}
               setDb={setDb}
               setColumns={(cols) => {
-                console.log("Setting columns from CSV:", cols?.length);
                 // Update local state
                 setColumns(cols);
                 // Update parent state
@@ -429,7 +399,6 @@ const PivotColumnSelection = ({
                 }
               }}
               setTableData={(data) => {
-                console.log("Setting tableData from CSV:", data?.length);
                 // Update local state
                 setTableData(data);
                 // Update parent state
