@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import ObjectPill from '../ObjectPill';
+import ObjectPill from '../../../ObjectPill';
 
 const AttributeDropdown = ({
   showDropdown,

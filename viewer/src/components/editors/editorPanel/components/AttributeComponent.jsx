@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import debounce from 'lodash/debounce';
-import useStore from '../../stores/store';
-import ObjectPill from './ObjectPill';
-import QueryPill from './QueryPill';
-import ContextMenu from './ContextMenu';
-import Input from '../styled/Input';
-import InputShell from '../styled/InputShell';
+import useStore from '../../../../stores/store';
+import ObjectPill from '../../ObjectPill';
+import QueryPill from '../../QueryPill';
+import ContextMenu from '../ContextMenu';
+import Input from '../../../styled/Input';
+import InputShell from '../../../styled/InputShell';
 import { useAttributeParser } from './attribute/useAttributeParser';
 import { useAttributeDropdown } from './attribute/useAttributeDropdown';
 import { useAttributeContextMenu } from './attribute/useAttributeContextMenu';

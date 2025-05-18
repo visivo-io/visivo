@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import renderValue from './renderValue';
 import { HiPlus, HiOutlineCube } from 'react-icons/hi';
-import AddItemModal from './AddItemModal';
-import useStore from '../../stores/store';
-import ContextMenu from './ContextMenu';
+import AddItemModal from '../modals/AddItemModal';
+import useStore from '../../../../stores/store';
+import ContextMenu from '../ContextMenu';
 
 function ObjectComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);

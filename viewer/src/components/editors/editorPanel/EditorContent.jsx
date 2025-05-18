@@ -1,5 +1,5 @@
 import React from 'react';
-import ObjectComponent from '../ObjectComponent';
+import ObjectComponent from './components/ObjectComponent';
 
 const EditorContent = ({ scrollRef, handleScroll, activeTabId, activeConfig, activeTab }) => {
   return (
