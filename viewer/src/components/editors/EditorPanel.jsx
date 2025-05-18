@@ -1,5 +1,5 @@
 import React from 'react';
-import { HiX, HiDotsVertical } from 'react-icons/hi';
+import { HiX, HiDotsVertical, HiSave } from 'react-icons/hi';
 import ObjectComponent from './ObjectComponent';
 import SaveChangesModal from './SaveChangesModal';
 import useStore from '../../stores/store';
@@ -73,38 +73,46 @@ const EditorPanel = () => {
 
   return (
     <div className="flex-1 bg-white border-b border-gray-200 p-2 overflow-hidden flex flex-col min-h-0">
-      <div className="flex items-center justify-between border-b border-gray-200">
-        <div className="flex space-x-1 overflow-x-auto">
-          {tabs.map(tab => (
-            <div
-              key={tab.id}
-              className={`flex items-center px-4 py-2 rounded-t-lg  cursor-pointer border-b-2 ${
-                activeTabId === tab.id
-                  ? 'text-blue-600 border-blue-600 bg-blue-50'
-                  : 'text-gray-500 hover:text-gray-700 border-transparent'
-              }`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <span className="text-sm font-medium truncate max-w-xs">{tab.name}</span>
-              <button
-                className="ml-2 p-1 hover:bg-blue-100 rounded-xs"
-                onClick={e => {
-                  e.stopPropagation();
-                  closeTab(tab.id);
-                }}
+      <div className="flex items-center border-b border-gray-200">
+        <div className="flex-1 min-w-0">
+          <div className="flex space-x-1 overflow-x-auto">
+            {tabs.map(tab => (
+              <div
+                key={tab.id}
+                className={`flex items-center px-4 py-2 rounded-t-lg  cursor-pointer border-b-2 ${
+                  activeTabId === tab.id
+                    ? 'text-blue-600 border-blue-600 bg-blue-50'
+                    : 'text-gray-500 hover:text-gray-700 border-transparent'
+                }`}
+                onClick={() => setActiveTab(tab.id)}
               >
-                <HiX className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                <span className="text-sm font-medium truncate max-w-xs">{tab.name}</span>
+                <button
+                  className="ml-2 p-1 hover:bg-blue-100 rounded-xs"
+                  onClick={e => {
+                    e.stopPropagation();
+                    closeTab(tab.id);
+                  }}
+                >
+                  <HiX className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="pl-2 pb-4 flex items-center space-x-2">
+        <div className="flex items-center space-x-2 md:space-x-0 flex-shrink-0 pb-2">
           {/* Only show kebab menu when there's an active tab */}
           {activeTabId && (
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="hidden md:flex px-1 hover:bg-gray-100 rounded-lg"
+              >
+                <HiDotsVertical className="w-5 h-5 text-gray-600" />
+              </button>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="md:hidden flex px-0 hover:bg-gray-100 rounded-sm"
               >
                 <HiDotsVertical className="w-5 h-5 text-gray-600" />
               </button>
@@ -152,11 +160,19 @@ const EditorPanel = () => {
             </div>
           )}
 
+          {/* View Changes button for desktop, Save icon for mobile */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-[#713B57] text-white rounded-lg hover:bg-[#5A2F46] hover:scale-101 flex items-center"
+            className="hidden md:flex px-4 py-2 bg-[#713B57] text-white rounded-lg hover:bg-[#5A2F46] hover:scale-101 items-center"
           >
             View Changes
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex md:hidden px-2 py-2 bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] hover:scale-101 items-center"
+            aria-label="Save Changes"
+          >
+            <HiSave className="w-5 h-5" />
           </button>
         </div>
       </div>
