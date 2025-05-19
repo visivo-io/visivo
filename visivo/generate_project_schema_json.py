@@ -42,7 +42,9 @@ def generate_schema():
     schema_string = schema_string.replace("?P<query_string>", "")
 
     if "?P<" in schema_string:
-        raise Exception(f"Schema json contains '?P<': this means that the schema is likely not JS compatible and needs a new find and replace like the ones above this line")
+        raise Exception(
+            f"Schema json contains '?P<': this means that the schema is likely not JS compatible and needs a new find and replace like the ones above this line"
+        )
 
     return schema_string
 
