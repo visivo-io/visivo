@@ -8,7 +8,7 @@ const Input = forwardRef((props, ref) => {
     inputRef.current.focus();
   };
   return (
-    <div className="relative">
+    <div className="relative h-full">
       <input
         ref={inputRef}
         type={props.type ? props.type : 'text'}
