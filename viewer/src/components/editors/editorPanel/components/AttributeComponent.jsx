@@ -19,6 +19,7 @@ function AttributeComponent({ name, value, path }) {
   const [localValue, setLocalValue] = useState(value);
   const [clickTimeout, setClickTimeout] = useState(null);
   const pillRef = useRef(null);
+  const inputShellRef = useRef(null);
 
   const {
     isJsonObject,
@@ -168,11 +169,12 @@ function AttributeComponent({ name, value, path }) {
           </div>
         </InputShell>
       ) : isQueryValue ? (
-        <InputShell label={name} hasContent={!!localValue}>
+        <InputShell label={name} hasContent={!!localValue} containerRef={inputShellRef}>
           <QueryPill
             value={localValue}
             onChange={handleQueryChange}
             isQueryFunction={queryType === 'function'}
+            inputShellRef={inputShellRef}
           />
         </InputShell>
       ) : (

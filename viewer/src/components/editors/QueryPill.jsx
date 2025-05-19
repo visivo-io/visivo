@@ -1,10 +1,26 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
-function QueryPill({ value, onChange, isQueryFunction }) {
+function QueryPill({ value, onChange, isQueryFunction, inputShellRef }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(value);
   const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef(null);
+  const pillRef = useRef(null);
+  const [pillRect, setPillRect] = useState(null);
+
+  useEffect(() => {
+    if (isEditing && pillRef.current && inputShellRef?.current) {
+      const pillRect = pillRef.current.getBoundingClientRect();
+      const shellRect = inputShellRef.current.getBoundingClientRect();
+      setPillRect({
+        ...pillRect,
+        left: shellRect.left,
+        top: pillRect.top,
+        width: shellRect.width,
+      });
+    }
+  }, [isEditing, inputShellRef]);
 
   const handleClick = () => {
     setIsEditing(true);
@@ -33,39 +49,36 @@ function QueryPill({ value, onChange, isQueryFunction }) {
     ? localValue.replace(/^query\((.*)\)$/, '$1')
     : localValue.replace(/^\?\{(.*)\}$/, '$1');
 
-  return (
-    <div
-      className="relative inline-flex items-stretch min-h-[2rem] max-h-[4rem] rounded-full bg-blue-100 border-2 border-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] cursor-text overflow-hidden"
-      onClick={handleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+  const pillContent = (
+    <>
       {/* Left moon with SQL text - now self-stretches and centers content */}
       <div className="flex items-center self-stretch px-3 border-r border-white shrink-0">
         <span className="text-sm font-semibold text-blue-900">SQL</span>
       </div>
-
       {/* Main content */}
-      <div className="flex-1 px-3 py-1 min-w-0 max-w-full">
+      <div className="flex-1 px-3 py-1 min-w-0 w-full flex items-center">
         {isEditing ? (
           <textarea
             ref={inputRef}
             value={displayValue}
             onChange={e => setLocalValue(e.target.value)}
             onBlur={handleBlur}
-            className="bg-transparent text-blue-900 outline-none w-full resize-none"
-            rows={2}
+            className="bg-transparent text-blue-900 outline-none w-full resize-none overflow-visible min-h-[2rem] rounded-xsm"
+            rows={1}
+            style={{ height: 'auto' }}
+            onInput={e => {
+              e.target.style.height = 'auto';
+              e.target.style.height = e.target.scrollHeight + 'px';
+            }}
           />
         ) : (
-          <span className="text-blue-900 whitespace-pre-wrap break-words line-clamp-2 block">
+          <span className="text-blue-900 whitespace-nowrap overflow-hidden text-ellipsis block w-full">
             {displayValue}
           </span>
         )}
       </div>
-
       {/* Delete button container - always present */}
       <div className="flex items-center self-stretch px-2 shrink-0 w-8">
-        {/* Button only shows on hover */}
         {isHovered && !isEditing && (
           <button
             onClick={handleDelete}
@@ -81,6 +94,36 @@ function QueryPill({ value, onChange, isQueryFunction }) {
           </button>
         )}
       </div>
+    </>
+  );
+
+  if (isEditing && pillRect) {
+    return createPortal(
+      <div
+        className="relative inline-flex items-stretch min-h-[2rem] max-h-[none] rounded-xl shadow-md bg-blue-100 border-2 border-white shadow-lg z-50"
+        style={{
+          position: 'fixed',
+          left: pillRect.left,
+          top: pillRect.top - 10,
+          width: pillRect.width,
+          maxWidth: '90vw',
+        }}
+      >
+        {pillContent}
+      </div>,
+      document.body
+    );
+  }
+
+  return (
+    <div
+      ref={pillRef}
+      className="relative inline-flex items-stretch min-h-[2rem] max-h-[4rem] rounded-full bg-blue-100 border-2 border-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)] cursor-text overflow-hidden"
+      onClick={handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {pillContent}
     </div>
   );
 }
