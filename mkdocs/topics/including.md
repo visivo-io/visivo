@@ -49,7 +49,7 @@ dashboards:
             chart:
               name: Pull Requests by Repository
               traces:
-                - ref(Pull Request by Repository)
+                - ${ref(Pull Request by Repository)}
               layout:
                 title: "Pull Request by Repository"
 ```

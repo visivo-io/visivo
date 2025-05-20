@@ -14,5 +14,5 @@ dashboards:
             width: 5 
       - height: medium 
         items: 
-          - chart: ref(Simple Carpet Chart)
+          - chart: ${ref(Simple Carpet Chart)}
           - markdown: ""

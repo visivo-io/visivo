@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
                 3,3,10,11,50
         traces:
           - name: Carpet Plot
-            model: ref(contourcarpet-data)
+            model: ${ref(contourcarpet-data)}
             props:
               type: carpet
               a: ?{a}
@@ -55,17 +55,17 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
               x: ?{x}
               y: ?{y}
           - name: Simple Contourcarpet Plot
-            model: ref(contourcarpet-data)
+            model: ${ref(contourcarpet-data)}
             props:
               type: contourcarpet
-              carpet: ref(Carpet Plot)
+              carpet: ${ref(Carpet Plot)}
               z: ?{z}
               colorscale: "Viridis"
         charts:
           - name: Simple Contourcarpet Chart
             traces:
-              - ref(Simple Contourcarpet Plot)
-              - ref(Carpet Plot)
+              - ${ref(Simple Contourcarpet Plot)}
+              - ${ref(Carpet Plot)}
             layout:
               title:
                 text: Simple Contourcarpet Plot<br><sub>Contour Plot over a Carpet</sub>
@@ -103,7 +103,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
                 2,2,10,11,45
         traces:
           - name: Carpet Plot Filled
-            model: ref(contourcarpet-data-filled)
+            model: ${ref(contourcarpet-data-filled)}
             props:
               type: carpet
               a: ?{a}
@@ -111,10 +111,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
               x: ?{x}
               y: ?{y}
           - name: Filled Contourcarpet Plot
-            model: ref(contourcarpet-data-filled)
+            model: ${ref(contourcarpet-data-filled)}
             props:
               type: contourcarpet
-              carpet: ref(Carpet Plot Filled)
+              carpet: ${ref(Carpet Plot Filled)}
               z: ?{z}
               colorscale: "Earth"
               contours:
@@ -123,8 +123,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
         charts:
           - name: Filled Contourcarpet Chart
             traces:
-              - ref(Filled Contourcarpet Plot)
-              - ref(Carpet Plot Filled)
+              - ${ref(Filled Contourcarpet Plot)}
+              - ${ref(Carpet Plot Filled)}
             layout:
               title:
                 text: Filled Contourcarpet Plot<br><sub>Filled Contour Plot over a Carpet</sub>
@@ -162,7 +162,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
                 2,2,9,9,90
         traces:
           - name: Carpet Plot Custom
-            model: ref(contourcarpet-data-custom)
+            model: ${ref(contourcarpet-data-custom)}
             props:
               type: carpet
               a: ?{a}
@@ -170,10 +170,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
               x: ?{x}
               y: ?{y}
           - name: Custom Contourcarpet Plot
-            model: ref(contourcarpet-data-custom)
+            model: ${ref(contourcarpet-data-custom)}
             props:
               type: contourcarpet
-              carpet: ref(Carpet Plot Custom)
+              carpet: ${ref(Carpet Plot Custom)}
               z: ?{z}
               colorscale: "Jet"
               contours:
@@ -183,8 +183,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attrib
         charts:
           - name: Custom Contourcarpet Chart
             traces:
-              - ref(Custom Contourcarpet Plot)
-              - ref(Carpet Plot Custom)
+              - ${ref(Custom Contourcarpet Plot)}
+              - ${ref(Carpet Plot Custom)}
             layout:
               title:
                 text: Custom Contourcarpet Plot<br><sub>Customized Contour Levels on a Carpet</sub>

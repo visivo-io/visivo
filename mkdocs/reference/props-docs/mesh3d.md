@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
 
         traces:
           - name: Simple Mesh3D Plot
-            model: ref(mesh3d-data)
+            model: ${ref(mesh3d-data)}
             props:
               type: mesh3d
               x: ?{x}
@@ -59,7 +59,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) f
         charts:
           - name: Simple Mesh3D Chart
             traces:
-              - ref(Simple Mesh3D Plot)
+              - ${ref(Simple Mesh3D Plot)}
             layout:
               title:
                 text: Simple Mesh3D Plot<br><sub>3D Mesh Surface Visualization</sub>

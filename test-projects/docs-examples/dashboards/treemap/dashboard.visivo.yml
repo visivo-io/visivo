@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: large
         items:
-          - chart: ref(Simple Treemap Chart)
-          - chart: ref(Treemap Chart with Custom Colors)
+          - chart: ${ref(Simple Treemap Chart)}
+          - chart: ${ref(Treemap Chart with Custom Colors)}
       - height: large
         items:
-          - chart: ref(Treemap Chart with Custom Tiling)
+          - chart: ${ref(Treemap Chart with Custom Tiling)}
           - markdown: ""

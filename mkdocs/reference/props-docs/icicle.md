@@ -44,7 +44,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
                 F,B,15
         traces:
           - name: Simple Icicle Plot
-            model: ref(icicle-data)
+            model: ${ref(icicle-data)}
             props:
               type: icicle
               labels: ?{category}
@@ -59,7 +59,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
         charts:
           - name: Simple Icicle Chart
             traces:
-              - ref(Simple Icicle Plot)
+              - ${ref(Simple Icicle Plot)}
             layout:
               title:
                 text: Simple Icicle Chart<br><sub>Hierarchical Data Breakdown</sub>
@@ -88,7 +88,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
                 F,B,15,"#8c564b"
         traces:
           - name: Custom Colors Icicle Plot
-            model: ref(icicle-data-custom)
+            model: ${ref(icicle-data-custom)}
             props:
               type: icicle
               labels: ?{category}
@@ -100,7 +100,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
         charts:
           - name: Custom Colors Icicle Chart
             traces:
-              - ref(Custom Colors Icicle Plot)
+              - ${ref(Custom Colors Icicle Plot)}
             layout:
               title:
                 text: Icicle Plot with Custom Colors<br><sub>Custom Coloring for Branches</sub>
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
                 F,B,15
         traces:
           - name: Icicle Plot with Depth Limiting Trace
-            model: ref(icicle-data-depth)
+            model: ${ref(icicle-data-depth)}
             props:
               type: icicle
               labels: ?{category}
@@ -142,7 +142,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Icicle/#attributes) f
         charts:
           - name: Icicle Plot with Depth Limiting
             traces:
-              - ref(Icicle Plot with Depth Limiting Trace)
+              - ${ref(Icicle Plot with Depth Limiting Trace)}
             layout:
               title:
                 text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>

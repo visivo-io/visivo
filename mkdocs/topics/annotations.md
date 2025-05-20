@@ -265,7 +265,7 @@ Highlighting regions in your charts helps draw attention to important areas or p
     
         traces:
           - name: scatter_trace
-            model: ref(scatter_data)
+            model: ${ref(scatter_data)}
             props:
               type: scatter
               x: ?{x}
@@ -277,7 +277,7 @@ Highlighting regions in your charts helps draw attention to important areas or p
         charts:
           - name: scatter_with_rectangle
             traces:
-              - ref(scatter_trace)
+              - ${ref(scatter_trace)}
             layout:
               title: Highlighted Region in Scatter Plot
               shapes:
@@ -314,7 +314,7 @@ Highlighting regions in your charts helps draw attention to important areas or p
     
         traces:
           - name: scatter_trace
-            model: ref(scatter_data)
+            model: ${ref(scatter_data)}
             props:
               type: scatter
               x: ?{x}
@@ -326,7 +326,7 @@ Highlighting regions in your charts helps draw attention to important areas or p
         charts:
           - name: scatter_with_multiple_regions
             traces:
-              - ref(scatter_trace)
+              - ${ref(scatter_trace)}
             layout:
               title: Multiple Highlighted Regions
               shapes:
@@ -372,7 +372,7 @@ Highlighting regions in your charts helps draw attention to important areas or p
 
         traces:
           - name: scatter_trace
-            model: ref(scatter_data)
+            model: ${ref(scatter_data)}
             props:
               type: scatter
               x: ?{x}
@@ -384,7 +384,7 @@ Highlighting regions in your charts helps draw attention to important areas or p
         charts:
           - name: scatter_with_region_annotation
             traces:
-              - ref(scatter_trace)
+              - ${ref(scatter_trace)}
             layout:
               title: Highlighted Region with Annotation
               shapes:
@@ -437,7 +437,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
     
         traces:
           - name: line_trace
-            model: ref(line_data)
+            model: ${ref(line_data)}
             props:
               type: scatter
               x: ?{x}
@@ -449,7 +449,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
         charts:
           - name: line_with_threshold
             traces:
-              - ref(line_trace)
+              - ${ref(line_trace)}
             layout:
               title: Threshold Line Example
               shapes:
@@ -486,7 +486,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
 
         traces:
           - name: vertical_line_trace
-            model: ref(vertical_threshold_data)
+            model: ${ref(vertical_threshold_data)}
             props:
               type: scatter
               x: ?{x}
@@ -498,7 +498,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
         charts:
           - name: vertical_line_threshold
             traces:
-              - ref(vertical_line_trace)
+              - ${ref(vertical_line_trace)}
             layout:
               title: Vertical Threshold Line Example
               shapes:
@@ -535,7 +535,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
 
         traces:
           - name: threshold_annotation_trace
-            model: ref(threshold_annotation_data)
+            model: ${ref(threshold_annotation_data)}
             props:
               type: scatter
               x: ?{x}
@@ -547,7 +547,7 @@ Thresholds and limits are powerful tools for tracking goals, targets, and critic
         charts:
           - name: threshold_with_annotation
             traces:
-              - ref(threshold_annotation_trace)
+              - ${ref(threshold_annotation_trace)}
             layout:
               title: Threshold with Annotation
               shapes:
@@ -600,7 +600,7 @@ Key points are data points that are particularly important or noteworthy. Annota
 
         traces:
           - name: multiple_points_trace
-            model: ref(multiple_points_data)
+            model: ${ref(multiple_points_data)}
             props:
               type: scatter
               x: ?{x}
@@ -612,7 +612,7 @@ Key points are data points that are particularly important or noteworthy. Annota
         charts:
           - name: multiple_points_annotation
             traces:
-              - ref(multiple_points_trace)
+              - ${ref(multiple_points_trace)}
             layout:
               title: Multiple Points Annotation
               annotations:
@@ -658,7 +658,7 @@ Key points are data points that are particularly important or noteworthy. Annota
 
         traces:
           - name: point_region_trace
-            model: ref(point_region_data)
+            model: ${ref(point_region_data)}
             props:
               type: scatter
               x: ?{x}
@@ -670,7 +670,7 @@ Key points are data points that are particularly important or noteworthy. Annota
         charts:
           - name: point_with_region
             traces:
-              - ref(point_region_trace)
+              - ${ref(point_region_trace)}
             layout:
               title: Point with Region
               shapes:
@@ -731,7 +731,7 @@ Below are three examples showcasing the use of emoji annotations.
 
         traces:
           - name: emoji_trace
-            model: ref(emoji_data)
+            model: ${ref(emoji_data)}
             props:
               type: scatter
               x: ?{x}
@@ -743,7 +743,7 @@ Below are three examples showcasing the use of emoji annotations.
         charts:
           - name: emoji_annotations_chart
             traces:
-              - ref(emoji_trace)
+              - ${ref(emoji_trace)}
             layout:
               title: Emoji Annotations for Data Points
               annotations:
@@ -791,7 +791,7 @@ Below are three examples showcasing the use of emoji annotations.
 
         traces:
           - name: threshold_emoji_trace
-            model: ref(threshold_emoji_data)
+            model: ${ref(threshold_emoji_data)}
             props:
               type: scatter
               x: ?{x}
@@ -803,7 +803,7 @@ Below are three examples showcasing the use of emoji annotations.
         charts:
           - name: threshold_with_emojis
             traces:
-              - ref(threshold_emoji_trace)
+              - ${ref(threshold_emoji_trace)}
             layout:
               title: Threshold Line with Emojis
               shapes:
@@ -848,7 +848,7 @@ Below are three examples showcasing the use of emoji annotations.
 
         traces:
           - name: region_emoji_trace
-            model: ref(region_emoji_data)
+            model: ${ref(region_emoji_data)}
             props:
               type: scatter
               x: ?{x}
@@ -860,7 +860,7 @@ Below are three examples showcasing the use of emoji annotations.
         charts:
           - name: region_with_emojis
             traces:
-              - ref(region_emoji_trace)
+              - ${ref(region_emoji_trace)}
             layout:
               title: Region Highlighted with Emojis
               shapes:

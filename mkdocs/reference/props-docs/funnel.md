@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
                 Closed Deals,100
         traces:
           - name: Simple Funnel Plot
-            model: ref(funnel-data)
+            model: ${ref(funnel-data)}
             props:
               type: funnel
               y: ?{stage}
@@ -56,7 +56,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
         charts:
           - name: Simple Funnel Chart
             traces:
-              - ref(Simple Funnel Plot)
+              - ${ref(Simple Funnel Plot)}
             layout:
               title:
                 text: Simple Funnel Chart<br><sub>Sales Funnel from Leads to Closed Deals</sub>
@@ -88,7 +88,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
                 Conversion,700
         traces:
           - name: Horizontal Funnel Chart Trace
-            model: ref(funnel-data-horizontal)
+            model: ${ref(funnel-data-horizontal)}
             props:
               type: funnel
               orientation: v
@@ -101,7 +101,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
         charts:
           - name: Horizontal Funnel Chart
             traces:
-              - ref(Horizontal Funnel Chart Trace)
+              - ${ref(Horizontal Funnel Chart Trace)}
             layout:
               title:
                 text: Horizontal Funnel Chart<br><sub>Stages of User Journey</sub>
@@ -132,7 +132,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
                 Won,100,"#9467bd"
         traces:
           - name: Custom Markers Funnel Chart
-            model: ref(funnel-data-custom)
+            model: ${ref(funnel-data-custom)}
             props:
               type: funnel
               y: ?{stage}
@@ -146,7 +146,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
         charts:
           - name: Funnel Chart with Custom Markers
             traces:
-              - ref(Custom Markers Funnel Chart)
+              - ${ref(Custom Markers Funnel Chart)}
             layout:
               title:
                 text: Funnel Chart with Custom Markers<br><sub>Stages of the Sales Funnel</sub>
@@ -184,7 +184,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
                 Purchase,300,Product C
         traces:
           - name: Cohort Funnel Chart
-            model: ref(funnel-data-cohorts)
+            model: ${ref(funnel-data-cohorts)}
             cohort_on: product
             props:
               type: funnel
@@ -199,7 +199,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
         charts:
           - name: Funnel Chart with Cohorts
             traces:
-              - ref(Cohort Funnel Chart)
+              - ${ref(Cohort Funnel Chart)}
             layout:
               title:
                 text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>

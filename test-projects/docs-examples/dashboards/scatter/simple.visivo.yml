@@ -17,7 +17,7 @@ models:
 
 traces:
   - name: Simple Scatter Plot
-    model: ref(scatter-data)
+    model: ${ref(scatter-data)}
     props:
       type: scatter
       x: ?{x}
@@ -30,7 +30,7 @@ traces:
 charts:
   - name: Simple Scatter Chart
     traces:
-      - ref(Simple Scatter Plot)
+      - ${ref(Simple Scatter Plot)}
     layout:
       title:
         text: Simple Scatter Plot<br><sub>2D Data Points</sub>

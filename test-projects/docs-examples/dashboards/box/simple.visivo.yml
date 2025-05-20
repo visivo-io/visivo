@@ -16,7 +16,7 @@ models:
         B,29
 traces:
   - name: Sample Box Plot
-    model: ref(sample-data)
+    model: ${ref(sample-data)}
     props:
       type: box
       x: ?{category}
@@ -27,7 +27,7 @@ traces:
 charts:
   - name: Sample Box Plot Chart
     traces:
-      - ref(Sample Box Plot)
+      - ${ref(Sample Box Plot)}
     layout:
       title:
         text: Simple Box Plot<br><sub>Distribution of Values by Category</sub>

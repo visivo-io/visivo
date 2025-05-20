@@ -64,7 +64,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
                 5,5,30
         traces:
           - name: Simple Contour Plot
-            model: ref(contour-data)
+            model: ${ref(contour-data)}
             props:
               type: contour
               z: 
@@ -76,7 +76,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
         charts:
           - name: Simple Contour Chart
             traces:
-              - ref(Simple Contour Plot)
+              - ${ref(Simple Contour Plot)}
             layout:
               title:
                 text: Simple Contour Plot<br><sub>Contour Plot Based on Z Values</sub>
@@ -130,7 +130,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
                 4,4,30
         traces:
           - name: Filled Contour Plot
-            model: ref(contour-data-filled)
+            model: ${ref(contour-data-filled)}
             props:
               type: contour
               x: ?{x}
@@ -144,7 +144,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
         charts:
           - name: Filled Contour Chart
             traces:
-              - ref(Filled Contour Plot)
+              - ${ref(Filled Contour Plot)}
             layout:
               title:
                 text: Filled Contour Plot<br><sub>Contour Plot with Filled Levels</sub>
@@ -222,7 +222,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
                 3,3,12
         traces:
           - name: Contour Plot with Multiple Levels
-            model: ref(contour-data-multi)
+            model: ${ref(contour-data-multi)}
             props:
               type: contour
               x: ?{x}
@@ -237,7 +237,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Contour/#attributes) 
         charts:
           - name: Contour Chart with Multiple Levels
             traces:
-              - ref(Contour Plot with Multiple Levels)
+              - ${ref(Contour Plot with Multiple Levels)}
             layout:
               title:
                 text: Contour Plot with Multiple Levels<br><sub>Custom Contour Levels</sub>

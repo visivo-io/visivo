@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
                 3,3,9
         traces:
           - name: Simple Surface Plot
-            model: ref(surface-data)
+            model: ${ref(surface-data)}
             props:
               type: surface
               x: ?{x}
@@ -56,7 +56,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
         charts:
           - name: Simple Surface Chart
             traces:
-              - ref(Simple Surface Plot)
+              - ${ref(Simple Surface Plot)}
             layout:
               title:
                 text: Simple Surface Plot<br><sub>3D Surface Visualization</sub>
@@ -88,7 +88,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
                 3,3,9
         traces:
           - name: Surface Plot with Custom Colorscale
-            model: ref(surface-data-colorscale)
+            model: ${ref(surface-data-colorscale)}
             props:
               type: surface
               x: ?{x}
@@ -98,7 +98,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
         charts:
           - name: Surface Chart with Custom Colorscale
             traces:
-              - ref(Surface Plot with Custom Colorscale)
+              - ${ref(Surface Plot with Custom Colorscale)}
             layout:
               title:
                 text: Surface Plot with Custom Colorscale<br><sub>Custom Colorscale for 3D Surface</sub>
@@ -130,7 +130,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
                 3,3,9
         traces:
           - name: Surface Plot with Contours
-            model: ref(surface-data-contours)
+            model: ${ref(surface-data-contours)}
             props:
               type: surface
               x: ?{x}
@@ -144,7 +144,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
         charts:
           - name: Surface Chart with Contours
             traces:
-              - ref(Surface Plot with Contours)
+              - ${ref(Surface Plot with Contours)}
             layout:
               title:
                 text: Surface Plot with Contours<br><sub>3D Surface with Contour Lines</sub>

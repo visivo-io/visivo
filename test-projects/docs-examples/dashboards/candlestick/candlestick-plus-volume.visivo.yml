@@ -11,7 +11,7 @@ models:
         2024-01-05,107,109,98,103,1300000
 traces:
   - name: Candlestick Plot with Volume
-    model: ref(stock-data-with-volume)
+    model: ${ref(stock-data-with-volume)}
     props:
       type: candlestick
       x: ?{date}
@@ -20,7 +20,7 @@ traces:
       low: ?{low}
       close: ?{close}
   - name: Volume Trace
-    model: ref(stock-data-with-volume)
+    model: ${ref(stock-data-with-volume)}
     props:
       type: bar
       x: ?{date}
@@ -32,8 +32,8 @@ traces:
 charts:
   - name: Candlestick Chart with Volume
     traces:
-      - ref(Candlestick Plot with Volume)
-      - ref(Volume Trace)
+      - ${ref(Candlestick Plot with Volume)}
+      - ${ref(Volume Trace)}
     layout:
       showlegend: false
 

@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
                 Closed Deals,100
         traces:
           - name: Simple Funnelarea Plot
-            model: ref(funnelarea-data)
+            model: ${ref(funnelarea-data)}
             props:
               type: funnelarea
               labels: ?{stage}
@@ -51,7 +51,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
         charts:
           - name: Simple Funnelarea Chart
             traces:
-              - ref(Simple Funnelarea Plot)
+              - ${ref(Simple Funnelarea Plot)}
             layout:
               title:
                 text: Simple Funnelarea Chart<br><sub>Proportional Sales Funnel</sub>
@@ -79,7 +79,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
                 Purchase,300,"#9467bd"
         traces:
           - name: Custom Colors Funnelarea Plot
-            model: ref(funnelarea-data-custom)
+            model: ${ref(funnelarea-data-custom)}
             props:
               type: funnelarea
               labels: ?{stage}
@@ -89,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
         charts:
           - name: Funnelarea Chart with Custom Colors
             traces:
-              - ref(Custom Colors Funnelarea Plot)
+              - ${ref(Custom Colors Funnelarea Plot)}
             layout:
               title:
                 text: Funnelarea Chart with Custom Colors<br><sub>User Journey</sub>
@@ -116,7 +116,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
                 Won,100
         traces:
           - name: Funnelarea Plot with Hover Info
-            model: ref(funnelarea-data-hover)
+            model: ${ref(funnelarea-data-hover)}
             props:
               type: funnelarea
               labels: ?{stage}
@@ -125,7 +125,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attribute
         charts:
           - name: Funnelarea Chart with Hover Info
             traces:
-              - ref(Funnelarea Plot with Hover Info)
+              - ${ref(Funnelarea Plot with Hover Info)}
             layout:
               title:
                 text: Funnelarea Chart with Hover Info<br><sub>Sales Funnel with Hover Details</sub>

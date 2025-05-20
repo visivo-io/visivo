@@ -9,7 +9,7 @@ models:
 
 traces:
   - name: Simple Scatter
-    model: ref(Array of Numbers)
+    model: ${ref(Array of Numbers)}
     props:
       type: scatter
       x: ?{ ln(numbers_column) }
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Single Trace Chart
     traces:
-      - ref(Simple Scatter)
+      - ${ref(Simple Scatter)}
     layout:
       title:
         text: "Single Trace"

@@ -42,7 +42,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
                 2,3,5
         traces:
           - name: Simple Sankey Diagram
-            model: ref(sankey-data)
+            model: ${ref(sankey-data)}
             props:
               type: sankey
               node:
@@ -54,7 +54,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
         charts:
           - name: Simple Sankey Diagram
             traces:
-              - ref(Simple Sankey Diagram)
+              - ${ref(Simple Sankey Diagram)}
             layout:
               title:
                 text: Simple Sankey Diagram<br><sub>Flow of Resources Between Nodes</sub>
@@ -81,7 +81,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
                 2,3,5,#d62728
         traces:
           - name: Sankey Diagram with Custom Colors
-            model: ref(sankey-data-colors)
+            model: ${ref(sankey-data-colors)}
             props:
               type: sankey
               node:
@@ -94,7 +94,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
         charts:
           - name: Sankey Diagram with Custom Colors
             traces:
-              - ref(Sankey Diagram with Custom Colors)
+              - ${ref(Sankey Diagram with Custom Colors)}
             layout:
               title:
                 text: Sankey Diagram with Custom Colors<br><sub>Custom Colors for Nodes and Links</sub>
@@ -121,7 +121,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
                 2,3,5
         traces:
           - name: Sankey Diagram with Hover Information
-            model: ref(sankey-data-hover)
+            model: ${ref(sankey-data-hover)}
             props:
               type: sankey
               node:
@@ -134,7 +134,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
         charts:
           - name: Sankey Diagram with Hover Information
             traces:
-              - ref(Sankey Diagram with Hover Information)
+              - ${ref(Sankey Diagram with Hover Information)}
             layout:
               title:
                 text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub>

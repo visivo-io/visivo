@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
                 180,15
         traces:
           - name: Simple Scatterpolar Plot
-            model: ref(scatterpolar-data)
+            model: ${ref(scatterpolar-data)}
             props:
               type: scatterpolar
               theta: ?{theta}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
         charts:
           - name: Simple Scatterpolar Chart
             traces:
-              - ref(Simple Scatterpolar Plot)
+              - ${ref(Simple Scatterpolar Plot)}
             layout:
               title:
                 text: Simple Scatterpolar Plot<br><sub>Polar Data Points</sub>
@@ -80,7 +80,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
                 180,25
         traces:
           - name: Scatterpolar Plot with Lines
-            model: ref(scatterpolar-data-lines)
+            model: ${ref(scatterpolar-data-lines)}
             props:
               type: scatterpolar
               theta: ?{theta}
@@ -89,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
         charts:
           - name: Scatterpolar Chart with Lines
             traces:
-              - ref(Scatterpolar Plot with Lines)
+              - ${ref(Scatterpolar Plot with Lines)}
             layout:
               title:
                 text: Scatterpolar Plot with Lines<br><sub>Connecting Data Points with Lines in Polar Coordinates</sub>
@@ -117,7 +117,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
                 180,25,30,#9467bd
         traces:
           - name: Scatterpolar Plot with Custom Markers
-            model: ref(scatterpolar-data-custom)
+            model: ${ref(scatterpolar-data-custom)}
             props:
               type: scatterpolar
               theta: ?{theta}
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolar/#attribu
         charts:
           - name: Scatterpolar Chart with Custom Markers
             traces:
-              - ref(Scatterpolar Plot with Custom Markers)
+              - ${ref(Scatterpolar Plot with Custom Markers)}
             layout:
               title:
                 text: Scatterpolar Plot with Custom Markers<br><sub>Custom Sizes and Colors for Polar Data Points</sub>

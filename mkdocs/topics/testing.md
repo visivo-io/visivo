@@ -41,7 +41,7 @@ You can also define tests within the trace it's self which gives you access to t
     ``` yaml
     traces:
         - name: tested-trace
-        model: ref(model)
+        model: ${ref(model)}
         columns:
             account_name: account_name
         props:

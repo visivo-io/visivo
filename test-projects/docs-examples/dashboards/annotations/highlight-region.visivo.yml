@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: scatter_trace
-    model: ref(scatter_data)
+    model: ${ref(scatter_data)}
     props:
       type: scatter
       x: ?{x}

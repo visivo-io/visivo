@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
                 -90,30
         traces:
           - name: Simple Scattergeo Plot
-            model: ref(scattergeo-data)
+            model: ${ref(scattergeo-data)}
             props:
               type: scattergeo
               lon: ?{lon}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
         charts:
           - name: Simple Scattergeo Chart
             traces:
-              - ref(Simple Scattergeo Plot)
+              - ${ref(Simple Scattergeo Plot)}
             layout:
               title:
                 text: Simple Scattergeo Plot<br><sub>Geographical Data Points</sub>
@@ -82,7 +82,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
                 -90,30
         traces:
           - name: Scattergeo Plot with Lines
-            model: ref(scattergeo-data-lines)
+            model: ${ref(scattergeo-data-lines)}
             props:
               type: scattergeo
               lon: ?{lon}
@@ -91,7 +91,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
         charts:
           - name: Scattergeo Chart with Lines
             traces:
-              - ref(Scattergeo Plot with Lines)
+              - ${ref(Scattergeo Plot with Lines)}
             layout:
               title:
                 text: Scattergeo Plot with Lines<br><sub>Connecting Geographic Points</sub>
@@ -121,7 +121,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
                 -90,30,30,#9467bd
         traces:
           - name: Scattergeo Plot with Custom Markers
-            model: ref(scattergeo-data-custom)
+            model: ${ref(scattergeo-data-custom)}
             props:
               type: scattergeo
               lon: ?{lon}
@@ -133,7 +133,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergeo/#attribute
         charts:
           - name: Scattergeo Chart with Custom Markers
             traces:
-              - ref(Scattergeo Plot with Custom Markers)
+              - ${ref(Scattergeo Plot with Custom Markers)}
             layout:
               title:
                 text: Scattergeo Plot with Custom Markers<br><sub>Custom Sizes and Colors for Geographic Data Points</sub>

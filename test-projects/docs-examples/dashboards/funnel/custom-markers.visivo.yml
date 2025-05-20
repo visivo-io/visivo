@@ -11,7 +11,7 @@ models:
         Won,100,"#9467bd"
 traces:
   - name: Custom Markers Funnel Chart
-    model: ref(funnel-data-custom)
+    model: ${ref(funnel-data-custom)}
     props:
       type: funnel
       y: ?{stage}
@@ -25,7 +25,7 @@ traces:
 charts:
   - name: Funnel Chart with Custom Markers
     traces:
-      - ref(Custom Markers Funnel Chart)
+      - ${ref(Custom Markers Funnel Chart)}
     layout:
       title:
         text: Funnel Chart with Custom Markers<br><sub>Stages of the Sales Funnel</sub>

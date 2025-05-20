@@ -15,5 +15,5 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Cone Plot)
-          - chart: ref(Wind Direction Cone Plot)
+          - chart: ${ref(Simple Cone Plot)}
+          - chart: ${ref(Wind Direction Cone Plot)}

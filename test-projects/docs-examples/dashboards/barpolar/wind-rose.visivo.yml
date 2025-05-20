@@ -30,7 +30,7 @@ models:
         8,NW,2-3 m/s,3
 traces:
   - name: Wind Rose
-    model: ref(wind-data)
+    model: ${ref(wind-data)}
     cohort_on: "speed"
     columns:
       bar_color: |
@@ -53,7 +53,7 @@ traces:
 charts:
   - name: Wind Rose Chart
     traces:
-      - ref(Wind Rose)
+      - ${ref(Wind Rose)}
     layout:
       polar:
         radialaxis:

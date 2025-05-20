@@ -16,8 +16,8 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Sankey Chart)
-          - chart: ref(Custom Colors Sankey Chart)
+          - chart: ${ref(Simple Sankey Chart)}
+          - chart: ${ref(Custom Colors Sankey Chart)}
       - height: medium
         items:
-          - chart: ref(Hover Info Sankey Chart) 
+          - chart: ${ref(Hover Info Sankey Chart)} 

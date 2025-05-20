@@ -16,7 +16,7 @@ models:
         10
 traces:
   - name: Simple Histogram Plot
-    model: ref(histogram-data)
+    model: ${ref(histogram-data)}
     props:
       type: histogram
       x: ?{value}
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Simple Histogram Chart
     traces:
-      - ref(Simple Histogram Plot)
+      - ${ref(Simple Histogram Plot)}
     layout:
       title:
         text: Simple Histogram Plot<br><sub>Data Distribution Across Bins</sub>

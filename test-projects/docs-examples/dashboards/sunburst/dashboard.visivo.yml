@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Sunburst Chart)
-          - chart: ref(Sunburst Chart with Custom Colors)
+          - chart: ${ref(Simple Sunburst Chart)}
+          - chart: ${ref(Sunburst Chart with Custom Colors)}
       - height: medium
         items:
-          - chart: ref(Sunburst Chart with Custom Sizes)
+          - chart: ${ref(Sunburst Chart with Custom Sizes)}
           - markdown: ""

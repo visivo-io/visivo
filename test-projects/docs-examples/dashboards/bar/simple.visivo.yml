@@ -6,7 +6,7 @@ models:
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 traces:
   - name: Count Enemy Encountered
-    model: ref(monty-python-quests)
+    model: ${ref(monty-python-quests)}
     props:
       type: bar
       x: ?{enemy_encountered}
@@ -18,7 +18,7 @@ traces:
 charts:
   - name: Count Times Enemy Was Encountered
     traces:
-      - ref(Count Enemy Encountered)
+      - ${ref(Count Enemy Encountered)}
     layout:
       title:
         text: Simple Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest</sub>

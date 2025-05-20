@@ -10,7 +10,7 @@ models:
         2,3,5,#d62728
 traces:
   - name: Sankey Diagram with Custom Colors
-    model: ref(sankey-data-colors)
+    model: ${ref(sankey-data-colors)}
     props:
       type: sankey
       node:
@@ -23,7 +23,7 @@ traces:
 charts:
   - name: Custom Colors Sankey Chart
     traces:
-      - ref(Sankey Diagram with Custom Colors)
+      - ${ref(Sankey Diagram with Custom Colors)}
     layout:
       title:
         text: Sankey Diagram with Custom Colors<br><sub>Custom Colors for Nodes and Links</sub> 

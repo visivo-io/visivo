@@ -42,7 +42,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
                 0,1,1,-1,0,0
         traces:
           - name: Simple Streamtube Plot
-            model: ref(streamtube-data)
+            model: ${ref(streamtube-data)}
             props:
               type: streamtube
               x: ?{x}
@@ -54,7 +54,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
         charts:
           - name: Simple Streamtube Chart
             traces:
-              - ref(Simple Streamtube Plot)
+              - ${ref(Simple Streamtube Plot)}
             layout:
               title:
                 text: Simple Streamtube Plot<br><sub>3D Vector Field Visualization</sub>
@@ -81,7 +81,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
                 0,1,1,-1,0,0,4
         traces:
           - name: Streamtube Plot with Color Mapping
-            model: ref(streamtube-data-color)
+            model: ${ref(streamtube-data-color)}
             props:
               type: streamtube
               x: ?{x}
@@ -95,7 +95,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
         charts:
           - name: Streamtube Chart with Color Mapping
             traces:
-              - ref(Streamtube Plot with Color Mapping)
+              - ${ref(Streamtube Plot with Color Mapping)}
             layout:
               title:
                 text: Streamtube Plot with Color Mapping<br><sub>Vector Magnitude Represented by Color</sub>
@@ -122,7 +122,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
                 0,1,1,-1,0,0,4
         traces:
           - name: Streamtube Plot with Custom Tube Sizes
-            model: ref(streamtube-data-size)
+            model: ${ref(streamtube-data-size)}
             props:
               type: streamtube
               x: ?{x}
@@ -135,7 +135,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
         charts:
           - name: Streamtube Chart with Custom Tube Sizes
             traces:
-              - ref(Streamtube Plot with Custom Tube Sizes)
+              - ${ref(Streamtube Plot with Custom Tube Sizes)}
             layout:
               title:
                 text: Streamtube Plot with Custom Tube Sizes<br><sub>Vector Magnitude Represented by Tube Size</sub>

@@ -11,7 +11,7 @@ models:
         5,12
 traces:
   - name: Markers and Line
-    model: ref(scatter-data-lines)
+    model: ${ref(scatter-data-lines)}
     props:
       type: scatter
       x: ?{x}
@@ -20,7 +20,7 @@ traces:
     order_by:
       - ?{x asc}
   - name: Spline No Markers
-    model: ref(scatter-data-lines)
+    model: ${ref(scatter-data-lines)}
     props:
       type: scatter
       x: ?{x+3 - (x*x)/3}
@@ -34,8 +34,8 @@ traces:
 charts:
   - name: Scatter Chart with Lines
     traces:
-      - ref(Markers and Line)
-      - ref(Spline No Markers)
+      - ${ref(Markers and Line)}
+      - ${ref(Spline No Markers)}
     layout:
       title:
         text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>

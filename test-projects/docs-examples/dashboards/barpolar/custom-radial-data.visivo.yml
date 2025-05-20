@@ -12,7 +12,7 @@ models:
         300,3,5
 traces:
   - name: Custom Radial Barpolar
-    model: ref(custom-radial-data)
+    model: ${ref(custom-radial-data)}
     props:
       type: barpolar
       theta: ?{direction}
@@ -27,7 +27,7 @@ traces:
 charts:
   - name: Custom Radial Barpolar Chart
     traces:
-      - ref(Custom Radial Barpolar)
+      - ${ref(Custom Radial Barpolar)}
     layout:
       polar:
         radialaxis:

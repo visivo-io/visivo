@@ -20,7 +20,7 @@ The [selector](/../reference/configuration/Selector/) enables you to **toggle be
         traces:
         # {% for date_grain in date_grains %}
           - name: issues-created-per-{{date_grain}}
-            model: ref(issues)
+            model: ${ref(issues)}
             cohort_on: "'{{date_grain}}'"
             props: 
               type: bar
@@ -36,7 +36,7 @@ The [selector](/../reference/configuration/Selector/) enables you to **toggle be
               type: single
             traces:
              #{% for date_grain in date_grains %}
-             - ref(issues-created-per-{{date_grain}})
+             - ${ref(issues-created-per-{{date_grain}})}
              #{% endfor %}   
             layout: 
               title: 
@@ -55,7 +55,7 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
     ``` yaml
     traces: 
       - name: revenue-per-week
-        model: ref(orders)
+        model: ${ref(orders)}
         props:
           type: scatter
           x: ?{ date_trunc('week', date) } 
@@ -65,7 +65,7 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
     ``` yaml
     traces: 
       - name: revenue-per-week
-        model: ref(orders)
+        model: ${ref(orders)}
         cohort_on: product_name
         props:
           type: scatter

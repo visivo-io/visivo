@@ -113,7 +113,7 @@ models:
     sql: select * from widget_fact_table
 traces:
   - name: simple_trace
-    model: ref(widget_sales)
+    model: ${ref(widget_sales)}
     cohort_on: widget
     props:
       x: ?{ date_trunc('week', completed_at) }
@@ -125,7 +125,7 @@ traces:
 charts:
   - name: simple_chart
     traces:
-      - ref(simple_trace)
+      - ${ref(simple_trace)}
     layout:
       - title: Widget Sales by Week
 
@@ -135,7 +135,7 @@ dashboards:
       - height: medium
         items:
           - width: 5
-            chart: ref(simple_chart)
+            chart: ${ref(simple_chart)}
           - width: 2
             markdown: |
               # Here is the first
@@ -190,7 +190,7 @@ Here's a simple example of a trace:
 ``` yaml title="project_dir/project.visivo.yml"
 traces:
   - name: simple_trace
-    model: ref(widget_sales)
+    model: ${ref(widget_sales)}
     cohort_on: widget
     props:
       type: scatter
@@ -218,7 +218,7 @@ Here's a simple example of the chart configuration:
 charts:
   - name: simple_chart
     traces:
-      - ref(simple_trace)
+      - ${ref(simple_trace)}
     layout:
       - title: Widget Sales by Week
 ```
@@ -241,7 +241,7 @@ dashboards:
       - height: medium
         items:
           - width: 5
-            chart: ref(simple_chart)
+            chart: ${ref(simple_chart)}
           - width: 2
             markdown: |
               # Here is the first

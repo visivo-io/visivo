@@ -42,7 +42,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
                 0.7,0.2,0.1
         traces:
           - name: Simple Scatterternary Plot
-            model: ref(scatterternary-data)
+            model: ${ref(scatterternary-data)}
             props:
               type: scatterternary
               a: ?{a}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
         charts:
           - name: Simple Scatterternary Chart
             traces:
-              - ref(Simple Scatterternary Plot)
+              - ${ref(Simple Scatterternary Plot)}
             layout:
               title:
                 text: Simple Scatterternary Plot<br><sub>Data Points on a Ternary Plot</sub>
@@ -79,7 +79,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
                 0.8,0.1,0.1
         traces:
           - name: Scatterternary Plot with Lines
-            model: ref(scatterternary-data-lines)
+            model: ${ref(scatterternary-data-lines)}
             props:
               type: scatterternary
               a: ?{a}
@@ -89,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
         charts:
           - name: Scatterternary Chart with Lines
             traces:
-              - ref(Scatterternary Plot with Lines)
+              - ${ref(Scatterternary Plot with Lines)}
             layout:
               title:
                 text: Scatterternary Plot with Lines<br><sub>Connecting Data Points on a Ternary Plot</sub>
@@ -116,7 +116,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
                 0.7,0.2,0.1,25,#d62728
         traces:
           - name: Scatterternary Plot with Custom Markers
-            model: ref(scatterternary-data-custom)
+            model: ${ref(scatterternary-data-custom)}
             props:
               type: scatterternary
               a: ?{a}
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
         charts:
           - name: Scatterternary Chart with Custom Markers
             traces:
-              - ref(Scatterternary Plot with Custom Markers)
+              - ${ref(Scatterternary Plot with Custom Markers)}
             layout:
               title:
                 text: Scatterternary Plot with Custom Markers<br><sub>Custom Sizes and Colors for Ternary Data Points</sub>

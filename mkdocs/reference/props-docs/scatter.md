@@ -54,7 +54,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
 
         traces:
           - name: Simple Scatter Plot
-            model: ref(scatter-data)
+            model: ${ref(scatter-data)}
             props:
               type: scatter
               x: ?{x}
@@ -67,7 +67,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
         charts:
           - name: Simple Scatter Chart
             traces:
-              - ref(Simple Scatter Plot)
+              - ${ref(Simple Scatter Plot)}
             layout:
               title:
                 text: Simple Scatter Plot<br><sub>2D Data Points</sub>
@@ -95,7 +95,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 5,12
         traces:
           - name: Markers and Line
-            model: ref(scatter-data-lines)
+            model: ${ref(scatter-data-lines)}
             props:
               type: scatter
               x: ?{x}
@@ -104,7 +104,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
             order_by: 
               - ?{x asc}
           - name: Spline No Markers
-            model: ref(scatter-data-lines)
+            model: ${ref(scatter-data-lines)}
             props:
               type: scatter
               x: ?{x+3 - (x*x)/3}
@@ -118,8 +118,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
         charts:
           - name: Scatter Chart with Lines
             traces:
-              - ref(Markers and Line)
-              - ref(Spline No Markers)
+              - ${ref(Markers and Line)}
+              - ${ref(Spline No Markers)}
             layout:
               title:
                 text: Scatter Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
@@ -149,7 +149,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 5,12,30,#9467bd
         traces:
           - name: Scatter Plot with Custom Markers
-            model: ref(scatter-data-custom)
+            model: ${ref(scatter-data-custom)}
             props:
               type: scatter
               x: ?{x}
@@ -163,7 +163,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
         charts:
           - name: Scatter Chart with Custom Markers
             traces:
-              - ref(Scatter Plot with Custom Markers)
+              - ${ref(Scatter Plot with Custom Markers)}
             layout:
               title:
                 text: Scatter Plot with Custom Markers<br><sub>Custom Sizes and Colors for Data Points</sub>
@@ -193,7 +193,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
                 7,11
         traces:
           - name: Area Plot
-            model: ref(area-plot-data)
+            model: ${ref(area-plot-data)}
             props:
               type: scatter
               x: ?{x}
@@ -209,7 +209,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter/#attributes) 
         charts:
           - name: Area Plot Chart
             traces:
-              - ref(Area Plot)
+              - ${ref(Area Plot)}
             layout:
               title:
                 text: Area Plot<br><sub>Filled Area Under the Line</sub>

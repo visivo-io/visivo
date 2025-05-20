@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
                 5,30
         traces:
           - name: Simple Scattergl Plot
-            model: ref(scattergl-data)
+            model: ${ref(scattergl-data)}
             props:
               type: scattergl
               x: ?{x}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
         charts:
           - name: Simple Scattergl Chart
             traces:
-              - ref(Simple Scattergl Plot)
+              - ${ref(Simple Scattergl Plot)}
             layout:
               title:
                 text: Simple Scattergl Plot<br><sub>High-Performance Scatter Plot with WebGL</sub>
@@ -80,7 +80,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
                 5,12
         traces:
           - name: Scattergl Plot with Lines
-            model: ref(scattergl-data-lines)
+            model: ${ref(scattergl-data-lines)}
             props:
               type: scattergl
               x: ?{x}
@@ -89,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
         charts:
           - name: Scattergl Chart with Lines
             traces:
-              - ref(Scattergl Plot with Lines)
+              - ${ref(Scattergl Plot with Lines)}
             layout:
               title:
                 text: Scattergl Plot with Lines<br><sub>Connecting Data Points with WebGL</sub>
@@ -117,7 +117,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
                 5,12,30,#9467bd
         traces:
           - name: Scattergl Plot with Custom Markers
-            model: ref(scattergl-data-custom)
+            model: ${ref(scattergl-data-custom)}
             props:
               type: scattergl
               x: ?{x}
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattergl/#attributes
         charts:
           - name: Scattergl Chart with Custom Markers
             traces:
-              - ref(Scattergl Plot with Custom Markers)
+              - ${ref(Scattergl Plot with Custom Markers)}
             layout:
               title:
                 text: Scattergl Plot with Custom Markers<br><sub>Custom Sizes and Colors for WebGL Data Points</sub>

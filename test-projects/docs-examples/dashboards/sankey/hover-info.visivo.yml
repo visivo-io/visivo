@@ -10,7 +10,7 @@ models:
         2,3,5
 traces:
   - name: Sankey Diagram with Hover Information
-    model: ref(sankey-data-hover)
+    model: ${ref(sankey-data-hover)}
     props:
       type: sankey
       node:
@@ -23,7 +23,7 @@ traces:
 charts:
   - name: Hover Info Sankey Chart
     traces:
-      - ref(Sankey Diagram with Hover Information)
+      - ${ref(Sankey Diagram with Hover Information)}
     layout:
       title:
         text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub> 

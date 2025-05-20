@@ -10,7 +10,7 @@ models:
 
 traces:
   - name: Bar Project Durations
-    model: ref(projects-gantt)
+    model: ${ref(projects-gantt)}
     props:
       type: bar
       x: ?{finish_date }
@@ -23,7 +23,7 @@ traces:
 charts:
   - name: Project Durations Gantt Chart
     traces:
-      - ref(Bar Project Durations)
+      - ${ref(Bar Project Durations)}
     layout:
       title:
         text: Project Duration Gantt Chart<br><sub>Visualizing the duration of each project over time</sub>

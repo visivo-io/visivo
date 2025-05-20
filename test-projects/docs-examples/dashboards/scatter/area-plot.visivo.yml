@@ -13,7 +13,7 @@ models:
         7,11
 traces:
   - name: Area Plot
-    model: ref(area-plot-data)
+    model: ${ref(area-plot-data)}
     props:
       type: scatter
       x: ?{x}
@@ -29,7 +29,7 @@ traces:
 charts:
   - name: Area Plot Chart
     traces:
-      - ref(Area Plot)
+      - ${ref(Area Plot)}
     layout:
       title:
         text: Area Plot<br><sub>Filled Area Under the Line</sub>

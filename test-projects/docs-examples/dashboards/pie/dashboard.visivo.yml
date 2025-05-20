@@ -26,13 +26,13 @@ models:
 
 traces:
   - name: Simple Pie Chart Trace
-    model: ref(pie-data)
+    model: ${ref(pie-data)}
     props:
       type: pie
       labels: ?{category}
       values: ?{value}
   - name: Pie Chart with Custom Colors Trace
-    model: ref(pie-data-colors)
+    model: ${ref(pie-data-colors)}
     props:
       type: pie
       labels: ?{category}
@@ -40,7 +40,7 @@ traces:
       marker:
         colors: ?{color}
   - name: Pie Chart with Hover Info Trace
-    model: ref(pie-data-hover)
+    model: ${ref(pie-data-hover)}
     props:
       type: pie
       labels: ?{category}
@@ -50,19 +50,19 @@ traces:
 charts:
   - name: Simple Pie Chart
     traces:
-      - ref(Simple Pie Chart Trace)
+      - ${ref(Simple Pie Chart Trace)}
     layout:
       title:
         text: Simple Pie Chart<br><sub>Distribution of Categories</sub>
   - name: Pie Chart with Custom Colors
     traces:
-      - ref(Pie Chart with Custom Colors Trace)
+      - ${ref(Pie Chart with Custom Colors Trace)}
     layout:
       title:
         text: Pie Chart with Custom Colors<br><sub>Customized Coloring for Each Category</sub>
   - name: Pie Chart with Hover Info
     traces:
-      - ref(Pie Chart with Hover Info Trace)
+      - ${ref(Pie Chart with Hover Info Trace)}
     layout:
       title:
         text: Pie Chart with Hover Info<br><sub>Hover Info Showing Value and Percentage</sub>
@@ -73,8 +73,8 @@ dashboards:
       - height: medium
         items:
           - width: 4
-            chart: ref(Simple Pie Chart)
+            chart: ${ref(Simple Pie Chart)}
           - width: 4
-            chart: ref(Pie Chart with Custom Colors)
+            chart: ${ref(Pie Chart with Custom Colors)}
           - width: 4
-            chart: ref(Pie Chart with Hover Info) 
+            chart: ${ref(Pie Chart with Hover Info)} 

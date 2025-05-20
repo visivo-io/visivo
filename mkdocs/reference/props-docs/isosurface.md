@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
 
         traces:
           - name: Simple Isosurface Plot Trace
-            model: ref(isosurface-data-simple)
+            model: ${ref(isosurface-data-simple)}
             props:
               type: isosurface
               x: ?{x}
@@ -62,7 +62,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
         charts:
           - name: Simple Isosurface Chart
             traces:
-              - ref(Simple Isosurface Plot Trace)
+              - ${ref(Simple Isosurface Plot Trace)}
             layout:
               title:
                 text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>
@@ -85,7 +85,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
 
         traces:
           - name: Complex With Slice Isosurface Plot
-            model: ref(isosurface-data)
+            model: ${ref(isosurface-data)}
             props:
               type: isosurface
               x: ?{x}
@@ -115,7 +115,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Isosurface/#attribute
         charts:
           - name: Complex With Slice Isosurface Chart
             traces:
-              - ref(Complex With Slice Isosurface Plot) 
+              - ${ref(Complex With Slice Isosurface Plot)} 
             layout:
               title:
                 text: Complex With Slice Isosurface Plot<br><sub>3D Volume Visualization</sub>

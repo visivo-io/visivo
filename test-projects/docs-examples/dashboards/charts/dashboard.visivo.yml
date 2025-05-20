@@ -15,6 +15,6 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Big Number Over Line Chart)
-          - chart: ref(Single Trace Chart)
-          - chart: ref(Duel Axis)
+          - chart: ${ref(Big Number Over Line Chart)}
+          - chart: ${ref(Single Trace Chart)}
+          - chart: ${ref(Duel Axis)}

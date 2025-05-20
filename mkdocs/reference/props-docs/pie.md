@@ -41,7 +41,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
                 C,50
         traces:
           - name: Simple Pie Chart Trace
-            model: ref(pie-data)
+            model: ${ref(pie-data)}
             props:
               type: pie
               labels: ?{category}
@@ -49,7 +49,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         charts:
           - name: Simple Pie Chart
             traces:
-              - ref(Simple Pie Chart Trace)
+              - ${ref(Simple Pie Chart Trace)}
             layout:
               title:
                 text: Simple Pie Chart<br><sub>Distribution of Categories</sub>
@@ -75,7 +75,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
                 C,30,#2ca02c
         traces:
           - name: Pie Chart with Custom Colors Trace
-            model: ref(pie-data-colors)
+            model: ${ref(pie-data-colors)}
             props:
               type: pie
               labels: ?{category}
@@ -85,7 +85,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         charts:
           - name: Pie Chart with Custom Colors
             traces:
-              - ref(Pie Chart with Custom Colors Trace)
+              - ${ref(Pie Chart with Custom Colors Trace)}
             layout:
               title:
                 text: Pie Chart with Custom Colors<br><sub>Customized Coloring for Each Category</sub>
@@ -111,7 +111,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
                 Z,15
         traces:
           - name: Pie Chart with Hover Info Trace
-            model: ref(pie-data-hover)
+            model: ${ref(pie-data-hover)}
             props:
               type: pie
               labels: ?{category}
@@ -120,7 +120,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         charts:
           - name: Pie Chart with Hover Info
             traces:
-              - ref(Pie Chart with Hover Info Trace)
+              - ${ref(Pie Chart with Hover Info Trace)}
             layout:
               title:
                 text: Pie Chart with Hover Info<br><sub>Hover Info Showing Value and Percentage</sub>

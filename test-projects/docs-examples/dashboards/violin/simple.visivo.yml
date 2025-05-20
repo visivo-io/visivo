@@ -12,7 +12,7 @@ models:
         B,28
 traces:
   - name: Simple Violin Plot
-    model: ref(violin-data)
+    model: ${ref(violin-data)}
     props:
       type: violin
       x: ?{category}
@@ -20,7 +20,7 @@ traces:
 charts:
   - name: Simple Violin Chart
     traces:
-      - ref(Simple Violin Plot)
+      - ${ref(Simple Violin Plot)}
     layout:
       title:
         text: Simple Violin Plot<br><sub>Distribution of Values by Category</sub>

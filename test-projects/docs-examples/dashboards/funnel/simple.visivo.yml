@@ -11,7 +11,7 @@ models:
         Closed Deals,100
 traces:
   - name: Simple Funnel Plot
-    model: ref(funnel-data)
+    model: ${ref(funnel-data)}
     props:
       type: funnel
       y: ?{stage}
@@ -24,7 +24,7 @@ traces:
 charts:
   - name: Simple Funnel Chart
     traces:
-      - ref(Simple Funnel Plot)
+      - ${ref(Simple Funnel Plot)}
     layout:
       title:
         text: Simple Funnel Chart<br><sub>Sales Funnel from Leads to Closed Deals</sub>

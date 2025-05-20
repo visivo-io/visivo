@@ -16,9 +16,9 @@ dashboards:
             width: 5 
       - height: medium 
         items: 
-          - chart: ref(Simple Candlestick Chart)
-          - chart: ref(Candlestick Chart with Volume)
+          - chart: ${ref(Simple Candlestick Chart)}
+          - chart: ${ref(Candlestick Chart with Volume)}
       - height: medium 
         items: 
-          - chart: ref(Candlestick with Custom Colors)
+          - chart: ${ref(Candlestick with Custom Colors)}
           - markdown: ""

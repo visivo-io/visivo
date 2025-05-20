@@ -60,7 +60,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: Simple ChoroplethMapbox Chart
             traces:
-              - ref(Simple ChoroplethMapbox Map)
+              - ${ref(Simple ChoroplethMapbox Map)}
             layout:
               title:
                 text: Population Density by Country on Mapbox<br><sub>Data in Persons per Square Kilometer</sub>
@@ -94,7 +94,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 GBR,2827
         traces:
           - name: ChoroplethMapbox with Custom Colorscale Trace
-            model: ref(european-gdp-data)
+            model: ${ref(european-gdp-data)}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
@@ -106,7 +106,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: ChoroplethMapbox with Custom Colorscale
             traces:
-              - ref(ChoroplethMapbox with Custom Colorscale Trace)
+              - ${ref(ChoroplethMapbox with Custom Colorscale Trace)}
             layout:
               title:
                 text: GDP by Country in Europe<br><sub>Data in Billions of USD</sub>
@@ -140,7 +140,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 ZAF,2000000,60000
         traces:
           - name: Interactive ChoroplethMapbox with Hover Data Trace
-            model: ref(covid-data-mapbox)
+            model: ${ref(covid-data-mapbox)}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
@@ -154,7 +154,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: Interactive ChoroplethMapbox with Hover Data
             traces:
-              - ref(Interactive ChoroplethMapbox with Hover Data Trace)
+              - ${ref(Interactive ChoroplethMapbox with Hover Data Trace)}
             layout:
               title:
                 text: COVID-19 Cases by Country on Mapbox<br><sub>Hover to See Deaths Data</sub>

@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
                 5,30,40
         traces:
           - name: Simple Scattercarpet Plot
-            model: ref(scattercarpet-data)
+            model: ${ref(scattercarpet-data)}
             props:
               type: scattercarpet
               a: ?{a}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         charts:
           - name: Simple Scattercarpet Chart
             traces:
-              - ref(Simple Scattercarpet Plot)
+              - ${ref(Simple Scattercarpet Plot)}
             layout:
               title:
                 text: Simple Scattercarpet Plot<br><sub>2D Data Points on Carpet Axis</sub>
@@ -80,7 +80,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
                 5,12,17
         traces:
           - name: Scattercarpet Plot with Lines
-            model: ref(scattercarpet-data-lines)
+            model: ${ref(scattercarpet-data-lines)}
             props:
               type: scattercarpet
               a: ?{a}
@@ -89,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         charts:
           - name: Scattercarpet Chart with Lines
             traces:
-              - ref(Scattercarpet Plot with Lines)
+              - ${ref(Scattercarpet Plot with Lines)}
             layout:
               title:
                 text: Scattercarpet Plot with Lines<br><sub>Connecting Data Points on Carpet Axis</sub>
@@ -117,7 +117,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
                 5,12,30,#9467bd
         traces:
           - name: Scattercarpet Plot with Custom Markers
-            model: ref(scattercarpet-data-custom)
+            model: ${ref(scattercarpet-data-custom)}
             props:
               type: scattercarpet
               a: ?{a}
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         charts:
           - name: Scattercarpet Chart with Custom Markers
             traces:
-              - ref(Scattercarpet Plot with Custom Markers)
+              - ${ref(Scattercarpet Plot with Custom Markers)}
             layout:
               title:
                 text: Scattercarpet Plot with Custom Markers<br><sub>Custom Sizes and Colors for Carpet Axis Data Points</sub>

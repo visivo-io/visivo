@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
                 180,15
         traces:
           - name: Simple Scatterpolargl Plot
-            model: ref(scatterpolargl-data)
+            model: ${ref(scatterpolargl-data)}
             props:
               type: scatterpolargl
               theta: ?{theta}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
         charts:
           - name: Simple Scatterpolargl Chart
             traces:
-              - ref(Simple Scatterpolargl Plot)
+              - ${ref(Simple Scatterpolargl Plot)}
             layout:
               title:
                 text: Simple Scatterpolargl Plot<br><sub>High-Performance Polar Data Points</sub>
@@ -80,7 +80,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
                 180,25
         traces:
           - name: Scatterpolargl Plot with Lines
-            model: ref(scatterpolargl-data-lines)
+            model: ${ref(scatterpolargl-data-lines)}
             props:
               type: scatterpolargl
               theta: ?{theta}
@@ -89,7 +89,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
         charts:
           - name: Scatterpolargl Chart with Lines
             traces:
-              - ref(Scatterpolargl Plot with Lines)
+              - ${ref(Scatterpolargl Plot with Lines)}
             layout:
               title:
                 text: Scatterpolargl Plot with Lines<br><sub>Connecting Data Points with Lines in Polar Coordinates</sub>
@@ -117,7 +117,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
                 180,25,30,#9467bd
         traces:
           - name: Scatterpolargl Plot with Custom Markers
-            model: ref(scatterpolargl-data-custom)
+            model: ${ref(scatterpolargl-data-custom)}
             props:
               type: scatterpolargl
               theta: ?{theta}
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterpolargl/#attri
         charts:
           - name: Scatterpolargl Chart with Custom Markers
             traces:
-              - ref(Scatterpolargl Plot with Custom Markers)
+              - ${ref(Scatterpolargl Plot with Custom Markers)}
             layout:
               title:
                 text: Scatterpolargl Plot with Custom Markers<br><sub>Custom Sizes and Colors for Polar Data Points</sub>
