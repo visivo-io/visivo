@@ -23,23 +23,15 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
 
     === "Simple Streamtube Plot"
 
-        Here's a simple `streamtube` plot showing the flow of vectors in 3D space:
-
-        ![](../../assets/example-charts/props/streamtube/simple-streamtube.png)
-
-        You can copy this code below to create this chart in your project:
+        This example uses a real, dense dataset from Plotly's sample CSV to ensure the streamtube renders properly:
 
         ```yaml
         models:
           - name: streamtube-data
             args:
-              - echo
-              - |
-                x,y,z,u,v,w
-                0,0,0,1,0,0
-                1,0,0,0,1,0
-                1,1,0,0,0,1
-                0,1,1,-1,0,0
+              - curl
+              - -sL
+              - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         traces:
           - name: Simple Streamtube Plot
             model: ${ref(streamtube-data)}
@@ -62,26 +54,18 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
 
     === "Streamtube Plot with Color Mapping"
 
-        This example demonstrates a `streamtube` plot where the color of the tubes represents the magnitude of the vector field:
-
-        ![](../../assets/example-charts/props/streamtube/colored-streamtube.png)
-
-        Here's the code:
+        This example demonstrates a streamtube plot using the same CSV, with color mapping enabled:
 
         ```yaml
         models:
-          - name: streamtube-data-color
+          - name: streamtube-data
             args:
-              - echo
-              - |
-                x,y,z,u,v,w,magnitude
-                0,0,0,1,0,0,1
-                1,0,0,0,1,0,2
-                1,1,0,0,0,1,3
-                0,1,1,-1,0,0,4
+              - curl
+              - -sL
+              - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         traces:
           - name: Streamtube Plot with Color Mapping
-            model: ${ref(streamtube-data-color)}
+            model: ${ref(streamtube-data)}
             props:
               type: streamtube
               x: ?{x}
@@ -91,7 +75,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
               v: ?{v}
               w: ?{w}
               colorscale: "Viridis"
-              color: ?{magnitude}
         charts:
           - name: Streamtube Chart with Color Mapping
             traces:
@@ -103,26 +86,18 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
 
     === "Streamtube Plot with Custom Tube Sizes"
 
-        Here's a `streamtube` plot where the tube size is customized based on the magnitude of the vector field:
-
-        ![](../../assets/example-charts/props/streamtube/custom-tube-size-streamtube.png)
-
-        Here's the code:
+        This example uses the same CSV and sets a custom tube size reference:
 
         ```yaml
         models:
-          - name: streamtube-data-size
+          - name: streamtube-data
             args:
-              - echo
-              - |
-                x,y,z,u,v,w,magnitude
-                0,0,0,1,0,0,1
-                1,0,0,0,1,0,2
-                1,1,0,0,0,1,3
-                0,1,1,-1,0,0,4
+              - curl
+              - -sL
+              - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
         traces:
           - name: Streamtube Plot with Custom Tube Sizes
-            model: ${ref(streamtube-data-size)}
+            model: ${ref(streamtube-data)}
             props:
               type: streamtube
               x: ?{x}
@@ -140,6 +115,5 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
               title:
                 text: Streamtube Plot with Custom Tube Sizes<br><sub>Vector Magnitude Represented by Tube Size</sub>
         ```
-
 {% endraw %}
 <!--end-->
