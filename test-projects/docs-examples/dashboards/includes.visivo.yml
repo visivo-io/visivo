@@ -40,3 +40,6 @@ includes:
   - path: pie/dashboard.visivo.yml
   - path: sankey/dashboard.visivo.yml
   - path: annotations/dashboard.visivo.yml
+  - path: parcats/dashboard.visivo.yml
+  - path: parcoords/dashboard.visivo.yml
+  - path: ohlc/dashboard.visivo.yml

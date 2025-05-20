@@ -68,7 +68,8 @@ charts:
         text: Pie Chart with Hover Info<br><sub>Hover Info Showing Value and Percentage</sub>
 
 dashboards:
-  - name: Pie Chart Examples
+  - name: Pie 
+    level: 1
     rows:
       - height: medium
         items:

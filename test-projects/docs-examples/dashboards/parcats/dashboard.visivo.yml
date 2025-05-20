@@ -1,0 +1,23 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "multiple-dimensions.visivo.yml"
+  - path: "line-width.visivo.yml"
+
+dashboards:
+  - name: "Parcats"
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Parcats"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(Simple Parcats Chart)}
+          - chart: ${ref(Parcats Chart with Multiple Dimensions)}
+      - height: medium
+        items:
+          - chart: ${ref(Parcats Chart with Custom Line Widths)} 

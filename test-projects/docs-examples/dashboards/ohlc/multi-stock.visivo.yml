@@ -1,0 +1,61 @@
+models:
+  - name: ohlc-data-multi
+    args:
+      - echo
+      - |
+        stock,date,open,high,low,close
+        AAPL,2023-03-01,150,155,145,152
+        AAPL,2023-03-02,152,158,150,156
+        AAPL,2023-03-03,156,160,154,159
+        MSFT,2023-03-01,250,255,245,252
+        MSFT,2023-03-02,252,258,250,256
+        MSFT,2023-03-03,256,260,254,259
+traces:
+  - name: OHLC Plot for AAPL
+    model: ${ref(ohlc-data-multi)}
+    props:
+      type: ohlc
+      x: ?{date}
+      open: ?{open}
+      high: ?{high}
+      low: ?{low}
+      close: ?{close}
+      increasing:
+        line:
+          color: "#1f77b4"
+      decreasing:
+        line:
+          color: "#ff7f0e"
+    filters: 
+      - ?{stock = 'AAPL'}
+  - name: OHLC Plot for MSFT
+    model: ${ref(ohlc-data-multi)}
+    props:
+      type: ohlc
+      x: ?{date}
+      open: ?{open}
+      high: ?{high}
+      low: ?{low }
+      close: ?{close}
+      increasing:
+        line:
+          color: "#2ca02c"
+      decreasing:
+        line:
+          color: "#d62728"
+    filters: 
+      - ?{stock = 'MSFT'}
+charts:
+  - name: OHLC Chart with Multiple Stocks
+    traces:
+      - ${ref(OHLC Plot for AAPL)}
+      - ${ref(OHLC Plot for MSFT)}
+    layout:
+      title:
+        text: OHLC Chart with Multiple Stocks<br><sub>Comparing AAPL and MSFT Stock Prices</sub>
+      xaxis:
+        title:
+          text: "Date"
+      yaxis:
+        title:
+          text: "Price" 
