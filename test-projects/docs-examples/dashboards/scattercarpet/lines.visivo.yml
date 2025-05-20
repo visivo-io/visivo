@@ -1,0 +1,26 @@
+models:
+  - name: scattercarpet-data-lines
+    args:
+      - echo
+      - |
+        a,b,value
+        1,5,7
+        2,10,12
+        3,8,10
+        4,15,18
+        5,12,17
+traces:
+  - name: Scattercarpet Plot with Lines
+    model: ${ref(scattercarpet-data-lines)}
+    props:
+      type: scattercarpet
+      a: ?{a}
+      b: ?{b}
+      mode: "lines+markers"
+charts:
+  - name: Scattercarpet Chart with Lines
+    traces:
+      - ${ref(Scattercarpet Plot with Lines)}
+    layout:
+      title:
+        text: Scattercarpet Plot with Lines<br><sub>Connecting Data Points on Carpet Axis</sub> 

@@ -1,0 +1,26 @@
+models:
+  - name: scattercarpet-data
+    args:
+      - echo
+      - |
+        a,b,value
+        1,10,15
+        2,20,25
+        3,15,30
+        4,25,35
+        5,30,40
+traces:
+  - name: Simple Scattercarpet Plot
+    model: ${ref(scattercarpet-data)}
+    props:
+      type: scattercarpet
+      a: ?{a}
+      b: ?{b}
+      mode: "markers"
+charts:
+  - name: Simple Scattercarpet Chart
+    traces:
+      - ${ref(Simple Scattercarpet Plot)}
+    layout:
+      title:
+        text: Simple Scattercarpet Plot<br><sub>2D Data Points on Carpet Axis</sub> 
