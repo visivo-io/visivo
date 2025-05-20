@@ -27,7 +27,10 @@ def generate_thumbnail(dashboard: Dashboard, output_dir: str, timeout_ms: int, s
     thumbnail_path = get_thumbnail_path(dashboard.name, output_dir)
 
     with sync_playwright() as p:
-        browser = p.webkit.launch()
+        browser = p.webkit.launch(
+            args=['--disable-dev-shm-usage'],
+            headless=True
+        )
         context = browser.new_context(viewport={"width": 1200, "height": 750})
         page = context.new_page()
         # URL encode the dashboard name to handle special characters
@@ -174,13 +177,9 @@ def action(
         except Exception as e:
             if "BrowserType.launch: Executable doesn't exist" in str(e):
                 Logger.instance().info(
-                    "Missing playwright webkit browser. Running a one time install..."
+                    "Missing playwright webkit browser. Run `python -m playwright install webkit --with-deps` to install it and generate thumbnails..."
                 )
-                import subprocess  # PR question: Is this the best way to do this? It works, but feels meh
-
-                subprocess.run(["playwright", "install", "webkit"], check=True)
-                # Retry with newly installed browser
-                thumbnail_path = generate_thumbnail(dashboard, output_dir, timeout_ms, server_url)
+                
             else:
                 raise ClickException(
                     f"Error generating thumbnail for dashboard {dashboard.name}: {str(e)}"

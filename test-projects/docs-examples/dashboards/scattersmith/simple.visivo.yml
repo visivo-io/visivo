@@ -1,0 +1,25 @@
+models:
+  - name: scattersmith-data
+    args:
+      - echo
+      - |
+        real,imaginary
+        0.5,0.2
+        0.8,0.3
+        1.0,0.5
+        1.2,0.7
+traces:
+  - name: Simple Scattersmith Plot
+    model: ${ref(scattersmith-data)}
+    props:
+      type: scattersmith
+      real: ?{real}
+      imag: ?{imaginary}
+      mode: "markers"
+charts:
+  - name: Simple Scattersmith Chart
+    traces:
+      - ${ref(Simple Scattersmith Plot)}
+    layout:
+      title:
+        text: Simple Scattersmith Plot<br><sub>Data Points on Smith Chart</sub> 

@@ -1,0 +1,49 @@
+models:
+  - name: contourcarpet-data-custom
+    args:
+      - echo
+      - |
+        a,b,x,y,z
+        0,0,1,1,10
+        1,0,2,2,20
+        2,0,3,3,30
+        0,1,4,4,40
+        1,1,5,5,50
+        2,1,6,6,60
+        0,2,7,7,70
+        1,2,8,8,80
+        2,2,9,9,90
+traces:
+  - name: Carpet Plot Custom
+    model: ${ref(contourcarpet-data-custom)}
+    props:
+      type: carpet
+      a: ?{a}
+      b: ?{b}
+      x: ?{x}
+      y: ?{y}
+  - name: Custom Contourcarpet Plot
+    model: ${ref(contourcarpet-data-custom)}
+    props:
+      type: contourcarpet
+      carpet: ${ref(Carpet Plot Custom)}
+      z: ?{z}
+      colorscale: "Jet"
+      contours:
+        start: 10
+        end: 90
+        size: 10
+charts:
+  - name: Custom Contourcarpet Chart
+    traces:
+      - ${ref(Custom Contourcarpet Plot)}
+      - ${ref(Carpet Plot Custom)}
+    layout:
+      title:
+        text: Custom Contourcarpet Plot<br><sub>Customized Contour Levels on a Carpet</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis" 

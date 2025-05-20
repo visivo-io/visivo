@@ -1,0 +1,26 @@
+models:
+  - name: scatterpolargl-data
+    args:
+      - echo
+      - |
+        theta,r
+        0,10
+        45,20
+        90,30
+        135,25
+        180,15
+traces:
+  - name: Simple Scatterpolargl Plot
+    model: ${ref(scatterpolargl-data)}
+    props:
+      type: scatterpolargl
+      theta: ?{theta}
+      r: ?{r}
+      mode: "markers"
+charts:
+  - name: Simple Scatterpolargl Chart
+    traces:
+      - ${ref(Simple Scatterpolargl Plot)}
+    layout:
+      title:
+        text: Simple Scatterpolargl Plot<br><sub>High-Performance Polar Data Points</sub> 

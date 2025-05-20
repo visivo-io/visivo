@@ -1,0 +1,26 @@
+models:
+  - name: scatterpolar-data
+    args:
+      - echo
+      - |
+        theta,r
+        0,10
+        45,20
+        90,30
+        135,25
+        180,15
+traces:
+  - name: Simple Scatterpolar Plot
+    model: ${ref(scatterpolar-data)}
+    props:
+      type: scatterpolar
+      theta: ?{theta}
+      r: ?{r}
+      mode: "markers"
+charts:
+  - name: Simple Scatterpolar Chart
+    traces:
+      - ${ref(Simple Scatterpolar Plot)}
+    layout:
+      title:
+        text: Simple Scatterpolar Plot<br><sub>Polar Data Points</sub> 

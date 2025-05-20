@@ -5,7 +5,7 @@ search:
 <!--start-->
 ## Overview
 
-The `scattersmith` trace type is used to create scatter plots on a Smith chart, which is typically used in electrical engineering to represent complex impedance and reflection coefficients in transmission lines. It allows for plotting data in terms of complex numbers, making it ideal for analyzing electrical circuits.
+The `scattersmith` trace type is used to create scatter plots on a Smith chart, which is typically used in electrical engineering to represent complex impedance and reflection coefficients in transmission lines. It allows for plotting data in terms of complex numbers (real and imaginary components), making it ideal for analyzing electrical circuits.
 
 You can customize the marker size, color, and lines to connect points, similar to scatter plots, but specifically tailored for Smith charts.
 
@@ -46,7 +46,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
             props:
               type: scattersmith
               real: ?{real}
-              imaginary: ?{imaginary}
+              imag: ?{imaginary}
               mode: "markers"
         charts:
           - name: Simple Scattersmith Chart
@@ -82,7 +82,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
             props:
               type: scattersmith
               real: ?{real}
-              imaginary: ?{imaginary}
+              imag: ?{imaginary}
               mode: "lines+markers"
         charts:
           - name: Scattersmith Chart with Lines
@@ -118,7 +118,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattersmith/#attribu
             props:
               type: scattersmith
               real: ?{real}
-              imaginary: ?{imaginary}
+              imag: ?{imaginary}
               mode: "markers"
               marker:
                 size: ?{size}
