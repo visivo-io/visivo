@@ -1,0 +1,28 @@
+models:
+  - name: sankey-data
+    args:
+      - echo
+      - |
+        source,target,value
+        A,B,10
+        A,C,5
+        B,D,15
+        C,D,5
+traces:
+  - name: Simple Sankey Diagram
+    model: ref(sankey-data)
+    props:
+      type: sankey
+      node:
+        label: ?{source}
+      link:
+        source: ?{source}
+        target: ?{target}
+        value: ?{value}
+charts:
+  - name: Simple Sankey Chart
+    traces:
+      - ref(Simple Sankey Diagram)
+    layout:
+      title:
+        text: Simple Sankey Diagram<br><sub>Flow of Resources Between Nodes</sub> 

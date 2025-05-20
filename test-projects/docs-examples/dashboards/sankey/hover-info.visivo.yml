@@ -1,0 +1,29 @@
+models:
+  - name: sankey-data-hover
+    args:
+      - echo
+      - |
+        source,target,value
+        P,Q,20
+        P,R,10
+        Q,S,15
+        R,S,5
+traces:
+  - name: Sankey Diagram with Hover Information
+    model: ref(sankey-data-hover)
+    props:
+      type: sankey
+      node:
+        label: ?{source}
+      link:
+        source: ?{source}
+        target: ?{target}
+        value: ?{value}
+        hoverinfo: "source+target+value"
+charts:
+  - name: Hover Info Sankey Chart
+    traces:
+      - ref(Sankey Diagram with Hover Information)
+    layout:
+      title:
+        text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub> 

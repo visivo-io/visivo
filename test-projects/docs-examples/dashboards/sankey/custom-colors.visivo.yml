@@ -1,0 +1,29 @@
+models:
+  - name: sankey-data-colors
+    args:
+      - echo
+      - |
+        source,target,value,color
+        X,Y,10,#1f77b4
+        X,Z,5,#ff7f0e
+        Y,W,15,#2ca02c
+        Z,W,5,#d62728
+traces:
+  - name: Sankey Diagram with Custom Colors
+    model: ref(sankey-data-colors)
+    props:
+      type: sankey
+      node:
+        label: ?{source}
+        color: ?{color}
+      link:
+        source: ?{source}
+        target: ?{target}
+        value: ?{value}
+charts:
+  - name: Custom Colors Sankey Chart
+    traces:
+      - ref(Sankey Diagram with Custom Colors)
+    layout:
+      title:
+        text: Sankey Diagram with Custom Colors<br><sub>Custom Colors for Nodes and Links</sub> 
