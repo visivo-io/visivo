@@ -1,0 +1,40 @@
+models:
+  - name: histogram2dcontour-data-bins
+    args:
+      - echo
+      - |
+        x,y
+        1,5
+        2,6
+        3,7
+        2,4
+        3,5
+        4,6
+        5,8
+        4,3
+        5,4
+traces:
+  - name: 2D Contour Histogram with Custom Bins
+    model: ${ref(histogram2dcontour-data-bins)}
+    props:
+      type: histogram2dcontour
+      x: ?{x}
+      y: ?{y}
+      xbins:
+        size: 1
+      ybins:
+        size: 1
+      colorscale: "Jet"
+charts:
+  - name: 2D Contour Histogram with Custom Bins Chart
+    traces:
+      - ${ref(2D Contour Histogram with Custom Bins)}
+    layout:
+      title:
+        text: 2D Contour Histogram with Custom Bins<br><sub>Custom Bin Sizes for X and Y</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis" 
