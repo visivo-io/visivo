@@ -1,16 +1,7 @@
-models:
-  - name: streamtube-data-color
-    args:
-      - echo
-      - |
-        x,y,z,u,v,w,magnitude
-        0,0,0,1,0,0,1
-        1,0,0,0,1,0,2
-        1,1,0,0,0,1,3
-        0,1,1,-1,0,0,4
+
 traces:
   - name: Streamtube Plot with Color Mapping
-    model: ${ref(streamtube-data-color)}
+    model: ${ref(streamtube-data)}
     props:
       type: streamtube
       x: ?{x}
@@ -20,8 +11,7 @@ traces:
       v: ?{v}
       w: ?{w}
       colorscale: "Viridis"
-      lighting: 
-        fresnel: 3
+      
 charts:
   - name: Streamtube Chart with Color Mapping
     traces:

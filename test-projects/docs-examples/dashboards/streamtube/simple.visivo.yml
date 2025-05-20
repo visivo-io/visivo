@@ -1,13 +1,9 @@
 models:
   - name: streamtube-data
     args:
-      - echo
-      - |
-        x,y,z,u,v,w
-        0,0,0,1,0,0
-        1,0,0,0,1,0
-        1,1,0,0,0,1
-        0,1,1,-1,0,0
+      - curl
+      - -sL
+      - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
 traces:
   - name: Simple Streamtube Plot
     model: ${ref(streamtube-data)}

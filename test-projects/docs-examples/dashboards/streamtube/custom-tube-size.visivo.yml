@@ -1,16 +1,7 @@
-models:
-  - name: streamtube-data-size
-    args:
-      - echo
-      - |
-        x,y,z,u,v,w,magnitude
-        0,0,0,1,0,0,1
-        1,0,0,0,1,0,2
-        1,1,0,0,0,1,3
-        0,1,1,-1,0,0,4
+
 traces:
   - name: Streamtube Plot with Custom Tube Sizes
-    model: ${ref(streamtube-data-size)}
+    model: ${ref(streamtube-data)}
     props:
       type: streamtube
       x: ?{x}
