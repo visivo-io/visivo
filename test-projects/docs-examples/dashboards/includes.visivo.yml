@@ -26,4 +26,5 @@ includes:
   - path: scatter/dashboard.visivo.yml
   - path: layout/includes.visivo.yml
   - path: pie/dashboard.visivo.yml
+  - path: sankey/dashboard.visivo.yml
   - path: annotations/dashboard.visivo.yml

@@ -36,17 +36,17 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
               - echo
               - |
                 source,target,value
-                A,B,10
-                A,C,5
-                B,D,15
-                C,D,5
+                0,1,10
+                0,2,5
+                1,3,15
+                2,3,5
         traces:
           - name: Simple Sankey Diagram
             model: ref(sankey-data)
             props:
               type: sankey
               node:
-                label: ?{unique([source, target])}
+                label: ["A", "B", "C", "D"]
               link:
                 source: ?{source}
                 target: ?{target}
@@ -75,17 +75,17 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
               - echo
               - |
                 source,target,value,color
-                X,Y,10,#1f77b4
-                X,Z,5,#ff7f0e
-                Y,W,15,#2ca02c
-                Z,W,5,#d62728
+                0,1,10,#1f77b4
+                0,2,5,#ff7f0e
+                1,3,15,#2ca02c
+                2,3,5,#d62728
         traces:
           - name: Sankey Diagram with Custom Colors
             model: ref(sankey-data-colors)
             props:
               type: sankey
               node:
-                label: ?{unique([source, target])}
+                label: ["X", "Y", "Z", "W"]
                 color: ?{color}
               link:
                 source: ?{source}
@@ -115,17 +115,17 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sankey/#attributes) f
               - echo
               - |
                 source,target,value
-                P,Q,20
-                P,R,10
-                Q,S,15
-                R,S,5
+                0,1,20
+                0,2,10
+                1,3,15
+                2,3,5
         traces:
           - name: Sankey Diagram with Hover Information
             model: ref(sankey-data-hover)
             props:
               type: sankey
               node:
-                label: ?{unique([source, target])}
+                label: ["P", "Q", "R", "S"]
               link:
                 source: ?{source}
                 target: ?{target}
