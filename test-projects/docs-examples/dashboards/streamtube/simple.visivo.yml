@@ -1,0 +1,28 @@
+models:
+  - name: streamtube-data
+    args:
+      - echo
+      - |
+        x,y,z,u,v,w
+        0,0,0,1,0,0
+        1,0,0,0,1,0
+        1,1,0,0,0,1
+        0,1,1,-1,0,0
+traces:
+  - name: Simple Streamtube Plot
+    model: ${ref(streamtube-data)}
+    props:
+      type: streamtube
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
+charts:
+  - name: Simple Streamtube Chart
+    traces:
+      - ${ref(Simple Streamtube Plot)}
+    layout:
+      title:
+        text: Simple Streamtube Plot<br><sub>3D Vector Field Visualization</sub> 

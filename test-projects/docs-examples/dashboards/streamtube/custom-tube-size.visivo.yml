@@ -1,0 +1,29 @@
+models:
+  - name: streamtube-data-size
+    args:
+      - echo
+      - |
+        x,y,z,u,v,w,magnitude
+        0,0,0,1,0,0,1
+        1,0,0,0,1,0,2
+        1,1,0,0,0,1,3
+        0,1,1,-1,0,0,4
+traces:
+  - name: Streamtube Plot with Custom Tube Sizes
+    model: ${ref(streamtube-data-size)}
+    props:
+      type: streamtube
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
+      sizeref: 0.5
+charts:
+  - name: Streamtube Chart with Custom Tube Sizes
+    traces:
+      - ${ref(Streamtube Plot with Custom Tube Sizes)}
+    layout:
+      title:
+        text: Streamtube Plot with Custom Tube Sizes<br><sub>Vector Magnitude Represented by Tube Size</sub> 

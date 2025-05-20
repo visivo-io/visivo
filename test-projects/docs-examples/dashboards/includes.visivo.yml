@@ -35,6 +35,7 @@ includes:
   - path: scatterpolar/dashboard.visivo.yml
   - path: scatterpolargl/dashboard.visivo.yml
   - path: scattersmith/dashboard.visivo.yml
+  - path: streamtube/dashboard.visivo.yml
   - path: layout/includes.visivo.yml
   - path: pie/dashboard.visivo.yml
   - path: sankey/dashboard.visivo.yml

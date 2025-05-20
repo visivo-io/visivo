@@ -131,7 +131,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Streamtube/#attribute
               u: ?{u}
               v: ?{v}
               w: ?{w}
-              tube_sizeref: 0.5
+              sizeref: 0.5
         charts:
           - name: Streamtube Chart with Custom Tube Sizes
             traces:
