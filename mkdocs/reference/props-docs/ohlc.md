@@ -152,31 +152,35 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
             props:
               type: ohlc
               x: ?{date}
-              open: ?{open where stock = "AAPL"}
-              high: ?{high where stock = "AAPL"}
-              low: ?{low where stock = "AAPL"}
-              close: ?{close where stock = "AAPL"}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#1f77b4"
               decreasing:
                 line:
                   color: "#ff7f0e"
+            filters: 
+              - ?{stock = 'AAPL'}
           - name: OHLC Plot for MSFT
             model: ${ref(ohlc-data-multi)}
             props:
               type: ohlc
               x: ?{date}
-              open: ?{open where stock = "MSFT"}
-              high: ?{high where stock = "MSFT"}
-              low: ?{low where stock = "MSFT"}
-              close: ?{close where stock = "MSFT"}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#2ca02c"
               decreasing:
                 line:
                   color: "#d62728"
+            filters: 
+              - ?{stock = 'MSFT'}
         charts:
           - name: OHLC Chart with Multiple Stocks
             traces:
