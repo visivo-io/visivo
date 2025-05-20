@@ -95,8 +95,8 @@
           "description": "String in the format query( x ) where x can be anything"
         },
         {
-          "pattern": "^column\\(.*\\)(?:\\[\\d+\\])?$",
-          "description": "String in the format column( x ) or column( x )[n] where x can be anything and n is a number"
+          "pattern": "^column\\(.*\\)(?:\\[-?\\d+\\])?$",
+          "description": "String in the format column( x ) or column( x )[n] where x can be anything and n is a positive or negative number"
         }
       ]
     }
