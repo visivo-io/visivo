@@ -159,15 +159,8 @@
       ]
     },
     "customdatasrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `customdata`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `customdata`.",
+      "type": "string"
     },
     "fill": {
       "oneOf": [
@@ -199,9 +192,6 @@
     "hoverinfo": {
       "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired.",
       "oneOf": [
-        {
-          "$ref": "#/$defs/query-string"
-        },
         {
           "oneOf": [
             {
@@ -238,19 +228,15 @@
             ],
             "default": "all"
           }
-        }
-      ]
-    },
-    "hoverinfosrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `hoverinfo`.",
-          "type": "string"
         },
         {
           "$ref": "#/$defs/query-string"
         }
       ]
+    },
+    "hoverinfosrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `hoverinfo`.",
+      "type": "string"
     },
     "hoverlabel": {
       "type": "object",
@@ -258,9 +244,6 @@
         "align": {
           "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "enum": [
                 "left",
@@ -279,26 +262,19 @@
                 ],
                 "default": "auto"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "alignsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `align`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `align`.",
+          "type": "string"
         },
         "bgcolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/query-string"
-            },
-            {
               "$ref": "#/$defs/color",
               "default": "#444"
             },
@@ -308,25 +284,18 @@
                 "$ref": "#/$defs/color",
                 "default": "#444"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "bgcolorsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `bgcolor`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `bgcolor`.",
+          "type": "string"
         },
         "bordercolor": {
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "$ref": "#/$defs/color",
               "default": "#444"
@@ -337,26 +306,282 @@
                 "$ref": "#/$defs/color",
                 "default": "#444"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "bordercolorsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `bordercolor`.",
+          "description": "Sets the source reference on Chart Studio Cloud for `bordercolor`.",
+          "type": "string"
+        },
+        "font": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/color",
+                    "default": "#444"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "colorsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `color`.",
               "type": "string"
             },
-            {
-              "$ref": "#/$defs/query-string"
+            "family": {
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": ".*\\S.*$"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": ".*\\S.*$"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "familysrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `family`.",
+              "type": "string"
+            },
+            "lineposition": {
+              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "none"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                    }
+                  ],
+                  "default": "none"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "none"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                      }
+                    ],
+                    "default": "none"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "linepositionsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `lineposition`.",
+              "type": "string"
+            },
+            "shadow": {
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "default": "none"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "default": "none"
+                  }
+                }
+              ]
+            },
+            "shadowsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `shadow`.",
+              "type": "string"
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "minimum": 1
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 1
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "sizesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `size`.",
+              "type": "string"
+            },
+            "style": {
+              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+              "oneOf": [
+                {
+                  "enum": [
+                    "normal",
+                    "italic"
+                  ],
+                  "default": "normal"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "normal",
+                      "italic"
+                    ],
+                    "default": "normal"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "stylesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `style`.",
+              "type": "string"
+            },
+            "textcase": {
+              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+              "oneOf": [
+                {
+                  "enum": [
+                    "normal",
+                    "word caps",
+                    "upper",
+                    "lower"
+                  ],
+                  "default": "normal"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "normal",
+                      "word caps",
+                      "upper",
+                      "lower"
+                    ],
+                    "default": "normal"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "textcasesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `textcase`.",
+              "type": "string"
+            },
+            "variant": {
+              "description": "Sets the variant of the font.",
+              "oneOf": [
+                {
+                  "enum": [
+                    "normal",
+                    "small-caps",
+                    "all-small-caps",
+                    "all-petite-caps",
+                    "petite-caps",
+                    "unicase"
+                  ],
+                  "default": "normal"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "normal",
+                      "small-caps",
+                      "all-small-caps",
+                      "all-petite-caps",
+                      "petite-caps",
+                      "unicase"
+                    ],
+                    "default": "normal"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "variantsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `variant`.",
+              "type": "string"
+            },
+            "weight": {
+              "description": "Sets the weight (or boldness) of the font.",
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000,
+                  "default": "normal"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "default": "normal"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "weightsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
+              "type": "string"
             }
-          ]
+          }
         },
         "namelength": {
           "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "type": "integer",
               "minimum": -1,
@@ -369,40 +594,33 @@
                 "minimum": -1,
                 "default": 15
               }
-            }
-          ]
-        },
-        "namelengthsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
-              "type": "string"
             },
             {
               "$ref": "#/$defs/query-string"
             }
           ]
+        },
+        "namelengthsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
+          "type": "string"
         }
       }
     },
     "hoveron": {
       "oneOf": [
         {
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "description": "Do the hover effects highlight individual points (markers or line points) or do they highlight filled regions? If the fill is *toself* or *tonext* and there are no markers or text, then the default is *fills*, otherwise it is *points*.",
           "type": "string",
           "pattern": "^(points|fills)(\\+(points|fills))*$"
-        },
-        {
-          "$ref": "#/$defs/query-string"
         }
       ]
     },
     "hovertemplate": {
       "description": "Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example \"y: %{y}\" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, *xother* will be added to those with different x positions from the first point. An underscore before or after *(x|y)other* will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example \"Price: %{y:$.2f}\". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example \"Day: %{2019-01-01|%A}\". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available.  Anything contained in tag `<extra>` is displayed in the secondary box, for example \"<extra>{fullData.name}</extra>\". To hide the secondary box completely, use an empty tag `<extra></extra>`.",
       "oneOf": [
-        {
-          "$ref": "#/$defs/query-string"
-        },
         {
           "type": "string",
           "default": ""
@@ -417,22 +635,12 @@
       ]
     },
     "hovertemplatesrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `hovertemplate`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `hovertemplate`.",
+      "type": "string"
     },
     "hovertext": {
       "description": "Sets hover text elements associated with each (x,y) pair. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. To be seen, trace `hoverinfo` must contain a *text* flag.",
       "oneOf": [
-        {
-          "$ref": "#/$defs/query-string"
-        },
         {
           "type": "string",
           "default": ""
@@ -447,15 +655,8 @@
       ]
     },
     "hovertextsrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `hovertext`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `hovertext`.",
+      "type": "string"
     },
     "ids": {
       "oneOf": [
@@ -479,15 +680,8 @@
       ]
     },
     "idssrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `ids`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `ids`.",
+      "type": "string"
     },
     "imag": {
       "oneOf": [
@@ -511,55 +705,159 @@
       ]
     },
     "imagsrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `imag`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `imag`.",
+      "type": "string"
     },
     "legend": {
       "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
         {
           "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
           "type": "string",
           "pattern": "^legend([2-9]|[1-9][0-9]+)?$",
           "default": "legend"
-        },
-        {
-          "$ref": "#/$defs/query-string"
         }
       ]
     },
     "legendgroup": {
-      "oneOf": [
-        {
-          "description": "Sets the legend group for this trace. Traces and shapes part of the same legend group hide/show at the same time when toggling legend items.",
-          "type": "string",
-          "default": ""
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the legend group for this trace. Traces and shapes part of the same legend group hide/show at the same time when toggling legend items.",
+      "type": "string",
+      "default": ""
     },
     "legendgrouptitle": {
       "type": "object",
       "properties": {
-        "text": {
-          "oneOf": [
-            {
-              "description": "Sets the title of the legend group.",
-              "type": "string",
-              "default": ""
+        "font": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
             },
-            {
-              "$ref": "#/$defs/query-string"
+            "family": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+                  "type": "string",
+                  "pattern": ".*\\S.*$"
+                }
+              ]
+            },
+            "lineposition": {
+              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "none"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                }
+              ],
+              "default": "none"
+            },
+            "shadow": {
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "type": "string",
+              "default": "none"
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "minimum": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "style": {
+              "oneOf": [
+                {
+                  "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+                  "enum": [
+                    "normal",
+                    "italic"
+                  ],
+                  "default": "normal"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "textcase": {
+              "oneOf": [
+                {
+                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+                  "enum": [
+                    "normal",
+                    "word caps",
+                    "upper",
+                    "lower"
+                  ],
+                  "default": "normal"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "variant": {
+              "oneOf": [
+                {
+                  "description": "Sets the variant of the font.",
+                  "enum": [
+                    "normal",
+                    "small-caps",
+                    "all-small-caps",
+                    "all-petite-caps",
+                    "petite-caps",
+                    "unicase"
+                  ],
+                  "default": "normal"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "weight": {
+              "oneOf": [
+                {
+                  "description": "Sets the weight (or boldness) of the font.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000,
+                  "default": "normal"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
             }
-          ]
+          }
+        },
+        "text": {
+          "description": "Sets the title of the legend group.",
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -594,9 +892,6 @@
           "description": "Sets the line back off from the end point of the nth line segment (in px). This option is useful e.g. to avoid overlap with arrowhead markers. With *auto* the lines would trim before markers if `marker.angleref` is set to *previous*.",
           "oneOf": [
             {
-              "$ref": "#/$defs/query-string"
-            },
-            {
               "type": "number",
               "minimum": 0,
               "default": "auto"
@@ -608,19 +903,15 @@
                 "minimum": 0,
                 "default": "auto"
               }
-            }
-          ]
-        },
-        "backoffsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `backoff`.",
-              "type": "string"
             },
             {
               "$ref": "#/$defs/query-string"
             }
           ]
+        },
+        "backoffsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `backoff`.",
+          "type": "string"
         },
         "color": {
           "oneOf": [
@@ -634,16 +925,9 @@
           ]
         },
         "dash": {
-          "oneOf": [
-            {
-              "description": "Sets the dash style of lines. Set to a dash type string (*solid*, *dot*, *dash*, *longdash*, *dashdot*, or *longdashdot*) or a dash length list in px (eg *5px,10px,2px,2px*).",
-              "type": "string",
-              "default": "solid"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the dash style of lines. Set to a dash type string (*solid*, *dot*, *dash*, *longdash*, *dashdot*, or *longdashdot*) or a dash length list in px (eg *5px,10px,2px,2px*).",
+          "type": "string",
+          "default": "solid"
         },
         "shape": {
           "oneOf": [
@@ -696,9 +980,6 @@
           "description": "Sets the marker angle in respect to `angleref`.",
           "oneOf": [
             {
-              "$ref": "#/$defs/query-string"
-            },
-            {
               "type": "number",
               "minimum": -180,
               "maximum": 180,
@@ -712,6 +993,9 @@
                 "maximum": 180,
                 "default": 0
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
@@ -731,81 +1015,41 @@
           ]
         },
         "anglesrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `angle`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `angle`.",
+          "type": "string"
         },
         "autocolorscale": {
-          "oneOf": [
-            {
-              "description": "Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `marker.colorscale`. Has an effect only if in `marker.color` is set to a numerical array. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed.",
-              "type": "boolean",
-              "default": true
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "type": "object",
+          "properties": {
+            "impliedEdits": {}
+          }
         },
         "cauto": {
-          "oneOf": [
-            {
-              "description": "Determines whether or not the color domain is computed with respect to the input data (here in `marker.color`) or the bounds set in `marker.cmin` and `marker.cmax` Has an effect only if in `marker.color` is set to a numerical array. Defaults to `false` when `marker.cmin` and `marker.cmax` are set by the user.",
-              "type": "boolean",
-              "default": true
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "type": "object",
+          "properties": {
+            "impliedEdits": {}
+          }
         },
         "cmax": {
-          "oneOf": [
-            {
-              "description": "Sets the upper bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmin` must be set as well.",
-              "type": "number",
-              "default": null
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "type": "object",
+          "properties": {
+            "impliedEdits": {}
+          }
         },
         "cmid": {
-          "oneOf": [
-            {
-              "description": "Sets the mid-point of the color domain by scaling `marker.cmin` and/or `marker.cmax` to be equidistant to this point. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color`. Has no effect when `marker.cauto` is `false`.",
-              "type": "number",
-              "default": null
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "type": "object",
+          "properties": {
+            "impliedEdits": {}
+          }
         },
         "cmin": {
-          "oneOf": [
-            {
-              "description": "Sets the lower bound of the color domain. Has an effect only if in `marker.color` is set to a numerical array. Value should have the same units as in `marker.color` and if set, `marker.cmax` must be set as well.",
-              "type": "number",
-              "default": null
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "type": "object",
+          "properties": {
+            "impliedEdits": {}
+          }
         },
         "color": {
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "$ref": "#/$defs/color",
               "default": "#444"
@@ -816,68 +1060,1108 @@
                 "$ref": "#/$defs/color",
                 "default": "#444"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "coloraxis": {
           "oneOf": [
             {
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "description": "Sets a reference to a shared color axis. References to these shared color axes are *coloraxis*, *coloraxis2*, *coloraxis3*, etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis.",
               "type": "string",
               "pattern": "/^coloraxis([2-9]|[1-9][0-9]+)?$/",
               "default": null
-            },
-            {
-              "$ref": "#/$defs/query-string"
             }
           ]
         },
-        "colorscale": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/colorscale",
-              "default": [
-                [
-                  0,
-                  "rgb(5,10,172)"
-                ],
-                [
-                  0.35,
-                  "rgb(40,60,190)"
-                ],
-                [
-                  0.5,
-                  "rgb(70,100,245)"
-                ],
-                [
-                  0.6,
-                  "rgb(90,120,245)"
-                ],
-                [
-                  0.7,
-                  "rgb(106,137,247)"
-                ],
-                [
-                  1,
-                  "rgb(220,220,220)"
-                ]
+        "colorbar": {
+          "type": "object",
+          "properties": {
+            "bgcolor": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
               ]
             },
-            {
-              "$ref": "#/$defs/query-string"
+            "bordercolor": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "borderwidth": {
+              "oneOf": [
+                {
+                  "description": "Sets the width (in px) or the border enclosing this color bar.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 0
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "dtick": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "exponentformat": {
+              "oneOf": [
+                {
+                  "description": "Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If *none*, it appears as 1,000,000,000. If *e*, 1e+9. If *E*, 1E+9. If *power*, 1x10^9 (with 9 in a super script). If *SI*, 1G. If *B*, 1B.",
+                  "enum": [
+                    "none",
+                    "e",
+                    "E",
+                    "power",
+                    "SI",
+                    "B"
+                  ],
+                  "default": "B"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "labelalias": {
+              "description": "Replacement text for specific tick or hover labels. For example using {US: 'USA', CA: 'Canada'} changes US to USA and CA to Canada. The labels we would have shown must match the keys exactly, after adding any tickprefix or ticksuffix. For negative numbers the minus sign symbol used (U+2212) is wider than the regular ascii dash. That means you need to use \u22121 instead of -1. labelalias can be used with any axis type, and both keys (if needed) and values (if desired) can include html-like tags or MathJax.",
+              "default": false
+            },
+            "len": {
+              "oneOf": [
+                {
+                  "description": "Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "lenmode": {
+              "oneOf": [
+                {
+                  "description": "Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot *fraction* or in *pixels. Use `len` to set the value.",
+                  "enum": [
+                    "fraction",
+                    "pixels"
+                  ],
+                  "default": "fraction"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "minexponent": {
+              "oneOf": [
+                {
+                  "description": "Hide SI prefix for 10^n if |n| is below this number. This only has an effect when `tickformat` is *SI* or *B*.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 3
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "nticks": {
+              "oneOf": [
+                {
+                  "description": "Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to *auto*.",
+                  "type": "integer",
+                  "minimum": 0,
+                  "default": 0
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "orientation": {
+              "oneOf": [
+                {
+                  "description": "Sets the orientation of the colorbar.",
+                  "enum": [
+                    "h",
+                    "v"
+                  ],
+                  "default": "v"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "outlinecolor": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "outlinewidth": {
+              "oneOf": [
+                {
+                  "description": "Sets the width (in px) of the axis line.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "separatethousands": {
+              "oneOf": [
+                {
+                  "description": "If \"true\", even 4-digit integers are separated",
+                  "type": "boolean",
+                  "default": false
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "showexponent": {
+              "oneOf": [
+                {
+                  "description": "If *all*, all exponents are shown besides their significands. If *first*, only the exponent of the first tick is shown. If *last*, only the exponent of the last tick is shown. If *none*, no exponents appear.",
+                  "enum": [
+                    "all",
+                    "first",
+                    "last",
+                    "none"
+                  ],
+                  "default": "all"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "showticklabels": {
+              "oneOf": [
+                {
+                  "description": "Determines whether or not the tick labels are drawn.",
+                  "type": "boolean",
+                  "default": true
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "showtickprefix": {
+              "oneOf": [
+                {
+                  "description": "If *all*, all tick labels are displayed with a prefix. If *first*, only the first tick is displayed with a prefix. If *last*, only the last tick is displayed with a suffix. If *none*, tick prefixes are hidden.",
+                  "enum": [
+                    "all",
+                    "first",
+                    "last",
+                    "none"
+                  ],
+                  "default": "all"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "showticksuffix": {
+              "oneOf": [
+                {
+                  "description": "Same as `showtickprefix` but for tick suffixes.",
+                  "enum": [
+                    "all",
+                    "first",
+                    "last",
+                    "none"
+                  ],
+                  "default": "all"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "thickness": {
+              "oneOf": [
+                {
+                  "description": "Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 30
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "thicknessmode": {
+              "oneOf": [
+                {
+                  "description": "Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot *fraction* or in *pixels*. Use `thickness` to set the value.",
+                  "enum": [
+                    "fraction",
+                    "pixels"
+                  ],
+                  "default": "pixels"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "tick0": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "tickangle": {
+              "oneOf": [
+                {
+                  "description": "Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically.",
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180,
+                  "default": "auto"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "tickcolor": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "tickfont": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/color",
+                      "default": "#444"
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                },
+                "family": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+                      "type": "string",
+                      "pattern": ".*\\S.*$"
+                    }
+                  ]
+                },
+                "lineposition": {
+                  "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "none"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                    }
+                  ],
+                  "default": "none"
+                },
+                "shadow": {
+                  "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+                  "type": "string",
+                  "default": "none"
+                },
+                "size": {
+                  "oneOf": [
+                    {
+                      "type": "number",
+                      "minimum": 1
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                },
+                "style": {
+                  "oneOf": [
+                    {
+                      "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+                      "enum": [
+                        "normal",
+                        "italic"
+                      ],
+                      "default": "normal"
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                },
+                "textcase": {
+                  "oneOf": [
+                    {
+                      "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+                      "enum": [
+                        "normal",
+                        "word caps",
+                        "upper",
+                        "lower"
+                      ],
+                      "default": "normal"
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                },
+                "variant": {
+                  "oneOf": [
+                    {
+                      "description": "Sets the variant of the font.",
+                      "enum": [
+                        "normal",
+                        "small-caps",
+                        "all-small-caps",
+                        "all-petite-caps",
+                        "petite-caps",
+                        "unicase"
+                      ],
+                      "default": "normal"
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                },
+                "weight": {
+                  "oneOf": [
+                    {
+                      "description": "Sets the weight (or boldness) of the font.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000,
+                      "default": "normal"
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                }
+              }
+            },
+            "tickformat": {
+              "description": "Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*",
+              "type": "string",
+              "default": ""
+            },
+            "tickformatstops": {
+              "type": "object",
+              "properties": {
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tickformatstop": {
+                      "type": "object",
+                      "properties": {
+                        "dtickrange": {
+                          "oneOf": [
+                            {
+                              "description": "range [*min*, *max*], where *min*, *max* - dtick values which describe some zoom level, it is possible to omit *min* or *max* value by passing *null*",
+                              "type": "array",
+                              "items": {
+                                "oneOf": [
+                                  {
+                                    "$ref": "#/$defs/query-string"
+                                  },
+                                  {}
+                                ]
+                              },
+                              "minItems": 2,
+                              "maxItems": 2
+                            },
+                            {
+                              "$ref": "#/$defs/query-string"
+                            }
+                          ]
+                        },
+                        "enabled": {
+                          "oneOf": [
+                            {
+                              "description": "Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`.",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            {
+                              "$ref": "#/$defs/query-string"
+                            }
+                          ]
+                        },
+                        "name": {
+                          "description": "When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template.",
+                          "type": "string"
+                        },
+                        "templateitemname": {
+                          "description": "Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`.",
+                          "type": "string"
+                        },
+                        "value": {
+                          "description": "string - dtickformat for described zoom level, the same as *tickformat*",
+                          "type": "string",
+                          "default": ""
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "ticklabeloverflow": {
+              "oneOf": [
+                {
+                  "description": "Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is *hide past domain*. In other cases the default is *hide past div*.",
+                  "enum": [
+                    "allow",
+                    "hide past div",
+                    "hide past domain"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "ticklabelposition": {
+              "oneOf": [
+                {
+                  "description": "Determines where tick labels are drawn relative to the ticks. Left and right options are used when `orientation` is *h*, top and bottom when `orientation` is *v*.",
+                  "enum": [
+                    "outside",
+                    "inside",
+                    "outside top",
+                    "inside top",
+                    "outside left",
+                    "inside left",
+                    "outside right",
+                    "inside right",
+                    "outside bottom",
+                    "inside bottom"
+                  ],
+                  "default": "outside"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "ticklabelstep": {
+              "oneOf": [
+                {
+                  "description": "Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. `tick0` determines which labels are shown. Not implemented for axes with `type` *log* or *multicategory*, or when `tickmode` is *array*.",
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "ticklen": {
+              "oneOf": [
+                {
+                  "description": "Sets the tick length (in px).",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 5
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "tickmode": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "tickprefix": {
+              "description": "Sets a tick label prefix.",
+              "type": "string",
+              "default": ""
+            },
+            "ticks": {
+              "oneOf": [
+                {
+                  "description": "Determines whether ticks are drawn or not. If **, this axis' ticks are not drawn. If *outside* (*inside*), this axis' are drawn outside (inside) the axis lines.",
+                  "enum": [
+                    "outside",
+                    "inside",
+                    ""
+                  ],
+                  "default": ""
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "ticksuffix": {
+              "description": "Sets a tick label suffix.",
+              "type": "string",
+              "default": ""
+            },
+            "ticktext": {
+              "oneOf": [
+                {
+                  "description": "Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to *array*. Used with `tickvals`.",
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "ticktextsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `ticktext`.",
+              "type": "string"
+            },
+            "tickvals": {
+              "oneOf": [
+                {
+                  "description": "Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to *array*. Used with `ticktext`.",
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "tickvalssrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `tickvals`.",
+              "type": "string"
+            },
+            "tickwidth": {
+              "oneOf": [
+                {
+                  "description": "Sets the tick width (in px).",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "title": {
+              "type": "object",
+              "properties": {
+                "font": {
+                  "type": "object",
+                  "properties": {
+                    "color": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/color",
+                          "default": "#444"
+                        },
+                        {
+                          "$ref": "#/$defs/query-string"
+                        }
+                      ]
+                    },
+                    "family": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/query-string"
+                        },
+                        {
+                          "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+                          "type": "string",
+                          "pattern": ".*\\S.*$"
+                        }
+                      ]
+                    },
+                    "lineposition": {
+                      "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "none"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                        }
+                      ],
+                      "default": "none"
+                    },
+                    "shadow": {
+                      "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+                      "type": "string",
+                      "default": "none"
+                    },
+                    "size": {
+                      "oneOf": [
+                        {
+                          "type": "number",
+                          "minimum": 1
+                        },
+                        {
+                          "$ref": "#/$defs/query-string"
+                        }
+                      ]
+                    },
+                    "style": {
+                      "oneOf": [
+                        {
+                          "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+                          "enum": [
+                            "normal",
+                            "italic"
+                          ],
+                          "default": "normal"
+                        },
+                        {
+                          "$ref": "#/$defs/query-string"
+                        }
+                      ]
+                    },
+                    "textcase": {
+                      "oneOf": [
+                        {
+                          "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+                          "enum": [
+                            "normal",
+                            "word caps",
+                            "upper",
+                            "lower"
+                          ],
+                          "default": "normal"
+                        },
+                        {
+                          "$ref": "#/$defs/query-string"
+                        }
+                      ]
+                    },
+                    "variant": {
+                      "oneOf": [
+                        {
+                          "description": "Sets the variant of the font.",
+                          "enum": [
+                            "normal",
+                            "small-caps",
+                            "all-small-caps",
+                            "all-petite-caps",
+                            "petite-caps",
+                            "unicase"
+                          ],
+                          "default": "normal"
+                        },
+                        {
+                          "$ref": "#/$defs/query-string"
+                        }
+                      ]
+                    },
+                    "weight": {
+                      "oneOf": [
+                        {
+                          "description": "Sets the weight (or boldness) of the font.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 1000,
+                          "default": "normal"
+                        },
+                        {
+                          "$ref": "#/$defs/query-string"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "side": {
+                  "oneOf": [
+                    {
+                      "description": "Determines the location of color bar's title with respect to the color bar. Defaults to *top* when `orientation` if *v* and  defaults to *right* when `orientation` if *h*.",
+                      "enum": [
+                        "right",
+                        "top",
+                        "bottom"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/query-string"
+                    }
+                  ]
+                },
+                "text": {
+                  "description": "Sets the title of the color bar.",
+                  "type": "string"
+                }
+              }
+            },
+            "x": {
+              "oneOf": [
+                {
+                  "description": "Sets the x position with respect to `xref` of the color bar (in plot fraction). When `xref` is *paper*, defaults to 1.02 when `orientation` is *v* and 0.5 when `orientation` is *h*. When `xref` is *container*, defaults to *1* when `orientation` is *v* and 0.5 when `orientation` is *h*. Must be between *0* and *1* if `xref` is *container* and between *-2* and *3* if `xref` is *paper*.",
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "xanchor": {
+              "oneOf": [
+                {
+                  "description": "Sets this color bar's horizontal position anchor. This anchor binds the `x` position to the *left*, *center* or *right* of the color bar. Defaults to *left* when `orientation` is *v* and *center* when `orientation` is *h*.",
+                  "enum": [
+                    "left",
+                    "center",
+                    "right"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "xpad": {
+              "oneOf": [
+                {
+                  "description": "Sets the amount of padding (in px) along the x direction.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 10
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "xref": {
+              "oneOf": [
+                {
+                  "description": "Sets the container `x` refers to. *container* spans the entire `width` of the plot. *paper* refers to the width of the plotting area only.",
+                  "enum": [
+                    "container",
+                    "paper"
+                  ],
+                  "default": "paper"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "y": {
+              "oneOf": [
+                {
+                  "description": "Sets the y position with respect to `yref` of the color bar (in plot fraction). When `yref` is *paper*, defaults to 0.5 when `orientation` is *v* and 1.02 when `orientation` is *h*. When `yref` is *container*, defaults to 0.5 when `orientation` is *v* and 1 when `orientation` is *h*. Must be between *0* and *1* if `yref` is *container* and between *-2* and *3* if `yref` is *paper*.",
+                  "type": "number"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "yanchor": {
+              "oneOf": [
+                {
+                  "description": "Sets this color bar's vertical position anchor This anchor binds the `y` position to the *top*, *middle* or *bottom* of the color bar. Defaults to *middle* when `orientation` is *v* and *bottom* when `orientation` is *h*.",
+                  "enum": [
+                    "top",
+                    "middle",
+                    "bottom"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "ypad": {
+              "oneOf": [
+                {
+                  "description": "Sets the amount of padding (in px) along the y direction.",
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 10
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "yref": {
+              "oneOf": [
+                {
+                  "description": "Sets the container `y` refers to. *container* spans the entire `height` of the plot. *paper* refers to the height of the plotting area only.",
+                  "enum": [
+                    "container",
+                    "paper"
+                  ],
+                  "default": "paper"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
             }
-          ]
+          }
+        },
+        "colorscale": {
+          "type": "object",
+          "properties": {
+            "impliedEdits": {}
+          }
         },
         "colorsrc": {
-          "oneOf": [
-            {
+          "description": "Sets the source reference on Chart Studio Cloud for `color`.",
+          "type": "string"
+        },
+        "gradient": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/color",
+                    "default": "#444"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "colorsrc": {
               "description": "Sets the source reference on Chart Studio Cloud for `color`.",
               "type": "string"
             },
-            {
-              "$ref": "#/$defs/query-string"
+            "type": {
+              "description": "Sets the type of gradient used to fill the markers",
+              "oneOf": [
+                {
+                  "enum": [
+                    "radial",
+                    "horizontal",
+                    "vertical",
+                    "none"
+                  ],
+                  "default": "none"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "radial",
+                      "horizontal",
+                      "vertical",
+                      "none"
+                    ],
+                    "default": "none"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "typesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `type`.",
+              "type": "string"
             }
-          ]
+          }
+        },
+        "line": {
+          "type": "object",
+          "properties": {
+            "autocolorscale": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "cauto": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "cmax": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "cmid": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "cmin": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/color",
+                    "default": "#444"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "coloraxis": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "description": "Sets a reference to a shared color axis. References to these shared color axes are *coloraxis*, *coloraxis2*, *coloraxis3*, etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis.",
+                  "type": "string",
+                  "pattern": "/^coloraxis([2-9]|[1-9][0-9]+)?$/",
+                  "default": null
+                }
+              ]
+            },
+            "colorscale": {
+              "type": "object",
+              "properties": {
+                "impliedEdits": {}
+              }
+            },
+            "colorsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `color`.",
+              "type": "string"
+            },
+            "reversescale": {
+              "oneOf": [
+                {
+                  "description": "Reverses the color mapping if true. Has an effect only if in `marker.line.color` is set to a numerical array. If true, `marker.line.cmin` will correspond to the last color in the array and `marker.line.cmax` will correspond to the first color.",
+                  "type": "boolean",
+                  "default": false
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "width": {
+              "description": "Sets the width (in px) of the lines bounding the marker points.",
+              "oneOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "widthsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `width`.",
+              "type": "string"
+            }
+          }
         },
         "maxdisplayed": {
           "oneOf": [
@@ -896,9 +2180,6 @@
           "description": "Sets the marker opacity.",
           "oneOf": [
             {
-              "$ref": "#/$defs/query-string"
-            },
-            {
               "type": "number",
               "minimum": 0,
               "maximum": 1
@@ -910,19 +2191,15 @@
                 "minimum": 0,
                 "maximum": 1
               }
-            }
-          ]
-        },
-        "opacitysrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `opacity`.",
-              "type": "string"
             },
             {
               "$ref": "#/$defs/query-string"
             }
           ]
+        },
+        "opacitysrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `opacity`.",
+          "type": "string"
         },
         "reversescale": {
           "oneOf": [
@@ -952,9 +2229,6 @@
           "description": "Sets the marker size (in px).",
           "oneOf": [
             {
-              "$ref": "#/$defs/query-string"
-            },
-            {
               "type": "number",
               "minimum": 0,
               "default": 6
@@ -966,6 +2240,9 @@
                 "minimum": 0,
                 "default": 6
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
@@ -1010,22 +2287,12 @@
           ]
         },
         "sizesrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `size`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `size`.",
+          "type": "string"
         },
         "standoff": {
           "description": "Moves the marker away from the data point in the direction of `angle` (in px). This can be useful for example if you have another marker at this location and you want to point an arrowhead marker at it.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "type": "number",
               "minimum": 0,
@@ -1038,26 +2305,19 @@
                 "minimum": 0,
                 "default": 0
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "standoffsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `standoff`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `standoff`.",
+          "type": "string"
         },
         "symbol": {
           "description": "Sets the marker symbol type. Adding 100 is equivalent to appending *-open* to a symbol name. Adding 200 is equivalent to appending *-dot* to a symbol name. Adding 300 is equivalent to appending *-open-dot* or *dot-open* to a symbol name.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "enum": [
                 0,
@@ -2042,32 +3302,21 @@
                 ],
                 "default": "circle"
               }
-            }
-          ]
-        },
-        "symbolsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `symbol`.",
-              "type": "string"
             },
             {
               "$ref": "#/$defs/query-string"
             }
           ]
+        },
+        "symbolsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `symbol`.",
+          "type": "string"
         }
       }
     },
     "metasrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
+      "type": "string"
     },
     "mode": {
       "description": "Determines the drawing mode for this scatter trace. If the provided `mode` includes *text* then the `text` elements appear at the coordinates. Otherwise, the `text` elements appear on hover. If there are less than 20 points and the trace is not stacked then the default is *lines+markers*. Otherwise, *lines*.",
@@ -2081,22 +3330,12 @@
         {
           "type": "string",
           "pattern": "^(lines|markers|text)(\\+(lines|markers|text))*$"
-        },
-        {
-          "$ref": "#/$defs/query-string"
         }
       ]
     },
     "name": {
-      "oneOf": [
-        {
-          "description": "Sets the trace name. The trace name appears as the legend item and on hover.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the trace name. The trace name appears as the legend item and on hover.",
+      "type": "string"
     },
     "opacity": {
       "oneOf": [
@@ -2134,15 +3373,70 @@
       ]
     },
     "realsrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `real`.",
-          "type": "string"
+      "description": "Sets the source reference on Chart Studio Cloud for `real`.",
+      "type": "string"
+    },
+    "selected": {
+      "type": "object",
+      "properties": {
+        "marker": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "opacity": {
+              "oneOf": [
+                {
+                  "description": "Sets the marker opacity of selected points.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "description": "Sets the marker size of selected points.",
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            }
+          }
         },
-        {
-          "$ref": "#/$defs/query-string"
+        "textfont": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            }
+          }
         }
-      ]
+      }
     },
     "selectedpoints": {
       "description": "Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect."
@@ -2179,12 +3473,12 @@
         "token": {
           "oneOf": [
             {
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
               "type": "string",
               "pattern": ".*\\S.*$"
-            },
-            {
-              "$ref": "#/$defs/query-string"
             }
           ]
         }
@@ -2193,22 +3487,19 @@
     "subplot": {
       "oneOf": [
         {
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "description": "Sets a reference between this trace's data coordinates and a smith subplot. If *smith* (the default value), the data refer to `layout.smith`. If *smith2*, the data refer to `layout.smith2`, and so on.",
           "type": "string",
           "pattern": "^smith([2-9]|[1-9][0-9]+)?$",
           "default": "smith"
-        },
-        {
-          "$ref": "#/$defs/query-string"
         }
       ]
     },
     "text": {
       "description": "Sets text elements associated with each (x,y) pair. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. If trace `hoverinfo` contains a *text* flag and *hovertext* is not set, these elements will be seen in the hover labels.",
       "oneOf": [
-        {
-          "$ref": "#/$defs/query-string"
-        },
         {
           "type": "string",
           "default": ""
@@ -2228,9 +3519,6 @@
         "color": {
           "oneOf": [
             {
-              "$ref": "#/$defs/query-string"
-            },
-            {
               "$ref": "#/$defs/color",
               "default": "#444"
             },
@@ -2240,26 +3528,19 @@
                 "$ref": "#/$defs/color",
                 "default": "#444"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "colorsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `color`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `color`.",
+          "type": "string"
         },
         "family": {
           "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "type": "string",
               "pattern": ".*\\S.*$"
@@ -2270,26 +3551,19 @@
                 "type": "string",
                 "pattern": ".*\\S.*$"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "familysrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `family`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `family`.",
+          "type": "string"
         },
         "lineposition": {
           "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "oneOf": [
                 {
@@ -2322,26 +3596,19 @@
                 ],
                 "default": "none"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "linepositionsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `lineposition`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `lineposition`.",
+          "type": "string"
         },
         "shadow": {
           "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "type": "string",
               "default": "none"
@@ -2356,21 +3623,11 @@
           ]
         },
         "shadowsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `shadow`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `shadow`.",
+          "type": "string"
         },
         "size": {
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "type": "number",
               "minimum": 1
@@ -2381,26 +3638,19 @@
                 "type": "number",
                 "minimum": 1
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "sizesrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `size`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `size`.",
+          "type": "string"
         },
         "style": {
           "description": "Sets whether a font should be styled with a normal or italic face from its family.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "enum": [
                 "normal",
@@ -2417,26 +3667,19 @@
                 ],
                 "default": "normal"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "stylesrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `style`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `style`.",
+          "type": "string"
         },
         "textcase": {
           "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "enum": [
                 "normal",
@@ -2457,26 +3700,19 @@
                 ],
                 "default": "normal"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "textcasesrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `textcase`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `textcase`.",
+          "type": "string"
         },
         "variant": {
           "description": "Sets the variant of the font.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "enum": [
                 "normal",
@@ -2501,26 +3737,19 @@
                 ],
                 "default": "normal"
               }
+            },
+            {
+              "$ref": "#/$defs/query-string"
             }
           ]
         },
         "variantsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `variant`.",
-              "type": "string"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
+          "description": "Sets the source reference on Chart Studio Cloud for `variant`.",
+          "type": "string"
         },
         "weight": {
           "description": "Sets the weight (or boldness) of the font.",
           "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
             {
               "type": "integer",
               "minimum": 1,
@@ -2535,28 +3764,21 @@
                 "maximum": 1000,
                 "default": "normal"
               }
-            }
-          ]
-        },
-        "weightsrc": {
-          "oneOf": [
-            {
-              "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
-              "type": "string"
             },
             {
               "$ref": "#/$defs/query-string"
             }
           ]
+        },
+        "weightsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
+          "type": "string"
         }
       }
     },
     "textposition": {
       "description": "Sets the positions of the `text` elements with respects to the (x,y) coordinates.",
       "oneOf": [
-        {
-          "$ref": "#/$defs/query-string"
-        },
         {
           "enum": [
             "top left",
@@ -2587,37 +3809,23 @@
             ],
             "default": "middle center"
           }
+        },
+        {
+          "$ref": "#/$defs/query-string"
         }
       ]
     },
     "textpositionsrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `textposition`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `textposition`.",
+      "type": "string"
     },
     "textsrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `text`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `text`.",
+      "type": "string"
     },
     "texttemplate": {
       "description": "Template string used for rendering the information text that appear on points. Note that this will override `textinfo`. Variables are inserted using %{variable}, for example \"y: %{y}\". Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example \"Price: %{y:$.2f}\". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example \"Day: %{2019-01-01|%A}\". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. Every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. Finally, the template string has access to variables `real`, `imag` and `text`.",
       "oneOf": [
-        {
-          "$ref": "#/$defs/query-string"
-        },
         {
           "type": "string",
           "default": ""
@@ -2632,29 +3840,77 @@
       ]
     },
     "texttemplatesrc": {
-      "oneOf": [
-        {
-          "description": "Sets the source reference on Chart Studio Cloud for `texttemplate`.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Sets the source reference on Chart Studio Cloud for `texttemplate`.",
+      "type": "string"
     },
     "uid": {
-      "oneOf": [
-        {
-          "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",
-          "type": "string"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",
+      "type": "string"
     },
     "uirevision": {
       "description": "Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves."
+    },
+    "unselected": {
+      "type": "object",
+      "properties": {
+        "marker": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "opacity": {
+              "oneOf": [
+                {
+                  "description": "Sets the marker opacity of unselected points, applied only when a selection exists.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "description": "Sets the marker size of unselected points, applied only when a selection exists.",
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            }
+          }
+        },
+        "textfont": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/color",
+                  "default": "#444"
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            }
+          }
+        }
+      }
     },
     "visible": {
       "oneOf": [
