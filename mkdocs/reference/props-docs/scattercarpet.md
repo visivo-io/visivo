@@ -23,25 +23,54 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
 
     === "Simple Scattercarpet Plot"
 
-        Here's a simple `scattercarpet` plot visualizing data points on a carpet axis:
-
-        ![](../../assets/example-charts/props/scattercarpet/simple-scattercarpet.png)
-
-        You can copy this code below to create this chart in your project:
+        This example shows a `scattercarpet` plot with a visible carpet grid. The carpet trace defines the non-linear grid, and the scattercarpet trace plots points on that grid:
 
         ```yaml
         models:
+          - name: carpet-grid
+            args:
+              - echo
+              - |
+                a,b,y
+                4,1,2
+                4,2,3.5
+                4,3,4
+                4.5,1,3
+                4.5,2,4.5
+                4.5,3,5
+                5,1,5.5
+                5,2,6.5
+                5,3,7.5
+                6,1,8
+                6,2,8.5
+                6,3,10
           - name: scattercarpet-data
             args:
               - echo
               - |
                 a,b,value
-                1,10,15
-                2,20,25
-                3,15,30
-                4,25,35
-                5,30,40
+                4,1.5,15
+                4.5,2.5,25
+                5,1.5,30
+                6,2.5,40
         traces:
+          - name: Carpet Grid
+            model: ${ref(carpet-grid)}
+            props:
+              type: carpet
+              a: ?{a}
+              b: ?{b}
+              y: ?{y}
+              aaxis:
+                tickprefix: 'a = '
+                ticksuffix: 'm'
+                smoothing: 1
+                minorgridcount: 9
+              baxis:
+                tickprefix: 'b = '
+                ticksuffix: 'Pa'
+                smoothing: 1
+                minorgridcount: 9
           - name: Simple Scattercarpet Plot
             model: ${ref(scattercarpet-data)}
             props:
@@ -52,6 +81,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         charts:
           - name: Simple Scattercarpet Chart
             traces:
+              - ${ref(Carpet Grid)}
               - ${ref(Simple Scattercarpet Plot)}
             layout:
               title:
@@ -60,25 +90,55 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
 
     === "Scattercarpet Plot with Lines"
 
-        This example demonstrates a `scattercarpet` plot with lines connecting the data points on a carpet axis:
-
-        ![](../../assets/example-charts/props/scattercarpet/lines-scattercarpet.png)
-
-        Here's the code:
+        This example shows a `scattercarpet` plot with lines+markers, using a unique carpet grid for context:
 
         ```yaml
         models:
+          - name: carpet-grid-lines
+            args:
+              - echo
+              - |
+                a,b,y
+                4,1,2
+                4,2,3.5
+                4,3,4
+                4.5,1,3
+                4.5,2,4.5
+                4.5,3,5
+                5,1,5.5
+                5,2,6.5
+                5,3,7.5
+                6,1,8
+                6,2,8.5
+                6,3,10
           - name: scattercarpet-data-lines
             args:
               - echo
               - |
                 a,b,value
-                1,5,7
-                2,10,12
-                3,8,10
-                4,15,18
-                5,12,17
+                4,1,7
+                4.5,2,12
+                5,1.5,10
+                6,2.5,18
+                5,2,17
         traces:
+          - name: Carpet Grid Lines
+            model: ${ref(carpet-grid-lines)}
+            props:
+              type: carpet
+              a: ?{a}
+              b: ?{b}
+              y: ?{y}
+              aaxis:
+                tickprefix: 'a = '
+                ticksuffix: 'm'
+                smoothing: 1
+                minorgridcount: 9
+              baxis:
+                tickprefix: 'b = '
+                ticksuffix: 'Pa'
+                smoothing: 1
+                minorgridcount: 9
           - name: Scattercarpet Plot with Lines
             model: ${ref(scattercarpet-data-lines)}
             props:
@@ -89,6 +149,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         charts:
           - name: Scattercarpet Chart with Lines
             traces:
+              - ${ref(Carpet Grid Lines)}
               - ${ref(Scattercarpet Plot with Lines)}
             layout:
               title:
@@ -97,25 +158,55 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
 
     === "Scattercarpet Plot with Custom Marker Sizes and Colors"
 
-        Here's a `scattercarpet` plot with custom marker sizes and colors, giving more visual weight to each data point on a carpet axis:
-
-        ![](../../assets/example-charts/props/scattercarpet/custom-markers-scattercarpet.png)
-
-        Here's the code:
+        This example shows a `scattercarpet` plot with custom marker sizes and colors, using a unique carpet grid for context:
 
         ```yaml
         models:
+          - name: carpet-grid-markers
+            args:
+              - echo
+              - |
+                a,b,y
+                4,1,2
+                4,2,3.5
+                4,3,4
+                4.5,1,3
+                4.5,2,4.5
+                4.5,3,5
+                5,1,5.5
+                5,2,6.5
+                5,3,7.5
+                6,1,8
+                6,2,8.5
+                6,3,10
           - name: scattercarpet-data-custom
             args:
               - echo
               - |
                 a,b,size,color
-                1,5,10,#1f77b4
-                2,10,15,#ff7f0e
-                3,8,20,#2ca02c
-                4,15,25,#d62728
-                5,12,30,#9467bd
+                4,1,10,#1f77b4
+                4.5,2,15,#ff7f0e
+                5,1.5,20,#2ca02c
+                6,2.5,25,#d62728
+                5,2,30,#9467bd
         traces:
+          - name: Carpet Grid Markers
+            model: ${ref(carpet-grid-markers)}
+            props:
+              type: carpet
+              a: ?{a}
+              b: ?{b}
+              y: ?{y}
+              aaxis:
+                tickprefix: 'a = '
+                ticksuffix: 'm'
+                smoothing: 1
+                minorgridcount: 9
+              baxis:
+                tickprefix: 'b = '
+                ticksuffix: 'Pa'
+                smoothing: 1
+                minorgridcount: 9
           - name: Scattercarpet Plot with Custom Markers
             model: ${ref(scattercarpet-data-custom)}
             props:
@@ -129,11 +220,11 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattercarpet/#attrib
         charts:
           - name: Scattercarpet Chart with Custom Markers
             traces:
+              - ${ref(Carpet Grid Markers)}
               - ${ref(Scattercarpet Plot with Custom Markers)}
             layout:
               title:
                 text: Scattercarpet Plot with Custom Markers<br><sub>Custom Sizes and Colors for Carpet Axis Data Points</sub>
         ```
-
 {% endraw %}
 <!--end-->

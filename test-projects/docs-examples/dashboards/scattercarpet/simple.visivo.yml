@@ -1,15 +1,48 @@
 models:
+  - name: carpet-grid
+    args:
+      - echo
+      - |
+        a,b,y
+        4,1,2
+        4,2,3.5
+        4,3,4
+        4.5,1,3
+        4.5,2,4.5
+        4.5,3,5
+        5,1,5.5
+        5,2,6.5
+        5,3,7.5
+        6,1,8
+        6,2,8.5
+        6,3,10
   - name: scattercarpet-data
     args:
       - echo
       - |
         a,b,value
-        1,10,15
-        2,20,25
-        3,15,30
-        4,25,35
-        5,30,40
+        4,1.5,15
+        4.5,2.5,25
+        5,1.5,30
+        6,2.5,40
 traces:
+  - name: Carpet Grid
+    model: ${ref(carpet-grid)}
+    props:
+      type: carpet
+      a: ?{a}
+      b: ?{b}
+      y: ?{y}
+      aaxis:
+        tickprefix: 'a = '
+        ticksuffix: 'm'
+        smoothing: 1
+        minorgridcount: 9
+      baxis:
+        tickprefix: 'b = '
+        ticksuffix: 'Pa'
+        smoothing: 1
+        minorgridcount: 9
   - name: Simple Scattercarpet Plot
     model: ${ref(scattercarpet-data)}
     props:
@@ -20,6 +53,7 @@ traces:
 charts:
   - name: Simple Scattercarpet Chart
     traces:
+      - ${ref(Carpet Grid)}
       - ${ref(Simple Scattercarpet Plot)}
     layout:
       title:
