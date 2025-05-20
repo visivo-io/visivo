@@ -1,0 +1,29 @@
+models:
+  - name: scattergl-data-custom
+    args:
+      - echo
+      - |
+        x,y,size,color
+        1,5,10,#1f77b4
+        2,10,15,#ff7f0e
+        3,8,20,#2ca02c
+        4,15,25,#d62728
+        5,12,30,#9467bd
+traces:
+  - name: Scattergl Plot with Custom Markers
+    model: ${ref(scattergl-data-custom)}
+    props:
+      type: scattergl
+      x: ?{x}
+      y: ?{y}
+      mode: "markers"
+      marker:
+        size: ?{size}
+        color: ?{color}
+charts:
+  - name: Scattergl Chart with Custom Markers
+    traces:
+      - ${ref(Scattergl Plot with Custom Markers)}
+    layout:
+      title:
+        text: Scattergl Plot with Custom Markers<br><sub>Custom Sizes and Colors for WebGL Data Points</sub> 

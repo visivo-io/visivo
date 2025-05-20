@@ -31,6 +31,7 @@ includes:
   - path: scatter3d/dashboard.visivo.yml
   - path: scattercarpet/dashboard.visivo.yml
   - path: scattergeo/dashboard.visivo.yml
+  - path: scattergl/dashboard.visivo.yml
   - path: scatterpolar/dashboard.visivo.yml
   - path: scatterpolargl/dashboard.visivo.yml
   - path: scattersmith/dashboard.visivo.yml

@@ -1,0 +1,26 @@
+models:
+  - name: scattergl-data-lines
+    args:
+      - echo
+      - |
+        x,y
+        1,5
+        2,10
+        3,8
+        4,15
+        5,12
+traces:
+  - name: Scattergl Plot with Lines
+    model: ${ref(scattergl-data-lines)}
+    props:
+      type: scattergl
+      x: ?{x}
+      y: ?{y}
+      mode: "lines+markers"
+charts:
+  - name: Scattergl Chart with Lines
+    traces:
+      - ${ref(Scattergl Plot with Lines)}
+    layout:
+      title:
+        text: Scattergl Plot with Lines<br><sub>Connecting Data Points with WebGL</sub> 
