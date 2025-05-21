@@ -17,7 +17,7 @@ class Dashboard(BaseDashboard, ParentModel):
 
     <div class="grid" markdown>
 
-    ![](../../../assets/dashboard_layout.png)
+    ![](../../../../assets/dashboard_layout.png)
 
     !!! note
 
