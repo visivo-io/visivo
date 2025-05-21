@@ -216,7 +216,7 @@ The configuration options for annotations are quite extensive; however, they are
     28. Sets the size of the start annotation arrow head, relative to `arrowwidth`. A value of 1 (default) gives a head about 3x as wide as the line. 
     29. Sets a distance, in pixels, to move the start arrowhead away from the position it is pointing at, for example to point at the edge of a marker independent of zoom. Note that this shortens the arrow from the `ax` / `ay` vector, in contrast to `xshift` / `yshift` which moves everything by this amount. 
     30. Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`. 
-    31. ), bold (<b></b>), italics (<i></i>), hyperlinks (<a href='...'></a>). Tags <em>, <sup>, <sub> <span> are also supported. 
+    31. ), bold (<b></b>), italics (<i></i>), hyperlinks. Tags <em>, <sup>, <sub> <span> are also supported. 
     32. Sets the angle at which the `text` is drawn with respect to the horizontal. 
     33. Sets the vertical alignment of the `text` within the box. Has an effect only if an explicit height is set to override the text height. 
     34. Determines whether or not this annotation is visible. 
