@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
 
         Here's a simple `surface` plot showing a continuous 3D surface:
 
-        ![](../../assets/example-charts/props/surface/simple-surface.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -66,7 +65,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
 
         This example demonstrates a `surface` plot with a custom colorscale applied to the surface:
 
-        ![](../../assets/example-charts/props/surface/custom-colorscale-surface.png)
 
         Here's the code:
 
@@ -108,7 +106,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Surface/#attributes) 
 
         Here's a `surface` plot where contour lines are added to the surface, highlighting the shape of the surface more clearly:
 
-        ![](../../assets/example-charts/props/surface/surface-with-contours.png)
 
         Here's the code:
 

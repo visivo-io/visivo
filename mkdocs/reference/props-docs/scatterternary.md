@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
 
         Here's a simple `scatterternary` plot showing data points on a ternary plot:
 
-        ![](../../assets/example-charts/props/scatterternary/simple-scatterternary.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -62,7 +61,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
 
         This example demonstrates a `scatterternary` plot with lines connecting the data points on a ternary plot:
 
-        ![](../../assets/example-charts/props/scatterternary/lines-scatterternary.png)
 
         Here's the code:
 
@@ -99,7 +97,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatterternary/#attri
 
         Here's a `scatterternary` plot with custom marker sizes and colors, giving more visual weight to each data point on a ternary plot:
 
-        ![](../../assets/example-charts/props/scatterternary/custom-markers-scatterternary.png)
 
         Here's the code:
 

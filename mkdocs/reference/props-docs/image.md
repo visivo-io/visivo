@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
 
         Here's a simple `image` plot displaying an image based on pixel values:
 
-        ![](../../assets/example-charts/props/image/simple-image.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -58,7 +57,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
 
         This example demonstrates an `image` plot with a custom colorscale to better represent the image data:
 
-        ![](../../assets/example-charts/props/image/custom-colorscale-image.png)
 
         Here's the code:
 
@@ -92,7 +90,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
 
         This example shows an `image` plot with axis labels and annotations to provide context for the image data:
 
-        ![](../../assets/example-charts/props/image/annotated-image.png)
 
         Here's the code:
 

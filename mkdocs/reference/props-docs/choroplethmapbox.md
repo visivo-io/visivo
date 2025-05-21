@@ -30,7 +30,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         Here's a simple `choroplethmapbox` map showing population density across different regions on a Mapbox layer:
 
-        ![](../../assets/example-charts/props/choroplethmapbox/simple-choroplethmapbox.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -76,7 +75,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         This example shows a choropleth map on a Mapbox layer using a custom color scale, zoom, and center on Europe:
 
-        ![](../../assets/example-charts/props/choroplethmapbox/custom-colorscale-choroplethmapbox.png)
 
         Here's the code:
 
@@ -122,7 +120,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         Here's a choropleth map on a Mapbox layer that includes hover information for each country:
 
-        ![](../../assets/example-charts/props/choroplethmapbox/choroplethmapbox-hover.png)
 
         You can copy this code below to create this chart in your project:
 
