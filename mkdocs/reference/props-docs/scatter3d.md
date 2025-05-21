@@ -14,7 +14,7 @@ You can customize the marker size, color, and add lines to connect points in 3D 
     - **Pattern Detection**: Identifying trends and clusters in three dimensions.
     - **High-Dimensional Data**: Visualizing higher-dimensional datasets.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Scatter3d/#attributes) for the full set of configuration options**_
 
 ## Examples
 

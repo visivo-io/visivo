@@ -14,7 +14,7 @@ You can control contour levels, colors, and other properties to display data pat
     - **Engineering Data**: Representing data that spans across irregular dimensions.
     - **Multivariate Visualization**: Handling data with multiple independent variables.
 
-_**Check out the [Attributes](../configuration/Trace/Props/ContourCarpet/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Contourcarpet/#attributes) for the full set of configuration options**_
 
 ## Examples
 

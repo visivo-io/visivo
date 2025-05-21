@@ -14,7 +14,7 @@ You can control the colors, labels, and orientation of the funnel area sections 
     - **Conversion Rates**: Visualizing the drop-off rates in different stages of a process.
     - **Sales and Marketing Funnels**: Representing funnels like leads-to-sales in a circular format.
 
-_**Check out the [Attributes](../configuration/Trace/Props/FunnelArea/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Funnelarea/#attributes) for the full set of configuration options**_
 
 ## Examples
 

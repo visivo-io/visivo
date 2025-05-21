@@ -9,7 +9,7 @@ search:
     
     You need a mapbox api key to use choroplethmapbox traces.
 
-The `choroplethmapbox` trace type is used to create choropleth maps on top of a Mapbox layer. It’s a more advanced form of the standard `choropleth` trace, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.
+The `choroplethmapbox` trace type is used to create choropleth maps on top of a Mapbox layer. It's a more advanced form of the standard `choropleth` trace, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.
 
 With `choroplethmapbox`, you can visualize data across geographic regions on Mapbox maps, and customize the map's appearance using layers, color scales, and hover labels.
 
@@ -19,7 +19,7 @@ With `choroplethmapbox`, you can visualize data across geographic regions on Map
     - **Thematic Mapping with Interactivity**: Creating maps that can zoom, tilt, and rotate while visualizing variables like population or economic metrics.
     - **Map Projections**: Applying various Mapbox projections for advanced geographical data representation.
 
-_**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Choroplethmapbox/#attributes) for the full set of configuration options**_
 
 ## Examples
 

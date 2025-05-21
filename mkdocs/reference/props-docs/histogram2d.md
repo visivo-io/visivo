@@ -14,7 +14,7 @@ You can customize the binning along both axes, as well as the colorscale and agg
     - **Density Plots**: Showing the density of data points across two dimensions.
     - **Statistical Analysis**: Identifying patterns, correlations, or anomalies in bivariate data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Histogram2d/#attributes) for the full set of configuration options**_
 
 ## Examples
 

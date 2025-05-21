@@ -14,7 +14,7 @@ You can customize the binning along both axes, contour lines, and the color mapp
     - **Joint Distribution Analysis**: Visualizing the relationship between two variables with density contours.
     - **Bivariate Statistical Analysis**: Analyzing two variables and their joint behavior.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Histogram2dcontour/#attributes) for the full set of configuration options**_
 
 ## Examples
 

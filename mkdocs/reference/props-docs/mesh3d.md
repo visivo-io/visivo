@@ -14,7 +14,7 @@ You can customize the colors, vertex positions, and opacity to represent 3D data
     - **Scientific Visualization**: Representing complex 3D data in fields like physics, engineering, and geology.
     - **3D Surface Rendering**: Displaying 3D surfaces from a set of points and connectivity information.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Mesh3D/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Mesh3d/#attributes) for the full set of configuration options**_
 
 ## Examples
 
