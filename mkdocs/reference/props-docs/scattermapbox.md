@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
 
         Here's a simple `scattermapbox` plot showing data points on a Mapbox map:
 
-        ![](../../assets/example-charts/props/scattermapbox/simple-scattermapbox.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -65,7 +64,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
 
         This example demonstrates a `scattermapbox` plot with lines connecting geographic points:
 
-        ![](../../assets/example-charts/props/scattermapbox/lines-scattermapbox.png)
 
         Here's the code:
 
@@ -105,7 +103,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
 
         Here's a `scattermapbox` plot with custom marker sizes and colors, giving more visual weight to each geographic data point:
 
-        ![](../../assets/example-charts/props/scattermapbox/custom-markers-scattermapbox.png)
 
         Here's the code:
 
