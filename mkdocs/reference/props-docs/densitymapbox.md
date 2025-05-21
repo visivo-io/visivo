@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
 
         Here's a simple `densitymapbox` plot showing the density of random points on a Mapbox map:
 
-        ![](../../assets/example-charts/props/densitymapbox/simple-densitymapbox.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -71,7 +70,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
 
         This example demonstrates a `densitymapbox` plot with a custom radius for the points, which influences how smooth the heatmap appears:
 
-        ![](../../assets/example-charts/props/densitymapbox/custom-radius-densitymapbox.png)
 
         Here's the code:
 
@@ -117,7 +115,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
 
         This example shows a `densitymapbox` plot with a custom colorscale and zoom centered on Europe:
 
-        ![](../../assets/example-charts/props/densitymapbox/custom-colorscale-densitymapbox.png)
 
         Here's the code:
 
