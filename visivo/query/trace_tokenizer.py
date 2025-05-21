@@ -65,7 +65,13 @@ class TraceTokenizer:
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
             obj = self.trace
-        if isinstance(obj, BaseModel) or isinstance(obj, TraceProps):
+        if isinstance(obj, TraceProps):
+            # Get all fields including extra ones from the model dump
+            trace_props_dict = obj.model_dump()
+            for key, value in trace_props_dict.items():
+                if value is not None:
+                    self._set_select_items(value, path + [key])
+        elif isinstance(obj, BaseModel):
             for prop in obj.model_fields.keys():
                 prop_value = getattr(obj, prop, None)
                 if prop_value != None:

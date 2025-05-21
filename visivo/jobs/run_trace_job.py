@@ -34,7 +34,6 @@ def action(trace, dag, output_dir):
     query_string = _get_query_string(trace, dag, output_dir)
     try:
         start_time = time()
-        Logger.instance().info(f"Query string: {query_string}")
         data_frame = source.read_sql(query_string)
         success_message = format_message_success(
             details=f"Updated data for trace \033[4m{trace.name}\033[0m",

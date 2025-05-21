@@ -100,6 +100,8 @@ class TraceProps(JsonSchemaBase):
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON in schema file for trace type: {self.type.value}")
         except ValidationError as e:
-            raise ValueError(f"Validation error for trace type {self.type.value}: {str(e.message)}")
+            raise ValueError(
+                f"Validation error for trace type {self.type.value} at location: {e.instance_path}: {str(e.message)}"
+            )
 
         return self
