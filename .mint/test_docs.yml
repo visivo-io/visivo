@@ -51,11 +51,32 @@ tasks:
       # First, build a map of all pages and their links
       echo "📋 Building page-link relationship map..."
       mkdir -p /tmp/link_check
-      wget --recursive --no-verbose --spider --output-file=/tmp/link_check/wget.log http://127.0.0.1:8000/
+      
+      # Use wget with more verbose output and better error handling
+      wget --recursive \
+           --no-verbose \
+           --spider \
+           --timeout=30 \
+           --tries=3 \
+           --retry-connrefused \
+           --output-file=/tmp/link_check/wget.log \
+           --append-output=/tmp/link_check/wget.log \
+           http://127.0.0.1:8000/ || true
+      
+      # Check if wget log was created and has content
+      if [ ! -s /tmp/link_check/wget.log ]; then
+        echo "❌ Failed to create wget log file"
+        exit 1
+      fi
       
       # Extract all URLs and their relationships
       echo "📊 Analyzing page relationships..."
-      grep -o 'http://127.0.0.1:8000/[^ ]*' /tmp/link_check/wget.log | sort | uniq > /tmp/link_check/all_urls.txt
+      if ! grep -o 'http://127.0.0.1:8000/[^ ]*' /tmp/link_check/wget.log | sort | uniq > /tmp/link_check/all_urls.txt; then
+        echo "❌ Failed to extract URLs from wget log"
+        echo "📄 Wget log contents:"
+        cat /tmp/link_check/wget.log
+        exit 1
+      fi
       
       # Find broken links
       BROKEN_LINKS=$(grep -v -E 'OK$|^unlink|\.tmp\.tmp' /tmp/link_check/wget.log || true)
@@ -72,29 +93,34 @@ tasks:
           
           # Find which pages were trying to access this link
           echo "📄 Pages attempting to access this link:"
-          grep -B 1 "$link" /tmp/link_check/wget.log | grep 'http://127.0.0.1:8000/' | sort | uniq | while read -r parent_url; do
-            echo "  📄 $parent_url"
+          if ! grep -B 1 "$link" /tmp/link_check/wget.log | grep 'http://127.0.0.1:8000/' | sort | uniq | while read -r parent_url; do
+            echo "  🌐 $parent_url"
             
             # Get the relative path of the parent page
             parent_path=$(echo "$parent_url" | sed 's|http://127.0.0.1:8000/||')
             
             # Find the corresponding markdown file
             if [ -f "./mkdocs/$parent_path.md" ]; then
-              echo "    📄 Source: ./mkdocs/$parent_path.md"
+              echo "    💻 Source: ./mkdocs/$parent_path.md"
               # Show the line containing the link
               grep -n "$clean_path" "./mkdocs/$parent_path.md" | while IFS=: read -r line_num content; do
                 echo "      Line $line_num: $content"
               done
             elif [ -f "./mkdocs/$parent_path/index.md" ]; then
-              echo "    📄 Source: ./mkdocs/$parent_path/index.md"
+              echo "    💻 Source: ./mkdocs/$parent_path/index.md"
               # Show the line containing the link
               grep -n "$clean_path" "./mkdocs/$parent_path/index.md" | while IFS=: read -r line_num content; do
                 echo "      Line $line_num: $content"
               done
             else
               echo "    ❌ Could not find source markdown file"
+              # Try to find similar paths
+              echo "    🔍 Searching for similar paths..."
+              find ./mkdocs -type f -name "*.md" -exec grep -l "$clean_path" {} \;
             fi
-          done
+          done; then
+            echo "  ❌ No parent pages found for this link"
+          fi
         done
         
         exit 1
