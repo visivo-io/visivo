@@ -286,7 +286,7 @@ class Histogram2dcontourContours(TracePropsAttribute):
     )
     value: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
-        description=""" number or categorical coordinate string<br>Sets the value or values of the constraint boundary. When `operation` is set to one of the comparison values (=,<,>=,>,<=) "value" is expected to be a number. When `operation` is set to one of the interval values ([],(),[),(],][,)(,](,)[) "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. """,
+        description=""" number or categorical coordinate string<br>Sets the value or values of the constraint boundary. When `operation` is set to one of the comparison values (=,<,>=,>,<=) "value" is expected to be a number. When `operation` is set to one of the interval values   "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. """,
     )
 
 
