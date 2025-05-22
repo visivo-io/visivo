@@ -80,7 +80,7 @@ tasks:
       fi
       
       # Find broken links, excluding robots.txt and URLs with trailing commas
-      BROKEN_LINKS=$(grep -v -E 'OK$|^unlink|\.tmp\.tmp|robots\.txt' /tmp/link_check/wget.log | grep -v 'Remote file does not exist -- broken link!!!' || true)
+      BROKEN_LINKS=$(grep -v -E 'OK$|^unlink|\.tmp\.tmp|robots\.txt' /tmp/link_check/wget.log | grep -v 'Remote file does not exist -- broken link!!!' | grep -v ',$' || true)
       
       if [ -n "$BROKEN_LINKS" ]; then
         echo "❌ Found broken links:"
@@ -89,12 +89,22 @@ tasks:
         # For each broken link, find which pages reference it
         echo "📋 Analyzing broken link references..."
         for link in $(echo "$BROKEN_LINKS" | grep -o 'http://[^ ]*' | sed 's/,$//'); do
+          # Skip links with trailing commas
+          if [[ "$link" == *",$" ]]; then
+            continue
+          fi
+          
           clean_path=$(echo "$link" | sed 's|http://127.0.0.1:8000/||' | sed 's/,$//')
           echo "🔗 Broken link: $link"
           
           # Find which pages were trying to access this link
           echo "📄 Pages attempting to access this link:"
           if ! grep -B 1 "$link" /tmp/link_check/wget.log | grep 'http://127.0.0.1:8000/' | sort | uniq | while read -r parent_url; do
+            # Skip parent URLs with trailing commas
+            if [[ "$parent_url" == *",$" ]]; then
+              continue
+            fi
+            
             echo "  🌐 $parent_url"
             
             # Get the relative path of the parent page
@@ -123,6 +133,12 @@ tasks:
             echo "  ❌ No parent pages found for this link"
           fi
         done
+        
+        # If we only found links with trailing commas, don't fail
+        if ! echo "$BROKEN_LINKS" | grep -v ',$' > /dev/null; then
+          echo "✅ No actual broken links found (only false positives with trailing commas)"
+          exit 0
+        fi
         
         exit 1
       else
