@@ -1,6 +1,6 @@
 traces:
   - name: top_exporters
-    model: ref(exports)
+    model: ${ref(exports)}
     cohort_on: ?{top_countries}
     props:
       type: scatter
@@ -15,7 +15,7 @@ traces:
       - ?{SUM(abs(kilograms)) > 0}
 
   - name: percent_exports
-    model: ref(exports)
+    model: ${ref(exports)}
     columns:
       amount: sum(kilograms)
       labels: country
@@ -28,7 +28,7 @@ traces:
       textinfo: text
 
   - name: percent_imports
-    model: ref(imports)
+    model: ${ref(imports)}
     columns:
       amount: sum(kilograms)
       labels: country
@@ -41,7 +41,7 @@ traces:
       textinfo: text
 
   - name: total_export_production
-    model: ref(exports)
+    model: ${ref(exports)}
     cohort_on: ?{'Total'}
     props:
       yaxis: "y2"
@@ -53,7 +53,7 @@ traces:
       y: ?{sum(kilograms)}
       text: ?{round(sum(kilograms)/1000000000, 1) || 'B'}
   - name: top_importers
-    model: ref(imports)
+    model: ${ref(imports)}
     cohort_on: ?{top_countries}
     props:
       type: scatter
@@ -67,7 +67,7 @@ traces:
     filters:
       - ?{SUM(kilograms) > 0}
   - name: total_import_production
-    model: ref(imports)
+    model: ${ref(imports)}
     cohort_on: ?{'Total'}
     props:
       yaxis: "y2"

@@ -2,7 +2,7 @@
 Sources are connections to your data warehouses or databases. This page describes some best practices around setting up sources. 
 
 !!! tip
-    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/sources/PostgresqlSource/))
+    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/Sources/PostgresqlSource/))
 
 ## Supported Connectors 
 Sources are typically OLAP or OLTP SQL based data warehouses and databases. 

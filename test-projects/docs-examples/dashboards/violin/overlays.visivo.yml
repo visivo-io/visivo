@@ -12,7 +12,7 @@ models:
         B,28
 traces:
   - name: Violin Plot with Box
-    model: ref(violin-data-box)
+    model: ${ref(violin-data-box)}
     cohort_on: category
     props:
       type: violin
@@ -27,7 +27,7 @@ traces:
 charts:
   - name: Violin Chart with Box
     traces:
-      - ref(Violin Plot with Box)
+      - ${ref(Violin Plot with Box)}
     layout:
       title:
         text: Horizontal Violin Plot with Box & Points<br><sub>Overlay a Box Plot and Points</sub>

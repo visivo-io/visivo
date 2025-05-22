@@ -39,7 +39,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
                 75
         traces:
           - name: Simple Numeric Indicator
-            model: ref(indicator-data)
+            model: ${ref(indicator-data)}
             columns:
               val: value
               sign: case when value > 0 then '<sup>+</sup>' else '<sup>-</sup>' end
@@ -55,7 +55,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
         charts:
           - name: Simple Numeric Indicator Chart
             traces:
-              - ref(Simple Numeric Indicator)
+              - ${ref(Simple Numeric Indicator)}
             layout:
               title:
                 text: Simple Numeric Indicator<br><sub>Displaying a Single Value</sub>
@@ -83,7 +83,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
                 65
         traces:
           - name: Gauge Indicator
-            model: ref(indicator-data-gauge)
+            model: ${ref(indicator-data-gauge)}
             columns: 
               val: value
             props:
@@ -98,7 +98,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
         charts:
           - name: Gauge Indicator Chart
             traces:
-              - ref(Gauge Indicator)
+              - ${ref(Gauge Indicator)}
             layout:
               title:
                 text: Gauge Indicator<br><sub>Progress Towards a Target</sub>
@@ -125,7 +125,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
                 0,55
         traces:
           - name: Delta Indicator with Comparison
-            model: ref(indicator-data-delta)
+            model: ${ref(indicator-data-delta)}
             columns: 
               val: value 
             props:
@@ -139,7 +139,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Indicator/#attributes
         charts:
           - name: Delta Indicator with Comparison Chart
             traces:
-              - ref(Delta Indicator with Comparison)
+              - ${ref(Delta Indicator with Comparison)}
             layout:
               title:
                 text: Delta Indicator with Comparison<br><sub>Showing Change from Previous Value</sub>

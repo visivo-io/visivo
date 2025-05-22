@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Violin Chart)
-          - chart: ref(Violin Chart with Box)
+          - chart: ${ref(Simple Violin Chart)}
+          - chart: ${ref(Violin Chart with Box)}
       - height: medium
         items:
-          - chart: ref(Violin Chart with Split Categories)
+          - chart: ${ref(Violin Chart with Split Categories)}
           - markdown: ""

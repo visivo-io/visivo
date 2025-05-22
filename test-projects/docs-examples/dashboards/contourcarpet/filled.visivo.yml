@@ -1,0 +1,48 @@
+models:
+  - name: contourcarpet-data-filled
+    args:
+      - echo
+      - |
+        a,b,x,y,z
+        0,0,2,3,5
+        1,0,3,4,10
+        2,0,4,5,15
+        0,1,5,6,20
+        1,1,6,7,25
+        2,1,7,8,30
+        0,2,8,9,35
+        1,2,9,10,40
+        2,2,10,11,45
+traces:
+  - name: Carpet Plot Filled
+    model: ${ref(contourcarpet-data-filled)}
+    props:
+      type: carpet
+      a: ?{a}
+      b: ?{b}
+      x: ?{x}
+      y: ?{y}
+  - name: Filled Contourcarpet Plot
+    model: ${ref(contourcarpet-data-filled)}
+    props:
+      type: contourcarpet
+      carpet: ${ref(Carpet Plot Filled)}
+      z: ?{z}
+      colorscale: "Earth"
+      contours:
+        coloring: "heatmap"
+        showlines: true
+charts:
+  - name: Filled Contourcarpet Chart
+    traces:
+      - ${ref(Filled Contourcarpet Plot)}
+      - ${ref(Carpet Plot Filled)}
+    layout:
+      title:
+        text: Filled Contourcarpet Plot<br><sub>Filled Contour Plot over a Carpet</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis" 

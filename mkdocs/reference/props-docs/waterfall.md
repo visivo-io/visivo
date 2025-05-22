@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
                 4,Ending,1350
         traces:
           - name: Simple Waterfall Plot
-            model: ref(waterfall-data)
+            model: ${ref(waterfall-data)}
             props:
               type: waterfall
               x: ?{label}
@@ -54,7 +54,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
         charts:
           - name: Simple Waterfall Chart
             traces:
-              - ref(Simple Waterfall Plot)
+              - ${ref(Simple Waterfall Plot)}
             layout:
               title:
                 text: Simple Waterfall Plot<br><sub>Sequential Changes in Value</sub>
@@ -82,7 +82,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
                 4,Ending,1350,#9467bd
         traces:
           - name: Waterfall Plot with Custom Colors
-            model: ref(waterfall-data-colors)
+            model: ${ref(waterfall-data-colors)}
             props:
               type: waterfall
               x: ?{label}
@@ -105,7 +105,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
         charts:
           - name: Waterfall Chart with Custom Colors
             traces:
-              - ref(Waterfall Plot with Custom Colors)
+              - ${ref(Waterfall Plot with Custom Colors)}
             layout:
               title:
                 text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>
@@ -134,7 +134,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
                 5,Gross Profit,FY2024,0,total
         traces:
           - name: Waterfall Plot with Connectors
-            model: ref(waterfall-data-connectors)
+            model: ${ref(waterfall-data-connectors)}
             props:
               type: waterfall
               x: 
@@ -154,7 +154,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Waterfall/#attributes
         charts:
           - name: Waterfall Chart with Connectors
             traces:
-              - ref(Waterfall Plot with Connectors)
+              - ${ref(Waterfall Plot with Connectors)}
             layout:
               title:
                 text: Financial Waterfall

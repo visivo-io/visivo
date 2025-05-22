@@ -1,0 +1,26 @@
+includes:
+  - path: simple.visivo.yml
+  - path: filled-contours.visivo.yml
+  - path: custom-bins.visivo.yml
+
+dashboards:
+  - name: Histogram2DContour Dashboard
+    level: 1
+    tags:
+      - histogram2dcontour
+      - 2d
+      - visualization
+    rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Histogram2DContour Dashboard
+
+              This dashboard demonstrates different ways to create 2D contour histograms using the `histogram2dcontour` trace type.
+      - height: medium
+        items:
+          - chart: ${ref(Simple 2D Contour Histogram Chart)}
+          - chart: ${ref(2D Contour Histogram with Filled Contours Chart)}
+      - height: medium
+        items:
+          - chart: ${ref(2D Contour Histogram with Custom Bins Chart)} 

@@ -40,8 +40,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
                 B,20
                 C,50
         traces:
-          - name: Simple Pie Chart
-            model: ref(pie-data)
+          - name: Simple Pie Chart Trace
+            model: ${ref(pie-data)}
             props:
               type: pie
               labels: ?{category}
@@ -49,7 +49,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         charts:
           - name: Simple Pie Chart
             traces:
-              - ref(Simple Pie Chart)
+              - ${ref(Simple Pie Chart Trace)}
             layout:
               title:
                 text: Simple Pie Chart<br><sub>Distribution of Categories</sub>
@@ -74,8 +74,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
                 B,30,#ff7f0e
                 C,30,#2ca02c
         traces:
-          - name: Pie Chart with Custom Colors
-            model: ref(pie-data-colors)
+          - name: Pie Chart with Custom Colors Trace
+            model: ${ref(pie-data-colors)}
             props:
               type: pie
               labels: ?{category}
@@ -85,7 +85,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         charts:
           - name: Pie Chart with Custom Colors
             traces:
-              - ref(Pie Chart with Custom Colors)
+              - ${ref(Pie Chart with Custom Colors Trace)}
             layout:
               title:
                 text: Pie Chart with Custom Colors<br><sub>Customized Coloring for Each Category</sub>
@@ -110,8 +110,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
                 Y,25
                 Z,15
         traces:
-          - name: Pie Chart with Hover Info
-            model: ref(pie-data-hover)
+          - name: Pie Chart with Hover Info Trace
+            model: ${ref(pie-data-hover)}
             props:
               type: pie
               labels: ?{category}
@@ -120,7 +120,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Pie/#attributes) for 
         charts:
           - name: Pie Chart with Hover Info
             traces:
-              - ref(Pie Chart with Hover Info)
+              - ${ref(Pie Chart with Hover Info Trace)}
             layout:
               title:
                 text: Pie Chart with Hover Info<br><sub>Hover Info Showing Value and Percentage</sub>

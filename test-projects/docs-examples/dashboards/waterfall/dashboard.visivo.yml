@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Waterfall Chart)
-          - chart: ref(Waterfall Chart with Custom Colors)
+          - chart: ${ref(Simple Waterfall Chart)}
+          - chart: ${ref(Waterfall Chart with Custom Colors)}
       - height: medium
         items:
-          - chart: ref(Waterfall Chart with Connectors)
+          - chart: ${ref(Waterfall Chart with Connectors)}
           - markdown: ""

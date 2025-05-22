@@ -1,0 +1,26 @@
+includes:
+  - path: simple.visivo.yml
+  - path: lines.visivo.yml
+  - path: custom-markers.visivo.yml
+
+dashboards:
+  - name: Scattergl Dashboard
+    level: 1
+    tags:
+      - scattergl
+      - webgl
+      - visualization
+    rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Scattergl Dashboard
+
+              This dashboard demonstrates different ways to create high-performance scatter plots using the `scattergl` trace type.
+      - height: medium
+        items:
+          - chart: ${ref(Simple Scattergl Chart)}
+          - chart: ${ref(Scattergl Chart with Lines)}
+      - height: medium
+        items:
+          - chart: ${ref(Scattergl Chart with Custom Markers)} 

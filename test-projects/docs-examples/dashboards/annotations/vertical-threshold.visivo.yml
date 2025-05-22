@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: vertical_line_trace
-    model: ref(vertical_threshold_data)
+    model: ${ref(vertical_threshold_data)}
     props:
       type: scatter
       x: ?{x}

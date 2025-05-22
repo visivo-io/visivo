@@ -14,5 +14,5 @@ dashboards:
             width: 5
       - height: large
         items:
-          - chart: ref(Simple Mesh3D Chart)
+          - chart: ${ref(Simple Mesh3D Chart)}
           - markdown: ""

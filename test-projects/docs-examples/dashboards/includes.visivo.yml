@@ -8,10 +8,14 @@ includes:
   - path: choropleth/dashboard.visivo.yml
   - path: cone/dashboard.visivo.yml
   - path: contour/dashboard.visivo.yml
+  - path: contourcarpet/dashboard.visivo.yml
   - path: funnel/dashboard.visivo.yml
   - path: funnelarea/dashboard.visivo.yml
   - path: heatmap/dashboard.visivo.yml
+  - path: heatmapgl/dashboard.visivo.yml
   - path: histogram/dashboard.visivo.yml
+  - path: histogram2d/dashboard.visivo.yml
+  - path: histogram2dcontour/dashboard.visivo.yml
   - path: icicle/dashboard.visivo.yml
 #  - path: image/dashboard.visivo.yml #TODO: Fix image traces and get them working. The way they expect data is not super aggreable to sqlite.
   - path: indicator/dashboard.visivo.yml
@@ -24,5 +28,18 @@ includes:
   - path: treemap/dashboard.visivo.yml
   - path: splom/dashboard.visivo.yml
   - path: scatter/dashboard.visivo.yml
+  - path: scatter3d/dashboard.visivo.yml
+  - path: scattercarpet/dashboard.visivo.yml
+  - path: scattergeo/dashboard.visivo.yml
+  - path: scattergl/dashboard.visivo.yml
+  - path: scatterpolar/dashboard.visivo.yml
+  - path: scatterpolargl/dashboard.visivo.yml
+  - path: scattersmith/dashboard.visivo.yml
+  - path: streamtube/dashboard.visivo.yml
   - path: layout/includes.visivo.yml
+  - path: pie/dashboard.visivo.yml
+  - path: sankey/dashboard.visivo.yml
   - path: annotations/dashboard.visivo.yml
+  - path: parcats/dashboard.visivo.yml
+  - path: parcoords/dashboard.visivo.yml
+  - path: ohlc/dashboard.visivo.yml

@@ -15,7 +15,7 @@ dashboards:
               name: chart_name
               traces:
                 - name: trace_name
-                  model: ref(dbt_fact_transaction)
+                  model: ${ref(dbt_fact_transaction)}
                   props:
                     x: ?{CREATED_AT}
                     y: ?{AMOUNT}

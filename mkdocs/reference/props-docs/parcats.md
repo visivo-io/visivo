@@ -42,7 +42,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
                 B,Y,25
         traces:
           - name: Simple Parcats Plot
-            model: ref(parcats-data)
+            model: ${ref(parcats-data)}
             props:
               type: parcats
               dimensions:
@@ -56,7 +56,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
         charts:
           - name: Simple Parcats Chart
             traces:
-              - ref(Simple Parcats Plot)
+              - ${ref(Simple Parcats Plot)}
             layout:
               title:
                 text: Simple Parcats Chart<br><sub>Parallel Categories Diagram</sub>
@@ -83,7 +83,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
                 B,Y,Gamma,25
         traces:
           - name: Parcats Plot with Multiple Dimensions
-            model: ref(parcats-data-multi)
+            model: ${ref(parcats-data-multi)}
             props:
               type: parcats
               dimensions:
@@ -99,7 +99,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
         charts:
           - name: Parcats Chart with Multiple Dimensions
             traces:
-              - ref(Parcats Plot with Multiple Dimensions)
+              - ${ref(Parcats Plot with Multiple Dimensions)}
             layout:
               title:
                 text: Parcats Chart with Multiple Dimensions<br><sub>Flow Across Three Categories</sub>
@@ -126,7 +126,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
                 B,Y,20
         traces:
           - name: Parcats Plot with Custom Line Widths
-            model: ref(parcats-data-linewidth)
+            model: ${ref(parcats-data-linewidth)}
             props:
               type: parcats
               dimensions:
@@ -141,7 +141,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcats/#attributes) 
         charts:
           - name: Parcats Chart with Custom Line Widths
             traces:
-              - ref(Parcats Plot with Custom Line Widths)
+              - ${ref(Parcats Plot with Custom Line Widths)}
             layout:
               title:
                 text: Parcats Chart with Custom Line Widths<br><sub>Custom Line Width Based on Values</sub>

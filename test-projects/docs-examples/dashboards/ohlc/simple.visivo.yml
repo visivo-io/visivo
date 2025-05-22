@@ -1,0 +1,40 @@
+models:
+  - name: ohlc-data
+    args:
+      - echo
+      - |
+        date,open,high,low,close
+        2023-01-01,100,105,95,102
+        2023-01-02,102,108,101,107
+        2023-01-03,107,110,105,109
+        2023-01-04,109,112,107,111
+        2023-01-05,111,114,110,113
+traces:
+  - name: Simple OHLC Plot
+    model: ${ref(ohlc-data)}
+    props:
+      type: ohlc
+      x: ?{date}
+      open: ?{open}
+      high: ?{high}
+      low: ?{low}
+      close: ?{close}
+      increasing:
+        line:
+          color: "#17becf"
+      decreasing:
+        line:
+          color: "#ff7f0e"
+charts:
+  - name: Simple OHLC Chart
+    traces:
+      - ${ref(Simple OHLC Plot)}
+    layout:
+      title:
+        text: Simple OHLC Chart<br><sub>Stock Price Movements Over Time</sub>
+      xaxis:
+        title:
+          text: "Date"
+      yaxis:
+        title:
+          text: "Price" 

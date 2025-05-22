@@ -13,7 +13,7 @@ models:
         F,B,10,7
 traces:
   - name: Sunburst Plot with Custom Sizes
-    model: ref(sunburst-data-sizes)
+    model: ${ref(sunburst-data-sizes)}
     props:
       type: sunburst
       labels: ?{labels}
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Sunburst Chart with Custom Sizes
     traces:
-      - ref(Sunburst Plot with Custom Sizes)
+      - ${ref(Sunburst Plot with Custom Sizes)}
     layout:
       title:
         text: Sunburst Plot with Custom Sizes<br><sub>Custom Sizes for Each Segment</sub>

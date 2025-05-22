@@ -1,0 +1,23 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-width.visivo.yml"
+  - path: "multi-stock.visivo.yml"
+
+dashboards:
+  - name: "OHLC"
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# OHLC"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(Simple OHLC Chart)}
+          - chart: ${ref(OHLC Chart with Custom Width)}
+      - height: medium
+        items:
+          - chart: ${ref(OHLC Chart with Multiple Stocks)} 

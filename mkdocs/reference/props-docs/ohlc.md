@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
                 2023-01-05,111,114,110,113
         traces:
           - name: Simple OHLC Plot
-            model: ref(ohlc-data)
+            model: ${ref(ohlc-data)}
             props:
               type: ohlc
               x: ?{date}
@@ -60,7 +60,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
         charts:
           - name: Simple OHLC Chart
             traces:
-              - ref(Simple OHLC Plot)
+              - ${ref(Simple OHLC Plot)}
             layout:
               title:
                 text: Simple OHLC Chart<br><sub>Stock Price Movements Over Time</sub>
@@ -94,7 +94,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
                 2023-02-05,211,214,210,213
         traces:
           - name: OHLC Plot with Custom Width
-            model: ref(ohlc-data-width)
+            model: ${ref(ohlc-data-width)}
             props:
               type: ohlc
               x: ?{date}
@@ -113,7 +113,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
         charts:
           - name: OHLC Chart with Custom Width
             traces:
-              - ref(OHLC Plot with Custom Width)
+              - ${ref(OHLC Plot with Custom Width)}
             layout:
               title:
                 text: OHLC Plot with Custom Width<br><sub>Stock Prices with Custom Bar Width</sub>
@@ -148,40 +148,44 @@ _**Check out the [Attributes](../configuration/Trace/Props/Ohlc/#attributes) for
                 MSFT,2023-03-03,256,260,254,259
         traces:
           - name: OHLC Plot for AAPL
-            model: ref(ohlc-data-multi)
+            model: ${ref(ohlc-data-multi)}
             props:
               type: ohlc
               x: ?{date}
-              open: ?{open where stock = "AAPL"}
-              high: ?{high where stock = "AAPL"}
-              low: ?{low where stock = "AAPL"}
-              close: ?{close where stock = "AAPL"}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#1f77b4"
               decreasing:
                 line:
                   color: "#ff7f0e"
+            filters: 
+              - ?{stock = 'AAPL'}
           - name: OHLC Plot for MSFT
-            model: ref(ohlc-data-multi)
+            model: ${ref(ohlc-data-multi)}
             props:
               type: ohlc
               x: ?{date}
-              open: ?{open where stock = "MSFT"}
-              high: ?{high where stock = "MSFT"}
-              low: ?{low where stock = "MSFT"}
-              close: ?{close where stock = "MSFT"}
+              open: ?{open}
+              high: ?{high}
+              low: ?{low}
+              close: ?{close}
               increasing:
                 line:
                   color: "#2ca02c"
               decreasing:
                 line:
                   color: "#d62728"
+            filters: 
+              - ?{stock = 'MSFT'}
         charts:
           - name: OHLC Chart with Multiple Stocks
             traces:
-              - ref(OHLC Plot for AAPL)
-              - ref(OHLC Plot for MSFT)
+              - ${ref(OHLC Plot for AAPL)}
+              - ${ref(OHLC Plot for MSFT)}
             layout:
               title:
                 text: OHLC Chart with Multiple Stocks<br><sub>Comparing AAPL and MSFT Stock Prices</sub>

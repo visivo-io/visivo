@@ -1,0 +1,27 @@
+models:
+  - name: scatter3d-data-lines
+    args:
+      - echo
+      - |
+        x,y,z
+        1,5,7
+        2,10,12
+        3,8,10
+        4,15,18
+        5,12,17
+traces:
+  - name: Scatter3D Plot with Lines
+    model: ${ref(scatter3d-data-lines)}
+    props:
+      type: scatter3d
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      mode: "lines+markers"
+charts:
+  - name: Scatter3D Chart with Lines
+    traces:
+      - ${ref(Scatter3D Plot with Lines)}
+    layout:
+      title:
+        text: Scatter3D Plot with Lines<br><sub>Connecting Data Points with Lines</sub> 

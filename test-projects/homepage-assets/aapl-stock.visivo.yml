@@ -7,7 +7,7 @@ models:
 
 traces:
   - name: aapl-candlestick
-    model: ref(aapl-stock-price)
+    model: ${ref(aapl-stock-price)}
     props:
       type: candlestick
       x: ?{date}
@@ -19,7 +19,7 @@ traces:
       - ?{date desc}
 
   - name: max-price
-    model: ref(aapl-stock-price)
+    model: ${ref(aapl-stock-price)}
     columns:
       max_price: max(cast(high as float))
     props:
@@ -27,7 +27,7 @@ traces:
       value: column(max_price)[0]
 
   - name: min-price
-    model: ref(aapl-stock-price)
+    model: ${ref(aapl-stock-price)}
     columns:
       min_price: min(cast(high as float))
     props:
@@ -37,22 +37,22 @@ traces:
 charts:
   - name: aapl-stock-price-chart
     traces:
-      - ref(aapl-candlestick)
-      - ref(max-price)
+      - ${ref(aapl-candlestick)}
+      - ${ref(max-price)}
     layout:
       title:
         text: "Apple Stock Price"
 
   - name: max-price-chart
     traces:
-      - ref(max-price)
+      - ${ref(max-price)}
     layout:
       title:
         text: "52 Week High"
 
   - name: min-price-chart
     traces:
-      - ref(min-price)
+      - ${ref(min-price)}
     layout:
       title:
         text: "52 Week Low"
@@ -60,8 +60,8 @@ charts:
 tables:
   - name: aapl-stock-price-table
     traces:
-      - ref(aapl-candlestick)
-      - ref(max-price)
+      - ${ref(aapl-candlestick)}
+      - ${ref(max-price)}
 
 dashboards:
   - name: "Apple Stock Analysis"
@@ -69,12 +69,12 @@ dashboards:
       - height: small
         items:
           - width: 1
-            chart: ref(max-price-chart)
+            chart: ${ref(max-price-chart)}
           - width: 1
-            chart: ref(min-price-chart)
+            chart: ${ref(min-price-chart)}
       - height: large
         items:
-          - chart: ref(aapl-stock-price-chart)
+          - chart: ${ref(aapl-stock-price-chart)}
       - height: large
         items:
-          - table: ref(aapl-stock-price-table)
+          - table: ${ref(aapl-stock-price-table)}

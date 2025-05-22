@@ -13,7 +13,7 @@ models:
         F,B,10
 traces:
   - name: Simple Treemap Plot
-    model: ref(treemap-data)
+    model: ${ref(treemap-data)}
     props:
       type: treemap
       labels: ?{labels}
@@ -28,7 +28,7 @@ traces:
 charts:
   - name: Simple Treemap Chart
     traces:
-      - ref(Simple Treemap Plot)
+      - ${ref(Simple Treemap Plot)}
     layout:
       title:
         text: Simple Treemap Chart<br><sub>Hierarchical Data Visualization</sub>

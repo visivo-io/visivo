@@ -1,0 +1,26 @@
+includes:
+  - path: simple.visivo.yml
+  - path: lines.visivo.yml
+  - path: custom-markers.visivo.yml
+
+dashboards:
+  - name: Scattercarpet Dashboard
+    level: 1
+    tags:
+      - scattercarpet
+      - 2d
+      - visualization
+    rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Scattercarpet Dashboard
+
+              This dashboard demonstrates different ways to create scatter plots on a carpet axis using the `scattercarpet` trace type.
+      - height: medium
+        items:
+          - chart: ${ref(Simple Scattercarpet Chart)}
+          - chart: ${ref(Scattercarpet Chart with Lines)}
+      - height: medium
+        items:
+          - chart: ${ref(Scattercarpet Chart with Custom Markers)} 

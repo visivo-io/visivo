@@ -19,9 +19,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Funnelarea Chart)
-          - chart: ref(Funnelarea Chart with Custom Colors)
+          - chart: ${ref(Simple Funnelarea Chart)}
+          - chart: ${ref(Funnelarea Chart with Custom Colors)}
       - height: medium
         items:
-          - chart: ref(Funnelarea Chart with Hover Info)
+          - chart: ${ref(Funnelarea Chart with Hover Info)}
           - markdown: ""

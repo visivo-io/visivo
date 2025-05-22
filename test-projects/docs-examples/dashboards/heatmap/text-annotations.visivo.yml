@@ -14,7 +14,7 @@ models:
         Q4,2020,450
 traces:
   - name: Heatmap with Text Annotations
-    model: ref(heatmap-data-annotations)
+    model: ${ref(heatmap-data-annotations)}
     props:
       type: heatmap
       x: ?{x}
@@ -28,7 +28,7 @@ traces:
 charts:
   - name: Heatmap Chart with Text Annotations
     traces:
-      - ref(Heatmap with Text Annotations)
+      - ${ref(Heatmap with Text Annotations)}
     layout:
       title:
         text: Heatmap with Text Annotations<br><sub>Data Values Displayed on Each Cell</sub>

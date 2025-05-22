@@ -15,7 +15,7 @@ models:
 
 traces:
   - name: Simple Cone Plot Trace
-    model: ref(vector-field-data)
+    model: ${ref(vector-field-data)}
     props:
       type: cone
       x: ?{x}
@@ -31,7 +31,7 @@ traces:
 charts:
   - name: Simple Cone Plot
     traces:
-      - ref(Simple Cone Plot Trace)
+      - ${ref(Simple Cone Plot Trace)}
     layout:
       title:
         text: Simple 3D Vector Field

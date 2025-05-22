@@ -15,7 +15,7 @@ models:
         B,6
 traces:
   - name: Histogram Groups
-    model: ref(histogram-data-stacked)
+    model: ${ref(histogram-data-stacked)}
     cohort_on: '"group"'
     columns:
       color: |
@@ -32,7 +32,7 @@ traces:
 charts:
   - name: Stacked Histogram Chart
     traces:
-      - ref(Histogram Groups)
+      - ${ref(Histogram Groups)}
     layout:
       title:
         text: Stacked Histogram Chart<br><sub>Data Distribution for Two Groups</sub>

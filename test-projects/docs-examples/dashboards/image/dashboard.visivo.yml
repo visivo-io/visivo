@@ -13,9 +13,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Image Chart)
-          - chart: ref(Image Plot with Custom Colorscale)
+          - chart: ${ref(Simple Image Chart)}
+          - chart: ${ref(Image Plot with Custom Colorscale)}
       - height: medium
         items:
-          - chart: ref(Image Plot with Axis Annotations)
+          - chart: ${ref(Image Plot with Axis Annotations)}
           - markdown: ""

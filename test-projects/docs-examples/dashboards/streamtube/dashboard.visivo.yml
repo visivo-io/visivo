@@ -1,0 +1,26 @@
+includes:
+  - path: simple.visivo.yml
+  - path: color-mapping.visivo.yml
+  - path: custom-tube-size.visivo.yml
+
+dashboards:
+  - name: Streamtube Dashboard
+    level: 1
+    tags:
+      - streamtube
+      - 3d
+      - vector-field
+    rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Streamtube Dashboard
+
+              This dashboard demonstrates different ways to create 3D streamtube plots using the `streamtube` trace type.
+      - height: medium
+        items:
+          - chart: ${ref(Simple Streamtube Chart)}
+          - chart: ${ref(Streamtube Chart with Color Mapping)}
+      - height: medium
+        items:
+          - chart: ${ref(Streamtube Chart with Custom Tube Sizes)} 

@@ -9,7 +9,7 @@ models:
 
 traces:
   - name: Line Trace
-    model: ref(Numbers From Remote CSV)
+    model: ${ref(Numbers From Remote CSV)}
     props:
       type: scatter
       y: ?{numbers_column}
@@ -18,7 +18,7 @@ traces:
         color: orange
 
   - name: Average Value
-    model: ref(Numbers From Remote CSV)
+    model: ${ref(Numbers From Remote CSV)}
     columns:
       avg_numbers_column: avg(numbers_column)
     props:
@@ -33,7 +33,7 @@ traces:
         x: [.5, 1]
 
   - name: Total Value
-    model: ref(Numbers From Remote CSV)
+    model: ${ref(Numbers From Remote CSV)}
     columns:
       sum_numbers_column: sum(numbers_column)
     props:
@@ -50,9 +50,9 @@ traces:
 charts:
   - name: Big Number Over Line Chart
     traces:
-      - ref(Average Value)
-      - ref(Total Value)
-      - ref(Line Trace)
+      - ${ref(Average Value)}
+      - ${ref(Total Value)}
+      - ${ref(Line Trace)}
     layout:
       title:
         text: "Indicator + Scatter Plot"

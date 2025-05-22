@@ -38,7 +38,7 @@ traces:
 charts:
   - name: Complex With Slice Isosurface Chart
     traces:
-      - ref(Complex With Slice Isosurface Plot)
+      - ${ref(Complex With Slice Isosurface Plot)}
     layout:
       title:
         text: Complex With SSlice Isosurface Plot<br><sub>3D Volume Visualization</sub>

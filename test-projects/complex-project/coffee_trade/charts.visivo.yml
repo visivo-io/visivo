@@ -3,20 +3,20 @@
 charts:
   - name: import_percentages
     traces:
-      - ref(percent_imports)
+      - ${ref(percent_imports)}
     layout:
       title: 
         text: "Imports by Country"
   - name: export_percentages
     traces:
-      - ref(percent_exports)
+      - ${ref(percent_exports)}
     layout:
       title: 
         text: "Exports by Country"
   - name: importers
     traces:
-      - ref(top_importers)
-      - ref(total_import_production)
+      - ${ref(top_importers)}
+      - ${ref(total_import_production)}
     layout:
       title: 
         text: "Imports"
@@ -42,8 +42,8 @@ charts:
   
   - name: exporters
     traces:
-      - ref(top_exporters)
-      - ref(total_export_production)
+      - ${ref(top_exporters)}
+      - ${ref(total_export_production)}
     layout:
       title: 
         text: "Exports"

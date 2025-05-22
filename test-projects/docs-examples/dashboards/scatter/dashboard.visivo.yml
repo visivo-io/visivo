@@ -17,9 +17,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Scatter Chart)
-          - chart: ref(Scatter Chart with Lines)
+          - chart: ${ref(Simple Scatter Chart)}
+          - chart: ${ref(Scatter Chart with Lines)}
       - height: medium
         items:
-          - chart: ref(Scatter Chart with Custom Markers)
-          - chart: ref(Area Plot Chart)
+          - chart: ${ref(Scatter Chart with Custom Markers)}
+          - chart: ${ref(Area Plot Chart)}

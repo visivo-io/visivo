@@ -16,7 +16,7 @@ models:
         I,C,15
 traces:
   - name: Treemap Plot with Custom Tiling
-    model: ref(treemap-data-tiling)
+    model: ${ref(treemap-data-tiling)}
     props:
       type: treemap
       labels: ?{labels}
@@ -28,7 +28,7 @@ traces:
 charts:
   - name: Treemap Chart with Custom Tiling
     traces:
-      - ref(Treemap Plot with Custom Tiling)
+      - ${ref(Treemap Plot with Custom Tiling)}
     layout:
       title:
         text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>

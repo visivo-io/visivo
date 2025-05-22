@@ -15,5 +15,5 @@ dashboards:
             width: 5
       - height: large
         items:
-          - chart: ref(Complex With Slice Isosurface Chart)
-          - chart: ref(Simple Isosurface Chart)
+          - chart: ${ref(Complex With Slice Isosurface Chart)}
+          - chart: ${ref(Simple Isosurface Chart)}

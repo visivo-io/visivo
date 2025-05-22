@@ -7,7 +7,7 @@ models:
         65
 traces:
   - name: Gauge Indicator
-    model: ref(indicator-data-gauge)
+    model: ${ref(indicator-data-gauge)}
     columns: 
       val: value
     props:
@@ -22,7 +22,7 @@ traces:
 charts:
   - name: Gauge Indicator Chart
     traces:
-      - ref(Gauge Indicator)
+      - ${ref(Gauge Indicator)}
     layout:
       title:
         text: Gauge Indicator<br><sub>Progress Towards a Target</sub>

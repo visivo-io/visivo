@@ -1,0 +1,27 @@
+models:
+  - name: scatter3d-data
+    args:
+      - echo
+      - |
+        x,y,z
+        1,10,15
+        2,20,25
+        3,15,30
+        4,25,35
+        5,30,40
+traces:
+  - name: Simple Scatter3D Plot
+    model: ${ref(scatter3d-data)}
+    props:
+      type: scatter3d
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      mode: "markers"
+charts:
+  - name: Simple Scatter3D Chart
+    traces:
+      - ${ref(Simple Scatter3D Plot)}
+    layout:
+      title:
+        text: Simple Scatter3D Plot<br><sub>3D Data Points</sub> 

@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Numeric Indicator Chart)
-          - chart: ref(Gauge Indicator Chart)
+          - chart: ${ref(Simple Numeric Indicator Chart)}
+          - chart: ${ref(Gauge Indicator Chart)}
       - height: medium
         items:
-          - chart: ref(Delta Indicator with Comparison Chart)
+          - chart: ${ref(Delta Indicator with Comparison Chart)}
           - markdown: ""

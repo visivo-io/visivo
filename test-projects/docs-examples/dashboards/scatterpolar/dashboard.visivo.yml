@@ -1,0 +1,23 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "lines.visivo.yml"
+  - path: "custom-markers.visivo.yml"
+
+dashboards:
+  - name: "Scatterpolar"
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Scatterpolar"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(Simple Scatterpolar Chart)}
+          - chart: ${ref(Scatterpolar Chart with Lines)}
+      - height: medium
+        items:
+          - chart: ${ref(Scatterpolar Chart with Custom Markers)} 

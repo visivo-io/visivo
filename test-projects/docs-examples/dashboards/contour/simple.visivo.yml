@@ -31,7 +31,7 @@ models:
         5,5,30
 traces:
   - name: Simple Contour Plot
-    model: ref(contour-data)
+    model: ${ref(contour-data)}
     props:
       type: contour
       z:
@@ -43,7 +43,7 @@ traces:
 charts:
   - name: Simple Contour Chart
     traces:
-      - ref(Simple Contour Plot)
+      - ${ref(Simple Contour Plot)}
     layout:
       title:
         text: Simple Contour Plot<br><sub>Contour Plot Based on Z Values</sub>

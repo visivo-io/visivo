@@ -16,9 +16,9 @@ dashboards:
             width: 5 
       - height: medium 
         items: 
-          - chart: ref(Sample Box Plot Chart)
-          - chart: ref(Rewards Distribution Box Plot)
+          - chart: ${ref(Sample Box Plot Chart)}
+          - chart: ${ref(Rewards Distribution Box Plot)}
       - height: medium
         items:
-          - chart: ref(Proclamations Box Plot with Outliers)
+          - chart: ${ref(Proclamations Box Plot with Outliers)}
           - markdown: ''

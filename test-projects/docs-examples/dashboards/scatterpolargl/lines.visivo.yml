@@ -1,0 +1,26 @@
+models:
+  - name: scatterpolargl-data-lines
+    args:
+      - echo
+      - |
+        theta,r
+        0,5
+        45,15
+        90,20
+        135,10
+        180,25
+traces:
+  - name: Scatterpolargl Plot with Lines
+    model: ${ref(scatterpolargl-data-lines)}
+    props:
+      type: scatterpolargl
+      theta: ?{theta}
+      r: ?{r}
+      mode: "lines+markers"
+charts:
+  - name: Scatterpolargl Chart with Lines
+    traces:
+      - ${ref(Scatterpolargl Plot with Lines)}
+    layout:
+      title:
+        text: Scatterpolargl Plot with Lines<br><sub>Connecting Data Points with Lines in Polar Coordinates</sub> 

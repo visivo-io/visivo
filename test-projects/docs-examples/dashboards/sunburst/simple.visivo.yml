@@ -13,7 +13,7 @@ models:
         F,B,10
 traces:
   - name: Simple Sunburst Plot
-    model: ref(sunburst-data)
+    model: ${ref(sunburst-data)}
     props:
       type: sunburst
       labels: ?{labels}
@@ -22,7 +22,7 @@ traces:
 charts:
   - name: Simple Sunburst Chart
     traces:
-      - ref(Simple Sunburst Plot)
+      - ${ref(Simple Sunburst Plot)}
     layout:
       title:
         text: Simple Sunburst Chart<br><sub>Hierarchical Data Visualization</sub>

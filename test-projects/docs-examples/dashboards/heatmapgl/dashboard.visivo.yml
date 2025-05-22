@@ -1,0 +1,24 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colorscale.visivo.yml"
+  - path: "large-dataset.visivo.yml"
+
+dashboards:
+  - name: "Heatmapgl"
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Heatmapgl"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(Simple Heatmapgl Chart)}
+          - chart: ${ref(Heatmapgl Chart with Custom Colorscale)}
+      - height: medium
+        items:
+          - chart: ${ref(Heatmapgl Chart for Large Datasets)}
+          - markdown: "" 

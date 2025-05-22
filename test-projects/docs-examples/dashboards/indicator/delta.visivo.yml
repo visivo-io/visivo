@@ -10,7 +10,7 @@ models:
         0,55
 traces:
   - name: Delta Indicator with Comparison
-    model: ref(indicator-data-delta)
+    model: ${ref(indicator-data-delta)}
     columns:
       val: value
     props:
@@ -24,7 +24,7 @@ traces:
 charts:
   - name: Delta Indicator with Comparison Chart
     traces:
-      - ref(Delta Indicator with Comparison)
+      - ${ref(Delta Indicator with Comparison)}
     layout:
       title:
         text: Delta Indicator with Comparison<br><sub>Showing Change from Previous Value</sub>
