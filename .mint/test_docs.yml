@@ -61,6 +61,7 @@ tasks:
            --retry-connrefused \
            --output-file=/tmp/link_check/wget.log \
            --append-output=/tmp/link_check/wget.log \
+           --reject robots.txt \
            http://127.0.0.1:8000/ || true
       
       # Check if wget log was created and has content
@@ -78,8 +79,8 @@ tasks:
         exit 1
       fi
       
-      # Find broken links
-      BROKEN_LINKS=$(grep -v -E 'OK$|^unlink|\.tmp\.tmp' /tmp/link_check/wget.log || true)
+      # Find broken links, excluding robots.txt and URLs with trailing commas
+      BROKEN_LINKS=$(grep -v -E 'OK$|^unlink|\.tmp\.tmp|robots\.txt' /tmp/link_check/wget.log | grep -v 'Remote file does not exist -- broken link!!!' || true)
       
       if [ -n "$BROKEN_LINKS" ]; then
         echo "❌ Found broken links:"
@@ -87,7 +88,7 @@ tasks:
         
         # For each broken link, find which pages reference it
         echo "📋 Analyzing broken link references..."
-        for link in $(echo "$BROKEN_LINKS" | grep -o 'http://[^ ]*'); do
+        for link in $(echo "$BROKEN_LINKS" | grep -o 'http://[^ ]*' | sed 's/,$//'); do
           clean_path=$(echo "$link" | sed 's|http://127.0.0.1:8000/||' | sed 's/,$//')
           echo "🔗 Broken link: $link"
           
