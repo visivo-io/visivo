@@ -68,6 +68,7 @@ mkdocs-include-markdown-plugin = "^6.2.2"
 pytest-httpx = "^0.32.0"
 pymdown-extensions = "^10.12"
 black = "^25.1.0"
+linkchecker = "^10.5.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
