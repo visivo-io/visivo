@@ -1,7 +1,7 @@
 There's a few things that you will need to get configured to get started with your visivo project. We will walk through those together in this article to help get you up and running fast! 
 ![type:video](https://www.youtube.com/embed/BWiwYpDCuek?si=jEFhQKq9kPEoFycl)
 
-_Still have questions after reading? Reach out to [join@visivo.io](mailto:join@visiov.io) and we'd be happy to help._
+_Still have questions after reading? Reach out to [jared@visivo.io](mailto:jared@visiov.io) and we'd be happy to help._
 
 ### Install Visivo Python Package
 You can easily install visivo via `pip`:
