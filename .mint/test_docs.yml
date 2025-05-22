@@ -44,11 +44,7 @@ tasks:
       poetry run python mkdocs/src/write_mkdocs_markdown_files.py
       poetry run mkdocs serve > mkdocs.log 2>&1 &
       sh mkdocs/check-connection.sh
-      poetry run linkchecker http://127.0.0.1:8000/ --check-extern --no-warnings | awk '
-        /URL        / {gsub(/`/, "", $2); url=$2}
-        /Parent URL/ {gsub(/,$/, "", $3); parent=$3}
-        /Result     Error:/ {print "Broken link: " url " on page: " parent}
-      '
+      wget --recursive --no-verbose --spider http://127.0.0.1:8000/ 2>&1 | grep -v -E 'OK$|^unlink|\.tmp\.tmp'
       PYTHONPATH=$PWD poetry run mkdocs build 2>&1 | tee build_stdout.txt
 
   - key: check-for-spelling-errors
