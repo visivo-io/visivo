@@ -47,19 +47,54 @@ tasks:
       
       # Enhanced link checking with better reporting
       echo "🔍 Checking for broken links..."
-      BROKEN_LINKS=$(wget --recursive --no-verbose --spider http://127.0.0.1:8000/ 2>&1 | grep -v -E 'OK$|^unlink|\.tmp\.tmp' || true)
+      
+      # First, build a map of all pages and their links
+      echo "📋 Building page-link relationship map..."
+      mkdir -p /tmp/link_check
+      wget --recursive --no-verbose --spider --output-file=/tmp/link_check/wget.log http://127.0.0.1:8000/
+      
+      # Extract all URLs and their relationships
+      echo "📊 Analyzing page relationships..."
+      grep -o 'http://127.0.0.1:8000/[^ ]*' /tmp/link_check/wget.log | sort | uniq > /tmp/link_check/all_urls.txt
+      
+      # Find broken links
+      BROKEN_LINKS=$(grep -v -E 'OK$|^unlink|\.tmp\.tmp' /tmp/link_check/wget.log || true)
       
       if [ -n "$BROKEN_LINKS" ]; then
         echo "❌ Found broken links:"
         echo "$BROKEN_LINKS"
         
-        # Extract and report file locations for broken links
-        echo "📋 Checking source files for broken links..."
+        # For each broken link, find which pages reference it
+        echo "📋 Analyzing broken link references..."
         for link in $(echo "$BROKEN_LINKS" | grep -o 'http://[^ ]*'); do
-          path=$(echo "$link" | sed 's|http://127.0.0.1:8000/||')
+          clean_path=$(echo "$link" | sed 's|http://127.0.0.1:8000/||' | sed 's/,$//')
           echo "🔗 Broken link: $link"
-          echo "📄 Checking source files for this link..."
-          grep -r --include="*.md" "$path" ./mkdocs/ || echo "  Could not find source reference"
+          
+          # Find which pages were trying to access this link
+          echo "📄 Pages attempting to access this link:"
+          grep -B 1 "$link" /tmp/link_check/wget.log | grep 'http://127.0.0.1:8000/' | sort | uniq | while read -r parent_url; do
+            echo "  📄 $parent_url"
+            
+            # Get the relative path of the parent page
+            parent_path=$(echo "$parent_url" | sed 's|http://127.0.0.1:8000/||')
+            
+            # Find the corresponding markdown file
+            if [ -f "./mkdocs/$parent_path.md" ]; then
+              echo "    📄 Source: ./mkdocs/$parent_path.md"
+              # Show the line containing the link
+              grep -n "$clean_path" "./mkdocs/$parent_path.md" | while IFS=: read -r line_num content; do
+                echo "      Line $line_num: $content"
+              done
+            elif [ -f "./mkdocs/$parent_path/index.md" ]; then
+              echo "    📄 Source: ./mkdocs/$parent_path/index.md"
+              # Show the line containing the link
+              grep -n "$clean_path" "./mkdocs/$parent_path/index.md" | while IFS=: read -r line_num content; do
+                echo "      Line $line_num: $content"
+              done
+            else
+              echo "    ❌ Could not find source markdown file"
+            fi
+          done
         done
         
         exit 1
