@@ -1,0 +1,23 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-ranges.visivo.yml"
+  - path: "custom-colorscale.visivo.yml"
+
+dashboards:
+  - name: "Parcoords"
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Parcoords"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(Simple Parcoords Chart)}
+          - chart: ${ref(Parcoords Chart with Custom Ranges)}
+      - height: medium
+        items:
+          - chart: ${ref(Parcoords Chart with Custom Colorscale)} 

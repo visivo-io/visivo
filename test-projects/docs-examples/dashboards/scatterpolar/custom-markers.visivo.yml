@@ -1,0 +1,29 @@
+models:
+  - name: scatterpolar-data-custom
+    args:
+      - echo
+      - |
+        theta,r,size,color
+        0,5,10,#1f77b4
+        45,15,15,#ff7f0e
+        90,20,20,#2ca02c
+        135,10,25,#d62728
+        180,25,30,#9467bd
+traces:
+  - name: Scatterpolar Plot with Custom Markers
+    model: ${ref(scatterpolar-data-custom)}
+    props:
+      type: scatterpolar
+      theta: ?{theta}
+      r: ?{r}
+      mode: "markers"
+      marker:
+        size: ?{size}
+        color: ?{color}
+charts:
+  - name: Scatterpolar Chart with Custom Markers
+    traces:
+      - ${ref(Scatterpolar Plot with Custom Markers)}
+    layout:
+      title:
+        text: Scatterpolar Plot with Custom Markers<br><sub>Custom Sizes and Colors for Polar Data Points</sub> 

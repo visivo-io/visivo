@@ -11,7 +11,7 @@ models:
         Closed Deals,100
 traces:
   - name: Simple Funnelarea Plot
-    model: ref(funnelarea-data)
+    model: ${ref(funnelarea-data)}
     props:
       type: funnelarea
       labels: ?{stage}
@@ -19,7 +19,7 @@ traces:
 charts:
   - name: Simple Funnelarea Chart
     traces:
-      - ref(Simple Funnelarea Plot)
+      - ${ref(Simple Funnelarea Plot)}
     layout:
       title:
         text: Simple Funnelarea Chart<br><sub>Proportional Sales Funnel</sub>

@@ -1,0 +1,64 @@
+models:
+  - name: carpet-grid-markers
+    args:
+      - echo
+      - |
+        a,b,y
+        4,1,2
+        4,2,3.5
+        4,3,4
+        4.5,1,3
+        4.5,2,4.5
+        4.5,3,5
+        5,1,5.5
+        5,2,6.5
+        5,3,7.5
+        6,1,8
+        6,2,8.5
+        6,3,10
+  - name: scattercarpet-data-custom
+    args:
+      - echo
+      - |
+        a,b,size,color
+        4,1,10,#1f77b4
+        4.5,2,15,#ff7f0e
+        5,1.5,20,#2ca02c
+        6,2.5,25,#d62728
+        5,2,30,#9467bd
+traces:
+  - name: Carpet Grid Markers
+    model: ${ref(carpet-grid-markers)}
+    props:
+      type: carpet
+      a: ?{a}
+      b: ?{b}
+      y: ?{y}
+      aaxis:
+        tickprefix: 'a = '
+        ticksuffix: 'm'
+        smoothing: 1
+        minorgridcount: 9
+      baxis:
+        tickprefix: 'b = '
+        ticksuffix: 'Pa'
+        smoothing: 1
+        minorgridcount: 9
+  - name: Scattercarpet Plot with Custom Markers
+    model: ${ref(scattercarpet-data-custom)}
+    props:
+      type: scattercarpet
+      a: ?{a}
+      b: ?{b}
+      mode: "markers"
+      marker:
+        size: ?{size}
+        color: ?{color}
+charts:
+  - name: Scattercarpet Chart with Custom Markers
+    traces:
+      - ${ref(Carpet Grid Markers)}
+      - ${ref(Scattercarpet Plot with Custom Markers)}
+    layout:
+      title:
+        text: Scattercarpet Plot with Custom Markers<br><sub>Custom Sizes and Colors for Carpet Axis Data Points</sub> 

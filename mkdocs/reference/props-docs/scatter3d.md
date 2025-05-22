@@ -14,7 +14,7 @@ You can customize the marker size, color, and add lines to connect points in 3D 
     - **Pattern Detection**: Identifying trends and clusters in three dimensions.
     - **High-Dimensional Data**: Visualizing higher-dimensional datasets.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Scatter3d/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -43,7 +43,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
                 5,30,40
         traces:
           - name: Simple Scatter3D Plot
-            model: ref(scatter3d-data)
+            model: ${ref(scatter3d-data)}
             props:
               type: scatter3d
               x: ?{x}
@@ -53,7 +53,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
         charts:
           - name: Simple Scatter3D Chart
             traces:
-              - ref(Simple Scatter3D Plot)
+              - ${ref(Simple Scatter3D Plot)}
             layout:
               title:
                 text: Simple Scatter3D Plot<br><sub>3D Data Points</sub>
@@ -81,7 +81,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
                 5,12,17
         traces:
           - name: Scatter3D Plot with Lines
-            model: ref(scatter3d-data-lines)
+            model: ${ref(scatter3d-data-lines)}
             props:
               type: scatter3d
               x: ?{x}
@@ -91,7 +91,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
         charts:
           - name: Scatter3D Chart with Lines
             traces:
-              - ref(Scatter3D Plot with Lines)
+              - ${ref(Scatter3D Plot with Lines)}
             layout:
               title:
                 text: Scatter3D Plot with Lines<br><sub>Connecting Data Points with Lines</sub>
@@ -119,7 +119,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
                 5,12,20,35,#9467bd
         traces:
           - name: Scatter3D Plot with Custom Markers
-            model: ref(scatter3d-data-custom)
+            model: ${ref(scatter3d-data-custom)}
             props:
               type: scatter3d
               x: ?{x}
@@ -132,7 +132,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scatter3D/#attributes
         charts:
           - name: Scatter3D Chart with Custom Markers
             traces:
-              - ref(Scatter3D Plot with Custom Markers)
+              - ${ref(Scatter3D Plot with Custom Markers)}
             layout:
               title:
                 text: Scatter3D Plot with Custom Markers<br><sub>Custom Sizes and Colors for 3D Data Points</sub>

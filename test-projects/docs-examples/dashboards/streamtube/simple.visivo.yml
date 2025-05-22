@@ -1,0 +1,24 @@
+models:
+  - name: streamtube-data
+    args:
+      - curl
+      - -sL
+      - https://raw.githubusercontent.com/plotly/datasets/master/streamtube-basic.csv
+traces:
+  - name: Simple Streamtube Plot
+    model: ${ref(streamtube-data)}
+    props:
+      type: streamtube
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
+charts:
+  - name: Simple Streamtube Chart
+    traces:
+      - ${ref(Simple Streamtube Plot)}
+    layout:
+      title:
+        text: Simple Streamtube Plot<br><sub>3D Vector Field Visualization</sub> 

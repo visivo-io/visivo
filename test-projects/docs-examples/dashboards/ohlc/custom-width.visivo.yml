@@ -1,0 +1,42 @@
+models:
+  - name: ohlc-data-width
+    args:
+      - echo
+      - |
+        date,open,high,low,close
+        2023-02-01,200,205,195,202
+        2023-02-02,202,208,201,207
+        2023-02-03,207,210,205,209
+        2023-02-04,209,212,207,211
+        2023-02-05,211,214,210,213
+traces:
+  - name: OHLC Plot with Custom Width
+    model: ${ref(ohlc-data-width)}
+    props:
+      type: ohlc
+      x: ?{date}
+      open: ?{open}
+      high: ?{high}
+      low: ?{low}
+      close: ?{close}
+      increasing:
+        line:
+          color: "#2ca02c"
+      decreasing:
+        line:
+          color: "#d62728"
+      line:
+        width: 3
+charts:
+  - name: OHLC Chart with Custom Width
+    traces:
+      - ${ref(OHLC Plot with Custom Width)}
+    layout:
+      title:
+        text: OHLC Plot with Custom Width<br><sub>Stock Prices with Custom Bar Width</sub>
+      xaxis:
+        title:
+          text: "Date"
+      yaxis:
+        title:
+          text: "Price" 

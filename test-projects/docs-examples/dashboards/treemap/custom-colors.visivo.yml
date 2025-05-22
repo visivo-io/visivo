@@ -13,7 +13,7 @@ models:
         F,B,10,#e377c2
 traces:
   - name: Treemap Plot with Custom Colors
-    model: ref(treemap-data-colors)
+    model: ${ref(treemap-data-colors)}
     props:
       type: treemap
       labels: ?{labels}
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Treemap Chart with Custom Colors
     traces:
-      - ref(Treemap Plot with Custom Colors)
+      - ${ref(Treemap Plot with Custom Colors)}
     layout:
       title:
         text: Treemap Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>

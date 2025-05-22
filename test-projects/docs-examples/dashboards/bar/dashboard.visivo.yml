@@ -17,9 +17,9 @@ dashboards:
             width: 5 
       - height: medium 
         items: 
-          - chart: ref(Count Times Enemy Was Encountered)
-          - chart: ref(Count Times Enemy Was Encountered by Knight)
+          - chart: ${ref(Count Times Enemy Was Encountered)}
+          - chart: ${ref(Count Times Enemy Was Encountered by Knight)}
       - height: medium
         items: 
           - markdown: ""
-          - chart: ref(Count Times Enemy Was Encountered by Knight H)
+          - chart: ${ref(Count Times Enemy Was Encountered by Knight H)}

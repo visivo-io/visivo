@@ -1,0 +1,28 @@
+models:
+  - name: scattersmith-data-custom
+    args:
+      - echo
+      - |
+        real,imaginary,size,color
+        0.5,0.2,10,#1f77b4
+        0.8,0.3,15,#ff7f0e
+        1.0,0.5,20,#2ca02c
+        1.2,0.7,25,#d62728
+traces:
+  - name: Scattersmith Plot with Custom Markers
+    model: ${ref(scattersmith-data-custom)}
+    props:
+      type: scattersmith
+      real: ?{real}
+      imag: ?{imaginary}
+      mode: "markers"
+      marker:
+        size: ?{size}
+        color: ?{color}
+charts:
+  - name: Scattersmith Chart with Custom Markers
+    traces:
+      - ${ref(Scattersmith Plot with Custom Markers)}
+    layout:
+      title:
+        text: Scattersmith Plot with Custom Markers<br><sub>Custom Sizes and Colors for Smith Chart Data Points</sub> 

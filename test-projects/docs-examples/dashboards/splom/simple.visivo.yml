@@ -6,7 +6,7 @@ models:
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
 traces:
   - name: Simple Splom Plot
-    model: ref(splom-data)
+    model: ${ref(splom-data)}
     cohort_on: species
     props:
       type: splom
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Simple Splom Chart
     traces:
-      - ref(Simple Splom Plot)
+      - ${ref(Simple Splom Plot)}
     layout:
       title:
         text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Four Variables & Three Cohorts</sub>

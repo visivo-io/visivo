@@ -7,7 +7,7 @@ models:
         75
 traces:
   - name: Simple Numeric Indicator
-    model: ref(indicator-data)
+    model: ${ref(indicator-data)}
     columns:
       val: value
       sign: case when value > 0 then '<sup>+</sup>' else '<sup>-</sup>' end
@@ -23,7 +23,7 @@ traces:
 charts:
   - name: Simple Numeric Indicator Chart
     traces:
-      - ref(Simple Numeric Indicator)
+      - ${ref(Simple Numeric Indicator)}
     layout:
       title:
         text: Simple Numeric Indicator<br><sub>Displaying a Single Value</sub>

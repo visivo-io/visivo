@@ -49,7 +49,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
                 F,B,10
         traces:
           - name: Simple Treemap Plot
-            model: ref(treemap-data)
+            model: ${ref(treemap-data)}
             props:
               type: treemap
               labels: ?{labels}
@@ -64,7 +64,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
         charts:
           - name: Simple Treemap Chart
             traces:
-              - ref(Simple Treemap Plot)
+              - ${ref(Simple Treemap Plot)}
             layout:
               title:
                 text: Simple Treemap Chart<br><sub>Hierarchical Data Visualization</sub>
@@ -94,7 +94,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
                 F,B,10,#e377c2
         traces:
           - name: Treemap Plot with Custom Colors
-            model: ref(treemap-data-colors)
+            model: ${ref(treemap-data-colors)}
             props:
               type: treemap
               labels: ?{labels}
@@ -107,7 +107,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
         charts:
           - name: Treemap Chart with Custom Colors
             traces:
-              - ref(Treemap Plot with Custom Colors)
+              - ${ref(Treemap Plot with Custom Colors)}
             layout:
               title:
                 text: Treemap Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
@@ -140,7 +140,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
                 I,C,15
         traces:
           - name: Treemap Plot with Custom Tiling
-            model: ref(treemap-data-tiling)
+            model: ${ref(treemap-data-tiling)}
             props:
               type: treemap
               labels: ?{labels}
@@ -152,7 +152,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Treemap/#attributes) 
         charts:
           - name: Treemap Chart with Custom Tiling
             traces:
-              - ref(Treemap Plot with Custom Tiling)
+              - ${ref(Treemap Plot with Custom Tiling)}
             layout:
               title:
                 text: Treemap Plot with Custom Tiling<br><sub>Binary Packing and Custom Squarify Ratio</sub>

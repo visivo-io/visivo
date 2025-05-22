@@ -38,7 +38,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/iris.csv"
         traces:
           - name: Simple Splom Plot
-            model: ref(splom-data)
+            model: ${ref(splom-data)}
             cohort_on: species
             props:
               type: splom
@@ -57,7 +57,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
         charts:
           - name: Simple Splom Chart
             traces:
-              - ref(Simple Splom Plot)
+              - ${ref(Simple Splom Plot)}
             layout:
               title:
                 text: Simple Splom Plot<br><sub>Scatter Plot Matrix of Four Variables & Three Cohorts</sub>
@@ -85,7 +85,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
                 5,6,7,A
         traces:
           - name: Splom Plot with Custom Colors
-            model: ref(splom-data-colors)
+            model: ${ref(splom-data-colors)}
             props:
               type: splom
               dimensions:
@@ -101,7 +101,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
         charts:
           - name: Splom Chart with Custom Colors
             traces:
-              - ref(Splom Plot with Custom Colors)
+              - ${ref(Splom Plot with Custom Colors)}
             layout:
               title:
                 text: Splom Plot with Custom Colors<br><sub>Color-Coded Scatter Plot Matrix</sub>
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
                 5,6,7,30
         traces:
           - name: Splom Plot with Custom Sizes
-            model: ref(splom-data-sizes)
+            model: ${ref(splom-data-sizes)}
             props:
               type: splom
               dimensions:
@@ -144,7 +144,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Splom/#attributes) fo
         charts:
           - name: Splom Chart with Custom Sizes
             traces:
-              - ref(Splom Plot with Custom Sizes)
+              - ${ref(Splom Plot with Custom Sizes)}
             layout:
               title:
                 text: Splom Plot with Custom Sizes<br><sub>Scatter Plot Matrix with Custom Marker Sizes</sub>

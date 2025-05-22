@@ -21,7 +21,7 @@ models:
         2,0,6
 traces:
   - name: Contour Plot with Multiple Levels
-    model: ref(contour-data-multi)
+    model: ${ref(contour-data-multi)}
     props:
       type: contour
       x: ?{x}
@@ -35,7 +35,7 @@ traces:
 charts:
   - name: Contour Chart with Multiple Levels
     traces:
-      - ref(Contour Plot with Multiple Levels)
+      - ${ref(Contour Plot with Multiple Levels)}
     layout:
       title:
         text: Contour Plot with Multiple Levels<br><sub>Custom Contour Levels</sub>

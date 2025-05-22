@@ -6,7 +6,7 @@ models:
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 traces:
   - name: Proclamations Box Plot
-    model: ref(monty-python-quest-proclamations)
+    model: ${ref(monty-python-quest-proclamations)}
     cohort_on: "person"
     props:
       type: box
@@ -16,7 +16,7 @@ traces:
 charts:
   - name: Proclamations Box Plot with Outliers
     traces:
-      - ref(Proclamations Box Plot)
+      - ${ref(Proclamations Box Plot)}
     layout:
       title:
         text: Cohorted Box Plot<br><sub>Proclamations Made Across Quests by Enemy</sub>

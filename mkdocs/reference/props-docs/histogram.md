@@ -48,7 +48,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
                 10
         traces:
           - name: Simple Histogram Plot
-            model: ref(histogram-data)
+            model: ${ref(histogram-data)}
             props:
               type: histogram
               x: ?{value}
@@ -58,7 +58,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
         charts:
           - name: Simple Histogram Chart
             traces:
-              - ref(Simple Histogram Plot)
+              - ${ref(Simple Histogram Plot)}
             layout:
               title:
                 text: Simple Histogram Plot<br><sub>Data Distribution Across Bins</sub>
@@ -111,7 +111,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
                 4
         traces:
           - name: Horizontal Histogram Plot
-            model: ref(histogram-data-horizontal)
+            model: ${ref(histogram-data-horizontal)}
             props:
               type: histogram
               y: ?{value}
@@ -122,7 +122,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
         charts:
           - name: Horizontal Histogram Chart
             traces:
-              - ref(Horizontal Histogram Plot)
+              - ${ref(Horizontal Histogram Plot)}
             layout:
               title:
                 text: Horizontal Histogram Plot<br><sub>Data Distribution in a Horizontal Format</sub>
@@ -161,7 +161,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
                 B,6
         traces:
           - name: Histogram Groups
-            model: ref(histogram-data-stacked)
+            model: ${ref(histogram-data-stacked)}
             cohort_on: '"group"'
             columns: 
               color: |
@@ -178,7 +178,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
         charts:
           - name: Stacked Histogram Chart
             traces:
-              - ref(Histogram Groups)
+              - ${ref(Histogram Groups)}
             layout:
               title:
                 text: Stacked Histogram Chart<br><sub>Data Distribution for Two Groups</sub>

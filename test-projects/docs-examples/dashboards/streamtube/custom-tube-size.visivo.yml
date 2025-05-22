@@ -1,0 +1,20 @@
+
+traces:
+  - name: Streamtube Plot with Custom Tube Sizes
+    model: ${ref(streamtube-data)}
+    props:
+      type: streamtube
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
+      sizeref: 0.5
+charts:
+  - name: Streamtube Chart with Custom Tube Sizes
+    traces:
+      - ${ref(Streamtube Plot with Custom Tube Sizes)}
+    layout:
+      title:
+        text: Streamtube Plot with Custom Tube Sizes<br><sub>Vector Magnitude Represented by Tube Size</sub> 

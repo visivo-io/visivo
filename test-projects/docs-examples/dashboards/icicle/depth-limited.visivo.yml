@@ -12,7 +12,7 @@ models:
         F,B,15
 traces:
   - name: Icicle Plot with Depth Limiting Trace
-    model: ref(icicle-data-depth)
+    model: ${ref(icicle-data-depth)}
     props:
       type: icicle
       labels: ?{category}
@@ -25,7 +25,7 @@ traces:
 charts:
   - name: Icicle Plot with Depth Limiting
     traces:
-      - ref(Icicle Plot with Depth Limiting Trace)
+      - ${ref(Icicle Plot with Depth Limiting Trace)}
     layout:
       title:
         text: Icicle Plot with Depth Limiting<br><sub>Showing Only First Two Levels</sub>

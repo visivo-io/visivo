@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: scatter_trace_region_annotation
-    model: ref(scatter_data_region_annotation)
+    model: ${ref(scatter_data_region_annotation)}
     props:
       type: scatter
       x: ?{x}

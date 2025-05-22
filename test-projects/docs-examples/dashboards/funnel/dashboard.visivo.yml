@@ -18,9 +18,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Funnel Chart)
-          - chart: ref(Horizontal Funnel Chart)
+          - chart: ${ref(Simple Funnel Chart)}
+          - chart: ${ref(Horizontal Funnel Chart)}
       - height: medium
         items:
-          - chart: ref(Funnel Chart with Custom Markers)
-          - chart: ref(Funnel Chart with Cohorts)
+          - chart: ${ref(Funnel Chart with Custom Markers)}
+          - chart: ${ref(Funnel Chart with Cohorts)}

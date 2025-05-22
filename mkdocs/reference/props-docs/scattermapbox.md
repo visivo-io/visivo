@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
 
         Here's a simple `scattermapbox` plot showing data points on a Mapbox map:
 
-        ![](../../assets/example-charts/props/scattermapbox/simple-scattermapbox.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -42,7 +41,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 139.6917,35.6895
         traces:
           - name: Simple Scattermapbox Plot
-            model: ref(scattermapbox-data)
+            model: ${ref(scattermapbox-data)}
             props:
               type: scattermapbox
               lon: ?{lon}
@@ -53,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
         charts:
           - name: Simple Scattermapbox Chart
             traces:
-              - ref(Simple Scattermapbox Plot)
+              - ${ref(Simple Scattermapbox Plot)}
             layout:
               mapbox:
                 style: "open-street-map"
@@ -65,7 +64,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
 
         This example demonstrates a `scattermapbox` plot with lines connecting geographic points:
 
-        ![](../../assets/example-charts/props/scattermapbox/lines-scattermapbox.png)
 
         Here's the code:
 
@@ -82,7 +80,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 139.6917,35.6895
         traces:
           - name: Scattermapbox Plot with Lines
-            model: ref(scattermapbox-data-lines)
+            model: ${ref(scattermapbox-data-lines)}
             props:
               type: scattermapbox
               lon: ?{lon}
@@ -93,7 +91,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
         charts:
           - name: Scattermapbox Chart with Lines
             traces:
-              - ref(Scattermapbox Plot with Lines)
+              - ${ref(Scattermapbox Plot with Lines)}
             layout:
               mapbox:
                 style: "satellite-streets"
@@ -105,7 +103,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
 
         Here's a `scattermapbox` plot with custom marker sizes and colors, giving more visual weight to each geographic data point:
 
-        ![](../../assets/example-charts/props/scattermapbox/custom-markers-scattermapbox.png)
 
         Here's the code:
 
@@ -122,7 +119,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 139.6917,35.6895,25,#d62728
         traces:
           - name: Scattermapbox Plot with Custom Markers
-            model: ref(scattermapbox-data-custom)
+            model: ${ref(scattermapbox-data-custom)}
             props:
               type: scattermapbox
               lon: ?{lon}
@@ -134,7 +131,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
         charts:
           - name: Scattermapbox Chart with Custom Markers
             traces:
-              - ref(Scattermapbox Plot with Custom Markers)
+              - ${ref(Scattermapbox Plot with Custom Markers)}
             layout:
               mapbox:
                 style: "dark"

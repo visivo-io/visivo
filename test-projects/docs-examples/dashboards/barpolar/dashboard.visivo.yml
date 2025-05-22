@@ -16,10 +16,10 @@ dashboards:
             width: 5 
       - height: medium 
         items: 
-          - chart: ref(Wind Rose Chart)
-          - chart: ref(Activity Level Polar Chart)
+          - chart: ${ref(Wind Rose Chart)}
+          - chart: ${ref(Activity Level Polar Chart)}
       - height: medium
         items: 
-          - chart: ref(Custom Radial Barpolar Chart)
+          - chart: ${ref(Custom Radial Barpolar Chart)}
           - markdown: ""
           

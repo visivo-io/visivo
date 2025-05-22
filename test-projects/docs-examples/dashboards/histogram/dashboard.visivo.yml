@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Histogram Chart)
-          - chart: ref(Horizontal Histogram Chart)
+          - chart: ${ref(Simple Histogram Chart)}
+          - chart: ${ref(Horizontal Histogram Chart)}
       - height: medium
         items:
-          - chart: ref(Stacked Histogram Chart)
+          - chart: ${ref(Stacked Histogram Chart)}
           - markdown: ""

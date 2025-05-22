@@ -11,7 +11,7 @@ models:
         4,Ending,1350
 traces:
   - name: Simple Waterfall Plot
-    model: ref(waterfall-data)
+    model: ${ref(waterfall-data)}
     props:
       type: waterfall
       x: ?{label}
@@ -22,7 +22,7 @@ traces:
 charts:
   - name: Simple Waterfall Chart
     traces:
-      - ref(Simple Waterfall Plot)
+      - ${ref(Simple Waterfall Plot)}
     layout:
       title:
         text: Simple Waterfall Plot<br><sub>Sequential Changes in Value</sub>

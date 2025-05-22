@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Contour Chart)
-          - chart: ref(Filled Contour Chart)
+          - chart: ${ref(Simple Contour Chart)}
+          - chart: ${ref(Filled Contour Chart)}
       - height: medium
         items:
-          - chart: ref(Contour Chart with Multiple Levels)
+          - chart: ${ref(Contour Chart with Multiple Levels)}
           - markdown: ""

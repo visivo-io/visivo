@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
                 C,3,90
         traces:
           - name: Simple Heatmapgl Plot
-            model: ref(heatmapgl-data)
+            model: ${ref(heatmapgl-data)}
             props:
               type: heatmapgl
               x: ?{x}
@@ -57,7 +57,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
         charts:
           - name: Simple Heatmapgl Chart
             traces:
-              - ref(Simple Heatmapgl Plot)
+              - ${ref(Simple Heatmapgl Plot)}
             layout:
               title:
                 text: Simple Heatmapgl Plot<br><sub>Efficient Heatmap Rendering with WebGL</sub>
@@ -95,7 +95,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
                 3,3,0.3
         traces:
           - name: Heatmapgl with Custom Colorscale
-            model: ref(heatmapgl-data-custom)
+            model: ${ref(heatmapgl-data-custom)}
             props:
               type: heatmapgl
               x: ?{x}
@@ -107,7 +107,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
         charts:
           - name: Heatmapgl Chart with Custom Colorscale
             traces:
-              - ref(Heatmapgl with Custom Colorscale)
+              - ${ref(Heatmapgl with Custom Colorscale)}
             layout:
               title:
                 text: Heatmapgl with Custom Colorscale<br><sub>Custom Coloring for Large Data</sub>
@@ -151,7 +151,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
                 3,5,15
         traces:
           - name: Heatmapgl for Large Datasets
-            model: ref(heatmapgl-data-large)
+            model: ${ref(heatmapgl-data-large)}
             props:
               type: heatmapgl
               x: ?{x}
@@ -163,7 +163,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmapgl/#attributes
         charts:
           - name: Heatmapgl Chart for Large Datasets
             traces:
-              - ref(Heatmapgl for Large Datasets)
+              - ${ref(Heatmapgl for Large Datasets)}
             layout:
               title:
                 text: Heatmapgl for Large Datasets<br><sub>WebGL Rendered Heatmap for Large Data</sub>

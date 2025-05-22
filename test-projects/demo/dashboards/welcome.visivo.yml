@@ -8,7 +8,7 @@ models:
 
 traces:
   - name: Fibonacci Waterfall Trace
-    model: ref(Waterfall Model)
+    model: ${ref(Waterfall Model)}
     cohort_on: ?{year}
     columns:
       x_data: category
@@ -60,9 +60,9 @@ dashboards:
           - width: 2
             chart:
               name: Fibonacci Waterfall Chart
-              selector: ref(Fibonacci Waterfall Selector)
+              selector: ${ref(Fibonacci Waterfall Selector)}
               traces:
-                - ref(Fibonacci Waterfall Trace)
+                - ${ref(Fibonacci Waterfall Trace)}
       - height: medium
         items:
           - markdown: |
@@ -72,9 +72,9 @@ dashboards:
           - width: 2
             table:
               name: Fibonacci Waterfall Table
-              selector: ref(Fibonacci Waterfall Selector)
+              selector: ${ref(Fibonacci Waterfall Selector)}
               traces:
-                - ref(Fibonacci Waterfall Trace)
+                - ${ref(Fibonacci Waterfall Trace)}
               column_defs:
                 - trace_name: Fibonacci Waterfall Trace
                   columns:
@@ -96,4 +96,4 @@ dashboards:
               name: Fibonacci Waterfall Selector
               type: single
               options:
-                - ref(Fibonacci Waterfall Trace)
+                - ${ref(Fibonacci Waterfall Trace)}

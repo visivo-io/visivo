@@ -1,0 +1,26 @@
+includes:
+  - path: simple.visivo.yml
+  - path: custom-bins.visivo.yml
+  - path: density.visivo.yml
+
+dashboards:
+  - name: Histogram2D Dashboard
+    level: 1
+    tags:
+      - histogram2d
+      - 2d
+      - visualization
+    rows:
+      - height: compact
+        items:
+          - markdown: |
+              # Histogram2D Dashboard
+
+              This dashboard demonstrates different ways to create 2D histograms using the `histogram2d` trace type.
+      - height: medium
+        items:
+          - chart: ${ref(Simple 2D Histogram Chart)}
+          - chart: ${ref(2D Histogram with Custom Bins Chart)}
+      - height: medium
+        items:
+          - chart: ${ref(2D Histogram with Density Mode Chart)} 

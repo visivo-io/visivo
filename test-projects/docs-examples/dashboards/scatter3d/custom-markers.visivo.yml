@@ -1,0 +1,30 @@
+models:
+  - name: scatter3d-data-custom
+    args:
+      - echo
+      - |
+        x,y,z,size,color
+        1,5,10,15,#1f77b4
+        2,10,12,20,#ff7f0e
+        3,8,10,25,#2ca02c
+        4,15,18,30,#d62728
+        5,12,20,35,#9467bd
+traces:
+  - name: Scatter3D Plot with Custom Markers
+    model: ${ref(scatter3d-data-custom)}
+    props:
+      type: scatter3d
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      mode: "markers"
+      marker:
+        size: ?{size}
+        color: ?{color}
+charts:
+  - name: Scatter3D Chart with Custom Markers
+    traces:
+      - ${ref(Scatter3D Plot with Custom Markers)}
+    layout:
+      title:
+        text: Scatter3D Plot with Custom Markers<br><sub>Custom Sizes and Colors for 3D Data Points</sub> 

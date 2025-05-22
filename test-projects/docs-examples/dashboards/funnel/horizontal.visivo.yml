@@ -10,7 +10,7 @@ models:
         Conversion,700
 traces:
   - name: Horizontal Funnel Chart Trace
-    model: ref(funnel-data-horizontal)
+    model: ${ref(funnel-data-horizontal)}
     props:
       type: funnel
       orientation: v
@@ -23,7 +23,7 @@ traces:
 charts:
   - name: Horizontal Funnel Chart
     traces:
-      - ref(Horizontal Funnel Chart Trace)
+      - ${ref(Horizontal Funnel Chart Trace)}
     layout:
       title:
         text: Horizontal Funnel Chart<br><sub>Stages of User Journey</sub>

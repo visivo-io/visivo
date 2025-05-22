@@ -182,7 +182,7 @@ class LayoutAnnotations(TracePropsAttribute):
     )
     text: Optional[str] = Field(
         None,
-        description=""" string<br>Sets the text associated with this annotation. Plotly uses a subset of HTML tags to do things like newline (<br>), bold (<b></b>), italics (<i></i>), hyperlinks (<a href='...'></a>). Tags <em>, <sup>, <sub> <span> are also supported. """,
+        description=""" string<br>Sets the text associated with this annotation. Plotly uses a subset of HTML tags to do things like newline (<br>), bold (<b></b>), italics (<i></i>), hyperlinks. Tags <em>, <sup>, <sub> <span> are also supported. """,
     )
     textangle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,
@@ -2053,7 +2053,7 @@ class LayoutSceneAnnotations(TracePropsAttribute):
     )
     text: Optional[str] = Field(
         None,
-        description=""" string<br>Sets the text associated with this annotation. Plotly uses a subset of HTML tags to do things like newline (<br>), bold (<b></b>), italics (<i></i>), hyperlinks (<a href='...'></a>). Tags <em>, <sup>, <sub> <span> are also supported. """,
+        description=""" string<br>Sets the text associated with this annotation. Plotly uses a subset of HTML tags to do things like newline (<br>), bold (<b></b>), italics (<i></i>), hyperlinks. Tags <em>, <sup>, <sub> <span> are also supported. """,
     )
     textangle: Optional[float | constr(pattern=INDEXED_STATEMENT_REGEX)] = Field(
         None,

@@ -14,5 +14,5 @@ dashboards:
             width: 5
       - height: large
         items:
-          - chart: ref(Simple Volume Chart)
+          - chart: ${ref(Simple Volume Chart)}
           - markdown: ""

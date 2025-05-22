@@ -1,0 +1,40 @@
+models:
+  - name: histogram2d-data-bins
+    args:
+      - echo
+      - |
+        x,y
+        1,5
+        2,6
+        3,7
+        2,4
+        1,5
+        3,3
+        4,8
+        5,9
+        4,4
+traces:
+  - name: 2D Histogram with Custom Bins
+    model: ${ref(histogram2d-data-bins)}
+    props:
+      type: histogram2d
+      x: ?{x}
+      y: ?{y}
+      xbins:
+        size: 1
+      ybins:
+        size: 1
+      colorscale: "Blues"
+charts:
+  - name: 2D Histogram with Custom Bins Chart
+    traces:
+      - ${ref(2D Histogram with Custom Bins)}
+    layout:
+      title:
+        text: 2D Histogram with Custom Bins<br><sub>Custom Binning Along X and Y Axes</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis" 

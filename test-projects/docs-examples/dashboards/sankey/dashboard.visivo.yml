@@ -1,0 +1,23 @@
+includes:
+  - path: "simple.visivo.yml"
+  - path: "custom-colors.visivo.yml"
+  - path: "hover-info.visivo.yml"
+
+dashboards:
+  - name: "Sankey"
+    level: 1
+    tags:
+      - "Trace Prop"
+    rows:
+      - height: compact
+        items:
+          - markdown: "# Sankey"
+          - markdown: ""
+            width: 5
+      - height: medium
+        items:
+          - chart: ${ref(Simple Sankey Chart)}
+          - chart: ${ref(Custom Colors Sankey Chart)}
+      - height: medium
+        items:
+          - chart: ${ref(Hover Info Sankey Chart)} 

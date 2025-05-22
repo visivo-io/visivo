@@ -15,7 +15,7 @@ models:
         2,2,10
 traces:
   - name: Filled Contour Plot
-    model: ref(contour-data-filled)
+    model: ${ref(contour-data-filled)}
     props:
       type: contour
       x: ?{x}
@@ -28,7 +28,7 @@ traces:
 charts:
   - name: Filled Contour Chart
     traces:
-      - ref(Filled Contour Plot)
+      - ${ref(Filled Contour Plot)}
     layout:
       title:
         text: Filled Contour Plot<br><sub>Contour Plot with Filled Levels</sub>

@@ -1,0 +1,30 @@
+models:
+  - name: parcats-data
+    args:
+      - echo
+      - |
+        category_1,category_2,value
+        A,X,30
+        A,Y,20
+        B,X,25
+        B,Y,25
+traces:
+  - name: Simple Parcats Plot
+    model: ${ref(parcats-data)}
+    props:
+      type: parcats
+      dimensions:
+        - label: "Category 1"
+          values: ?{category_1}
+        - label: "Category 2"
+          values: ?{category_2}
+      line:
+        color: ?{value}
+        colorscale: "Viridis"
+charts:
+  - name: Simple Parcats Chart
+    traces:
+      - ${ref(Simple Parcats Plot)}
+    layout:
+      title:
+        text: Simple Parcats Chart<br><sub>Parallel Categories Diagram</sub> 

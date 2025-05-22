@@ -1,0 +1,31 @@
+models:
+  - name: scattergeo-data-custom
+    args:
+      - echo
+      - |
+        lon,lat,size,color
+        -75,40,10,#1f77b4
+        -80,25,15,#ff7f0e
+        -120,47,20,#2ca02c
+        -100,35,25,#d62728
+        -90,30,30,#9467bd
+traces:
+  - name: Scattergeo Plot with Custom Markers
+    model: ${ref(scattergeo-data-custom)}
+    props:
+      type: scattergeo
+      lon: ?{lon}
+      lat: ?{lat}
+      mode: "markers"
+      marker:
+        size: ?{size}
+        color: ?{color}
+charts:
+  - name: Scattergeo Chart with Custom Markers
+    traces:
+      - ${ref(Scattergeo Plot with Custom Markers)}
+    layout:
+      title:
+        text: Scattergeo Plot with Custom Markers<br><sub>Custom Sizes and Colors for Geographic Data Points</sub>
+      geo:
+        scope: "north america" 

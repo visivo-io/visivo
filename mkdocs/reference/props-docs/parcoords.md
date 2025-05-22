@@ -41,7 +41,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
                 3,6,9
         traces:
           - name: Simple Parcoords Plot
-            model: ref(parcoords-data)
+            model: ${ref(parcoords-data)}
             props:
               type: parcoords
               dimensions:
@@ -57,7 +57,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
         charts:
           - name: Simple Parcoords Chart
             traces:
-              - ref(Simple Parcoords Plot)
+              - ${ref(Simple Parcoords Plot)}
             layout:
               title:
                 text: Simple Parcoords Plot<br><sub>Parallel Coordinates with Three Variables</sub>
@@ -83,7 +83,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
                 15,30,35
         traces:
           - name: Parcoords Plot with Custom Ranges
-            model: ref(parcoords-data-ranges)
+            model: ${ref(parcoords-data-ranges)}
             props:
               type: parcoords
               dimensions:
@@ -102,7 +102,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
         charts:
           - name: Parcoords Chart with Custom Ranges
             traces:
-              - ref(Parcoords Plot with Custom Ranges)
+              - ${ref(Parcoords Plot with Custom Ranges)}
             layout:
               title:
                 text: Parcoords Plot with Custom Ranges<br><sub>Custom Ranges for Each Variable</sub>
@@ -128,7 +128,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
                 3,4,5
         traces:
           - name: Parcoords Plot with Custom Colorscale
-            model: ref(parcoords-data-colorscale)
+            model: ${ref(parcoords-data-colorscale)}
             props:
               type: parcoords
               dimensions:
@@ -144,7 +144,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Parcoords/#attributes
         charts:
           - name: Parcoords Chart with Custom Colorscale
             traces:
-              - ref(Parcoords Plot with Custom Colorscale)
+              - ${ref(Parcoords Plot with Custom Colorscale)}
             layout:
               title:
                 text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub>

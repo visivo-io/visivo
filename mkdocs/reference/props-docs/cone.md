@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
                 1,1,1,-1,-1,-1
         traces:
           - name: Simple Cone Plot Trace
-            model: ref(vector-field-data)
+            model: ${ref(vector-field-data)}
             props:
               type: cone
               x: ?{x}
@@ -62,7 +62,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
         charts:
           - name: Simple Cone Plot
             traces:
-              - ref(Simple Cone Plot Trace)
+              - ${ref(Simple Cone Plot Trace)}
             layout:
               title:
                 text: Simple 3D Vector Field
@@ -96,7 +96,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
                 4,4,0,0,0,5,5.00
         traces:
           - name: Wind Direction Cone Plot Trace
-            model: ref(wind-data)
+            model: ${ref(wind-data)}
             props:
               type: cone
               x: ?{x}
@@ -113,7 +113,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
         charts:
           - name: Wind Direction Cone Plot
             traces:
-              - ref(Wind Direction Cone Plot Trace)
+              - ${ref(Wind Direction Cone Plot Trace)}
             layout:
               title:
                 text: Wind Direction and Speed

@@ -1,0 +1,26 @@
+models:
+  - name: scattergl-data
+    args:
+      - echo
+      - |
+        x,y
+        1,10
+        2,20
+        3,15
+        4,25
+        5,30
+traces:
+  - name: Simple Scattergl Plot
+    model: ${ref(scattergl-data)}
+    props:
+      type: scattergl
+      x: ?{x}
+      y: ?{y}
+      mode: "markers"
+charts:
+  - name: Simple Scattergl Chart
+    traces:
+      - ${ref(Simple Scattergl Plot)}
+    layout:
+      title:
+        text: Simple Scattergl Plot<br><sub>High-Performance Scatter Plot with WebGL</sub> 

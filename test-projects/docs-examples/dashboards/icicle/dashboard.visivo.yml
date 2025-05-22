@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Icicle Chart)
-          - chart: ref(Custom Colors Icicle Chart)
+          - chart: ${ref(Simple Icicle Chart)}
+          - chart: ${ref(Custom Colors Icicle Chart)}
       - height: medium
         items:
-          - chart: ref(Icicle Plot with Depth Limiting)
+          - chart: ${ref(Icicle Plot with Depth Limiting)}
           - markdown: ""

@@ -11,7 +11,7 @@ models:
         2024-01-05,107,109,98,103
 traces:
   - name: Colored Candlestick Plot
-    model: ref(stock-data-colored)
+    model: ${ref(stock-data-colored)}
     props:
       type: candlestick
       x: ?{date}
@@ -28,7 +28,7 @@ traces:
 charts:
   - name: Candlestick with Custom Colors
     traces:
-      - ref(Colored Candlestick Plot)
+      - ${ref(Colored Candlestick Plot)}
     layout:
       title:
         text: Colored Candlestick Chart<br><sub>Stock Price Movements with Custom Colors</sub>

@@ -13,7 +13,7 @@ models:
         F,B,10,#e377c2
 traces:
   - name: Sunburst Plot with Custom Colors
-    model: ref(sunburst-data-colors)
+    model: ${ref(sunburst-data-colors)}
     props:
       type: sunburst
       labels: ?{labels}
@@ -24,7 +24,7 @@ traces:
 charts:
   - name: Sunburst Chart with Custom Colors
     traces:
-      - ref(Sunburst Plot with Custom Colors)
+      - ${ref(Sunburst Plot with Custom Colors)}
     layout:
       title:
         text: Sunburst Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>

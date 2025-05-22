@@ -48,7 +48,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Choropleth/#attribute
                 COD,48
         traces:
           - name: Simple Choropleth Map Trace
-            model: ref(country-population-data)
+            model: ${ref(country-population-data)}
             props:
               type: choropleth
               locations: ?{country}
@@ -57,7 +57,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Choropleth/#attribute
         charts:
           - name: Simple Choropleth Map
             traces:
-              - ref(Simple Choropleth Map Trace)
+              - ${ref(Simple Choropleth Map Trace)}
             layout:
               title:
                 text: Population Density by Country<br><sub>Data in Persons per Square Kilometer</sub>

@@ -11,7 +11,7 @@ models:
         4,Ending,1350,#9467bd
 traces:
   - name: Waterfall Plot with Custom Colors
-    model: ref(waterfall-data-colors)
+    model: ${ref(waterfall-data-colors)}
     props:
       type: waterfall
       x: ?{label}
@@ -34,7 +34,7 @@ traces:
 charts:
   - name: Waterfall Chart with Custom Colors
     traces:
-      - ref(Waterfall Plot with Custom Colors)
+      - ${ref(Waterfall Plot with Custom Colors)}
     layout:
       title:
         text: Waterfall Plot with Custom Colors<br><sub>Customized Coloring for Categories</sub>

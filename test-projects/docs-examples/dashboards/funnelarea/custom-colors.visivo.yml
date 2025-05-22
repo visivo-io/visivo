@@ -11,7 +11,7 @@ models:
         Purchase,300,"#9467bd"
 traces:
   - name: Custom Colors Funnelarea Plot
-    model: ref(funnelarea-data-custom)
+    model: ${ref(funnelarea-data-custom)}
     props:
       type: funnelarea
       labels: ?{stage}
@@ -21,7 +21,7 @@ traces:
 charts:
   - name: Funnelarea Chart with Custom Colors
     traces:
-      - ref(Custom Colors Funnelarea Plot)
+      - ${ref(Custom Colors Funnelarea Plot)}
     layout:
       title:
         text: Funnelarea Chart with Custom Colors<br><sub>User Journey</sub>

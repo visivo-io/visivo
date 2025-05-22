@@ -21,7 +21,7 @@ models:
         B,X,28
 traces:
   - name: Violin Plot Category X
-    model: ref(violin-data-split)
+    model: ${ref(violin-data-split)}
     cohort_on: sub_category
     props:
       type: violin
@@ -31,7 +31,7 @@ traces:
     filters:
       - ?{ sub_category = 'X'}
   - name: Violin Plot Category Y
-    model: ref(violin-data-split)
+    model: ${ref(violin-data-split)}
     cohort_on: sub_category
     props:
       type: violin
@@ -44,8 +44,8 @@ traces:
 charts:
   - name: Violin Chart with Split Categories
     traces:
-      - ref(Violin Plot Category Y)
-      - ref(Violin Plot Category X)
+      - ${ref(Violin Plot Category Y)}
+      - ${ref(Violin Plot Category X)}
     layout:
       title:
         text: Violin Plot with Split Categories<br><sub>Split Violin Plot for Different Subcategories</sub>

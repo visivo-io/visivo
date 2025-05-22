@@ -19,5 +19,5 @@ models:
       - "&&"
       - cat target/processes.csv
   - name: Relational
-    target: ref(postgres)
+    target: ${ref(postgres)}
     sql: "select * from fibonacci"

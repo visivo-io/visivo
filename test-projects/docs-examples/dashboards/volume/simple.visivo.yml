@@ -14,7 +14,7 @@ models:
         7,1,1,0,8
 traces:
   - name: Simple Volume Plot
-    model: ref(volume-data)
+    model: ${ref(volume-data)}
     props:
       type: volume
       x: ?{x}
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Simple Volume Chart
     traces:
-      - ref(Simple Volume Plot)
+      - ${ref(Simple Volume Plot)}
     layout:
       title:
         text: Simple Volume Plot<br><sub>3D Volumetric Data</sub>

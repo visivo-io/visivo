@@ -12,7 +12,7 @@ models:
         F,B,15
 traces:
   - name: Simple Icicle Plot
-    model: ref(icicle-data)
+    model: ${ref(icicle-data)}
     props:
       type: icicle
       labels: ?{category}
@@ -28,7 +28,7 @@ traces:
 charts:
   - name: Simple Icicle Chart
     traces:
-      - ref(Simple Icicle Plot)
+      - ${ref(Simple Icicle Plot)}
     layout:
       title:
         text: Simple Icicle Chart<br><sub>Hierarchical Data Breakdown</sub>

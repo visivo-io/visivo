@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: Wind Direction Cone Plot Trace
-    model: ref(wind-data-cone)
+    model: ${ref(wind-data-cone)}
     props:
       type: cone
       x: ?{x}
@@ -31,7 +31,7 @@ traces:
 charts:
   - name: Wind Direction Cone Plot
     traces:
-      - ref(Wind Direction Cone Plot Trace)
+      - ${ref(Wind Direction Cone Plot Trace)}
     layout:
       title:
         text: Wind Direction and Speed

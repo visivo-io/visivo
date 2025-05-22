@@ -22,7 +22,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
         sql: select * from widget_sales
     traces:
       - name: simple_trace
-        model: ref('widget_sales')
+        model: ${ref(widget_sales)}
         cohort_on: widget
         props:
           x: ?{ date_trunc('week', completed_at) }
@@ -34,7 +34,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
     charts:
       - name: simple_chart
         traces:
-          - ref('simple_trace')
+          - ${ref(simple_trace)}
         layout:
           - title: Widget Sales by Week
     ```
@@ -43,7 +43,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
     ``` yaml title="project_dir/models/schema.yml" 
     traces:
       - name: simple_trace
-        model: ref('widget_sales')
+        model: ${ref(widget_sales)}
         cohort_on: ?{ widget }
         props:
           x: ?{ date_trunc('week', completed_at) }
@@ -55,7 +55,7 @@ You can write a trace in any yml file directly your project. The trace can be ju
     charts:
       - name: simple_chart
         traces:
-          - ref('simple_trace')
+          - ${ref(simple_trace)}
         layout:
           - title: Widget Sales by Week
     models:
