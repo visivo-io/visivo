@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import useStore from '../../stores/store';
+import useStore from '../../../../stores/store';
+
 
 const MoveObjectModal = ({ isOpen, onClose, objectName, currentPath }) => {
   const projectFileObjects = useStore(state => state.projectFileObjects);

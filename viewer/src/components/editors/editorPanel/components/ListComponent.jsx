@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import renderValue from './renderValue';
-import { HiPlus } from 'react-icons/hi';
-import AddItemModal from './AddItemModal';
-import useStore from '../../stores/store';
-import ContextMenu from './ContextMenu';
+import { HiPlus, HiOutlineCollection } from 'react-icons/hi';
+import AddItemModal from '../modals/AddItemModal';
+import useStore from '../../../../stores/store';
+import ContextMenu from '../ContextMenu';
 
 function ListComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,47 +45,39 @@ function ListComponent({ name, data, path }) {
   }
 
   return (
-    <div className="flex flex-col p-1" onContextMenu={handleContextMenu}>
-      <div className="flex justify-between items-center">
-        {name && isNaN(parseInt(name)) && typeof name === 'string' && (
-          <div className="text-md font-medium text-purple-600">{name}</div>
-        )}
+    <div className="flex flex-col  p-1 bg-white rounded-lg shadow-sm border border-secondary-100 mt-1" onContextMenu={handleContextMenu}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <HiOutlineCollection className="text-secondary-500 w-4 h-4" />
+          <div className="text-md font-semibold text-secondary-700 pb-1">{name}</div>
+        </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="p-1 text-purple-600 hover:text-purple-800 rounded-full hover:bg-purple-100"
+          className="p-0.5 text-white bg-secondary-400 hover:bg-secondary-500 rounded-full shadow transition-colors focus:ring-2 focus:ring-gray-200 focus:outline-none"
+          
         >
-          <HiPlus className="h-5 w-5" />
+          <HiPlus className="h-4 w-4" />
         </button>
       </div>
-
+      <div className="border-b border-secondary-100 mb-2" />
       <div className="rounded-md">
         <div className="flex flex-wrap gap-2">
           {data.map((item, index) => {
             const childPath = [...path, index];
             return (
-              <div
-                key={index}
-                className="border-gray-200 border bg-purple-50 pt-2 pb-2 pr-2 rounded-md"
-                style={{
-                  minWidth: '30px',
-                  maxWidth: '400px',
-                  flex: '1 1 auto',
-                }}
-              >
+              <div key={index} className="flex-1 min-w-[200px]">
                 {renderValue(index, item, childPath)}
               </div>
             );
           })}
         </div>
       </div>
-
       <AddItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handleAddItem}
         isObjectMode={false}
       />
-
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

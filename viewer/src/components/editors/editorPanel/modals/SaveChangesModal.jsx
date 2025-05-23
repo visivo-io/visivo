@@ -1,6 +1,6 @@
 import React from 'react';
-import useStore from '../../stores/store';
-import ObjectPill from './ObjectPill';
+import useStore from '../../../../stores/store';
+import ObjectPill from '../../ObjectPill';
 import { Toast } from 'flowbite-react';
 import { HiCheck, HiX, HiExclamation } from 'react-icons/hi';
 

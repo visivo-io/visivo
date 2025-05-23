@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import renderValue from './renderValue';
-import { HiPlus } from 'react-icons/hi';
-import AddItemModal from './AddItemModal';
-import useStore from '../../stores/store';
-import ContextMenu from './ContextMenu';
+import { HiPlus, HiOutlineCube } from 'react-icons/hi';
+import AddItemModal from '../modals/AddItemModal';
+import useStore from '../../../../stores/store';
+import ContextMenu from '../ContextMenu';
 
 function ObjectComponent({ name, data, path }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,46 +57,41 @@ function ObjectComponent({ name, data, path }) {
     }
   }, [contextMenu]);
 
+  const label = name ? name : data.name;
+
   return (
-    <div className="flex flex-col p-1 rounded-md" onContextMenu={handleContextMenu}>
-      <div className="flex justify-between items-center">
-        {name && isNaN(parseInt(name)) && typeof name === 'string' && (
-          <div className="text-md font-medium pb-1 text-yellow-800">{name}</div>
-        )}
+    <div className="flex flex-col  p-2 bg-white rounded-lg border-primary-100 bg-primary-50 shadow border border-gray-100 mt-2" onContextMenu={handleContextMenu}>
+      <div className="flex items-center  justify-between">
+        <div className="flex items-center gap-2">
+          <HiOutlineCube className="text-primary-500 w-5 h-5 " />
+          <div className="text-md font-semibold text-primary-500 pb-1">{label}</div>
+        </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="p-1 text-yellow-800 hover:text-yellow-900 rounded-full hover:bg-yellow-100"
+          className="p-0.5 text-white bg-primary-500 hover:bg-primary-600 rounded-full shadow transition-colors focus:ring-2 focus:ring-primary-200 focus:outline-none"
+          
         >
-          <HiPlus className="h-5 w-5" />
+          <HiPlus className="h-4 w-4" />
         </button>
       </div>
-
+      <div className="border-b border-primary-100 mb-2" />
       {/* Non-Object Section */}
       {Object.keys(sortedNonObject).length > 0 && (
-        <div className="flex flex-wrap gap-2 max-h-[300px] overflow-y-auto w-full">
+        <div className="flex flex-wrap gap-2 max-h-[100px] overflow-y-auto w-full">
           {Object.entries(sortedNonObject).map(([key, value]) => {
             if (key === 'changed' || key === 'path' || key === 'name' || key === '__v') return null;
             const childPath = [...path, key];
             return (
-              <div
-                key={key}
-                className="border-gray-200 border bg-red-50 pl-2 pr-2 pb-2 mb-2 rounded-md text-"
-                style={{
-                  minWidth: '30px',
-                  maxWidth: '400px',
-                  flex: '1 0 auto',
-                }}
-              >
+              <div key={key} className="flex-1 min-w-[200px]">
                 {renderValue(key, value, childPath)}
               </div>
             );
           })}
         </div>
       )}
-
       {/* Object Section */}
       {Object.keys(sortedObject).length > 0 && (
-        <div className="flex flex-wrap gap-4 w-full">
+        <div className="flex flex-wrap gap-2 w-full">
           {objectEntries.map(([key, value]) => {
             if (key === 'changed' || key === 'path' || key === 'name' || key === '__v') return null;
             const childPath = [...path, key];
@@ -105,7 +100,7 @@ function ObjectComponent({ name, data, path }) {
             return (
               <div
                 key={key}
-                className="border-gray-400 border bg-blue-50 pb-2 pr-2 pl-2 rounded-lg shadow-xs"
+                
                 style={{ width: `${sizeFactor}px`, minWidth: '200px' }}
               >
                 {renderValue(key, value, childPath)}
@@ -114,14 +109,12 @@ function ObjectComponent({ name, data, path }) {
           })}
         </div>
       )}
-
       <AddItemModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={handleAddProperty}
         isObjectMode={true}
       />
-
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
