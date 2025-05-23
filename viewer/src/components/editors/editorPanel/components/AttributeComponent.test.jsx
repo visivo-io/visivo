@@ -78,7 +78,7 @@ test('handles context menu correctly', async () => {
   );
 
   render(<AttributeComponent name="testName" value="testValue" path={['test']} />);
-  const container = screen.getByText('testName').parentElement;
+  const container = screen.getByLabelText('testName');
   
   fireEvent.contextMenu(container);
   expect(screen.getByText('Delete')).toBeInTheDocument();

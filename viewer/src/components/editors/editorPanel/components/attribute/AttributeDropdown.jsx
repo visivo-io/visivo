@@ -32,6 +32,7 @@ const AttributeDropdown = ({
       className="bg-white border border-primary-100 rounded-lg shadow-lg max-h-60 overflow-auto p-1"
       style={style}
       ref={dropdownRef}
+      data-testid="attribute-dropdown"
     >
       {filteredChildren.map((child, index) => (
         <div
@@ -40,6 +41,7 @@ const AttributeDropdown = ({
             index === selectedIndex ? 'bg-primary-100 text-primary-700' : 'hover:bg-primary-50'
           }`}
           onClick={() => onSelect(child)}
+          data-testid={`dropdown-item-${child}`}
         >
           <ObjectPill name={child} inline={false} disableDoubleClick={true} />
         </div>

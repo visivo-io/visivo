@@ -36,7 +36,7 @@ test('applies selected style to selected item', () => {
     />
   );
 
-  const selectedItem = screen.getByText('child2').closest('div[class*="bg-primary-100"]');
+  const selectedItem = screen.getByTestId('dropdown-item-child2');
   expect(selectedItem).toHaveClass('bg-primary-100');
 });
 
@@ -56,6 +56,6 @@ test('calls onSelect when item is clicked', () => {
     />
   );
 
-  fireEvent.click(screen.getByText('child1'));
+  fireEvent.click(screen.getByTestId('dropdown-item-child1'));
   expect(mockOnSelect).toHaveBeenCalledWith('child1');
 });
