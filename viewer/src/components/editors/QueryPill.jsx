@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { QUERY_FUNCTION_PATTERN, QUERY_BRACKET_PATTERN } from './../../constants';
 
 function QueryPill({ value, onChange, isQueryFunction, inputShellRef }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -31,8 +32,8 @@ function QueryPill({ value, onChange, isQueryFunction, inputShellRef }) {
     setIsEditing(false);
     // Extract just the capture value without the wrapper
     const captureValue = isQueryFunction
-      ? localValue.replace(/^query\((.*)\)$/, '$1')
-      : localValue.replace(/^\?\{(.*)\}$/, '$1');
+      ? localValue.replace(QUERY_FUNCTION_PATTERN, '$1')
+      : localValue.replace(QUERY_BRACKET_PATTERN, '$1');
 
     // Reconstruct the full string with proper wrapper
     const newValue = isQueryFunction ? `query(${captureValue})` : `?{${captureValue}}`;
@@ -46,8 +47,8 @@ function QueryPill({ value, onChange, isQueryFunction, inputShellRef }) {
   };
 
   const displayValue = isQueryFunction
-    ? localValue.replace(/^query\((.*)\)$/, '$1')
-    : localValue.replace(/^\?\{(.*)\}$/, '$1');
+    ? localValue.replace(QUERY_FUNCTION_PATTERN, '$1')
+    : localValue.replace(QUERY_BRACKET_PATTERN, '$1');
 
   const pillContent = (
     <>

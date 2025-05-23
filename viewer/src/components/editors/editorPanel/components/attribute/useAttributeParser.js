@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { QUERY_FUNCTION_PATTERN, QUERY_BRACKET_PATTERN } from '../../../../../constants';
 
 export const useAttributeParser = () => {
   const [isJsonObject, setIsJsonObject] = useState(false);
@@ -8,12 +9,9 @@ export const useAttributeParser = () => {
 
   const checkAndParseJson = useCallback(val => {
     // Check for query patterns first
-    const queryFunctionPattern = /^query\((.*)\)$/;
-    const queryBracketPattern = /^\?\{(.*)\}$/;
-
-    if (queryFunctionPattern.test(val) || queryBracketPattern.test(val)) {
+    if (QUERY_FUNCTION_PATTERN.test(val) || QUERY_BRACKET_PATTERN.test(val)) {
       setIsQueryValue(true);
-      setQueryType(queryFunctionPattern.test(val) ? 'function' : 'bracket');
+      setQueryType(QUERY_FUNCTION_PATTERN.test(val) ? 'function' : 'bracket');
       setIsJsonObject(false);
       setParsedObject(null);
       return false;
