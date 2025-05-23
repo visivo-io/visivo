@@ -1,6 +1,6 @@
 import React from 'react';
 import ObjectsPanel from './ObjectsPanel';
-import EditorPanel from './editorPanel/index';
+import EditorPanel from './editorPanel/EditorPanel';
 import PreviewPanel from './PreviewPanel';
 import Divider from '../explorer/Divider';
 import CreateObjectModal from './CreateObjectModal';
