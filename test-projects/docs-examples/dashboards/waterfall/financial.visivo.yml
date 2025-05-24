@@ -12,7 +12,7 @@ models:
         5,Gross Profit,FY2024,0,total
 traces:
   - name: Waterfall Plot with Connectors
-    model: ref(waterfall-data-connectors)
+    model: ${ref(waterfall-data-connectors)}
     props:
       type: waterfall
       x:
@@ -32,7 +32,7 @@ traces:
 charts:
   - name: Waterfall Chart with Connectors
     traces:
-      - ref(Waterfall Plot with Connectors)
+      - ${ref(Waterfall Plot with Connectors)}
     layout:
       title:
         text: Financial Waterfall

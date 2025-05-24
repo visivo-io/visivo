@@ -14,7 +14,7 @@ models:
         315,3
 traces:
   - name: Activity Level by Direction
-    model: ref(activity-data)
+    model: ${ref(activity-data)}
     props:
       type: barpolar
       r: ?{activity_level}
@@ -26,7 +26,7 @@ traces:
 charts:
   - name: Activity Level Polar Chart
     traces:
-      - ref(Activity Level by Direction)
+      - ${ref(Activity Level by Direction)}
     layout:
       polar:
         radialaxis:

@@ -7,14 +7,14 @@ models:
         [[0,0,1,1],[1,0,0,1],[1,1,0,0]]
 traces:
   - name: Simple Image Plot
-    model: ref(image-data)
+    model: ${ref(image-data)}
     props:
       type: image
       z: ?{z}
 charts:
   - name: Simple Image Chart
     traces:
-      - ref(Simple Image Plot)
+      - ${ref(Simple Image Plot)}
     layout:
       title:
         text: Simple Image Plot<br><sub>Raster Image Display</sub>

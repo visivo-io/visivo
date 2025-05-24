@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
 
         Here's a simple `densitymapbox` plot showing the density of random points on a Mapbox map:
 
-        ![](../../assets/example-charts/props/densitymapbox/simple-densitymapbox.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -43,7 +42,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                 29.7604,-95.3698
         traces:
           - name: Simple Densitymapbox Plot
-            model: ref(densitymapbox-data)
+            model: ${ref(densitymapbox-data)}
             props:
               type: densitymapbox
               lat: ?{lat}
@@ -55,7 +54,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
         charts:
           - name: Simple Densitymapbox Chart
             traces:
-              - ref(Simple Densitymapbox Plot)
+              - ${ref(Simple Densitymapbox Plot)}
             layout:
               title:
                 text: Simple Densitymapbox Plot<br><sub>Spatial Data Density</sub>
@@ -71,7 +70,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
 
         This example demonstrates a `densitymapbox` plot with a custom radius for the points, which influences how smooth the heatmap appears:
 
-        ![](../../assets/example-charts/props/densitymapbox/custom-radius-densitymapbox.png)
 
         Here's the code:
 
@@ -89,7 +87,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                 34.0522,-118.2437
         traces:
           - name: Densitymapbox with Custom Radius
-            model: ref(densitymapbox-data-radius)
+            model: ${ref(densitymapbox-data-radius)}
             props:
               type: densitymapbox
               lat: ?{lat}
@@ -101,7 +99,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
         charts:
           - name: Densitymapbox Chart with Custom Radius
             traces:
-              - ref(Densitymapbox with Custom Radius)
+              - ${ref(Densitymapbox with Custom Radius)}
             layout:
               title:
                 text: Densitymapbox Plot with Custom Radius<br><sub>Radius of Influence on Heatmap</sub>
@@ -117,7 +115,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
 
         This example shows a `densitymapbox` plot with a custom colorscale and zoom centered on Europe:
 
-        ![](../../assets/example-charts/props/densitymapbox/custom-colorscale-densitymapbox.png)
 
         Here's the code:
 
@@ -135,7 +132,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                 51.1657,10.4515
         traces:
           - name: Densitymapbox with Custom Colorscale
-            model: ref(densitymapbox-data-colorscale)
+            model: ${ref(densitymapbox-data-colorscale)}
             props:
               type: densitymapbox
               lat: ?{lat}
@@ -147,7 +144,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
         charts:
           - name: Densitymapbox Chart with Custom Colorscale
             traces:
-              - ref(Densitymapbox with Custom Colorscale)
+              - ${ref(Densitymapbox with Custom Colorscale)}
             layout:
               title:
                 text: Densitymapbox Plot with Custom Colorscale<br><sub>Custom Coloring and Center</sub>

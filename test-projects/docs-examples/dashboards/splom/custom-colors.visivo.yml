@@ -11,7 +11,7 @@ models:
         5,6,7,A
 traces:
   - name: Splom Plot with Custom Colors
-    model: ref(splom-data-colors)
+    model: ${ref(splom-data-colors)}
     props:
       type: splom
       dimensions:
@@ -27,7 +27,7 @@ traces:
 charts:
   - name: Splom Chart with Custom Colors
     traces:
-      - ref(Splom Plot with Custom Colors)
+      - ${ref(Splom Plot with Custom Colors)}
     layout:
       title:
         text: Splom Plot with Custom Colors<br><sub>Color-Coded Scatter Plot Matrix</sub>

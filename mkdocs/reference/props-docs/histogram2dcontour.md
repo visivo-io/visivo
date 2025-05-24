@@ -14,7 +14,7 @@ You can customize the binning along both axes, contour lines, and the color mapp
     - **Joint Distribution Analysis**: Visualizing the relationship between two variables with density contours.
     - **Bivariate Statistical Analysis**: Analyzing two variables and their joint behavior.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Histogram2dcontour/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
                 5,3
         traces:
           - name: Simple 2D Contour Histogram
-            model: ref(histogram2dcontour-data)
+            model: ${ref(histogram2dcontour-data)}
             props:
               type: histogram2dcontour
               x: ?{x}
@@ -58,7 +58,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
         charts:
           - name: Simple 2D Contour Histogram
             traces:
-              - ref(Simple 2D Contour Histogram)
+              - ${ref(Simple 2D Contour Histogram)}
             layout:
               title:
                 text: Simple 2D Contour Histogram<br><sub>Density Contours of Bivariate Data</sub>
@@ -96,7 +96,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
                 6,4
         traces:
           - name: 2D Contour Histogram with Filled Contours
-            model: ref(histogram2dcontour-data-filled)
+            model: ${ref(histogram2dcontour-data-filled)}
             props:
               type: histogram2dcontour
               x: ?{x}
@@ -107,7 +107,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
         charts:
           - name: 2D Contour Histogram with Filled Contours
             traces:
-              - ref(2D Contour Histogram with Filled Contours)
+              - ${ref(2D Contour Histogram with Filled Contours)}
             layout:
               title:
                 text: 2D Contour Histogram with Filled Contours<br><sub>Filled Density Contours</sub>
@@ -145,7 +145,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
                 5,4
         traces:
           - name: 2D Contour Histogram with Custom Bins
-            model: ref(histogram2dcontour-data-bins)
+            model: ${ref(histogram2dcontour-data-bins)}
             props:
               type: histogram2dcontour
               x: ?{x}
@@ -158,7 +158,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2DContour/#a
         charts:
           - name: 2D Contour Histogram with Custom Bins
             traces:
-              - ref(2D Contour Histogram with Custom Bins)
+              - ${ref(2D Contour Histogram with Custom Bins)}
             layout:
               title:
                 text: 2D Contour Histogram with Custom Bins<br><sub>Custom Bin Sizes for X and Y</sub>

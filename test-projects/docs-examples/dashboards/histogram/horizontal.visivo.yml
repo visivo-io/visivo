@@ -29,7 +29,7 @@ models:
         4
 traces:
   - name: Horizontal Histogram Plot
-    model: ref(histogram-data-horizontal)
+    model: ${ref(histogram-data-horizontal)}
     props:
       type: histogram
       y: ?{value}
@@ -40,7 +40,7 @@ traces:
 charts:
   - name: Horizontal Histogram Chart
     traces:
-      - ref(Horizontal Histogram Plot)
+      - ${ref(Horizontal Histogram Plot)}
     layout:
       title:
         text: Horizontal Histogram Plot<br><sub>Data Distribution in a Horizontal Format</sub>

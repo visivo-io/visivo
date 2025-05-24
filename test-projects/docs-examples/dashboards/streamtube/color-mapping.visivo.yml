@@ -1,0 +1,21 @@
+
+traces:
+  - name: Streamtube Plot with Color Mapping
+    model: ${ref(streamtube-data)}
+    props:
+      type: streamtube
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      u: ?{u}
+      v: ?{v}
+      w: ?{w}
+      colorscale: "Viridis"
+      
+charts:
+  - name: Streamtube Chart with Color Mapping
+    traces:
+      - ${ref(Streamtube Plot with Color Mapping)}
+    layout:
+      title:
+        text: Streamtube Plot with Color Mapping<br><sub>Vector Magnitude Represented by Color</sub> 

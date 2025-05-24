@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: xlarge
         items:
-          - chart: ref(Simple Splom Chart)
-          - chart: ref(Splom Chart with Custom Colors)
+          - chart: ${ref(Simple Splom Chart)}
+          - chart: ${ref(Splom Chart with Custom Colors)}
       - height: large
         items:
-          - chart: ref(Splom Chart with Custom Sizes)
+          - chart: ${ref(Splom Chart with Custom Sizes)}
           - markdown: ""

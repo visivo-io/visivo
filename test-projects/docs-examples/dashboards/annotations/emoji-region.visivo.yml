@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: region_emoji_trace
-    model: ref(region_emoji_data)
+    model: ${ref(region_emoji_data)}
     props:
       type: scatter
       x: ?{x}

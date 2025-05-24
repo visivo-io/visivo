@@ -49,7 +49,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
                 B,29
         traces:
           - name: Sample Box Plot
-            model: ref(sample-data)
+            model: ${ref(sample-data)}
             props:
               type: box
               x: ?{category}
@@ -60,7 +60,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
         charts:
           - name: Sample Box Plot Chart
             traces:
-              - ref(Sample Box Plot)
+              - ${ref(Sample Box Plot)}
             layout:
               title:
                 text: Simple Box Plot<br><sub>Distribution of Values by Category</sub>
@@ -88,7 +88,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
         traces:
           - name: Rewards Distribution by Quest
-            model: ref(monty-python-quest-data-unique)
+            model: ${ref(monty-python-quest-data-unique)}
             cohort_on: "person"
             props:
               type: box
@@ -101,7 +101,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
         charts:
           - name: Rewards Distribution Box Plot
             traces:
-              - ref(Rewards Distribution by Quest)
+              - ${ref(Rewards Distribution by Quest)}
             layout:
               title:
                 text: Horizontal Box Plot<br><sub>GBP Rewards Earned Across Quests</sub>
@@ -126,7 +126,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
         traces:
           - name: Proclamations Box Plot
-            model: ref(monty-python-quest-proclamations)
+            model: ${ref(monty-python-quest-proclamations)}
             cohort_on: "person"
             props:
               type: box
@@ -136,7 +136,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
         charts:
           - name: Proclamations Box Plot with Outliers
             traces:
-              - ref(Proclamations Box Plot)
+              - ${ref(Proclamations Box Plot)}
             layout:
               title:
                 text: Cohorted Box Plot<br><sub>Proclamations Made Across Quests by Enemy</sub>

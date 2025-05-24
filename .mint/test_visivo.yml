@@ -151,7 +151,7 @@ tasks:
     use: [visivo-install, install-playwright]
     run: |
       cd test-projects/docs-examples
-      visivo run
+      visivo run -th 3 
       visivo test
     env:
       STACKTRACE: true

@@ -16,7 +16,7 @@ dashboards:
               name: Bar Chart
               traces:
                 - name: Simple Bar
-                  model: ref(Echo CSV)
+                  model: ${ref(Echo CSV)}
                   props:
                     type: bar
                     x: ?{x}

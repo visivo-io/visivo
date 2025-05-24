@@ -19,7 +19,7 @@ This enables you to keep your code cleaner by storing variables that you can reu
     traces:
       ...
       - name: awesome-trace
-        model: ref(model-name)
+        model: ${ref(model-name)}
         props:
             type: bar 
             ...

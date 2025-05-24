@@ -9,7 +9,7 @@ search:
     
     You need a mapbox api key to use choroplethmapbox traces.
 
-The `choroplethmapbox` trace type is used to create choropleth maps on top of a Mapbox layer. It’s a more advanced form of the standard `choropleth` trace, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.
+The `choroplethmapbox` trace type is used to create choropleth maps on top of a Mapbox layer. It's a more advanced form of the standard `choropleth` trace, allowing for greater control over map projections, interactivity, and advanced map features like zooming and tilting.
 
 With `choroplethmapbox`, you can visualize data across geographic regions on Mapbox maps, and customize the map's appearance using layers, color scales, and hover labels.
 
@@ -19,7 +19,7 @@ With `choroplethmapbox`, you can visualize data across geographic regions on Map
     - **Thematic Mapping with Interactivity**: Creating maps that can zoom, tilt, and rotate while visualizing variables like population or economic metrics.
     - **Map Projections**: Applying various Mapbox projections for advanced geographical data representation.
 
-_**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Choroplethmapbox/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -30,7 +30,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         Here's a simple `choroplethmapbox` map showing population density across different regions on a Mapbox layer:
 
-        ![](../../assets/example-charts/props/choroplethmapbox/simple-choroplethmapbox.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -60,7 +59,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: Simple ChoroplethMapbox Chart
             traces:
-              - ref(Simple ChoroplethMapbox Map)
+              - ${ref(Simple ChoroplethMapbox Map)}
             layout:
               title:
                 text: Population Density by Country on Mapbox<br><sub>Data in Persons per Square Kilometer</sub>
@@ -76,7 +75,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         This example shows a choropleth map on a Mapbox layer using a custom color scale, zoom, and center on Europe:
 
-        ![](../../assets/example-charts/props/choroplethmapbox/custom-colorscale-choroplethmapbox.png)
 
         Here's the code:
 
@@ -94,7 +92,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 GBR,2827
         traces:
           - name: ChoroplethMapbox with Custom Colorscale Trace
-            model: ref(european-gdp-data)
+            model: ${ref(european-gdp-data)}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
@@ -106,7 +104,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: ChoroplethMapbox with Custom Colorscale
             traces:
-              - ref(ChoroplethMapbox with Custom Colorscale Trace)
+              - ${ref(ChoroplethMapbox with Custom Colorscale Trace)}
             layout:
               title:
                 text: GDP by Country in Europe<br><sub>Data in Billions of USD</sub>
@@ -122,7 +120,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
 
         Here's a choropleth map on a Mapbox layer that includes hover information for each country:
 
-        ![](../../assets/example-charts/props/choroplethmapbox/choroplethmapbox-hover.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -140,7 +137,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
                 ZAF,2000000,60000
         traces:
           - name: Interactive ChoroplethMapbox with Hover Data Trace
-            model: ref(covid-data-mapbox)
+            model: ${ref(covid-data-mapbox)}
             props:
               type: choroplethmapbox
               geojson: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
@@ -154,7 +151,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/ChoroplethMapbox/#att
         charts:
           - name: Interactive ChoroplethMapbox with Hover Data
             traces:
-              - ref(Interactive ChoroplethMapbox with Hover Data Trace)
+              - ${ref(Interactive ChoroplethMapbox with Hover Data Trace)}
             layout:
               title:
                 text: COVID-19 Cases by Country on Mapbox<br><sub>Hover to See Deaths Data</sub>

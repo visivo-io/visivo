@@ -1,0 +1,34 @@
+models:
+  - name: parcoords-data-ranges
+    args:
+      - echo
+      - |
+        variable_1,variable_2,variable_3
+        5,10,15
+        10,20,25
+        15,30,35
+traces:
+  - name: Parcoords Plot with Custom Ranges
+    model: ${ref(parcoords-data-ranges)}
+    props:
+      type: parcoords
+      dimensions:
+        - label: "Variable 1"
+          values: ?{variable_1}
+          range: [5, 15]
+        - label: "Variable 2"
+          values: ?{variable_2}
+          range: [10, 30]
+        - label: "Variable 3"
+          values: ?{variable_3}
+          range: [15, 35]
+      line:
+        color: ?{variable_3}
+        colorscale: "Blues"
+charts:
+  - name: Parcoords Chart with Custom Ranges
+    traces:
+      - ${ref(Parcoords Plot with Custom Ranges)}
+    layout:
+      title:
+        text: Parcoords Plot with Custom Ranges<br><sub>Custom Ranges for Each Variable</sub> 

@@ -28,7 +28,7 @@ Generate a list of users in a YAML configuration.
           {%- for user in ['Alice', 'Bob', 'Charlie'] %}
           - name: "{{ user }}_weekly_orders_trace"
             type: bar 
-            model: ref('orders')
+            model: ${ref(orders)}
             props:
               x: ?{ date_trunc('week', created_at) }
               y: ?{ orders }
@@ -41,7 +41,7 @@ Generate a list of users in a YAML configuration.
         traces:
           - name: "Alice_weekly_orders_trace"
             type: bar 
-            model: ref('orders')
+            model: ${ref(orders)}
             props:
               x: ?{ date_trunc('week', created_at) }
               y: ?{ orders }
@@ -49,7 +49,7 @@ Generate a list of users in a YAML configuration.
               - ?{ user = 'Alice' }
           - name: "Bob_weekly_orders_trace"
             type: bar 
-            model: ref('orders')
+            model: ${ref(orders)}
             props:
               x: ?{ date_trunc('week', created_at) }
               y: ?{ orders }
@@ -57,7 +57,7 @@ Generate a list of users in a YAML configuration.
               - ?{ user = 'Bob' }
           - name: "Charlie_weekly_orders_trace"
             type: bar 
-            model: ref('orders')
+            model: ${ref(orders)}
             props:
               x: ?{ date_trunc('week', created_at) }
               y: ?{ orders }

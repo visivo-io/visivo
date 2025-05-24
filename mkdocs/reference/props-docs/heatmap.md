@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
                 C,3,45
         traces:
           - name: Simple Heatmap Plot
-            model: ref(heatmap-data)
+            model: ${ref(heatmap-data)}
             props:
               type: heatmap
               x: ?{x}
@@ -57,7 +57,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
         charts:
           - name: Simple Heatmap Chart
             traces:
-              - ref(Simple Heatmap Plot)
+              - ${ref(Simple Heatmap Plot)}
             layout:
               title:
                 text: Simple Heatmap Plot<br><sub>Data Visualization on a 2D Grid</sub>
@@ -95,7 +95,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
                 High,C,0.9
         traces:
           - name: Heatmap with Custom Colorscale
-            model: ref(heatmap-data-custom)
+            model: ${ref(heatmap-data-custom)}
             props:
               type: heatmap
               x: ?{x}
@@ -106,7 +106,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
         charts:
           - name: Heatmap Chart with Categorical Axis
             traces:
-              - ref(Heatmap with Custom Colorscale)
+              - ${ref(Heatmap with Custom Colorscale)}
             layout:
               title:
                 text: Heatmap Chart with Categorical Axis<br><sub>Categorical Data</sub>
@@ -145,7 +145,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
                 Q4,2020,450
         traces:
           - name: Heatmap with Text Annotations
-            model: ref(heatmap-data-annotations)
+            model: ${ref(heatmap-data-annotations)}
             props:
               type: heatmap
               x: ?{x}
@@ -159,7 +159,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Heatmap/#attributes) 
         charts:
           - name: Heatmap Chart with Text Annotations
             traces:
-              - ref(Heatmap with Text Annotations)
+              - ${ref(Heatmap with Text Annotations)}
             layout:
               title:
                 text: Heatmap with Text Annotations<br><sub>Data Values Displayed on Each Cell</sub>

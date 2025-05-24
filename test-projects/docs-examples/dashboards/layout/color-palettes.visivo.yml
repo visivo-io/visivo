@@ -17,7 +17,7 @@ models:
 # {% set palettes = ["Warm Earth Tones", "Sunset Over Water", "Muted Vintage", "Retro Pop", "Forest Nightfall", "Desert Sunrise", "Urban Dusk", "Botanical Garden", "Autumn Ember", "Coastal Breeze", "Muted Vintage II", "Muted Rosewood", "Muted Classic", "Vintage Pastel", "Classic Faded","Spring Blossom", "Mint Dream", "Soft Sunset", "Lavender Fields", "Summer Breeze","Mint Dream Contrast", "Mint Dream Dark", "Mint Dream Deep", "Mint Dream Bold", "High Contrast", "High Contrast Earth"] %}
 traces:
   - name: Color Palette Example
-    model: ref(layout-data)
+    model: ${ref(layout-data)}
     cohort_on: category
     props:
       type: bar
@@ -30,7 +30,7 @@ charts:
   # {% for palette in palettes %}
   - name: "{{ palette }}"
     traces:
-      - ref(Color Palette Example)
+      - ${ref(Color Palette Example)}
     layout:
       colorway: "{{ palette }}"
       title:
@@ -47,7 +47,7 @@ charts:
 
   - name: Custom Colors Example
     traces:
-      - ref(Color Palette Example)
+      - ${ref(Color Palette Example)}
     layout:
       colorway:
         [
@@ -89,11 +89,11 @@ dashboards:
       - height: medium
         items:
           # {% endif %}
-          - chart: ref({{ palette }})
+          - chart: ${ref({{ palette }})}
       # {% endfor %}
       - height: medium
         items:
-          - chart: ref(Custom Colors Example)
+          - chart: ${ref(Custom Colors Example)}
           - markdown: |
               ### Using Custom Color Palettes
 

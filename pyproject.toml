@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visivo"
-version = "1.0.57"
+version = "1.0.58"
 description = "Visivo CLI for BI and visualizations as code"
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
@@ -45,7 +45,7 @@ plotly = "^5.24.0"
 snowflake-sqlalchemy = "^1.6.1"
 sqlalchemy-bigquery = "^1.12.0"
 duckdb-engine = "^0.14.0"
-playwright = "^1.50.0"
+playwright = "1.50.0"
 flask-socketio = "^5.5.1"
 jsonschema-rs = "^0.30.0"
 

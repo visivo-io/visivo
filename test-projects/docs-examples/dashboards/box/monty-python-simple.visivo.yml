@@ -6,7 +6,7 @@ models:
       - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
 traces:
   - name: Rewards Distribution by Quest
-    model: ref(monty-python-quest-data-unique)
+    model: ${ref(monty-python-quest-data-unique)}
     cohort_on: "person"
     props:
       type: box
@@ -19,7 +19,7 @@ traces:
 charts:
   - name: Rewards Distribution Box Plot
     traces:
-      - ref(Rewards Distribution by Quest)
+      - ${ref(Rewards Distribution by Quest)}
     layout:
       title:
         text: Horizontal Box Plot<br><sub>GBP Rewards Earned Across Quests</sub>

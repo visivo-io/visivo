@@ -44,7 +44,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
                 2024-01-05,107,109,98,103
         traces:
           - name: Simple Candlestick Plot
-            model: ref(stock-data)
+            model: ${ref(stock-data)}
             props:
               type: candlestick
               x: ?{date}
@@ -55,7 +55,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
         charts:
           - name: Simple Candlestick Chart
             traces:
-              - ref(Simple Candlestick Plot)
+              - ${ref(Simple Candlestick Plot)}
             layout:
               title:
                 text: Simple Candlestick Chart<br><sub>Stock Price Movements</sub>
@@ -91,7 +91,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
                 2024-01-05,107,109,98,103,1300000
         traces:
           - name: Candlestick Plot with Volume
-            model: ref(stock-data-with-volume)
+            model: ${ref(stock-data-with-volume)}
             props:
               type: candlestick
               x: ?{date}
@@ -100,7 +100,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
               low: ?{low}
               close: ?{close}
           - name: Volume Trace
-            model: ref(stock-data-with-volume)
+            model: ${ref(stock-data-with-volume)}
             props:
               type: bar
               x: ?{date}
@@ -112,8 +112,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
         charts:
           - name: Candlestick Chart with Volume
             traces:
-              - ref(Candlestick Plot with Volume)
-              - ref(Volume Trace)
+              - ${ref(Candlestick Plot with Volume)}
+              - ${ref(Volume Trace)}
             layout:
               showlegend: false
                 
@@ -158,7 +158,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
                 2024-01-05,107,109,98,103
         traces:
           - name: Colored Candlestick Plot
-            model: ref(stock-data-colored)
+            model: ${ref(stock-data-colored)}
             props:
               type: candlestick
               x: ?{date}
@@ -175,7 +175,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Candlestick/#attribut
         charts:
           - name: Candlestick with Custom Colors
             traces:
-              - ref(Colored Candlestick Plot)
+              - ${ref(Colored Candlestick Plot)}
             layout:
               title:
                 text: Colored Candlestick Chart<br><sub>Stock Price Movements with Custom Colors</sub>

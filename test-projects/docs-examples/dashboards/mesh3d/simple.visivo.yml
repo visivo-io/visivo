@@ -11,7 +11,7 @@ models:
 
 traces:
   - name: Simple Mesh3D Plot
-    model: ref(mesh3d-data)
+    model: ${ref(mesh3d-data)}
     props:
       type: mesh3d
       x: ?{x}
@@ -27,7 +27,7 @@ traces:
 charts:
   - name: Simple Mesh3D Chart
     traces:
-      - ref(Simple Mesh3D Plot)
+      - ${ref(Simple Mesh3D Plot)}
     layout:
       title:
         text: Simple Mesh3D Plot<br><sub>3D Mesh Surface Visualization</sub>

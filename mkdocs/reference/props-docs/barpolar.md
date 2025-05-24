@@ -48,7 +48,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
                 315,3
         traces:
           - name: Activity Level by Direction
-            model: ref(activity-data)
+            model: ${ref(activity-data)}
             props:
               type: barpolar
               r: ?{activity_level}
@@ -60,7 +60,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
         charts:
           - name: Activity Level Polar Chart
             traces:
-              - ref(Activity Level by Direction)
+              - ${ref(Activity Level by Direction)}
             layout:
               polar:
                 radialaxis:
@@ -119,7 +119,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
                 8,NW,2-3 m/s,3
         traces:
           - name: Wind Rose
-            model: ref(wind-data)
+            model: ${ref(wind-data)}
             columns:
               bar_color: | 
                 CASE speed 
@@ -141,7 +141,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
         charts:
           - name: Wind Rose Chart
             traces:
-              - ref(Wind Rose)
+              - ${ref(Wind Rose)}
             layout:
               polar:
                 radialaxis:
@@ -181,7 +181,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
                 300,3,5
         traces:
           - name: Custom Radial Barpolar
-            model: ref(custom-radial-data)
+            model: ${ref(custom-radial-data)}
             props:
               type: barpolar
               theta: ?{direction}
@@ -194,7 +194,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Barpolar/#attributes)
         charts:
           - name: Custom Radial Barpolar Chart
             traces:
-              - ref(Custom Radial Barpolar)
+              - ${ref(Custom Radial Barpolar)}
             layout:
               polar:
                 radialaxis:

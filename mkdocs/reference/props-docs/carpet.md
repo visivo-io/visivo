@@ -44,7 +44,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Carpet/#attributes) f
                 5,9,6,7
         traces:
           - name: Carpet Plot with Custom Axes
-            model: ref(carpet-data-axes)
+            model: ${ref(carpet-data-axes)}
             props:
               type: carpet
               a: ?{a}
@@ -61,7 +61,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Carpet/#attributes) f
         charts:
           - name: Simple Carpet Chart
             traces:
-              - ref(Carpet Plot with Custom Axes)
+              - ${ref(Carpet Plot with Custom Axes)}
             layout:
               title:
                 text: Carpet Plot with Custom Axes<br><sub>With Customized A and B Axes</sub>

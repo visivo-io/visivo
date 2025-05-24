@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Volume/#attributes) f
 
         traces:
           - name: Simple Isosurface Plot Trace
-            model: ref(isosurface-data-simple)
+            model: ${ref(isosurface-data-simple)}
             props:
               type: isosurface
               x: ?{x}
@@ -62,7 +62,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Volume/#attributes) f
         charts:
           - name: Simple Isosurface Chart
             traces:
-              - ref(Simple Isosurface Plot Trace)
+              - ${ref(Simple Isosurface Plot Trace)}
             layout:
               title:
                 text: Simple Isosurface Plot<br><sub>3D Volume Visualization</sub>

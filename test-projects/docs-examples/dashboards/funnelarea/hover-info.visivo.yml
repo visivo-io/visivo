@@ -10,7 +10,7 @@ models:
         Won,100
 traces:
   - name: Funnelarea Plot with Hover Info
-    model: ref(funnelarea-data-hover)
+    model: ${ref(funnelarea-data-hover)}
     props:
       type: funnelarea
       labels: ?{stage}
@@ -19,7 +19,7 @@ traces:
 charts:
   - name: Funnelarea Chart with Hover Info
     traces:
-      - ref(Funnelarea Plot with Hover Info)
+      - ${ref(Funnelarea Plot with Hover Info)}
     layout:
       title:
         text: Funnelarea Chart with Hover Info<br><sub>Sales Funnel with Hover Details</sub>

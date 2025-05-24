@@ -13,8 +13,8 @@ export default defineConfig({
     // this sets a default port to 3000
     port: 3000,
     proxy: {
-      '/data': 'http://localhost:8000',
-      '/api': 'http://localhost:8000',
+      '/data': 'http://127.0.0.1:8000',
+      '/api': 'http://127.0.0.1:8000',
     },
   },
   build: {

@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: points_trace
-    model: ref(multiple_points_data)
+    model: ${ref(multiple_points_data)}
     props:
       type: scatter
       x: ?{x}

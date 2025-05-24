@@ -23,7 +23,7 @@ class TestClass(BaseModel):
 class Trace(NamedModel, ParentModel):
     """
     The Trace is one of the most important objects within a Visivo Project. You can think of a trace as a single series on a chart (ie. one line, a sequence of bars, a big number ect.).
-
+    {% raw %}
     !!! example
         `Total Revenue by Week` would be a trace. Once you define this metric in a single trace in your project, you can add it to as many charts as you want. This is especially powerful since charts are able to join disparate axis automatically. Meaning you can define a trace for `Revenue Per Week` and then define another trace for `Revenue per Day` and include both of those traces on the same chart with no extra configuration needed.
 
@@ -81,6 +81,7 @@ class Trace(NamedModel, ParentModel):
         - ?{ "Cryptocurrency Name" in ('Bitcoin (btc)', 'Ethereum (eth)', 'Dogecoin (doge)') }
         - ?{ "Measure Name" = 'Price, USD' }
     ```
+    {% endraw %}
     """
 
     name: str = Field(

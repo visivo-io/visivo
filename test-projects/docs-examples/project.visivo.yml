@@ -2,7 +2,7 @@ path: project
 name: docs-examples
 
 dashboards:
-  - name: "Taught A Second Time"
+  - name: "Monty Python Quests"
     level: 0
     tags: 
       - "Staging Data"

@@ -1,0 +1,28 @@
+models:
+  - name: scattergeo-data-lines
+    args:
+      - echo
+      - |
+        lon,lat
+        -75,40
+        -80,25
+        -120,47
+        -100,35
+        -90,30
+traces:
+  - name: Scattergeo Plot with Lines
+    model: ${ref(scattergeo-data-lines)}
+    props:
+      type: scattergeo
+      lon: ?{lon}
+      lat: ?{lat}
+      mode: "lines+markers"
+charts:
+  - name: Scattergeo Chart with Lines
+    traces:
+      - ${ref(Scattergeo Plot with Lines)}
+    layout:
+      title:
+        text: Scattergeo Plot with Lines<br><sub>Connecting Geographic Points</sub>
+      geo:
+        scope: "world" 

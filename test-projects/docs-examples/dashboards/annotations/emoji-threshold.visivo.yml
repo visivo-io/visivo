@@ -12,7 +12,7 @@ models:
 
 traces:
   - name: threshold_emoji_trace
-    model: ref(threshold_emoji_data)
+    model: ${ref(threshold_emoji_data)}
     props:
       type: scatter
       x: ?{x}

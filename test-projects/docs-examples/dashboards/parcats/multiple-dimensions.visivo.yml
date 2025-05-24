@@ -1,0 +1,32 @@
+models:
+  - name: parcats-data-multi
+    args:
+      - echo
+      - |
+        category_1,category_2,category_3,value
+        A,X,Alpha,30
+        A,Y,Beta,20
+        B,X,Alpha,25
+        B,Y,Gamma,25
+traces:
+  - name: Parcats Plot with Multiple Dimensions
+    model: ${ref(parcats-data-multi)}
+    props:
+      type: parcats
+      dimensions:
+        - label: "Category 1"
+          values: ?{category_1}
+        - label: "Category 2"
+          values: ?{category_2}
+        - label: "Category 3"
+          values: ?{category_3}
+      line:
+        color: ?{value}
+        colorscale: "Blues"
+charts:
+  - name: Parcats Chart with Multiple Dimensions
+    traces:
+      - ${ref(Parcats Plot with Multiple Dimensions)}
+    layout:
+      title:
+        text: Parcats Chart with Multiple Dimensions<br><sub>Flow Across Three Categories</sub> 

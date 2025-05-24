@@ -16,9 +16,9 @@ dashboards:
             width: 5
       - height: medium
         items:
-          - chart: ref(Simple Heatmap Chart)
-          - chart: ref(Heatmap Chart with Categorical Axis)
+          - chart: ${ref(Simple Heatmap Chart)}
+          - chart: ${ref(Heatmap Chart with Categorical Axis)}
       - height: medium
         items:
-          - chart: ref(Heatmap Chart with Text Annotations)
+          - chart: ${ref(Heatmap Chart with Text Annotations)}
           - markdown: ""

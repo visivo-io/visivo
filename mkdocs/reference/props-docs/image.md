@@ -25,7 +25,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
 
         Here's a simple `image` plot displaying an image based on pixel values:
 
-        ![](../../assets/example-charts/props/image/simple-image.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -41,14 +40,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
                 1,1,0,0
         traces:
           - name: Simple Image Plot
-            model: ref(image-data)
+            model: ${ref(image-data)}
             props:
               type: image
               z: ?{z}
         charts:
           - name: Simple Image Chart
             traces:
-              - ref(Simple Image Plot)
+              - ${ref(Simple Image Plot)}
             layout:
               title:
                 text: Simple Image Plot<br><sub>Raster Image Display</sub>
@@ -58,7 +57,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
 
         This example demonstrates an `image` plot with a custom colorscale to better represent the image data:
 
-        ![](../../assets/example-charts/props/image/custom-colorscale-image.png)
 
         Here's the code:
 
@@ -74,7 +72,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
                 0.9,1.0,0.2,0.3
         traces:
           - name: Image Plot with Custom Colorscale
-            model: ref(image-data-custom)
+            model: ${ref(image-data-custom)}
             props:
               type: image
               z: ?{z}
@@ -82,7 +80,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
         charts:
           - name: Image Plot with Custom Colorscale
             traces:
-              - ref(Image Plot with Custom Colorscale)
+              - ${ref(Image Plot with Custom Colorscale)}
             layout:
               title:
                 text: Image Plot with Custom Colorscale<br><sub>Custom Coloring for Image Data</sub>
@@ -92,7 +90,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
 
         This example shows an `image` plot with axis labels and annotations to provide context for the image data:
 
-        ![](../../assets/example-charts/props/image/annotated-image.png)
 
         Here's the code:
 
@@ -108,14 +105,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Image/#attributes) fo
                 0,0,1,1
         traces:
           - name: Image Plot with Axis Annotations
-            model: ref(image-data-annotated)
+            model: ${ref(image-data-annotated)}
             props:
               type: image
               z: ?{z}
         charts:
           - name: Image Plot with Axis Annotations
             traces:
-              - ref(Image Plot with Axis Annotations)
+              - ${ref(Image Plot with Axis Annotations)}
             layout:
               title:
                 text: Image Plot with Axis Annotations<br><sub>Image with Axes</sub>

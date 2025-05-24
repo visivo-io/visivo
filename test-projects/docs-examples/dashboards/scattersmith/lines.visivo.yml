@@ -1,0 +1,25 @@
+models:
+  - name: scattersmith-data-lines
+    args:
+      - echo
+      - |
+        real,imaginary
+        0.2,0.1
+        0.5,0.4
+        0.7,0.6
+        1.0,0.8
+traces:
+  - name: Scattersmith Plot with Lines
+    model: ${ref(scattersmith-data-lines)}
+    props:
+      type: scattersmith
+      real: ?{real}
+      imag: ?{imaginary}
+      mode: "lines+markers"
+charts:
+  - name: Scattersmith Chart with Lines
+    traces:
+      - ${ref(Scattersmith Plot with Lines)}
+    layout:
+      title:
+        text: Scattersmith Plot with Lines<br><sub>Connecting Data Points on Smith Chart</sub> 

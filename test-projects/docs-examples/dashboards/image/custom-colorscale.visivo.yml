@@ -8,7 +8,7 @@ models:
         "[0.1,0.2,0.3,0.4]","[0.5,0.6,0.7,0.8]","[0.9,1.0,0.2,0.3]"
 traces:
   - name: Image Plot with Custom Colorscale Trace
-    model: ref(image-data-custom)
+    model: ${ref(image-data-custom)}
     props:
       type: image
       z: 
@@ -22,7 +22,7 @@ traces:
 charts:
   - name: Image Plot with Custom Colorscale
     traces:
-      - ref(Image Plot with Custom Colorscale Trace)
+      - ${ref(Image Plot with Custom Colorscale Trace)}
     layout:
       title:
         text: Image Plot with Custom Colorscale<br><sub>Custom Coloring for Image Data</sub>

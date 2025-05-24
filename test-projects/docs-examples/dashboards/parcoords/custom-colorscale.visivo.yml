@@ -1,0 +1,31 @@
+models:
+  - name: parcoords-data-colorscale
+    args:
+      - echo
+      - |
+        variable_1,variable_2,variable_3
+        1,2,3
+        2,3,4
+        3,4,5
+traces:
+  - name: Parcoords Plot with Custom Colorscale
+    model: ${ref(parcoords-data-colorscale)}
+    props:
+      type: parcoords
+      dimensions:
+        - label: "Variable 1"
+          values: ?{variable_1}
+        - label: "Variable 2"
+          values: ?{variable_2}
+        - label: "Variable 3"
+          values: ?{variable_3}
+      line:
+        color: ?{variable_3}
+        colorscale: "Jet"
+charts:
+  - name: Parcoords Chart with Custom Colorscale
+    traces:
+      - ${ref(Parcoords Plot with Custom Colorscale)}
+    layout:
+      title:
+        text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub> 

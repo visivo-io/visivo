@@ -44,11 +44,11 @@ Returns:
             - name: dynamic-chart
               traces:
               {%- if env_var('LOCALITY') == 'DEV' %}
-                - ref(dev-trace)
+                - ${ref(dev-trace)}
               {%- elif  env_var('LOCALITY') == 'STAGING' %}
-                - ref(staging-trace)
+                - ${ref(staging-trace)}
               {% else %}
-                - ref(prod-trace)
+                - ${ref(prod-trace)}
               {% endif %}
               layout:
                 title:
@@ -59,7 +59,7 @@ Returns:
         charts:
             - name: dynamic-chart
               traces:
-                - ref(dev-trace)
+                - ${ref(dev-trace)}
               layout:
                 title:
                   text: "Dyanmic Chart With Trace DEV"
@@ -225,8 +225,8 @@ Returns:
         charts:
           - name: ranged-chart
             traces: 
-              - ref(trace1)
-              - ref(trace2)
+              - ${ref(trace1)}
+              - ${ref(trace2)}
             layout 
               xaxis:
                 range: 
@@ -240,8 +240,8 @@ Returns:
         charts:
           - name: ranged-chart
             traces:
-              - ref(trace1)
-              - ref(trace2)
+              - ${ref(trace1)}
+              - ${ref(trace2)}
             layout
             xaxis:
               range:
@@ -278,7 +278,7 @@ This function is very useful to passing in configurations to Visivo for jinja lo
         {%- for account in accounts %}
         traces:
           - name: {{ account }}-orders-per-week
-            model: ref(orders)
+            model: ${ref(orders)}
             props:
               type: bar 
               x: ?{ date_trunc('week', created_at) }
@@ -291,7 +291,7 @@ This function is very useful to passing in configurations to Visivo for jinja lo
         ```yaml title="dir/project.visivo.yml"
         traces:
           - name: Acme Co-orders-per-week
-            model: ref(orders)
+            model: ${ref(orders)}
             props:
               type: bar 
               x: ?{ date_trunc('week', created_at) }
@@ -299,7 +299,7 @@ This function is very useful to passing in configurations to Visivo for jinja lo
             filters:
               - ?{ account_name = 'Acme Co'}
           - name: Knights of Ni LTD-orders-per-week
-            model: ref(orders)
+            model: ${ref(orders)}
             props:
               type: bar 
               x: ?{ date_trunc('week', created_at) }

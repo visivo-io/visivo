@@ -45,7 +45,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
                 F,B,10
         traces:
           - name: Simple Sunburst Plot
-            model: ref(sunburst-data)
+            model: ${ref(sunburst-data)}
             props:
               type: sunburst
               labels: ?{labels}
@@ -54,7 +54,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
         charts:
           - name: Simple Sunburst Chart
             traces:
-              - ref(Simple Sunburst Plot)
+              - ${ref(Simple Sunburst Plot)}
             layout:
               title:
                 text: Simple Sunburst Chart<br><sub>Hierarchical Data Visualization</sub>
@@ -84,7 +84,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
                 F,B,10,#e377c2
         traces:
           - name: Sunburst Plot with Custom Colors
-            model: ref(sunburst-data-colors)
+            model: ${ref(sunburst-data-colors)}
             props:
               type: sunburst
               labels: ?{labels}
@@ -95,7 +95,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
         charts:
           - name: Sunburst Chart with Custom Colors
             traces:
-              - ref(Sunburst Plot with Custom Colors)
+              - ${ref(Sunburst Plot with Custom Colors)}
             layout:
               title:
                 text: Sunburst Plot with Custom Colors<br><sub>Custom Colors for Each Category</sub>
@@ -125,7 +125,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
                 F,B,10,7
         traces:
           - name: Sunburst Plot with Custom Sizes
-            model: ref(sunburst-data-sizes)
+            model: ${ref(sunburst-data-sizes)}
             props:
               type: sunburst
               labels: ?{labels}
@@ -138,7 +138,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Sunburst/#attributes)
         charts:
           - name: Sunburst Chart with Custom Sizes
             traces:
-              - ref(Sunburst Plot with Custom Sizes)
+              - ${ref(Sunburst Plot with Custom Sizes)}
             layout:
               title:
                 text: Sunburst Plot with Custom Sizes<br><sub>Custom Sizes for Each Segment</sub>

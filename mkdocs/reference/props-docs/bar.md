@@ -35,7 +35,7 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
         traces:
           - name: Count Enemies Encountered by Knight
-            model: ref(monty-python-quest-data)
+            model: ${ref(monty-python-quest-data)}
             cohort_on: "person"
             props:
               type: bar 
@@ -47,7 +47,7 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         charts: 
           - name: Count Times Enemy Was Encountered by Knight
             traces: 
-              - ref(Count Enemies Encountered by Knight)
+              - ${ref(Count Enemies Encountered by Knight)}
             layout: 
               title: 
                 text: Cohorted Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest by Knight</sub>
@@ -66,7 +66,7 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
         traces:
           - name: Count Enemies Encountered by Knight
-            model: ref(monty-python-quest-data)
+            model: ${ref(monty-python-quest-data)}
             cohort_on: "person"
             props:
               type: bar 
@@ -79,7 +79,7 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         charts: 
           - name: Count Times Enemy Was Encountered by Knight
             traces: 
-              - ref(Count Enemies Encountered by Knight)
+              - ${ref(Count Enemies Encountered by Knight)}
             layout: 
               title: 
                 text: Cohorted Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest by Knight</sub>
@@ -100,7 +100,7 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
               - "https://raw.githubusercontent.com/visivo-io/data/refs/heads/main/monty_python_quests.csv"
         traces:
           - name: Count Enemies Encountered by Knight H
-            model: ref(monty-python-quest-data-h)
+            model: ${ref(monty-python-quest-data-h)}
             cohort_on: "person"
             props:
               type: bar 
@@ -117,7 +117,7 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         charts: 
           - name: Count Times Enemy Was Encountered by Knight H
             traces: 
-              - ref(Count Enemies Encountered by Knight H)
+              - ${ref(Count Enemies Encountered by Knight H)}
             layout: 
               title: 
                 text: Horizontal Cohorted Bar<br><sub>The Number of Times an Enemy was Enountered on a Quest by Knight</sub>

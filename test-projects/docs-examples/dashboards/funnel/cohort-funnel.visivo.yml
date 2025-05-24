@@ -18,7 +18,7 @@ models:
         Purchase,300,Product C
 traces:
   - name: Cohort Funnel Chart
-    model: ref(funnel-data-cohorts)
+    model: ${ref(funnel-data-cohorts)}
     cohort_on: product
     props:
       type: funnel
@@ -33,7 +33,7 @@ traces:
 charts:
   - name: Funnel Chart with Cohorts
     traces:
-      - ref(Cohort Funnel Chart)
+      - ${ref(Cohort Funnel Chart)}
     layout:
       title:
         text: Funnel Chart with Cohorts<br><sub>Customer Journey by Product</sub>

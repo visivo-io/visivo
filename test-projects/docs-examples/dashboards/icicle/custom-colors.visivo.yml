@@ -12,7 +12,7 @@ models:
         F,B,15,"#8c564b"
 traces:
   - name: Custom Colors Icicle Plot
-    model: ref(icicle-data-custom)
+    model: ${ref(icicle-data-custom)}
     props:
       type: icicle
       labels: ?{category}
@@ -24,7 +24,7 @@ traces:
 charts:
   - name: Custom Colors Icicle Chart
     traces:
-      - ref(Custom Colors Icicle Plot)
+      - ${ref(Custom Colors Icicle Plot)}
     layout:
       title:
         text: Icicle Plot with Custom Colors<br><sub>Custom Coloring for Branches</sub>

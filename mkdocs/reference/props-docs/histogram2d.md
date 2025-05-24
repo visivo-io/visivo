@@ -14,7 +14,7 @@ You can customize the binning along both axes, as well as the colorscale and agg
     - **Density Plots**: Showing the density of data points across two dimensions.
     - **Statistical Analysis**: Identifying patterns, correlations, or anomalies in bivariate data.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Histogram2d/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -47,7 +47,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
                 4,2
         traces:
           - name: Simple 2D Histogram Plot
-            model: ref(histogram2d-data)
+            model: ${ref(histogram2d-data)}
             props:
               type: histogram2d
               x: ?{x}
@@ -56,7 +56,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
         charts:
           - name: Simple 2D Histogram Chart
             traces:
-              - ref(Simple 2D Histogram Plot)
+              - ${ref(Simple 2D Histogram Plot)}
             layout:
               title:
                 text: Simple 2D Histogram<br><sub>Data Distribution Across Two Dimensions</sub>
@@ -94,7 +94,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
                 4,4
         traces:
           - name: 2D Histogram with Custom Bins
-            model: ref(histogram2d-data-bins)
+            model: ${ref(histogram2d-data-bins)}
             props:
               type: histogram2d
               x: ?{x}
@@ -107,7 +107,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
         charts:
           - name: 2D Histogram with Custom Bins
             traces:
-              - ref(2D Histogram with Custom Bins)
+              - ${ref(2D Histogram with Custom Bins)}
             layout:
               title:
                 text: 2D Histogram with Custom Bins<br><sub>Custom Binning Along X and Y Axes</sub>
@@ -145,7 +145,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
                 5,2
         traces:
           - name: 2D Histogram with Density Mode
-            model: ref(histogram2d-data-density)
+            model: ${ref(histogram2d-data-density)}
             props:
               type: histogram2d
               x: ?{x}
@@ -155,7 +155,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram2D/#attribut
         charts:
           - name: 2D Histogram with Density Mode
             traces:
-              - ref(2D Histogram with Density Mode)
+              - ${ref(2D Histogram with Density Mode)}
             layout:
               title:
                 text: 2D Histogram with Density Mode<br><sub>Density Distribution of Data</sub>

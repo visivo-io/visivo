@@ -44,7 +44,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
                 B,28
         traces:
           - name: Simple Violin Plot
-            model: ref(violin-data)
+            model: ${ref(violin-data)}
             props:
               type: violin
               x: ?{category}
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
         charts:
           - name: Simple Violin Chart
             traces:
-              - ref(Simple Violin Plot)
+              - ${ref(Simple Violin Plot)}
             layout:
               title:
                 text: Simple Violin Plot<br><sub>Distribution of Values by Category</sub>
@@ -81,7 +81,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
                 B,28
         traces:
           - name: Violin Plot with Box
-            model: ref(violin-data-box)
+            model: ${ref(violin-data-box)}
             cohort_on: category
             props:
               type: violin
@@ -96,7 +96,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
         charts:
           - name: Violin Chart with Box
             traces:
-              - ref(Violin Plot with Box)
+              - ${ref(Violin Plot with Box)}
             layout:
               title:
                 text: Violin Plot with Box Overlay<br><sub>Distribution with Box Plot and Data Points</sub>
@@ -134,7 +134,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
                 B,X,28
         traces:
           - name: Violin Plot Category X
-            model: ref(violin-data-split)
+            model: ${ref(violin-data-split)}
             cohort_on: sub_category
             props:
               type: violin
@@ -144,7 +144,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
             filters: 
               - ?{ sub_category = 'X'}
           - name: Violin Plot Category Y
-            model: ref(violin-data-split)
+            model: ${ref(violin-data-split)}
             cohort_on: sub_category
             props:
               type: violin
@@ -156,8 +156,8 @@ _**Check out the [Attributes](../configuration/Trace/Props/Violin/#attributes) f
         charts:
           - name: Violin Chart with Split Categories
             traces:
-              - ref(Violin Plot Category Y)
-              - ref(Violin Plot Category X)
+              - ${ref(Violin Plot Category Y)}
+              - ${ref(Violin Plot Category X)}
             layout:
               title:
                 text: Violin Plot with Split Categories<br><sub>Side-by-Side Comparison of Distributions</sub>

@@ -20,7 +20,7 @@ The [selector](/../reference/configuration/Selector/) enables you to **toggle be
         traces:
         # {% for date_grain in date_grains %}
           - name: issues-created-per-{{date_grain}}
-            model: ref(issues)
+            model: ${ref(issues)}
             cohort_on: "'{{date_grain}}'"
             props: 
               type: bar
@@ -36,7 +36,7 @@ The [selector](/../reference/configuration/Selector/) enables you to **toggle be
               type: single
             traces:
              #{% for date_grain in date_grains %}
-             - ref(issues-created-per-{{date_grain}})
+             - ${ref(issues-created-per-{{date_grain}})}
              #{% endfor %}   
             layout: 
               title: 
@@ -55,7 +55,7 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
     ``` yaml
     traces: 
       - name: revenue-per-week
-        model: ref(orders)
+        model: ${ref(orders)}
         props:
           type: scatter
           x: ?{ date_trunc('week', date) } 
@@ -65,7 +65,7 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
     ``` yaml
     traces: 
       - name: revenue-per-week
-        model: ref(orders)
+        model: ${ref(orders)}
         cohort_on: product_name
         props:
           type: scatter
@@ -75,19 +75,19 @@ The `cohort_on` block of the trace enables you to dynamically split out series b
 These cohort values are also the primary way you can create interactivity across your charts by telling a selector, when it should show different trace cohorts. 
 
 ## Re-use the Selector 
-You are able to reference [selectors](../reference/configuration/Selector/) from across your project on multiple charts By name using the `ref()` function. This enables you to connect charts to a single [selector](../reference/configuration/Selector/). 
+You are able to reference [selectors](/../reference/configuration/Selector/) from across your project on multiple charts By name using the `ref()` function. This enables you to connect charts to a single [selector](/../reference/configuration/Selector/). 
 
 !!! note 
     If the selector is defined _within a chart_, all of the **trace cohort** values from that chart will be used to set the options for the selector.
 
-    However if you define the [selector](../reference/configuration/Selector/) at the top of your project you can include as many traces as you want to pull in a broader selection of **trace cohorts**
+    However if you define the [selector](/../reference/configuration/Selector/) at the top of your project you can include as many traces as you want to pull in a broader selection of **trace cohorts**
 
 
 ## Position the Selector in a Dashboard
 You have two options for showing your selector in the dashboard. 
 
-1. You can define your [selector](../reference/configuration/Selector/) within a single chart. If you do this, your [selector](../reference/configuration/Selector/) will be present on that charts pop down menu. This is a great option if you want to provide interactivity without adding too much noise to the main dashboard canvas.  
+1. You can define your [selector](/../reference/configuration/Selector/) within a single chart. If you do this, your [selector](/../reference/configuration/Selector/) will be present on that charts pop down menu. This is a great option if you want to provide interactivity without adding too much noise to the main dashboard canvas.  
    ![](../assets/inchart-selector.png)
 
-2. You can place the [selector](../reference/configuration/Selector/) in a [dashboard item](../reference/configuration/Dashboard/Row/Item/) to have it occupy a dedicated spot on the dashboard canvas. 
+2. You can place the [selector](/../reference/configuration/Selector/) in a [dashboard item](/../reference/configuration/Dashboards/Dashboard/Row/Item/) to have it occupy a dedicated spot on the dashboard canvas. 
    ![](../assets/dash-selector.gif)

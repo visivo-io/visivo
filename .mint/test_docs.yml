@@ -42,6 +42,9 @@ tasks:
       poetry run pytest tests/parsers/test_schema_generator.py
       find tmp -name visivo_schema.json -exec cp {} ./mkdocs/assets \;
       poetry run python mkdocs/src/write_mkdocs_markdown_files.py
+      poetry run mkdocs serve > mkdocs.log 2>&1 &
+      sh mkdocs/check-connection.sh
+      wget --recursive --no-verbose --spider http://127.0.0.1:8000/ 2>&1 | grep -v -E 'OK$|^unlink|\.tmp\.tmp'
       PYTHONPATH=$PWD poetry run mkdocs build 2>&1 | tee build_stdout.txt
 
   - key: check-for-spelling-errors

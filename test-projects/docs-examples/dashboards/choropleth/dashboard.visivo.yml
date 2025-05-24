@@ -14,5 +14,5 @@ dashboards:
             width: 5 
       - height: medium 
         items: 
-          - chart: ref(Simple Choropleth Map)
+          - chart: ${ref(Simple Choropleth Map)}
           - markdown: ""

@@ -1,0 +1,30 @@
+models:
+  - name: parcats-data-linewidth
+    args:
+      - echo
+      - |
+        category_1,category_2,value,color
+        A,X,50,red
+        A,Y,30,green
+        B,X,40,yellow
+        B,Y,20,purple
+traces:
+  - name: Parcats Plot with Custom Line Widths
+    model: ${ref(parcats-data-linewidth)}
+    props:
+      type: parcats
+      dimensions:
+        - label: "Category 1"
+          values: ?{category_1}
+        - label: "Category 2"
+          values: ?{category_2}
+      line:
+        color: ?{color}
+        colorscale: "Jet"
+charts:
+  - name: Parcats Chart with Custom Line Widths
+    traces:
+      - ${ref(Parcats Plot with Custom Line Widths)}
+    layout:
+      title:
+        text: Parcats Chart with Custom Line Widths<br><sub>Custom Line Width Based on Values</sub> 

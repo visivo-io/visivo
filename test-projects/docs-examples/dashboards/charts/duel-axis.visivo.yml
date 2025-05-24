@@ -9,7 +9,7 @@ models:
 
 traces:
   - name: Yaxis Trace
-    model: ref(Series of Numbers)
+    model: ${ref(Series of Numbers)}
     props:
       type: bar
       y: ?{numbers_column}
@@ -19,7 +19,7 @@ traces:
     order_by:
       - ?{numbers_column}
   - name: Yaxis2 Trace
-    model: ref(Series of Numbers)
+    model: ${ref(Series of Numbers)}
     props:
       type: scatter
       y: ?{ (500 -  numbers_column) }
@@ -35,8 +35,8 @@ traces:
 charts:
   - name: Duel Axis
     traces:
-      - ref(Yaxis2 Trace)
-      - ref(Yaxis Trace)
+      - ${ref(Yaxis2 Trace)}
+      - ${ref(Yaxis Trace)}
     layout:
       title:
         text: "Dual Axis"

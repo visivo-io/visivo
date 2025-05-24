@@ -1,0 +1,37 @@
+models:
+  - name: heatmapgl-data
+    args:
+      - echo
+      - |
+        x,y,z
+        A,1,10
+        A,2,20
+        A,3,30
+        B,1,40
+        B,2,50
+        B,3,60
+        C,1,70
+        C,2,80
+        C,3,90
+traces:
+  - name: Simple Heatmapgl Plot
+    model: ${ref(heatmapgl-data)}
+    props:
+      type: heatmapgl
+      x: ?{x}
+      y: ?{y}
+      z: ?{z}
+      colorscale: "Viridis"
+charts:
+  - name: Simple Heatmapgl Chart
+    traces:
+      - ${ref(Simple Heatmapgl Plot)}
+    layout:
+      title:
+        text: Simple Heatmapgl Plot<br><sub>Efficient Heatmap Rendering with WebGL</sub>
+      xaxis:
+        title:
+          text: "X Axis"
+      yaxis:
+        title:
+          text: "Y Axis" 

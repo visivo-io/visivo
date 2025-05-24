@@ -11,7 +11,7 @@ models:
         2024-01-05,107,109,98,103
 traces:
   - name: Simple Candlestick Plot
-    model: ref(stock-data)
+    model: ${ref(stock-data)}
     props:
       type: candlestick
       x: ?{date}
@@ -23,7 +23,7 @@ traces:
 charts:
   - name: Simple Candlestick Chart
     traces:
-      - ref(Simple Candlestick Plot)
+      - ${ref(Simple Candlestick Plot)}
     layout:
       title:
         text: Simple Candlestick Chart<br><sub>Stock Price Movements</sub>
