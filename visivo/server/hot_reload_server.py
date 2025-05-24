@@ -56,7 +56,7 @@ class HotReloadServer:
         self.observer = None
         self.server_thread = None
         self.stop_event = Event()
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading")
 
         if not os.environ.get("DEBUG"):
             # Suppress Flask logging
@@ -94,8 +94,8 @@ class HotReloadServer:
                 port=port,
                 use_reloader=False,
                 allow_unsafe_werkzeug=True,
-                debug=bool(os.environ.get("STACKTRACE")),
-                log_output=bool(os.environ.get("STACKTRACE")),
+                debug=bool(os.environ.get("DEBUG")),
+                log_output=bool(os.environ.get("DEBUG")),
             )
 
         self.server_thread = Thread(target=run, daemon=True)

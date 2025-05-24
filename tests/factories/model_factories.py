@@ -16,11 +16,10 @@ from visivo.models.dashboards.external_dashboard import ExternalDashboard
 from visivo.models.item import Item
 from visivo.models.project import Project
 from visivo.models.table import Table
-from visivo.models.trace_props.scatter import Scatter
-from visivo.models.trace_props.surface import Surface
 from visivo.models.row import Row, HeightEnum
 from visivo.jobs.job import Job
 from visivo.models.dbt import Dbt
+from visivo.models.trace_props.trace_props import TraceProps
 
 
 class DestinationFactory(factory.Factory):
@@ -69,7 +68,7 @@ class SourceFactory(factory.Factory):
 
 class ScatterTracePropsFactory(factory.Factory):
     class Meta:
-        model = Scatter
+        model = TraceProps
 
     type = "scatter"
     x = "?{x}"
@@ -78,7 +77,7 @@ class ScatterTracePropsFactory(factory.Factory):
 
 class SurfaceTracePropsFactory(factory.Factory):
     class Meta:
-        model = Surface
+        model = TraceProps
 
     type = "surface"
     z = ["?{x+10}", "?{y+15}"]

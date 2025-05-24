@@ -18,6 +18,7 @@ from .commands.run import run
 from .commands.dist import dist
 from .commands.compile import compile
 from .commands.init import init
+from .commands.create import create
 from .commands.test import test
 from .commands.aggregate import aggregate
 from .commands.archive import archive
@@ -67,6 +68,7 @@ visivo.add_command(test)
 visivo.add_command(aggregate)
 visivo.add_command(archive)
 visivo.add_command(authorize)
+visivo.add_command(create)
 
 
 def load_env(env_file):
