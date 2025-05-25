@@ -6140,7 +6140,7 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Here's a simple <code>sankey</code> diagram showing how values flow between different categories:</p>
-<p><img alt="" src="../../assets/example-charts/props/sankey/simple-sankey.png"></p>
+<p><img alt="" src="../../../assets/example-charts/props/sankey/simple-sankey.png"></p>
 <p>You can copy this code below to create this chart in your project:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sankey-data</span>
@@ -6148,17 +6148,17 @@
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">        </span><span class="no">source,target,value</span>
-<span class="w">        </span><span class="no">A,B,10</span>
-<span class="w">        </span><span class="no">A,C,5</span>
-<span class="w">        </span><span class="no">B,D,15</span>
-<span class="w">        </span><span class="no">C,D,5</span>
+<span class="w">        </span><span class="no">0,1,10</span>
+<span class="w">        </span><span class="no">0,2,5</span>
+<span class="w">        </span><span class="no">1,3,15</span>
+<span class="w">        </span><span class="no">2,3,5</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Sankey Diagram</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(sankey-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(sankey-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sankey</span>
 <span class="w">      </span><span class="nt">node</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{unique([source, target])}</span>
+<span class="w">        </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"A"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"B"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"C"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"D"</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">link</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{source}</span>
 <span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{target}</span>
@@ -6166,7 +6166,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Sankey Diagram</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Sankey Diagram)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Sankey Diagram)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Sankey Diagram&lt;br&gt;&lt;sub&gt;Flow of Resources Between Nodes&lt;/sub&gt;</span>
@@ -6174,7 +6174,7 @@
 </div>
 <div class="tabbed-block">
 <p>This example demonstrates a <code>sankey</code> diagram with custom node and link colors:</p>
-<p><img alt="" src="../../assets/example-charts/props/sankey/custom-colors-sankey.png"></p>
+<p><img alt="" src="../../../assets/example-charts/props/sankey/custom-colors-sankey.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sankey-data-colors</span>
@@ -6182,17 +6182,17 @@
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">        </span><span class="no">source,target,value,color</span>
-<span class="w">        </span><span class="no">X,Y,10,#1f77b4</span>
-<span class="w">        </span><span class="no">X,Z,5,#ff7f0e</span>
-<span class="w">        </span><span class="no">Y,W,15,#2ca02c</span>
-<span class="w">        </span><span class="no">Z,W,5,#d62728</span>
+<span class="w">        </span><span class="no">0,1,10,#1f77b4</span>
+<span class="w">        </span><span class="no">0,2,5,#ff7f0e</span>
+<span class="w">        </span><span class="no">1,3,15,#2ca02c</span>
+<span class="w">        </span><span class="no">2,3,5,#d62728</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sankey Diagram with Custom Colors</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(sankey-data-colors)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(sankey-data-colors)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sankey</span>
 <span class="w">      </span><span class="nt">node</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{unique([source, target])}</span>
+<span class="w">        </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"X"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"Y"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"Z"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"W"</span><span class="p p-Indicator">]</span>
 <span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{color}</span>
 <span class="w">      </span><span class="nt">link</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{source}</span>
@@ -6201,7 +6201,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sankey Diagram with Custom Colors</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Sankey Diagram with Custom Colors)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Sankey Diagram with Custom Colors)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sankey Diagram with Custom Colors&lt;br&gt;&lt;sub&gt;Custom Colors for Nodes and Links&lt;/sub&gt;</span>
@@ -6209,7 +6209,7 @@
 </div>
 <div class="tabbed-block">
 <p>This example shows a <code>sankey</code> diagram where hover information displays both the value and the source-target relationship:</p>
-<p><img alt="" src="../../assets/example-charts/props/sankey/sankey-hover-info.png"></p>
+<p><img alt="" src="../../../assets/example-charts/props/sankey/sankey-hover-info.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sankey-data-hover</span>
@@ -6217,17 +6217,17 @@
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">        </span><span class="no">source,target,value</span>
-<span class="w">        </span><span class="no">P,Q,20</span>
-<span class="w">        </span><span class="no">P,R,10</span>
-<span class="w">        </span><span class="no">Q,S,15</span>
-<span class="w">        </span><span class="no">R,S,5</span>
+<span class="w">        </span><span class="no">0,1,20</span>
+<span class="w">        </span><span class="no">0,2,10</span>
+<span class="w">        </span><span class="no">1,3,15</span>
+<span class="w">        </span><span class="no">2,3,5</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sankey Diagram with Hover Information</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(sankey-data-hover)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(sankey-data-hover)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sankey</span>
 <span class="w">      </span><span class="nt">node</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{unique([source, target])}</span>
+<span class="w">        </span><span class="nt">label</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"P"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"Q"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"R"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"S"</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">link</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">source</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{source}</span>
 <span class="w">        </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{target}</span>
@@ -6236,7 +6236,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sankey Diagram with Hover Information</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Sankey Diagram with Hover Information)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Sankey Diagram with Hover Information)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Sankey Diagram with Hover Information&lt;br&gt;&lt;sub&gt;Hover Info Displaying Value and Relationships&lt;/sub&gt;</span>

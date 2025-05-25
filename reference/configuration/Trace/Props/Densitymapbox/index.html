@@ -6164,7 +6164,6 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Here's a simple <code>densitymapbox</code> plot showing the density of random points on a Mapbox map:</p>
-<p><img alt="" src="../../../../../assets/example-charts/props/densitymapbox/simple-densitymapbox.png"></p>
 <p>You can copy this code below to create this chart in your project:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">densitymapbox-data</span>
@@ -6179,7 +6178,7 @@
 <span class="w">        </span><span class="no">29.7604,-95.3698</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Densitymapbox Plot</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(densitymapbox-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(densitymapbox-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">densitymapbox</span>
 <span class="w">      </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lat}</span>
@@ -6191,7 +6190,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Densitymapbox Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Densitymapbox Plot)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Densitymapbox Plot)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Densitymapbox Plot&lt;br&gt;&lt;sub&gt;Spatial Data Density&lt;/sub&gt;</span>
@@ -6205,7 +6204,6 @@
 </div>
 <div class="tabbed-block">
 <p>This example demonstrates a <code>densitymapbox</code> plot with a custom radius for the points, which influences how smooth the heatmap appears:</p>
-<p><img alt="" src="../../../../../assets/example-charts/props/densitymapbox/custom-radius-densitymapbox.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">densitymapbox-data-radius</span>
@@ -6220,7 +6218,7 @@
 <span class="w">        </span><span class="no">34.0522,-118.2437</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Densitymapbox with Custom Radius</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(densitymapbox-data-radius)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(densitymapbox-data-radius)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">densitymapbox</span>
 <span class="w">      </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lat}</span>
@@ -6232,7 +6230,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Densitymapbox Chart with Custom Radius</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Densitymapbox with Custom Radius)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Densitymapbox with Custom Radius)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Densitymapbox Plot with Custom Radius&lt;br&gt;&lt;sub&gt;Radius of Influence on Heatmap&lt;/sub&gt;</span>
@@ -6246,7 +6244,6 @@
 </div>
 <div class="tabbed-block">
 <p>This example shows a <code>densitymapbox</code> plot with a custom colorscale and zoom centered on Europe:</p>
-<p><img alt="" src="../../../../../assets/example-charts/props/densitymapbox/custom-colorscale-densitymapbox.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">densitymapbox-data-colorscale</span>
@@ -6261,7 +6258,7 @@
 <span class="w">        </span><span class="no">51.1657,10.4515</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Densitymapbox with Custom Colorscale</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(densitymapbox-data-colorscale)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(densitymapbox-data-colorscale)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">densitymapbox</span>
 <span class="w">      </span><span class="nt">lat</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lat}</span>
@@ -6273,7 +6270,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Densitymapbox Chart with Custom Colorscale</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Densitymapbox with Custom Colorscale)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Densitymapbox with Custom Colorscale)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Densitymapbox Plot with Custom Colorscale&lt;br&gt;&lt;sub&gt;Custom Coloring and Center&lt;/sub&gt;</span>

@@ -6159,7 +6159,7 @@
 <span class="w">        </span><span class="no">315,3</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Activity Level by Direction</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(activity-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(activity-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
 <span class="w">      </span><span class="nt">r</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{activity_level}</span>
@@ -6171,7 +6171,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Activity Level Polar Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Activity Level by Direction)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Activity Level by Direction)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">polar</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">radialaxis</span><span class="p">:</span>
@@ -6225,7 +6225,7 @@
 <span class="w">        </span><span class="no">8,NW,2-3 m/s,3</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Wind Rose</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(wind-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(wind-data)}</span>
 <span class="w">    </span><span class="nt">columns</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">bar_color</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span><span class="w"> </span>
 <span class="w">        </span><span class="no">CASE speed </span>
@@ -6247,7 +6247,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Wind Rose Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Wind Rose)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Wind Rose)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">polar</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">radialaxis</span><span class="p">:</span>
@@ -6282,7 +6282,7 @@
 <span class="w">        </span><span class="no">300,3,5</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Custom Radial Barpolar</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(custom-radial-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(custom-radial-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">barpolar</span>
 <span class="w">      </span><span class="nt">theta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{direction}</span>
@@ -6295,7 +6295,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Custom Radial Barpolar Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Custom Radial Barpolar)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Custom Radial Barpolar)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">polar</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">radialaxis</span><span class="p">:</span>

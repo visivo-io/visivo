@@ -6132,7 +6132,7 @@
 <li><strong>3D Surface Rendering</strong>: Displaying 3D surfaces from a set of points and connectivity information.</li>
 </ul>
 </div>
-<p><em><strong>Check out the <a href="../configuration/Trace/Props/Mesh3D/#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<p><em><strong>Check out the <a href="../configuration/Trace/Props/Mesh3d/#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
 <h2 id="examples">Examples</h2>
 <div class="admonition example">
 <p class="admonition-title">Common Configurations</p>
@@ -6155,7 +6155,7 @@
 
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Mesh3D Plot</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(mesh3d-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(mesh3d-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mesh3d</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{x}</span>
@@ -6171,7 +6171,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Mesh3D Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Mesh3D Plot)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Mesh3D Plot)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Mesh3D Plot&lt;br&gt;&lt;sub&gt;3D Mesh Surface Visualization&lt;/sub&gt;</span>

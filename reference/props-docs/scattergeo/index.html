@@ -6140,7 +6140,7 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Here's a simple <code>scattergeo</code> plot showing data points at various geographic locations:</p>
-<p><img alt="" src="../../assets/example-charts/props/scattergeo/simple-scattergeo.png"></p>
+<p><img alt="" src="../../../assets/example-charts/props/scattergeo/simple-scattergeo.png"></p>
 <p>You can copy this code below to create this chart in your project:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattergeo-data</span>
@@ -6155,7 +6155,7 @@
 <span class="w">        </span><span class="no">-90,30</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattergeo Plot</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattergeo-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattergeo-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattergeo</span>
 <span class="w">      </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lon}</span>
@@ -6164,7 +6164,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattergeo Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Scattergeo Plot)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Scattergeo Plot)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattergeo Plot&lt;br&gt;&lt;sub&gt;Geographical Data Points&lt;/sub&gt;</span>
@@ -6174,7 +6174,7 @@
 </div>
 <div class="tabbed-block">
 <p>This example demonstrates a <code>scattergeo</code> plot with lines connecting geographic points:</p>
-<p><img alt="" src="../../assets/example-charts/props/scattergeo/lines-scattergeo.png"></p>
+<p><img alt="" src="../../../assets/example-charts/props/scattergeo/lines-scattergeo.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattergeo-data-lines</span>
@@ -6189,7 +6189,7 @@
 <span class="w">        </span><span class="no">-90,30</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattergeo Plot with Lines</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattergeo-data-lines)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattergeo-data-lines)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattergeo</span>
 <span class="w">      </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lon}</span>
@@ -6198,7 +6198,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattergeo Chart with Lines</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Scattergeo Plot with Lines)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattergeo Plot with Lines)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattergeo Plot with Lines&lt;br&gt;&lt;sub&gt;Connecting Geographic Points&lt;/sub&gt;</span>
@@ -6208,7 +6208,7 @@
 </div>
 <div class="tabbed-block">
 <p>Here's a <code>scattergeo</code> plot with custom marker sizes and colors, giving more visual weight to each geographic data point:</p>
-<p><img alt="" src="../../assets/example-charts/props/scattergeo/custom-markers-scattergeo.png"></p>
+<p><img alt="" src="../../../assets/example-charts/props/scattergeo/custom-markers-scattergeo.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattergeo-data-custom</span>
@@ -6223,7 +6223,7 @@
 <span class="w">        </span><span class="no">-90,30,30,#9467bd</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattergeo Plot with Custom Markers</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattergeo-data-custom)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattergeo-data-custom)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattergeo</span>
 <span class="w">      </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lon}</span>
@@ -6235,7 +6235,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattergeo Chart with Custom Markers</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Scattergeo Plot with Custom Markers)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattergeo Plot with Custom Markers)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattergeo Plot with Custom Markers&lt;br&gt;&lt;sub&gt;Custom Sizes and Colors for Geographic Data Points&lt;/sub&gt;</span>

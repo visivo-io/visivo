@@ -6140,7 +6140,6 @@
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>Here's a simple <code>scattermapbox</code> plot showing data points on a Mapbox map:</p>
-<p><img alt="" src="../../assets/example-charts/props/scattermapbox/simple-scattermapbox.png"></p>
 <p>You can copy this code below to create this chart in your project:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattermapbox-data</span>
@@ -6154,7 +6153,7 @@
 <span class="w">        </span><span class="no">139.6917,35.6895</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattermapbox Plot</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattermapbox-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattermapbox-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattermapbox</span>
 <span class="w">      </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lon}</span>
@@ -6165,7 +6164,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattermapbox Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Scattermapbox Plot)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Scattermapbox Plot)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"open-street-map"</span>
@@ -6175,7 +6174,6 @@
 </div>
 <div class="tabbed-block">
 <p>This example demonstrates a <code>scattermapbox</code> plot with lines connecting geographic points:</p>
-<p><img alt="" src="../../assets/example-charts/props/scattermapbox/lines-scattermapbox.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattermapbox-data-lines</span>
@@ -6189,7 +6187,7 @@
 <span class="w">        </span><span class="no">139.6917,35.6895</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattermapbox Plot with Lines</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattermapbox-data-lines)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattermapbox-data-lines)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattermapbox</span>
 <span class="w">      </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lon}</span>
@@ -6200,7 +6198,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattermapbox Chart with Lines</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Scattermapbox Plot with Lines)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattermapbox Plot with Lines)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"satellite-streets"</span>
@@ -6210,7 +6208,6 @@
 </div>
 <div class="tabbed-block">
 <p>Here's a <code>scattermapbox</code> plot with custom marker sizes and colors, giving more visual weight to each geographic data point:</p>
-<p><img alt="" src="../../assets/example-charts/props/scattermapbox/custom-markers-scattermapbox.png"></p>
 <p>Here's the code:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattermapbox-data-custom</span>
@@ -6224,7 +6221,7 @@
 <span class="w">        </span><span class="no">139.6917,35.6895,25,#d62728</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattermapbox Plot with Custom Markers</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattermapbox-data-custom)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattermapbox-data-custom)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattermapbox</span>
 <span class="w">      </span><span class="nt">lon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{lon}</span>
@@ -6236,7 +6233,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattermapbox Chart with Custom Markers</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Scattermapbox Plot with Custom Markers)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattermapbox Plot with Custom Markers)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">mapbox</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">"dark"</span>

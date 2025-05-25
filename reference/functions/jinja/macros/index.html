@@ -6353,11 +6353,11 @@ Returns:
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic-chart</span>
 <span class="w">      </span><span class="nt">traces</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- if env_var('LOCALITY') == 'DEV' %</span><span class="p p-Indicator">}</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(dev-trace)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(dev-trace)}</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- elif  env_var('LOCALITY') == 'STAGING' %</span><span class="p p-Indicator">}</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(staging-trace)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(staging-trace)}</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">else %</span><span class="p p-Indicator">}</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(prod-trace)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(prod-trace)}</span>
 <span class="w">      </span><span class="p p-Indicator">{</span><span class="err">%</span><span class="w"> </span><span class="nv">endif %</span><span class="p p-Indicator">}</span>
 <span class="w">      </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">title</span><span class="p">:</span>
@@ -6368,7 +6368,7 @@ Returns:
 <div class="highlight"><pre><span></span><code><span class="nt">charts</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dynamic-chart</span>
 <span class="w">      </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(dev-trace)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(dev-trace)}</span>
 <span class="w">      </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">"Dyanmic</span><span class="nv"> </span><span class="s">Chart</span><span class="nv"> </span><span class="s">With</span><span class="nv"> </span><span class="s">Trace</span><span class="nv"> </span><span class="s">DEV"</span>
@@ -6543,8 +6543,8 @@ Returns:
 <div class="highlight"><pre><span></span><code><span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ranged-chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span><span class="w"> </span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(trace1)</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(trace2)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(trace1)}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(trace2)}</span>
 <span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">layout</span><span class="w"> </span>
 <span class="w">      </span><span class="l l-Scalar l-Scalar-Plain">xaxis</span><span class="p p-Indicator">:</span>
 <span class="w">        </span><span class="nt">range</span><span class="p">:</span><span class="w"> </span>
@@ -6557,8 +6557,8 @@ Returns:
 <div class="highlight"><pre><span></span><code><span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ranged-chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(trace1)</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(trace2)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(trace1)}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(trace2)}</span>
 <span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">layout</span>
 <span class="w">    </span><span class="nt">xaxis</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">range</span><span class="p">:</span>
@@ -6595,7 +6595,7 @@ Returns:
 <span class="p p-Indicator">{</span><span class="err">%</span><span class="nv">- for account in accounts %</span><span class="p p-Indicator">}</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{{</span><span class="w"> </span><span class="nv">account</span><span class="w"> </span><span class="p p-Indicator">}}</span><span class="l l-Scalar l-Scalar-Plain">-orders-per-week</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(orders)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', created_at) }</span>
@@ -6608,7 +6608,7 @@ Returns:
 <div class="tabbed-block">
 <div class="highlight"><span class="filename">dir/project.visivo.yml</span><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Acme Co-orders-per-week</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(orders)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', created_at) }</span>
@@ -6616,7 +6616,7 @@ Returns:
 <span class="w">    </span><span class="nt">filters</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ account_name = 'Acme Co'}</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Knights of Ni LTD-orders-per-week</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(orders)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(orders)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span><span class="w"> </span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', created_at) }</span>

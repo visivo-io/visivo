@@ -6146,7 +6146,7 @@
 
 <div><h1 id="scattersmith">Scattersmith</h1>
 <h2 id="overview">Overview</h2>
-<p>The <code>scattersmith</code> trace type is used to create scatter plots on a Smith chart, which is typically used in electrical engineering to represent complex impedance and reflection coefficients in transmission lines. It allows for plotting data in terms of complex numbers, making it ideal for analyzing electrical circuits.</p>
+<p>The <code>scattersmith</code> trace type is used to create scatter plots on a Smith chart, which is typically used in electrical engineering to represent complex impedance and reflection coefficients in transmission lines. It allows for plotting data in terms of complex numbers (real and imaginary components), making it ideal for analyzing electrical circuits.</p>
 <p>You can customize the marker size, color, and lines to connect points, similar to scatter plots, but specifically tailored for Smith charts.</p>
 <div class="admonition tip">
 <p class="admonition-title">Common Uses</p>
@@ -6178,16 +6178,16 @@
 <span class="w">        </span><span class="no">1.2,0.7</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattersmith Plot</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattersmith-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattersmith-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattersmith</span>
 <span class="w">      </span><span class="nt">real</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{real}</span>
-<span class="w">      </span><span class="nt">imaginary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{imaginary}</span>
+<span class="w">      </span><span class="nt">imag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{imaginary}</span>
 <span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"markers"</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattersmith Chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple Scattersmith Plot)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Scattersmith Plot)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattersmith Plot&lt;br&gt;&lt;sub&gt;Data Points on Smith Chart&lt;/sub&gt;</span>
@@ -6209,16 +6209,16 @@
 <span class="w">        </span><span class="no">1.0,0.8</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattersmith Plot with Lines</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattersmith-data-lines)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattersmith-data-lines)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattersmith</span>
 <span class="w">      </span><span class="nt">real</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{real}</span>
-<span class="w">      </span><span class="nt">imaginary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{imaginary}</span>
+<span class="w">      </span><span class="nt">imag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{imaginary}</span>
 <span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"lines+markers"</span>
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattersmith Chart with Lines</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Scattersmith Plot with Lines)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattersmith Plot with Lines)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattersmith Plot with Lines&lt;br&gt;&lt;sub&gt;Connecting Data Points on Smith Chart&lt;/sub&gt;</span>
@@ -6240,11 +6240,11 @@
 <span class="w">        </span><span class="no">1.2,0.7,25,#d62728</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattersmith Plot with Custom Markers</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(scattersmith-data-custom)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattersmith-data-custom)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattersmith</span>
 <span class="w">      </span><span class="nt">real</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{real}</span>
-<span class="w">      </span><span class="nt">imaginary</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{imaginary}</span>
+<span class="w">      </span><span class="nt">imag</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{imaginary}</span>
 <span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"markers"</span>
 <span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{size}</span>
@@ -6252,7 +6252,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattersmith Chart with Custom Markers</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Scattersmith Plot with Custom Markers)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattersmith Plot with Custom Markers)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattersmith Plot with Custom Markers&lt;br&gt;&lt;sub&gt;Custom Sizes and Colors for Smith Chart Data Points&lt;/sub&gt;</span>

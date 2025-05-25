@@ -6389,7 +6389,7 @@
 
 <div><p>There's a few things that you will need to get configured to get started with your visivo project. We will walk through those together in this article to help get you up and running fast! 
 <div class="video-container"><iframe src="https://www.youtube.com/embed/BWiwYpDCuek?si=jEFhQKq9kPEoFycl" style="position:relative;width:100%;height:22.172vw" frameborder="0" allowfullscreen alt="type:video"></iframe></div></p>
-<p><em>Still have questions after reading? Reach out to <a href="mailto:join@visiov.io">join@visivo.io</a> and we'd be happy to help.</em></p>
+<p><em>Still have questions after reading? Reach out to <a href="mailto:jared@visiov.io">jared@visivo.io</a> and we'd be happy to help.</em></p>
 <h3 id="install-visivo-python-package">Install Visivo Python Package</h3>
 <p>You can easily install visivo via <code>pip</code>:
 </p><div class="highlight"><pre><span></span><code>pip install visivo
@@ -6473,7 +6473,7 @@ Now you have access to the <code>visivo</code> CLI!
 <span class="w">    </span><span class="nt">sql</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">select * from widget_fact_table</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_trace</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(widget_sales)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(widget_sales)}</span>
 <span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{ date_trunc('week', completed_at) }</span>
@@ -6485,7 +6485,7 @@ Now you have access to the <code>visivo</code> CLI!
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(simple_trace)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(simple_trace)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Widget Sales by Week</span>
 
@@ -6495,7 +6495,7 @@ Now you have access to the <code>visivo</code> CLI!
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
 <span class="w">        </span><span class="nt">items</span><span class="p">:</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">            </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(simple_chart)</span>
+<span class="w">            </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(simple_chart)}</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 <span class="w">            </span><span class="nt">markdown</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">              </span><span class="no"># Here is the first</span>
@@ -6540,7 +6540,7 @@ Then you can just run <code>visivo test</code> and Visivo will default to remote
 <p>Here's a simple example of a trace:
 </p><div class="highlight"><span class="filename">project_dir/project.visivo.yml</span><pre><span></span><code><span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_trace</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(widget_sales)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(widget_sales)}</span>
 <span class="w">    </span><span class="nt">cohort_on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widget</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scatter</span>
@@ -6565,7 +6565,7 @@ We won't go into all of the details of the trace here, but a few things to note:
 </p><div class="highlight"><span class="filename">project_dir/project.visivo.yml</span><pre><span></span><code><span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">simple_chart</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(simple_trace)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(simple_trace)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Widget Sales by Week</span>
 </code></pre></div>
@@ -6584,7 +6584,7 @@ Here's how that looks in yaml:
 <span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medium</span>
 <span class="w">        </span><span class="nt">items</span><span class="p">:</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
-<span class="w">            </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(simple_chart)</span>
+<span class="w">            </span><span class="nt">chart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(simple_chart)}</span>
 <span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
 <span class="w">            </span><span class="nt">markdown</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
 <span class="w">              </span><span class="no"># Here is the first</span>

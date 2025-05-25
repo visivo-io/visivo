@@ -6156,7 +6156,7 @@
 <li><strong>Bivariate Statistical Analysis</strong>: Analyzing two variables and their joint behavior.</li>
 </ul>
 </div>
-<p><em><strong>Check out the <a href="../Histogram2DContour/#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
+<p><em><strong>Check out the <a href="./#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
 <h2 id="examples">Examples</h2>
 <div class="admonition example">
 <p class="admonition-title">Common Configurations</p>
@@ -6183,7 +6183,7 @@
 <span class="w">        </span><span class="no">5,3</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple 2D Contour Histogram</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(histogram2dcontour-data)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(histogram2dcontour-data)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">histogram2dcontour</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{x}</span>
@@ -6194,7 +6194,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple 2D Contour Histogram</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(Simple 2D Contour Histogram)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple 2D Contour Histogram)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple 2D Contour Histogram&lt;br&gt;&lt;sub&gt;Density Contours of Bivariate Data&lt;/sub&gt;</span>
@@ -6227,7 +6227,7 @@
 <span class="w">        </span><span class="no">6,4</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2D Contour Histogram with Filled Contours</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(histogram2dcontour-data-filled)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(histogram2dcontour-data-filled)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">histogram2dcontour</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{x}</span>
@@ -6238,7 +6238,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2D Contour Histogram with Filled Contours</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(2D Contour Histogram with Filled Contours)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(2D Contour Histogram with Filled Contours)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2D Contour Histogram with Filled Contours&lt;br&gt;&lt;sub&gt;Filled Density Contours&lt;/sub&gt;</span>
@@ -6271,7 +6271,7 @@
 <span class="w">        </span><span class="no">5,4</span>
 <span class="nt">traces</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2D Contour Histogram with Custom Bins</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(histogram2dcontour-data-bins)</span>
+<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(histogram2dcontour-data-bins)}</span>
 <span class="w">    </span><span class="nt">props</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">histogram2dcontour</span>
 <span class="w">      </span><span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{x}</span>
@@ -6284,7 +6284,7 @@
 <span class="nt">charts</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2D Contour Histogram with Custom Bins</span>
 <span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ref(2D Contour Histogram with Custom Bins)</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(2D Contour Histogram with Custom Bins)}</span>
 <span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">title</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2D Contour Histogram with Custom Bins&lt;br&gt;&lt;sub&gt;Custom Bin Sizes for X and Y&lt;/sub&gt;</span>
@@ -6532,7 +6532,7 @@
 <li>Sets the step between each contour level. Must be positive. </li>
 <li>Sets the starting contour level value. Must be less than <code>contours.end</code> </li>
 <li>If <code>levels</code>, the data is represented as a contour plot with multiple levels displayed. If <code>constraint</code>, the data is represented as constraints with the invalid region shaded as specified by the <code>operation</code> and <code>value</code> parameters. </li>
-<li>Sets the value or values of the constraint boundary. When <code>operation</code> is set to one of the comparison values (=,&lt;,&gt;=,&gt;,&lt;=) "value" is expected to be a number. When <code>operation</code> is set to one of the interval values ([],(),[),(],]<a href=",">,)(,</a>[) "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. </li>
+<li>Sets the value or values of the constraint boundary. When <code>operation</code> is set to one of the comparison values (=,&lt;,&gt;=,&gt;,&lt;=) "value" is expected to be a number. When <code>operation</code> is set to one of the interval values   "value" is expected to be an array of two numbers where the first is the lower bound and the second is the upper bound. </li>
 <li>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, "scatter" traces also appends customdata items in the markers DOM elements </li>
 <li>Specifies the binning function used for this histogram trace. If "count", the histogram values are computed by counting the number of values lying inside each bin. If "sum", "avg", "min", "max", the histogram values are computed using the sum, the average, the minimum or the maximum of the values lying inside each bin respectively. </li>
 <li>Specifies the type of normalization used for this histogram trace. If "", the span of each bar corresponds to the number of occurrences (i.e. the number of data points lying inside the bins). If "percent" / "probability", the span of each bar corresponds to the percentage / fraction of occurrences with respect to the total number of sample points (here, the sum of all bin HEIGHTS equals 100% / 1). If "density", the span of each bar corresponds to the number of occurrences in a bin divided by the size of the bin interval (here, the sum of all bin AREAS equals the total number of sample points). If "probability density", the area of each bar corresponds to the probability that an event will fall into the corresponding bin (here, the sum of all bin AREAS equals 1). </li>
