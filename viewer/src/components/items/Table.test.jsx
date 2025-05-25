@@ -195,31 +195,3 @@ test("handles number values in cells", async () => {
   expect(screen.getByText("12,345,678,901,234,568")).toBeInTheDocument();
   expect(screen.getByText("1,234,567,890.123")).toBeInTheDocument();
 });
-
-describe("Table component query and pivot functionality", () => {
-  test("executes queries against table data when query parameters are provided");
-  
-  test("filters table data based on query results");
-  
-  test("handles pivot table transformations on data");
-  
-  test("aggregates data correctly in pivot table mode");
-  
-  test("allows expanding and collapsing pivot table rows");
-  
-  test("properly renders pivot table headers with hierarchical structure");
-  
-  test("supports dynamic column generation based on pivot fields");
-  
-  test("maintains row selection state when pivoting data");
-  
-  test("exports pivoted data correctly in CSV format");
-  
-  test("applies formatting rules to pivot table aggregated values");
-  
-  test("handles empty result sets in pivot mode gracefully");
-  
-  test("supports drill-down from aggregated pivot cells");
-  
-  test("preserves sorting when switching between standard and pivot views");
-});

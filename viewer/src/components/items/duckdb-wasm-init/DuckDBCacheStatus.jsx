@@ -109,3 +109,5 @@ const DuckDBCacheStatus = memo(() => {
 });
 
 export default DuckDBCacheStatus;
+
+// not currently using this

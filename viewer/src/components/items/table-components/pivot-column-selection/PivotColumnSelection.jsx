@@ -29,7 +29,6 @@ const PivotColumnSelection = ({
 
   const {
     db,
-    setDb,
     isLoadingDuckDB,
     setIsLoadingDuckDB,
     duckDBStatus,

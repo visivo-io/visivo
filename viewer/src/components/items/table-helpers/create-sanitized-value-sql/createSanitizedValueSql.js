@@ -14,13 +14,13 @@ const createSanitizedValueSql = (fieldName) => {
             REPLACE(
               REPLACE(
                 CAST("${fieldName}" AS VARCHAR),
-                '$', ''  -- Remove dollar signs
+                '$', ''
               ),
-              '€', ''    -- Remove euro signs
+              '€', ''
             ),
-            ',', ''     -- Remove commas
+            ',', ''
           ),
-          ' ', ''      -- Remove spaces
+          ' ', ''
         ) = '-' THEN NULL
         ELSE REPLACE(
           REPLACE(

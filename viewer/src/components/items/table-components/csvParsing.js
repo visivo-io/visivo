@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import detectColumnType from "../table-helpers/detectColumnType";
+import detectColumnType from "../table-helpers/detect-column-type/detectColumnType";
 
 /**
  * Parses a CSV file and returns processed data with columns

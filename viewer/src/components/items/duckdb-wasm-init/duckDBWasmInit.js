@@ -131,14 +131,11 @@ export function initializeDuckDB(onStatusChange) {
   return dbPromise;
 }
 
-// Create a function to clean up DuckDB resources
 export function cleanupDuckDB(db) {
   if (db) {
     try {
       db.terminate();
-      // Reset the promise when we clean up
       dbPromise = null;
-      // Reset status
       initStatus = { state: "idle", progress: 0, message: "" };
       console.log("DuckDB resources cleaned up");
     } catch (error) {
