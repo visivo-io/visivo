@@ -114,10 +114,9 @@ export const useLoadDataToDuckDB = ({
           await conn.query(`DROP TABLE IF EXISTS table_data`);
         } catch (dropErr) {
           console.log("Error dropping table:", dropErr);
-
         }
 
-        // Use the existing utilities to determine column types
+        // Determine column types
         const columnTypes = {};
         Object.keys(data[0] || {}).forEach((key) => {
           // Use detectColumnType to determine the type

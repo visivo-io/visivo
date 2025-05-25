@@ -1,6 +1,7 @@
 import { Box, Button, Typography, Drawer, TextField } from "@mui/material";
 import CSVUploadButton from "../CSVUploadButton";
 import DuckDBStatus from "../DuckDBStatus";
+import { useState, useCallback } from "react";
 
 const DevTools = ({
   isDevMode,
@@ -9,26 +10,84 @@ const DevTools = ({
   db,
   onForceUpdate,
   canForceUpdate,
-  onToggleQueryDrawer,
-  showQueryDrawer,
-  // Query drawer props
-  customQuery,
-  setCustomQuery,
-  runCustomQuery,
-  // Debug data
   tableData,
   columns,
   pivotState,
-  // CSV upload props
   setIsPivoted,
   setPivotedData,
   setPivotedColumns,
-  useTable,
   loadDataToDuckDB,
-  setDb,
   setColumns,
   setTableData
 }) => {
+  // Internal state for CSV upload
+  const [isUploadProcessing, setIsUploadProcessing] = useState(false);
+  
+  // Internal state for query drawer - no need to pass these down!
+  const [customQuery, setCustomQuery] = useState("");
+  const [showQueryDrawer, setShowQueryDrawer] = useState(false);
+
+  // Internal query functions
+  const toggleQueryDrawer = useCallback(() => {
+    setShowQueryDrawer(prev => !prev);
+  }, []);
+
+  const runCustomQuery = useCallback(async () => {
+    if (!db) {
+      console.error("DuckDB is not initialized.");
+      return;
+    }
+
+    try {
+      const conn = await db.connect();
+      const result = await conn.query(customQuery);
+      const data = await result.toArray();
+
+      // Convert BigInt values for logging
+      const bigIntReplacer = (key, value) => {
+        if (typeof value === "bigint") return Number(value);
+        if (typeof value === "string" && !isNaN(value)) return Number(value);
+        return value;
+      };
+
+      console.log(
+        "Query result (viewable):",
+        JSON.stringify(data, bigIntReplacer, 2)
+      );
+      await conn.close();
+    } catch (error) {
+      console.error("Error executing query:", error);
+    }
+  }, [db, customQuery]);
+
+  const handleCSVUpload = useCallback(async ({ data, columns, fileName }) => {
+    setIsUploadProcessing(true);
+    
+    try {
+      // Reset pivot state
+      if (setIsPivoted) setIsPivoted(false);
+      if (setPivotedData) setPivotedData([]);
+      if (setPivotedColumns) setPivotedColumns([]);
+
+      // Update table data and columns
+      setTableData(data);
+      setColumns(columns);
+
+      // Handle DuckDB operations
+      if (db && loadDataToDuckDB) {
+        await loadDataToDuckDB(db, data);
+      } else {
+        console.log("No DB instance available - parent should initialize");
+      }
+      
+      console.log(`Successfully loaded ${fileName} with ${data.length} rows`);
+    } catch (error) {
+      console.error("Error loading CSV data:", error);
+    } finally {
+      setIsUploadProcessing(false);
+    }
+  }, [db, loadDataToDuckDB, setTableData, setColumns, setIsPivoted, setPivotedData, setPivotedColumns]);
+
   if (!isDevMode) return null;
 
   return (
@@ -80,22 +139,16 @@ const DevTools = ({
           </Button>
 
           <CSVUploadButton
-            duckDBStatus={duckDBStatus}
-            setIsPivoted={setIsPivoted}
-            setPivotedData={setPivotedData}
-            setPivotedColumns={setPivotedColumns}
-            db={db}
-            useTable={useTable}
-            loadDataToDuckDB={loadDataToDuckDB}
-            setDb={setDb}
-            setColumns={setColumns}
-            setTableData={setTableData}
+            disabled={duckDBStatus.state === "loading"}
+            isProcessing={isUploadProcessing}
+            onFileUpload={handleCSVUpload}
+            onError={(error) => console.error("CSV Upload Error:", error)}
           />
 
           <Button
             disabled={duckDBStatus.state === "loading" || !db}
             variant="contained"
-            onClick={onToggleQueryDrawer}
+            onClick={toggleQueryDrawer}
           >
             {showQueryDrawer ? "Hide Query Input" : "Show Custom Query Input Screen"}
           </Button>
@@ -104,11 +157,11 @@ const DevTools = ({
         </Box>
       </Box>
 
-      {/* Query Drawer - moved inside DevTools */}
+      {/* Query Drawer */}
       <Drawer
         anchor="right"
         open={showQueryDrawer}
-        onClose={onToggleQueryDrawer}
+        onClose={toggleQueryDrawer}
       >
         <Box
           sx={{
@@ -138,13 +191,11 @@ const DevTools = ({
             color="primary"
             onClick={runCustomQuery}
             disabled={!customQuery.trim()}
-          >
-            Run Query
-          </Button>
+          />
           <Button
             variant="outlined"
             color="secondary"
-            onClick={onToggleQueryDrawer}
+            onClick={toggleQueryDrawer}
           >
             Close Query
           </Button>
