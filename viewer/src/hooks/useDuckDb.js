@@ -27,11 +27,7 @@ export const useDuckDBInitialization = () => {
         });
     }
 
-    return () => {
-      if (db) {
-        db.close().catch(e => console.error("Error closing DuckDB:", e));
-      }
-    };
+
   }, [db]);
 
   const duckDBLoaded = duckDBStatus.state === DUCK_DB_COMPLETED_LOADING_STATUS
