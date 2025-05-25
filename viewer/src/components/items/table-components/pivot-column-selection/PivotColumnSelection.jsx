@@ -9,7 +9,6 @@ import { useDuckDBInitialization } from "../../../../hooks/useDuckDb";
 import { useLoadDataToDuckDB } from "../../../../hooks/useLoadDataToDuckDb";
 import { usePivotState } from "../../../../hooks/usePivotState";
 import { usePivotExecution } from "../../../../hooks/usePivotExecution";
-import { useDevTools } from "../../../../hooks/useDevTools";
 import DevTools from "../dev-tools/DevTools";
 
 const PivotColumnSelection = ({
@@ -23,9 +22,9 @@ const PivotColumnSelection = ({
   useTable: useTableFromParent,
 }) => {
   const pivotState = usePivotState();
-
   const [tableData, setTableData] = useState(initialData);
   const [columns, setColumns] = useState(initialColumns);
+  const [isDevMode] = useState(true); // set to true for development mode
   const dataLoadedRef = useRef(false);
 
   const {
@@ -36,16 +35,6 @@ const PivotColumnSelection = ({
     duckDBStatus,
   } = useDuckDBInitialization();
   const { executePivot: executePivotLogic } = usePivotExecution(db);
-
-  const { 
-    isDevMode, 
-    debugInformation, 
-    customQuery, 
-    setCustomQuery, 
-    showQueryDrawer, 
-    toggleQueryDrawer, 
-    runCustomQuery 
-  } = useDevTools(db);
 
   const loadDataToDuckDB = useLoadDataToDuckDB({
     setIsLoadingDuckDB,
@@ -171,16 +160,11 @@ const PivotColumnSelection = ({
         >
           <DevTools
             isDevMode={isDevMode}
-            debugInformation={debugInformation}
+            debugInformation={true}
             duckDBStatus={duckDBStatus}
             db={db}
             onForceUpdate={handleForceUpdate}
             canForceUpdate={pivotState.localPivotedData.length > 0}
-            onToggleQueryDrawer={() => toggleQueryDrawer(!showQueryDrawer)()} // Fix this line
-            showQueryDrawer={showQueryDrawer}
-            customQuery={customQuery}
-            setCustomQuery={setCustomQuery}
-            runCustomQuery={runCustomQuery}
             tableData={tableData}
             columns={columns}
             pivotState={pivotState}
@@ -189,7 +173,6 @@ const PivotColumnSelection = ({
             setPivotedColumns={(cols) => setPivotedColumns(cols || [])}
             useTable={useTableFromParent}
             loadDataToDuckDB={loadDataToDuckDB}
-            setDb={setDb}
             setColumns={handleSetColumns}
             setTableData={handleSetTableData}
           />

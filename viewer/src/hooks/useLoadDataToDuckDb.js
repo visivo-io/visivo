@@ -99,7 +99,6 @@ export const useLoadDataToDuckDB = ({
         return;
       }
 
-
       try {
         setIsLoadingDuckDB(true);
         const data = dataToLoad || tableData;

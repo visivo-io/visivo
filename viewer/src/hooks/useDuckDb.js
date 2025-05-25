@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { initializeDuckDB } from "../components/items/duckdb-wasm-init/duckDBWasmInit";
 
-const DUCK_DB_COMPLETED_LOADING_STATUS = "done";
+const DUCK_DB_COMPLETED_LOADING_STATUS = "success";
 
 export const useDuckDBInitialization = () => {
   const [db, setDb] = useState(null);
@@ -15,19 +15,17 @@ export const useDuckDBInitialization = () => {
   // Initialize DuckDB on component mount
   useEffect(() => {
     if (!db) {
-      console.log("Starting DuckDB initialization on component mount");
+      console.info("Starting DuckDB initialization on component mount");
 
       initializeDuckDB(setDuckDBStatus)
         .then((dbInstance) => {
-          console.log("DuckDB initialized successfully");
+          console.info("DuckDB initialized successfully");
           setDb(dbInstance);
         })
         .catch((error) => {
           console.error("DuckDB initialization failed:", error);
         });
     }
-
-
   }, [db]);
 
   const duckDBLoaded = duckDBStatus.state === DUCK_DB_COMPLETED_LOADING_STATUS
