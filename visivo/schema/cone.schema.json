@@ -104,61 +104,84 @@
   "type": "object",
   "properties": {
     "type": {
-      "oneOf": [
-        {
-          "const": "cone"
-        },
-        {
-          "$ref": "#/$defs/query-string"
-        }
-      ]
+      "const": "cone"
     },
     "anchor": {
       "oneOf": [
         {
-          "description": "Sets the cones' anchor with respect to their x/y/z positions. Note that *cm* denote the cone's center of mass which corresponds to 1/4 from the tail to tip.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "enum": [
             "tip",
             "tail",
             "cm",
             "center"
           ],
-          "default": "cm"
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          "default": "cm",
+          "description": "Sets the cones' anchor with respect to their x/y/z positions. Note that *cm* denote the cone's center of mass which corresponds to 1/4 from the tail to tip."
         }
       ]
     },
     "autocolorscale": {
-      "type": "object",
-      "properties": {
-        "impliedEdits": {}
-      }
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "boolean",
+          "default": true,
+          "description": "Determines whether the colorscale is a default palette (`autocolorscale: true`) or the palette determined by `colorscale`. In case `colorscale` is unspecified or `autocolorscale` is true, the default palette will be chosen according to whether numbers in the `color` array are all positive, all negative or mixed."
+        }
+      ]
     },
     "cauto": {
-      "type": "object",
-      "properties": {
-        "impliedEdits": {}
-      }
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "boolean",
+          "default": true,
+          "description": "Determines whether or not the color domain is computed with respect to the input data (here u/v/w norm) or the bounds set in `cmin` and `cmax` Defaults to `false` when `cmin` and `cmax` are set by the user."
+        }
+      ]
     },
     "cmax": {
-      "type": "object",
-      "properties": {
-        "impliedEdits": {}
-      }
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "default": null,
+          "description": "Sets the upper bound of the color domain. Value should have the same units as u/v/w norm and if set, `cmin` must be set as well."
+        }
+      ]
     },
     "cmid": {
-      "type": "object",
-      "properties": {
-        "impliedEdits": {}
-      }
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "default": null,
+          "description": "Sets the mid-point of the color domain by scaling `cmin` and/or `cmax` to be equidistant to this point. Value should have the same units as u/v/w norm. Has no effect when `cauto` is `false`."
+        }
+      ]
     },
     "cmin": {
-      "type": "object",
-      "properties": {
-        "impliedEdits": {}
-      }
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "default": null,
+          "description": "Sets the lower bound of the color domain. Value should have the same units as u/v/w norm and if set, `cmax` must be set as well."
+        }
+      ]
     },
     "coloraxis": {
       "oneOf": [
@@ -166,10 +189,10 @@
           "$ref": "#/$defs/query-string"
         },
         {
-          "description": "Sets a reference to a shared color axis. References to these shared color axes are *coloraxis*, *coloraxis2*, *coloraxis3*, etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis.",
           "type": "string",
-          "pattern": "/^coloraxis([2-9]|[1-9][0-9]+)?$/",
-          "default": null
+          "default": null,
+          "description": "Sets a reference to a shared color axis. References to these shared color axes are *coloraxis*, *coloraxis2*, *coloraxis3*, etc. Settings for these shared color axes are set in the layout, under `layout.coloraxis`, `layout.coloraxis2`, etc. Note that multiple color scales can be linked to the same color axis.",
+          "pattern": "/^coloraxis([2-9]|[1-9][0-9]+)?$/"
         }
       ]
     },
@@ -179,48 +202,45 @@
         "bgcolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/color",
-              "default": "#444"
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "$ref": "#/$defs/color"
             }
           ]
         },
         "bordercolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/color",
-              "default": "#444"
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "$ref": "#/$defs/color"
             }
           ]
         },
         "borderwidth": {
           "oneOf": [
             {
-              "description": "Sets the width (in px) or the border enclosing this color bar.",
-              "type": "number",
-              "minimum": 0,
-              "default": 0
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "description": "Sets the width (in px) or the border enclosing this color bar."
             }
           ]
         },
         "dtick": {
-          "type": "object",
-          "properties": {
-            "impliedEdits": {}
-          }
+          "description": "Sets the step in-between ticks on this axis. Use with `tick0`. Must be a positive number, or special strings available to *log* and *date* axes. If the axis `type` is *log*, then ticks are set every 10^(n*dtick) where n is the tick number. For example, to set a tick mark at 1, 10, 100, 1000, ... set dtick to 1. To set tick marks at 1, 100, 10000, ... set dtick to 2. To set tick marks at 1, 5, 25, 125, 625, 3125, ... set dtick to log_10(5), or 0.69897000433. *log* has several special values; *L<f>*, where `f` is a positive number, gives ticks linearly spaced in value (but not position). For example `tick0` = 0.1, `dtick` = *L0.5* will put ticks at 0.1, 0.6, 1.1, 1.6 etc. To show powers of 10 plus small digits between, use *D1* (all digits) or *D2* (only 2 and 5). `tick0` is ignored for *D1* and *D2*. If the axis `type` is *date*, then you must convert the time to milliseconds. For example, to set the interval between ticks to one day, set `dtick` to 86400000.0. *date* also has special values *M<n>* gives ticks spaced by a number of months. `n` must be a positive integer. To set ticks on the 15th of every third month, set `tick0` to *2000-01-15* and `dtick` to *M3*. To set ticks every 4 years, set `dtick` to *M48*"
         },
         "exponentformat": {
           "oneOf": [
             {
-              "description": "Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If *none*, it appears as 1,000,000,000. If *e*, 1e+9. If *E*, 1E+9. If *power*, 1x10^9 (with 9 in a super script). If *SI*, 1G. If *B*, 1B.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "none",
                 "e",
@@ -229,241 +249,234 @@
                 "SI",
                 "B"
               ],
-              "default": "B"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "B",
+              "description": "Determines a formatting rule for the tick exponents. For example, consider the number 1,000,000,000. If *none*, it appears as 1,000,000,000. If *e*, 1e+9. If *E*, 1E+9. If *power*, 1x10^9 (with 9 in a super script). If *SI*, 1G. If *B*, 1B."
             }
           ]
         },
         "labelalias": {
-          "description": "Replacement text for specific tick or hover labels. For example using {US: 'USA', CA: 'Canada'} changes US to USA and CA to Canada. The labels we would have shown must match the keys exactly, after adding any tickprefix or ticksuffix. For negative numbers the minus sign symbol used (U+2212) is wider than the regular ascii dash. That means you need to use \u22121 instead of -1. labelalias can be used with any axis type, and both keys (if needed) and values (if desired) can include html-like tags or MathJax.",
-          "default": false
+          "default": false,
+          "description": "Replacement text for specific tick or hover labels. For example using {US: 'USA', CA: 'Canada'} changes US to USA and CA to Canada. The labels we would have shown must match the keys exactly, after adding any tickprefix or ticksuffix. For negative numbers the minus sign symbol used (U+2212) is wider than the regular ascii dash. That means you need to use \u22121 instead of -1. labelalias can be used with any axis type, and both keys (if needed) and values (if desired) can include html-like tags or MathJax."
         },
         "len": {
           "oneOf": [
             {
-              "description": "Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends.",
-              "type": "number",
-              "minimum": 0,
-              "default": 1
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 1,
+              "description": "Sets the length of the color bar This measure excludes the padding of both ends. That is, the color bar length is this length minus the padding on both ends."
             }
           ]
         },
         "lenmode": {
           "oneOf": [
             {
-              "description": "Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot *fraction* or in *pixels. Use `len` to set the value.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "fraction",
                 "pixels"
               ],
-              "default": "fraction"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "fraction",
+              "description": "Determines whether this color bar's length (i.e. the measure in the color variation direction) is set in units of plot *fraction* or in *pixels. Use `len` to set the value."
             }
           ]
         },
         "minexponent": {
           "oneOf": [
             {
-              "description": "Hide SI prefix for 10^n if |n| is below this number. This only has an effect when `tickformat` is *SI* or *B*.",
-              "type": "number",
-              "minimum": 0,
-              "default": 3
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 3,
+              "description": "Hide SI prefix for 10^n if |n| is below this number. This only has an effect when `tickformat` is *SI* or *B*."
             }
           ]
         },
         "nticks": {
           "oneOf": [
             {
-              "description": "Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to *auto*.",
-              "type": "integer",
-              "minimum": 0,
-              "default": 0
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Specifies the maximum number of ticks for the particular axis. The actual number of ticks will be chosen automatically to be less than or equal to `nticks`. Has an effect only if `tickmode` is set to *auto*."
             }
           ]
         },
         "orientation": {
           "oneOf": [
             {
-              "description": "Sets the orientation of the colorbar.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "h",
                 "v"
               ],
-              "default": "v"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "v",
+              "description": "Sets the orientation of the colorbar."
             }
           ]
         },
         "outlinecolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/color",
-              "default": "#444"
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "$ref": "#/$defs/color"
             }
           ]
         },
         "outlinewidth": {
           "oneOf": [
             {
-              "description": "Sets the width (in px) of the axis line.",
-              "type": "number",
-              "minimum": 0,
-              "default": 1
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 1,
+              "description": "Sets the width (in px) of the axis line."
             }
           ]
         },
         "separatethousands": {
           "oneOf": [
             {
-              "description": "If \"true\", even 4-digit integers are separated",
-              "type": "boolean",
-              "default": false
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "boolean",
+              "default": false,
+              "description": "If \"true\", even 4-digit integers are separated"
             }
           ]
         },
         "showexponent": {
           "oneOf": [
             {
-              "description": "If *all*, all exponents are shown besides their significands. If *first*, only the exponent of the first tick is shown. If *last*, only the exponent of the last tick is shown. If *none*, no exponents appear.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "all",
                 "first",
                 "last",
                 "none"
               ],
-              "default": "all"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "all",
+              "description": "If *all*, all exponents are shown besides their significands. If *first*, only the exponent of the first tick is shown. If *last*, only the exponent of the last tick is shown. If *none*, no exponents appear."
             }
           ]
         },
         "showticklabels": {
           "oneOf": [
             {
-              "description": "Determines whether or not the tick labels are drawn.",
-              "type": "boolean",
-              "default": true
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "boolean",
+              "default": true,
+              "description": "Determines whether or not the tick labels are drawn."
             }
           ]
         },
         "showtickprefix": {
           "oneOf": [
             {
-              "description": "If *all*, all tick labels are displayed with a prefix. If *first*, only the first tick is displayed with a prefix. If *last*, only the last tick is displayed with a suffix. If *none*, tick prefixes are hidden.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "all",
                 "first",
                 "last",
                 "none"
               ],
-              "default": "all"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "all",
+              "description": "If *all*, all tick labels are displayed with a prefix. If *first*, only the first tick is displayed with a prefix. If *last*, only the last tick is displayed with a suffix. If *none*, tick prefixes are hidden."
             }
           ]
         },
         "showticksuffix": {
           "oneOf": [
             {
-              "description": "Same as `showtickprefix` but for tick suffixes.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "all",
                 "first",
                 "last",
                 "none"
               ],
-              "default": "all"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "all",
+              "description": "Same as `showtickprefix` but for tick suffixes."
             }
           ]
         },
         "thickness": {
           "oneOf": [
             {
-              "description": "Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels.",
-              "type": "number",
-              "minimum": 0,
-              "default": 30
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 30,
+              "description": "Sets the thickness of the color bar This measure excludes the size of the padding, ticks and labels."
             }
           ]
         },
         "thicknessmode": {
           "oneOf": [
             {
-              "description": "Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot *fraction* or in *pixels*. Use `thickness` to set the value.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "fraction",
                 "pixels"
               ],
-              "default": "pixels"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "pixels",
+              "description": "Determines whether this color bar's thickness (i.e. the measure in the constant color direction) is set in units of plot *fraction* or in *pixels*. Use `thickness` to set the value."
             }
           ]
         },
         "tick0": {
-          "type": "object",
-          "properties": {
-            "impliedEdits": {}
-          }
+          "description": "Sets the placement of the first tick on this axis. Use with `dtick`. If the axis `type` is *log*, then you must take the log of your starting tick (e.g. to set the starting tick to 100, set the `tick0` to 2) except when `dtick`=*L<f>* (see `dtick` for more info). If the axis `type` is *date*, it should be a date string, like date data. If the axis `type` is *category*, it should be a number, using the scale where each category is assigned a serial number from zero in the order it appears."
         },
         "tickangle": {
           "oneOf": [
             {
-              "description": "Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": -180,
               "maximum": 180,
-              "default": "auto"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "auto",
+              "description": "Sets the angle of the tick labels with respect to the horizontal. For example, a `tickangle` of -90 draws the tick labels vertically."
             }
           ]
         },
         "tickcolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/color",
-              "default": "#444"
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "$ref": "#/$defs/color"
             }
           ]
         },
@@ -473,381 +486,24 @@
             "color": {
               "oneOf": [
                 {
-                  "$ref": "#/$defs/color",
-                  "default": "#444"
+                  "$ref": "#/$defs/query-string"
                 },
                 {
-                  "$ref": "#/$defs/query-string"
+                  "$ref": "#/$defs/color"
                 }
               ]
             },
             "family": {
-              "oneOf": [
-                {
-                  "$ref": "#/$defs/query-string"
-                },
-                {
-                  "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
-                  "type": "string",
-                  "pattern": ".*\\S.*$"
-                }
-              ]
+              "pattern": ".*\\S.*$",
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "type": "string"
             },
             "lineposition": {
-              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
               "oneOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "none"
-                  ]
-                },
-                {
-                  "type": "string",
-                  "pattern": "^(under|over|through)(\\+(under|over|through))*$"
-                }
-              ],
-              "default": "none"
-            },
-            "shadow": {
-              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
-              "type": "string",
-              "default": "none"
-            },
-            "size": {
-              "oneOf": [
-                {
-                  "type": "number",
-                  "minimum": 1
-                },
                 {
                   "$ref": "#/$defs/query-string"
-                }
-              ]
-            },
-            "style": {
-              "oneOf": [
-                {
-                  "description": "Sets whether a font should be styled with a normal or italic face from its family.",
-                  "enum": [
-                    "normal",
-                    "italic"
-                  ],
-                  "default": "normal"
                 },
                 {
-                  "$ref": "#/$defs/query-string"
-                }
-              ]
-            },
-            "textcase": {
-              "oneOf": [
-                {
-                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
-                  "enum": [
-                    "normal",
-                    "word caps",
-                    "upper",
-                    "lower"
-                  ],
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
-                }
-              ]
-            },
-            "variant": {
-              "oneOf": [
-                {
-                  "description": "Sets the variant of the font.",
-                  "enum": [
-                    "normal",
-                    "small-caps",
-                    "all-small-caps",
-                    "all-petite-caps",
-                    "petite-caps",
-                    "unicase"
-                  ],
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
-                }
-              ]
-            },
-            "weight": {
-              "oneOf": [
-                {
-                  "description": "Sets the weight (or boldness) of the font.",
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 1000,
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
-                }
-              ]
-            }
-          }
-        },
-        "tickformat": {
-          "description": "Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*",
-          "type": "string",
-          "default": ""
-        },
-        "tickformatstops": {
-          "type": "object",
-          "properties": {
-            "items": {
-              "type": "object",
-              "properties": {
-                "tickformatstop": {
-                  "type": "object",
-                  "properties": {
-                    "dtickrange": {
-                      "oneOf": [
-                        {
-                          "description": "range [*min*, *max*], where *min*, *max* - dtick values which describe some zoom level, it is possible to omit *min* or *max* value by passing *null*",
-                          "type": "array",
-                          "items": {
-                            "oneOf": [
-                              {
-                                "$ref": "#/$defs/query-string"
-                              },
-                              {}
-                            ]
-                          },
-                          "minItems": 2,
-                          "maxItems": 2
-                        },
-                        {
-                          "$ref": "#/$defs/query-string"
-                        }
-                      ]
-                    },
-                    "enabled": {
-                      "oneOf": [
-                        {
-                          "description": "Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`.",
-                          "type": "boolean",
-                          "default": true
-                        },
-                        {
-                          "$ref": "#/$defs/query-string"
-                        }
-                      ]
-                    },
-                    "name": {
-                      "description": "When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template.",
-                      "type": "string"
-                    },
-                    "templateitemname": {
-                      "description": "Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`.",
-                      "type": "string"
-                    },
-                    "value": {
-                      "description": "string - dtickformat for described zoom level, the same as *tickformat*",
-                      "type": "string",
-                      "default": ""
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "ticklabeloverflow": {
-          "oneOf": [
-            {
-              "description": "Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is *hide past domain*. In other cases the default is *hide past div*.",
-              "enum": [
-                "allow",
-                "hide past div",
-                "hide past domain"
-              ]
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "ticklabelposition": {
-          "oneOf": [
-            {
-              "description": "Determines where tick labels are drawn relative to the ticks. Left and right options are used when `orientation` is *h*, top and bottom when `orientation` is *v*.",
-              "enum": [
-                "outside",
-                "inside",
-                "outside top",
-                "inside top",
-                "outside left",
-                "inside left",
-                "outside right",
-                "inside right",
-                "outside bottom",
-                "inside bottom"
-              ],
-              "default": "outside"
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "ticklabelstep": {
-          "oneOf": [
-            {
-              "description": "Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. `tick0` determines which labels are shown. Not implemented for axes with `type` *log* or *multicategory*, or when `tickmode` is *array*.",
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "ticklen": {
-          "oneOf": [
-            {
-              "description": "Sets the tick length (in px).",
-              "type": "number",
-              "minimum": 0,
-              "default": 5
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "tickmode": {
-          "type": "object",
-          "properties": {
-            "impliedEdits": {}
-          }
-        },
-        "tickprefix": {
-          "description": "Sets a tick label prefix.",
-          "type": "string",
-          "default": ""
-        },
-        "ticks": {
-          "oneOf": [
-            {
-              "description": "Determines whether ticks are drawn or not. If **, this axis' ticks are not drawn. If *outside* (*inside*), this axis' are drawn outside (inside) the axis lines.",
-              "enum": [
-                "outside",
-                "inside",
-                ""
-              ],
-              "default": ""
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "ticksuffix": {
-          "description": "Sets a tick label suffix.",
-          "type": "string",
-          "default": ""
-        },
-        "ticktext": {
-          "oneOf": [
-            {
-              "description": "Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to *array*. Used with `tickvals`.",
-              "type": "array",
-              "items": {
-                "oneOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "ticktextsrc": {
-          "description": "Sets the source reference on Chart Studio Cloud for `ticktext`.",
-          "type": "string"
-        },
-        "tickvals": {
-          "oneOf": [
-            {
-              "description": "Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to *array*. Used with `ticktext`.",
-              "type": "array",
-              "items": {
-                "oneOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "tickvalssrc": {
-          "description": "Sets the source reference on Chart Studio Cloud for `tickvals`.",
-          "type": "string"
-        },
-        "tickwidth": {
-          "oneOf": [
-            {
-              "description": "Sets the tick width (in px).",
-              "type": "number",
-              "minimum": 0,
-              "default": 1
-            },
-            {
-              "$ref": "#/$defs/query-string"
-            }
-          ]
-        },
-        "title": {
-          "type": "object",
-          "properties": {
-            "font": {
-              "type": "object",
-              "properties": {
-                "color": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/$defs/color",
-                      "default": "#444"
-                    },
-                    {
-                      "$ref": "#/$defs/query-string"
-                    }
-                  ]
-                },
-                "family": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/$defs/query-string"
-                    },
-                    {
-                      "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
-                      "type": "string",
-                      "pattern": ".*\\S.*$"
-                    }
-                  ]
-                },
-                "lineposition": {
-                  "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
                   "oneOf": [
                     {
                       "type": "string",
@@ -860,60 +516,413 @@
                       "pattern": "^(under|over|through)(\\+(under|over|through))*$"
                     }
                   ],
-                  "default": "none"
+                  "default": "none",
+                  "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                }
+              ]
+            },
+            "shadow": {
+              "default": "none",
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "type": "string"
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 1
+                }
+              ]
+            },
+            "style": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "normal",
+                    "italic"
+                  ],
+                  "default": "normal",
+                  "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                }
+              ]
+            },
+            "textcase": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "normal",
+                    "word caps",
+                    "upper",
+                    "lower"
+                  ],
+                  "default": "normal",
+                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                }
+              ]
+            },
+            "variant": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "normal",
+                    "small-caps",
+                    "all-small-caps",
+                    "all-petite-caps",
+                    "petite-caps",
+                    "unicase"
+                  ],
+                  "default": "normal",
+                  "description": "Sets the variant of the font."
+                }
+              ]
+            },
+            "weight": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000,
+                  "default": "normal",
+                  "description": "Sets the weight (or boldness) of the font."
+                }
+              ]
+            }
+          }
+        },
+        "tickformat": {
+          "default": "",
+          "description": "Sets the tick label formatting rule using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*",
+          "type": "string"
+        },
+        "tickformatstops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dtickrange": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {},
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "description": "range [*min*, *max*], where *min*, *max* - dtick values which describe some zoom level, it is possible to omit *min* or *max* value by passing *null*"
+                  }
+                ]
+              },
+              "enabled": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Determines whether or not this stop is used. If `false`, this stop is ignored even within its `dtickrange`."
+                  }
+                ]
+              },
+              "name": {
+                "description": "When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template.",
+                "type": "string"
+              },
+              "templateitemname": {
+                "description": "Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`.",
+                "type": "string"
+              },
+              "value": {
+                "default": "",
+                "description": "string - dtickformat for described zoom level, the same as *tickformat*",
+                "type": "string"
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "ticklabeloverflow": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "enum": [
+                "allow",
+                "hide past div",
+                "hide past domain"
+              ],
+              "description": "Determines how we handle tick labels that would overflow either the graph div or the domain of the axis. The default value for inside tick labels is *hide past domain*. In other cases the default is *hide past div*."
+            }
+          ]
+        },
+        "ticklabelposition": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "enum": [
+                "outside",
+                "inside",
+                "outside top",
+                "inside top",
+                "outside left",
+                "inside left",
+                "outside right",
+                "inside right",
+                "outside bottom",
+                "inside bottom"
+              ],
+              "default": "outside",
+              "description": "Determines where tick labels are drawn relative to the ticks. Left and right options are used when `orientation` is *h*, top and bottom when `orientation` is *v*."
+            }
+          ]
+        },
+        "ticklabelstep": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "description": "Sets the spacing between tick labels as compared to the spacing between ticks. A value of 1 (default) means each tick gets a label. A value of 2 means shows every 2nd label. A larger value n means only every nth tick is labeled. `tick0` determines which labels are shown. Not implemented for axes with `type` *log* or *multicategory*, or when `tickmode` is *array*."
+            }
+          ]
+        },
+        "ticklen": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "default": 5,
+              "description": "Sets the tick length (in px)."
+            }
+          ]
+        },
+        "tickmode": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "enum": [
+                "auto",
+                "linear",
+                "array"
+              ],
+              "description": "Sets the tick mode for this axis. If *auto*, the number of ticks is set via `nticks`. If *linear*, the placement of the ticks is determined by a starting position `tick0` and a tick step `dtick` (*linear* is the default value if `tick0` and `dtick` are provided). If *array*, the placement of the ticks is set via `tickvals` and the tick text is `ticktext`. (*array* is the default value if `tickvals` is provided)."
+            }
+          ]
+        },
+        "tickprefix": {
+          "default": "",
+          "description": "Sets a tick label prefix.",
+          "type": "string"
+        },
+        "ticks": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "enum": [
+                "outside",
+                "inside",
+                ""
+              ],
+              "default": "",
+              "description": "Determines whether ticks are drawn or not. If **, this axis' ticks are not drawn. If *outside* (*inside*), this axis' are drawn outside (inside) the axis lines."
+            }
+          ]
+        },
+        "ticksuffix": {
+          "default": "",
+          "description": "Sets a tick label suffix.",
+          "type": "string"
+        },
+        "ticktext": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "description": "Sets the text displayed at the ticks position via `tickvals`. Only has an effect if `tickmode` is set to *array*. Used with `tickvals`."
+            }
+          ]
+        },
+        "ticktextsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `ticktext`.",
+          "type": "string"
+        },
+        "tickvals": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "description": "Sets the values at which ticks on this axis appear. Only has an effect if `tickmode` is set to *array*. Used with `ticktext`."
+            }
+          ]
+        },
+        "tickvalssrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `tickvals`.",
+          "type": "string"
+        },
+        "tickwidth": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "default": 1,
+              "description": "Sets the tick width (in px)."
+            }
+          ]
+        },
+        "title": {
+          "type": "object",
+          "properties": {
+            "font": {
+              "type": "object",
+              "properties": {
+                "color": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "$ref": "#/$defs/color"
+                    }
+                  ]
+                },
+                "family": {
+                  "pattern": ".*\\S.*$",
+                  "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+                  "type": "string"
+                },
+                "lineposition": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "none"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                        }
+                      ],
+                      "default": "none",
+                      "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                    }
+                  ]
                 },
                 "shadow": {
+                  "default": "none",
                   "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
-                  "type": "string",
-                  "default": "none"
+                  "type": "string"
                 },
                 "size": {
                   "oneOf": [
                     {
-                      "type": "number",
-                      "minimum": 1
+                      "$ref": "#/$defs/query-string"
                     },
                     {
-                      "$ref": "#/$defs/query-string"
+                      "type": "number",
+                      "minimum": 1
                     }
                   ]
                 },
                 "style": {
                   "oneOf": [
                     {
-                      "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
                       "enum": [
                         "normal",
                         "italic"
                       ],
-                      "default": "normal"
-                    },
-                    {
-                      "$ref": "#/$defs/query-string"
+                      "default": "normal",
+                      "description": "Sets whether a font should be styled with a normal or italic face from its family."
                     }
                   ]
                 },
                 "textcase": {
                   "oneOf": [
                     {
-                      "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
                       "enum": [
                         "normal",
                         "word caps",
                         "upper",
                         "lower"
                       ],
-                      "default": "normal"
-                    },
-                    {
-                      "$ref": "#/$defs/query-string"
+                      "default": "normal",
+                      "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
                     }
                   ]
                 },
                 "variant": {
                   "oneOf": [
                     {
-                      "description": "Sets the variant of the font.",
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
                       "enum": [
                         "normal",
                         "small-caps",
@@ -922,24 +931,22 @@
                         "petite-caps",
                         "unicase"
                       ],
-                      "default": "normal"
-                    },
-                    {
-                      "$ref": "#/$defs/query-string"
+                      "default": "normal",
+                      "description": "Sets the variant of the font."
                     }
                   ]
                 },
                 "weight": {
                   "oneOf": [
                     {
-                      "description": "Sets the weight (or boldness) of the font.",
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 1000,
-                      "default": "normal"
-                    },
-                    {
-                      "$ref": "#/$defs/query-string"
+                      "default": "normal",
+                      "description": "Sets the weight (or boldness) of the font."
                     }
                   ]
                 }
@@ -948,15 +955,15 @@
             "side": {
               "oneOf": [
                 {
-                  "description": "Determines the location of color bar's title with respect to the color bar. Defaults to *top* when `orientation` if *v* and  defaults to *right* when `orientation` if *h*.",
+                  "$ref": "#/$defs/query-string"
+                },
+                {
                   "enum": [
                     "right",
                     "top",
                     "bottom"
-                  ]
-                },
-                {
-                  "$ref": "#/$defs/query-string"
+                  ],
+                  "description": "Determines the location of color bar's title with respect to the color bar. Defaults to *top* when `orientation` if *v* and  defaults to *right* when `orientation` if *h*."
                 }
               ]
             },
@@ -969,123 +976,129 @@
         "x": {
           "oneOf": [
             {
-              "description": "Sets the x position with respect to `xref` of the color bar (in plot fraction). When `xref` is *paper*, defaults to 1.02 when `orientation` is *v* and 0.5 when `orientation` is *h*. When `xref` is *container*, defaults to *1* when `orientation` is *v* and 0.5 when `orientation` is *h*. Must be between *0* and *1* if `xref` is *container* and between *-2* and *3* if `xref` is *paper*.",
-              "type": "number"
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "description": "Sets the x position with respect to `xref` of the color bar (in plot fraction). When `xref` is *paper*, defaults to 1.02 when `orientation` is *v* and 0.5 when `orientation` is *h*. When `xref` is *container*, defaults to *1* when `orientation` is *v* and 0.5 when `orientation` is *h*. Must be between *0* and *1* if `xref` is *container* and between *-2* and *3* if `xref` is *paper*."
             }
           ]
         },
         "xanchor": {
           "oneOf": [
             {
-              "description": "Sets this color bar's horizontal position anchor. This anchor binds the `x` position to the *left*, *center* or *right* of the color bar. Defaults to *left* when `orientation` is *v* and *center* when `orientation` is *h*.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "left",
                 "center",
                 "right"
-              ]
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              ],
+              "description": "Sets this color bar's horizontal position anchor. This anchor binds the `x` position to the *left*, *center* or *right* of the color bar. Defaults to *left* when `orientation` is *v* and *center* when `orientation` is *h*."
             }
           ]
         },
         "xpad": {
           "oneOf": [
             {
-              "description": "Sets the amount of padding (in px) along the x direction.",
-              "type": "number",
-              "minimum": 0,
-              "default": 10
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 10,
+              "description": "Sets the amount of padding (in px) along the x direction."
             }
           ]
         },
         "xref": {
           "oneOf": [
             {
-              "description": "Sets the container `x` refers to. *container* spans the entire `width` of the plot. *paper* refers to the width of the plotting area only.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "container",
                 "paper"
               ],
-              "default": "paper"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "paper",
+              "description": "Sets the container `x` refers to. *container* spans the entire `width` of the plot. *paper* refers to the width of the plotting area only."
             }
           ]
         },
         "y": {
           "oneOf": [
             {
-              "description": "Sets the y position with respect to `yref` of the color bar (in plot fraction). When `yref` is *paper*, defaults to 0.5 when `orientation` is *v* and 1.02 when `orientation` is *h*. When `yref` is *container*, defaults to 0.5 when `orientation` is *v* and 1 when `orientation` is *h*. Must be between *0* and *1* if `yref` is *container* and between *-2* and *3* if `yref` is *paper*.",
-              "type": "number"
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "description": "Sets the y position with respect to `yref` of the color bar (in plot fraction). When `yref` is *paper*, defaults to 0.5 when `orientation` is *v* and 1.02 when `orientation` is *h*. When `yref` is *container*, defaults to 0.5 when `orientation` is *v* and 1 when `orientation` is *h*. Must be between *0* and *1* if `yref` is *container* and between *-2* and *3* if `yref` is *paper*."
             }
           ]
         },
         "yanchor": {
           "oneOf": [
             {
-              "description": "Sets this color bar's vertical position anchor This anchor binds the `y` position to the *top*, *middle* or *bottom* of the color bar. Defaults to *middle* when `orientation` is *v* and *bottom* when `orientation` is *h*.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "top",
                 "middle",
                 "bottom"
-              ]
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              ],
+              "description": "Sets this color bar's vertical position anchor This anchor binds the `y` position to the *top*, *middle* or *bottom* of the color bar. Defaults to *middle* when `orientation` is *v* and *bottom* when `orientation` is *h*."
             }
           ]
         },
         "ypad": {
           "oneOf": [
             {
-              "description": "Sets the amount of padding (in px) along the y direction.",
-              "type": "number",
-              "minimum": 0,
-              "default": 10
+              "$ref": "#/$defs/query-string"
             },
             {
-              "$ref": "#/$defs/query-string"
+              "type": "number",
+              "minimum": 0,
+              "default": 10,
+              "description": "Sets the amount of padding (in px) along the y direction."
             }
           ]
         },
         "yref": {
           "oneOf": [
             {
-              "description": "Sets the container `y` refers to. *container* spans the entire `height` of the plot. *paper* refers to the height of the plotting area only.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "enum": [
                 "container",
                 "paper"
               ],
-              "default": "paper"
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": "paper",
+              "description": "Sets the container `y` refers to. *container* spans the entire `height` of the plot. *paper* refers to the height of the plotting area only."
             }
           ]
         }
       }
     },
     "colorscale": {
-      "type": "object",
-      "properties": {
-        "impliedEdits": {}
-      }
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "$ref": "#/$defs/colorscale"
+        }
+      ]
     },
     "customdata": {
       "oneOf": [
         {
-          "description": "Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, *scatter* traces also appends customdata items in the markers DOM elements",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -1096,10 +1109,8 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, *scatter* traces also appends customdata items in the markers DOM elements"
         }
       ]
     },
@@ -1108,47 +1119,59 @@
       "type": "string"
     },
     "hoverinfo": {
-      "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired.",
       "oneOf": [
         {
           "oneOf": [
             {
-              "type": "string",
-              "enum": [
-                "all",
-                "none",
-                "skip"
-              ]
+              "$ref": "#/$defs/query-string"
             },
             {
-              "type": "string",
-              "pattern": "^(x|y|z|u|v|w|norm|text|name)(\\+(x|y|z|u|v|w|norm|text|name))*$"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "none",
+                    "skip"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(x|y|z|u|v|w|norm|text|name)(\\+(x|y|z|u|v|w|norm|text|name))*$"
+                }
+              ],
+              "default": "x+y+z+norm+text+name",
+              "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired."
             }
-          ],
-          "default": "x+y+z+norm+text+name"
+          ]
         },
         {
           "type": "array",
           "items": {
             "oneOf": [
               {
-                "type": "string",
-                "enum": [
-                  "all",
-                  "none",
-                  "skip"
-                ]
+                "$ref": "#/$defs/query-string"
               },
               {
-                "type": "string",
-                "pattern": "^(x|y|z|u|v|w|norm|text|name)(\\+(x|y|z|u|v|w|norm|text|name))*$"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "none",
+                      "skip"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^(x|y|z|u|v|w|norm|text|name)(\\+(x|y|z|u|v|w|norm|text|name))*$"
+                  }
+                ],
+                "default": "x+y+z+norm+text+name",
+                "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired."
               }
-            ],
-            "default": "x+y+z+norm+text+name"
+            ]
           }
-        },
-        {
-          "$ref": "#/$defs/query-string"
         }
       ]
     },
@@ -1160,29 +1183,41 @@
       "type": "object",
       "properties": {
         "align": {
-          "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines",
           "oneOf": [
             {
-              "enum": [
-                "left",
-                "right",
-                "auto"
-              ],
-              "default": "auto"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "left",
+                    "right",
+                    "auto"
+                  ],
+                  "default": "auto",
+                  "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines"
+                }
+              ]
             },
             {
               "type": "array",
               "items": {
-                "enum": [
-                  "left",
-                  "right",
-                  "auto"
-                ],
-                "default": "auto"
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "enum": [
+                      "left",
+                      "right",
+                      "auto"
+                    ],
+                    "default": "auto",
+                    "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines"
+                  }
+                ]
               }
-            },
-            {
-              "$ref": "#/$defs/query-string"
             }
           ]
         },
@@ -1193,18 +1228,27 @@
         "bgcolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/color",
-              "default": "#444"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
             },
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/color",
-                "default": "#444"
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "$ref": "#/$defs/color"
+                  }
+                ]
               }
-            },
-            {
-              "$ref": "#/$defs/query-string"
             }
           ]
         },
@@ -1215,18 +1259,27 @@
         "bordercolor": {
           "oneOf": [
             {
-              "$ref": "#/$defs/color",
-              "default": "#444"
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
             },
             {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/color",
-                "default": "#444"
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "$ref": "#/$defs/color"
+                  }
+                ]
               }
-            },
-            {
-              "$ref": "#/$defs/query-string"
             }
           ]
         },
@@ -1240,18 +1293,27 @@
             "color": {
               "oneOf": [
                 {
-                  "$ref": "#/$defs/color",
-                  "default": "#444"
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "$ref": "#/$defs/color"
+                    }
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
-                    "$ref": "#/$defs/color",
-                    "default": "#444"
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "$ref": "#/$defs/color"
+                      }
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1263,14 +1325,14 @@
               "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
               "oneOf": [
                 {
-                  "type": "string",
-                  "pattern": ".*\\S.*$"
+                  "pattern": ".*\\S.*$",
+                  "type": "string"
                 },
                 {
                   "type": "array",
                   "items": {
-                    "type": "string",
-                    "pattern": ".*\\S.*$"
+                    "pattern": ".*\\S.*$",
+                    "type": "string"
                   }
                 },
                 {
@@ -1283,43 +1345,55 @@
               "type": "string"
             },
             "lineposition": {
-              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
               "oneOf": [
                 {
                   "oneOf": [
                     {
-                      "type": "string",
-                      "enum": [
-                        "none"
-                      ]
+                      "$ref": "#/$defs/query-string"
                     },
                     {
-                      "type": "string",
-                      "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "none"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                        }
+                      ],
+                      "default": "none",
+                      "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
                     }
-                  ],
-                  "default": "none"
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
                     "oneOf": [
                       {
-                        "type": "string",
-                        "enum": [
-                          "none"
-                        ]
+                        "$ref": "#/$defs/query-string"
                       },
                       {
-                        "type": "string",
-                        "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "none"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                          }
+                        ],
+                        "default": "none",
+                        "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
                       }
-                    ],
-                    "default": "none"
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1331,14 +1405,14 @@
               "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
               "oneOf": [
                 {
-                  "type": "string",
-                  "default": "none"
+                  "default": "none",
+                  "type": "string"
                 },
                 {
                   "type": "array",
                   "items": {
-                    "type": "string",
-                    "default": "none"
+                    "default": "none",
+                    "type": "string"
                   }
                 }
               ]
@@ -1350,18 +1424,29 @@
             "size": {
               "oneOf": [
                 {
-                  "type": "number",
-                  "minimum": 1
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 1
+                    }
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
-                    "type": "number",
-                    "minimum": 1
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 1
+                      }
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1370,27 +1455,39 @@
               "type": "string"
             },
             "style": {
-              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
               "oneOf": [
                 {
-                  "enum": [
-                    "normal",
-                    "italic"
-                  ],
-                  "default": "normal"
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "enum": [
+                        "normal",
+                        "italic"
+                      ],
+                      "default": "normal",
+                      "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                    }
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
-                    "enum": [
-                      "normal",
-                      "italic"
-                    ],
-                    "default": "normal"
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "enum": [
+                          "normal",
+                          "italic"
+                        ],
+                        "default": "normal",
+                        "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                      }
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1399,31 +1496,43 @@
               "type": "string"
             },
             "textcase": {
-              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
               "oneOf": [
                 {
-                  "enum": [
-                    "normal",
-                    "word caps",
-                    "upper",
-                    "lower"
-                  ],
-                  "default": "normal"
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "enum": [
+                        "normal",
+                        "word caps",
+                        "upper",
+                        "lower"
+                      ],
+                      "default": "normal",
+                      "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                    }
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
-                    "enum": [
-                      "normal",
-                      "word caps",
-                      "upper",
-                      "lower"
-                    ],
-                    "default": "normal"
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "enum": [
+                          "normal",
+                          "word caps",
+                          "upper",
+                          "lower"
+                        ],
+                        "default": "normal",
+                        "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                      }
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1432,35 +1541,47 @@
               "type": "string"
             },
             "variant": {
-              "description": "Sets the variant of the font.",
               "oneOf": [
                 {
-                  "enum": [
-                    "normal",
-                    "small-caps",
-                    "all-small-caps",
-                    "all-petite-caps",
-                    "petite-caps",
-                    "unicase"
-                  ],
-                  "default": "normal"
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "enum": [
+                        "normal",
+                        "small-caps",
+                        "all-small-caps",
+                        "all-petite-caps",
+                        "petite-caps",
+                        "unicase"
+                      ],
+                      "default": "normal",
+                      "description": "Sets the variant of the font."
+                    }
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
-                    "enum": [
-                      "normal",
-                      "small-caps",
-                      "all-small-caps",
-                      "all-petite-caps",
-                      "petite-caps",
-                      "unicase"
-                    ],
-                    "default": "normal"
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "enum": [
+                          "normal",
+                          "small-caps",
+                          "all-small-caps",
+                          "all-petite-caps",
+                          "petite-caps",
+                          "unicase"
+                        ],
+                        "default": "normal",
+                        "description": "Sets the variant of the font."
+                      }
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1469,25 +1590,37 @@
               "type": "string"
             },
             "weight": {
-              "description": "Sets the weight (or boldness) of the font.",
               "oneOf": [
                 {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 1000,
-                  "default": "normal"
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000,
+                      "default": "normal",
+                      "description": "Sets the weight (or boldness) of the font."
+                    }
+                  ]
                 },
                 {
                   "type": "array",
                   "items": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 1000,
-                    "default": "normal"
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000,
+                        "default": "normal",
+                        "description": "Sets the weight (or boldness) of the font."
+                      }
+                    ]
                   }
-                },
-                {
-                  "$ref": "#/$defs/query-string"
                 }
               ]
             },
@@ -1498,23 +1631,35 @@
           }
         },
         "namelength": {
-          "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis.",
           "oneOf": [
             {
-              "type": "integer",
-              "minimum": -1,
-              "default": 15
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": -1,
+                  "default": 15,
+                  "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis."
+                }
+              ]
             },
             {
               "type": "array",
               "items": {
-                "type": "integer",
-                "minimum": -1,
-                "default": 15
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": -1,
+                    "default": 15,
+                    "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis."
+                  }
+                ]
               }
-            },
-            {
-              "$ref": "#/$defs/query-string"
             }
           ]
         },
@@ -1528,14 +1673,14 @@
       "description": "Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example \"y: %{y}\" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, *xother* will be added to those with different x positions from the first point. An underscore before or after *(x|y)other* will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example \"Price: %{y:$.2f}\". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example \"Day: %{2019-01-01|%A}\". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available. Finally, the template string has access to variable `norm` Anything contained in tag `<extra>` is displayed in the secondary box, for example \"<extra>{fullData.name}</extra>\". To hide the secondary box completely, use an empty tag `<extra></extra>`.",
       "oneOf": [
         {
-          "type": "string",
-          "default": ""
+          "default": "",
+          "type": "string"
         },
         {
           "type": "array",
           "items": {
-            "type": "string",
-            "default": ""
+            "default": "",
+            "type": "string"
           }
         }
       ]
@@ -1548,14 +1693,14 @@
       "description": "Same as `text`.",
       "oneOf": [
         {
-          "type": "string",
-          "default": ""
+          "default": "",
+          "type": "string"
         },
         {
           "type": "array",
           "items": {
-            "type": "string",
-            "default": ""
+            "default": "",
+            "type": "string"
           }
         }
       ]
@@ -1567,7 +1712,9 @@
     "ids": {
       "oneOf": [
         {
-          "description": "Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -1578,10 +1725,8 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type."
         }
       ]
     },
@@ -1595,17 +1740,17 @@
           "$ref": "#/$defs/query-string"
         },
         {
-          "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
           "type": "string",
-          "pattern": "^legend([2-9]|[1-9][0-9]+)?$",
-          "default": "legend"
+          "default": "legend",
+          "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
+          "pattern": "^legend([2-9]|[1-9][0-9]+)?$"
         }
       ]
     },
     "legendgroup": {
+      "default": "",
       "description": "Sets the legend group for this trace. Traces and shapes part of the same legend group hide/show at the same time when toggling legend items.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "legendgrouptitle": {
       "type": "object",
@@ -1616,94 +1761,95 @@
             "color": {
               "oneOf": [
                 {
-                  "$ref": "#/$defs/color",
-                  "default": "#444"
+                  "$ref": "#/$defs/query-string"
                 },
                 {
-                  "$ref": "#/$defs/query-string"
+                  "$ref": "#/$defs/color"
                 }
               ]
             },
             "family": {
+              "pattern": ".*\\S.*$",
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "type": "string"
+            },
+            "lineposition": {
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
                 },
                 {
-                  "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
-                  "type": "string",
-                  "pattern": ".*\\S.*$"
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "none"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                    }
+                  ],
+                  "default": "none",
+                  "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
                 }
               ]
             },
-            "lineposition": {
-              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
-              "oneOf": [
-                {
-                  "type": "string",
-                  "enum": [
-                    "none"
-                  ]
-                },
-                {
-                  "type": "string",
-                  "pattern": "^(under|over|through)(\\+(under|over|through))*$"
-                }
-              ],
-              "default": "none"
-            },
             "shadow": {
+              "default": "none",
               "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
-              "type": "string",
-              "default": "none"
+              "type": "string"
             },
             "size": {
               "oneOf": [
                 {
-                  "type": "number",
-                  "minimum": 1
+                  "$ref": "#/$defs/query-string"
                 },
                 {
-                  "$ref": "#/$defs/query-string"
+                  "type": "number",
+                  "minimum": 1
                 }
               ]
             },
             "style": {
               "oneOf": [
                 {
-                  "description": "Sets whether a font should be styled with a normal or italic face from its family.",
+                  "$ref": "#/$defs/query-string"
+                },
+                {
                   "enum": [
                     "normal",
                     "italic"
                   ],
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
+                  "default": "normal",
+                  "description": "Sets whether a font should be styled with a normal or italic face from its family."
                 }
               ]
             },
             "textcase": {
               "oneOf": [
                 {
-                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
+                  "$ref": "#/$defs/query-string"
+                },
+                {
                   "enum": [
                     "normal",
                     "word caps",
                     "upper",
                     "lower"
                   ],
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
+                  "default": "normal",
+                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
                 }
               ]
             },
             "variant": {
               "oneOf": [
                 {
-                  "description": "Sets the variant of the font.",
+                  "$ref": "#/$defs/query-string"
+                },
+                {
                   "enum": [
                     "normal",
                     "small-caps",
@@ -1712,57 +1858,55 @@
                     "petite-caps",
                     "unicase"
                   ],
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
+                  "default": "normal",
+                  "description": "Sets the variant of the font."
                 }
               ]
             },
             "weight": {
               "oneOf": [
                 {
-                  "description": "Sets the weight (or boldness) of the font.",
+                  "$ref": "#/$defs/query-string"
+                },
+                {
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 1000,
-                  "default": "normal"
-                },
-                {
-                  "$ref": "#/$defs/query-string"
+                  "default": "normal",
+                  "description": "Sets the weight (or boldness) of the font."
                 }
               ]
             }
           }
         },
         "text": {
+          "default": "",
           "description": "Sets the title of the legend group.",
-          "type": "string",
-          "default": ""
+          "type": "string"
         }
       }
     },
     "legendrank": {
       "oneOf": [
         {
-          "description": "Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with *reversed* `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout.",
-          "type": "number",
-          "default": 1000
+          "$ref": "#/$defs/query-string"
         },
         {
-          "$ref": "#/$defs/query-string"
+          "type": "number",
+          "default": 1000,
+          "description": "Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with *reversed* `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout."
         }
       ]
     },
     "legendwidth": {
       "oneOf": [
         {
-          "description": "Sets the width (in px or fraction) of the legend for this trace.",
-          "type": "number",
-          "minimum": 0
+          "$ref": "#/$defs/query-string"
         },
         {
-          "$ref": "#/$defs/query-string"
+          "type": "number",
+          "minimum": 0,
+          "description": "Sets the width (in px or fraction) of the legend for this trace."
         }
       ]
     },
@@ -1772,98 +1916,98 @@
         "ambient": {
           "oneOf": [
             {
-              "description": "Ambient light increases overall color visibility but can wash out the image.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 1,
-              "default": 0.8
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 0.8,
+              "description": "Ambient light increases overall color visibility but can wash out the image."
             }
           ]
         },
         "diffuse": {
           "oneOf": [
             {
-              "description": "Represents the extent that incident rays are reflected in a range of angles.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 1,
-              "default": 0.8
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 0.8,
+              "description": "Represents the extent that incident rays are reflected in a range of angles."
             }
           ]
         },
         "facenormalsepsilon": {
           "oneOf": [
             {
-              "description": "Epsilon for face normals calculation avoids math issues arising from degenerate geometry.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 1,
-              "default": 1e-06
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 1e-06,
+              "description": "Epsilon for face normals calculation avoids math issues arising from degenerate geometry."
             }
           ]
         },
         "fresnel": {
           "oneOf": [
             {
-              "description": "Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 5,
-              "default": 0.2
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 0.2,
+              "description": "Represents the reflectance as a dependency of the viewing angle; e.g. paper is reflective when viewing it from the edge of the paper (almost 90 degrees), causing shine."
             }
           ]
         },
         "roughness": {
           "oneOf": [
             {
-              "description": "Alters specular reflection; the rougher the surface, the wider and less contrasty the shine.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 1,
-              "default": 0.5
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 0.5,
+              "description": "Alters specular reflection; the rougher the surface, the wider and less contrasty the shine."
             }
           ]
         },
         "specular": {
           "oneOf": [
             {
-              "description": "Represents the level that incident rays are reflected in a single direction, causing shine.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 2,
-              "default": 0.05
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 0.05,
+              "description": "Represents the level that incident rays are reflected in a single direction, causing shine."
             }
           ]
         },
         "vertexnormalsepsilon": {
           "oneOf": [
             {
-              "description": "Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 1,
-              "default": 1e-12
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 1e-12,
+              "description": "Epsilon for vertex normals calculation avoids math issues arising from degenerate geometry."
             }
           ]
         }
@@ -1875,42 +2019,42 @@
         "x": {
           "oneOf": [
             {
-              "description": "Numeric vector, representing the X coordinate for each vertex.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": -100000,
               "maximum": 100000,
-              "default": 100000
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 100000,
+              "description": "Numeric vector, representing the X coordinate for each vertex."
             }
           ]
         },
         "y": {
           "oneOf": [
             {
-              "description": "Numeric vector, representing the Y coordinate for each vertex.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": -100000,
               "maximum": 100000,
-              "default": 100000
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 100000,
+              "description": "Numeric vector, representing the Y coordinate for each vertex."
             }
           ]
         },
         "z": {
           "oneOf": [
             {
-              "description": "Numeric vector, representing the Z coordinate for each vertex.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": -100000,
               "maximum": 100000,
-              "default": 0
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 0,
+              "description": "Numeric vector, representing the Z coordinate for each vertex."
             }
           ]
         }
@@ -1927,26 +2071,26 @@
     "opacity": {
       "oneOf": [
         {
-          "description": "Sets the opacity of the surface. Please note that in the case of using high `opacity` values for example a value greater than or equal to 0.5 on two surfaces (and 0.25 with four surfaces), an overlay of multiple transparent surfaces may not perfectly be sorted in depth by the webgl API. This behavior may be improved in the near future and is subject to change.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "number",
           "minimum": 0,
           "maximum": 1,
-          "default": 1
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          "default": 1,
+          "description": "Sets the opacity of the surface. Please note that in the case of using high `opacity` values for example a value greater than or equal to 0.5 on two surfaces (and 0.25 with four surfaces), an overlay of multiple transparent surfaces may not perfectly be sorted in depth by the webgl API. This behavior may be improved in the near future and is subject to change."
         }
       ]
     },
     "reversescale": {
       "oneOf": [
         {
-          "description": "Reverses the color mapping if true. If true, `cmin` will correspond to the last color in the array and `cmax` will correspond to the first color.",
-          "type": "boolean",
-          "default": false
+          "$ref": "#/$defs/query-string"
         },
         {
-          "$ref": "#/$defs/query-string"
+          "type": "boolean",
+          "default": false,
+          "description": "Reverses the color mapping if true. If true, `cmin` will correspond to the last color in the array and `cmax` will correspond to the first color."
         }
       ]
     },
@@ -1956,62 +2100,62 @@
           "$ref": "#/$defs/query-string"
         },
         {
-          "description": "Sets a reference between this trace's 3D coordinate system and a 3D scene. If *scene* (the default value), the (x,y,z) coordinates refer to `layout.scene`. If *scene2*, the (x,y,z) coordinates refer to `layout.scene2`, and so on.",
           "type": "string",
-          "pattern": "^scene([2-9]|[1-9][0-9]+)?$",
-          "default": "scene"
+          "default": "scene",
+          "description": "Sets a reference between this trace's 3D coordinate system and a 3D scene. If *scene* (the default value), the (x,y,z) coordinates refer to `layout.scene`. If *scene2*, the (x,y,z) coordinates refer to `layout.scene2`, and so on.",
+          "pattern": "^scene([2-9]|[1-9][0-9]+)?$"
         }
       ]
     },
     "showlegend": {
       "oneOf": [
         {
-          "description": "Determines whether or not an item corresponding to this trace is shown in the legend.",
-          "type": "boolean",
-          "default": false
+          "$ref": "#/$defs/query-string"
         },
         {
-          "$ref": "#/$defs/query-string"
+          "type": "boolean",
+          "default": false,
+          "description": "Determines whether or not an item corresponding to this trace is shown in the legend."
         }
       ]
     },
     "showscale": {
       "oneOf": [
         {
-          "description": "Determines whether or not a colorbar is displayed for this trace.",
-          "type": "boolean",
-          "default": true
+          "$ref": "#/$defs/query-string"
         },
         {
-          "$ref": "#/$defs/query-string"
+          "type": "boolean",
+          "default": true,
+          "description": "Determines whether or not a colorbar is displayed for this trace."
         }
       ]
     },
     "sizemode": {
       "oneOf": [
         {
-          "description": "Determines whether `sizeref` is set as a *scaled* (i.e unitless) scalar (normalized by the max u/v/w norm in the vector field) or as *absolute* value (in the same units as the vector field). To display sizes in actual vector length use *raw*.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "enum": [
             "scaled",
             "absolute",
             "raw"
           ],
-          "default": "scaled"
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          "default": "scaled",
+          "description": "Determines whether `sizeref` is set as a *scaled* (i.e unitless) scalar (normalized by the max u/v/w norm in the vector field) or as *absolute* value (in the same units as the vector field). To display sizes in actual vector length use *raw*."
         }
       ]
     },
     "sizeref": {
       "oneOf": [
         {
-          "description": "Adjusts the cone size scaling. The size of the cones is determined by their u/v/w norm multiplied a factor and `sizeref`. This factor (computed internally) corresponds to the minimum \"time\" to travel across two successive x/y/z positions at the average velocity of those two successive positions. All cones in a given trace use the same factor. With `sizemode` set to *raw*, its default value is *1*. With `sizemode` set to *scaled*, `sizeref` is unitless, its default value is *0.5*. With `sizemode` set to *absolute*, `sizeref` has the same units as the u/v/w vector field, its the default value is half the sample's maximum vector norm.",
-          "type": "number",
-          "minimum": 0
+          "$ref": "#/$defs/query-string"
         },
         {
-          "$ref": "#/$defs/query-string"
+          "type": "number",
+          "minimum": 0,
+          "description": "Adjusts the cone size scaling. The size of the cones is determined by their u/v/w norm multiplied a factor and `sizeref`. This factor (computed internally) corresponds to the minimum \"time\" to travel across two successive x/y/z positions at the average velocity of those two successive positions. All cones in a given trace use the same factor. With `sizemode` set to *raw*, its default value is *1*. With `sizemode` set to *scaled*, `sizeref` is unitless, its default value is *0.5*. With `sizemode` set to *absolute*, `sizeref` has the same units as the u/v/w vector field, its the default value is half the sample's maximum vector norm."
         }
       ]
     },
@@ -2021,28 +2165,21 @@
         "maxpoints": {
           "oneOf": [
             {
-              "description": "Sets the maximum number of points to keep on the plots from an incoming stream. If `maxpoints` is set to *50*, only the newest 50 points will be displayed on the plot.",
+              "$ref": "#/$defs/query-string"
+            },
+            {
               "type": "number",
               "minimum": 0,
               "maximum": 10000,
-              "default": 500
-            },
-            {
-              "$ref": "#/$defs/query-string"
+              "default": 500,
+              "description": "Sets the maximum number of points to keep on the plots from an incoming stream. If `maxpoints` is set to *50*, only the newest 50 points will be displayed on the plot."
             }
           ]
         },
         "token": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/query-string"
-            },
-            {
-              "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
-              "type": "string",
-              "pattern": ".*\\S.*$"
-            }
-          ]
+          "pattern": ".*\\S.*$",
+          "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
+          "type": "string"
         }
       }
     },
@@ -2050,14 +2187,14 @@
       "description": "Sets the text elements associated with the cones. If trace `hoverinfo` contains a *text* flag and *hovertext* is not set, these elements will be seen in the hover labels.",
       "oneOf": [
         {
-          "type": "string",
-          "default": ""
+          "default": "",
+          "type": "string"
         },
         {
           "type": "array",
           "items": {
-            "type": "string",
-            "default": ""
+            "default": "",
+            "type": "string"
           }
         }
       ]
@@ -2069,7 +2206,9 @@
     "u": {
       "oneOf": [
         {
-          "description": "Sets the x components of the vector field.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2080,17 +2219,15 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Sets the x components of the vector field."
         }
       ]
     },
     "uhoverformat": {
+      "default": "",
       "description": "Sets the hover text formatting rulefor `u`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format.By default the values are formatted using generic number format.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "uid": {
       "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",
@@ -2106,7 +2243,9 @@
     "v": {
       "oneOf": [
         {
-          "description": "Sets the y components of the vector field.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2117,31 +2256,29 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Sets the y components of the vector field."
         }
       ]
     },
     "vhoverformat": {
+      "default": "",
       "description": "Sets the hover text formatting rulefor `v`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format.By default the values are formatted using generic number format.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "visible": {
       "oneOf": [
         {
-          "description": "Determines whether or not this trace is visible. If *legendonly*, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible).",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "enum": [
             true,
             false,
             "legendonly"
           ],
-          "default": true
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          "default": true,
+          "description": "Determines whether or not this trace is visible. If *legendonly*, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible)."
         }
       ]
     },
@@ -2152,7 +2289,9 @@
     "w": {
       "oneOf": [
         {
-          "description": "Sets the z components of the vector field.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2163,17 +2302,15 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Sets the z components of the vector field."
         }
       ]
     },
     "whoverformat": {
+      "default": "",
       "description": "Sets the hover text formatting rulefor `w`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format.By default the values are formatted using generic number format.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "wsrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `w`.",
@@ -2182,7 +2319,9 @@
     "x": {
       "oneOf": [
         {
-          "description": "Sets the x coordinates of the vector field and of the displayed cones.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2193,17 +2332,15 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Sets the x coordinates of the vector field and of the displayed cones."
         }
       ]
     },
     "xhoverformat": {
+      "default": "",
       "description": "Sets the hover text formatting rulefor `x`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*By default the values are formatted using `xaxis.hoverformat`.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "xsrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `x`.",
@@ -2212,7 +2349,9 @@
     "y": {
       "oneOf": [
         {
-          "description": "Sets the y coordinates of the vector field and of the displayed cones.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2223,17 +2362,15 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Sets the y coordinates of the vector field and of the displayed cones."
         }
       ]
     },
     "yhoverformat": {
+      "default": "",
       "description": "Sets the hover text formatting rulefor `y`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*By default the values are formatted using `yaxis.hoverformat`.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "ysrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `y`.",
@@ -2242,7 +2379,9 @@
     "z": {
       "oneOf": [
         {
-          "description": "Sets the z coordinates of the vector field and of the displayed cones.",
+          "$ref": "#/$defs/query-string"
+        },
+        {
           "type": "array",
           "items": {
             "oneOf": [
@@ -2253,17 +2392,15 @@
                 "type": "string"
               }
             ]
-          }
-        },
-        {
-          "$ref": "#/$defs/query-string"
+          },
+          "description": "Sets the z coordinates of the vector field and of the displayed cones."
         }
       ]
     },
     "zhoverformat": {
+      "default": "",
       "description": "Sets the hover text formatting rulefor `z`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*By default the values are formatted using `zaxis.hoverformat`.",
-      "type": "string",
-      "default": ""
+      "type": "string"
     },
     "zsrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `z`.",

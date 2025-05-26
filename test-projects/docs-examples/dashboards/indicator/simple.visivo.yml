@@ -15,10 +15,10 @@ traces:
       type: indicator
       mode: "number"
       value: column(val)[0]
-      number: 
-        suffix: '<sub>hrs</sub>'
-        prefix: column(sign)[0]
-        font: 
+      number:
+        suffix: "<sub>hrs</sub>"
+        prefix: column(sign)[1]
+        font:
           size: 100
 charts:
   - name: Simple Numeric Indicator Chart
@@ -27,7 +27,7 @@ charts:
     layout:
       title:
         text: Simple Numeric Indicator<br><sub>Displaying a Single Value</sub>
-      margin: 
+      margin:
         l: 0
         r: 0
-        b: 50 
+        b: 50

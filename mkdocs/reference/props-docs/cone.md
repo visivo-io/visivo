@@ -105,7 +105,7 @@ _**Check out the [Attributes](../configuration/Trace/Props/Cone/#attributes) for
               u: ?{u}
               v: ?{v}
               w: ?{w}
-              colorscale: "Virdis"
+              colorscale: "Viridis"
               colorbar:
                 title: "Wind Speed (m/s)"
               hoverinfo: "text"

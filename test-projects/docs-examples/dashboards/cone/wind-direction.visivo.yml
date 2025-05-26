@@ -21,7 +21,7 @@ traces:
       u: ?{u}
       v: ?{v}
       w: ?{w}
-      colorscale: "Virdis"
+      colorscale: "Viridis"
       colorbar:
         title:
           text: "Wind Speed (m/s)"

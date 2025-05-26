@@ -18,7 +18,7 @@ traces:
       x: ?{value}
       marker:
         color: ?{color}
-      textinfo: "value+percent"
+      textinfo: "value+percent total"
       orientation: h
     order_by:
       - ?{value desc}

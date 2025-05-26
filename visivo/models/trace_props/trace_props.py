@@ -2,7 +2,7 @@ from enum import Enum
 from visivo.logging.logger import Logger
 from pydantic import ConfigDict, BaseModel, Field, model_validator
 from typing import Any, Dict
-from jsonschema_rs import validate
+from jsonschema_rs import validator_for
 import json
 from importlib.resources import files
 from jsonschema_rs import ValidationError
@@ -84,16 +84,17 @@ class TraceProps(JsonSchemaBase):
         if self.type.value not in TraceProps._schemas:
             schema_path = files("visivo.schema").joinpath(f"{self.type.value}.schema.json")
             with open(schema_path) as f:
-                TraceProps._schemas[self.type.value] = json.load(f)
+                TraceProps._schemas[self.type.value] = validator_for(json.load(f))
 
-        schema = TraceProps._schemas.get(self.type.value)
-        if not schema:
+        validator = TraceProps._schemas.get(self.type.value)
+        if not validator:
             raise ValueError(f"Schema not found for trace type: {self.type.value}")
 
         try:
+            Logger.instance().info("validating " + self.type)
             data_dict = self.model_dump()
 
-            validate(instance=data_dict, schema=schema)
+            validator.validate(data_dict)
 
         except FileNotFoundError:
             raise ValueError(f"Schema file not found for trace type: {self.type.value}")
