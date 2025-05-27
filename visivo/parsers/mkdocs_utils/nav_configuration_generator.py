@@ -1,6 +1,11 @@
 def _get_ref(field_data):
     refs = []
 
+    # ref = field_data.get("$ref")
+    # if ref:
+    #     refs.append(ref)
+    #     return refs, "ref"
+
     # Check for ref inside 'items'
     ref = field_data.get("items", {}).get("$ref")
     if ref:
@@ -21,6 +26,8 @@ def _get_ref(field_data):
 
     # Check for refs inside 'oneOf'
     one_of = field_data.get("items", {}).get("oneOf", [])
+    if len(one_of) == 0:
+        one_of = field_data.get("oneOf", [])
     if one_of:
         for entry in one_of:
             ref = entry.get("$ref")

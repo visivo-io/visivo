@@ -37,7 +37,7 @@ def generate_schema():
     for trace_type, schema in trace_schemas.items():
         project_schema["$defs"][trace_type] = schema
 
-    project_schema["$defs"]["TraceProps"] = {
+    project_schema["$defs"]["Trace"]["properties"]["props"] = {
         "oneOf": [{"$ref": f"#/defs/{trace_type}"} for trace_type in trace_schemas.keys()]
     }
     layout_schema = json.loads(files("visivo.schema").joinpath("layout.schema.json").read_text())

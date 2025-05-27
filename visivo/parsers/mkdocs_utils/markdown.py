@@ -145,8 +145,16 @@ def _get_traceprop_nested_structure(model_defs: dict, model_name: str, details: 
     for field_name, field_info in model_properties.items():
         field_info_keys = ".".join(list(field_info.keys()))
 
-        if "anyOf" in field_info_keys:
-            refs = find_refs(field_info.get("anyOf", {}))
+        if "oneOf" in field_info_keys:
+            refs = find_refs(field_info.get("oneOf", {}))
+
+            # Remove query-string and color refs
+            refs = [
+                ref
+                for ref in refs
+                if ref not in ["#/$defs/query-string", "#/$defs/color", "#/$defs/colorscale"]
+            ]
+
             if refs and len(refs) == 1:
                 nested_model_name = refs[0].split("/")[-1]
                 output[field_name], details = _get_traceprop_nested_structure(
@@ -157,20 +165,31 @@ def _get_traceprop_nested_structure(model_defs: dict, model_name: str, details: 
                     "Have not handled Traceprop attributes with multiple models referenced."
                 )
             else:
-                field_description = field_info.get("description", {})
+                field_description = field_info.get("description", "")
                 position = len(details) + 1
-                type = field_description.split("<br>")[0].strip(" ")
-                detail = field_description.split("<br>")[-1]
-                if len(detail.strip()) > 0:
+                types = list(
+                    map(lambda oneOf: oneOf.get("type", None), field_info.get("oneOf", []))
+                )
+                # Filter out None types
+                types = [t for t in types if t is not None]
+
+                type = " | ".join(types)
+                if len(types) > 0:
+                    type = "any"
+                if len(field_description.strip()) > 0:
                     type = type + f" #({position})!"
-                    detail_line = f"{position}. " + detail
+                    detail_line = f"{position}. " + field_description
                     details.append(detail_line)
                 output[field_name] = type
         elif "const" in field_info_keys:
             output[field_name] = field_info.get("const")
+        elif "type" in field_info_keys:
+            output[field_name] = field_info.get("type")
+        elif "description" in field_info_keys:
+            pass
         else:
             raise NotImplementedError(
-                f"Have not yet handled properties with attributes {field_info_keys}"
+                f"Have not yet handled properties with attributes {field_info_keys} on {model_name}"
             )
 
     return output, details
