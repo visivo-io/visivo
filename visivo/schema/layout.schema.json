@@ -81,6 +81,24 @@
           "description": "Custom colorscale as an array of [value, color] pairs"
         }
       ]
+    },
+    "query-string": {
+      "type": "string",
+      "description": "A string that will pull the value from the traces query results.",
+      "oneOf": [
+        {
+          "pattern": "^\\?\\{.*\\}$",
+          "description": "String in the format ?{ x } where x can be anything"
+        },
+        {
+          "pattern": "^query\\(.*\\)$",
+          "description": "String in the format query( x ) where x can be anything"
+        },
+        {
+          "pattern": "^column\\(.*\\)(?:\\[-?\\d+\\])?$",
+          "description": "String in the format column( x ) or column( x )[n] where x can be anything and n is a positive or negative number"
+        }
+      ]
     }
   },
   "properties": {
@@ -2042,7 +2060,6 @@
     "editrevision": {
       "description": "Controls persistence of user-driven changes in `editable: true` configuration, other than trace names and axis titles. Defaults to `layout.uirevision`."
     },
-    "editType": null,
     "font": {
       "type": "object",
       "properties": {
@@ -5710,16 +5727,6 @@
           ]
         }
       }
-    },
-    "meta": {
-      "description": "Assigns extra meta information that can be used in various `text` attributes. Attributes such as the graph, axis and colorbar `title.text`, annotation `text` `trace.name` in legend items, `rangeselector`, `updatemenus` and `sliders` `label` text all support `meta`. One can access `meta` fields using template strings: `%{meta[i]}` where `i` is the index of the `meta` item in question. `meta` can also be an object for example `{key: value}` which can be accessed %{meta[key]}.",
-      "oneOf": [
-        {},
-        {
-          "type": "array",
-          "items": {}
-        }
-      ]
     },
     "metasrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `meta`.",

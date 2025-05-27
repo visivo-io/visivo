@@ -45,6 +45,16 @@ def dbt_target(function):
     return function
 
 
+def project_dir(function):
+    click.option(
+        "-pd",
+        "--project-dir",
+        help="Directory to initialize the project in",
+        default=".",
+    )(function)
+    return function
+
+
 def dist_dir(function):
     click.option(
         "-d",

@@ -1,7 +1,5 @@
 from enum import Enum
-from visivo.logging.logger import Logger
-from pydantic import ConfigDict, BaseModel, Field, model_validator
-from typing import Any, Dict
+from pydantic import Field, model_validator
 from jsonschema_rs import validator_for
 import json
 from importlib.resources import files
@@ -9,6 +7,8 @@ from jsonschema_rs import ValidationError
 
 
 from enum import Enum
+
+from visivo.models.trace_props.json_schema_base import JsonSchemaBase
 
 
 class TraceType(str, Enum):
@@ -63,15 +63,6 @@ class TraceType(str, Enum):
     WATERFALL = "waterfall"
 
 
-class JsonSchemaBase(BaseModel):
-
-    def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        kwargs.setdefault("exclude_none", True)
-        return super().model_dump(*args, **kwargs)
-
-    model_config = ConfigDict(extra="allow")
-
-
 class TraceProps(JsonSchemaBase):
 
     type: TraceType = Field(..., description="Type of the trace")
@@ -91,7 +82,6 @@ class TraceProps(JsonSchemaBase):
             raise ValueError(f"Schema not found for trace type: {self.type.value}")
 
         try:
-            Logger.instance().info("validating " + self.type)
             data_dict = self.model_dump()
 
             validator.validate(data_dict)

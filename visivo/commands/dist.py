@@ -1,11 +1,7 @@
 import click
 from visivo.commands.options import (
     dist_dir,
-    dag_filter,
     output_dir,
-    source,
-    threads,
-    working_dir,
 )
 
 
