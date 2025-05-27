@@ -6,6 +6,7 @@ from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.trace_columns import TraceColumns
+from visivo.models.trace_props.layout import Layout
 from visivo.models.trace_props.trace_props import TraceProps
 from .dialect import Dialect
 from .statement_classifier import StatementClassifier, StatementEnum
@@ -65,7 +66,7 @@ class TraceTokenizer:
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
             obj = self.trace
-        if isinstance(obj, TraceProps):
+        if isinstance(obj, TraceProps) or isinstance(obj, Layout):
             # Get all fields including extra ones from the model dump
             trace_props_dict = obj.model_dump()
             for key, value in trace_props_dict.items():
@@ -85,6 +86,9 @@ class TraceTokenizer:
         elif isinstance(obj, list):
             for i, value in enumerate(obj):
                 self._set_select_items(value, path + [i])
+        elif isinstance(obj, dict):
+            for key, value in obj.items():
+                self._set_select_items(value, path + [key])
         else:
             query_id = ".".join([str(i) for i in path])
             query_statement = False
