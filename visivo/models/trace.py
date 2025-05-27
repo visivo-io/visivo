@@ -114,7 +114,7 @@ class Trace(NamedModel, ParentModel):
     )
     props: TraceProps = Field(
         None,
-        description="A layout configuration that must adhere to the layout.schema.json file.",
+        description="Trace props are the properties that are used to configure the trace.",
     )
 
     def child_items(self):
