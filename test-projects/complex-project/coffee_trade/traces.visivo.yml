@@ -6,7 +6,7 @@ traces:
       type: scatter
       x: ?{year::varchar}
       y: ?{SUM(abs(kilograms))}
-      mode: line
+      mode: lines
       line:
         shape: spline
     order_by:
@@ -59,7 +59,7 @@ traces:
       type: scatter
       x: ?{year::varchar}
       y: ?{SUM(kilograms)}
-      mode: line
+      mode: lines
       line:
         shape: spline
     order_by:

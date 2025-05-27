@@ -41,7 +41,7 @@ class Layout(JsonSchemaBase):
 
         validator = Layout._schema
         if not validator:
-            raise ValueError(f"Schema not found for trace type: {self.type.value}")
+            raise ValueError("Schema not found for layout")
 
         try:
             data_dict = self.model_dump()
@@ -49,12 +49,12 @@ class Layout(JsonSchemaBase):
             validator.validate(data_dict)
 
         except FileNotFoundError:
-            raise ValueError(f"Schema file not found for trace type: {self.type.value}")
+            raise ValueError("Schema file not found for layout")
         except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON in schema file for trace type: {self.type.value}")
+            raise ValueError("Invalid JSON in schema file for layout")
         except ValidationError as e:
             raise ValueError(
-                f"Validation error for trace type {self.type.value} at location: {e.instance_path}: {str(e.message)}"
+                f"Validation error for layout at location: {e.instance_path}: {str(e.message)}"
             )
 
         return self
