@@ -56,7 +56,6 @@ class TraceType(str, Enum):
     STREAMTUBE = "streamtube"
     SUNBURST = "sunburst"
     SURFACE = "surface"
-    TABLE = "table"
     TREEMAP = "treemap"
     VIOLIN = "violin"
     VOLUME = "volume"

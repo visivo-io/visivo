@@ -156,6 +156,8 @@ nav:
               - reference/configuration/Trace/index.md
               - TraceColumns:
                   - reference/configuration/Trace/TraceColumns/index.md
+              - Model:
+                  - reference/configuration/Trace/Model/index.md
               - Props:
                   - Area: &id001
                       - reference/configuration/Trace/Props/Scatter/index.md
@@ -171,6 +173,8 @@ nav:
                       - reference/configuration/Trace/Props/Carpet/index.md
                   - Choropleth:
                       - reference/configuration/Trace/Props/Choropleth/index.md
+                  - Choroplethmap:
+                      - reference/configuration/Trace/Props/Choroplethmap/index.md
                   - Choroplethmapbox:
                       - reference/configuration/Trace/Props/Choroplethmapbox/index.md
                   - Cone:
@@ -179,6 +183,8 @@ nav:
                       - reference/configuration/Trace/Props/Contour/index.md
                   - Contourcarpet:
                       - reference/configuration/Trace/Props/Contourcarpet/index.md
+                  - Densitymap:
+                      - reference/configuration/Trace/Props/Densitymap/index.md
                   - Densitymapbox:
                       - reference/configuration/Trace/Props/Densitymapbox/index.md
                   - Funnel:
@@ -187,8 +193,6 @@ nav:
                       - reference/configuration/Trace/Props/Funnelarea/index.md
                   - Heatmap:
                       - reference/configuration/Trace/Props/Heatmap/index.md
-                  - Heatmapgl:
-                      - reference/configuration/Trace/Props/Heatmapgl/index.md
                   - Histogram:
                       - reference/configuration/Trace/Props/Histogram/index.md
                   - Histogram2d:
@@ -225,6 +229,8 @@ nav:
                       - reference/configuration/Trace/Props/Scattergeo/index.md
                   - Scattergl:
                       - reference/configuration/Trace/Props/Scattergl/index.md
+                  - Scattermap:
+                      - reference/configuration/Trace/Props/Scattermap/index.md
                   - Scattermapbox:
                       - reference/configuration/Trace/Props/Scattermapbox/index.md
                   - Scatterpolar:
