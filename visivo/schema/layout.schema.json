@@ -262,9 +262,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "pixel",
-                  "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^x([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "pixel"
+                    ]
+                  }
                 ],
                 "default": "pixel",
                 "description": "Indicates in what coordinates the tail of the annotation (ax,ay) is specified. If set to a x axis id (e.g. *x* or *x2*), the `x` position refers to a x coordinate. If set to *paper*, the `x` position refers to the distance from the left of the plotting area in normalized coordinates where *0* (*1*) corresponds to the left (right). If set to a x axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., *x2 domain* refers to the domain of the second x  axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis. In order for absolute positioning of the arrow to work, *axref* must be exactly the same as *xref*, otherwise *axref* will revert to *pixel* (explained next). For relative positioning, *axref* can be set to *pixel*, in which case the *ax* value is specified in pixels relative to *x*. Absolute positioning is useful for trendline annotations which should continue to indicate the correct trend when zoomed. Relative positioning is useful for specifying the text offset for an annotated point."
@@ -280,9 +287,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "pixel",
-                  "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "pixel"
+                    ]
+                  }
                 ],
                 "default": "pixel",
                 "description": "Indicates in what coordinates the tail of the annotation (ax,ay) is specified. If set to a y axis id (e.g. *y* or *y2*), the `y` position refers to a y coordinate. If set to *paper*, the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where *0* (*1*) corresponds to the bottom (top). If set to a y axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., *y2 domain* refers to the domain of the second y  axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis. In order for absolute positioning of the arrow to work, *ayref* must be exactly the same as *yref*, otherwise *ayref* will revert to *pixel* (explained next). For relative positioning, *ayref* can be set to *pixel*, in which case the *ay* value is specified in pixels relative to *y*. Absolute positioning is useful for trendline annotations which should continue to indicate the correct trend when zoomed. Relative positioning is useful for specifying the text offset for an annotated point."
@@ -827,9 +841,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^x([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "description": "Sets the annotation's x coordinate axis. If set to a x axis id (e.g. *x* or *x2*), the `x` position refers to a x coordinate. If set to *paper*, the `x` position refers to the distance from the left of the plotting area in normalized coordinates where *0* (*1*) corresponds to the left (right). If set to a x axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., *x2 domain* refers to the domain of the second x  axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis."
               }
@@ -876,9 +897,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "description": "Sets the annotation's y coordinate axis. If set to a y axis id (e.g. *y* or *y2*), the `y` position refers to a y coordinate. If set to *paper*, the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where *0* (*1*) corresponds to the bottom (top). If set to a y axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., *y2 domain* refers to the domain of the second y  axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis."
               }
@@ -3135,9 +3163,16 @@
                     "$ref": "#/$defs/query-string"
                   },
                   {
-                    "enum": [
-                      "/^x([2-9]|[1-9][0-9]+)?y([2-9]|[1-9][0-9]+)?$/",
-                      ""
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^x([2-9]|[1-9][0-9]+)?y([2-9]|[1-9][0-9]+)?$"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -3161,9 +3196,16 @@
                     "$ref": "#/$defs/query-string"
                   },
                   {
-                    "enum": [
-                      "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                      ""
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^x([2-9]|[1-9][0-9]+)?( domain)?$"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -3217,9 +3259,16 @@
                     "$ref": "#/$defs/query-string"
                   },
                   {
-                    "enum": [
-                      "/^y([2-9]|[1-9][0-9]+)?( domain)?$/",
-                      ""
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -3763,9 +3812,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^x([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "default": "paper",
                 "description": "Sets the images's x coordinate axis. If set to a x axis id (e.g. *x* or *x2*), the `x` position refers to a x coordinate. If set to *paper*, the `x` position refers to the distance from the left of the plotting area in normalized coordinates where *0* (*1*) corresponds to the left (right). If set to a x axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., *x2 domain* refers to the domain of the second x  axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis."
@@ -3798,9 +3854,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "default": "paper",
                 "description": "Sets the images's y coordinate axis. If set to a y axis id (e.g. *y* or *y2*), the `y` position refers to a y coordinate. If set to *paper*, the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where *0* (*1*) corresponds to the bottom (top). If set to a y axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., *y2 domain* refers to the domain of the second y  axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis."
@@ -12510,9 +12573,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^x([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "description": "Sets the selection's x coordinate axis. If set to a x axis id (e.g. *x* or *x2*), the `x` position refers to a x coordinate. If set to *paper*, the `x` position refers to the distance from the left of the plotting area in normalized coordinates where *0* (*1*) corresponds to the left (right). If set to a x axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., *x2 domain* refers to the domain of the second x  axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis."
               }
@@ -12530,9 +12600,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "description": "Sets the selection's x coordinate axis. If set to a y axis id (e.g. *y* or *y2*), the `y` position refers to a y coordinate. If set to *paper*, the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where *0* (*1*) corresponds to the bottom (top). If set to a y axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., *y2 domain* refers to the domain of the second y  axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis."
               }
@@ -13148,9 +13225,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^x([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "description": "Sets the shape's x coordinate axis. If set to a x axis id (e.g. *x* or *x2*), the `x` position refers to a x coordinate. If set to *paper*, the `x` position refers to the distance from the left of the plotting area in normalized coordinates where *0* (*1*) corresponds to the left (right). If set to a x axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the left of the domain of that axis: e.g., *x2 domain* refers to the domain of the second x  axis and a x position of 0.5 refers to the point between the left and the right of the domain of the second x axis."
               }
@@ -13214,9 +13298,16 @@
                 "$ref": "#/$defs/query-string"
               },
               {
-                "enum": [
-                  "paper",
-                  "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                  },
+                  {
+                    "enum": [
+                      "paper"
+                    ]
+                  }
                 ],
                 "description": "Sets the shape's y coordinate axis. If set to a y axis id (e.g. *y* or *y2*), the `y` position refers to a y coordinate. If set to *paper*, the `y` position refers to the distance from the bottom of the plotting area in normalized coordinates where *0* (*1*) corresponds to the bottom (top). If set to a y axis ID followed by *domain* (separated by a space), the position behaves like for *paper*, but refers to the distance in fractions of the domain length from the bottom of the domain of that axis: e.g., *y2 domain* refers to the domain of the second y  axis and a y position of 0.5 refers to the point between the bottom and the top of the domain of the second y axis."
               }
@@ -18197,10 +18288,17 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "free",
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "free",
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                  ]
+                }
               ],
               "description": "If set to an opposite-letter axis id (e.g. `x2`, `y`), this axis is bound to the corresponding opposite-letter axis. If set to *free*, this axis' position is determined by `position`."
             }
@@ -18633,9 +18731,16 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                  ]
+                }
               ],
               "description": "If set to another axis id (e.g. `x2`, `y`), the range of this axis will match the range of the corresponding axis in data-coordinates space. Moreover, matching axes share auto-range values, category lists and histogram auto-bins. Note that setting axes simultaneously in both a `scaleanchor` and a `matches` constraint is currently forbidden. Moreover, note that matching axes must have the same `type`."
             }
@@ -18848,10 +18953,17 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "free",
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "free",
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                  ]
+                }
               ],
               "description": "If set a same-letter axis id, this axis is overlaid on top of the corresponding same-letter axis, with traces and axes visible for both axes. If *false*, this axis does not overlay any same-letter axes. In this case, for axes with overlapping domains only the highest-numbered axis will be visible."
             }
@@ -19441,10 +19553,17 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/",
-                false
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
+                    false
+                  ]
+                }
               ],
               "description": "If set to another axis id (e.g. `x2`, `y`), the range of this axis changes together with the range of the corresponding axis such that the scale of pixels per unit is in a constant ratio. Both axes are still zoomable, but when you zoom one, the other will zoom the same amount, keeping a fixed midpoint. `constrain` and `constraintoward` determine how we enforce the constraint. You can chain these, ie `yaxis: {scaleanchor: *x*}, xaxis2: {scaleanchor: *y*}` but you can only link axes of the same `type`. The linked axis can have the opposite letter (to constrain the aspect ratio) or the same letter (to match scales across subplots). Loops (`yaxis: {scaleanchor: *x*}, xaxis: {scaleanchor: *y*}` or longer) are redundant and the last constraint encountered will be ignored to avoid possible inconsistent constraints via `scaleratio`. Note that setting axes simultaneously in both a `scaleanchor` and a `matches` constraint is currently forbidden. Setting `false` allows to remove a default constraint (occasionally, you may need to prevent a default `scaleanchor` constraint from being applied, eg. when having an image trace `yaxis: {scaleanchor: \"x\"}` is set automatically in order for pixels to be rendered as squares, setting `yaxis: {scaleanchor: false}` allows to remove the constraint)."
             }
@@ -20338,10 +20457,17 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "free",
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "free",
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                  ]
+                }
               ],
               "description": "If set to an opposite-letter axis id (e.g. `x2`, `y`), this axis is bound to the corresponding opposite-letter axis. If set to *free*, this axis' position is determined by `position`."
             }
@@ -20786,9 +20912,16 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                  ]
+                }
               ],
               "description": "If set to another axis id (e.g. `x2`, `y`), the range of this axis will match the range of the corresponding axis in data-coordinates space. Moreover, matching axes share auto-range values, category lists and histogram auto-bins. Note that setting axes simultaneously in both a `scaleanchor` and a `matches` constraint is currently forbidden. Moreover, note that matching axes must have the same `type`."
             }
@@ -21001,10 +21134,17 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "free",
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/"
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "free",
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/"
+                  ]
+                }
               ],
               "description": "If set a same-letter axis id, this axis is overlaid on top of the corresponding same-letter axis, with traces and axes visible for both axes. If *false*, this axis does not overlay any same-letter axes. In this case, for axes with overlapping domains only the highest-numbered axis will be visible."
             }
@@ -21145,10 +21285,17 @@
               "$ref": "#/$defs/query-string"
             },
             {
-              "enum": [
-                "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
-                "/^y([2-9]|[1-9][0-9]+)?( domain)?$/",
-                false
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^y([2-9]|[1-9][0-9]+)?( domain)?$"
+                },
+                {
+                  "enum": [
+                    "/^x([2-9]|[1-9][0-9]+)?( domain)?$/",
+                    false
+                  ]
+                }
               ],
               "description": "If set to another axis id (e.g. `x2`, `y`), the range of this axis changes together with the range of the corresponding axis such that the scale of pixels per unit is in a constant ratio. Both axes are still zoomable, but when you zoom one, the other will zoom the same amount, keeping a fixed midpoint. `constrain` and `constraintoward` determine how we enforce the constraint. You can chain these, ie `yaxis: {scaleanchor: *x*}, xaxis2: {scaleanchor: *y*}` but you can only link axes of the same `type`. The linked axis can have the opposite letter (to constrain the aspect ratio) or the same letter (to match scales across subplots). Loops (`yaxis: {scaleanchor: *x*}, xaxis: {scaleanchor: *y*}` or longer) are redundant and the last constraint encountered will be ignored to avoid possible inconsistent constraints via `scaleratio`. Note that setting axes simultaneously in both a `scaleanchor` and a `matches` constraint is currently forbidden. Setting `false` allows to remove a default constraint (occasionally, you may need to prevent a default `scaleanchor` constraint from being applied, eg. when having an image trace `yaxis: {scaleanchor: \"x\"}` is set automatically in order for pixels to be rendered as squares, setting `yaxis: {scaleanchor: false}` allows to remove the constraint)."
             }
