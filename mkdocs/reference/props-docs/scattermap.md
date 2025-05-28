@@ -5,32 +5,32 @@ search:
 <!--start-->
 ## Overview
 
-The `scattermapbox` trace type is used to create scatter plots on a Mapbox map. This is ideal for visualizing geospatial data with the added customization and interactivity that Mapbox provides, including satellite imagery and street maps. 
+The `scattermap` trace type is used to create scatter plots on a MapLibre map. This is ideal for visualizing geospatial data with the added customization and interactivity that MapLibre provides, including satellite imagery and street maps. 
 
 You can plot geographic points with latitude and longitude and customize the marker size, color, and labels to represent data effectively.
 
 !!! tip "Common Uses"
     - **Geospatial Analysis**: Plotting geographic points on an interactive map.
-    - **Location-Based Data**: Visualizing locations and patterns on a Mapbox map.
+    - **Location-Based Data**: Visualizing locations and patterns on a MapLibre map.
     - **Mapping Events**: Plotting real-world events, like earthquakes or delivery points.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Scattermap/#attributes) for the full set of configuration options**_
 
 ## Examples
 
 {% raw %}
 !!! example "Common Configurations"
 
-    === "Simple Scattermapbox Plot"
+    === "Simple Scattermap Plot"
 
-        Here's a simple `scattermapbox` plot showing data points on a Mapbox map:
+        Here's a simple `scattermap` plot showing data points on a MapLibre map:
 
 
         You can copy this code below to create this chart in your project:
 
         ```yaml
         models:
-          - name: scattermapbox-data
+          - name: scattermap-data
             args:
               - echo
               - |
@@ -40,36 +40,36 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 -0.1276,51.5074
                 139.6917,35.6895
         traces:
-          - name: Simple Scattermapbox Plot
-            model: ${ref(scattermapbox-data)}
+          - name: Simple Scattermap Plot
+            model: ${ref(scattermap-data)}
             props:
-              type: scattermapbox
+              type: scattermap
               lon: ?{lon}
               lat: ?{lat}
               mode: "markers"
               marker:
                 size: 10
         charts:
-          - name: Simple Scattermapbox Chart
+          - name: Simple Scattermap Chart
             traces:
-              - ${ref(Simple Scattermapbox Plot)}
+              - ${ref(Simple Scattermap Plot)}
             layout:
               mapbox:
                 style: "open-street-map"
               title:
-                text: Simple Scattermapbox Plot<br><sub>Geographical Data Points on Mapbox</sub>
+                text: Simple Scattermap Plot<br><sub>Geographical Data Points on MapLibre</sub>
         ```
 
-    === "Scattermapbox Plot with Lines"
+    === "Scattermap Plot with Lines"
 
-        This example demonstrates a `scattermapbox` plot with lines connecting geographic points:
+        This example demonstrates a `scattermap` plot with lines connecting geographic points:
 
 
         Here's the code:
 
         ```yaml
         models:
-          - name: scattermapbox-data-lines
+          - name: scattermap-data-lines
             args:
               - echo
               - |
@@ -79,36 +79,36 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 -0.1276,51.5074
                 139.6917,35.6895
         traces:
-          - name: Scattermapbox Plot with Lines
-            model: ${ref(scattermapbox-data-lines)}
+          - name: Scattermap Plot with Lines
+            model: ${ref(scattermap-data-lines)}
             props:
-              type: scattermapbox
+              type: scattermap
               lon: ?{lon}
               lat: ?{lat}
               mode: "lines+markers"
               marker:
                 size: 10
         charts:
-          - name: Scattermapbox Chart with Lines
+          - name: Scattermap Chart with Lines
             traces:
-              - ${ref(Scattermapbox Plot with Lines)}
+              - ${ref(Scattermap Plot with Lines)}
             layout:
               mapbox:
                 style: "satellite-streets"
               title:
-                text: Scattermapbox Plot with Lines<br><sub>Connecting Geographic Points on Mapbox</sub>
+                text: Scattermap Plot with Lines<br><sub>Connecting Geographic Points on MapLibre</sub>
         ```
 
-    === "Scattermapbox Plot with Custom Marker Sizes and Colors"
+    === "Scattermap Plot with Custom Marker Sizes and Colors"
 
-        Here's a `scattermapbox` plot with custom marker sizes and colors, giving more visual weight to each geographic data point:
+        Here's a `scattermap` plot with custom marker sizes and colors, giving more visual weight to each geographic data point:
 
 
         Here's the code:
 
         ```yaml
         models:
-          - name: scattermapbox-data-custom
+          - name: scattermap-data-custom
             args:
               - echo
               - |
@@ -118,10 +118,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 -0.1276,51.5074,20,#2ca02c
                 139.6917,35.6895,25,#d62728
         traces:
-          - name: Scattermapbox Plot with Custom Markers
-            model: ${ref(scattermapbox-data-custom)}
+          - name: Scattermap Plot with Custom Markers
+            model: ${ref(scattermap-data-custom)}
             props:
-              type: scattermapbox
+              type: scattermap
               lon: ?{lon}
               lat: ?{lat}
               mode: "markers"
@@ -129,14 +129,14 @@ _**Check out the [Attributes](../configuration/Trace/Props/Scattermapbox/#attrib
                 size: ?{size}
                 color: ?{color}
         charts:
-          - name: Scattermapbox Chart with Custom Markers
+          - name: Scattermap Chart with Custom Markers
             traces:
-              - ${ref(Scattermapbox Plot with Custom Markers)}
+              - ${ref(Scattermap Plot with Custom Markers)}
             layout:
               mapbox:
                 style: "dark"
               title:
-                text: Scattermapbox Plot with Custom Markers<br><sub>Custom Sizes and Colors for Geographic Data Points</sub>
+                text: Scattermap Plot with Custom Markers<br><sub>Custom Sizes and Colors for Geographic Data Points</sub>
         ```
 
 {% endraw %}

@@ -5,7 +5,7 @@ search:
 <!--start-->
 ## Overview
 
-The `densitymapbox` trace type is used to create density maps on a Mapbox layer. This is commonly used to visualize the density of points in a geographical area. Density maps can help in identifying hotspots or areas with a higher concentration of data points.
+The `densitymap` trace type is used to create density maps on a MabLibre layer. This is commonly used to visualize the density of points in a geographical area. Density maps can help in identifying hotspots or areas with a higher concentration of data points.
 
 You can customize the colorscale, radius of influence for each point, and other properties to fine-tune the visualization.
 
@@ -14,23 +14,23 @@ You can customize the colorscale, radius of influence for each point, and other 
     - **Event Density**: Visualizing the concentration of events or occurrences across regions.
     - **Heatmap for Geographic Points**: Creating heatmaps based on spatial data distributions on a map.
 
-_**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../configuration/Trace/Props/Densitymap/#attributes) for the full set of configuration options**_
 
 ## Examples
 
 {% raw %}
 !!! example "Common Configurations"
 
-    === "Simple Densitymapbox Plot"
+    === "Simple Densitymap Plot"
 
-        Here's a simple `densitymapbox` plot showing the density of random points on a Mapbox map:
+        Here's a simple `densitymap` plot showing the density of random points on a MabLibre map:
 
 
         You can copy this code below to create this chart in your project:
 
         ```yaml
         models:
-          - name: densitymapbox-data
+          - name: densitymap-data
             args:
               - echo
               - |
@@ -41,10 +41,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                 41.8781,-87.6298
                 29.7604,-95.3698
         traces:
-          - name: Simple Densitymapbox Plot
-            model: ${ref(densitymapbox-data)}
+          - name: Simple Densitymap Plot
+            model: ${ref(densitymap-data)}
             props:
-              type: densitymapbox
+              type: densitymap
               lat: ?{lat}
               lon: ?{lon}
               radius: 10
@@ -52,12 +52,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
               zmin: 0
               zmax: 100
         charts:
-          - name: Simple Densitymapbox Chart
+          - name: Simple Densitymap Chart
             traces:
-              - ${ref(Simple Densitymapbox Plot)}
+              - ${ref(Simple Densitymap Plot)}
             layout:
               title:
-                text: Simple Densitymapbox Plot<br><sub>Spatial Data Density</sub>
+                text: Simple Densitymap Plot<br><sub>Spatial Data Density</sub>
               mapbox:
                 style: "carto-positron"
                 zoom: 3
@@ -66,16 +66,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                   lon: -95
         ```
 
-    === "Densitymapbox with Custom Radius"
+    === "Densitymap with Custom Radius"
 
-        This example demonstrates a `densitymapbox` plot with a custom radius for the points, which influences how smooth the heatmap appears:
+        This example demonstrates a `densitymap` plot with a custom radius for the points, which influences how smooth the heatmap appears:
 
 
         Here's the code:
 
         ```yaml
         models:
-          - name: densitymapbox-data-radius
+          - name: densitymap-data-radius
             args:
               - echo
               - |
@@ -86,10 +86,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                 40.7128,-74.0060
                 34.0522,-118.2437
         traces:
-          - name: Densitymapbox with Custom Radius
-            model: ${ref(densitymapbox-data-radius)}
+          - name: Densitymap with Custom Radius
+            model: ${ref(densitymap-data-radius)}
             props:
-              type: densitymapbox
+              type: densitymap
               lat: ?{lat}
               lon: ?{lon}
               radius: 20
@@ -97,12 +97,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
               zmin: 0
               zmax: 50
         charts:
-          - name: Densitymapbox Chart with Custom Radius
+          - name: Densitymap Chart with Custom Radius
             traces:
-              - ${ref(Densitymapbox with Custom Radius)}
+              - ${ref(Densitymap with Custom Radius)}
             layout:
               title:
-                text: Densitymapbox Plot with Custom Radius<br><sub>Radius of Influence on Heatmap</sub>
+                text: Densitymap Plot with Custom Radius<br><sub>Radius of Influence on Heatmap</sub>
               mapbox:
                 style: "carto-darkmatter"
                 zoom: 2
@@ -111,16 +111,16 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                   lon: 0
         ```
 
-    === "Densitymapbox with Custom Colorscale"
+    === "Densitymap with Custom Colorscale"
 
-        This example shows a `densitymapbox` plot with a custom colorscale and zoom centered on Europe:
+        This example shows a `densitymap` plot with a custom colorscale and zoom centered on Europe:
 
 
         Here's the code:
 
         ```yaml
         models:
-          - name: densitymapbox-data-colorscale
+          - name: densitymap-data-colorscale
             args:
               - echo
               - |
@@ -131,10 +131,10 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
                 40.4168,-3.7038
                 51.1657,10.4515
         traces:
-          - name: Densitymapbox with Custom Colorscale
-            model: ${ref(densitymapbox-data-colorscale)}
+          - name: Densitymap with Custom Colorscale
+            model: ${ref(densitymap-data-colorscale)}
             props:
-              type: densitymapbox
+              type: densitymap
               lat: ?{lat}
               lon: ?{lon}
               radius: 15
@@ -142,12 +142,12 @@ _**Check out the [Attributes](../configuration/Trace/Props/Densitymapbox/#attrib
               zmin: 0
               zmax: 50
         charts:
-          - name: Densitymapbox Chart with Custom Colorscale
+          - name: Densitymap Chart with Custom Colorscale
             traces:
-              - ${ref(Densitymapbox with Custom Colorscale)}
+              - ${ref(Densitymap with Custom Colorscale)}
             layout:
               title:
-                text: Densitymapbox Plot with Custom Colorscale<br><sub>Custom Coloring and Center</sub>
+                text: Densitymap Plot with Custom Colorscale<br><sub>Custom Coloring and Center</sub>
               mapbox:
                 style: "carto-positron"
                 zoom: 4
