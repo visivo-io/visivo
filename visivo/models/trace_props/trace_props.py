@@ -103,7 +103,7 @@ class TraceProps(JsonSchemaBase):
                 message_parts = []
                 for oneOf in current.get("oneOf", []):
                     message_parts.append(json.dumps(oneOf))
-                message = "Value does not match any of the following schemas: " + " or ".join(
+                message = "Value does not match any of the following schemas: \n" + "\n or \n".join(
                     message_parts
                 )
             raise ValueError(
