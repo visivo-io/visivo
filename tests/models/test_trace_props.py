@@ -22,6 +22,7 @@ def test_invalid_trace_prop_mesh3d():
     errors = e._excinfo[1].errors()
     assert e.type == ValidationError
     assert "1 validation error" in message
+    assert "Value does not match any of the following schemas" in message
     assert errors[0]["type"] == "value_error"
 
 
@@ -35,7 +36,7 @@ def test_float_property_validation():
         "model": {"name": "awesome-model", "sql": "select * from table"},
     }
 
-    trace = Trace(**data)
+    Trace(**data)
 
 
 def test_valid_trace_prop_mesh3d():

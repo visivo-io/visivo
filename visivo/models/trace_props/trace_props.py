@@ -68,15 +68,19 @@ class TraceProps(JsonSchemaBase):
 
     @model_validator(mode="after")
     def validate_against_schema(self) -> "TraceProps":
+        if not hasattr(TraceProps, "_validators"):
+            TraceProps._validators = {}
         if not hasattr(TraceProps, "_schemas"):
             TraceProps._schemas = {}
 
-        if self.type.value not in TraceProps._schemas:
+        if self.type.value not in TraceProps._validators:
             schema_path = files("visivo.schema").joinpath(f"{self.type.value}.schema.json")
             with open(schema_path) as f:
-                TraceProps._schemas[self.type.value] = validator_for(json.load(f))
+                schema = json.load(f)
+            TraceProps._schemas[self.type.value] = schema
+            TraceProps._validators[self.type.value] = validator_for(schema)
 
-        validator = TraceProps._schemas.get(self.type.value)
+        validator = TraceProps._validators.get(self.type.value)
         if not validator:
             raise ValueError(f"Schema not found for trace type: {self.type.value}")
 
@@ -90,8 +94,20 @@ class TraceProps(JsonSchemaBase):
         except json.JSONDecodeError:
             raise ValueError(f"Invalid JSON in schema file for trace type: {self.type.value}")
         except ValidationError as e:
+            schema = TraceProps._schemas.get(self.type.value)
+            message = str(e.message)
+            if "is not valid under any of the schemas listed in the 'oneOf' keyword" in message:
+                current = schema["properties"]
+                for part in e.instance_path:
+                    current = current.get(part, {})
+                message_parts = []
+                for oneOf in current.get("oneOf", []):
+                    message_parts.append(json.dumps(oneOf))
+                message = "Value does not match any of the following schemas: " + " or ".join(
+                    message_parts
+                )
             raise ValueError(
-                f"Validation error for trace type {self.type.value} at location: {e.instance_path}: {str(e.message)}"
+                f"Validation error for trace type {self.type.value} at location: {e.instance_path}: {str(message)}"
             )
 
         return self
