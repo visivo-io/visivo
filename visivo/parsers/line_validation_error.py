@@ -43,9 +43,9 @@ class LineValidationError(Exception):
         file_found = False
         for i, error in enumerate(self.validation_error.errors(), start=1):
             message = message + f"  {i}. Object: {'.'.join(map(lambda l: str(l), error['loc']))}\n"
-            error_message_lines = error['msg'].split('\n')
-            error_message = '\n      '.join(error_message_lines)
-            message = message + f"     Message: \n{error_message}\n"
+            error_message_lines = error["msg"].split("\n")
+            error_message = "\n      ".join(error_message_lines)
+            message = message + f"     Message: {error_message}\n"
             line_message = self.get_line_message(error)
             if line_message:
                 file_found = True
