@@ -96,7 +96,7 @@ class TraceProps(JsonSchemaBase):
         except ValidationError as e:
             schema = TraceProps._schemas.get(self.type.value)
             message = str(e.message)
-            if "is not valid under any of the schemas listed in the 'oneOf' keyword" in message:
+            if "is not valid under any of the schemas listed in the" in message:
                 current = schema["properties"]
                 for part in e.instance_path:
                     current = current.get(part, {})
