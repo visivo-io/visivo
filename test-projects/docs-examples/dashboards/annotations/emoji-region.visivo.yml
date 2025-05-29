@@ -15,7 +15,7 @@ traces:
     model: ${ref(region_emoji_data)}
     props:
       type: scatter
-      x: {x}
+      x: ?{x}
       y: ?{y}
       mode: lines+markers
       line:

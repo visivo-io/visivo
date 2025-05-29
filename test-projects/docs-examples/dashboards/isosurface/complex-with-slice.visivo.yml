@@ -45,8 +45,9 @@ charts:
       margin:
         t: 50
         b: 20
-      camera:
-        eye:
-          x: 1.86
-          y: 0.61
-          z: 0.98
+      scene:
+        camera:
+          eye:
+            x: 1.86
+            y: 0.61
+            z: 0.98
