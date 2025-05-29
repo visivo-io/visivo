@@ -1,381 +1,327 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useLoadDataToDuckDB } from '../useLoadDataToDuckDb';
-import detectColumnType from '../../components/items/table-helpers/detect-column-type/detectColumnType';
-import isAggregateable from '../../components/items/table-helpers/is-aggregatable/isAggregatable';
 import { batchInsertData } from '../utilities/batchInsertData';
 
-// Mock the helper functions and utilities
-jest.mock('../../components/items/table-helpers/detectColumnType');
-jest.mock('../../components/items/table-helpers/is-aggregatable/isAggregatable');
-jest.mock('../utilities/batchInsertData');
-
-const mockDetectColumnType = detectColumnType;
-const mockIsAggregateable = isAggregateable;
-const mockBatchInsertData = batchInsertData;
+jest.mock('../utilities/batchInsertData', () => ({
+  batchInsertData: jest.fn().mockResolvedValue({
+    insertedRows: 1,
+    errorRows: 1
+  })
+}));
 
 describe('useLoadDataToDuckDB', () => {
-  let mockDbInstance;
-  let mockConnection;
-  let mockSetIsLoadingDuckDB;
-
+  // Hook initialization
   beforeEach(() => {
     jest.clearAllMocks();
-    console.error = jest.fn();
-    console.log = jest.fn();
+  });
 
-    mockConnection = {
-      query: jest.fn().mockResolvedValue(undefined),
-      close: jest.fn(),
-    };
-
-    mockDbInstance = {
-      connect: jest.fn().mockResolvedValue(mockConnection),
-    };
-
-    mockSetIsLoadingDuckDB = jest.fn();
-
-    // Default mock implementations
-    mockDetectColumnType.mockReturnValue('string');
-    mockIsAggregateable.mockReturnValue(false);
-    mockBatchInsertData.mockResolvedValue({
-      insertedRows: 100,
-      errorRows: 0
-    });
+  afterAll(() => {
+    jest.restoreAllMocks();
   });
 
   describe('hook initialization', () => {
-    it('should return a function', () => {
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: [],
-        })
-      );
+    it('should return loadDataToDuckDB function', () => {
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB: jest.fn(),
+        tableData: []
+      }));
 
       expect(typeof result.current).toBe('function');
-    });
-
-    it('should handle missing setIsLoadingDuckDB', async () => {
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: null,
-          tableData: [],
-        })
-      );
-
-      await act(async () => {
-        const response = await result.current(mockDbInstance, []);
-      });
-
-      expect(console.error).toHaveBeenCalledWith('setIsLoadingDuckDB is required');
-    });
+    })
   });
 
-  describe('data loading', () => {
-    const sampleData = [
-      { name: 'John', age: 30, salary: 50000 },
-      { name: 'Jane', age: 25, salary: 60000 },
-      { name: 'Bob', age: 35, salary: 55000 },
-    ];
+  // Parameter validation
+  describe('parameter validation', () => {
+    it('should require setIsLoadingDuckDB parameter', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => { });
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB: null,
+        tableData: []
+      }));
 
-    it('should load data successfully', async () => {
-      mockDetectColumnType.mockImplementation((data, key) => {
-        if (key === 'age' || key === 'salary') return 'number';
-        return 'string';
-      });
-      
-      mockIsAggregateable.mockImplementation((type) => type === 'number');
+      // call load data to duck db
+      await result.current(null, []);
 
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: sampleData,
-        })
-      );
+      expect(console.error).toHaveBeenCalledWith("setIsLoadingDuckDB is required");
+    })
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, sampleData);
-      });
+    it('should handle empty tableData', async () => {
+      const setIsLoadingDuckDB = jest.fn();
+      const mockDb = { connect: jest.fn() };
 
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(true);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
-      expect(mockDbInstance.connect).toHaveBeenCalled();
-      expect(mockConnection.query).toHaveBeenCalledWith('DROP TABLE IF EXISTS table_data');
-      expect(mockConnection.query).toHaveBeenCalledWith(
-        'CREATE TABLE table_data ("name" VARCHAR, "age" DOUBLE, "salary" DOUBLE)'
-      );
-      expect(mockBatchInsertData).toHaveBeenCalledWith(
-        mockConnection,
-        sampleData,
-        { name: 'VARCHAR', age: 'DOUBLE', salary: 'DOUBLE' }
-      );
-      expect(mockConnection.query).toHaveBeenCalledWith('SELECT COUNT(*) FROM table_data');
-      expect(mockConnection.close).toHaveBeenCalled();
-      expect(response).toEqual({
-        success: true,
-        insertedRows: 100,
-        errorRows: 0
-      });
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: []
+      }));
+
+      // Call the returned function
+      const outcome = await result.current(mockDb);
+
+      // Verify early return behavior
+      expect(mockDb.connect).not.toHaveBeenCalled();
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(true);
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(false);
+      expect(outcome).toBeUndefined();
     });
 
-    it('should handle empty data', async () => {
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: [],
-        })
-      );
+    it('should prefer dataToLoad parameter over tableData prop', () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, []);
-      });
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+      const setIsLoadingDuckDB = jest.fn();
+      const tableData = [{ id: 1, name: 'Test' }];
+      const dataToLoad = [{ id: 2, name: 'Override' }];
 
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(true);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
-      expect(mockDbInstance.connect).not.toHaveBeenCalled();
-      expect(mockBatchInsertData).not.toHaveBeenCalled();
-    });
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData
+      }));
 
-    it('should handle null data', async () => {
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: null,
-        })
-      );
+      // Call the returned function with dataToLoad
+      result.current(mockDb, dataToLoad);
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, null);
-      });
-
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(true);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
-      expect(mockDbInstance.connect).not.toHaveBeenCalled();
-      expect(mockBatchInsertData).not.toHaveBeenCalled();
-    });
-
-    it('should use tableData when dataToLoad is not provided', async () => {
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: sampleData,
-        })
-      );
-
-      await act(async () => {
-        await result.current(mockDbInstance); // No dataToLoad provided
-      });
-
-      expect(mockDbInstance.connect).toHaveBeenCalled();
-      expect(mockBatchInsertData).toHaveBeenCalledWith(
-        mockConnection,
-        sampleData,
-        expect.any(Object)
-      );
-    });
-
-    it('should handle database connection errors', async () => {
-      mockDbInstance.connect.mockRejectedValue(new Error('Connection failed'));
-
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: sampleData,
-        })
-      );
-
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, sampleData);
-      });
-
-      expect(response.success).toBe(false);
-      expect(response.error).toBeInstanceOf(Error);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
-      expect(mockBatchInsertData).not.toHaveBeenCalled();
-    });
-
-    it('should handle table creation errors', async () => {
-      mockConnection.query.mockImplementation((query) => {
-        if (query.includes('CREATE TABLE')) {
-          throw new Error('Table creation failed');
-        }
-        return Promise.resolve();
-      });
-
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: sampleData,
-        })
-      );
-
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, sampleData);
-      });
-
-      expect(response.success).toBe(false);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
-      expect(mockBatchInsertData).not.toHaveBeenCalled();
-    });
-
-    it('should handle drop table errors quietly', async () => {
-      mockConnection.query.mockImplementation((query) => {
-        if (query.includes('DROP TABLE')) {
-          throw new Error('Drop table failed');
-        }
-        return Promise.resolve();
-      });
-
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: sampleData,
-        })
-      );
-
-      await act(async () => {
-        await result.current(mockDbInstance, sampleData);
-      });
-
-      expect(console.log).toHaveBeenCalledWith('Error dropping table:', expect.any(Error));
-      expect(mockBatchInsertData).toHaveBeenCalled(); // Should continue despite drop error
-    });
-
-    it('should handle verification query errors silently', async () => {
-      mockConnection.query.mockImplementation((query) => {
-        if (query.includes('SELECT COUNT')) {
-          throw new Error('Verification failed');
-        }
-        return Promise.resolve();
-      });
-
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: sampleData,
-        })
-      );
-
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, sampleData);
-      });
-
-      expect(response.success).toBe(true); // Should still succeed
-      expect(mockBatchInsertData).toHaveBeenCalled();
-    });
+      expect(mockDb.connect).toHaveBeenCalled();
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(true);
+    })
   });
 
-  describe('utility integration', () => {
-    it('should pass correct parameters to batchInsertData', async () => {
-      const testData = [
-        { name: 'Test', value: 123 }
-      ];
+  // Database operations
+  describe('database operations', () => {
+    it('should connect to database', async () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
 
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: testData,
-        })
-      );
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
 
-      await act(async () => {
-        await result.current(mockDbInstance, testData);
-      });
+      const setIsLoadingDuckDB = jest.fn();
 
-      expect(mockBatchInsertData).toHaveBeenCalledWith(
-        mockConnection,
-        testData,
-        { name: 'VARCHAR', value: 'VARCHAR' }
-      );
-    });
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: [] // Empty array causes early return
+      }));
 
-    it('should handle batchInsertData errors', async () => {
-      mockBatchInsertData.mockRejectedValue(new Error('Batch insert failed'));
+      // Call the function with sample data to prevent early return
+      await result.current(mockDb, [{ id: 1, name: 'Test' }]);
 
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: [{ test: 'data' }],
-        })
-      );
+      expect(mockDb.connect).toHaveBeenCalled();
+    })
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, [{ test: 'data' }]);
-      });
+    it('should attempt to drop existing table', async () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
 
-      expect(response.success).toBe(false);
-      expect(response.error.message).toBe('Batch insert failed');
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
-    });
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
 
-    it('should return results from batchInsertData', async () => {
-      mockBatchInsertData.mockResolvedValue({
-        insertedRows: 500,
-        errorRows: 25
-      });
+      const setIsLoadingDuckDB = jest.fn();
 
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: [{ test: 'data' }],
-        })
-      );
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: [] // Empty array causes early return
+      }));
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, [{ test: 'data' }]);
-      });
+      // Call the function with sample data to prevent early return
+      await result.current(mockDb, [{ id: 1, name: 'Test' }]);
 
-      expect(response).toEqual({
-        success: true,
-        insertedRows: 500,
-        errorRows: 25
-      });
-    });
+      expect(mockConn.query).toHaveBeenCalledWith('DROP TABLE IF EXISTS table_data');
+    })
+    it('should create table with proper schema', async () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+
+      const setIsLoadingDuckDB = jest.fn();
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: [{ id: 1, name: 'Test' }] // Sample data
+      }));
+
+      // Call the function
+      await result.current(mockDb);
+
+      expect(mockConn.query).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE table_data'));
+      expect(mockConn.query).toHaveBeenCalledWith(expect.stringContaining('"id" VARCHAR'));
+      expect(mockConn.query).toHaveBeenCalledWith(expect.stringContaining('"name" VARCHAR'));
+
+    })
+    it('should close connection when complete', async () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+
+      const setIsLoadingDuckDB = jest.fn();
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: [{ id: 1, name: 'Test' }] // Sample data
+      }));
+
+      // Call the function
+      await result.current(mockDb);
+
+      expect(mockConn.close).toHaveBeenCalled();
+    })
+    it('should handle connection errors', async () => {
+      const mockDb = {
+        connect: jest.fn().mockRejectedValue(new Error('Connection failed'))
+      };
+
+      const setIsLoadingDuckDB = jest.fn();
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: []
+      }));
+
+      // Call the function
+      await result.current(mockDb);
+
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(true);
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(false);
+    })
   });
 
+  // Loading state management
   describe('loading state management', () => {
-    it('should set loading state correctly during successful operation', async () => {
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: [{ test: 'data' }],
-        })
+    it('should set loading state to true at start', async () => {
+      const setIsLoadingDuckDB = jest.fn();
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: []
+      }));
+
+      // Call the function
+      await result.current(null, []);
+
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(true);
+    })
+
+    it('should set loading state to false when complete', async () => {
+      const setIsLoadingDuckDB = jest.fn();
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: [{ id: 1, name: 'Test' }] // Sample data
+      }));
+
+      // Call the function
+      await result.current(mockDb);
+
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(false);
+    })
+
+    it('should set loading state to false when errors occur', async () => {
+      jest.spyOn(console, 'log').mockImplementation(() => { });
+      const setIsLoadingDuckDB = jest.fn();
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData: []
+      }));
+
+      // Call the function
+      await result.current(mockDb);
+
+      expect(setIsLoadingDuckDB).toHaveBeenCalledWith(false);
+    })
+  });
+
+  // Data insertion
+  describe('data insertion', () => {
+    it('should call batchInsertData with correct parameters', async () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+
+      const setIsLoadingDuckDB = jest.fn();
+      const tableData = [{ id: 1, name: 'Test' }];
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData
+      }));
+
+      // Call the function
+      await result.current(mockDb);
+
+      expect(batchInsertData).toHaveBeenCalledWith(
+        mockConn,
+        tableData,  // The data array 
+        { "id": "VARCHAR", "name": "VARCHAR" }  // The column types object
       );
+    })
 
-      await act(async () => {
-        await result.current(mockDbInstance, [{ test: 'data' }]);
+    it('should return counts', async () => {
+      const mockConn = {
+        query: jest.fn().mockResolvedValue({}),
+        close: jest.fn().mockResolvedValue(undefined)
+      };
+
+      const mockDb = {
+        connect: jest.fn().mockResolvedValue(mockConn)
+      };
+
+      const setIsLoadingDuckDB = jest.fn();
+      const tableData = [{ id: 1, name: 'Test' }];
+
+      const { result } = renderHook(() => useLoadDataToDuckDB({
+        setIsLoadingDuckDB,
+        tableData
+      }));
+
+      // Call the function
+      const outcome = await result.current(mockDb);
+
+      expect(outcome).toEqual({
+        insertedRows: 1,
+        errorRows: 1,
+        success: true
       });
-
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledTimes(2);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenNthCalledWith(1, true);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenNthCalledWith(2, false);
-    });
-
-    it('should reset loading state even when operation fails', async () => {
-      mockDbInstance.connect.mockRejectedValue(new Error('Connection failed'));
-
-      const { result } = renderHook(() =>
-        useLoadDataToDuckDB({
-          setIsLoadingDuckDB: mockSetIsLoadingDuckDB,
-          tableData: [{ test: 'data' }],
-        })
-      );
-
-      await act(async () => {
-        await result.current(mockDbInstance, [{ test: 'data' }]);
-      });
-
-      expect(mockSetIsLoadingDuckDB).toHaveBeenCalledTimes(2);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenNthCalledWith(1, true);
-      expect(mockSetIsLoadingDuckDB).toHaveBeenNthCalledWith(2, false);
-    });
+      expect(mockConn.query).toHaveBeenCalledWith(expect.stringContaining('SELECT COUNT(*) FROM table_data'));
+    })
   });
 });

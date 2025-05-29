@@ -30,6 +30,11 @@ export const useLoadDataToDuckDB = ({
           return;
         }
 
+        if (!dbInstance) {
+          console.error("dbInstance is required");
+          return;
+        }
+
         const conn = await dbInstance.connect();
 
         try {
