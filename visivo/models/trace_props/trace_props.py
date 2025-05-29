@@ -8,7 +8,7 @@ from jsonschema_rs import ValidationError
 
 from enum import Enum
 
-from visivo.models.trace_props.json_schema_base import JsonSchemaBase
+from visivo.models.trace_props.json_schema_base import JsonSchemaBase, get_message_from_error
 
 
 class TraceType(str, Enum):
@@ -95,17 +95,7 @@ class TraceProps(JsonSchemaBase):
             raise ValueError(f"Invalid JSON in schema file for trace type: {self.type.value}")
         except ValidationError as e:
             schema = TraceProps._schemas.get(self.type.value)
-            message = str(e.message)
-            if "is not valid under any of the schemas listed in the" in message:
-                current = schema["properties"]
-                for part in e.instance_path:
-                    current = current.get(part, {})
-                message_parts = []
-                for oneOf in current.get("oneOf", []):
-                    message_parts.append(json.dumps(oneOf))
-                message = "Value does not match any of the following schemas: \n" + "\n or \n".join(
-                    message_parts
-                )
+            message = get_message_from_error(e, schema)
             raise ValueError(
                 f"Validation error for trace type {self.type.value} at location: {e.instance_path}: {str(message)}"
             )

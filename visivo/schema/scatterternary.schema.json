@@ -766,7 +766,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "namelength": {
           "oneOf": [
@@ -805,7 +806,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "hoveron": {
       "oneOf": [
@@ -1027,14 +1029,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -1157,7 +1161,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "marker": {
       "type": "object",
@@ -1722,7 +1727,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -1773,7 +1779,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -2070,7 +2077,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "side": {
                   "oneOf": [
@@ -2091,7 +2099,8 @@
                   "description": "Sets the title of the color bar.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "x": {
               "oneOf": [
@@ -2201,7 +2210,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "colorscale": {
           "oneOf": [
@@ -2296,7 +2306,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `type`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "line": {
           "type": "object",
@@ -2462,7 +2473,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `width`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "maxdisplayed": {
           "oneOf": [
@@ -3661,7 +3673,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `symbol`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "metasrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
@@ -3749,7 +3762,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "textfont": {
           "type": "object",
@@ -3764,9 +3778,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "selectedpoints": {
       "description": "Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect."
@@ -3805,7 +3821,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "subplot": {
       "oneOf": [
@@ -4190,7 +4207,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "textposition": {
       "oneOf": [
@@ -4319,7 +4337,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "textfont": {
           "type": "object",
@@ -4334,9 +4353,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "visible": {
       "oneOf": [

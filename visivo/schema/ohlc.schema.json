@@ -190,9 +190,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "high": {
       "oneOf": [
@@ -729,7 +731,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "namelength": {
           "oneOf": [
@@ -780,7 +783,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "hovertext": {
       "description": "Same as `text`.",
@@ -861,9 +865,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legend": {
       "oneOf": [
@@ -1008,14 +1014,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -1062,7 +1070,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "low": {
       "oneOf": [
@@ -1173,7 +1182,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "text": {
       "description": "Sets hover text elements associated with each sample point. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to this trace's sample points.",

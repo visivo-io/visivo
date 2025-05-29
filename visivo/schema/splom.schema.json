@@ -146,7 +146,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "dimensions": {
       "type": "array",
@@ -184,7 +185,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "label": {
             "description": "Sets the label corresponding to this splom dimension.",
@@ -235,7 +237,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -749,7 +752,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "namelength": {
           "oneOf": [
@@ -788,7 +792,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "hovertemplate": {
       "description": "Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example \"y: %{y}\" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, *xother* will be added to those with different x positions from the first point. An underscore before or after *(x|y)other* will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example \"Price: %{y:$.2f}\". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example \"Day: %{2019-01-01|%A}\". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available.  Anything contained in tag `<extra>` is displayed in the secondary box, for example \"<extra>{fullData.name}</extra>\". To hide the secondary box completely, use an empty tag `<extra></extra>`.",
@@ -998,14 +1003,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -1579,7 +1586,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -1630,7 +1638,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -1927,7 +1936,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "side": {
                   "oneOf": [
@@ -1948,7 +1958,8 @@
                   "description": "Sets the title of the color bar.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "x": {
               "oneOf": [
@@ -2058,7 +2069,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "colorscale": {
           "oneOf": [
@@ -2238,7 +2250,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `width`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "opacity": {
           "oneOf": [
@@ -3387,7 +3400,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `symbol`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "metasrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
@@ -3452,9 +3466,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "selectedpoints": {
       "description": "Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect."
@@ -3517,7 +3533,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "text": {
       "description": "Sets text elements associated with each (x,y) pair to appear on hover. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates.",
@@ -3587,9 +3604,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "visible": {
       "oneOf": [

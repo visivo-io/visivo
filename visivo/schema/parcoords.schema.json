@@ -289,7 +289,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -380,7 +381,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "ids": {
       "oneOf": [
@@ -543,7 +545,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "labelside": {
       "oneOf": [
@@ -698,14 +701,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -1240,7 +1245,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -1291,7 +1297,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -1588,7 +1595,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "side": {
                   "oneOf": [
@@ -1609,7 +1617,8 @@
                   "description": "Sets the title of the color bar.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "x": {
               "oneOf": [
@@ -1719,7 +1728,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "colorscale": {
           "oneOf": [
@@ -1759,7 +1769,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "metasrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
@@ -1891,7 +1902,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "stream": {
       "type": "object",
@@ -1915,7 +1927,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "tickfont": {
       "type": "object",
@@ -2039,7 +2052,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "uid": {
       "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",
@@ -2078,9 +2092,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "visible": {
       "oneOf": [

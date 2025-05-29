@@ -709,7 +709,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "namelength": {
           "oneOf": [
@@ -748,7 +749,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "hoveron": {
       "oneOf": [
@@ -984,14 +986,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -1043,7 +1047,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "lowerfence": {
       "oneOf": [
@@ -1146,7 +1151,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "opacity": {
           "oneOf": [
@@ -1684,7 +1690,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "mean": {
       "oneOf": [
@@ -1985,9 +1992,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "selectedpoints": {
       "description": "Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect."
@@ -2052,7 +2061,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "text": {
       "description": "Sets the text elements associated with each sample value. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. To be seen, trace `hoverinfo` must contain a *text* flag.",
@@ -2122,9 +2132,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "upperfence": {
       "oneOf": [

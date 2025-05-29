@@ -3,7 +3,7 @@ import json
 from jsonschema_rs import ValidationError, validator_for
 from pydantic import model_validator
 from visivo.models.color_palette import ColorPalette
-from visivo.models.trace_props.json_schema_base import JsonSchemaBase
+from visivo.models.trace_props.json_schema_base import JsonSchemaBase, get_message_from_error
 
 
 class Layout(JsonSchemaBase):
@@ -37,9 +37,12 @@ class Layout(JsonSchemaBase):
         if not hasattr(Layout, "_schema"):
             schema_path = files("visivo.schema").joinpath(f"layout.schema.json")
             with open(schema_path) as f:
-                Layout._schema = validator_for(json.load(f))
+                Layout._schema = json.load(f)
 
-        validator = Layout._schema
+        if not hasattr(Layout, "_validator"):
+            Layout._validator = validator_for(Layout._schema)
+
+        validator = Layout._validator
         if not validator:
             raise ValueError("Schema not found for layout")
 
@@ -53,8 +56,9 @@ class Layout(JsonSchemaBase):
         except json.JSONDecodeError:
             raise ValueError("Invalid JSON in schema file for layout")
         except ValidationError as e:
+            message = get_message_from_error(e, Layout._schema)
             raise ValueError(
-                f"Validation error for layout at location: {e.instance_path}: {str(e.message)}"
+                f"Validation error for layout at location: {e.instance_path}: {message}"
             )
 
         return self

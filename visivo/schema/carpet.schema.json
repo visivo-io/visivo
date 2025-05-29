@@ -814,7 +814,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tickformat": {
           "default": "",
@@ -865,7 +866,8 @@
                 "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                 "type": "string"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -1068,7 +1070,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "offset": {
               "oneOf": [
@@ -1087,7 +1090,8 @@
               "description": "Sets the title of this axis.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "type": {
           "oneOf": [
@@ -1106,7 +1110,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "asrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `a`.",
@@ -1820,7 +1825,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tickformat": {
           "default": "",
@@ -1871,7 +1877,8 @@
                 "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                 "type": "string"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -2074,7 +2081,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "offset": {
               "oneOf": [
@@ -2093,7 +2101,8 @@
               "description": "Sets the title of this axis.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "type": {
           "oneOf": [
@@ -2112,7 +2121,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "bsrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `b`.",
@@ -2317,7 +2327,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "ids": {
       "oneOf": [
@@ -2482,14 +2493,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -2559,7 +2572,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "uid": {
       "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",

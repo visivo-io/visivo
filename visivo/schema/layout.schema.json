@@ -129,7 +129,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "activeshape": {
       "type": "object",
@@ -158,7 +159,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "annotations": {
       "type": "array",
@@ -498,7 +500,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "height": {
             "oneOf": [
@@ -658,9 +661,11 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               }
-            }
+            },
+            "additionalProperties": false
           },
           "hovertext": {
             "description": "Sets text to appear when hovering over this annotation. If omitted or blank, no hover label will appear.",
@@ -924,7 +929,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -1476,7 +1482,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -1527,7 +1534,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -1824,7 +1832,8 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "side": {
                   "oneOf": [
@@ -1845,7 +1854,8 @@
                   "description": "Sets the title of the color bar.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "x": {
               "oneOf": [
@@ -1955,7 +1965,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "colorscale": {
           "oneOf": [
@@ -1991,7 +2002,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "colorscale": {
       "type": "object",
@@ -2026,7 +2038,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "colorway": {
       "oneOf": [
@@ -2212,7 +2225,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "geo": {
       "type": "object",
@@ -2252,7 +2266,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "coastlinecolor": {
           "oneOf": [
@@ -2387,7 +2402,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "fitbounds": {
           "oneOf": [
@@ -2537,7 +2553,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "lonaxis": {
           "type": "object",
@@ -2628,7 +2645,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "oceancolor": {
           "oneOf": [
@@ -2715,7 +2733,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "scale": {
               "oneOf": [
@@ -2838,7 +2857,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "resolution": {
           "oneOf": [
@@ -3028,7 +3048,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "grid": {
       "type": "object",
@@ -3106,7 +3127,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "pattern": {
           "oneOf": [
@@ -3309,7 +3331,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "height": {
       "oneOf": [
@@ -3512,7 +3535,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "grouptitlefont": {
           "type": "object",
@@ -3636,7 +3660,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "namelength": {
           "oneOf": [
@@ -3651,7 +3676,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "hovermode": {
       "oneOf": [
@@ -3870,7 +3896,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -4059,7 +4086,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "groupclick": {
           "oneOf": [
@@ -4198,7 +4226,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "indentation": {
           "oneOf": [
@@ -4425,7 +4454,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "side": {
               "oneOf": [
@@ -4449,7 +4479,8 @@
               "description": "Sets the title of the legend.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tracegroupgap": {
           "oneOf": [
@@ -4602,7 +4633,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "map": {
       "type": "object",
@@ -4666,7 +4698,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "center": {
           "type": "object",
@@ -4695,7 +4728,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "domain": {
           "type": "object",
@@ -4784,7 +4818,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "layers": {
           "type": "array",
@@ -4810,7 +4845,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "color": {
                 "oneOf": [
@@ -4838,7 +4874,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "line": {
                 "type": "object",
@@ -4880,7 +4917,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "maxzoom": {
                 "oneOf": [
@@ -5057,7 +5095,8 @@
                           }
                         ]
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "textposition": {
                     "oneOf": [
@@ -5081,7 +5120,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "templateitemname": {
                 "description": "Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`.",
@@ -5117,7 +5157,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -5152,7 +5193,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "mapbox": {
       "type": "object",
@@ -5221,7 +5263,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "center": {
           "type": "object",
@@ -5250,7 +5293,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "domain": {
           "type": "object",
@@ -5339,7 +5383,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "layers": {
           "type": "array",
@@ -5365,7 +5410,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "color": {
                 "oneOf": [
@@ -5393,7 +5439,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "line": {
                 "type": "object",
@@ -5435,7 +5482,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "maxzoom": {
                 "oneOf": [
@@ -5612,7 +5660,8 @@
                           }
                         ]
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "textposition": {
                     "oneOf": [
@@ -5636,7 +5685,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "templateitemname": {
                 "description": "Used to refer to a named item in this array in the template. Named items from the template will be created even without a matching item in the input figure, but you can modify one by making an item with `templateitemname` matching its `name`, alongside your modifications (including `visible: false` or `enabled: false` to hide it). If there is no template or no matching item, this item will be hidden unless you explicitly show it with `visible: true`.",
@@ -5672,7 +5722,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -5707,7 +5758,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "margin": {
       "type": "object",
@@ -5789,7 +5841,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "metasrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
@@ -5912,7 +5965,8 @@
         "uirevision": {
           "description": "Controls persistence of user-driven changes related to the modebar, including `hovermode`, `dragmode`, and `showspikes` at both the root level and inside subplots. Defaults to `layout.uirevision`."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "newselection": {
       "type": "object",
@@ -5948,7 +6002,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "mode": {
           "oneOf": [
@@ -5965,7 +6020,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "newshape": {
       "type": "object",
@@ -6137,7 +6193,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "padding": {
               "oneOf": [
@@ -6232,7 +6289,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "layer": {
           "oneOf": [
@@ -6393,14 +6451,16 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "text": {
               "default": "",
               "description": "Sets the title of the legend group.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "legendrank": {
           "oneOf": [
@@ -6457,7 +6517,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "name": {
           "description": "Sets new shape name. The name appears as the legend item.",
@@ -6505,7 +6566,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "paper_bgcolor": {
       "oneOf": [
@@ -7040,7 +7102,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -7091,7 +7154,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -7255,7 +7319,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "bgcolor": {
           "oneOf": [
@@ -7354,7 +7419,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "gridshape": {
           "oneOf": [
@@ -7450,7 +7516,8 @@
                 "minallowed": {
                   "description": "Use this value exactly as autorange minimum."
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "autotickangles": {
               "oneOf": [
@@ -8014,7 +8081,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -8065,7 +8133,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -8323,14 +8392,16 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "default": "",
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "type": {
               "oneOf": [
@@ -8365,7 +8436,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "sector": {
           "oneOf": [
@@ -8397,7 +8469,8 @@
         "uirevision": {
           "description": "Controls persistence of user-driven changes in axis attributes, if not overridden in the individual axes. Defaults to `layout.uirevision`."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "scene": {
       "type": "object",
@@ -8696,7 +8769,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "height": {
                 "oneOf": [
@@ -8856,9 +8930,11 @@
                           }
                         ]
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "hovertext": {
                 "description": "Sets text to appear when hovering over this annotation. If omitted or blank, no hover label will appear.",
@@ -9077,7 +9153,8 @@
               "z": {
                 "description": "Sets the annotation's z position."
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -9135,7 +9212,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "bgcolor": {
           "oneOf": [
@@ -9186,7 +9264,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "eye": {
               "type": "object",
@@ -9224,7 +9303,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "projection": {
               "type": "object",
@@ -9244,7 +9324,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "up": {
               "type": "object",
@@ -9282,9 +9363,11 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         },
         "domain": {
           "type": "object",
@@ -9373,7 +9456,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "dragmode": {
           "oneOf": [
@@ -9462,7 +9546,8 @@
                 "minallowed": {
                   "description": "Use this value exactly as autorange minimum."
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "autotypenumbers": {
               "oneOf": [
@@ -10059,7 +10144,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -10110,7 +10196,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -10355,13 +10442,15 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "type": {
               "oneOf": [
@@ -10425,7 +10514,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "yaxis": {
           "type": "object",
@@ -10479,7 +10569,8 @@
                 "minallowed": {
                   "description": "Use this value exactly as autorange minimum."
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "autotypenumbers": {
               "oneOf": [
@@ -11076,7 +11167,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -11127,7 +11219,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -11372,13 +11465,15 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "type": {
               "oneOf": [
@@ -11442,7 +11537,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "zaxis": {
           "type": "object",
@@ -11496,7 +11592,8 @@
                 "minallowed": {
                   "description": "Use this value exactly as autorange minimum."
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "autotypenumbers": {
               "oneOf": [
@@ -12093,7 +12190,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -12144,7 +12242,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -12389,13 +12488,15 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "type": {
               "oneOf": [
@@ -12459,9 +12560,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "selectdirection": {
       "oneOf": [
@@ -12519,7 +12622,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "name": {
             "description": "When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template.",
@@ -12615,7 +12719,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -12790,7 +12895,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "padding": {
                 "oneOf": [
@@ -12885,7 +12991,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "layer": {
             "oneOf": [
@@ -13046,14 +13153,16 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "text": {
                 "default": "",
                 "description": "Sets the title of the legend group.",
                 "type": "string"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "legendrank": {
             "oneOf": [
@@ -13110,7 +13219,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "name": {
             "description": "When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template.",
@@ -13328,7 +13438,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -13529,7 +13640,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "offset": {
                 "oneOf": [
@@ -13579,7 +13691,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "font": {
             "type": "object",
@@ -13703,7 +13816,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "len": {
             "oneOf": [
@@ -13801,7 +13915,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "steps": {
             "type": "array",
@@ -13880,7 +13995,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "minItems": 1
           },
@@ -13989,7 +14105,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "visible": {
             "oneOf": [
@@ -14065,7 +14182,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -14169,7 +14287,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "imaginaryaxis": {
           "type": "object",
@@ -14461,7 +14580,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -14556,7 +14676,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "realaxis": {
           "type": "object",
@@ -14877,7 +14998,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -14979,9 +15101,11 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "spikedistance": {
       "oneOf": [
@@ -15399,7 +15523,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -15450,7 +15575,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -15708,18 +15834,21 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "uirevision": {
               "description": "Controls persistence of user-driven changes in axis `min`, and `title` if in `editable: true` configuration. Defaults to `ternary<N>.uirevision`."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "baxis": {
           "type": "object",
@@ -16118,7 +16247,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -16169,7 +16299,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -16427,18 +16558,21 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "uirevision": {
               "description": "Controls persistence of user-driven changes in axis `min`, and `title` if in `editable: true` configuration. Defaults to `ternary<N>.uirevision`."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "bgcolor": {
           "oneOf": [
@@ -16847,7 +16981,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "tickformat": {
               "default": "",
@@ -16898,7 +17033,8 @@
                     "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                     "type": "string"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -17156,18 +17292,21 @@
                         }
                       ]
                     }
-                  }
+                  },
+                  "additionalProperties": false
                 },
                 "text": {
                   "description": "Sets the title of this axis.",
                   "type": "string"
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "uirevision": {
               "description": "Controls persistence of user-driven changes in axis `min`, and `title` if in `editable: true` configuration. Defaults to `ternary<N>.uirevision`."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "domain": {
           "type": "object",
@@ -17256,7 +17395,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "sum": {
           "oneOf": [
@@ -17274,7 +17414,8 @@
         "uirevision": {
           "description": "Controls persistence of user-driven changes in axis `min` and `title`, if not overridden in the individual axes. Defaults to `layout.uirevision`."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "title": {
       "type": "object",
@@ -17413,7 +17554,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "pad": {
           "type": "object",
@@ -17466,7 +17608,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "subtitle": {
           "type": "object",
@@ -17593,13 +17736,15 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "text": {
               "description": "Sets the plot's subtitle.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "description": "Sets the plot's title.",
@@ -17697,7 +17842,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "transition": {
       "type": "object",
@@ -17779,7 +17925,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "uirevision": {
       "description": "Used to allow user interactions with the plot to persist after `Plotly.react` calls that are unaware of these interactions. If `uirevision` is omitted, or if it is given and it changed from the previous `Plotly.react` call, the exact new figure is used. If `uirevision` is truthy and did NOT change, any attribute that has been affected by user interactions and did not receive a different value in the new figure will keep the interaction value. `layout.uirevision` attribute serves as the default for `uirevision` attributes in various sub-containers. For finer control you can set these sub-attributes directly. For example, if your app separately controls the data on the x and y axes you might set `xaxis.uirevision=*time*` and `yaxis.uirevision=*cost*`. Then if only the y data is changed, you can update `yaxis.uirevision=*quantity*` and the y axis range will reset but the x axis range will retain any user-driven zoom."
@@ -17816,7 +17963,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "updatemenus": {
       "type": "array",
@@ -17956,7 +18104,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "minItems": 1
           },
@@ -18099,7 +18248,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "name": {
             "description": "When used in a template, named items are created in the output figure in addition to any items the figure already has in this array. You can modify these items in the output figure by making your own item with `templateitemname` matching this `name` alongside your modifications (including `visible: false` or `enabled: false` to hide it). Has no effect outside of a template.",
@@ -18156,7 +18306,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "showactive": {
             "oneOf": [
@@ -18262,7 +18413,8 @@
               }
             ]
           }
-        }
+        },
+        "additionalProperties": false
       },
       "minItems": 1
     },
@@ -18377,7 +18529,8 @@
             "minallowed": {
               "description": "Use this value exactly as autorange minimum."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "autotickangles": {
           "oneOf": [
@@ -18914,7 +19067,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "mirror": {
           "oneOf": [
@@ -19078,7 +19232,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -19221,7 +19376,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "minItems": 1
             },
@@ -19347,7 +19503,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "visible": {
               "oneOf": [
@@ -19420,7 +19577,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "rangeslider": {
           "type": "object",
@@ -19543,9 +19701,11 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         },
         "scaleanchor": {
           "oneOf": [
@@ -19925,7 +20085,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tickformat": {
           "default": "",
@@ -19976,7 +20137,8 @@
                 "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                 "type": "string"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -20360,7 +20522,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "standoff": {
               "oneOf": [
@@ -20378,7 +20541,8 @@
               "description": "Sets the title of this axis.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "type": {
           "oneOf": [
@@ -20446,7 +20610,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "yaxis": {
       "type": "object",
@@ -20546,7 +20711,8 @@
             "minallowed": {
               "description": "Use this value exactly as autorange minimum."
             }
-          }
+          },
+          "additionalProperties": false
         },
         "autoshift": {
           "oneOf": [
@@ -21095,7 +21261,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "mirror": {
           "oneOf": [
@@ -21259,7 +21426,8 @@
                   }
                 ]
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -21668,7 +21836,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tickformat": {
           "default": "",
@@ -21719,7 +21888,8 @@
                 "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                 "type": "string"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -22103,7 +22273,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "standoff": {
               "oneOf": [
@@ -22121,7 +22292,8 @@
               "description": "Sets the title of this axis.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "type": {
           "oneOf": [
@@ -22189,7 +22361,9 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

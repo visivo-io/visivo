@@ -537,7 +537,8 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "tickformat": {
           "default": "",
@@ -588,7 +589,8 @@
                 "description": "string - dtickformat for described zoom level, the same as *tickformat*",
                 "type": "string"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "minItems": 1
         },
@@ -885,7 +887,8 @@
                     }
                   ]
                 }
-              }
+              },
+              "additionalProperties": false
             },
             "side": {
               "oneOf": [
@@ -906,7 +909,8 @@
               "description": "Sets the title of the color bar.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "x": {
           "oneOf": [
@@ -1016,7 +1020,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "colorscale": {
       "oneOf": [
@@ -1598,7 +1603,8 @@
               "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "namelength": {
           "oneOf": [
@@ -1637,7 +1643,8 @@
           "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "hoverongaps": {
       "oneOf": [
@@ -1864,14 +1871,16 @@
                 }
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         "text": {
           "default": "",
           "description": "Sets the title of the legend group.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "legendrank": {
       "oneOf": [
@@ -1977,7 +1986,8 @@
           "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "text": {
       "oneOf": [
@@ -2123,7 +2133,8 @@
             }
           ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "textsrc": {
       "description": "Sets the source reference on Chart Studio Cloud for `text`.",
