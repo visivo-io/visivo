@@ -11,7 +11,7 @@ export const usePivotExecution = (db) => {
     onPivotComplete
   }) => {
     if (!db || !valueField || rowFields.length === 0) return;
-    
+
     setPivotLoading(true);
     let conn;
     try {
@@ -28,6 +28,8 @@ export const usePivotExecution = (db) => {
       const databaseColumns = schemaQuery.schema.fields.map((field) => field.name);
 
       // Create column name mapping
+      // should we just used interpolation with the original column names?
+      // Can we do this.. ?
       const columnNameMapping = databaseColumns.reduce((mapping, columnName) => {
         mapping[columnName] = columnName;
         const sanitizedColumnName = columnName.replace(/\./g, "_");
@@ -56,16 +58,18 @@ export const usePivotExecution = (db) => {
           safeValField,
           aggregateFunc
         });
-        
+
         onPivotComplete(pivotResult.data, pivotResult.columns);
       } else {
-        console.log("No column fields selected.");
+        console.info("No column fields selected.");
       }
     } catch (error) {
       console.error("Error executing pivot query:", error);
     } finally {
       setPivotLoading(false);
-      await conn.close();
+      if (conn) {
+        await conn.close();
+      }
     }
   }, [db]);
 
