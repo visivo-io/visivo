@@ -28,9 +28,10 @@ def generate_trace_prop_schemas():
 def generate_schema():
     """Generate both project and trace prop schemas"""
     project_schema = json.loads(generate_project_schema())
+
+    print(json.dumps(project_schema, indent=4))
     trace_schemas = generate_trace_prop_schemas()
 
-    # Add trace schemas to project schema's $defs
     if "$defs" not in project_schema:
         project_schema["$defs"] = {}
 
@@ -38,10 +39,26 @@ def generate_schema():
         project_schema["$defs"][trace_type] = schema
 
     project_schema["$defs"]["Trace"]["properties"]["props"] = {
-        "oneOf": [{"$ref": f"#/defs/{trace_type}"} for trace_type in trace_schemas.keys()]
+        "oneOf": [{"$ref": f"#/$defs/{trace_type}"} for trace_type in trace_schemas.keys()]
     }
     layout_schema = json.loads(files("visivo.schema").joinpath("layout.schema.json").read_text())
     project_schema["$defs"]["Layout"] = layout_schema
-    project_schema["$defs"]["Trace"]["properties"]["layout"] = {"$ref": "#/defs/Layout"}
+    project_schema["$defs"]["Trace"]["properties"]["layout"] = {"$ref": "#/$defs/Layout"}
 
+    # Move nested $defs to top level
+    defs_to_add = {}
+    for def_name, def_schema in project_schema["$defs"].items():
+        if "$defs" in def_schema:
+            # Add each nested def to top level if it doesn't exist
+            for nested_def_name, nested_def_schema in def_schema["$defs"].items():
+                if (
+                    nested_def_name not in project_schema["$defs"]
+                    and nested_def_name not in defs_to_add
+                ):
+                    defs_to_add[nested_def_name] = nested_def_schema
+            # Remove the nested $defs
+            del def_schema["$defs"]
+
+    # Add all collected defs to top level
+    project_schema["$defs"].update(defs_to_add)
     return json.dumps(project_schema)

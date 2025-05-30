@@ -209,10 +209,9 @@ def _get_traceprop_nested_structure(model: dict, details: list = []) -> str:
                 output[field_name] = type
         elif "properties" in field_info_keys:
             output[field_name], details = _get_traceprop_nested_structure(field_info, details)
-        elif "description" in field_info_keys:
+        elif "description" in field_info_keys or "$ref" in field_info_keys:
             pass
         else:
-            breakpoint()
             raise NotImplementedError(
                 f"Have not yet handled properties with attributes {field_info_keys} "
             )

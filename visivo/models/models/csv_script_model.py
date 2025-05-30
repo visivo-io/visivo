@@ -98,7 +98,7 @@ class CsvScriptModel(Model):
     """
 
     name: str = pydantic.Field(
-        required=True, description="The unique name of the object across the entire project."
+        ..., description="The unique name of the object across the entire project."
     )
 
     table_name: TableModelName = Field(

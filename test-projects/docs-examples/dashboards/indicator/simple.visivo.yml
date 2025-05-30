@@ -5,6 +5,10 @@ models:
       - |
         value
         75
+sources:
+  - name: name
+    type: sqlite
+    database: database
 traces:
   - name: Simple Numeric Indicator
     model: ${ref(indicator-data)}
