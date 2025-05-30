@@ -64,7 +64,7 @@ class SnowflakeSource(SqlalchemySource):
     )
     private_key_passphrase: Optional[SecretStr] = Field(
         None,
-        description="Passphrase for the private key file. If provided, password will be ignored.",
+        description="Passphrase for the private key file if it is encrypted.",
     )
 
     type: SnowflakeType
@@ -76,14 +76,17 @@ class SnowflakeSource(SqlalchemySource):
         if not self.private_key_path:
             return {}
 
-        import os
         from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives import serialization
 
         with open(self.private_key_path, "rb") as key:
             p_key = serialization.load_pem_private_key(
                 key.read(),
-                password=self.private_key_passphrase.encode(),
+                password=(
+                    self.private_key_passphrase.get_secret_value().encode()
+                    if self.private_key_passphrase
+                    else None
+                ),
                 backend=default_backend(),
             )
 

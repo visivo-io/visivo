@@ -32,6 +32,7 @@ def _generate_sources(profiles, dbt_target, dbt_prefix):
                 "database",
                 "db_schema",
                 "host",
+                "name",
                 "password",
                 "port",
                 "private_key_path",
