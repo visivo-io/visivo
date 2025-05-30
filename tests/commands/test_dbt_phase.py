@@ -34,6 +34,7 @@ def setup_dbt(project, working_dir):
                         "threads": 8,
                         "warehouse": "warehouse",
                         "role": "role",
+                        "extra_key": "extra_value",
                     }
                 },
             }

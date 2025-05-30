@@ -27,7 +27,7 @@ def _generate_sources(profiles, dbt_target, dbt_prefix):
 
             allowed_keys = [
                 "account",
-                "connection_pool_size", 
+                "connection_pool_size",
                 "credentials_base64",
                 "database",
                 "db_schema",
