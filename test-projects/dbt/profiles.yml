@@ -4,6 +4,8 @@ visivo_profile:
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
       password: "{{ env_var('DB_PASSWORD') }}"
       user: "{{ env_var('DB_USERNAME') }}"
+      # private_key_path: "{{ env_var('DB_PRIVATE_KEY_PATH') }}"
+      # private_key_passphrase: "{{ env_var('DB_PRIVATE_KEY_PASSPHRASE') }}"
       database: RAW
       role: PROD
       schema: DEFAULT

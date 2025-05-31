@@ -54,7 +54,9 @@ class SqlalchemySource(Source, ABC):
         if not self._engine:
 
             Logger.instance().debug(f"Creating engine for Source: {self.name}")
-            self._engine = create_engine(self.url(), poolclass=NullPool)
+            self._engine = create_engine(
+                self.url(), poolclass=NullPool, connect_args=self.connect_args()
+            )
 
             @event.listens_for(self._engine, "connect")
             def connect(dbapi_connection, connection_record):
@@ -72,3 +74,6 @@ class SqlalchemySource(Source, ABC):
             if name != "_plugin_module":
                 setattr(copied, name, deepcopy(val, memo))
         return copied
+
+    def connect_args(self):
+        return {}

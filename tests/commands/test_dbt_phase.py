@@ -4,6 +4,7 @@ import yaml
 import pytest
 import click
 from visivo.commands.dbt_phase import dbt_phase
+from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from click.testing import CliRunner
 from tests.support.utils import temp_file, temp_yml_file, temp_folder
@@ -25,7 +26,7 @@ def setup_dbt(project, working_dir):
                 "outputs": {
                     "target_name": {
                         "type": "snowflake",
-                        "account": "{{env_var('ACCOUNT')}}",
+                        "account": "{{ env_var('ACCOUNT') }}",
                         "username": "username",
                         "password": "password",
                         "schema": "schema",
@@ -33,6 +34,7 @@ def setup_dbt(project, working_dir):
                         "threads": 8,
                         "warehouse": "warehouse",
                         "role": "role",
+                        "extra_key": "extra_value",
                     }
                 },
             }
@@ -79,6 +81,7 @@ def test_dbt_with_defaults():
     assert os.path.exists(f"{output_dir}/dbt.yml")
     with open(f"{output_dir}/dbt.yml", "r") as file:
         dbt_content = yaml.safe_load(file)
+        SnowflakeSource(**dbt_content["sources"][0])
         assert dbt_content["models"][0]["source"] == "ref(profile_name_target_name)"
 
 

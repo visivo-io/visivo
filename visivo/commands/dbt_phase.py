@@ -24,10 +24,36 @@ def _generate_sources(profiles, dbt_target, dbt_prefix):
                 source["username"] = source.pop("user")
             if "threads" in source:
                 source.pop("threads")
+
+            allowed_keys = [
+                "account",
+                "connection_pool_size",
+                "credentials_base64",
+                "database",
+                "db_schema",
+                "host",
+                "name",
+                "password",
+                "port",
+                "private_key_path",
+                "private_key_passphrase",
+                "project",
+                "role",
+                "timezone",
+                "type",
+                "username",
+                "warehouse",
+            ]
+            for key in list(source.keys()):
+                if key not in allowed_keys:
+                    source.pop(key)
             if "type" in source and source["type"] not in source_types:
                 raise click.ClickException(
                     f"Target type '{source['type']}' is not supported.  Only {source_types} are supported."
                 )
+            Logger.instance().debug(
+                f"dbt target {target_name} in profile {profile_name} is now source: {source['name']}"
+            )
             sources.append(source)
 
     if not target_found:
