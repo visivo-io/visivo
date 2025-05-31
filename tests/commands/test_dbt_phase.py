@@ -26,7 +26,7 @@ def setup_dbt(project, working_dir):
                 "outputs": {
                     "target_name": {
                         "type": "snowflake",
-                        "account": "{{env_var('ACCOUNT')}}",
+                        "account": "{{ env_var('ACCOUNT') }}",
                         "username": "username",
                         "password": "password",
                         "schema": "schema",

@@ -36,6 +36,7 @@ def _generate_sources(profiles, dbt_target, dbt_prefix):
                 "password",
                 "port",
                 "private_key_path",
+                "private_key_passphrase",
                 "project",
                 "role",
                 "timezone",
@@ -50,6 +51,9 @@ def _generate_sources(profiles, dbt_target, dbt_prefix):
                 raise click.ClickException(
                     f"Target type '{source['type']}' is not supported.  Only {source_types} are supported."
                 )
+            Logger.instance().debug(
+                f"dbt target {target_name} in profile {profile_name} is now source: {source['name']}"
+            )
             sources.append(source)
 
     if not target_found:
