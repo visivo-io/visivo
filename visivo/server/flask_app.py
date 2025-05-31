@@ -15,11 +15,7 @@ import subprocess
 
 class FlaskApp:
     def __init__(self, output_dir, project: Project):
-        self.app = Flask(
-            __name__,
-            static_folder=output_dir,
-            static_url_path="/data",
-        )
+        self.app = Flask(__name__, static_folder=output_dir, static_url_path="/data")
 
         self._project_json = (
             Serializer(project=project).dereference().model_dump_json(exclude_none=True)

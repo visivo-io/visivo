@@ -21,7 +21,7 @@ traces:
       u: ?{u}
       v: ?{v}
       w: ?{w}
-      colorscale: "Virdis"
+      colorscale: "Viridis"
       colorbar:
         title:
           text: "Wind Speed (m/s)"
@@ -39,7 +39,7 @@ charts:
         camera:
           eye:
             x: 1.5
-            y: -.5
+            y: -0.5
             z: 1
       margin:
         l: 90

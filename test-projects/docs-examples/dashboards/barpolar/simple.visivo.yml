@@ -31,7 +31,7 @@ charts:
       polar:
         radialaxis:
           ticksuffix: "%"
-          tickangle: 360
+          tickangle: 0
           tick0: 0
           dtick: 2
         angularaxis:

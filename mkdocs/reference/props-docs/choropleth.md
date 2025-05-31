@@ -15,7 +15,6 @@ The `choropleth` trace allows you to control the region coloring based on a vari
     - **Density Mapping**: Displaying population or other density metrics across regions.
     - **Thematic Mapping**: Creating maps that represent different data points based on a color gradient (e.g., GDP, COVID-19 cases).
 
-_**Check out the [Attributes](../configuration/Trace/Props/Choropleth/#attributes) for the full set of configuration options**_
 
 ## Examples
 

@@ -20,7 +20,6 @@ from visivo.models.row import Row
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.trace import Trace
 from visivo.models.defaults import Defaults
-from visivo.models.trace_props.scatter import Scatter
 from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.commands.utils import get_source_types
@@ -28,16 +27,17 @@ from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 from visivo.version import VISIVO_VERSION
 
 
-def init_phase(project_name=None):
+def init_phase(project_dir):
     """Enables a quick set up by writing your source & api credentials to an env file."""
     user_home = os.path.expanduser("~")
-    Logger.instance().success("Initialized")
-    if not project_name:
-        project_name = click.prompt("? Project name", type=str)
-    if Path(project_name).exists():
-        raise click.ClickException(f"'{project_name}' directory already exists")
 
-    os.makedirs(project_name, exist_ok=True)
+    if project_dir:
+        project_name = project_dir
+    else:
+        project_dir = "."
+        project_name = os.path.basename(os.path.abspath("."))
+
+    Logger.instance().success(f"Initializing in {project_dir}")
     sqlite_type = get_args(SqliteType)[0]
     postgresql_type = get_args(PostgresqlType)[0]
     mysql_type = get_args(MysqlType)[0]
@@ -50,12 +50,12 @@ def init_phase(project_name=None):
     if source_type == sqlite_type:
         source = SqliteSource(
             name="Example Source",
-            database=f"{project_name}/local.db",
+            database=f"{project_dir}/local.db",
             type=source_type,
         )
-        create_file_database(source.url(), project_name)
+        create_file_database(source.url(), project_dir)
         source.database = "local.db"
-        fp = open(f"{project_name}/.env", "w+")
+        fp = open(f"{project_dir}/.env", "w+")
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
 
@@ -66,7 +66,7 @@ def init_phase(project_name=None):
         password = click.prompt(
             "? Database password", type=str, hide_input=True, confirmation_prompt=True
         )
-        fp = open(f"{project_name}/.env", "w+")
+        fp = open(f"{project_dir}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
         source = PostgresqlSource(
@@ -84,7 +84,7 @@ def init_phase(project_name=None):
         password = click.prompt(
             "? Database password", type=str, hide_input=True, confirmation_prompt=True
         )
-        fp = open(f"{project_name}/.env", "w+")
+        fp = open(f"{project_dir}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
         source = MysqlSource(
@@ -104,7 +104,7 @@ def init_phase(project_name=None):
         password = click.prompt(
             "? Database password", type=str, hide_input=True, confirmation_prompt=True
         )
-        fp = open(f"{project_name}/.env", "w+")
+        fp = open(f"{project_dir}/.env", "w+")
         fp.write(f"DB_PASSWORD={password}")
         fp.close()
         source = SnowflakeSource(
@@ -125,7 +125,7 @@ def init_phase(project_name=None):
             hide_input=True,
             confirmation_prompt=True,
         )
-        fp = open(f"{project_name}/.env", "w+")
+        fp = open(f"{project_dir}/.env", "w+")
         fp.write(f"DB_PASSWORD={credentials_base64}")
         fp.close()
         source = BigQuerySource(
@@ -136,23 +136,21 @@ def init_phase(project_name=None):
             credentials_base64=credentials_base64,
         )
     if source_type == duckdb_type:
-        database = click.prompt(
-            "? Database file path", type=str, default=f"{project_name}/local.db"
-        )
+        database = click.prompt("? Database file path", type=str, default=f"{project_dir}/local.db")
         source = DuckdbSource(
             name="Example Source",
             database=database,
             type=source_type,
         )
-        create_file_database(source.url(), project_name)
+        create_file_database(source.url(), project_dir)
         source.database = "local.db"
-        fp = open(f"{project_name}/.env", "w+")
+        fp = open(f"{project_dir}/.env", "w+")
         fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
         fp.close()
     Logger.instance().debug("Generating project, gitignore & env files")
 
     model = SqlModel(name="Example Model", sql="select * from test_table")
-    props = Scatter(type="scatter", x="query(x)", y="?{y}")
+    props = {"type": "scatter", "x": "?{x}", "y": "?{y}"}
     trace = Trace(name="Example Trace", model=model, props=props)
     chart = Chart(name="Example Chart", traces=[trace])
     item = Item(chart=chart)
@@ -172,7 +170,7 @@ def init_phase(project_name=None):
         dashboards=[dashboard],
     )
 
-    fp = open(f"{project_name}/project.visivo.yml", "w")
+    fp = open(f"{project_dir}/project.visivo.yml", "w")
     fp.write(
         yaml.dump(json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False).replace(
             "'**********'", "\"{{ env_var('DB_PASSWORD') }}\""
@@ -180,7 +178,7 @@ def init_phase(project_name=None):
     )
     fp.close()
 
-    fp = open(f"{project_name}/.gitignore", "w")
+    fp = open(f"{project_dir}/.gitignore", "w")
     fp.write(".env\ntarget\n.visivo_cache")
     fp.close()
 

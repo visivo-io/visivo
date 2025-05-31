@@ -37,8 +37,8 @@ def test_Trace_missing_props_type():
         Trace(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == "Value error, trace_props type is required."
-    assert error["type"] == "value_error"
+    assert error["msg"] == "Field required"
+    assert error["type"] == "missing"
 
 
 def test_Trace_unknown_props_type():
@@ -51,8 +51,11 @@ def test_Trace_unknown_props_type():
         Trace(**data)
 
     error = exc_info.value.errors()[0]
-    assert error["msg"] == "Value error, unknown is not a valid trace_props type."
-    assert error["type"] == "value_error"
+    assert (
+        error["msg"]
+        == "Input should be 'bar', 'barpolar', 'box', 'candlestick', 'carpet', 'choropleth', 'choroplethmap', 'choroplethmapbox', 'cone', 'contour', 'contourcarpet', 'densitymap', 'densitymapbox', 'funnel', 'funnelarea', 'heatmap', 'histogram', 'histogram2d', 'histogram2dcontour', 'icicle', 'image', 'indicator', 'isosurface', 'mesh3d', 'ohlc', 'parcats', 'parcoords', 'pie', 'sankey', 'scatter', 'scatter3d', 'scattercarpet', 'scattergeo', 'scattergl', 'scattermap', 'scattermapbox', 'scatterpolar', 'scatterpolargl', 'scattersmith', 'scatterternary', 'splom', 'streamtube', 'sunburst', 'surface', 'treemap', 'violin', 'volume' or 'waterfall'"
+    )
+    assert error["type"] == "enum"
 
 
 def test_Trace_get_trace_name():

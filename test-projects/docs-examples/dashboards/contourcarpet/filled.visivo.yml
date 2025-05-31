@@ -30,7 +30,7 @@ traces:
       z: ?{z}
       colorscale: "Earth"
       contours:
-        coloring: "heatmap"
+        coloring: "fill"
         showlines: true
 charts:
   - name: Filled Contourcarpet Chart

@@ -1,20 +1,15 @@
 import re
 import os
-from typing import Any, Literal, Union
+from typing import Any, Dict, Literal
 from pydantic import BaseModel, Field, model_validator
 from visivo.models.fields import QueryOrStringField
 from visivo.models.models.fields import ModelRefField
-from visivo.models.trace_props.fields import validate_trace_props
+from visivo.models.trace_props.trace_props import TraceProps
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
 from .test import Test
 from .trace_columns import TraceColumns
 from typing import Optional, List
-
-from visivo.models.trace_props.scatter import Scatter
-
-if os.getenv("EXCLUDE_TRACE_PROPS") != "True":
-    from visivo.models.trace_props.fields import TracePropsField
 
 
 class InvalidTestConfiguration(Exception):
@@ -117,27 +112,16 @@ class Trace(NamedModel, ParentModel):
         None,
         description="Place where you can define named sql select statements. Once they are defined here they can be referenced in the trace props or in tables built on the trace.",
     )
-    if os.getenv("EXCLUDE_TRACE_PROPS") == "True":
-        props: Any = Field(Scatter(type="scatter"))
-    else:
-        props: TracePropsField = Field(Scatter(type="scatter"))
+    props: TraceProps = Field(
+        None,
+        description="Trace props are the properties that are used to configure the trace.",
+    )
 
     def child_items(self):
         children = [self.model]
         if self.tests:
             children += self.tests
         return children
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_props(cls, data: Any):
-        if isinstance(data, str):
-            return data
-
-        if "props" in data and isinstance(data["props"], dict):
-            data["props"] = validate_trace_props(data["props"])
-
-        return data
 
     @model_validator(mode="before")
     @classmethod

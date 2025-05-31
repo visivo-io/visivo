@@ -19,11 +19,11 @@ traces:
         source: ?{source}
         target: ?{target}
         value: ?{value}
-        hoverinfo: "source+target+value"
+        hoverinfo: "all"
 charts:
   - name: Hover Info Sankey Chart
     traces:
       - ${ref(Sankey Diagram with Hover Information)}
     layout:
       title:
-        text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub> 
+        text: Sankey Diagram with Hover Information<br><sub>Hover Info Displaying Value and Relationships</sub>

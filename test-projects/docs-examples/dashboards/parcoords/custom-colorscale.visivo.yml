@@ -28,4 +28,4 @@ charts:
       - ${ref(Parcoords Plot with Custom Colorscale)}
     layout:
       title:
-        text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub> 
+        text: Parcoords Plot with Custom Colorscale<br><sub>Custom Colors for Line Based on Variable 3</sub>

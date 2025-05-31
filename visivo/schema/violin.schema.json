@@ -1,0 +1,2201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visivo.io/trace-properties/schema",
+  "description": "A schema to validate plotly trace properties",
+  "$defs": {
+    "color": {
+      "type": "string",
+      "oneOf": [
+        {
+          "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
+          "description": "Hex color (e.g., #d3d3d3 or #fff)"
+        },
+        {
+          "pattern": "^rgb\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*\\)$",
+          "description": "RGB color (e.g., rgb(255, 0, 0))"
+        },
+        {
+          "pattern": "^rgba\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(0|1|0?\\.\\d+)\\s*\\)$",
+          "description": "RGBA color (e.g., rgba(255, 0, 0, 0.5))"
+        },
+        {
+          "pattern": "^hsl\\(\\s*\\d{1,3}\\s*,\\s*\\d{1,3}%\\s*,\\s*\\d{1,3}%\\s*\\)$",
+          "description": "HSL color (e.g., hsl(0, 100%, 50%))"
+        },
+        {
+          "pattern": "^hsv\\(\\s*\\d{1,3}\\s*,\\s*\\d{1,3}%\\s*,\\s*\\d{1,3}%\\s*\\)$",
+          "description": "HSV color (e.g., hsv(0, 100%, 100%))"
+        },
+        {
+          "pattern": "^(aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen)$",
+          "description": "Named CSS color"
+        }
+      ]
+    },
+    "colorscale": {
+      "description": "A Plotly colorscale either by name or a custom array of [value, color] pairs.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "Greys",
+            "YlGnBu",
+            "Greens",
+            "YlOrRd",
+            "Bluered",
+            "RdBu",
+            "Reds",
+            "Blues",
+            "Picnic",
+            "Rainbow",
+            "Portland",
+            "Jet",
+            "Hot",
+            "Blackbody",
+            "Earth",
+            "Electric",
+            "Viridis",
+            "Cividis"
+          ],
+          "description": "Predefined Plotly colorscale name"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            }
+          },
+          "description": "Custom colorscale as an array of [value, color] pairs"
+        }
+      ]
+    },
+    "query-string": {
+      "type": "string",
+      "description": "A string that will pull the value from the traces query results.",
+      "oneOf": [
+        {
+          "pattern": "^\\?\\{.*\\}$",
+          "description": "String in the format ?{ x } where x can be anything"
+        },
+        {
+          "pattern": "^query\\(.*\\)$",
+          "description": "String in the format query( x ) where x can be anything"
+        },
+        {
+          "pattern": "^column\\(.*\\)(?:\\[-?\\d+\\])?$",
+          "description": "String in the format column( x ) or column( x )[n] where x can be anything and n is a positive or negative number"
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "violin"
+    },
+    "alignmentgroup": {
+      "default": "",
+      "description": "Set several traces linked to the same position axis or matching axes to the same alignmentgroup. This controls whether bars compute their positional range dependently or independently.",
+      "type": "string"
+    },
+    "bandwidth": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sets the bandwidth used to compute the kernel density estimate. By default, the bandwidth is determined by Silverman's rule of thumb."
+        }
+      ]
+    },
+    "box": {
+      "type": "object",
+      "properties": {
+        "fillcolor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "$ref": "#/$defs/color"
+            }
+          ]
+        },
+        "line": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            "width": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Sets the inner box plot bounding line width."
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "visible": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "boolean",
+              "default": false,
+              "description": "Determines if an miniature box plot is drawn inside the violins. "
+            }
+          ]
+        },
+        "width": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 0.25,
+              "description": "Sets the width of the inner box plots relative to the violins' width. For example, with 1, the inner box plots are as wide as the violins."
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "customdata": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "description": "Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, *scatter* traces also appends customdata items in the markers DOM elements"
+        }
+      ]
+    },
+    "customdatasrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `customdata`.",
+      "type": "string"
+    },
+    "fillcolor": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "$ref": "#/$defs/color"
+        }
+      ]
+    },
+    "hoverinfo": {
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "none",
+                    "skip"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^(x|y|z|text|name)(\\+(x|y|z|text|name))*$"
+                }
+              ],
+              "default": "all",
+              "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired."
+            }
+          ]
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/query-string"
+              },
+              {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "none",
+                      "skip"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^(x|y|z|text|name)(\\+(x|y|z|text|name))*$"
+                  }
+                ],
+                "default": "all",
+                "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "hoverinfosrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `hoverinfo`.",
+      "type": "string"
+    },
+    "hoverlabel": {
+      "type": "object",
+      "properties": {
+        "align": {
+          "oneOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "left",
+                    "right",
+                    "auto"
+                  ],
+                  "default": "auto",
+                  "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "enum": [
+                      "left",
+                      "right",
+                      "auto"
+                    ],
+                    "default": "auto",
+                    "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "alignsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `align`.",
+          "type": "string"
+        },
+        "bgcolor": {
+          "oneOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "$ref": "#/$defs/color"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "bgcolorsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `bgcolor`.",
+          "type": "string"
+        },
+        "bordercolor": {
+          "oneOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "$ref": "#/$defs/color"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "bordercolorsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `bordercolor`.",
+          "type": "string"
+        },
+        "font": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "$ref": "#/$defs/color"
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "$ref": "#/$defs/color"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "colorsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `color`.",
+              "type": "string"
+            },
+            "family": {
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "oneOf": [
+                {
+                  "pattern": ".*\\S.*$",
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "pattern": ".*\\S.*$",
+                    "type": "string"
+                  }
+                },
+                {
+                  "$ref": "#/$defs/query-string"
+                }
+              ]
+            },
+            "familysrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `family`.",
+              "type": "string"
+            },
+            "lineposition": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "none"
+                          ]
+                        },
+                        {
+                          "type": "string",
+                          "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                        }
+                      ],
+                      "default": "none",
+                      "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "oneOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "none"
+                            ]
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                          }
+                        ],
+                        "default": "none",
+                        "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "linepositionsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `lineposition`.",
+              "type": "string"
+            },
+            "shadow": {
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "oneOf": [
+                {
+                  "default": "none",
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "default": "none",
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "shadowsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `shadow`.",
+              "type": "string"
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 1
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "sizesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `size`.",
+              "type": "string"
+            },
+            "style": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "enum": [
+                        "normal",
+                        "italic"
+                      ],
+                      "default": "normal",
+                      "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "enum": [
+                          "normal",
+                          "italic"
+                        ],
+                        "default": "normal",
+                        "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "stylesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `style`.",
+              "type": "string"
+            },
+            "textcase": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "enum": [
+                        "normal",
+                        "word caps",
+                        "upper",
+                        "lower"
+                      ],
+                      "default": "normal",
+                      "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "enum": [
+                          "normal",
+                          "word caps",
+                          "upper",
+                          "lower"
+                        ],
+                        "default": "normal",
+                        "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "textcasesrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `textcase`.",
+              "type": "string"
+            },
+            "variant": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "enum": [
+                        "normal",
+                        "small-caps",
+                        "all-small-caps",
+                        "all-petite-caps",
+                        "petite-caps",
+                        "unicase"
+                      ],
+                      "default": "normal",
+                      "description": "Sets the variant of the font."
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "enum": [
+                          "normal",
+                          "small-caps",
+                          "all-small-caps",
+                          "all-petite-caps",
+                          "petite-caps",
+                          "unicase"
+                        ],
+                        "default": "normal",
+                        "description": "Sets the variant of the font."
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "variantsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `variant`.",
+              "type": "string"
+            },
+            "weight": {
+              "oneOf": [
+                {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/query-string"
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000,
+                      "default": "normal",
+                      "description": "Sets the weight (or boldness) of the font."
+                    }
+                  ]
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/$defs/query-string"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000,
+                        "default": "normal",
+                        "description": "Sets the weight (or boldness) of the font."
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "weightsrc": {
+              "description": "Sets the source reference on Chart Studio Cloud for `weight`.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "namelength": {
+          "oneOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": -1,
+                  "default": 15,
+                  "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis."
+                }
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/query-string"
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": -1,
+                    "default": 15,
+                    "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis."
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "namelengthsrc": {
+          "description": "Sets the source reference on Chart Studio Cloud for `namelength`.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "hoveron": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "all"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^(violins|points|kde)(\\+(violins|points|kde))*$"
+            }
+          ],
+          "default": "violins+points+kde",
+          "description": "Do the hover effects highlight individual violins or sample points or the kernel density estimate or any combination of them?"
+        }
+      ]
+    },
+    "hovertemplate": {
+      "description": "Template string used for rendering the information that appear on hover box. Note that this will override `hoverinfo`. Variables are inserted using %{variable}, for example \"y: %{y}\" as well as %{xother}, {%_xother}, {%_xother_}, {%xother_}. When showing info for several points, *xother* will be added to those with different x positions from the first point. An underscore before or after *(x|y)other* will add a space on that side, only when this field is shown. Numbers are formatted using d3-format's syntax %{variable:d3-format}, for example \"Price: %{y:$.2f}\". https://github.com/d3/d3-format/tree/v1.4.5#d3-format for details on the formatting syntax. Dates are formatted using d3-time-format's syntax %{variable|d3-time-format}, for example \"Day: %{2019-01-01|%A}\". https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format for details on the date formatting syntax. The variables available in `hovertemplate` are the ones emitted as event data described at this link https://plotly.com/javascript/plotlyjs-events/#event-data. Additionally, every attributes that can be specified per-point (the ones that are `arrayOk: true`) are available.  Anything contained in tag `<extra>` is displayed in the secondary box, for example \"<extra>{fullData.name}</extra>\". To hide the secondary box completely, use an empty tag `<extra></extra>`.",
+      "oneOf": [
+        {
+          "default": "",
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "default": "",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "hovertemplatesrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `hovertemplate`.",
+      "type": "string"
+    },
+    "hovertext": {
+      "description": "Same as `text`.",
+      "oneOf": [
+        {
+          "default": "",
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "default": "",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "hovertextsrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `hovertext`.",
+      "type": "string"
+    },
+    "ids": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "description": "Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type."
+        }
+      ]
+    },
+    "idssrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `ids`.",
+      "type": "string"
+    },
+    "jitter": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Sets the amount of jitter in the sample points drawn. If *0*, the sample points align along the distribution axis. If *1*, the sample points are drawn in a random jitter of width equal to the width of the violins."
+        }
+      ]
+    },
+    "legend": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "string",
+          "default": "legend",
+          "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
+          "pattern": "^legend([2-9]|[1-9][0-9]+)?$"
+        }
+      ]
+    },
+    "legendgroup": {
+      "default": "",
+      "description": "Sets the legend group for this trace. Traces and shapes part of the same legend group hide/show at the same time when toggling legend items.",
+      "type": "string"
+    },
+    "legendgrouptitle": {
+      "type": "object",
+      "properties": {
+        "font": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            "family": {
+              "pattern": ".*\\S.*$",
+              "description": "HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.",
+              "type": "string"
+            },
+            "lineposition": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "none"
+                      ]
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^(under|over|through)(\\+(under|over|through))*$"
+                    }
+                  ],
+                  "default": "none",
+                  "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                }
+              ]
+            },
+            "shadow": {
+              "default": "none",
+              "description": "Sets the shape and color of the shadow behind text. *auto* places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.",
+              "type": "string"
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 1
+                }
+              ]
+            },
+            "style": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "normal",
+                    "italic"
+                  ],
+                  "default": "normal",
+                  "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                }
+              ]
+            },
+            "textcase": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "normal",
+                    "word caps",
+                    "upper",
+                    "lower"
+                  ],
+                  "default": "normal",
+                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                }
+              ]
+            },
+            "variant": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "enum": [
+                    "normal",
+                    "small-caps",
+                    "all-small-caps",
+                    "all-petite-caps",
+                    "petite-caps",
+                    "unicase"
+                  ],
+                  "default": "normal",
+                  "description": "Sets the variant of the font."
+                }
+              ]
+            },
+            "weight": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000,
+                  "default": "normal",
+                  "description": "Sets the weight (or boldness) of the font."
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "text": {
+          "default": "",
+          "description": "Sets the title of the legend group.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "legendrank": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "default": 1000,
+          "description": "Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with *reversed* `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout."
+        }
+      ]
+    },
+    "legendwidth": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sets the width (in px or fraction) of the legend for this trace."
+        }
+      ]
+    },
+    "line": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "$ref": "#/$defs/color"
+            }
+          ]
+        },
+        "width": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "default": 2,
+              "description": "Sets the width (in px) of line bounding the violin(s)."
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "marker": {
+      "type": "object",
+      "properties": {
+        "angle": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180,
+              "default": 0,
+              "description": "Sets the marker angle in respect to `angleref`."
+            }
+          ]
+        },
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "$ref": "#/$defs/color"
+            }
+          ]
+        },
+        "line": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            "outliercolor": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            "outlierwidth": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 1,
+                  "description": "Sets the border line width (in px) of the outlier sample points."
+                }
+              ]
+            },
+            "width": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "default": 0,
+                  "description": "Sets the width (in px) of the lines bounding the marker points."
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "opacity": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "default": 1,
+              "description": "Sets the marker opacity."
+            }
+          ]
+        },
+        "outliercolor": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "$ref": "#/$defs/color"
+            }
+          ]
+        },
+        "size": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "default": 6,
+              "description": "Sets the marker size (in px)."
+            }
+          ]
+        },
+        "symbol": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "enum": [
+                0,
+                "0",
+                "circle",
+                100,
+                "100",
+                "circle-open",
+                200,
+                "200",
+                "circle-dot",
+                300,
+                "300",
+                "circle-open-dot",
+                1,
+                "1",
+                "square",
+                101,
+                "101",
+                "square-open",
+                201,
+                "201",
+                "square-dot",
+                301,
+                "301",
+                "square-open-dot",
+                2,
+                "2",
+                "diamond",
+                102,
+                "102",
+                "diamond-open",
+                202,
+                "202",
+                "diamond-dot",
+                302,
+                "302",
+                "diamond-open-dot",
+                3,
+                "3",
+                "cross",
+                103,
+                "103",
+                "cross-open",
+                203,
+                "203",
+                "cross-dot",
+                303,
+                "303",
+                "cross-open-dot",
+                4,
+                "4",
+                "x",
+                104,
+                "104",
+                "x-open",
+                204,
+                "204",
+                "x-dot",
+                304,
+                "304",
+                "x-open-dot",
+                5,
+                "5",
+                "triangle-up",
+                105,
+                "105",
+                "triangle-up-open",
+                205,
+                "205",
+                "triangle-up-dot",
+                305,
+                "305",
+                "triangle-up-open-dot",
+                6,
+                "6",
+                "triangle-down",
+                106,
+                "106",
+                "triangle-down-open",
+                206,
+                "206",
+                "triangle-down-dot",
+                306,
+                "306",
+                "triangle-down-open-dot",
+                7,
+                "7",
+                "triangle-left",
+                107,
+                "107",
+                "triangle-left-open",
+                207,
+                "207",
+                "triangle-left-dot",
+                307,
+                "307",
+                "triangle-left-open-dot",
+                8,
+                "8",
+                "triangle-right",
+                108,
+                "108",
+                "triangle-right-open",
+                208,
+                "208",
+                "triangle-right-dot",
+                308,
+                "308",
+                "triangle-right-open-dot",
+                9,
+                "9",
+                "triangle-ne",
+                109,
+                "109",
+                "triangle-ne-open",
+                209,
+                "209",
+                "triangle-ne-dot",
+                309,
+                "309",
+                "triangle-ne-open-dot",
+                10,
+                "10",
+                "triangle-se",
+                110,
+                "110",
+                "triangle-se-open",
+                210,
+                "210",
+                "triangle-se-dot",
+                310,
+                "310",
+                "triangle-se-open-dot",
+                11,
+                "11",
+                "triangle-sw",
+                111,
+                "111",
+                "triangle-sw-open",
+                211,
+                "211",
+                "triangle-sw-dot",
+                311,
+                "311",
+                "triangle-sw-open-dot",
+                12,
+                "12",
+                "triangle-nw",
+                112,
+                "112",
+                "triangle-nw-open",
+                212,
+                "212",
+                "triangle-nw-dot",
+                312,
+                "312",
+                "triangle-nw-open-dot",
+                13,
+                "13",
+                "pentagon",
+                113,
+                "113",
+                "pentagon-open",
+                213,
+                "213",
+                "pentagon-dot",
+                313,
+                "313",
+                "pentagon-open-dot",
+                14,
+                "14",
+                "hexagon",
+                114,
+                "114",
+                "hexagon-open",
+                214,
+                "214",
+                "hexagon-dot",
+                314,
+                "314",
+                "hexagon-open-dot",
+                15,
+                "15",
+                "hexagon2",
+                115,
+                "115",
+                "hexagon2-open",
+                215,
+                "215",
+                "hexagon2-dot",
+                315,
+                "315",
+                "hexagon2-open-dot",
+                16,
+                "16",
+                "octagon",
+                116,
+                "116",
+                "octagon-open",
+                216,
+                "216",
+                "octagon-dot",
+                316,
+                "316",
+                "octagon-open-dot",
+                17,
+                "17",
+                "star",
+                117,
+                "117",
+                "star-open",
+                217,
+                "217",
+                "star-dot",
+                317,
+                "317",
+                "star-open-dot",
+                18,
+                "18",
+                "hexagram",
+                118,
+                "118",
+                "hexagram-open",
+                218,
+                "218",
+                "hexagram-dot",
+                318,
+                "318",
+                "hexagram-open-dot",
+                19,
+                "19",
+                "star-triangle-up",
+                119,
+                "119",
+                "star-triangle-up-open",
+                219,
+                "219",
+                "star-triangle-up-dot",
+                319,
+                "319",
+                "star-triangle-up-open-dot",
+                20,
+                "20",
+                "star-triangle-down",
+                120,
+                "120",
+                "star-triangle-down-open",
+                220,
+                "220",
+                "star-triangle-down-dot",
+                320,
+                "320",
+                "star-triangle-down-open-dot",
+                21,
+                "21",
+                "star-square",
+                121,
+                "121",
+                "star-square-open",
+                221,
+                "221",
+                "star-square-dot",
+                321,
+                "321",
+                "star-square-open-dot",
+                22,
+                "22",
+                "star-diamond",
+                122,
+                "122",
+                "star-diamond-open",
+                222,
+                "222",
+                "star-diamond-dot",
+                322,
+                "322",
+                "star-diamond-open-dot",
+                23,
+                "23",
+                "diamond-tall",
+                123,
+                "123",
+                "diamond-tall-open",
+                223,
+                "223",
+                "diamond-tall-dot",
+                323,
+                "323",
+                "diamond-tall-open-dot",
+                24,
+                "24",
+                "diamond-wide",
+                124,
+                "124",
+                "diamond-wide-open",
+                224,
+                "224",
+                "diamond-wide-dot",
+                324,
+                "324",
+                "diamond-wide-open-dot",
+                25,
+                "25",
+                "hourglass",
+                125,
+                "125",
+                "hourglass-open",
+                26,
+                "26",
+                "bowtie",
+                126,
+                "126",
+                "bowtie-open",
+                27,
+                "27",
+                "circle-cross",
+                127,
+                "127",
+                "circle-cross-open",
+                28,
+                "28",
+                "circle-x",
+                128,
+                "128",
+                "circle-x-open",
+                29,
+                "29",
+                "square-cross",
+                129,
+                "129",
+                "square-cross-open",
+                30,
+                "30",
+                "square-x",
+                130,
+                "130",
+                "square-x-open",
+                31,
+                "31",
+                "diamond-cross",
+                131,
+                "131",
+                "diamond-cross-open",
+                32,
+                "32",
+                "diamond-x",
+                132,
+                "132",
+                "diamond-x-open",
+                33,
+                "33",
+                "cross-thin",
+                133,
+                "133",
+                "cross-thin-open",
+                34,
+                "34",
+                "x-thin",
+                134,
+                "134",
+                "x-thin-open",
+                35,
+                "35",
+                "asterisk",
+                135,
+                "135",
+                "asterisk-open",
+                36,
+                "36",
+                "hash",
+                136,
+                "136",
+                "hash-open",
+                236,
+                "236",
+                "hash-dot",
+                336,
+                "336",
+                "hash-open-dot",
+                37,
+                "37",
+                "y-up",
+                137,
+                "137",
+                "y-up-open",
+                38,
+                "38",
+                "y-down",
+                138,
+                "138",
+                "y-down-open",
+                39,
+                "39",
+                "y-left",
+                139,
+                "139",
+                "y-left-open",
+                40,
+                "40",
+                "y-right",
+                140,
+                "140",
+                "y-right-open",
+                41,
+                "41",
+                "line-ew",
+                141,
+                "141",
+                "line-ew-open",
+                42,
+                "42",
+                "line-ns",
+                142,
+                "142",
+                "line-ns-open",
+                43,
+                "43",
+                "line-ne",
+                143,
+                "143",
+                "line-ne-open",
+                44,
+                "44",
+                "line-nw",
+                144,
+                "144",
+                "line-nw-open",
+                45,
+                "45",
+                "arrow-up",
+                145,
+                "145",
+                "arrow-up-open",
+                46,
+                "46",
+                "arrow-down",
+                146,
+                "146",
+                "arrow-down-open",
+                47,
+                "47",
+                "arrow-left",
+                147,
+                "147",
+                "arrow-left-open",
+                48,
+                "48",
+                "arrow-right",
+                148,
+                "148",
+                "arrow-right-open",
+                49,
+                "49",
+                "arrow-bar-up",
+                149,
+                "149",
+                "arrow-bar-up-open",
+                50,
+                "50",
+                "arrow-bar-down",
+                150,
+                "150",
+                "arrow-bar-down-open",
+                51,
+                "51",
+                "arrow-bar-left",
+                151,
+                "151",
+                "arrow-bar-left-open",
+                52,
+                "52",
+                "arrow-bar-right",
+                152,
+                "152",
+                "arrow-bar-right-open",
+                53,
+                "53",
+                "arrow",
+                153,
+                "153",
+                "arrow-open",
+                54,
+                "54",
+                "arrow-wide",
+                154,
+                "154",
+                "arrow-wide-open"
+              ],
+              "default": "circle",
+              "description": "Sets the marker symbol type. Adding 100 is equivalent to appending *-open* to a symbol name. Adding 200 is equivalent to appending *-dot* to a symbol name. Adding 300 is equivalent to appending *-open-dot* or *dot-open* to a symbol name."
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "meanline": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "$ref": "#/$defs/color"
+            }
+          ]
+        },
+        "visible": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "boolean",
+              "default": false,
+              "description": "Determines if a line corresponding to the sample's mean is shown inside the violins. If `box.visible` is turned on, the mean line is drawn inside the inner box. Otherwise, the mean line is drawn from one side of the violin to other."
+            }
+          ]
+        },
+        "width": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "description": "Sets the mean line width."
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "metasrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `meta`.",
+      "type": "string"
+    },
+    "name": {
+      "description": "Sets the trace name. The trace name appears as the legend item and on hover. For violin traces, the name will also be used for the position coordinate, if `x` and `x0` (`y` and `y0` if horizontal) are missing and the position axis is categorical. Note that the trace name is also used as a default value for attribute `scalegroup` (please see its description for details).",
+      "type": "string"
+    },
+    "offsetgroup": {
+      "default": "",
+      "description": "Set several traces linked to the same position axis or matching axes to the same offsetgroup where bars of the same position coordinate will line up.",
+      "type": "string"
+    },
+    "opacity": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1,
+          "description": "Sets the opacity of the trace."
+        }
+      ]
+    },
+    "orientation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            "v",
+            "h"
+          ],
+          "description": "Sets the orientation of the violin(s). If *v* (*h*), the distribution is visualized along the vertical (horizontal)."
+        }
+      ]
+    },
+    "pointpos": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "minimum": -2,
+          "maximum": 2,
+          "description": "Sets the position of the sample points in relation to the violins. If *0*, the sample points are places over the center of the violins. Positive (negative) values correspond to positions to the right (left) for vertical violins and above (below) for horizontal violins."
+        }
+      ]
+    },
+    "points": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            "all",
+            "outliers",
+            "suspectedoutliers",
+            false
+          ],
+          "description": "If *outliers*, only the sample points lying outside the whiskers are shown If *suspectedoutliers*, the outlier points are shown and points either less than 4*Q1-3*Q3 or greater than 4*Q3-3*Q1 are highlighted (see `outliercolor`) If *all*, all sample points are shown If *false*, only the violins are shown with no sample points. Defaults to *suspectedoutliers* when `marker.outliercolor` or `marker.line.outliercolor` is set, otherwise defaults to *outliers*."
+        }
+      ]
+    },
+    "quartilemethod": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            "linear",
+            "exclusive",
+            "inclusive"
+          ],
+          "default": "linear",
+          "description": "Sets the method used to compute the sample's Q1 and Q3 quartiles. The *linear* method uses the 25th percentile for Q1 and 75th percentile for Q3 as computed using method #10 (listed on http://jse.amstat.org/v14n3/langford.html). The *exclusive* method uses the median to divide the ordered dataset into two halves if the sample is odd, it does not include the median in either half - Q1 is then the median of the lower half and Q3 the median of the upper half. The *inclusive* method also uses the median to divide the ordered dataset into two halves but if the sample is odd, it includes the median in both halves - Q1 is then the median of the lower half and Q3 the median of the upper half."
+        }
+      ]
+    },
+    "scalegroup": {
+      "default": "",
+      "description": "If there are multiple violins that should be sized according to to some metric (see `scalemode`), link them by providing a non-empty group id here shared by every trace in the same group. If a violin's `width` is undefined, `scalegroup` will default to the trace's name. In this case, violins with the same names will be linked together",
+      "type": "string"
+    },
+    "scalemode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            "width",
+            "count"
+          ],
+          "default": "width",
+          "description": "Sets the metric by which the width of each violin is determined. *width* means each violin has the same (max) width *count* means the violins are scaled by the number of sample points making up each violin."
+        }
+      ]
+    },
+    "selected": {
+      "type": "object",
+      "properties": {
+        "marker": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            "opacity": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Sets the marker opacity of selected points."
+                }
+              ]
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Sets the marker size of selected points."
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "selectedpoints": {
+      "description": "Array containing integer indices of selected points. Has an effect only for traces that support selections. Note that an empty array means an empty selection where the `unselected` are turned on for all points, whereas, any other non-array values means no selection all where the `selected` and `unselected` styles have no effect."
+    },
+    "showlegend": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "boolean",
+          "default": true,
+          "description": "Determines whether or not an item corresponding to this trace is shown in the legend."
+        }
+      ]
+    },
+    "side": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            "both",
+            "positive",
+            "negative"
+          ],
+          "default": "both",
+          "description": "Determines on which side of the position value the density function making up one half of a violin is plotted. Useful when comparing two violin traces under *overlay* mode, where one trace has `side` set to *positive* and the other to *negative*."
+        }
+      ]
+    },
+    "span": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "array",
+          "items": {},
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Sets the span in data space for which the density function will be computed. Has an effect only when `spanmode` is set to *manual*."
+        }
+      ]
+    },
+    "spanmode": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            "soft",
+            "hard",
+            "manual"
+          ],
+          "default": "soft",
+          "description": "Sets the method by which the span in data space where the density function will be computed. *soft* means the span goes from the sample's minimum value minus two bandwidths to the sample's maximum value plus two bandwidths. *hard* means the span goes from the sample's minimum to its maximum value. For custom span settings, use mode *manual* and fill in the `span` attribute."
+        }
+      ]
+    },
+    "stream": {
+      "type": "object",
+      "properties": {
+        "maxpoints": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/query-string"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000,
+              "default": 500,
+              "description": "Sets the maximum number of points to keep on the plots from an incoming stream. If `maxpoints` is set to *50*, only the newest 50 points will be displayed on the plot."
+            }
+          ]
+        },
+        "token": {
+          "pattern": ".*\\S.*$",
+          "description": "The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "text": {
+      "description": "Sets the text elements associated with each sample value. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to the this trace's (x,y) coordinates. To be seen, trace `hoverinfo` must contain a *text* flag.",
+      "oneOf": [
+        {
+          "default": "",
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "default": "",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "textsrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `text`.",
+      "type": "string"
+    },
+    "uid": {
+      "description": "Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.",
+      "type": "string"
+    },
+    "uirevision": {
+      "description": "Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves."
+    },
+    "unselected": {
+      "type": "object",
+      "properties": {
+        "marker": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "$ref": "#/$defs/color"
+                }
+              ]
+            },
+            "opacity": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1,
+                  "description": "Sets the marker opacity of unselected points, applied only when a selection exists."
+                }
+              ]
+            },
+            "size": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/query-string"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Sets the marker size of unselected points, applied only when a selection exists."
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "visible": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "enum": [
+            true,
+            false,
+            "legendonly"
+          ],
+          "default": true,
+          "description": "Determines whether or not this trace is visible. If *legendonly*, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible)."
+        }
+      ]
+    },
+    "width": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "number",
+          "minimum": 0,
+          "default": 0,
+          "description": "Sets the width of the violin in data coordinates. If *0* (default value) the width is automatically selected based on the positions of other violin traces in the same subplot."
+        }
+      ]
+    },
+    "x": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "description": "Sets the x sample data or coordinates. See overview for more info."
+        }
+      ]
+    },
+    "x0": {
+      "description": "Sets the x coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info."
+    },
+    "xaxis": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "string",
+          "default": "x",
+          "description": "Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If *x* (the default value), the x coordinates refer to `layout.xaxis`. If *x2*, the x coordinates refer to `layout.xaxis2`, and so on.",
+          "pattern": "^x([2-9]|[1-9][0-9]+)?$"
+        }
+      ]
+    },
+    "xhoverformat": {
+      "default": "",
+      "description": "Sets the hover text formatting rulefor `x`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*By default the values are formatted using `xaxis.hoverformat`.",
+      "type": "string"
+    },
+    "xsrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `x`.",
+      "type": "string"
+    },
+    "y": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "description": "Sets the y sample data or coordinates. See overview for more info."
+        }
+      ]
+    },
+    "y0": {
+      "description": "Sets the y coordinate for single-box traces or the starting coordinate for multi-box traces set using q1/median/q3. See overview for more info."
+    },
+    "yaxis": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "string",
+          "default": "y",
+          "description": "Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If *y* (the default value), the y coordinates refer to `layout.yaxis`. If *y2*, the y coordinates refer to `layout.yaxis2`, and so on.",
+          "pattern": "^y([2-9]|[1-9][0-9]+)?$"
+        }
+      ]
+    },
+    "yhoverformat": {
+      "default": "",
+      "description": "Sets the hover text formatting rulefor `y`  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: *%h* for half of the year as a decimal number as well as *%{n}f* for fractional seconds with n digits. For example, *2016-10-13 09:15:23.456* with tickformat *%H~%M~%S.%2f* would display *09~15~23.46*By default the values are formatted using `yaxis.hoverformat`.",
+      "type": "string"
+    },
+    "ysrc": {
+      "description": "Sets the source reference on Chart Studio Cloud for `y`.",
+      "type": "string"
+    },
+    "zorder": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/query-string"
+        },
+        {
+          "type": "integer",
+          "default": 0,
+          "description": "Sets the layer on which this trace is displayed, relative to other SVG traces on the same subplot. SVG traces with higher `zorder` appear in front of those with lower `zorder`."
+        }
+      ]
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false
+}

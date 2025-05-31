@@ -7,6 +7,15 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "yaml.schemas": {
+        "file:///Users/tgsoverly/code/visivo/visivo_schema.json": [
+            "project.visivo.yml",
+            "file:///Users/tgsoverly/code/sqlite/project.visivo.yml",
+            "file:///Users/tgsoverly/code/visivo/test-projects/docs-examples/dashboards/indicator/simple.visivo.yml"
+        ],
+        "https://docs.visivo.io/assets/visivo_schema.json": [
+            "visivo_project.yml"
+        ]
+    }
 }
-

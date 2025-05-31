@@ -15,6 +15,10 @@ class Mkdocs:
     """Holds SCHEMA state so that upstream scripts only need to run that import once."""
 
     SCHEMA = json.loads(generate_schema())
+
+    with open("visivo_schema_new.json", "w") as f:
+        json.dump(SCHEMA, f, indent=2)
+
     nav_configuration = mkdocs_pydantic_nav(SCHEMA)
     model_to_page_map = get_model_to_page_mapping(nav_configuration)
     model_to_path_map = get_model_to_path_mapping(nav_configuration)
@@ -75,9 +79,8 @@ class Mkdocs:
 
     def _get_trace_prop_models(self) -> list:
         """Helper function to get the list of trace prop models. Enables a better error if the model is not found."""
-        trace_def = self.SCHEMA["$defs"].get("Trace")
-        props = trace_def.get("properties").get("props")
-        refs = list(set(find_refs(props)))
+        trace_props_def = self.SCHEMA["$defs"].get("Trace").get("properties").get("props")
+        refs = list(set(find_refs(trace_props_def["oneOf"])))
         trace_prop_models = [i.split("/")[-1] for i in refs]
         return trace_prop_models
 
