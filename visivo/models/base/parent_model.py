@@ -141,6 +141,17 @@ class ParentModel(ABC):
         dereferenced_items = all_descendants_with_name(name=name, dag=dag, from_node=root)
         if len(dereferenced_items) == 1:
             return dereferenced_items[0]
+        elif len(dereferenced_items) > 1:
+            file_paths = set(
+                path
+                for path in map(lambda ref: ref.file_path, dereferenced_items)
+                if path is not None
+            )
+            raise PydanticCustomError(
+                "ambiguous_reference",
+                f'The reference "{item}" on item "{parent_item.id()}" points to multiple objects. Check for the duplicated name "{name}" in the following files: {" and ".join(file_paths)}.',
+                parent_item.model_dump(),
+            )
         else:
             raise PydanticCustomError(
                 "bad_reference",

@@ -24,6 +24,7 @@ from ..factories.model_factories import (
 )
 import pytest
 import networkx
+from visivo.models.project import Project
 
 
 def test_simple_Project_dag():
@@ -173,6 +174,19 @@ def test_invalid_ref_Project_dag():
 
     assert 'The reference "ref(table_name)" on item "item" does not point to an object.' in str(
         exc_info.value
+    )
+
+
+def test_ambiguous_ref_Project_dag():
+    project = ProjectFactory(chart_ref=True)
+    project.charts.append(ChartFactory(name="chart_name"))
+
+    with pytest.raises(ValueError) as exc_info:
+        Project(**project.model_dump())
+
+    assert (
+        'The reference "ref(chart_name)" on item "item" points to multiple objects. Check for the duplicated name '
+        in str(exc_info.value)
     )
 
 
