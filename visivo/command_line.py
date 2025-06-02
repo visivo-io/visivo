@@ -8,6 +8,7 @@ import click
 import os
 from dotenv import load_dotenv
 from pydantic import ValidationError
+import sys
 
 from visivo.parsers.line_validation_error import LineValidationError
 
@@ -77,6 +78,21 @@ def load_env(env_file):
         load_dotenv(env_file)
 
 
+def print_issue_url():
+    import traceback
+    import urllib.parse
+
+    stack_trace = "".join(traceback.format_exc())
+    command = " ".join(sys.argv)
+    issue_body = f"Command: {command}\n\nStack Trace:\n```\n{stack_trace}\n```"
+    encoded_body = urllib.parse.quote(issue_body)
+    issue_url = f"https://github.com/visivo-io/visivo/issues/new?body={encoded_body}"
+
+    Logger.instance().error(
+        f"\x1b]8;;{issue_url}\x1b\\Click here to report this issue\x1b]8;;\x1b\\"
+    )
+
+
 def safe_visivo():
     try:
         visivo(standalone_mode=False)
@@ -92,6 +108,7 @@ def safe_visivo():
         Logger.instance().error(
             "To print more error information add the 'STACKTRACE=true' environment variable."
         )
+        print_issue_url()
         exit(1)
 
 

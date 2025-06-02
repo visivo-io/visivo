@@ -64,6 +64,12 @@ class ContextString:
         return items[0]
 
     @classmethod
+    def is_context_string(cls, obj) -> bool:
+        return isinstance(obj, ContextString) or (
+            isinstance(obj, str) and ContextString(obj).get_reference()
+        )
+
+    @classmethod
     def __get_pydantic_core_schema__(cls, _source_type: Any, handler: Any):
         from pydantic_core import core_schema
 

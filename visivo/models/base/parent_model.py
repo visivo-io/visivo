@@ -86,21 +86,21 @@ class ParentModel(ABC):
     def __dereference_items(self, items: List, parent_item, dag, node_permit_list, root):
         for item in items:
             if node_permit_list is None or item in node_permit_list:
-                if BaseModel.is_ref(item):
+                if item.__class__.__name__ == "ContextString":
+                    dereferenced_item = self.__get_dereferenced_item_by_context_string(
+                        context_string=item,
+                        dag=dag,
+                        root=root,
+                        parent_item=parent_item,
+                    )
+                    dag.add_edge(parent_item, dereferenced_item)
+                elif BaseModel.is_ref(item):
                     name = NamedModel.get_name(obj=item)
                     dereferenced_item = self.__get_dereferenced_item_by_name(
                         name=name,
                         dag=dag,
                         root=root,
                         item=item,
-                        parent_item=parent_item,
-                    )
-                    dag.add_edge(parent_item, dereferenced_item)
-                elif item.__class__.__name__ == "ContextString":
-                    dereferenced_item = self.__get_dereferenced_item_by_context_string(
-                        context_string=item,
-                        dag=dag,
-                        root=root,
                         parent_item=parent_item,
                     )
                     dag.add_edge(parent_item, dereferenced_item)
