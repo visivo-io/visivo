@@ -29,10 +29,11 @@ class NamedModel(BaseModel):
             return obj["name"]
         elif cls.is_obj(obj=obj):
             return obj.name
-        elif isinstance(obj, ContextString):
-            return obj.get_reference()
-        elif ContextString(str(obj)).get_reference():
-            return ContextString(str(obj)).get_reference()
+        elif ContextString.is_context_string(obj):
+            if isinstance(obj, ContextString):
+                return obj.get_reference()
+            else:
+                return ContextString(obj).get_reference()
         else:
             return re.match(REF_REGEX, obj).groupdict()["ref_name"]
 
