@@ -83,7 +83,9 @@ class BaseModel(PydanticBaseModel):
 
     @classmethod
     def is_ref(cls, obj) -> bool:
-        return isinstance(obj, str) and re.search(REF_REGEX, obj)
+        return (
+            isinstance(obj, str) and re.search(REF_REGEX, obj)
+        ) or ContextString.is_context_string(obj)
 
     def __hash__(self):
         return hash(self.__str__())

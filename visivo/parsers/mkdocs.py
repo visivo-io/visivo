@@ -16,9 +16,6 @@ class Mkdocs:
 
     SCHEMA = json.loads(generate_schema())
 
-    with open("visivo_schema_new.json", "w") as f:
-        json.dump(SCHEMA, f, indent=2)
-
     nav_configuration = mkdocs_pydantic_nav(SCHEMA)
     model_to_page_map = get_model_to_page_mapping(nav_configuration)
     model_to_path_map = get_model_to_path_mapping(nav_configuration)
