@@ -8,6 +8,12 @@ class MockStringModel(BaseModel):
     ref: ContextString = Field(None, description="")
 
 
+def test_ContextString_is_context_string():
+    assert ContextString.is_context_string("${ ref(Name) }")
+    assert ContextString.is_context_string(ContextString("${ ref(Name) }"))
+    assert not ContextString.is_context_string("{ ref(Name) }")
+
+
 def test_ContextString_ref_name():
     context_string = ContextString("")
     assert context_string.get_reference() == None
