@@ -1,6 +1,8 @@
 from typing import Optional
 import pydantic
 import re
+
+from visivo.models.base.context_string import ContextString
 from .base_model import BaseModel, REF_REGEX
 
 NAME_REGEX = r"^[a-zA-Z0-9\s'\"\-_]+$"
@@ -27,6 +29,10 @@ class NamedModel(BaseModel):
             return obj["name"]
         elif cls.is_obj(obj=obj):
             return obj.name
+        elif isinstance(obj, ContextString):
+            return obj.get_reference()
+        elif ContextString(str(obj)).get_reference():
+            return ContextString(str(obj)).get_reference()
         else:
             return re.match(REF_REGEX, obj).groupdict()["ref_name"]
 
