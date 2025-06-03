@@ -32,7 +32,7 @@ from .version import VISIVO_VERSION
 @click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
 @click.version_option(version=VISIVO_VERSION)
-def visivo(env_file, profile, force_complete_property_loading):
+def visivo(env_file, profile):
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 

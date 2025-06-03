@@ -30,7 +30,6 @@ def generate_schema():
     """Generate both project and trace prop schemas"""
     project_schema = json.loads(generate_project_schema())
 
-    print(json.dumps(project_schema, indent=4))
     trace_schemas = generate_trace_prop_schemas()
 
     if "$defs" not in project_schema:
