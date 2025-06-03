@@ -1,6 +1,4 @@
-import Loading from '../common/Loading';
-import React, { useEffect, useState } from 'react';
-import Loading from "../Loading";
+import Loading from "../common/Loading";
 
 import React, { useEffect, useState, useCallback } from "react";
 import PivotColumnSelection from "./table-components/pivot-column-selection/PivotColumnSelection";
@@ -9,11 +7,7 @@ import {
   tableDataFromCohortData,
   tableColumnsWithDot,
   tableColumnsWithUnderscores,
-} from '../../models/Table';
-import { createTheme, ThemeProvider, Box, Button } from '@mui/material';
-import { useTracesData } from '../../hooks/useTracesData';
-import { ItemContainer } from './ItemContainer';
-import CohortSelect from '../select/CohortSelect';
+} from "../../models/Table";
 import {
   createTheme,
   ThemeProvider,
@@ -37,14 +31,7 @@ import {
   MRT_GlobalFilterTextField,
   useMaterialReactTable,
   MRT_TableContainer,
-} from 'material-react-table';
-/* eslint-enable react/jsx-pascal-case */
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import { mkConfig, generateCsv } from 'export-to-csv';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+} from "material-react-table";
 
 /* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -65,15 +52,21 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   // Always call the hook, but with empty array if it's a direct query
   const tracesData = useTracesData(
     project.id,
-    isDirectQueryResult ? [] : table.traces.map(trace => trace.name)
+    isDirectQueryResult ? [] : table.traces.map((trace) => trace.name)
   );
-  const [selectedTableCohort, setSelectedTableCohort] = useState(null);
-  const [columns, setColumns] = useState([]);
-  const [tableData, setTableData] = useState([]);
 
+  const [selectedTableCohort, setSelectedTableCohort] = useState(null);
+  const [tableData, setTableData] = useState([]);
+  const [columns, setColumns] = useState([]);
+  const [expandedBar, setExpandedBar] = useState(false);
+  const [pivotedData, setPivotedData] = useState(null);
+  const [pivotedColumns, setPivotedColumns] = useState([]);
+  const [isPivoted, setIsPivoted] = useState(false);
+  const [pivotLoading, setPivotLoading] = useState(false);
+  const [isCSVData, setIsCSVData] = useState(false);
   const csvConfig = mkConfig({
-    fieldSeparator: ',',
-    decimalSeparator: '.',
+    fieldSeparator: ",",
+    decimalSeparator: ".",
     useKeysAsHeaders: true,
   });
 
@@ -81,22 +74,31 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     if (selectedTableCohort && tracesData) {
       // Handle trace-based queries
       setColumns(
-        tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName)
+        tableColumnsWithDot(
+          table,
+          selectedTableCohort.data,
+          selectedTableCohort.traceName
+        )
       );
     } else if (isDirectQueryResult) {
       // Handle direct query results
-      const directQueryColumns = Object.keys(table.traces[0].data[0] || {}).map(key => ({
-        id: key, // Unique identifier for the column
-        header: key, // Display name
-        accessorKey: key.replace(/\./g, '___'), // Replace dots with a safe separator
-        enableGrouping: false, // Disable grouping for these columns
-        markdown: false,
-      }));
+      const directQueryColumns = Object.keys(table.traces[0].data[0] || {}).map(
+        (key) => ({
+          id: sanitizeColumnName(key), // Sanitize column names
+          header: key, // Display name
+          accessorKey: sanitizeColumnName(key), // Sanitize column names
+          markdown: false,
+        })
+      );
       setColumns(directQueryColumns);
     }
   }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
 
   useEffect(() => {
+    if (isCSVData) {
+      console.log("Skipping table data update - CSV data is active");
+      return;
+    }
     if (selectedTableCohort && columns) {
       // Handle trace-based queries
       setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
@@ -107,7 +109,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
           const transformedRow = {};
           Object.entries(row).forEach(([key, value]) => {
             // Replace dots with underscores in the keys
-            transformedRow[key.replace(/\./g, '___')] = value;
+            transformedRow[key.replace(/\./g, "___")] = value;
           });
           return {
             id: index,
@@ -119,16 +121,29 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
 
   const handleExportData = () => {
-    const csv = generateCsv(csvConfig)(tableData);
-    const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    // Use pivotedData if the table is pivoted, otherwise use tableData
+    const dataToExport = isPivoted ? pivotedData : tableData;
+
+    if (!dataToExport || dataToExport.length === 0) {
+      console.error("No data available to export.");
+      return;
+    }
+
+    const csv = generateCsv(csvConfig)(dataToExport);
+    const csvBlob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(csvBlob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
 
-    const cohortName = selectedTableCohort?.cohortName || 'cohort';
-    const traceName = selectedTableCohort?.traceName || 'trace';
+    const cohortName = selectedTableCohort?.cohortName || "cohort";
+    const traceName = selectedTableCohort?.traceName || "trace";
 
-    link.setAttribute('download', `${table.name}_${traceName}_${cohortName}.csv`);
+    // Include "pivoted" in the filename if the table is pivoted
+    const fileName = isPivoted
+      ? `${table.name}_${traceName}_${cohortName}_pivoted.csv`
+      : `${table.name}_${traceName}_${cohortName}.csv`;
+
+    link.setAttribute("download", fileName);
 
     document.body.appendChild(link);
     link.click();
@@ -136,23 +151,39 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   };
 
   const useTable = useMaterialReactTable({
-    columns: tableColumnsWithUnderscores(columns).map(column => ({
-      ...column,
-      Cell: ({ cell }) => {
-        const value = cell.getValue();
-        if (column.markdown) {
-          return (
-            <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-              {value}
-            </Markdown>
-          );
-        } else if (typeof value === 'number' && `${value}`.length < 18) {
-          return new Intl.NumberFormat(navigator.language).format(value);
-        }
-        return value;
-      },
-    })),
-    data: tableData,
+    columns: isPivoted
+      ? pivotedColumns.map((column) => ({
+          ...column,
+          Cell: ({ cell }) => {
+            const value = cell.getValue();
+
+            if (typeof value === "number" && `${value}`.length < 18) {
+              return new Intl.NumberFormat(navigator.language).format(value);
+            }
+            return value;
+          },
+        }))
+      : tableColumnsWithUnderscores(columns).map((column) => ({
+          ...column,
+          Cell: ({ cell }) => {
+            const value = cell.getValue();
+            if (column.markdown) {
+              return (
+                <Markdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                >
+                  {value}
+                </Markdown>
+              );
+            } else if (typeof value === "number" && `${value}`.length < 18) {
+              return new Intl.NumberFormat(navigator.language).format(value);
+            }
+            return value;
+          },
+        })),
+
+    data: isPivoted ? pivotedData : tableData,
     enableRowSelection: true,
     enableGlobalFilter: true,
     enableTopToolbar: true,
@@ -161,12 +192,12 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     enableColumnDragging: false,
     enableStickyHeader: true,
     muiTableContainerProps: {
-      sx: { maxHeight: '100%' },
+      sx: { maxHeight: "100%" },
     },
     muiTableHeadProps: {
       sx: {
-        '& tr': {
-          backgroundColor: 'white',
+        "& tr": {
+          backgroundColor: "white",
         },
       },
     },
@@ -175,26 +206,18 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     },
     initialState: {
       showGlobalFilter: true,
-      density: 'compact',
+      density: "compact",
       pagination: {
-        pageSize: table.rows_per_page || 50,
+        pageSize: 50,
       },
     },
   });
 
-  // Only show loading state if we're waiting for trace data and this isn't a direct query result
   if (!isDirectQueryResult && !tracesData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
-  const tableTheme = createTheme({
-    palette: {
-      primary: { main: 'rgb(210, 89, 70)' },
-      info: { main: 'rgb(79, 73, 76)' },
-    },
-  });
-
-  const onSelectedCohortChange = changedSelectedTracesData => {
+  const onSelectedCohortChange = (changedSelectedTracesData) => {
     const traceName = Object.keys(changedSelectedTracesData)[0];
     if (traceName) {
       const cohortName = Object.keys(changedSelectedTracesData[traceName])[0];
@@ -205,6 +228,28 @@ const Table = ({ table, project, itemWidth, height, width }) => {
       });
     }
   };
+
+  const tableTheme = createTheme({
+    palette: {
+      primary: {
+        main: "#D25946",
+      },
+      secondary: {
+        main: "#D25946",
+      },
+    },
+    typography: {
+      fontFamily: "Inter, sans-serif",
+      fontSize: 14,
+      fontWeightRegular: 400,
+      fontWeightMedium: 500,
+      fontWeightBold: 600,
+    },
+  });
+
+  const toggleExpandedBar = () => {
+    setExpandedBar(!expandedBar);
+  };
   /* eslint-disable react/jsx-pascal-case */
   return (
     <ThemeProvider theme={tableTheme}>
@@ -212,39 +257,95 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         <Box>
           <Box
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              backgroundColor: 'inherit',
-              borderRadius: '4px',
-              gap: '6px',
-              alignItems: 'center',
-              padding: '11px 11px',
-              flexWrap: 'wrap',
-              '@media max-width: 768px': {
-                flexDirection: 'column',
+              display: "flex",
+              backgroundColor: "inherit",
+              borderRadius: "4px",
+              gap: "6px",
+              alignItems: "center",
+              padding: "11px 11px",
+              flexWrap: "wrap",
+              "@media max-width: 768px": {
+                flexDirection: "column",
               },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                width: "100%",
+              }}
+            >
               <MRT_GlobalFilterTextField table={useTable} />
-            </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <MRT_ToggleFiltersButton table={useTable} />
-              <MRT_ShowHideColumnsButton table={useTable} />
-              <MRT_ToggleDensePaddingButton table={useTable} />
-              <Button
-                aria-label="DownloadCsv"
-                onClick={handleExportData}
-                startIcon={<FileDownloadIcon />}
-              />
-              {!isDirectQueryResult && tracesData && (
-                <CohortSelect
+              <IconButton
+                onClick={toggleExpandedBar}
+                sx={{
+                  transition: "transform 0.3s",
+                }}
+              >
+                <PivotTableChartIcon
+                  sx={{
+                    color: isPivoted ? "rgb(210, 89, 70)" : "inherit",
+                  }}
+                />
+                <Box
+                  component={ExpandMoreIcon}
+                  fontSize="small"
+                  sx={{
+                    transform: expandedBar ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.3s",
+                  }}
+                />
+              </IconButton>
+              <Box sx={{ display: "flex", gap: "6px" }}>
+                <MRT_ToggleFiltersButton table={useTable} />
+                <MRT_ShowHideColumnsButton table={useTable} />
+                <MRT_ToggleDensePaddingButton table={useTable} />
+
+                <Button
+                  aria-label="DownloadCsv"
+                  onClick={handleExportData}
+                  startIcon={<FileDownloadIcon />}
+                />
+
+                {!isDirectQueryResult && tracesData && (
+                  <CohortSelect
+                    tracesData={tracesData}
+                    onChange={onSelectedCohortChange}
+                    selector={table.selector}
+                    parentName={table.name}
+                    parentType="table"
+                  />
+                )}
+              </Box>
+            </Box>
+            <Box sx={{ width: "100%" }}>
+              {expandedBar && (
+                <PivotColumnSelection
+                  initialData={tableData}
+                  initialColumns={columns}
+                  expandedBar={expandedBar}
                   tracesData={tracesData}
-                  onChange={onSelectedCohortChange}
-                  selector={table.selector}
-                  parentName={table.name}
-                  parentType="table"
+                  table={table}
+                  useTable={useTable}
+                  setPivotLoading={setPivotLoading}
+                  db={db}
+                  setDb={setDb}
+                  duckDBStatus={duckDBStatus}
+                  setDuckDBStatus={setDuckDBStatus}
+                  setColumns={(cols) => {
+                    setColumns(cols);
+                    setIsCSVData(true); // Set the flag when CSV column data is loaded
+                  }}
+                  setTableData={(data) => {
+                    setTableData(data);
+                    setIsCSVData(true); // Set the flag when CSV table data is loaded
+                  }}
+                  setIsPivoted={setIsPivoted}
+                  setPivotedData={setPivotedData}
+                  setPivotedColumns={setPivotedColumns}
                 />
               )}
             </Box>
