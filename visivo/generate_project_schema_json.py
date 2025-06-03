@@ -15,13 +15,6 @@ validate schema client side and to power flask app api endpoints.
 def generate_schema():
     # Store original environment state
 
-    if os.getenv("EXCLUDE_TRACE_PROPS") != "False":
-        raise Exception("EXCLUDE_TRACE_PROPS env_var must be set to False to generate the schema")
-
-    # Import and reload all necessary modules in the correct order
-    trace_props_module = import_module("visivo.models.trace_props.fields")
-    reload(trace_props_module)
-
     trace_module = import_module("visivo.models.trace")
     reload(trace_module)
 

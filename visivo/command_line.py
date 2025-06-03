@@ -31,10 +31,8 @@ from .version import VISIVO_VERSION
 @click.group()
 @click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
-@click.option("-fcpl", "--force-complete-property-loading", is_flag=True)
 @click.version_option(version=VISIVO_VERSION)
 def visivo(env_file, profile, force_complete_property_loading):
-    os.environ["EXCLUDE_TRACE_PROPS"] = str(not force_complete_property_loading)
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 

@@ -28,7 +28,7 @@ jobs:
         run: |
           cd viewer && yarn install && yarn deploy && cd ..
           poetry install
-          EXCLUDE_TRACE_PROPS=False poetry run write-schema-json
+          poetry run write-schema-json
           poetry version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
 
