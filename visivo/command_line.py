@@ -24,6 +24,7 @@ from .commands.test import test
 from .commands.aggregate import aggregate
 from .commands.archive import archive
 from .commands.authorize import authorize
+from .commands.install import install
 from .version import VISIVO_VERSION
 
 
@@ -70,6 +71,7 @@ visivo.add_command(aggregate)
 visivo.add_command(archive)
 visivo.add_command(authorize)
 visivo.add_command(create)
+visivo.add_command(install)
 
 
 def load_env(env_file):
