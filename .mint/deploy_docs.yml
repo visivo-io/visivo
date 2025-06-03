@@ -25,7 +25,7 @@ tasks:
 
   - key: Install-CLI-Dependencies
     use: [code, python]
-    run: pip install poetry && poetry install --with dev && poetry run visivo
+    run: pip install poetry && poetry install --with dev 
 
   - key: Generate-Schema
     use: [Install-CLI-Dependencies]
