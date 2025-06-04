@@ -57,10 +57,10 @@ sources:
 charts:
   - name: indicator_chart
     traces:
-      - ref(Indicator Trace)
+      - ${ ref(Indicator Trace) }
   - name: surface-chart
     traces:
-      - ref(Surface Trace)
+      - ${ ref(Surface Trace) }
     layout:
       title:
         text: Plot
@@ -119,10 +119,10 @@ dashboards:
                     - key: "columns.measure"
                     - key: "props.text"
               traces:
-                - ref(Fibonacci Waterfall)
+                - ${ ref(Fibonacci Waterfall) }
               rows_per_page: 1000
           - width: 2
-            chart: ref(indicator_chart)
+            chart: ${ ref(indicator_chart) }
       - height: medium
         items:
           - table:
@@ -135,7 +135,7 @@ dashboards:
                       header: "Markdown"
                       markdown: true
               traces:
-                - model: ref(markdown-table-base)
+                - model: ${ ref(markdown-table-base) }
                   name: markdown-trace-base
                   columns:
                     vanilla_text: vanilla_text
@@ -149,8 +149,8 @@ dashboards:
             chart:
               name: A very Fibonacci Waterfall
               traces:
-                - "ref(Fibonacci Waterfall)"
-                - ref(Example Indicator)
+                - ${ ref(Fibonacci Waterfall) }
+                - ${ ref(Example Indicator) }
               layout:
                 title:
                   text: "AAPL P&L"
@@ -159,7 +159,7 @@ dashboards:
             chart:
               name: Aggregated Fib
               traces:
-                - "ref(Aggregated Line)"
+                - ${ ref(Aggregated Line) }
               layout:
                 title:
                   text: "Aggregated Fibonacci"
@@ -175,8 +175,8 @@ dashboards:
             chart:
               name: fibonacci plane
               traces:
-                - ref(3d Line One)
-                - ref(3d Line Two)
+                - ${ ref(3d Line One) }
+                - ${ ref(3d Line Two) }
               layout:
                 title:
                   text: "The Greatest 3d Lines"
@@ -190,7 +190,7 @@ dashboards:
             chart:
               name: fibonacci
               traces:
-                - "ref(Simple Line)"
+                - ${ ref(Simple Line) }
               layout:
                 title:
                   text: "A great fibonacci series"
@@ -222,7 +222,7 @@ dashboards:
                   tests:
                     - assertions:
                         - ">{ ${ref(Double Simple Line).props.x[2]} == 3 }"
-                - "ref(Simple Line)"
+                - ${ ref(Simple Line) }
               layout:
                 title:
                   text: "A not great fibonacci series"
@@ -243,10 +243,10 @@ dashboards:
             chart:
               name: funnel chart
               traces:
-                - "ref(funnel trace)"
+                - ${ ref(funnel trace) }
               layout:
                 title:
                   text: "Funnel Chart"
       - height: xlarge
         items:
-          - chart: ref(surface-chart)
+          - chart: ${ ref(surface-chart) }

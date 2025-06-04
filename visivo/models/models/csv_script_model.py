@@ -123,8 +123,8 @@ class CsvScriptModel(Model):
         import pandas
         import subprocess
 
-        process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
         try:
+            process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
             source = self.get_duckdb_source(output_dir)
             with source.connect() as connection:
                 csv = io.StringIO(process.stdout.read().decode())
@@ -136,5 +136,5 @@ class CsvScriptModel(Model):
                 connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
         except Exception as e:
             raise click.ClickException(
-                f"Error parsing csv output of {self.name} model's command. Verify command's output and try again."
+                f"Error parsing or generating the csv output of {self.name} model's command. Verify command's output and try again."
             )
