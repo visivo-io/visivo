@@ -123,7 +123,13 @@ dashboards:
                 - ref(Fibonacci Waterfall)
               rows_per_page: 1000
           - width: 2
-            chart: ref(indicator_chart)
+            chart: ${ ref(indicator_chart) }
+      - height: medium
+        items:
+          - table:
+              name: Pivot Table
+              traces:
+                - ref(Pivot Table Trace)
       - height: medium
         items:
           - table:
