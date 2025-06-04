@@ -24,6 +24,12 @@ models:
         5,5
         6,8
 
+  - name: pivot_table_model
+    table_name: pivot_table
+    args:
+      - cat 
+      - pivotable_1000_rows.csv
+
   - name: markdown-table-base
     args: 
       - echo

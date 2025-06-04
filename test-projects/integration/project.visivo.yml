@@ -126,6 +126,12 @@ dashboards:
       - height: medium
         items:
           - table:
+              name: Pivot Table
+              traces:
+                - ref(Pivot Table Trace)
+      - height: medium
+        items:
+          - table:
               name: awesome-table-2
               column_defs:
                 - trace_name: markdown-trace-base

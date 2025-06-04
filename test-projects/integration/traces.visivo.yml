@@ -1,6 +1,6 @@
 traces:
   - name: Example Indicator
-    model: ref(csv)
+    model: ${ ref(csv) }
     columns:
       x_data: x
     props:
@@ -116,6 +116,20 @@ traces:
       x: ?{x}
       y: ?{y}
       z: ?{ (-3*(x/16)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y}
+
+  - name: Pivot Table Trace
+    model: ${ ref(pivot_table_model) }
+    columns:
+        category: Category
+        subcategory: Subcategory
+        region: Region
+        sales: Sales
+        quantity: Quantity
+        date: Date
+    props:
+        type: scatter
+        x: column(date)
+        y: column(sales)
 
   - name: Fibonacci Waterfall
     model: ${ ref(waterfall_model) }
