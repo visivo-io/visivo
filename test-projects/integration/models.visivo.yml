@@ -9,8 +9,8 @@ models:
         JOIN second_local_test_table.model AS sltt
         ON ltt.x = sltt.x
     models:
-      - ref(local_test_table)
-      - ref(second_local_test_table)
+      - ${ ref(local_test_table) }
+      - ${ ref(second_local_test_table) }
   - name: csv
     table_name: csv
     args:

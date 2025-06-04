@@ -10,7 +10,7 @@ traces:
         reference: column(x_data)[1]
 
   - name: Surface Trace
-    model: ref(local_test_table)
+    model: ${ ref(local_test_table) }
     props:
       type: surface
       z:
@@ -19,7 +19,7 @@ traces:
         - ?{x*y*y+40}
 
   - name: Indicator Trace
-    model: ref(csv)
+    model: ${ ref(csv) }
     columns:
       x_data: x
       y_data: y
@@ -37,7 +37,7 @@ traces:
         y: [0, 1]
 
   - name: funnel trace
-    model: ref(test table)
+    model: ${ ref(test table) }
     order_by:
       - ?{x desc}
     props:
@@ -56,7 +56,7 @@ traces:
         fillcolor: "#edbdb5"
 
   - name: Aggregated Line
-    model: ref(test table)
+    model: ${ ref(test table) }
     props:
       type: bar
       x: ?{ CASE WHEN x <= 3 THEN 'less' else 'More' END }
@@ -74,7 +74,7 @@ traces:
           - ">{ ${ref(Aggregated Line).props.x[1]} == 'less' }"
 
   - name: Simple Line
-    model: ref(join_table)
+    model: ${ ref(join_table) }
     cohort_on: ?{ CASE WHEN y >= 6 THEN 'Normal Fibonacci' ELSE 'Abnormal Fib' END }
     props:
       type: bar
@@ -92,7 +92,7 @@ traces:
           - ">{ ${ref(Simple Line).props.y[0]} == 10 }"
 
   - name: 3d Line One
-    model: ref(test table)
+    model: ${ ref(test table) }
     order_by:
       - ?{x asc}
     props:
@@ -106,7 +106,7 @@ traces:
           - ">{ ${ref(3d Line One).props.y[1]} == 1 }"
 
   - name: 3d Line Two
-    model: ref(test table)
+    model: ${ ref(test table) }
     order_by:
       - ?{x asc}
     filters:
@@ -118,7 +118,7 @@ traces:
       z: ?{ (-3*(x/16)* 0.5*x + x + y*(y+2))+8 +3*x - 7*y}
 
   - name: Fibonacci Waterfall
-    model: ref(waterfall_model)
+    model: ${ ref(waterfall_model) }
     cohort_on: ?{ year}
     columns:
       x_data: category

@@ -41,7 +41,7 @@ def test_CsvScriptModel_insert_data_bad_csv():
         model.insert_csv_to_duckdb(output_dir)
     assert (
         exc_info.value.message
-        == f"Error parsing csv output of model model's command. Verify command's output and try again."
+        == f"Error parsing or generating the csv output of model model's command. Verify command's output and try again."
     )
 
 
