@@ -1,6 +1,6 @@
 from flask import Flask
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.events import FileSystemEventHandler
 from threading import Thread, Event
 import time
 from visivo.logging.logger import Logger
