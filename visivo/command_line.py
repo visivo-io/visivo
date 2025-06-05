@@ -24,16 +24,15 @@ from .commands.test import test
 from .commands.aggregate import aggregate
 from .commands.archive import archive
 from .commands.authorize import authorize
+from .commands.install import install
 from .version import VISIVO_VERSION
 
 
 @click.group()
 @click.option("-p", "--profile", is_flag=True)
 @click.option("-e", "--env-file", default=".env")
-@click.option("-fcpl", "--force-complete-property-loading", is_flag=True)
 @click.version_option(version=VISIVO_VERSION)
-def visivo(env_file, profile, force_complete_property_loading):
-    os.environ["EXCLUDE_TRACE_PROPS"] = str(not force_complete_property_loading)
+def visivo(env_file, profile):
     Logger.instance().set_type(TypeEnum.spinner)
     load_env(env_file)
 
@@ -70,6 +69,7 @@ visivo.add_command(aggregate)
 visivo.add_command(archive)
 visivo.add_command(authorize)
 visivo.add_command(create)
+visivo.add_command(install)
 
 
 def load_env(env_file):

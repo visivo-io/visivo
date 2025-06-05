@@ -11,6 +11,7 @@ def generate_project_schema():
     schema_string = schema_string.replace("?P<ref_name>", "")
     schema_string = schema_string.replace("?P<column_name>", "")
     schema_string = schema_string.replace("?P<query_statement>", "")
+    schema_string = schema_string.replace("?P<query_string>", "")
 
     return schema_string
 
@@ -29,7 +30,6 @@ def generate_schema():
     """Generate both project and trace prop schemas"""
     project_schema = json.loads(generate_project_schema())
 
-    print(json.dumps(project_schema, indent=4))
     trace_schemas = generate_trace_prop_schemas()
 
     if "$defs" not in project_schema:

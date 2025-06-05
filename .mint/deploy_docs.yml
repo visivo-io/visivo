@@ -5,6 +5,11 @@ on:
       init:
         commit-sha: ${{ event.git.sha }}
 
+  dispatch:
+    - key: deploy-docs
+      init:
+        commit-sha: ${{ event.git.sha }}
+
 base:
   os: ubuntu 22.04
   tag: 1.0
@@ -25,7 +30,7 @@ tasks:
 
   - key: Install-CLI-Dependencies
     use: [code, python]
-    run: pip install poetry && poetry install --with dev && poetry run visivo
+    run: pip install poetry && poetry install --with dev 
 
   - key: Generate-Schema
     use: [Install-CLI-Dependencies]
