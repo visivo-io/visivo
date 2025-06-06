@@ -1,6 +1,6 @@
 import click
 from visivo.query.aggregator import Aggregator
-from .options import output_dir
+from visivo.commands.options import output_dir
 
 
 @click.command()

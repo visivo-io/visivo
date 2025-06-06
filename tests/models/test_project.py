@@ -1,7 +1,7 @@
 from visivo.models.project import Project
 from visivo.models.item import Item
 from pydantic import HttpUrl
-from ..factories.model_factories import (
+from tests.factories.model_factories import (
     AlertFactory,
     TraceFactory,
     SourceFactory,

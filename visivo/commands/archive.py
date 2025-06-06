@@ -1,5 +1,5 @@
 import click
-from .options import user_dir, stage, host
+from visivo.commands.options import user_dir, stage, host
 
 
 @click.command()

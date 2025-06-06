@@ -2,7 +2,7 @@ import click
 from time import time
 import json
 
-from .options import (
+from visivo.commands.options import (
     dag_filter,
     output_dir,
     working_dir,

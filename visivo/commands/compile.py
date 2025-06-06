@@ -1,5 +1,5 @@
 import click
-from .options import (
+from visivo.commands.options import (
     output_dir,
     working_dir,
     source,

@@ -1,7 +1,7 @@
 from visivo.models.project import Project
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.trace import Trace
-from ..factories.model_factories import (
+from tests.factories.model_factories import (
     AlertFactory,
     DashboardFactory,
     ProjectFactory,

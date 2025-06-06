@@ -12,21 +12,21 @@ import sys
 
 from visivo.parsers.line_validation_error import LineValidationError
 
-from .commands.dbt import dbt
-from .commands.deploy import deploy
-from .commands.serve import serve
-from .commands.run import run
-from .commands.dist import dist
-from .commands.compile import compile
-from .commands.init import init
-from .commands.create import create
-from .commands.test import test
-from .commands.aggregate import aggregate
-from .commands.archive import archive
-from .commands.authorize import authorize
-from .commands.install import install
-from .commands.list import list
-from .version import VISIVO_VERSION
+from visivo.commands.dbt import dbt
+from visivo.commands.deploy import deploy
+from visivo.commands.serve import serve
+from visivo.commands.run import run
+from visivo.commands.dist import dist
+from visivo.commands.compile import compile
+from visivo.commands.init import init
+from visivo.commands.create import create
+from visivo.commands.test import test
+from visivo.commands.aggregate import aggregate
+from visivo.commands.archive import archive
+from visivo.commands.authorize import authorize
+from visivo.commands.install import install
+from visivo.commands.list import list
+from visivo.version import VISIVO_VERSION
 
 
 @click.group()

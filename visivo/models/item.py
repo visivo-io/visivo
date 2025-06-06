@@ -1,11 +1,11 @@
 from visivo.models.base.named_model import NamedModel
 from visivo.models.selector import Selector
-from .base.base_model import generate_ref_field
-from .base.parent_model import ParentModel
+from visivo.models.base.base_model import generate_ref_field
+from visivo.models.base.parent_model import ParentModel
 from pydantic import Field
 from typing import Optional, Literal
-from .chart import Chart
-from .table import Table
+from visivo.models.chart import Chart
+from visivo.models.table import Table
 from pydantic import model_validator
 
 
