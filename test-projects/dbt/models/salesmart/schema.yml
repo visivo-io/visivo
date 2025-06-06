@@ -2,6 +2,15 @@ version: 2
 
 models:
   - name: fact_transaction
+    latest_version: 2
+    versions:
+      - v: 1
+        columns:
+          - include: all
+      - v: 2
+        columns:
+           - include: all
+             exclude: [product]
     description: production model of transaction
     columns:
       - name: product

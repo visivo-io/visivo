@@ -72,12 +72,31 @@ def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
                     names.append(node["database"])
                 if "schema" in node:
                     names.append(node["schema"])
-                names.append(node["name"])
+                name = node["name"]
+                version = None
+                latest_version = None
+                if "version" in node and node["version"]:
+                    version = node["version"]
+                if "latest_version" in node and node["latest_version"]:
+                    latest_version = node["latest_version"]
+
+                if version:
+                    name = f"{name}_v{version}"
+                names.append(name)
+
                 model = {
-                    "name": f"{dbt_prefix}{node['name']}",
+                    "name": f"{dbt_prefix}{name}",
                     "sql": "select * from " + ".".join(names),
                     "source": f"ref({dbt_prefix}{dbt_profile}_{dbt_target})",
                 }
+                if version and version == latest_version:
+                    models.append(
+                        {
+                            "name": f"{dbt_prefix}{node['name']}",
+                            "sql": "select * from " + ".".join(names),
+                            "source": f"ref({dbt_prefix}{dbt_profile}_{dbt_target})",
+                        }
+                    )
 
                 models.append(model)
 
@@ -146,8 +165,9 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         with open(manifest_file, "r") as file:
             manifest = json.load(file)
 
-        sources = _generate_sources(profiles, dbt_target, dbt.prefix)
-        models = _generate_models(manifest, dbt_profile, dbt_target, dbt.prefix)
+        prefix = f"{dbt.prefix}_" if dbt.prefix else ""
+        sources = _generate_sources(profiles, dbt_target, prefix)
+        models = _generate_models(manifest, dbt_profile, dbt_target, prefix)
 
         output_file = dbt.get_output_file(output_dir=output_dir, working_dir=working_dir)
 
@@ -157,15 +177,14 @@ def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
         with open(output_file, "w") as file:
             yaml.dump({"sources": sources, "models": models}, file)
 
-        if os.environ.get("STACKTRACE"):
-            models_written = ", ".join([model["name"] for model in models])
-            relative_output_file = os.path.relpath(output_file, working_dir)
-            Logger.instance().info(
-                f"dbt base visivo models written to {relative_output_file}: {models_written}"
-            )
-            sources_written = ", ".join([source["name"] for source in sources])
-            Logger.instance().info(
-                f"dbt base visivo sources written to {relative_output_file}: {sources_written}"
-            )
+        models_written = ", ".join([model["name"] for model in models])
+        relative_output_file = os.path.relpath(output_file, working_dir)
+        Logger.instance().debug(
+            f"dbt base visivo models written to {relative_output_file}: {models_written}"
+        )
+        sources_written = ", ".join([source["name"] for source in sources])
+        Logger.instance().debug(
+            f"dbt base visivo sources written to {relative_output_file}: {sources_written}"
+        )
     else:
         Logger.instance().debug(f"dbt is not enabled.")

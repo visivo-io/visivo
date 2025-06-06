@@ -155,6 +155,58 @@ def test_dbt_with_missing_manifest():
         )
 
 
+def test_dbt_with_versions():
+    output_dir = temp_folder()
+    working_dir = temp_folder()
+    project = ProjectFactory(dbt=DbtFactory())
+    setup_dbt(project, working_dir)
+
+    # Create schema.yml with versioned model
+    temp_file(
+        contents=json.dumps(
+            {
+                "nodes": {
+                    "model.project_name.fact_transaction.v1": {
+                        "database": "RAW",
+                        "schema": "salesmart",
+                        "name": "fact_transaction",
+                        "version": 1,
+                        "latest_version": 2,
+                    },
+                    "model.project_name.fact_transaction.v2": {
+                        "database": "RAW",
+                        "schema": "salesmart",
+                        "name": "fact_transaction",
+                        "version": 2,
+                        "latest_version": 2,
+                    },
+                }
+            }
+        ),
+        name="manifest.json",
+        output_dir=f"{working_dir}/target",
+    )
+
+    # Run dbt phase
+    dbt_phase(
+        working_dir=working_dir,
+        output_dir=output_dir,
+        dbt_profile="profile_name",
+        dbt_target="target_name",
+    )
+
+    # Check output dbt.yml has 3 models for the versioned fact_transaction
+    with open(f"{output_dir}/dbt.yml") as f:
+        dbt_config = yaml.safe_load(f)
+        models = dbt_config["models"]
+        fact_models = [m for m in models if "fact_transaction" in m["name"]]
+
+        assert len(fact_models) == 3
+        assert any(m["name"] == "fact_transaction" for m in fact_models)
+        assert any(m["name"] == "fact_transaction_v1" for m in fact_models)
+        assert any(m["name"] == "fact_transaction_v2" for m in fact_models)
+
+
 def test_dbt_with_unsupported_source_type():
     output_dir = temp_folder()
     working_dir = temp_folder()
