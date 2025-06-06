@@ -10,6 +10,7 @@ from visivo.logging.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor
 import queue
+import sys
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.jobs.job import JobResult
@@ -79,7 +80,7 @@ class DagRunner:
             for result in self.failed_job_results:
                 Logger.instance().error(str(result.message))
             if not self.soft_failure:
-                exit(1)
+                sys.exit(1)
         elif len(self.successful_job_results) == 0 and len(self.failed_job_results) == 0:
             Logger.instance().error(
                 f"\nNo jobs run. Ensure your filter contains nodes that are runnable."

@@ -101,7 +101,7 @@ def safe_visivo():
         Logger.instance().info(f"Visivo execution time: {round(time() - start_time, 2)}s")
     except (ValidationError, LineValidationError) as e:
         Logger.instance().error(str(e))
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
@@ -111,7 +111,7 @@ def safe_visivo():
             "To print more error information add the 'STACKTRACE=true' environment variable."
         )
         print_issue_url()
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
