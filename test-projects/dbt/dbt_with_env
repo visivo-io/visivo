@@ -13,7 +13,7 @@ if [ $# -eq 0 ]; then
 fi
 
 # Export environment variables
-export $(cat .env | xargs)
+export $(cat .env | grep -v '^#' | xargs)
 
 # Run the provided dbt command with all arguments
 echo "Running: dbt $*"

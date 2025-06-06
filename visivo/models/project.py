@@ -249,34 +249,13 @@ class Project(NamedModel, ParentModel):
                 raise ValueError("The sole root node in the DAG must be a Project.")
         return self
 
-    @model_validator(mode="before")
-    def set_paths_on_models(
-        cls, values
-    ):  # TODO: Do we need both this and the set_path_on_named_models method?
-        def set_path_recursively(obj, path=""):
-            if isinstance(obj, dict):
-                obj["path"] = path
-                for key, value in obj.items():
-                    if key not in ["props", "defaults", "layout", "columns"]:
-                        new_path = f"{path}.{key}" if path else key
-                        set_path_recursively(value, new_path)
-            elif isinstance(obj, list):
-                for index, item in enumerate(obj):
-                    new_path = f"{path}[{index}]"
-                    set_path_recursively(item, new_path)
-
-        set_path_recursively(values, "project")
-        return values
-
     @model_validator(mode="after")
     def validate_names(self):
         Project.traverse_names([], self)
         return self
 
     @model_validator(mode="before")
-    def set_path_on_named_models(
-        cls, values
-    ):  # This seems redundant with the set_paths_on_models method above
+    def set_path_on_named_models(cls, values):
         def set_path_recursively(obj, path=""):
             if isinstance(obj, dict):
                 obj["path"] = path
