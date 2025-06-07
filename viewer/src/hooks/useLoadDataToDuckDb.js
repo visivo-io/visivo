@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import detectColumnType from "../components/items/table-helpers/detect-column-type/detectColumnType";
-import isAggregateable from "../components/items/table-helpers/is-aggregatable/isAggregatable";
+import detectColumnType from "../components/items/table-helpers/detectColumnType";
+import isAggregateable from "../components/items/table-helpers/isAggregatable";
 import { batchInsertData } from "./utilities/batchInsertData";
 
 /**
@@ -35,7 +35,7 @@ export const useLoadDataToDuckDB = ({
         try {
           await conn.query(`DROP TABLE IF EXISTS table_data`);
         } catch (dropErr) {
-          console.log("Error dropping table:", dropErr);
+          console.error("Error dropping table:", dropErr);
         }
 
         // Determine column types

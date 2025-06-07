@@ -1,4 +1,4 @@
-import isAggregatable from "../is-aggregatable/isAggregatable";
+import isAggregatable from "./isAggregatable";
 
 /**
  * Detects column type based on sampling data
@@ -24,7 +24,6 @@ const detectColumnType = (data, key) => {
   let validValueCount = 0;
   const numericCount = sample.reduce((count, row) => {
     const val = row[key];
-    console.log(`Checking value for key "${key}":`, val);
     
     if (val === null || val === undefined || val === "") return count;
 
@@ -38,11 +37,9 @@ const detectColumnType = (data, key) => {
 
   // Lower threshold to 60% to be more lenient
   if (numericCount / validValueCount >= 0.6) {
-    console.log(`Column ${key} is numeric: ${numericCount}/${validValueCount} values are numbers`);
     return "number";
   }
   
-  console.log(`Column ${key} is NOT numeric: only ${numericCount}/${validValueCount} values are numbers`);
   return "text";
 };
 

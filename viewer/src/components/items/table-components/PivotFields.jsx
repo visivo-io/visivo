@@ -4,7 +4,7 @@ import ValueFieldDropdown from "./ValueFieldDropdown";
 import AggregateFunctionSelector from "./AggregateFunctionSelector";
 import { Box } from "@mui/material";
 import { memo, useMemo } from "react";
-import detectColumnType from "../table-helpers/detect-column-type/detectColumnType";
+import detectColumnType from "../table-helpers/detectColumnType";
 
 const NUMBER = "number";
 

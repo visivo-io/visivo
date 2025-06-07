@@ -44,7 +44,6 @@ const PivotColumnSelection = ({
   useEffect(() => {
     if (db && tableData && tableData.length > 0 && !isLoadingDuckDB && !dataLoadedRef.current) {
       // Mark as loaded to prevent reload
-      console.log("Loading data to DuckDB...", tableData.length, "rows");
       
       loadDataToDuckDB(db, tableData)
       dataLoadedRef.current = true;

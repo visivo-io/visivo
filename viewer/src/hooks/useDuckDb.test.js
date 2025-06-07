@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
-import { useDuckDBInitialization } from '../useDuckDb';
+import { useDuckDBInitialization } from './useDuckDb';
 
-jest.mock('../../components/items/duckdb-wasm-init/duckDBWasmInit', () => ({
+jest.mock('../components/items/duckdb-wasm-init/duckDBWasmInit', () => ({
   initializeDuckDB: jest.fn(),
   getDuckDBStatus: jest.fn(),
   cleanupDuckDB: jest.fn()
@@ -9,7 +9,7 @@ jest.mock('../../components/items/duckdb-wasm-init/duckDBWasmInit', () => ({
 
 const {
   initializeDuckDB: mockInitializeDuckDB
-} = require('../../components/items/duckdb-wasm-init/duckDBWasmInit');
+} = require('../components/items/duckdb-wasm-init/duckDBWasmInit');
 
 describe('useDuckDBInitialization', () => {
   beforeEach(() => {
