@@ -24,7 +24,7 @@ const PivotColumnSelection = ({
   const pivotState = usePivotState();
   const [tableData, setTableData] = useState(initialData);
   const [columns, setColumns] = useState(initialColumns);
-  const [isDevMode] = useState(true); // set to true for development mode
+  const [isDevMode] = useState(false); // set to true for development mode
   const dataLoadedRef = useRef(false);
 
   const {
