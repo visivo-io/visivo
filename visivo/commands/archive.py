@@ -10,7 +10,7 @@ def archive(stage, host, user_dir):
     """
     Archives a stage.  You must specify a stage when deploying a project.
     """
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     Logger.instance().debug("Archiving")
 

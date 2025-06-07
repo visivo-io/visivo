@@ -6,7 +6,7 @@ from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from time import time
 from concurrent.futures import Future, ThreadPoolExecutor
 import queue

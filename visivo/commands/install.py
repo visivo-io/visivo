@@ -1,5 +1,5 @@
 import click
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 import subprocess
 import sys
 

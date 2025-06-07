@@ -1,7 +1,7 @@
 from visivo.discovery.discover import Discover
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.models.project import Defaults
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.commands.dbt_phase import dbt_phase
 from visivo.utils import get_dashboards_dir
 import yaml

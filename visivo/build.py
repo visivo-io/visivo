@@ -9,6 +9,6 @@ def build():
     PyInstaller.__main__.run(
         [
             path_to_main,
-            "--onefile",
+            "--onedir",
         ]
     )

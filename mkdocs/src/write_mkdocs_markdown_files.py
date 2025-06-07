@@ -1,4 +1,4 @@
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from time import time
 
 start_job = time()

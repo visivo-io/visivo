@@ -8,7 +8,7 @@ from visivo.jobs.job import (
 )
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.utils import sanitize_filename, get_dashboards_dir
 from time import time
 from click import ClickException

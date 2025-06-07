@@ -6,7 +6,7 @@ import datetime
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs

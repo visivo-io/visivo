@@ -45,7 +45,7 @@ def serve(
     start_time = time()
     from visivo.commands.serve_phase import serve_phase
     from visivo.commands.parse_project_phase import parse_project_phase
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     server_url = f"http://localhost:{port}"
 

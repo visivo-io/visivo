@@ -1,4 +1,4 @@
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
