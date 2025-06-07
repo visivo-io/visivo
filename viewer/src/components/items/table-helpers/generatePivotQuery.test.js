@@ -1,10 +1,10 @@
 import generatePivotQuery  from './generatePivotQuery';
-import  sanitizeColumnName  from '../sanitizeColumnName';
-import  createSanitizedValueSql  from '../create-sanitized-value-sql/createSanitizedValueSql';
+import  sanitizeColumnName  from './sanitizeColumnName';
+import  createSanitizedValueSql  from './createSanitizedValueSql';
 
 // Mock dependencies
-jest.mock('../sanitizeColumnName');
-jest.mock('../create-sanitized-value-sql/createSanitizedValueSql');
+jest.mock('./sanitizeColumnName');
+jest.mock('./createSanitizedValueSql');
 
 describe('generatePivotQuery', () => {
   // Helper to create mock database connection

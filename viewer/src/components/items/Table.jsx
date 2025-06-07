@@ -96,7 +96,6 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
   useEffect(() => {
     if (isCSVData) {
-      console.log("Skipping table data update - CSV data is active");
       return;
     }
     if (selectedTableCohort && columns) {

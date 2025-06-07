@@ -1,13 +1,13 @@
 import { renderHook, act } from '@testing-library/react';
-import { useLoadDataToDuckDB } from '../useLoadDataToDuckDb';
-import detectColumnType from '../../components/items/table-helpers/detect-column-type/detectColumnType';
-import isAggregateable from '../../components/items/table-helpers/is-aggregatable/isAggregatable';
-import { batchInsertData } from '../utilities/batchInsertData';
+import { useLoadDataToDuckDB } from './useLoadDataToDuckDb';
+import detectColumnType from '../components/items/table-helpers/detectColumnType';
+import isAggregateable from '../components/items/table-helpers/isAggregatable';
+import { batchInsertData } from './utilities/batchInsertData';
 
 // Mock the helper functions and utilities
-jest.mock('../../components/items/table-helpers/detect-column-type/detectColumnType');
-jest.mock('../../components/items/table-helpers/is-aggregatable/isAggregatable');
-jest.mock('../utilities/batchInsertData');
+jest.mock('../components/items/table-helpers/detectColumnType');
+jest.mock('../components/items/table-helpers/isAggregatable');
+jest.mock('./utilities/batchInsertData');
 
 const mockDetectColumnType = detectColumnType;
 const mockIsAggregateable = isAggregateable;

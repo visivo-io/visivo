@@ -1,5 +1,5 @@
-import sanitizeColumnName from "../sanitizeColumnName";
-import  createSanitizedValueSql from "../create-sanitized-value-sql/createSanitizedValueSql";
+import sanitizeColumnName from "./sanitizeColumnName";
+import  createSanitizedValueSql from "./createSanitizedValueSql";
 
 const generatePivotQuery = async ({
   conn,

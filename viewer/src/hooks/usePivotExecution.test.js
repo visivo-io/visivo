@@ -1,8 +1,8 @@
-import generatePivotQuery from "../../components/items/table-helpers/generate-pivot-query/generatePivotQuery";
+import generatePivotQuery from "../components/items/table-helpers/generatePivotQuery";
 import { renderHook } from "@testing-library/react";
-import  { usePivotExecution }  from "../usePivotExecution";
+import { usePivotExecution } from "./usePivotExecution";
 
-jest.mock('../../components/items/table-helpers/generate-pivot-query/generatePivotQuery', () =>
+jest.mock('../components/items/table-helpers/generatePivotQuery', () =>
   jest.fn().mockResolvedValue({
     data: [{ result: 'data' }],
     columns: [{ id: 'column' }]
@@ -167,7 +167,7 @@ describe('usePivotExecution', () => {
     });
 
     it('should always close connection even after errors', async () => {
-            const consoleInfoSpy = jest
+      const consoleInfoSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => { });
       const { mockDb, mockConn } = createMocks();
@@ -285,7 +285,7 @@ describe('usePivotExecution', () => {
       consoleInfoSpy.mockRestore();
     });
 
-    it('should call onPivotComplete with query results', async () => { 
+    it('should call onPivotComplete with query results', async () => {
       const { mockDb, setPivotLoading, onPivotComplete } = createMocks();
       const { result } = renderHook(() => usePivotExecution(mockDb));
 
@@ -305,7 +305,7 @@ describe('usePivotExecution', () => {
       );
       expect(setPivotLoading).toHaveBeenCalledWith(false);
     });
-    it('should handle query errors', async () => { 
+    it('should handle query errors', async () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => { });

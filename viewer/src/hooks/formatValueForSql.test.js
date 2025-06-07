@@ -1,4 +1,4 @@
-import {formatValueForSql} from '../utilities/formatValueForSql';
+import {formatValueForSql} from './utilities/formatValueForSql';
 
 describe('formatValueForSql', () => {
   describe('null and undefined handling', () => {

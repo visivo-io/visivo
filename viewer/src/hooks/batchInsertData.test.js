@@ -1,8 +1,8 @@
-import { batchInsertData } from '../utilities/batchInsertData';
-import { formatValueForSql } from '../utilities/formatValueForSql';
+import { batchInsertData } from './utilities/batchInsertData';
+import { formatValueForSql } from './utilities/formatValueForSql';
 
 // Mock the formatValueForSql function
-jest.mock('../utilities/formatValueForSql', () => {
+jest.mock('./utilities/formatValueForSql', () => {
   return {
     formatValueForSql: jest.fn()
   };

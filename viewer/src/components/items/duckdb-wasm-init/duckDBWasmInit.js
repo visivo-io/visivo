@@ -64,7 +64,6 @@ export function initializeDuckDB(onStatusChange) {
         progress: 50,
         message: "Downloading WASM modules (this may take a while)...",
       });
-      console.log("Starting DuckDB WASM module download...");
 
       // Hard-code timeout in case download gets stuck
       const downloadPromise = db.instantiate(
@@ -137,7 +136,6 @@ export function cleanupDuckDB(db) {
       db.terminate();
       dbPromise = null;
       initStatus = { state: "idle", progress: 0, message: "" };
-      console.log("DuckDB resources cleaned up");
     } catch (error) {
       console.error("Error cleaning up DuckDB:", error);
     }

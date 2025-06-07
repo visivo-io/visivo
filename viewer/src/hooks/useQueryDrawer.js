@@ -27,7 +27,7 @@ export const useQueryDrawer = (db) => {
         return value;
       };
 
-      console.log(
+      console.info(
         "Query result (viewable):",
         JSON.stringify(data, bigIntReplacer, 2)
       );
