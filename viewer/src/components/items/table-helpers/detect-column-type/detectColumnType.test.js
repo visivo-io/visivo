@@ -13,7 +13,7 @@ describe('detectColumnType', () => {
         { value: 0 },
       ];
 
-      expect(detectColumnType(data, 'value')).toBe('numeric');
+      expect(detectColumnType(data, 'value')).toBe('number');
     });
 
     it('should detect numeric columns with currency strings', () => {
@@ -25,7 +25,7 @@ describe('detectColumnType', () => {
         { amount: '$10,000' },
       ];
 
-      expect(detectColumnType(data, 'amount')).toBe('numeric');
+      expect(detectColumnType(data, 'amount')).toBe('number');
     });
   });
 
@@ -44,13 +44,13 @@ describe('detectColumnType', () => {
   });
 
   describe('threshold boundary testing - with larger datasets', () => {
-    it('should return numeric when mostly numeric (90%)', () => {
+    it('should return number when mostly numeric (90%)', () => {
       const data = [
         ...Array.from({ length: 9 }, (_, i) => ({ value: i })), // 9 numeric
         { value: 'text1' },  // 1 text = 90% numeric
       ];
 
-      expect(detectColumnType(data, 'value')).toBe('numeric');
+      expect(detectColumnType(data, 'value')).toBe('number');
     });
 
     it('should return text when mostly text (80% numeric)', () => {
@@ -105,7 +105,7 @@ describe('detectColumnType', () => {
         { price: '2,500' },
       ];
 
-      expect(detectColumnType(data, 'price')).toBe('numeric');
+      expect(detectColumnType(data, 'price')).toBe('number');
     });
 
     it('should handle user data with names', () => {
@@ -124,7 +124,7 @@ describe('detectColumnType', () => {
     });
   });
 
-  describe('specific numeric formats', () => {
+  describe('specific number formats', () => {
     it('should handle scientific notation', () => {
       const data = [
         { value: '1e5' },
@@ -134,7 +134,7 @@ describe('detectColumnType', () => {
         { value: '7.89e0' },
       ];
 
-      expect(detectColumnType(data, 'value')).toBe('numeric');
+      expect(detectColumnType(data, 'value')).toBe('number');
     });
 
     it('should handle boolean values as text', () => {

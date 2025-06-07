@@ -5,7 +5,7 @@ export const usePivotState = () => {
   const [rowFields, setRowFields] = useState([]);
   const [columnFields, setColumnFields] = useState([]);
   const [valueField, setValueField] = useState("");
-  const [aggregateFunc, setAggregateFunc] = useState("SUM");
+  const [aggregateFunc, setAggregateFunc] = useState("COUNT");
   const [pivotLoading, setPivotLoading] = useState(false);
   const [localPivotedData, setLocalPivotedData] = useState([]);
   const [localPivotedColumns, setLocalPivotedColumns] = useState([]);

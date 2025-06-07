@@ -44,7 +44,7 @@ export const useLoadDataToDuckDB = ({
           // Use detectColumnType to determine the type
           const columnType = detectColumnType(data, key);
           // Map the returned type to DuckDB types
-          columnTypes[key] = isAggregateable(columnType) ? "DOUBLE" : "VARCHAR";
+          columnTypes[key] = columnType === "number" ? "DOUBLE" : "VARCHAR";
         });
 
         // Create table with appropriate schema

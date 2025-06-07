@@ -39,12 +39,15 @@ const PivotColumnSelection = ({
     setIsLoadingDuckDB,
     tableData,
   });
+
   // Fix: Only load data once instead of on every render
   useEffect(() => {
     if (db && tableData && tableData.length > 0 && !isLoadingDuckDB && !dataLoadedRef.current) {
       // Mark as loaded to prevent reload
+      console.log("Loading data to DuckDB...", tableData.length, "rows");
+      
+      loadDataToDuckDB(db, tableData)
       dataLoadedRef.current = true;
-
     }
   }, [db, tableData, isLoadingDuckDB]);
 
@@ -173,6 +176,7 @@ const PivotColumnSelection = ({
           columnFields={pivotState.columnFields}
           valueField={pivotState.valueField}
           aggregateFunc={pivotState.aggregateFunc}
+          tableData={tableData}
           columns={columns}
           handleRowFieldsChange={pivotState.handleRowFieldsChange}
           handleColumnFieldsChange={pivotState.handleColumnFieldsChange}
