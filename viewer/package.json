@@ -135,6 +135,5 @@
   },
   "resolutions": {
     "unist-util-visit-parents": "^5.0.0"
-  },
-  "packageManager": "yarn@4.9.1"
+  }
 }
