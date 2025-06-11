@@ -353,15 +353,6 @@ describe('duckDBWasmInit', () => {
       await expect(secondAttempt).resolves.toBe(mockDB);
     });
 
-    it('should call console.log when starting download', async () => {
-      const onStatusChange = jest.fn();
-      mockDB.instantiate.mockResolvedValue();
-
-      await initializeDuckDB(onStatusChange);
-
-      expect(console.log).toHaveBeenCalledWith('Starting DuckDB WASM module download...');
-    });
-
     it('should handle unknown errors gracefully', async () => {
       const onStatusChange = jest.fn();
       const error = new Error();
@@ -378,7 +369,6 @@ describe('duckDBWasmInit', () => {
       cleanupDuckDB(mockDB);
 
       expect(mockDB.terminate).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('DuckDB resources cleaned up');
 
       const status = getDuckDBStatus();
       expect(status).toEqual({

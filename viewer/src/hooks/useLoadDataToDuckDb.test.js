@@ -242,7 +242,7 @@ describe('useLoadDataToDuckDB', () => {
         await result.current(mockDbInstance, sampleData);
       });
 
-      expect(console.log).toHaveBeenCalledWith('Error dropping table:', expect.any(Error));
+      expect(console.error).toHaveBeenCalledWith('Error dropping table:', expect.any(Error));
       expect(mockBatchInsertData).toHaveBeenCalled(); // Should continue despite drop error
     });
 
