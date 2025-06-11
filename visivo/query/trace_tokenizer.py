@@ -8,9 +8,9 @@ from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.trace_columns import TraceColumns
 from visivo.models.trace_props.layout import Layout
 from visivo.models.trace_props.trace_props import TraceProps
-from .dialect import Dialect
-from .statement_classifier import StatementClassifier, StatementEnum
-from ..utils import extract_value_from_function
+from visivo.query.dialect import Dialect
+from visivo.query.statement_classifier import StatementClassifier, StatementEnum
+from visivo.utils import extract_value_from_function
 import warnings
 import re
 

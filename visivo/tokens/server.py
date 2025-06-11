@@ -3,7 +3,7 @@ import time
 from flask import Flask, request, jsonify
 from threading import Event
 
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.tokens.token_functions import validate_and_store_token
 from visivo.tokens.web_utils import generate_success_html_response
 

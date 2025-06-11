@@ -1,7 +1,7 @@
 import os
 import yaml
 import click
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 
 PROFILE_PATH = os.path.expanduser("~/.visivo/profile.yml")
 
