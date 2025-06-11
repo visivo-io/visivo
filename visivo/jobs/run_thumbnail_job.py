@@ -8,7 +8,7 @@ from visivo.jobs.job import (
 )
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.utils import sanitize_filename, get_dashboards_dir
 from time import time
 from click import ClickException
@@ -174,7 +174,7 @@ def action(
         except Exception as e:
             if "BrowserType.launch: Executable doesn't exist" in str(e):
                 Logger.instance().info(
-                    "Missing playwright webkit browser. Running a one time install..."
+                    "Missing playwright chromium browser. Running a one time install..."
                 )
                 import subprocess  # PR question: Is this the best way to do this? It works, but feels meh
 

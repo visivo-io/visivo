@@ -39,7 +39,7 @@ def run(
     """
     Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.
     """
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
     from visivo.commands.parse_project_phase import parse_project_phase
     from visivo.commands.serve_phase import serve_phase
 

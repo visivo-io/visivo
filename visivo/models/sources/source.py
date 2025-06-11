@@ -1,5 +1,5 @@
 from typing import Optional
-from ..base.named_model import NamedModel
+from visivo.models.base.named_model import NamedModel
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
 

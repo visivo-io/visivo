@@ -15,7 +15,7 @@ from time import time
 from tenacity import retry, stop_after_attempt, wait_fixed
 from visivo.commands.utils import get_profile_file, get_profile_token
 from visivo.discovery.discover import Discover
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.utils import get_dashboards_dir, sanitize_filename

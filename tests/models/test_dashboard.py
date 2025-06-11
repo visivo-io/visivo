@@ -1,5 +1,5 @@
 from visivo.models.dashboard import Dashboard
-from ..factories.model_factories import DashboardFactory
+from tests.factories.model_factories import DashboardFactory
 
 from pydantic import ValidationError
 

@@ -17,7 +17,7 @@ def run_phase(
     project: Project = None,
     server_url: str = None,
 ):
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
 

@@ -4,7 +4,7 @@ from pydantic import Field, PrivateAttr, ConfigDict, field_serializer, model_val
 from visivo.models.base.eval_string import EvalString
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.test_run import TestRun
-from .base.named_model import NamedModel
+from visivo.models.base.named_model import NamedModel
 
 
 """

@@ -1,7 +1,7 @@
 from time import time
 
 start_time = time()
-from visivo.logging.logger import Logger, TypeEnum
+from visivo.logger.logger import Logger, TypeEnum
 
 Logger.instance().info("Starting Visivo...")
 import click
@@ -12,21 +12,21 @@ import sys
 
 from visivo.parsers.line_validation_error import LineValidationError
 
-from .commands.dbt import dbt
-from .commands.deploy import deploy
-from .commands.serve import serve
-from .commands.run import run
-from .commands.dist import dist
-from .commands.compile import compile
-from .commands.init import init
-from .commands.create import create
-from .commands.test import test
-from .commands.aggregate import aggregate
-from .commands.archive import archive
-from .commands.authorize import authorize
-from .commands.install import install
-from .commands.list import list
-from .version import VISIVO_VERSION
+from visivo.commands.dbt import dbt
+from visivo.commands.deploy import deploy
+from visivo.commands.serve import serve
+from visivo.commands.run import run
+from visivo.commands.dist import dist
+from visivo.commands.compile import compile
+from visivo.commands.init import init
+from visivo.commands.create import create
+from visivo.commands.test import test
+from visivo.commands.aggregate import aggregate
+from visivo.commands.archive import archive
+from visivo.commands.authorize import authorize
+from visivo.commands.install import install
+from visivo.commands.list import list
+from visivo.version import VISIVO_VERSION
 
 
 @click.group()
@@ -101,7 +101,7 @@ def safe_visivo():
         Logger.instance().info(f"Visivo execution time: {round(time() - start_time, 2)}s")
     except (ValidationError, LineValidationError) as e:
         Logger.instance().error(str(e))
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
@@ -111,7 +111,7 @@ def safe_visivo():
             "To print more error information add the 'STACKTRACE=true' environment variable."
         )
         print_issue_url()
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

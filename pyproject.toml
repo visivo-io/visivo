@@ -5,13 +5,25 @@ description = "Visivo CLI for BI and visualizations as code"
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
 readme = "README.md"
+packages = [{include = "visivo"}]
+
+[project]
+name = "visivo"
+version = "1.0.59"
+description = "Visivo CLI for BI and visualizations as code"
+authors = [
+    {name = "Visivo People"}
+]
+requires-python = ">=3.12,<3.13"
+readme = "README.md"
 
 [tool.poetry.scripts]
 visivo = "visivo.command_line:safe_visivo"
 write-schema-json = "visivo.generate_project_schema_json:write_schema_json"
+build = "visivo.build:build"
 
 [tool.poetry.dependencies]
-python = " >=3.10,<3.13"
+python = " >=3.12,<3.13"
 Flask = ">=2.2.3"
 Jinja2 = ">=3.1.2"
 PyYAML = ">=6.0"
@@ -29,7 +41,6 @@ matplotlib = ">=3.7.1"
 networkx = ">=3.1"
 numpy = ">=1.26.0,<2.0.0"
 pandas = ">=1.5.3,<2.0.0"
-playwright = ">=1.50.0"
 psycopg2-binary = ">=2.9.5"
 pydantic = ">=2.9.0"
 pymysql = ">=1.1.0"
@@ -70,6 +81,8 @@ pytest-mock = ">=3.14.0"
 requests-mock = ">=1.11.0"
 setuptools = ">=67.7.2"
 symspellpy = ">=6.7.7"
+nuitka = "^2.7.6"
+pyinstaller = "^6.14.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -1,5 +1,5 @@
 from visivo.commands.compile_phase import compile_phase
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 
 from visivo.server.hot_reload_server import HotReloadServer
 from visivo.server.flask_app import FlaskApp

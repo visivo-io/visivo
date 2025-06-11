@@ -1,4 +1,4 @@
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 
 
 def _generate_sources(profiles, dbt_target, dbt_prefix):
@@ -104,7 +104,7 @@ def _generate_models(manifest, dbt_profile, dbt_target, dbt_prefix):
 
 
 def dbt_phase(working_dir, output_dir, dbt_profile, dbt_target):
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
     from visivo.parsers.parser_factory import ParserFactory
     from visivo.discovery.discover import Discover
     from visivo.models.project import Dbt

@@ -3,7 +3,7 @@ import pydantic
 import re
 
 from visivo.models.base.context_string import ContextString
-from .base_model import BaseModel, REF_REGEX
+from visivo.models.base.base_model import BaseModel, REF_REGEX
 
 NAME_REGEX = r"^[a-zA-Z0-9\s'\"\-_]+$"
 

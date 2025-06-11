@@ -5,7 +5,7 @@ from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.pool import NullPool
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from pandas import DataFrame
 from copy import deepcopy
 
