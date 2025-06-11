@@ -50,10 +50,6 @@ class Defaults(BaseModel):
         8,
         description="The number of threads to use when running queries.",
     )
-    thumbnail_mode: Literal["none", "missing", "all"] = Field(
-        "missing",
-        description="Mode for thumbnail generation: 'none' to disable, 'missing' to generate only missing thumbnails, 'all' to generate all thumbnails",
-    )
     levels: List[Level] = Field(
         default_factory=list,
         description="Enables you to customize the project level view of your dashboards. Ordered list of dashboard levels with titles and descriptions",

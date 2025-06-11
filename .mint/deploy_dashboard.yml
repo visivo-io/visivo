@@ -25,16 +25,10 @@ tasks:
   - key: python
     call: mint/install-python 1.2.1
     with:
-      python-version: 3.10.0
+      python-version: 3.12.0
 
   - key: github-cli
     call: github/install-cli 1.0.1
-
-  - key: install-playwright
-    use: [python]
-    run: |
-      pip install playwright
-      python -m playwright install webkit --with-deps
 
   - key: install-visivo
     use: [python]
@@ -43,7 +37,7 @@ tasks:
 
   - key: run-visivo
     if: ${{ init.deploy }}
-    use: [install-visivo, code, install-playwright]
+    use: [install-visivo, code ]
     run: |
       cd test-projects/integration
       visivo --version

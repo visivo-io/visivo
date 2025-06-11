@@ -4,9 +4,43 @@ on:
   workflow_dispatch:
     inputs:
       version:
+        description: "The version to release"
         required: true
 
 jobs:
+  build-mac-app:
+    name: "Build Mac App"
+    runs-on: "macos-latest"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v9
+
+      - name: Build App
+        run: |
+          cd viewer && yarn install && yarn deploy && cd ..
+          poetry install
+          poetry run write-schema-json
+          poetry version ${{ inputs.version }}
+          echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
+
+      - name: Build Mac App
+        run: |
+          poetry run build
+
+      - name: Upload Mac App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: visivo-mac
+          path: dist/visivo
+
   create-release:
     name: "Create release v${{ inputs.version }}"
     runs-on: "ubuntu-latest"
@@ -63,6 +97,8 @@ jobs:
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry build
           poetry publish
+
+
 
       - name: Trigger Core Deployment
         uses: peter-evans/repository-dispatch@v2

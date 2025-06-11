@@ -16,6 +16,9 @@ env.bak/
 venv.bak/
 
 target
+dist/
+build/
+
 tmp
 mkdocs_build/
 test-projects/*/dist
@@ -27,3 +30,5 @@ node_modules
 # Local Netlify folder
 .netlify
 .qodo
+.visivo_cache
+mk_docs.log

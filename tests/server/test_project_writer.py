@@ -1,5 +1,4 @@
 import pytest
-import yaml
 import os
 import json
 from visivo.server.project_writer import ProjectWriter, diff, apply_diff, SubDiff, DELETE

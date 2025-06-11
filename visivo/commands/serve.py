@@ -11,7 +11,6 @@ from visivo.commands.options import (
     threads,
     dbt_profile,
     dbt_target,
-    thumbnail_mode,
     skip_compile,
 )
 
@@ -22,7 +21,6 @@ from visivo.commands.options import (
 @output_dir
 @dag_filter
 @port
-@thumbnail_mode
 @threads
 @skip_compile
 @dbt_profile
@@ -34,7 +32,6 @@ def serve(
     port,
     dag_filter,
     threads,
-    thumbnail_mode,
     skip_compile,
     dbt_profile,
     dbt_target,
@@ -65,7 +62,6 @@ def serve(
         default_source=source,
         dag_filter=dag_filter,
         threads=threads,
-        thumbnail_mode=thumbnail_mode,
         skip_compile=skip_compile,
         project=project,
         server_url=server_url,

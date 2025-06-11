@@ -218,7 +218,7 @@ class FlaskApp:
 
             return html
 
-        @self.app.route("/data/dashboards/<dashboard_name_hash>.png")
+        @self.app.route("/data/dashboards/<dashboard_name_hash>.png", methods=["GET"])
         def get_thumbnail(dashboard_name_hash):
             try:
                 # Since static_url_path="/data" maps to output_dir, we can use send_from_directory with output_dir

@@ -15,7 +15,6 @@ def serve_phase(
     default_source,
     dag_filter,
     threads,
-    thumbnail_mode,
     skip_compile,
     project,
     server_url,
@@ -51,7 +50,6 @@ def serve_phase(
                 dag_filter=changed_dag_filter,
                 threads=threads,
                 soft_failure=True,
-                thumbnail_mode=thumbnail_mode,
                 skip_compile=True,  # Don't recompile on changes, passing in just compiled one.
                 project=project,
                 server_url=server_url,
@@ -85,7 +83,6 @@ def serve_phase(
                 default_source=default_source,
                 dag_filter=dag_filter,
                 threads=threads,
-                thumbnail_mode=thumbnail_mode,
                 skip_compile=skip_compile,
                 project=project,
                 server_url=server_url,

@@ -19,7 +19,6 @@ from visivo.jobs.run_csv_script_job import job as csv_script_job
 from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
 from visivo.jobs.run_source_connection_job import job as source_connection_job
-from visivo.jobs.run_thumbnail_job import job as thumbnail_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
@@ -33,7 +32,6 @@ class DagRunner:
         output_dir: str,
         threads: int,
         soft_failure: bool,
-        thumbnail_mode: str,
         server_url: str,
         job_dag: Any,
     ):
@@ -41,7 +39,6 @@ class DagRunner:
         self.output_dir = output_dir
         self.threads = threads
         self.soft_failure = soft_failure
-        self.thumbnail_mode = thumbnail_mode
         self.server_url = server_url
         self.job_dag = job_dag
         self.job_tracking_dag = job_dag.copy()
@@ -141,17 +138,4 @@ class DagRunner:
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item)
-        elif isinstance(item, Dashboard):
-            if self.thumbnail_mode != "none":
-                if self.server_url is None:
-                    raise Exception(
-                        "Cannot generate thumbnails, no server URL is provided. A running server is required to generate thumbnails."
-                    )
-                return thumbnail_job(
-                    dashboard=item,
-                    project=self.project,
-                    output_dir=self.output_dir,
-                    thumbnail_mode=self.thumbnail_mode,
-                    server_url=self.server_url,
-                )
         return None

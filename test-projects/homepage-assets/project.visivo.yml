@@ -1,7 +1,6 @@
 name: homepage-assets
 defaults:
   source_name: Example Target
-  thumbnail_mode: none
 includes:
   # - path: visivo-io/visivo.git@main -- test-projects/demo/dashboards/welcome.visivo.yml
   - path: ./aapl-stock.visivo.yml

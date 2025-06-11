@@ -33,7 +33,6 @@ jobs:
 
       - name: Build Mac App
         run: |
-          PLAYWRIGHT_BROWSERS_PATH=0 poetry run playwright install webkit
           poetry run build
 
       - name: Upload Mac App Artifact

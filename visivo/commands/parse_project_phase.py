@@ -32,9 +32,9 @@ def parse_project_phase(working_dir, output_dir, default_source, dbt_profile, db
             project.defaults.source_name = default_source
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
-        # Ensure thumbnail directory exists
-        thumbnail_dir = get_dashboards_dir(output_dir)
-        os.makedirs(thumbnail_dir, exist_ok=True)
+        # Ensure dashboard directory exists
+        dashboard_dir = get_dashboards_dir(output_dir)
+        os.makedirs(dashboard_dir, exist_ok=True)
 
     except yaml.YAMLError as e:
         message = "\n"

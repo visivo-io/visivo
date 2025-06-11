@@ -10,7 +10,6 @@ class FilteredRunner:
         threads: int = 8,
         soft_failure: bool = False,
         dag_filter: str = None,
-        thumbnail_mode: str = None,
         server_url: str = None,
     ):
         self.project = project
@@ -18,7 +17,6 @@ class FilteredRunner:
         self.threads = threads
         self.soft_failure = soft_failure
         self.dag_filter = dag_filter
-        self.thumbnail_mode = thumbnail_mode
         self.server_url = server_url
         self.project_dag = project.dag()
 
@@ -29,7 +27,6 @@ class FilteredRunner:
                 output_dir=self.output_dir,
                 threads=self.threads,
                 soft_failure=self.soft_failure,
-                thumbnail_mode=self.thumbnail_mode,
                 server_url=self.server_url,
                 job_dag=job_dag,
             )

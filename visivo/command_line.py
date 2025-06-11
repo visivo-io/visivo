@@ -24,7 +24,6 @@ from visivo.commands.test import test
 from visivo.commands.aggregate import aggregate
 from visivo.commands.archive import archive
 from visivo.commands.authorize import authorize
-from visivo.commands.install import install
 from visivo.commands.list import list
 from visivo.version import VISIVO_VERSION
 
@@ -70,7 +69,6 @@ visivo.add_command(aggregate)
 visivo.add_command(archive)
 visivo.add_command(authorize)
 visivo.add_command(create)
-visivo.add_command(install)
 visivo.add_command(list)
 
 
