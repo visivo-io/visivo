@@ -32,3 +32,4 @@ node_modules
 .qodo
 .visivo_cache
 mk_docs.log
+visivo.spec
