@@ -167,7 +167,7 @@ describe('usePivotExecution', () => {
     });
 
     it('should always close connection even after errors', async () => {
-      const consoleInfoSpy = jest
+      jest
         .spyOn(console, 'error')
         .mockImplementation(() => { });
       const { mockDb, mockConn } = createMocks();

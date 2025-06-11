@@ -48,7 +48,7 @@ const PivotColumnSelection = ({
       loadDataToDuckDB(db, tableData)
       dataLoadedRef.current = true;
     }
-  }, [db, tableData, isLoadingDuckDB]);
+  }, [db, tableData, isLoadingDuckDB, loadDataToDuckDB]);
 
   useEffect(() => {
     dataLoadedRef.current = false;

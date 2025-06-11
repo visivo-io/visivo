@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import detectColumnType from "../components/items/table-helpers/detectColumnType";
-import isAggregateable from "../components/items/table-helpers/isAggregatable";
 import { batchInsertData } from "./utilities/batchInsertData";
 
 /**

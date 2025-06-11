@@ -1,6 +1,6 @@
 import Loading from "../common/Loading";
 
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import PivotColumnSelection from "./table-components/pivot-column-selection/PivotColumnSelection";
 import sanitizeColumnName from "./table-helpers/sanitizeColumnName";
 import {
@@ -117,7 +117,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         })
       );
     }
-  }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
+  }, [selectedTableCohort, columns, isCSVData, table.traces, isDirectQueryResult]);
 
   const handleExportData = () => {
     // Use pivotedData if the table is pivoted, otherwise use tableData

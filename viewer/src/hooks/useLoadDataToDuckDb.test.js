@@ -64,7 +64,7 @@ describe('useLoadDataToDuckDB', () => {
       );
 
       await act(async () => {
-        const response = await result.current(mockDbInstance, []);
+        await result.current(mockDbInstance, []);
       });
 
       expect(console.error).toHaveBeenCalledWith('setIsLoadingDuckDB is required');
@@ -127,10 +127,7 @@ describe('useLoadDataToDuckDB', () => {
         })
       );
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, []);
-      });
+      await result.current(mockDbInstance, []);
 
       expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(true);
       expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);
@@ -146,10 +143,7 @@ describe('useLoadDataToDuckDB', () => {
         })
       );
 
-      let response;
-      await act(async () => {
-        response = await result.current(mockDbInstance, null);
-      });
+      await result.current(mockDbInstance, null);
 
       expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(true);
       expect(mockSetIsLoadingDuckDB).toHaveBeenCalledWith(false);

@@ -84,7 +84,7 @@ describe('useDuckDBInitialization', () => {
   it('should not re-initialize if db already exists', async () => {
     mockInitializeDuckDB.mockResolvedValue('mock-db-instance');
 
-    const { result, rerender } = renderHook(() => useDuckDBInitialization());
+    const { rerender } = renderHook(() => useDuckDBInitialization());
 
     // First render should initialize
     expect(mockInitializeDuckDB).toHaveBeenCalledTimes(1);
@@ -121,7 +121,7 @@ describe('useDuckDBInitialization', () => {
     });
   });
 
-  it('should calculate duckDBLoaded correctly with correct status', () => {
+  it('should calculate duckDBLoaded correctly with correct status', async () => {
     let statusCallback;
     mockInitializeDuckDB.mockImplementation((callback) => {
       statusCallback = callback;
@@ -136,7 +136,7 @@ describe('useDuckDBInitialization', () => {
       progress: 100,
     });
 
-    waitFor(() => {
+    await waitFor(() => {
       expect(result.current.duckDBLoaded).toBe(true);
     });
   });

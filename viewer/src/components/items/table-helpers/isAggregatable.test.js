@@ -1,17 +1,5 @@
 import isAggregatable from "./isAggregatable";
 
-const testValues = [
-  "$1,234.56", // Dollar sign and commas
-  "€1.234,56", // Euro sign and European number format
-  "1,234.56", // Commas
-  "1234.56", // Plain number
-  " 1234.56 ", // Leading/trailing spaces
-  "-", // Dash (should be treated as NULL)
-  "", // Empty string (should default to 0)
-  null, // Null value (should default to 0)
-  "abc", // Non-numeric string (should default to 0)
-];
-
 describe("isAggregatable", () => {
   test("returns false for null", () => {
     expect(isAggregatable(null)).toBe(false);
