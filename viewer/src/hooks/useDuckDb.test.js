@@ -35,7 +35,7 @@ describe('useDuckDBInitialization', () => {
 
     statusCallback(progressUpdate);
 
-    waitFor(async () => {
+    await waitFor(async () => {
       expect(result.current.duckDBStatus).toEqual(progressUpdate);
     });
   });
