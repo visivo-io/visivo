@@ -16,7 +16,7 @@ function DashboardCard({ projectId, dashboard }) {
 
   const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
 
-  const onThumbnailGenerated = async (blob) => {
+  const onThumbnailGenerated = async blob => {
     const formData = new FormData();
     formData.append('file', blob, `${dashboard.name}.png`);
     const dashboardNameHash = md5(dashboard.name);
@@ -87,7 +87,8 @@ function DashboardCard({ projectId, dashboard }) {
     </div>
   );
 
-  const needThumbnail = !!dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && !!project;
+  const needThumbnail =
+    !!dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && !!project;
 
   return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">
@@ -96,7 +97,13 @@ function DashboardCard({ projectId, dashboard }) {
   ) : (
     <Link to={encodeURIComponent(dashboard.name)} className="block h-full">
       <CardContent />
-      {needThumbnail && <DashboardThumbnail dashboard={dashboard} project={project} onThumbnailGenerated={onThumbnailGenerated} />}
+      {needThumbnail && (
+        <DashboardThumbnail
+          dashboard={dashboard}
+          project={project}
+          onThumbnailGenerated={onThumbnailGenerated}
+        />
+      )}
     </Link>
   );
 }
