@@ -265,8 +265,7 @@ class FlaskApp:
 
                 return jsonify(
                     {
-                        "message": "Thumbnail created successfully",
-                        "thumbnail_url": f"/data/dashboards/{dashboard_name_hash}.png",
+                        "signed_thumbnail_file_url": f"/data/dashboards/{dashboard_name_hash}.png",
                     }
                 )
 

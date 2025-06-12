@@ -73,6 +73,7 @@ function Project(props) {
                 dashboards={dashboards.map(dashboard => ({
                   ...dashboard,
                 }))}
+                projectId={props.project.id}
                 searchTerm={searchTerm}
                 hasLevels={dashboardsByLevel.length > 0}
                 projectDefaults={props.project?.project_json?.defaults}

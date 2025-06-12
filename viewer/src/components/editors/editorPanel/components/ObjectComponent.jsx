@@ -60,7 +60,10 @@ function ObjectComponent({ name, data, path }) {
   const label = name ? name : data.name;
 
   return (
-    <div className="flex flex-col  p-2 bg-white rounded-lg border-primary-100 bg-primary-50 shadow border border-gray-100 mt-2" onContextMenu={handleContextMenu}>
+    <div
+      className="flex flex-col  p-2 bg-white rounded-lg border-primary-100 bg-primary-50 shadow border border-gray-100 mt-2"
+      onContextMenu={handleContextMenu}
+    >
       <div className="flex items-center  justify-between">
         <div className="flex items-center gap-2">
           <HiOutlineCube className="text-primary-500 w-5 h-5 " />
@@ -69,7 +72,6 @@ function ObjectComponent({ name, data, path }) {
         <button
           onClick={() => setIsModalOpen(true)}
           className="p-0.5 text-white bg-primary-500 hover:bg-primary-600 rounded-full shadow transition-colors focus:ring-2 focus:ring-primary-200 focus:outline-none"
-          
         >
           <HiPlus className="h-4 w-4" />
         </button>
@@ -98,11 +100,7 @@ function ObjectComponent({ name, data, path }) {
             const keyCount = Object.keys(value).length;
             const sizeFactor = Math.min(Math.max(keyCount * 270, 400), 1200);
             return (
-              <div
-                key={key}
-                
-                style={{ width: `${sizeFactor}px`, minWidth: '200px' }}
-              >
+              <div key={key} style={{ width: `${sizeFactor}px`, minWidth: '200px' }}>
                 {renderValue(key, value, childPath)}
               </div>
             );

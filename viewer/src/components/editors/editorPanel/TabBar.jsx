@@ -32,4 +32,4 @@ const TabBar = ({ tabs, activeTabId, setActiveTab, closeTab }) => {
   );
 };
 
-export default TabBar; 
+export default TabBar;

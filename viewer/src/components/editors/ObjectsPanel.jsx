@@ -21,7 +21,8 @@ const ObjectsPanel = ({ isCollapsed, onCollapse, onOpenCreateModal }) => {
   const filteredObjects = useMemo(() => {
     return objectNames.filter(name => {
       const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesType = !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
+      const matchesType =
+        !selectedTypeKey || namedChildrenAndType[name].type_key === selectedTypeKey;
       return matchesSearch && matchesType;
     });
   }, [objectNames, namedChildrenAndType, searchTerm, selectedTypeKey]);
@@ -34,7 +35,11 @@ const ObjectsPanel = ({ isCollapsed, onCollapse, onOpenCreateModal }) => {
   `;
 
   if (isLoading) {
-    return <div className={panelClasses}><Loading text="Loading Project..." width={64} /></div>;
+    return (
+      <div className={panelClasses}>
+        <Loading text="Loading Project..." width={64} />
+      </div>
+    );
   }
   if (error) {
     return (

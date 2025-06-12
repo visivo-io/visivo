@@ -9,73 +9,88 @@ import { useQuery } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { createRoot } from 'react-dom/client';
 import md5 from 'md5';
+import { useRouteLoaderData } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryProvider } from '../../contexts/QueryContext';
+import { SearchParamsProvider } from '../../contexts/SearchParamsContext';
+import DashboardThumbnail from './DashboardThumbnail';
 
-function DashboardCard({ dashboard }) {
-  const { fetchDashboardQuery } = useContext(QueryContext);
+function DashboardCard({ projectId, dashboard }) {
+  const queryClient = new QueryClient();
+  const { fetchDashboardQuery, fetchTracesQuery } = useContext(QueryContext);
+  const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
+  const [error, setError] = useState(null);
   const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const cardRef = useRef(null);
 
-  const { data: dashboardData } = useQuery(fetchDashboardQuery("project_id", dashboard.name));
+  const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
 
   useEffect(() => {
-    console.log('dashboardData', dashboardData);
     const loadThumbnail = async () => {
       if (!dashboardData) {
         return;
       }
       if (dashboardData.signed_thumbnail_file_url) {
         setImageUrl(dashboardData.signed_thumbnail_file_url);
-      } else if (!isGeneratingThumbnail && cardRef.current) {
+      } else if (!imageUrl && !error && project && !isGeneratingThumbnail && cardRef.current) {
         setIsGeneratingThumbnail(true);
         try {
-          // Create a clone of the card for thumbnail generation
-          // Create a hidden container for the dashboard
           const container = document.createElement('div');
           container.style.position = 'absolute';
-          container.style.left = '-9999px';
-          container.style.width = '300px';
-          container.style.height = '300px';
+          // container.style.left = '-9999px';
+          container.style.left = '0px';
+          container.style.top= '0px';
+          container.style.width = '1024px';
+          container.style.height = '1024px';
           document.body.appendChild(container);
 
           const root = createRoot(container);
           root.render(
-            <BrowserRouter>
-              <Routes>
-                <Route path="/project" element={<Dashboard project={dashboard.project} dashboardName={dashboard.name} />} />
-              </Routes>
-            </BrowserRouter>
+            <QueryClientProvider client={queryClient}>
+              <QueryProvider value={{ fetchTracesQuery, fetchDashboardQuery }}>
+                <BrowserRouter>
+                  <Routes>
+                    <Route
+                      path="/project"
+                      element={<SearchParamsProvider> <Dashboard project={project} dashboardName={dashboard.name} /> </SearchParamsProvider> }
+                    />
+                  </Routes>
+                </BrowserRouter>
+              </QueryProvider>
+            </QueryClientProvider>
           );
 
-          // Generate thumbnail
+          console.log('generating thumbnail', container);
           const canvas = await html2canvas(container, {
-            width: 300,
-            height: 300,
+            width: 1024,
+            height: 1024,
             scale: 1,
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
           });
 
-          // Convert to blob and upload
-          canvas.toBlob(async (blob) => {
+          canvas.toBlob(async blob => {
             try {
               const formData = new FormData();
               formData.append('file', blob, `${dashboard.name}.png`);
               const dashboardNameHash = md5(dashboard.name);
+              console.log('posting', dashboardNameHash);
               const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
                 method: 'POST',
-                body: formData
+                body: formData,
               });
 
-              if (response.ok) {
-                setImageUrl(response.signed_thumbnail_file_url);
-              }
+              const json = await response.json();
+              setImageUrl(json.signed_thumbnail_file_url);
             } catch (error) {
+              setError(error);
               console.error('Error uploading thumbnail:', error);
             }
           }, 'image/png');
 
           document.body.removeChild(container);
         } catch (error) {
+          setError(error);
           console.error('Error generating thumbnail:', error);
         } finally {
           setIsGeneratingThumbnail(false);
@@ -84,10 +99,13 @@ function DashboardCard({ dashboard }) {
     };
 
     loadThumbnail();
-  }, [dashboard, isGeneratingThumbnail, dashboardData]);
+  }, [dashboard, project, error, imageUrl, isGeneratingThumbnail, dashboardData, fetchTracesQuery, fetchDashboardQuery]);
 
   const CardContent = () => (
-    <div ref={cardRef} className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
+    <div
+      ref={cardRef}
+      className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group"
+    >
       <div className="aspect-16/10 rounded-t-md overflow-hidden relative bg-gray-50">
         {imageUrl ? (
           <img
@@ -136,6 +154,8 @@ function DashboardCard({ dashboard }) {
     </div>
   );
 
+  const needThumbnail = !imageUrl && project;
+
   return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">
       <CardContent />
@@ -143,6 +163,7 @@ function DashboardCard({ dashboard }) {
   ) : (
     <Link to={encodeURIComponent(dashboard.name)} className="block h-full">
       <CardContent />
+      {needThumbnail && <DashboardThumbnail dashboard={dashboard} project={project} onThumbnailGenerated={setImageUrl} />}
     </Link>
   );
 }

@@ -15,4 +15,4 @@ const EditorContent = ({ scrollRef, handleScroll, activeTabId, activeConfig, act
   );
 };
 
-export default EditorContent; 
+export default EditorContent;
