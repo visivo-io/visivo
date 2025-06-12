@@ -26,5 +26,7 @@ def build():
             "visivo/templates/queries/*:visivo/templates/queries",
             "--add-data",
             "visivo/templates/charts/*:visivo/templates/charts",
+            "--add-data",
+            "visivo/viewers/*:visivo/viewers",
         ]
     )

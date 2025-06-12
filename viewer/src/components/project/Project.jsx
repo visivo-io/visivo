@@ -1,18 +1,14 @@
-import React, { useState, useMemo, useEffect, useContext } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Dashboard from './Dashboard';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
 import DashboardSection, { organizeDashboardsByLevel } from './DashboardSection';
 import FilterBar from './FilterBar';
-import QueryContext from '../../contexts/QueryContext';
-import { fetchDashboardThumbnail } from '../../queries/dashboardThumbnails';
-import { useQuery } from '@tanstack/react-query';
 
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const { fetchDashboardQuery } = useContext(QueryContext);
 
   // Reset scroll position when dashboard changes
   useEffect(() => {
@@ -21,47 +17,6 @@ function Project(props) {
 
   // Combine internal and external dashboards
   const allDashboards = props.dashboards;
-
-  const internalDashboards = allDashboards.filter(dashboard => dashboard.type === 'internal');
-
-  // Use React Query to handle thumbnail loading
-  const projectId = props.project?.id || props.project?.project_id;
-  const dashboardNames = allDashboards.map(d => d.name);
-
-  const { data: thumbnails = {} } = useQuery({
-    queryKey: ['dashboards', projectId, dashboardNames],
-    queryFn: async () => {
-      if (!projectId || dashboardNames.length === 0) {
-        return {};
-      }
-
-      const results = await Promise.all(
-        dashboardNames.map(async dashboardName => {
-          const query = fetchDashboardQuery(projectId, dashboardName);
-          const dashboardData = await query.queryFn().catch(e => {
-            return null;
-          });
-          if (dashboardData) {
-            try {
-              if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {
-                const thumbnail = await fetchDashboardThumbnail(dashboardData);
-                return [dashboardData.name, thumbnail];
-              } else {
-                return [dashboardData.name, null];
-              }
-            } catch (e) {
-              return null;
-            }
-          }
-          return null;
-        })
-      );
-
-      return Object.fromEntries(results.filter(Boolean));
-    },
-    enabled: Boolean(projectId) && dashboardNames.length > 0,
-    staleTime: 1000 * 60 * 5,
-  });
 
   const availableTags = useMemo(() => {
     if (!allDashboards.length) return [];
@@ -117,7 +72,6 @@ function Project(props) {
                 title={level}
                 dashboards={dashboards.map(dashboard => ({
                   ...dashboard,
-                  thumbnail: thumbnails[dashboard.name],
                 }))}
                 searchTerm={searchTerm}
                 hasLevels={dashboardsByLevel.length > 0}

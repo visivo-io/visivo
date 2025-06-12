@@ -1,21 +1,93 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
+import html2canvas from 'html2canvas-pro';
+import Dashboard from './Dashboard';
+import QueryContext from '../../contexts/QueryContext';
+import { useQuery } from '@tanstack/react-query';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createRoot } from 'react-dom/client';
+import md5 from 'md5';
 
-function DashboardCard({ dashboard, thumbnail }) {
+function DashboardCard({ dashboard }) {
+  const { fetchDashboardQuery } = useContext(QueryContext);
   const [imageUrl, setImageUrl] = useState(null);
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const cardRef = useRef(null);
+
+  const { data: dashboardData } = useQuery(fetchDashboardQuery("project_id", dashboard.name));
 
   useEffect(() => {
-    if (thumbnail instanceof Blob) {
-      const url = URL.createObjectURL(thumbnail);
-      setImageUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [thumbnail]);
+    console.log('dashboardData', dashboardData);
+    const loadThumbnail = async () => {
+      if (!dashboardData) {
+        return;
+      }
+      if (dashboardData.signed_thumbnail_file_url) {
+        setImageUrl(dashboardData.signed_thumbnail_file_url);
+      } else if (!isGeneratingThumbnail && cardRef.current) {
+        setIsGeneratingThumbnail(true);
+        try {
+          // Create a clone of the card for thumbnail generation
+          // Create a hidden container for the dashboard
+          const container = document.createElement('div');
+          container.style.position = 'absolute';
+          container.style.left = '-9999px';
+          container.style.width = '300px';
+          container.style.height = '300px';
+          document.body.appendChild(container);
+
+          const root = createRoot(container);
+          root.render(
+            <BrowserRouter>
+              <Routes>
+                <Route path="/project" element={<Dashboard project={dashboard.project} dashboardName={dashboard.name} />} />
+              </Routes>
+            </BrowserRouter>
+          );
+
+          // Generate thumbnail
+          const canvas = await html2canvas(container, {
+            width: 300,
+            height: 300,
+            scale: 1,
+            backgroundColor: '#ffffff'
+          });
+
+          // Convert to blob and upload
+          canvas.toBlob(async (blob) => {
+            try {
+              const formData = new FormData();
+              formData.append('file', blob, `${dashboard.name}.png`);
+              const dashboardNameHash = md5(dashboard.name);
+              const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
+                method: 'POST',
+                body: formData
+              });
+
+              if (response.ok) {
+                setImageUrl(response.signed_thumbnail_file_url);
+              }
+            } catch (error) {
+              console.error('Error uploading thumbnail:', error);
+            }
+          }, 'image/png');
+
+          document.body.removeChild(container);
+        } catch (error) {
+          console.error('Error generating thumbnail:', error);
+        } finally {
+          setIsGeneratingThumbnail(false);
+        }
+      }
+    };
+
+    loadThumbnail();
+  }, [dashboard, isGeneratingThumbnail, dashboardData]);
 
   const CardContent = () => (
-    <div className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
+    <div ref={cardRef} className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
       <div className="aspect-16/10 rounded-t-md overflow-hidden relative bg-gray-50">
         {imageUrl ? (
           <img
