@@ -15,7 +15,7 @@ base:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.2.8
+    call: mint/git-clone 1.6.4
     with:
       repository: https://github.com/visivo-io/visivo.git
       ref: ${{ init.commit-sha }}
@@ -31,12 +31,12 @@ tasks:
       - viewer/.nvmrc
 
   - key: python
-    call: mint/install-python 1.2.1
+    call: mint/install-python 1.3.2
     with:
       python-version: ${{ tasks.versions.values.python }}
 
   - key: node
-    call: mint/install-node 1.0.10
+    call: mint/install-node 1.1.4
     with:
       node-version: ${{ tasks.versions.values.node }}
 

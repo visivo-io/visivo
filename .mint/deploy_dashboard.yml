@@ -15,7 +15,7 @@ base:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.2.8
+    call: mint/git-clone 1.6.4
     with:
       preserve-git-dir: true
       repository: https://github.com/visivo-io/visivo.git
@@ -23,12 +23,12 @@ tasks:
       github-access-token: ${{ vaults.default.github-apps.mint-automation-visivo.token }}
 
   - key: python
-    call: mint/install-python 1.2.1
+    call: mint/install-python 1.3.2
     with:
       python-version: 3.12.0
 
   - key: github-cli
-    call: github/install-cli 1.0.1
+    call: github/install-cli 1.0.5
 
   - key: install-visivo
     use: [python]
