@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import Project from './Project';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import QueryContext from '../../contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter } from 'react-router-dom';
