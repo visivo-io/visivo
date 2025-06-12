@@ -2,104 +2,37 @@ import React, { useEffect, useState, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
-import html2canvas from 'html2canvas-pro';
-import Dashboard from './Dashboard';
 import QueryContext from '../../contexts/QueryContext';
 import { useQuery } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { createRoot } from 'react-dom/client';
 import md5 from 'md5';
 import { useRouteLoaderData } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { QueryProvider } from '../../contexts/QueryContext';
-import { SearchParamsProvider } from '../../contexts/SearchParamsContext';
 import DashboardThumbnail from './DashboardThumbnail';
 
 function DashboardCard({ projectId, dashboard }) {
-  const queryClient = new QueryClient();
-  const { fetchDashboardQuery, fetchTracesQuery } = useContext(QueryContext);
+  const { fetchDashboardQuery } = useContext(QueryContext);
   const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
-  const [error, setError] = useState(null);
-  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
   const cardRef = useRef(null);
 
   const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
 
+  const onThumbnailGenerated = async (blob) => {
+    const formData = new FormData();
+    formData.append('file', blob, `${dashboard.name}.png`);
+    const dashboardNameHash = md5(dashboard.name);
+    const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
+      method: 'POST',
+      body: formData,
+    });
+    const json = await response.json();
+    setImageUrl(json.signed_thumbnail_file_url);
+  };
+
   useEffect(() => {
-    const loadThumbnail = async () => {
-      if (!dashboardData) {
-        return;
-      }
-      if (dashboardData.signed_thumbnail_file_url) {
-        setImageUrl(dashboardData.signed_thumbnail_file_url);
-      } else if (!imageUrl && !error && project && !isGeneratingThumbnail && cardRef.current) {
-        setIsGeneratingThumbnail(true);
-        try {
-          const container = document.createElement('div');
-          container.style.position = 'absolute';
-          // container.style.left = '-9999px';
-          container.style.left = '0px';
-          container.style.top= '0px';
-          container.style.width = '1024px';
-          container.style.height = '1024px';
-          document.body.appendChild(container);
-
-          const root = createRoot(container);
-          root.render(
-            <QueryClientProvider client={queryClient}>
-              <QueryProvider value={{ fetchTracesQuery, fetchDashboardQuery }}>
-                <BrowserRouter>
-                  <Routes>
-                    <Route
-                      path="/project"
-                      element={<SearchParamsProvider> <Dashboard project={project} dashboardName={dashboard.name} /> </SearchParamsProvider> }
-                    />
-                  </Routes>
-                </BrowserRouter>
-              </QueryProvider>
-            </QueryClientProvider>
-          );
-
-          console.log('generating thumbnail', container);
-          const canvas = await html2canvas(container, {
-            width: 1024,
-            height: 1024,
-            scale: 1,
-            backgroundColor: '#ffffff',
-          });
-
-          canvas.toBlob(async blob => {
-            try {
-              const formData = new FormData();
-              formData.append('file', blob, `${dashboard.name}.png`);
-              const dashboardNameHash = md5(dashboard.name);
-              console.log('posting', dashboardNameHash);
-              const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
-                method: 'POST',
-                body: formData,
-              });
-
-              const json = await response.json();
-              setImageUrl(json.signed_thumbnail_file_url);
-            } catch (error) {
-              setError(error);
-              console.error('Error uploading thumbnail:', error);
-            }
-          }, 'image/png');
-
-          document.body.removeChild(container);
-        } catch (error) {
-          setError(error);
-          console.error('Error generating thumbnail:', error);
-        } finally {
-          setIsGeneratingThumbnail(false);
-        }
-      }
-    };
-
-    loadThumbnail();
-  }, [dashboard, project, error, imageUrl, isGeneratingThumbnail, dashboardData, fetchTracesQuery, fetchDashboardQuery]);
+    if (dashboardData && dashboardData.signed_thumbnail_file_url) {
+      setImageUrl(dashboardData.signed_thumbnail_file_url);
+    }
+  }, [dashboardData]);
 
   const CardContent = () => (
     <div
@@ -154,7 +87,7 @@ function DashboardCard({ projectId, dashboard }) {
     </div>
   );
 
-  const needThumbnail = !imageUrl && project;
+  const needThumbnail = !!dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && !!project;
 
   return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">
@@ -163,7 +96,7 @@ function DashboardCard({ projectId, dashboard }) {
   ) : (
     <Link to={encodeURIComponent(dashboard.name)} className="block h-full">
       <CardContent />
-      {needThumbnail && <DashboardThumbnail dashboard={dashboard} project={project} onThumbnailGenerated={setImageUrl} />}
+      {needThumbnail && <DashboardThumbnail dashboard={dashboard} project={project} onThumbnailGenerated={onThumbnailGenerated} />}
     </Link>
   );
 }
