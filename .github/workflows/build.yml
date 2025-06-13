@@ -64,11 +64,12 @@ jobs:
 
       - name: Build App
         run: |
-          cd viewer && yarn install && yarn deploy && cd ..
+          cd viewer && yarn install --network-timeout 600000 && yarn deploy && cd ..
           poetry install
           poetry run write-schema-json
           poetry version ${{ env.VERSION }}
           echo "VISIVO_VERSION = \"${{ env.VERSION }}\"" > visivo\version.py
+        shell: bash
 
       - name: Build Windows App
         run: |
