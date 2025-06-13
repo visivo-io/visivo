@@ -89,7 +89,7 @@ test('filters objects based on type selection', async () => {
 
 test('opens create modal when create button is clicked', async () => {
   const mockOnOpenCreateModal = jest.fn();
-  
+
   useStore.mockImplementation(selector =>
     selector({
       isLoading: false,

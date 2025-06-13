@@ -1,5 +1,9 @@
-from .mkdocs_utils.markdown import from_pydantic_model, from_traceprop_model, find_refs
-from .mkdocs_utils.nav_configuration_generator import (
+from visivo.parsers.mkdocs_utils.markdown import (
+    from_pydantic_model,
+    from_traceprop_model,
+    find_refs,
+)
+from visivo.parsers.mkdocs_utils.nav_configuration_generator import (
     mkdocs_pydantic_nav,
     get_model_to_page_mapping,
     get_model_to_path_mapping,
@@ -7,7 +11,7 @@ from .mkdocs_utils.nav_configuration_generator import (
     get_using_path,
     replace_using_path,
 )
-from .schema_generator import generate_schema
+from visivo.parsers.schema_generator import generate_schema
 import json
 
 

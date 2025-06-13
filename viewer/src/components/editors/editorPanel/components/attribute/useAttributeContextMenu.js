@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 
-export const useAttributeContextMenu = (onDelete) => {
+export const useAttributeContextMenu = onDelete => {
   const [contextMenu, setContextMenu] = useState(null);
 
-  const handleContextMenu = (e) => {
+  const handleContextMenu = e => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({
@@ -29,6 +29,6 @@ export const useAttributeContextMenu = (onDelete) => {
     contextMenu,
     setContextMenu,
     handleContextMenu,
-    handleDelete
+    handleDelete,
   };
-}; 
+};

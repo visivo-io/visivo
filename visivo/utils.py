@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import re
 import click
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.models.base.query_string import QueryString
 from visivo.templates.render_yaml import render_yaml
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict

@@ -10,7 +10,15 @@ const ObjectPill = ({ name, inline = false, className = '' }) => {
     openTab(name, type);
   };
 
-  return <Pill name={name} type={type} onDoubleClick={handleObjectOpen} inline={inline} className={className} />;
+  return (
+    <Pill
+      name={name}
+      type={type}
+      onDoubleClick={handleObjectOpen}
+      inline={inline}
+      className={className}
+    />
+  );
 };
 
 export default ObjectPill;

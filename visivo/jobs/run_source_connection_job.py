@@ -1,4 +1,4 @@
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.models.sources.source import Source
 from visivo.jobs.job import (
     Job,

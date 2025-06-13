@@ -120,7 +120,14 @@ export const organizeDashboardsByLevel = (dashboards, projectDefaults) => {
   return Object.fromEntries(entries);
 };
 
-function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectDefaults }) {
+function DashboardSection({
+  title,
+  dashboards,
+  searchTerm,
+  hasLevels,
+  projectDefaults,
+  projectId,
+}) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const configuredLevels = projectDefaults?.levels || [];
@@ -192,7 +199,7 @@ function DashboardSection({ title, dashboards, searchTerm, hasLevels, projectDef
               key={dashboard.name}
               className="w-full sm:w-[calc(33.333%-0.5rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)] 2xl:w-[calc(16.666%-0.833rem)] 3xl:w-[calc(12.5%-0.875rem)]"
             >
-              <DashboardCard dashboard={dashboard} thumbnail={dashboard.thumbnail || null} />
+              <DashboardCard projectId={projectId} dashboard={dashboard} />
             </div>
           ))}
         </div>

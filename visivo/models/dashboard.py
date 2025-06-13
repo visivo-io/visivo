@@ -1,7 +1,7 @@
 from visivo.models.dashboards.base_dashboard import BaseDashboard
-from .base.parent_model import ParentModel
+from visivo.models.base.parent_model import ParentModel
 from pydantic import Field
-from .row import Row
+from visivo.models.row import Row
 from typing import List, Literal
 
 

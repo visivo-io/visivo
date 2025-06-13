@@ -41,6 +41,6 @@ export const useAttributeParser = () => {
     setIsQueryValue,
     setQueryType,
     setIsJsonObject,
-    setParsedObject
+    setParsedObject,
   };
-}; 
+};

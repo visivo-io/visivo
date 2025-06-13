@@ -5,7 +5,7 @@ import AttributeDropdown from './AttributeDropdown';
 test('renders dropdown with filtered children', () => {
   const mockAnchorRef = { current: document.createElement('div') };
   const mockDropdownRef = { current: null };
-  
+
   render(
     <AttributeDropdown
       showDropdown={true}
@@ -24,7 +24,7 @@ test('renders dropdown with filtered children', () => {
 test('applies selected style to selected item', () => {
   const mockAnchorRef = { current: document.createElement('div') };
   const mockDropdownRef = { current: null };
-  
+
   render(
     <AttributeDropdown
       showDropdown={true}
@@ -44,7 +44,7 @@ test('calls onSelect when item is clicked', () => {
   const mockAnchorRef = { current: document.createElement('div') };
   const mockDropdownRef = { current: null };
   const mockOnSelect = jest.fn();
-  
+
   render(
     <AttributeDropdown
       showDropdown={true}

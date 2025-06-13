@@ -1,7 +1,7 @@
 from time import time
 
 compile_import_start = time()
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 
 Logger.instance().debug("Compiling project...")
 import json

@@ -1,7 +1,7 @@
 import click
 import os
 from pathlib import Path
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.commands.init_phase import init_phase
 
 

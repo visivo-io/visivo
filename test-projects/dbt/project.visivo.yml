@@ -1,8 +1,5 @@
 name: dbt_name
 
-defaults:
-  thumbnail_mode: none
-
 dbt:
   enabled: true
   prefix: dbt

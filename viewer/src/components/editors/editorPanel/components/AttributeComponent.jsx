@@ -15,7 +15,7 @@ function AttributeComponent({ name, value, path }) {
   const updateNamedChildAttribute = useStore(state => state.updateNamedChildAttribute);
   const namedChildren = useStore(state => state.namedChildren);
   const deleteNamedChildAttribute = useStore(state => state.deleteNamedChildAttribute);
-  
+
   const [localValue, setLocalValue] = useState(value);
   const [clickTimeout, setClickTimeout] = useState(null);
   const pillRef = useRef(null);
@@ -30,7 +30,7 @@ function AttributeComponent({ name, value, path }) {
     setIsQueryValue,
     setQueryType,
     setIsJsonObject,
-    setParsedObject
+    setParsedObject,
   } = useAttributeParser();
 
   const {
@@ -42,15 +42,12 @@ function AttributeComponent({ name, value, path }) {
     dropdownRef,
     inputRef,
     handleKeyDown,
-    handleMentionSearch
+    handleMentionSearch,
   } = useAttributeDropdown(namedChildren);
 
-  const {
-    contextMenu,
-    setContextMenu,
-    handleContextMenu,
-    handleDelete
-  } = useAttributeContextMenu(() => deleteNamedChildAttribute(path));
+  const { contextMenu, setContextMenu, handleContextMenu, handleDelete } = useAttributeContextMenu(
+    () => deleteNamedChildAttribute(path)
+  );
 
   // Create a debounced update function
   const debouncedUpdate = useCallback(
@@ -93,8 +90,8 @@ function AttributeComponent({ name, value, path }) {
           debouncedUpdateFn(atReference);
 
           handleMentionSearch(parsedObject.name.toLowerCase());
-          const currentIndex = filteredChildren.findIndex(child => 
-            child.toLowerCase() === parsedObject.name.toLowerCase()
+          const currentIndex = filteredChildren.findIndex(
+            child => child.toLowerCase() === parsedObject.name.toLowerCase()
           );
           setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
 
@@ -127,7 +124,7 @@ function AttributeComponent({ name, value, path }) {
     }
   };
 
-  const handleDropdownSelect = (child) => {
+  const handleDropdownSelect = child => {
     const reference = JSON.stringify({
       name: child,
       is_inline_defined: false,
@@ -164,8 +161,16 @@ function AttributeComponent({ name, value, path }) {
     <div className={`flex ${flexDirection} items-center`} onContextMenu={handleContextMenu}>
       {isJsonObject && parsedObject ? (
         <InputShell label={name} hasContent={!!parsedObject}>
-          <div onClick={handlePillClick} className="cursor-text w-full overflow-hidden whitespace-nowrap text-ellipsis" ref={pillRef}>
-            <ObjectPill name={parsedObject.name} inline={parsedObject.is_inline_defined} className="w-full overflow-hidden whitespace-nowrap text-ellipsis" />
+          <div
+            onClick={handlePillClick}
+            className="cursor-text w-full overflow-hidden whitespace-nowrap text-ellipsis"
+            ref={pillRef}
+          >
+            <ObjectPill
+              name={parsedObject.name}
+              inline={parsedObject.is_inline_defined}
+              className="w-full overflow-hidden whitespace-nowrap text-ellipsis"
+            />
           </div>
         </InputShell>
       ) : isQueryValue ? (

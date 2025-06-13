@@ -1,5 +1,5 @@
 import sys
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.models.test import Test
 from visivo.testing.runner import Runner
 from visivo.commands.compile_phase import compile_phase

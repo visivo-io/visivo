@@ -1,11 +1,10 @@
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.named_model import NamedModel
-from visivo.models.base.selector_model import SelectorModel
-from .base.parent_model import ParentModel
+from visivo.models.base.parent_model import ParentModel
 from pydantic import Field
 from typing import List
 from enum import Enum
-from .item import Item
+from visivo.models.item import Item
 
 
 class HeightEnum(str, Enum):

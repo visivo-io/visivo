@@ -51,4 +51,4 @@ const AttributeDropdown = ({
   );
 };
 
-export default AttributeDropdown; 
+export default AttributeDropdown;

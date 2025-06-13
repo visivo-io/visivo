@@ -2,11 +2,11 @@ from typing import List, Optional
 from pydantic import Field
 
 from visivo.models.base.selector_model import SelectorModel
-from .base.named_model import NamedModel
-from .base.parent_model import ParentModel
-from .base.base_model import generate_ref_field
-from .trace import Trace
-from .trace_props.layout import Layout
+from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
+from visivo.models.base.base_model import generate_ref_field
+from visivo.models.trace import Trace
+from visivo.models.trace_props.layout import Layout
 
 
 class Chart(SelectorModel, NamedModel, ParentModel):

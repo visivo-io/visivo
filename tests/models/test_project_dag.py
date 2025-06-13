@@ -9,7 +9,7 @@ from visivo.models.test import Test
 from visivo.models.trace import Trace
 from visivo.models.table import Table
 from visivo.models.chart import Chart
-from ..factories.model_factories import (
+from tests.factories.model_factories import (
     ChartFactory,
     DefaultsFactory,
     ItemFactory,
