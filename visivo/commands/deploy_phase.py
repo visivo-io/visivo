@@ -15,7 +15,7 @@ from time import time
 from tenacity import retry, stop_after_attempt, wait_fixed
 from visivo.commands.utils import get_profile_file, get_profile_token
 from visivo.discovery.discover import Discover
-from visivo.logger.logger import Logger
+from visivo.logging.logger import Logger
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.utils import get_dashboards_dir, sanitize_filename
@@ -163,16 +163,28 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
 
 
 @retry(stop=stop_after_attempt(MAX_ATTEMPTS), wait=wait_fixed(2))
-async def create_dashboard_records(dashboards, project_id, json_headers, host, progress):
+async def create_dashboard_records(
+    dashboards, thumbnail_file_uploads, project_id, json_headers, host, progress
+):
     """
     Asynchronously creates a trace record on the server.
     """
 
     def dashboard_body(dashboard):
+        thumbnail_file_id = next(
+            (
+                upload["id"]
+                for upload in thumbnail_file_uploads
+                if upload["name"].startswith(sanitize_filename(dashboard.name))
+            ),
+            None,
+        )
         dashboard_body = {
             "name": dashboard.name,
             "project_id": project_id,
         }
+        if thumbnail_file_id:
+            dashboard_body["thumbnail_file_id"] = thumbnail_file_id
         return dashboard_body
 
     body = list(map(dashboard_body, dashboards))
@@ -272,17 +284,76 @@ async def process_dashboards_async(
     dashboards, output_dir, project_id, form_headers, json_headers, host
 ):
     """
-    Coordinates the asynchronous upload of dashboard files.
+    Coordinates the asynchronous upload of thumbnail files.
     """
     dashboards_dir = get_dashboards_dir(output_dir)
     if not os.path.exists(dashboards_dir):
         Logger.instance().debug(f"No dashboards directory found at {dashboards_dir}")
         return
 
+    # Get all PNG files from the thumbnail directory
+    thumbnail_files = [f for f in os.listdir(dashboards_dir) if f.endswith(".png")]
+    if not thumbnail_files:
+        Logger.instance().debug("No thumbnails found to upload")
+        return
+
+    total_operations = len(thumbnail_files)  # Each thumbnail has a data upload
+    total_operations += 3  # For create, upload and dashboard record creation
+    progress = {"completed": 0, "total": total_operations}
+
+    # Prepare thumbnail data for creation
+    file_names = []
+    for dashboard in dashboards:
+        sanitized_name = sanitize_filename(dashboard.name)
+        file_names.append(f"{sanitized_name}.png")
+
+    # Create thumbnail files
+    create_thumbnail_files_task = start_files(file_names, "thumbnail", form_headers, host, progress)
+
+    thumbnail_file_uploads_nested = await asyncio.gather(
+        create_thumbnail_files_task, return_exceptions=True
+    )
+    if any(isinstance(data_file_id, Exception) for data_file_id in thumbnail_file_uploads_nested):
+        raise click.ClickException("Failed to create thumbnail files.")
+
+    thumbnail_file_uploads = [item for sublist in thumbnail_file_uploads_nested for item in sublist]
+
+    tasks = []
+    for thumbnail_file_upload in thumbnail_file_uploads:
+        # Upload data files concurrently
+        file_name = thumbnail_file_upload["name"]
+        dashboard = next(
+            (
+                dashboard
+                for dashboard in dashboards
+                if sanitize_filename(dashboard.name) == file_name.split(".")[0]
+            ),
+            None,
+        )
+        data_file_task = upload_file(
+            dashboard.name,
+            thumbnail_file_upload["upload_url"],
+            f"dashboards/{file_name}",
+            output_dir,
+            form_headers,
+            progress,
+        )
+        tasks.append(data_file_task)
+
+    await asyncio.gather(*tasks)
+    uploaded_ids = [item["id"] for item in thumbnail_file_uploads]
+
+    # Finish the upload process
+    tasks = []
+    tasks.append(finish_files(uploaded_ids, "thumbnail", form_headers, host, progress))
+    response_items = await asyncio.gather(*tasks, return_exceptions=True)
+    if any(isinstance(item, Exception) for item in response_items):
+        raise click.ClickException("Failed to finish thumbnail files.")
+
     tasks = []
     tasks.append(
         create_dashboard_records(
-            dashboards, project_id, json_headers, host, {"completed": 0, "total": "3"}
+            dashboards, thumbnail_file_uploads, project_id, json_headers, host, progress
         )
     )
 
@@ -370,9 +441,9 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             f"Trace uploads and record creations completed in {time() - process_traces_start_time:.2f} seconds"
         )
 
-        # Process dashboards
+        # Process thumbnails
         Logger.instance().info("Processing dashboard uploads...")
-        process_dashboards_start_time = time()
+        process_thumbnails_start_time = time()
         dashboards = project.descendants_of_type(type=Dashboard)
 
         asyncio.run(
@@ -386,7 +457,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             )
         )
         Logger.instance().info(
-            f"Dashboard uploads completed in {time() - process_dashboards_start_time:.2f} seconds"
+            f"Thumbnail uploads completed in {time() - process_thumbnails_start_time:.2f} seconds"
         )
 
         # Deploy the project
