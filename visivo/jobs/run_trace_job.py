@@ -35,6 +35,7 @@ def action(trace, dag, output_dir):
     try:
         start_time = time()
         data_frame = source.read_sql(query_string)
+        breakpoint()
         success_message = format_message_success(
             details=f"Updated data for trace \033[4m{trace.name}\033[0m",
             start_time=start_time,

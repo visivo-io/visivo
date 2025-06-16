@@ -7,6 +7,7 @@ from visivo.models.sources.duckdb_source import DuckdbSource
 import io
 import click
 import os
+import polars as pl
 
 
 class CsvScriptModel(Model):
@@ -120,7 +121,6 @@ class CsvScriptModel(Model):
         )
 
     def insert_csv_to_duckdb(self, output_dir):
-        import pandas
         import subprocess
 
         try:
@@ -128,12 +128,15 @@ class CsvScriptModel(Model):
             source = self.get_duckdb_source(output_dir)
             with source.connect() as connection:
                 csv = io.StringIO(process.stdout.read().decode())
-                data_frame = pandas.read_csv(csv)
-                connection.execute(
+                data_frame = pl.read_csv(csv)
+                # Register the Polars DataFrame as a DuckDB view
+                duckdb_conn = connection
+                duckdb_conn.register("data_frame", data_frame)
+                duckdb_conn.execute(
                     f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM data_frame"
                 )
-                connection.execute(f"DELETE FROM {self.table_name}")
-                connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
+                duckdb_conn.execute(f"DELETE FROM {self.table_name}")
+                duckdb_conn.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
         except Exception as e:
             raise click.ClickException(
                 f"Error parsing or generating the csv output of {self.name} model's command. Verify command's output and try again."
