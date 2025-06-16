@@ -8,6 +8,8 @@ import md5 from 'md5';
 import { useRouteLoaderData } from 'react-router-dom';
 import DashboardThumbnail from './DashboardThumbnail';
 
+const GENERATING_THUMBNAIL_URL = 'GENERATING';
+
 function DashboardCard({ projectId, dashboard }) {
   const { fetchDashboardQuery } = useContext(QueryContext);
   const project = useRouteLoaderData('project');
@@ -29,7 +31,11 @@ function DashboardCard({ projectId, dashboard }) {
   };
 
   useEffect(() => {
-    if (dashboardData && dashboardData.signed_thumbnail_file_url) {
+    if (
+      dashboardData &&
+      dashboardData.signed_thumbnail_file_url &&
+      dashboardData.signed_thumbnail_file_url !== GENERATING_THUMBNAIL_URL
+    ) {
       setImageUrl(dashboardData.signed_thumbnail_file_url);
     }
   }, [dashboardData]);
