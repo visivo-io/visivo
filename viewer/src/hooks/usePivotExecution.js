@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import generatePivotQuery from '../components/items/table-helpers/generate-pivot-query/generatePivotQuery';
+import { generatePivotQuery } from '../components/items/table-helpers/generate-pivot-query/generatePivotQuery';
 
 export const usePivotExecution = (db) => {
   const executePivot = useCallback(async ({
