@@ -1,5 +1,4 @@
-from .base import Base, Column, String, DateTime, relationship
-import uuid
+from visivo.server.models.base import Base, Column, String, DateTime, relationship
 from datetime import datetime
 
 

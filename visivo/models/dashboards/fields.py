@@ -4,7 +4,7 @@ from typing_extensions import Annotated
 from pydantic import Discriminator, Tag
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.parsers.yaml_ordered_dict import YamlOrderedDict
 
 

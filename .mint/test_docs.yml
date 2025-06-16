@@ -11,7 +11,7 @@ base:
 
 tasks:
   - key: code
-    call: mint/git-clone 1.2.8
+    call: mint/git-clone 1.6.4
     with:
       repository: https://github.com/visivo-io/visivo.git
       preserve-git-dir: true
@@ -24,7 +24,7 @@ tasks:
     filter: [.python-version]
 
   - key: python
-    call: mint/install-python 1.2.1
+    call: mint/install-python 1.3.2
     with:
       python-version: ${{ tasks.versions.values.python }}
 

@@ -1,5 +1,5 @@
 from visivo.query.dialect import Dialect
-from ..factories.model_factories import SourceFactory
+from tests.factories.model_factories import SourceFactory
 
 
 def test_dialect():

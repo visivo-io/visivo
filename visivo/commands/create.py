@@ -7,7 +7,7 @@ def create(project_name):
     """
     Enables a quick set up by writing your source & api credentials to an env file.
     """
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     Logger.instance().debug("Create")
 

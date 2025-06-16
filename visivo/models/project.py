@@ -10,18 +10,18 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
 
-from .base.parent_model import ParentModel
-from .base.base_model import REF_REGEX
-from .base.context_string import INLINE_REF_REGEX
+from visivo.models.base.parent_model import ParentModel
+from visivo.models.base.base_model import REF_REGEX
+from visivo.models.base.context_string import INLINE_REF_REGEX
 from visivo.models.dashboards.fields import DashboardField
-from .chart import Chart
-from .trace import Trace
-from .table import Table
-from .defaults import Defaults
-from .dbt import Dbt
+from visivo.models.chart import Chart
+from visivo.models.trace import Trace
+from visivo.models.table import Table
+from visivo.models.defaults import Defaults
+from visivo.models.dbt import Dbt
 from typing import List
-from .base.named_model import NamedModel
-from .base.base_model import BaseModel
+from visivo.models.base.named_model import NamedModel
+from visivo.models.base.base_model import BaseModel
 from pydantic import ConfigDict, Field, model_validator
 from visivo.utils import PROJECT_CHILDREN
 from click import ClickException

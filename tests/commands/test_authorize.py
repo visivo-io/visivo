@@ -3,7 +3,7 @@ import time
 from click.testing import CliRunner
 import pytest
 
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.tokens.server import token_received_event, run_flask_server
 from visivo.tokens.web_utils import open_url
 from visivo.commands.authorize import authorize

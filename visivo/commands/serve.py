@@ -2,7 +2,7 @@ import click
 from time import time
 import json
 
-from .options import (
+from visivo.commands.options import (
     dag_filter,
     output_dir,
     working_dir,
@@ -11,7 +11,6 @@ from .options import (
     threads,
     dbt_profile,
     dbt_target,
-    thumbnail_mode,
     skip_compile,
 )
 
@@ -22,7 +21,6 @@ from .options import (
 @output_dir
 @dag_filter
 @port
-@thumbnail_mode
 @threads
 @skip_compile
 @dbt_profile
@@ -34,7 +32,6 @@ def serve(
     port,
     dag_filter,
     threads,
-    thumbnail_mode,
     skip_compile,
     dbt_profile,
     dbt_target,
@@ -45,7 +42,7 @@ def serve(
     start_time = time()
     from visivo.commands.serve_phase import serve_phase
     from visivo.commands.parse_project_phase import parse_project_phase
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     server_url = f"http://localhost:{port}"
 
@@ -65,7 +62,6 @@ def serve(
         default_source=source,
         dag_filter=dag_filter,
         threads=threads,
-        thumbnail_mode=thumbnail_mode,
         skip_compile=skip_compile,
         project=project,
         server_url=server_url,

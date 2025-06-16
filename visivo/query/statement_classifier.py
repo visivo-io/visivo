@@ -1,5 +1,5 @@
 import re
-from .dialect import Dialect
+from visivo.query.dialect import Dialect
 from enum import Enum
 
 

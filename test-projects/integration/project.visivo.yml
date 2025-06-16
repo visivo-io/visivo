@@ -8,7 +8,6 @@ includes:
 defaults:
   source_name: local-duckdb
   alert_name: slack
-  thumbnail_mode: none
 
 alerts:
   - name: slack

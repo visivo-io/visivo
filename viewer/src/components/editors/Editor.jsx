@@ -55,7 +55,10 @@ const Editor = () => {
           <EditorPanel />
         </div>
         <Divider isDragging={isDragging} handleMouseDown={handleMouseDown} />
-        <div style={{ flex: 1 - splitRatio, minHeight: 0 }} className="flex flex-col overflow-hidden">
+        <div
+          style={{ flex: 1 - splitRatio, minHeight: 0 }}
+          className="flex flex-col overflow-hidden"
+        >
           <PreviewPanel project={project} />
         </div>
       </div>
@@ -68,7 +71,9 @@ const Editor = () => {
             aria-label="Show Objects Panel"
           >
             <HiChevronRight className="w-6 h-6" />
-            <span className="absolute left-full ml-2 px-2 py-1 rounded bg-gray-800 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Show Objects Panel</span>
+            <span className="absolute left-full ml-2 px-2 py-1 rounded bg-gray-800 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Show Objects Panel
+            </span>
           </button>
           {/* Floating create button (bottom left) */}
           <button
@@ -77,7 +82,9 @@ const Editor = () => {
             aria-label="Create New Object"
           >
             <HiPlus className="w-7 h-7" />
-            <span className="absolute left-full ml-2 px-2 py-1 rounded bg-gray-800 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">Create New Object</span>
+            <span className="absolute left-full ml-2 px-2 py-1 rounded bg-gray-800 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+              Create New Object
+            </span>
           </button>
         </>
       )}

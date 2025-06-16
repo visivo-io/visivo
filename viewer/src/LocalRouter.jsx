@@ -45,6 +45,7 @@ const LocalRouter = createBrowserRouter(
         }}
       />
       <Route
+        id="project"
         path="/project"
         element={<ProjectContainer />}
         errorElement={<ErrorPage />}
@@ -56,7 +57,6 @@ const LocalRouter = createBrowserRouter(
       >
         <Route index element={<ProjectContainer />} />
         <Route
-          id="project"
           path=":dashboardName?/*"
           element={<ProjectContainer />}
           loader={loadProject}

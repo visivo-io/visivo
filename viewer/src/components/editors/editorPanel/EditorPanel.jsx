@@ -123,4 +123,4 @@ const EditorPanel = () => {
   );
 };
 
-export default EditorPanel; 
+export default EditorPanel;

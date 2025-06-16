@@ -1,21 +1,50 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
+import QueryContext from '../../contexts/QueryContext';
+import { useQuery } from '@tanstack/react-query';
+import md5 from 'md5';
+import { useRouteLoaderData } from 'react-router-dom';
+import DashboardThumbnail from './DashboardThumbnail';
 
-function DashboardCard({ dashboard, thumbnail }) {
+const GENERATING_THUMBNAIL_URL = 'GENERATING';
+
+function DashboardCard({ projectId, dashboard }) {
+  const { fetchDashboardQuery } = useContext(QueryContext);
+  const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
+  const cardRef = useRef(null);
+
+  const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
+
+  const onThumbnailGenerated = async blob => {
+    const formData = new FormData();
+    formData.append('file', blob, `${dashboard.name}.png`);
+    const dashboardNameHash = md5(dashboard.name);
+    const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
+      method: 'POST',
+      body: formData,
+    });
+    const json = await response.json();
+    setImageUrl(json.signed_thumbnail_file_url);
+  };
 
   useEffect(() => {
-    if (thumbnail instanceof Blob) {
-      const url = URL.createObjectURL(thumbnail);
-      setImageUrl(url);
-      return () => URL.revokeObjectURL(url);
+    if (
+      dashboardData &&
+      dashboardData.signed_thumbnail_file_url &&
+      dashboardData.signed_thumbnail_file_url !== GENERATING_THUMBNAIL_URL
+    ) {
+      setImageUrl(dashboardData.signed_thumbnail_file_url);
     }
-  }, [thumbnail]);
+  }, [dashboardData]);
 
   const CardContent = () => (
-    <div className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group">
+    <div
+      ref={cardRef}
+      className="h-full bg-white rounded-md shadow-2xs hover:shadow-md transition-all duration-200 hover:scale-[1.02] border border-gray-100 group"
+    >
       <div className="aspect-16/10 rounded-t-md overflow-hidden relative bg-gray-50">
         {imageUrl ? (
           <img
@@ -64,6 +93,9 @@ function DashboardCard({ dashboard, thumbnail }) {
     </div>
   );
 
+  const needThumbnail =
+    !!dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && !!project;
+
   return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">
       <CardContent />
@@ -71,6 +103,13 @@ function DashboardCard({ dashboard, thumbnail }) {
   ) : (
     <Link to={encodeURIComponent(dashboard.name)} className="block h-full">
       <CardContent />
+      {needThumbnail && (
+        <DashboardThumbnail
+          dashboard={dashboard}
+          project={project}
+          onThumbnailGenerated={onThumbnailGenerated}
+        />
+      )}
     </Link>
   );
 }

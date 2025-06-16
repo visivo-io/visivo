@@ -15,7 +15,7 @@ from time import time
 from tenacity import retry, stop_after_attempt, wait_fixed
 from visivo.commands.utils import get_profile_file, get_profile_token
 from visivo.discovery.discover import Discover
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.utils import get_dashboards_dir, sanitize_filename
@@ -288,26 +288,20 @@ async def process_dashboards_async(
     """
     dashboards_dir = get_dashboards_dir(output_dir)
     if not os.path.exists(dashboards_dir):
-        Logger.instance().debug(f"No dashboards directory found at {dashboards_dir}")
-        return
-
-    # Get all PNG files from the thumbnail directory
-    thumbnail_files = [f for f in os.listdir(dashboards_dir) if f.endswith(".png")]
-    if not thumbnail_files:
-        Logger.instance().debug("No thumbnails found to upload")
-        return
+        thumbnail_files = []
+    else:
+        thumbnail_files = [f for f in os.listdir(dashboards_dir) if f.endswith(".png")]
 
     total_operations = len(thumbnail_files)  # Each thumbnail has a data upload
     total_operations += 3  # For create, upload and dashboard record creation
     progress = {"completed": 0, "total": total_operations}
 
-    # Prepare thumbnail data for creation
     file_names = []
     for dashboard in dashboards:
         sanitized_name = sanitize_filename(dashboard.name)
-        file_names.append(f"{sanitized_name}.png")
+        if os.path.exists(f"{dashboards_dir}/{sanitized_name}.png"):
+            file_names.append(f"{sanitized_name}.png")
 
-    # Create thumbnail files
     create_thumbnail_files_task = start_files(file_names, "thumbnail", form_headers, host, progress)
 
     thumbnail_file_uploads_nested = await asyncio.gather(

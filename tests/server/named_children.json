@@ -1014,8 +1014,7 @@
         "alert_name": "slack",
         "levels": [],
         "source_name": "local-duckdb",
-        "threads": 8,
-        "thumbnail_mode": "none"
+        "threads": 8
       },
       "destinations": [],
       "includes": [

@@ -1,5 +1,5 @@
-from ..base.named_model import NamedModel
-from ..test_run import TestRun
+from visivo.models.base.named_model import NamedModel
+from visivo.models.test_run import TestRun
 
 
 class Destination(NamedModel):

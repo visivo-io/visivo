@@ -8,9 +8,7 @@ const InputShell = ({ label, children, hasContent, containerRef }) => (
     <label
       className={
         `absolute text-md pt-1 text-gray-500 duration-300 transform z-10 origin-[0] bg-white px-2 py-0 left-1 pointer-events-none ` +
-        (hasContent
-          ? '-translate-y-4 scale-75 top-1'
-          : 'scale-100 top-2')
+        (hasContent ? '-translate-y-4 scale-75 top-1' : 'scale-100 top-2')
       }
     >
       {label}
@@ -18,4 +16,4 @@ const InputShell = ({ label, children, hasContent, containerRef }) => (
   </div>
 );
 
-export default InputShell; 
+export default InputShell;
