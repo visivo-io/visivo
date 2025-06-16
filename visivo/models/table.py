@@ -91,7 +91,8 @@ class Table(SelectorModel, NamedModel, ParentModel):
         children = []
         if self.model:
             children.append(self.model)
-        children += self.traces
+        if self.traces:
+            children += self.traces
         if self.selector:
             children.append(self.selector)
         return children
