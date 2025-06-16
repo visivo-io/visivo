@@ -6,7 +6,7 @@ from visivo.models.sources.source import Source
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.pool import NullPool
 from visivo.logging.logger import Logger
-from pandas import DataFrame
+import polars as pl
 from copy import deepcopy
 
 
@@ -28,7 +28,7 @@ class SqlalchemySource(Source, ABC):
             data = results.fetchall()
             results.close()
 
-        return DataFrame(data, columns=columns)
+        return pl.DataFrame(data, schema=list(columns))
 
     def get_connection(self):
 

@@ -120,7 +120,7 @@ class CsvScriptModel(Model):
         )
 
     def insert_csv_to_duckdb(self, output_dir):
-        import pandas
+        import polars as pl
         import subprocess
 
         try:
@@ -128,7 +128,7 @@ class CsvScriptModel(Model):
             source = self.get_duckdb_source(output_dir)
             with source.connect() as connection:
                 csv = io.StringIO(process.stdout.read().decode())
-                data_frame = pandas.read_csv(csv)
+                data_frame = pl.read_csv(csv)
                 connection.execute(
                     f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM data_frame"
                 )

@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.postgresql_source import PostgresqlSource
-from pandas import DataFrame
+import polars as pl
 
 
 def test_LocalMergeModel_simple_data():
@@ -23,7 +23,7 @@ def test_insert_dependent_models_successfully_inserts_to_duckdb(mocker):
     os.makedirs(output_dir, exist_ok=True)
 
     data = [["tom", 10, 1, 1], ["nick", 15, 2, 2], ["juli", 14, 3, 3]]
-    dataframe = DataFrame(data, columns=["name", "age", "id", "external_id"])
+    dataframe = pl.DataFrame(data, schema=["name", "age", "id", "external_id"])
     mocker.patch(
         "visivo.models.sources.postgresql_source.PostgresqlSource.read_sql",
         return_value=dataframe,
