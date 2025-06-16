@@ -8,6 +8,7 @@ from visivo.models.models.model import Model
 from visivo.models.sources.duckdb_source import DuckdbAttachment, DuckdbSource
 import click
 import os
+import polars as pl
 
 from visivo.models.sources.source import Source
 
@@ -76,7 +77,10 @@ class LocalMergeModel(Model, ParentModel):
                 data_frame = source.read_sql(model.sql)
                 with duckdb_source.connect() as connection:
                     connection.execute("DROP TABLE IF EXISTS model")
-                    connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+                    # Use register to make the polars DataFrame available to DuckDB
+                    connection.register("temp_data_frame", data_frame.to_arrow())
+                    connection.execute("CREATE TABLE model AS SELECT * FROM temp_data_frame")
+                    connection.unregister("temp_data_frame")
 
     def insert_duckdb_data(self, output_dir, dag):
         try:
@@ -88,9 +92,17 @@ class LocalMergeModel(Model, ParentModel):
 
         duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
         with duckdb_source.connect() as connection:
-            data_frame = connection.execute(self.sql).fetchdf()
+            # Use standard DuckDB methods instead of fetcharrow
+            result = connection.execute(self.sql)
+            columns = [desc[0] for desc in result.description]
+            data = result.fetchall()
+            data_frame = pl.DataFrame(data, schema=columns, strict=False)
+                
             connection.execute("DROP TABLE IF EXISTS model")
-            connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+            # Use register to make the polars DataFrame available to DuckDB
+            connection.register("temp_data_frame", data_frame.to_arrow())
+            connection.execute("CREATE TABLE model AS SELECT * FROM temp_data_frame")
+            connection.unregister("temp_data_frame")
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):

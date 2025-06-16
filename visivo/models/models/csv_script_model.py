@@ -129,11 +129,13 @@ class CsvScriptModel(Model):
             with source.connect() as connection:
                 csv = io.StringIO(process.stdout.read().decode())
                 data_frame = pl.read_csv(csv)
-                connection.execute(
-                    f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM data_frame"
-                )
+                
+                # Use register to make the polars DataFrame available to DuckDB
+                connection.register("temp_data_frame", data_frame.to_arrow())
+                connection.execute(f"CREATE TABLE IF NOT EXISTS {self.table_name} AS SELECT * FROM temp_data_frame")
                 connection.execute(f"DELETE FROM {self.table_name}")
-                connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
+                connection.execute(f"INSERT INTO {self.table_name} SELECT * FROM temp_data_frame")
+                connection.unregister("temp_data_frame")
         except Exception as e:
             raise click.ClickException(
                 f"Error parsing or generating the csv output of {self.name} model's command. Verify command's output and try again."
