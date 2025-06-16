@@ -14,6 +14,9 @@ from tests.factories.model_factories import (
     ChartFactory,
     SqlModelFactory,
 )
+import pytest
+from visivo.models.models.model import Model
+from visivo.models.project import Project
 
 
 def test_Serializer_with_basic_project():
@@ -275,3 +278,37 @@ def test_create_flattened_project_maintains_references():
     trace_data = next(t for t in flattened["traces"] if t["name"] == "ref_trace")
     # Verify it references the correct model
     assert any(m["name"] == "ref_model" for m in flattened["models"])
+
+
+class DummyModel(Model):
+    name: str = "dummy_model"
+    sql: str = "select 1 as a, 2 as b"
+
+class DummyTrace(Trace):
+    name: str = "dummy_trace"
+    model: str = "ref(dummy_model)"
+    props: dict = {"type": "bar"}
+
+def make_project_with_table(table):
+    return Project(name="proj", tables=[table], models=[], traces=[], charts=[], selectors=[], dashboards=[])
+
+def test_serializer_table_with_model_data():
+    table = Table(name="table1", model=DummyModel(name="m1"))
+    # Simulate orchestration layer attaching data
+    table.traces = [{"data": [{"a": 1, "b": 2}, {"a": 3, "b": 4}]}]
+    project = make_project_with_table(table)
+    s = Serializer(project)
+    flat = s.create_flattened_project()
+    t = [t for t in flat["tables"] if t["name"] == "table1"][0]
+    assert "traces" in t
+    assert t["traces"][0]["data"] == [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
+
+def test_serializer_table_with_traces():
+    trace = DummyTrace(name="t1", model="ref(m1)", props={"type": "bar"})
+    table = Table(name="table2", traces=[trace])
+    project = make_project_with_table(table)
+    s = Serializer(project)
+    flat = s.create_flattened_project()
+    t = [t for t in flat["tables"] if t["name"] == "table2"][0]
+    assert "traces" in t
+    assert t["traces"][0]["name"] == "t1"

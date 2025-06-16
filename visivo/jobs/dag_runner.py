@@ -21,6 +21,8 @@ from visivo.jobs.run_source_connection_job import job as source_connection_job
 from visivo.jobs.run_thumbnail_job import job as thumbnail_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
+from visivo.models.table import Table
+from visivo.jobs.run_model_job import job as model_job
 
 warnings.filterwarnings("ignore")
 
@@ -140,6 +142,10 @@ class DagRunner:
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item)
+        elif isinstance(item, Table):
+            if getattr(item, "model", None):
+                return model_job(dag=self.project_dag, output_dir=self.output_dir, model=item.model)
+            return None
         elif isinstance(item, Dashboard):
             if self.thumbnail_mode != "none":
                 if self.server_url is None:

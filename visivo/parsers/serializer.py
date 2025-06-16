@@ -7,11 +7,14 @@ from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.models.models.model import Model
 from visivo.version import VISIVO_VERSION
+import os
+import json
 
 
 class Serializer:
-    def __init__(self, project: Project):
+    def __init__(self, project: Project, output_dir=None):
         self.project = project
+        self.output_dir = output_dir
 
     def create_flattened_project(self) -> dict:
         """
@@ -40,7 +43,18 @@ class Serializer:
             elif isinstance(node, Chart):
                 all_charts.append(node.model_dump(exclude_none=True, mode="json"))
             elif isinstance(node, Table):
-                all_tables.append(node.model_dump(exclude_none=True, mode="json"))
+                table_dict = node.model_dump(exclude_none=True, mode="json")
+                # If the table references a model directly, load model data and set as direct query result
+                if getattr(node, "model", None) and self.output_dir:
+                    model_name = getattr(node.model, "name", None)
+                    if model_name:
+                        data_file = os.path.join(self.output_dir, "models", model_name, "data.json")
+                        if os.path.exists(data_file):
+                            with open(data_file, "r") as f:
+                                model_data = json.load(f)
+                            # Set as direct query result
+                            table_dict["traces"] = [{"data": model_data.get("rows", [])}]
+                all_tables.append(table_dict)
             elif isinstance(node, Selector):
                 all_selectors.append(node.model_dump(exclude_none=True, mode="json"))
 
