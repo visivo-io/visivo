@@ -239,6 +239,3 @@ class ProjectDag(DiGraph):
                 changed_dag_filter.append(f"{new_node.name}+")
 
         return ",".join(changed_dag_filter)
-
-    def show(self):
-        show_dag_fig(self)
