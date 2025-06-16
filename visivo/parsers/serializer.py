@@ -74,20 +74,35 @@ class Serializer:
                     if item.chart:
                         item.chart = all_descendants_of_type(type=Chart, dag=dag, from_node=item)[0]
                         component = item.chart
-                        # Chart always trace-based
                         component.traces = all_descendants_of_type(
                             type=Trace, dag=dag, from_node=component, depth=1
                         )
-                        if component.selector:
-                            component.selector = all_descendants_of_type(
-                                type=Selector, dag=dag, from_node=component, depth=1
-                            )[0]
-                            component.selector.options = all_descendants_of_type(
-                                type=Trace,
-                                dag=dag,
-                                from_node=component.selector,
-                                depth=1,
+                    else:
+                        item.table = all_descendants_of_type(type=Table, dag=dag, from_node=item)[0]
+                        component = item.table
+                        if component.traces:
+                            component.traces = all_descendants_of_type(
+                               type=Trace, dag=dag, from_node=component, depth=1
                             )
+                        breakpoint()
+                        if component.model:
+                            component.model = all_descendants_of_type(type=Model, dag=dag, from_node=component)[0]
+                            if hasattr(component.model, "source"):
+                                component.model.source = all_descendants_of_type(type=Source, dag=dag, from_node=component.model)[0]
+                            if hasattr(component.model, "models"):
+                                component.model.models = all_descendants_of_type(type=Model, dag=dag, from_node=component.model)[0]
+                    
+                    if component.selector:
+                        component.selector = all_descendants_of_type(
+                            type=Selector, dag=dag, from_node=component, depth=1
+                        )[0]
+                        component.selector.options = all_descendants_of_type(
+                            type=Trace,
+                            dag=dag,
+                            from_node=component.selector,
+                            depth=1,
+                        )
+                    if component.traces:
                         for trace in component.traces:
                             trace.model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[
                                 0
@@ -100,38 +115,6 @@ class Serializer:
                                 trace.model.models = all_descendants_of_type(
                                     type=Model, dag=dag, from_node=trace.model
                                 )
-                    else:
-                        item.table = all_descendants_of_type(type=Table, dag=dag, from_node=item)[0]
-                        component = item.table
-                        if component.model:
-                            # Model-based table: dereference model only
-                            component.model = all_descendants_of_type(type=Model, dag=dag, from_node=component)[0]
-                            component.traces = []
-                        elif component.traces:
-                            # Trace-based table: dereference traces only
-                            component.traces = all_descendants_of_type(
-                                type=Trace, dag=dag, from_node=component, depth=1
-                            )
-                            for trace in component.traces:
-                                trace.model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-                                if hasattr(trace.model, "source"):
-                                    trace.model.source = all_descendants_of_type(
-                                        type=Source, dag=dag, from_node=trace.model
-                                    )[0]
-                                if hasattr(trace.model, "models"):
-                                    trace.model.models = all_descendants_of_type(
-                                        type=Model, dag=dag, from_node=trace.model
-                                    )
-                        if component.selector:
-                            component.selector = all_descendants_of_type(
-                                type=Selector, dag=dag, from_node=component, depth=1
-                            )[0]
-                            component.selector.options = all_descendants_of_type(
-                                type=Trace,
-                                dag=dag,
-                                from_node=component.selector,
-                                depth=1,
-                            )
                 if item.selector:
                     item.selector = all_descendants_of_type(
                         type=Selector, dag=dag, from_node=item, depth=1

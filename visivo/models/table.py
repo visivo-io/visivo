@@ -6,7 +6,7 @@ from .trace import Trace
 from pydantic import Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
-from .base.base_model import REF_REGEX, generate_ref_field
+from .base.base_model import generate_ref_field
 from pydantic import model_validator
 from enum import IntEnum
 from .models.model import Model
