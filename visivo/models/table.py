@@ -9,6 +9,7 @@ from .base.parent_model import ParentModel
 from .base.base_model import REF_REGEX, generate_ref_field
 from pydantic import model_validator
 from enum import IntEnum
+from .models.model import Model
 
 
 class RowsPerPageEnum(IntEnum):
@@ -26,39 +27,33 @@ class Table(SelectorModel, NamedModel, ParentModel):
     """
     Tables enable you to quickly represent trace data in a tabular format.
 
-    Since tables sit on top of trace data, the steps to create a table from scratch are as follows:
+    You can now build a table directly from a model, or from traces.
 
-    1. Create a model.
-    1. Create a trace with columns or props that references your model.
-    1. Create a table that references the trace. Within the table.columns block you will need to explicitly state the trace columns and header names that you want to include.
-
-    ### Example
+    ## Example: Table from Model
     ``` yaml
     models:
       - name: table-model
         sql: |
-            select
-                project_name,
-                project_created_at,
-                cli_version,
-                stage_name,
-                account_name,
-                stage_archived
-            FROM visivo_project
+            select * from visivo_project
+    tables:
+      - name: latest-projects-table
+        model: ref(table-model)
+    ```
+
+    ## Example: Table from Traces
+    ``` yaml
+    models:
+      - name: table-model
+        sql: |
+            select * from visivo_project
     traces:
       - name: pre-table-trace
         model: ref(table-model)
-        columns:
-            project_name: project_name
-            project_created_at: project_created_at::varchar
-            cli_version: cli_version
-            stage_name: stage_name
-            account_name: account_name
-            stage_archived: stage_archived::varchar
+        
         props:
             type: scatter
-            x: column(project_created_at)
-            y: column(project_name)
+            x: ?{project_created_at}
+            y: ?{project_name}
     tables:
       - name: latest-projects-table
         traces:
@@ -68,19 +63,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
             columns:
             - header: "Project Name"
               key: columns.project_name
-            - header: "Project Created At"
-              key: columns.project_created_at
-            - header: "Project Json"
-              key: columns.project_json
-            - header: "CLI Version"
-              key: columns.cli_version
-            - header: "Stage Name"
-              key: columns.stage_name
-              aggregation: uniqueCount
-            - header: "Account Name"
-              key: columns.account_name
-            - header: "Account Name"
-              key: columns.stage_archived
+            ...
     ```
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
@@ -88,6 +71,11 @@ class Table(SelectorModel, NamedModel, ParentModel):
     traces: List[generate_ref_field(Trace)] = Field(
         [],
         description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
+    )
+
+    model: Optional[generate_ref_field(Model)] = Field(
+        None,
+        description="A ref() to a model. If set, the table will display all columns from the model's SQL.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(
@@ -100,21 +88,36 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        return self.traces + [self.selector]
+        children = []
+        if self.model:
+            children.append(self.model)
+        children += self.traces
+        if self.selector:
+            children.append(self.selector)
+        return children
 
     @model_validator(mode="before")
     @classmethod
     def validate_column_defs(cls, data: any):
-        traces, column_defs = (data.get("traces"), data.get("column_defs"))
+        traces, column_defs, model = (
+            data.get("traces"),
+            data.get("column_defs"),
+            data.get("model"),
+        )
+
+        # Ensure only one of 'traces' or 'model' is set
+        if model and traces and len(traces) > 0:
+            raise ValueError("Table cannot have both 'model' and 'traces' set. Choose one.")
 
         if not column_defs:
             return data
 
-        column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
-        traces_trace_names = list(map(lambda t: NamedModel.get_name(t), traces))
-        for column_defs_trace_name in column_defs_trace_names:
-            if not column_defs_trace_name in traces_trace_names:
-                raise ValueError(
-                    f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
-                )
+        if traces and len(traces) > 0:
+            column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
+            traces_trace_names = list(map(lambda t: NamedModel.get_name(t), traces))
+            for column_defs_trace_name in column_defs_trace_names:
+                if not column_defs_trace_name in traces_trace_names:
+                    raise ValueError(
+                        f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
+                    )
         return data
