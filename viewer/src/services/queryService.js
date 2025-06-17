@@ -1,5 +1,7 @@
+import { getApiUrl } from '../api/config';
+
 export const executeQuery = async (query, projectId, sourceName, worksheetId = null) => {
-  const response = await fetch(`/api/query/${projectId}`, {
+  const response = await fetch(getApiUrl(`/api/query/${projectId}`), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -24,7 +26,7 @@ export const executeQuery = async (query, projectId, sourceName, worksheetId = n
 };
 
 export const fetchTraceQuery = async traceName => {
-  const response = await fetch(`/api/trace/${traceName}/query`);
+  const response = await fetch(getApiUrl(`/api/trace/${traceName}/query`));
 
   if (!response.ok) {
     const error = await response.json();
