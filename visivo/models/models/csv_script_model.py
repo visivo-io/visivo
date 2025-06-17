@@ -151,6 +151,8 @@ class CsvScriptModel(Model):
 
             expected = len(rows[0])
             for number, row in enumerate(rows, start=1):
+                if len(row) == 0:
+                    continue
                 if len(row) != expected:
                     raise click.ClickException(
                         f"CSV parsing error for node:{self.name} model's command. Row {number} has {len(row)} columns but expected {expected}. Verify command's output and try again."
