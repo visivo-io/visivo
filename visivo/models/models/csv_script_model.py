@@ -109,7 +109,9 @@ class CsvScriptModel(Model):
 
     args: List[str] = Field(description="An array of the variables that build your command to run.")
 
-    allow_empty: bool = Field(default=False, description="Whether to allow the command to return an empty csv.")
+    allow_empty: bool = Field(
+        default=False, description="Whether to allow the command to return an empty csv."
+    )
 
     @property
     def sql(self):
@@ -122,13 +124,37 @@ class CsvScriptModel(Model):
             database=f"{output_dir}/models/{self.name}.duckdb",
             type="duckdb",
         )
-    
+
     def validate_stream_is_csv(self, stream: io.StringIO):
-        csv_reader = csv.reader(stream)
-        delimiter = csv_reader.dialect.delimiter
         try:
-            reader = csv.reader(stream, delimiter=delimiter)
+            # First check if the stream is empty
+            content = stream.read()
+            stream.seek(0)  # Reset stream position
+
+            if not content.strip():
+                if self.allow_empty:
+                    return
+                raise click.ClickException(
+                    f"The command {self.name} did not return any data. Verify command's output and try again."
+                )
+
+            # Now try to parse the CSV
+            reader = csv.reader(io.StringIO(content))
             rows = list(reader)
+
+            if not rows:
+                if self.allow_empty:
+                    return
+                raise click.ClickException(
+                    f"The command {self.name} did not return any data. Verify command's output and try again."
+                )
+
+            expected = len(rows[0])
+            for number, row in enumerate(rows, start=1):
+                if len(row) != expected:
+                    raise click.ClickException(
+                        f"CSV parsing error for node:{self.name} model's command. Row {number} has {len(row)} columns but expected {expected}. Verify command's output and try again."
+                    )
         except csv.Error as e:
             if os.environ.get("STACKTRACE"):
                 raise e
@@ -138,20 +164,6 @@ class CsvScriptModel(Model):
         finally:
             stream.seek(0)
 
-        if not rows:
-            if self.allow_empty:
-                return
-            raise click.ClickException(
-                f"The command {self.name} did not return any data. Verify command's output and try again."
-            ) 
-
-        expected = len(rows[0])
-        for number, row in enumerate(rows, start=1):
-            if len(row) != expected:
-                raise click.ClickException(
-                    f"CSV parsing error for node:{self.name} model's command. Row {number} has {len(row)} fields but expected {expected}. Verify command's output and try again."
-                )
-
     def insert_csv_to_duckdb(self, output_dir):
         import subprocess
 
@@ -160,11 +172,11 @@ class CsvScriptModel(Model):
             source = self.get_duckdb_source(output_dir)
             with source.connect() as connection:
                 csv = io.StringIO(process.stdout.read().decode())
-                
+
                 self.validate_stream_is_csv(csv)
 
                 data_frame = pl.read_csv(csv)
-                
+
                 # Register the Polars DataFrame as a DuckDB view
                 duckdb_conn = connection
                 duckdb_conn.register("data_frame", data_frame)
