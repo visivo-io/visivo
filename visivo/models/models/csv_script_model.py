@@ -8,6 +8,7 @@ import io
 import click
 import os
 import polars as pl
+import csv
 
 
 class CsvScriptModel(Model):
@@ -108,6 +109,8 @@ class CsvScriptModel(Model):
 
     args: List[str] = Field(description="An array of the variables that build your command to run.")
 
+    allow_empty: bool = Field(default=False, description="Whether to allow the command to return an empty csv.")
+
     @property
     def sql(self):
         return f"select * from {self.table_name}"
@@ -119,6 +122,35 @@ class CsvScriptModel(Model):
             database=f"{output_dir}/models/{self.name}.duckdb",
             type="duckdb",
         )
+    
+    def validate_stream_is_csv(self, stream: io.StringIO):
+        csv_reader = csv.reader(stream)
+        delimiter = csv_reader.dialect.delimiter
+        try:
+            reader = csv.reader(stream, delimiter=delimiter)
+            rows = list(reader)
+        except csv.Error as e:
+            if os.environ.get("STACKTRACE"):
+                raise e
+            raise click.ClickException(
+                f"CSV parsing error for {self.name} model's command. Verify command's output is a valid csv and try again. Full error: {repr(e)}"
+            )
+        finally:
+            stream.seek(0)
+
+        if not rows:
+            if self.allow_empty:
+                return
+            raise click.ClickException(
+                f"The command {self.name} did not return any data. Verify command's output and try again."
+            ) 
+
+        expected = len(rows[0])
+        for number, row in enumerate(rows, start=1):
+            if len(row) != expected:
+                raise click.ClickException(
+                    f"CSV parsing error for node:{self.name} model's command. Row {number} has {len(row)} fields but expected {expected}. Verify command's output and try again."
+                )
 
     def insert_csv_to_duckdb(self, output_dir):
         import subprocess
@@ -128,7 +160,11 @@ class CsvScriptModel(Model):
             source = self.get_duckdb_source(output_dir)
             with source.connect() as connection:
                 csv = io.StringIO(process.stdout.read().decode())
+                
+                self.validate_stream_is_csv(csv)
+
                 data_frame = pl.read_csv(csv)
+                
                 # Register the Polars DataFrame as a DuckDB view
                 duckdb_conn = connection
                 duckdb_conn.register("data_frame", data_frame)
@@ -139,5 +175,5 @@ class CsvScriptModel(Model):
                 duckdb_conn.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
         except Exception as e:
             raise click.ClickException(
-                f"Error parsing or generating the csv output of {self.name} model's command. Verify command's output and try again."
+                f"Error parsing or generating the csv output of node:{self.name} model's command. Verify command's output and try again. Full error: {repr(e)}"
             )
