@@ -3,7 +3,7 @@ from visivo.logging.logger import Logger
 import traceback
 
 
-def dist_phase(output_dir, dist_dir):
+def dist_phase(output_dir, dist_dir, deployment_root: str = None):
     import os
     import json
     import shutil
@@ -53,6 +53,41 @@ def dist_phase(output_dir, dist_dir):
                 )
 
         shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
+
+        if deployment_root:
+            index_html_path = os.path.join(dist_dir, "index.html")
+            Logger.instance().info(f"Setting deployment root to {deployment_root} in index.html")
+            if os.path.exists(index_html_path):
+                with open(index_html_path, "r") as f:
+                    content = f.read()
+
+                content = content.replace(
+                    "window.deploymentRoot = '';",
+                    f"window.deploymentRoot = '{deployment_root}';",
+                )
+                content = content.replace(
+                    'href="/',
+                    f'href="{deployment_root}/',
+                )
+                content = content.replace(
+                    'src="/',
+                    f'src="{deployment_root}/',
+                )
+
+                with open(index_html_path, "w") as f:
+                    f.write(content)
+
+            site_webmanifest_path = os.path.join(dist_dir, "site.webmanifest")
+            if os.path.exists(site_webmanifest_path):
+                with open(site_webmanifest_path, "r") as f:
+                    content = f.read()
+                content = content.replace(
+                    '"src": "/',
+                    f'"src": "{deployment_root}/',
+                )
+
+                with open(site_webmanifest_path, "w") as f:
+                    f.write(content)
     except Exception as e:
         Logger.instance().error(
             f"Error creating dist. Try running `visivo run` to ensure your project is up to date."

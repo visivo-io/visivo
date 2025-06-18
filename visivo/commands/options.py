@@ -167,3 +167,14 @@ def skip_compile(function):
         default=False,
     )(function)
     return function
+
+
+def deployment_root(function):
+    click.option(
+        "-dr",
+        "--deployment-root",
+        help="The root path to use for the dist. This is useful if you want to deploy to a subpath on a server.",
+        default=None,
+        required=False,
+    )(function)
+    return function
