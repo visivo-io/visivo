@@ -4,7 +4,7 @@ from visivo.query.aggregator import Aggregator
 from tests.support.utils import temp_folder, temp_file
 
 # Sample input and expected output (from attached files)
-POLARS_INPUT = '''[
+POLARS_INPUT = """[
     {
         "cohort_on": "Sep 2023",
         "columns.x_data": ["Revenues", "Other Revenues", "Total Revenues", "Cost Of Revenues", "Gross Profit", "Selling General & Admin Expenses", "R&D Expenses", "Total Operating Expenses", "Operating Income", "Interest Expense", "Interest And Investment Income", "Net Interest Expenses", "Other Non Operating Income (Expenses)", "EBT, Incl. Unusual Items", "Income Tax Expense", "Net Income"],
@@ -19,7 +19,7 @@ POLARS_INPUT = '''[
         "columns.measure": ["relative", "relative", "total", "relative", "total", "relative", "relative", "relative", "total", "relative", "relative", "relative", "relative", "total", "relative ", "total"],
         "props.text": ["394,328.00", "-", "394,328.00", "223,546.00", "170,782.00", "25,094.00", "26,251.00", "51,345.00", "119,437.00", "-2,931.00", "2,825.00", "-106", "-228", "119,103.00", "19,300.00", "99,803.00"]
     }
-]'''
+]"""
 
 PANDAS_OUTPUT = {
     "Sep 2022": {
@@ -39,7 +39,7 @@ PANDAS_OUTPUT = {
             "Other Non Operating Income (Expenses)",
             "EBT, Incl. Unusual Items",
             "Income Tax Expense",
-            "Net Income"
+            "Net Income",
         ],
         "columns.y_data": [
             394328.0,
@@ -57,7 +57,7 @@ PANDAS_OUTPUT = {
             -228.0,
             119103.0,
             -19300.0,
-            99803.0
+            99803.0,
         ],
         "columns.measure": [
             "relative",
@@ -75,7 +75,7 @@ PANDAS_OUTPUT = {
             "relative",
             "total",
             "relative ",
-            "total"
+            "total",
         ],
         "props.text": [
             "394,328.00",
@@ -93,8 +93,8 @@ PANDAS_OUTPUT = {
             "-228",
             "119,103.00",
             "19,300.00",
-            "99,803.00"
-        ]
+            "99,803.00",
+        ],
     },
     "Sep 2023": {
         "columns.x_data": [
@@ -113,7 +113,7 @@ PANDAS_OUTPUT = {
             "Other Non Operating Income (Expenses)",
             "EBT, Incl. Unusual Items",
             "Income Tax Expense",
-            "Net Income"
+            "Net Income",
         ],
         "columns.y_data": [
             383285.0,
@@ -131,7 +131,7 @@ PANDAS_OUTPUT = {
             -382.0,
             113736.0,
             -16741.0,
-            96995.0
+            96995.0,
         ],
         "columns.measure": [
             "relative",
@@ -149,7 +149,7 @@ PANDAS_OUTPUT = {
             "relative",
             "total",
             "relative ",
-            "total"
+            "total",
         ],
         "props.text": [
             "383,285.00",
@@ -167,10 +167,11 @@ PANDAS_OUTPUT = {
             "-382",
             "113,736.00",
             "16,741.00",
-            "96,995.00"
-        ]
-    }
+            "96,995.00",
+        ],
+    },
 }
+
 
 def test_polars_aggregator_matches_pandas():
     output_dir = temp_folder()
@@ -178,4 +179,4 @@ def test_polars_aggregator_matches_pandas():
     Aggregator.aggregate(str(input_path), output_dir)
     with open(f"{output_dir}/data.json") as f:
         result = json.load(f)
-    assert result == PANDAS_OUTPUT 
+    assert result == PANDAS_OUTPUT

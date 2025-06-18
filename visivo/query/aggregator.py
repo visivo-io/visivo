@@ -3,6 +3,7 @@ import polars as pl
 import json
 import io
 
+
 class Aggregator:
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):

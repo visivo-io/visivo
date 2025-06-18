@@ -10,6 +10,7 @@ import polars as pl
 from copy import deepcopy
 import pyarrow as pa
 
+
 class SqlalchemySource(Source, ABC):
 
     _engine: Any = PrivateAttr(default=None)
@@ -34,6 +35,7 @@ class SqlalchemySource(Source, ABC):
             # No data, just return empty DataFrame with columns
             schema = {col: pl.String for col in columns}
             return pl.DataFrame({col: [] for col in columns}, schema=schema)
+
     def get_connection(self):
 
         try:
