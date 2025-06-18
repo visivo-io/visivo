@@ -1,6 +1,5 @@
 from visivo.models.base.context_string import ContextString
 from visivo.models.base.project_dag import ProjectDag
-from visivo.models.dag import show_dag_fig
 from visivo.models.models.model import Model
 from visivo.models.row import Row
 from visivo.models.selector import Selector

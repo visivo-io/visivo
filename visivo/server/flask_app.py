@@ -131,12 +131,12 @@ class FlaskApp:
                 result = source.read_sql(query)
 
                 # Transform the result into the expected format
-                if result is None or result.empty:
+                if result is None or result.height == 0:
                     response_data = {"columns": [], "rows": []}
                 else:
                     response_data = {
                         "columns": list(result.columns),
-                        "rows": result.to_dict("records"),
+                        "rows": result.to_dicts(),
                     }
 
                 # If worksheet_id is provided, save the results

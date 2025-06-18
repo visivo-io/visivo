@@ -6,8 +6,9 @@ from visivo.models.sources.source import Source
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.pool import NullPool
 from visivo.logging.logger import Logger
-from pandas import DataFrame
+import polars as pl
 from copy import deepcopy
+import pyarrow as pa
 
 
 class SqlalchemySource(Source, ABC):
@@ -20,15 +21,20 @@ class SqlalchemySource(Source, ABC):
         raise NotImplementedError(f"No dialect method implemented for {self.type}")
 
     def read_sql(self, query: str):
-
         with self.connect() as connection:
             query = text(query)
             results = connection.execute(query)
-            columns = results.keys()
+            columns = list(results.keys())
             data = results.fetchall()
             results.close()
-
-        return DataFrame(data, columns=columns)
+        # Convert to dict of columns for Polars
+        if data:
+            data_dict = {col: [row[i] for row in data] for i, col in enumerate(columns)}
+            return pl.DataFrame(data_dict)
+        else:
+            # No data, just return empty DataFrame with columns
+            schema = {col: pl.String for col in columns}
+            return pl.DataFrame({col: [] for col in columns}, schema=schema)
 
     def get_connection(self):
 

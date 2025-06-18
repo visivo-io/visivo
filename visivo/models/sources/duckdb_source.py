@@ -4,6 +4,7 @@ from visivo.models.sources.source import Source
 from pydantic import Field
 import click
 import duckdb
+import polars as pl
 
 DuckdbType = Literal["duckdb"]
 
@@ -67,7 +68,7 @@ class DuckdbSource(Source):
     def read_sql(self, query: str):
         try:
             with self.connect(read_only=True) as connection:
-                result = connection.execute(query).fetchdf()
+                result = connection.execute(query).pl()
                 return result
         except Exception as err:
             raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
