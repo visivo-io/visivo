@@ -8,7 +8,7 @@ from sqlalchemy.pool import NullPool
 from visivo.logging.logger import Logger
 import polars as pl
 from copy import deepcopy
-
+import pyarrow as pa
 
 class SqlalchemySource(Source, ABC):
 
@@ -32,8 +32,8 @@ class SqlalchemySource(Source, ABC):
             return pl.DataFrame(data_dict)
         else:
             # No data, just return empty DataFrame with columns
-            return pl.DataFrame({col: [] for col in columns})
-
+            schema = {col: pl.String for col in columns}
+            return pl.DataFrame({col: [] for col in columns}, schema=schema)
     def get_connection(self):
 
         try:
