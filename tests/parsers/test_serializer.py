@@ -14,6 +14,9 @@ from tests.factories.model_factories import (
     ChartFactory,
     SqlModelFactory,
 )
+import pytest
+from visivo.models.models.model import Model
+from visivo.models.project import Project
 
 
 def test_Serializer_with_basic_project():
@@ -275,3 +278,4 @@ def test_create_flattened_project_maintains_references():
     trace_data = next(t for t in flattened["traces"] if t["name"] == "ref_trace")
     # Verify it references the correct model
     assert any(m["name"] == "ref_model" for m in flattened["models"])
+

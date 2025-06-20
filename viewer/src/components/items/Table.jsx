@@ -29,6 +29,8 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 
 const Table = ({ table, project, itemWidth, height, width }) => {
+  // Support for model-based tables
+  const isModelBased = !!table.model && !!table.model_data;
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   // Always call the hook, but with empty array if it's a direct query
   const tracesData = useTracesData(
@@ -46,7 +48,18 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   });
 
   useEffect(() => {
-    if (selectedTableCohort && tracesData) {
+    if (isModelBased) {
+      // Model-based table: columns from model_data.columns
+      setColumns(
+        (table.model_data.columns || []).map(key => ({
+          id: key,
+          header: key,
+          accessorKey: key.replace(/\./g, '___'),
+          enableGrouping: false,
+          markdown: false,
+        }))
+      );
+    } else if (selectedTableCohort && tracesData) {
       // Handle trace-based queries
       setColumns(
         tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName)
@@ -62,10 +75,24 @@ const Table = ({ table, project, itemWidth, height, width }) => {
       }));
       setColumns(directQueryColumns);
     }
-  }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
+  }, [isModelBased, selectedTableCohort, tracesData, table, isDirectQueryResult]);
 
   useEffect(() => {
-    if (selectedTableCohort && columns) {
+    if (isModelBased) {
+      // Model-based table: rows from model_data.rows
+      setTableData(
+        (table.model_data.rows || []).map((row, index) => {
+          const transformedRow = {};
+          Object.entries(row).forEach(([key, value]) => {
+            transformedRow[key.replace(/\./g, '___')] = value;
+          });
+          return {
+            id: index,
+            ...transformedRow,
+          };
+        })
+      );
+    } else if (selectedTableCohort && columns) {
       // Handle trace-based queries
       setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
     } else if (isDirectQueryResult) {
@@ -84,7 +111,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         })
       );
     }
-  }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
+  }, [isModelBased, selectedTableCohort, columns, table.traces, isDirectQueryResult, table]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -95,8 +122,14 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
     const cohortName = selectedTableCohort?.cohortName || 'cohort';
     const traceName = selectedTableCohort?.traceName || 'trace';
+    const modelName = table.model ? table.model.name || 'model' : '';
 
-    link.setAttribute('download', `${table.name}_${traceName}_${cohortName}.csv`);
+    link.setAttribute(
+      'download',
+      isModelBased
+        ? `${table.name}_${modelName}.csv`
+        : `${table.name}_${traceName}_${cohortName}.csv`
+    );
 
     document.body.appendChild(link);
     link.click();
@@ -150,8 +183,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     },
   });
 
-  // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!isDirectQueryResult && !tracesData) {
+  // Only show loading state if we're waiting for trace data and this isn't a direct query result or model-based
+  if (!isModelBased && !isDirectQueryResult && !tracesData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
@@ -206,7 +239,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 onClick={handleExportData}
                 startIcon={<FileDownloadIcon />}
               />
-              {!isDirectQueryResult && tracesData && (
+              {!isDirectQueryResult && !isModelBased && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
                   onChange={onSelectedCohortChange}

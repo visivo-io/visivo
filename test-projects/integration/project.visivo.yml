@@ -67,9 +67,15 @@ charts:
       autosize: false
       width: 500
       height: 500
+tables: 
+  - name: table-from-model
+    model: ${ref(local_test_table)}
 dashboards:
   - name: Table Name
     rows:
+      - height: compact 
+        items:
+          - table: ${ref(table-from-model)}
       - height: compact
         items:
           - markdown: |
