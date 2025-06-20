@@ -839,6 +839,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      list
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run" class="md-nav__link">
     <span class="md-ellipsis">
       run
@@ -6750,6 +6759,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#list" class="md-nav__link">
+    <span class="md-ellipsis">
+      list
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run" class="md-nav__link">
     <span class="md-ellipsis">
       run
@@ -6919,6 +6937,18 @@ This folder can be statically deployed to any web server, hosting service, or bu
 </code></pre></div>
 <p><strong>Options:</strong></p>
 <div class="highlight"><pre><span></span><code>  --help  Show this message and exit.
+</code></pre></div>
+<h2 id="list">list</h2>
+<p>Lists all objects of a given type in the project.</p>
+<p><strong>Usage:</strong></p>
+<div class="highlight"><pre><span></span><code>visivo list [OPTIONS] {sources|models|traces}
+</code></pre></div>
+<p><strong>Options:</strong></p>
+<div class="highlight"><pre><span></span><code>  -w, --working-dir TEXT  Directory to run the command
+  -o, --output-dir TEXT   Directory to output results
+  -s, --source TEXT       Name of the default source connection to use. This
+                          overrides the default source in the project.
+  --help                  Show this message and exit.
 </code></pre></div>
 <h2 id="run">run</h2>
 <p>Compiles the project and then runs the trace queries to fetch data to populate in the traces. Writes all data to the source directory. Can skip the compile with the --skip-compile flag.</p>
