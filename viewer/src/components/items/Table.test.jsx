@@ -1,6 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Table from './Table';
 import * as useTracesData from '../../hooks/useTracesData';
+import * as useModelsData from '../../hooks/useModelsData';
 import { withProviders } from '../../utils/test-utils';
 
 let table;
@@ -166,4 +167,25 @@ test('handles number values in cells', async () => {
   });
   expect(screen.getByText('12,345,678,901,234,568')).toBeInTheDocument();
   expect(screen.getByText('1,234,567,890.123')).toBeInTheDocument();
+});
+
+test('renders table from model data', async () => {
+  const modelTable = {
+    ...table,
+    traces: [],
+    column_defs: null,
+    models: [{ name: 'model1' }],
+  };
+
+  const modelData = { model1: [{ a: 1, b: 2 }] };
+  jest.spyOn(useModelsData, 'useModelsData').mockImplementation(() => modelData);
+
+  render(<Table table={modelTable} project={{ id: 1 }} />, { wrapper: withProviders });
+
+  await waitFor(() => {
+    expect(screen.getByText('a')).toBeInTheDocument();
+  });
+  await waitFor(() => {
+    expect(screen.getByText('1')).toBeInTheDocument();
+  });
 });

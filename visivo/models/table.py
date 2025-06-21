@@ -3,6 +3,7 @@ from typing import Any, List, Optional
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.table_column_definition import TableColumnDefinition
 from .trace import Trace
+from visivo.models.models.fields import ModelRefField
 from pydantic import Field
 from .base.named_model import NamedModel
 from .base.parent_model import ParentModel
@@ -90,6 +91,11 @@ class Table(SelectorModel, NamedModel, ParentModel):
         description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
     )
 
+    models: List[ModelRefField] = Field(
+        [],
+        description="A ref() to a model (SQL query) whose result will populate this table.",
+    )
+
     column_defs: Optional[List[TableColumnDefinition]] = Field(
         None,
         description="A list of column definitions. These definitions define the columns for a given trace included in this table.",
@@ -100,7 +106,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        return self.traces + [self.selector]
+        return (self.traces or []) + (self.models or []) + [self.selector]
 
     @model_validator(mode="before")
     @classmethod
@@ -117,4 +123,15 @@ class Table(SelectorModel, NamedModel, ParentModel):
                 raise ValueError(
                     f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
                 )
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_data_source(cls, data: Any):
+        traces = data.get("traces")
+        models = data.get("models")
+        if traces and models:
+            raise ValueError("Table cannot reference both traces and models at the same time.")
+        if not traces and not models:
+            raise ValueError("Table must reference a trace or a model for data.")
         return data

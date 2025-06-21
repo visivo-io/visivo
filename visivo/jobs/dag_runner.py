@@ -4,6 +4,7 @@ import warnings
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.models.model import Model
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
 from visivo.logging.logger import Logger
@@ -17,6 +18,7 @@ from visivo.jobs.job import JobResult
 from visivo.jobs.run_csv_script_job import job as csv_script_job
 from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
+from visivo.jobs.run_model_job import job as model_job
 from visivo.jobs.run_source_connection_job import job as source_connection_job
 from visivo.jobs.run_thumbnail_job import job as thumbnail_job
 from visivo.jobs.job_tracker import JobTracker
@@ -138,6 +140,8 @@ class DagRunner:
             return local_merge_job(
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
+        elif isinstance(item, Model):
+            return model_job(model=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, Source):
             return source_connection_job(source=item)
         elif isinstance(item, Dashboard):

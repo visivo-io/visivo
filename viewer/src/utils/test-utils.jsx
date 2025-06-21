@@ -21,6 +21,10 @@ export const withProviders = ({ children, initialPath = '/', traces = [] }) => {
     queryKey: ['trace', projectId, name],
     queryFn: () => traces,
   });
+  const fetchModelsQuery = (projectId, name) => ({
+    queryKey: ['model', projectId, name],
+    queryFn: () => name.map(n => ({ name: n })),
+  });
 
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -33,7 +37,7 @@ export const withProviders = ({ children, initialPath = '/', traces = [] }) => {
   return (
     <MemoryRouter initialEntries={[initialPath]}>
       <SearchParamsProvider>
-        <QueryProvider value={{ fetchTracesQuery }}>
+        <QueryProvider value={{ fetchTracesQuery, fetchModelsQuery }}>
           <QueryClientProvider client={queryClient}>
             <Routes>
               <Route path={initialPath.split('?')[0]} element={children} />

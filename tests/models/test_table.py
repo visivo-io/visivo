@@ -6,8 +6,8 @@ import pytest
 
 def test_Table_simple_data():
     data = {"name": "development", "column_defs": []}
-    table = Table(**data)
-    assert table.name == "development"
+    with pytest.raises(ValidationError):
+        Table(**data)
 
 
 def test_Table_with_trace_simple_data():
@@ -20,6 +20,17 @@ def test_Table_with_trace_simple_data():
                 "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
                 "model": {"sql": "select * from table"},
             }
+        ],
+    }
+    table = Table(**data)
+    assert table.name == "development"
+
+
+def test_Table_with_model_simple_data():
+    data = {
+        "name": "development",
+        "models": [
+            {"name": "model", "sql": "select 1 as a", "target": "ref(source)"}
         ],
     }
     table = Table(**data)
@@ -121,10 +132,48 @@ def test_Table_trace_ref_column_def_not_present():
 
 
 def test_Table_with_selector():
-    data = {"name": "development", "traces": [], "selector": "ref(Other Selector)"}
+    data = {
+        "name": "development",
+        "traces": [
+            {
+                "name": "Trace Name",
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
+                "model": {"sql": "select * from table"},
+            }
+        ],
+        "selector": "ref(Other Selector)",
+    }
     table = Table(**data)
     assert table.selector == "ref(Other Selector)"
 
-    data = {"name": "development", "traces": [], "selector": {"name": "Selector"}}
+    data = {
+        "name": "development",
+        "traces": [
+            {
+                "name": "Trace Name",
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
+                "model": {"sql": "select * from table"},
+            }
+        ],
+        "selector": {"name": "Selector"},
+    }
     table = Table(**data)
     assert table.selector.name == "Selector"
+
+
+def test_Table_models_and_traces_error():
+    data = {
+        "name": "development",
+        "traces": [
+            {
+                "name": "Trace Name",
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
+                "model": {"sql": "select * from table"},
+            }
+        ],
+        "models": [
+            {"name": "model", "sql": "select 1", "source": "ref(source)"}
+        ],
+    }
+    with pytest.raises(ValidationError):
+        Table(**data)

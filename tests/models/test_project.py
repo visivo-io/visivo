@@ -223,19 +223,26 @@ def test_Project_validate_table_single():
         Project(**data)
 
     error = exc_info.value.errors()[0]
-    assert (
-        error["msg"]
-        == f"Value error, Table with name 'Table' has a selector with a 'multiple' type.  This is not permitted."
-    )
+    assert error["msg"] == "Value error, Table must reference a trace or a model for data."
     assert error["type"] == "value_error"
 
 
 def test_Project_validate_set_path_on_named_models():
-    data = {"tables": [{}]}
+    table = {
+        "name": "Table",
+        "traces": [
+            {
+                "name": "Trace",
+                "model": {"sql": "select 1"},
+                "props": {"type": "scatter", "x": "?{x}", "y": "?{y}"},
+            }
+        ],
+    }
+    data = {"tables": [table]}
     project = Project(**data)
     assert project.tables[0].path == "project.tables[0]"
 
-    data = {"name": "project name", "tables": [{}]}
+    data = {"name": "project name", "tables": [table]}
     project = Project(**data)
     assert project.tables[0].path == "project.tables[0]"
 

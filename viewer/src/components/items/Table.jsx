@@ -7,6 +7,7 @@ import {
 } from '../../models/Table';
 import { createTheme, ThemeProvider, Box, Button } from '@mui/material';
 import { useTracesData } from '../../hooks/useTracesData';
+import { useModelsData } from '../../hooks/useModelsData';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
 /* eslint-disable react/jsx-pascal-case */
@@ -30,10 +31,15 @@ import rehypeSanitize from 'rehype-sanitize';
 
 const Table = ({ table, project, itemWidth, height, width }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
+  const isModelTable = table.models && table.models.length > 0;
   // Always call the hook, but with empty array if it's a direct query
   const tracesData = useTracesData(
     project.id,
     isDirectQueryResult ? [] : table.traces.map(trace => trace.name)
+  );
+  const modelsData = useModelsData(
+    project.id,
+    isModelTable ? table.models.map(model => model.name) : []
   );
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
@@ -46,7 +52,18 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   });
 
   useEffect(() => {
-    if (selectedTableCohort && tracesData) {
+    if (isModelTable && modelsData) {
+      const modelName = table.models[0].name;
+      const rows = modelsData[modelName] || [];
+      const modelColumns = Object.keys(rows[0] || {}).map(key => ({
+        id: key,
+        header: key,
+        accessorKey: key.replace(/\./g, '___'),
+        enableGrouping: false,
+        markdown: false,
+      }));
+      setColumns(modelColumns);
+    } else if (selectedTableCohort && tracesData) {
       // Handle trace-based queries
       setColumns(
         tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName)
@@ -62,10 +79,22 @@ const Table = ({ table, project, itemWidth, height, width }) => {
       }));
       setColumns(directQueryColumns);
     }
-  }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
+  }, [selectedTableCohort, tracesData, modelsData, table, isDirectQueryResult, isModelTable]);
 
   useEffect(() => {
-    if (selectedTableCohort && columns) {
+    if (isModelTable && modelsData && columns.length > 0) {
+      const modelName = table.models[0].name;
+      const rows = modelsData[modelName] || [];
+      setTableData(
+        rows.map((row, index) => {
+          const transformed = {};
+          Object.entries(row).forEach(([key, value]) => {
+            transformed[key.replace(/\./g, '___')] = value;
+          });
+          return { id: index, ...transformed };
+        })
+      );
+    } else if (selectedTableCohort && columns) {
       // Handle trace-based queries
       setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
     } else if (isDirectQueryResult) {
@@ -84,7 +113,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         })
       );
     }
-  }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
+  }, [selectedTableCohort, columns, table.traces, isDirectQueryResult, modelsData, isModelTable]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -150,8 +179,11 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     },
   });
 
-  // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!isDirectQueryResult && !tracesData) {
+  // Show loading state appropriately
+  if (isModelTable && !modelsData) {
+    return <Loading text={table.name} width={itemWidth} />;
+  }
+  if (!isDirectQueryResult && !isModelTable && !tracesData) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
@@ -206,7 +238,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 onClick={handleExportData}
                 startIcon={<FileDownloadIcon />}
               />
-              {!isDirectQueryResult && tracesData && (
+              {!isDirectQueryResult && !isModelTable && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
                   onChange={onSelectedCohortChange}
