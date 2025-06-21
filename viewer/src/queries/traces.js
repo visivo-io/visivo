@@ -1,3 +1,5 @@
+import { getApiUrl } from '../api/config';
+
 export const fetchTracesQuery = (projectId, names) => ({
   queryKey: ['trace', projectId, names],
   queryFn: async () => {
@@ -5,7 +7,7 @@ export const fetchTracesQuery = (projectId, names) => ({
       return {
         name: name,
         id: name,
-        signed_data_file_url: `/data/${name}/data.json`,
+        signed_data_file_url: getApiUrl(`/data/${name}/data.json`),
       };
     });
   },

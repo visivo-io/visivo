@@ -1,4 +1,5 @@
 import md5 from 'md5';
+import { getApiUrl } from '../api/config';
 
 export const fetchDashboardQuery = (projectId, name) => ({
   queryKey: ['dashboard', projectId, name],
@@ -8,7 +9,7 @@ export const fetchDashboardQuery = (projectId, name) => ({
     return {
       name: name,
       id: name,
-      signed_thumbnail_file_url: `/data/dashboards/${hash}.png`,
+      signed_thumbnail_file_url: getApiUrl(`/data/dashboards/${hash}.png`),
     };
   },
 });
