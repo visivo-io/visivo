@@ -13,7 +13,6 @@ from visivo.models.dag import (
     all_descendants_with_path_match,
     all_nodes_including_named_node_in_graph,
     create_dag_dict,
-    show_dag_fig,
 )
 from visivo.models.sources.source import DefaultSource
 
@@ -133,9 +132,6 @@ class ParentModel(ABC):
 
     def dag_dict(self):
         return create_dag_dict(self.dag())
-
-    def show_dag(self):
-        show_dag_fig(self.dag())
 
     def __get_dereferenced_item_by_name(self, name, dag, root, item, parent_item):
         dereferenced_items = all_descendants_with_name(name=name, dag=dag, from_node=root)
