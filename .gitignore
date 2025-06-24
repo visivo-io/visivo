@@ -9,6 +9,7 @@ __pycache__/
 .venv
 env/
 venv/
+venv12/
 cli_venv/
 api_venv/
 ENV/
