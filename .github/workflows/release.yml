@@ -41,6 +41,74 @@ jobs:
           name: visivo-mac
           path: dist/visivo
 
+
+  build-windows-app:
+    name: "Build Windows App"
+    runs-on: "windows-latest"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v9
+
+      - name: Build App
+        run: |
+          cd viewer && yarn install --network-timeout 600000 && yarn deploy && cd ..
+          poetry install
+          poetry run write-schema-json
+          poetry version ${{ inputs.version }}
+          echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo\version.py
+        shell: bash
+
+      - name: Build Windows App
+        run: |
+          poetry run build
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: visivo-windows
+          path: dist/visivo
+
+  build-linux-app:
+    name: "Build Linux App"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v9
+
+      - name: Build App
+        run: |
+          cd viewer && yarn install && yarn deploy && cd ..
+          poetry install
+          poetry run write-schema-json
+          poetry version ${{ inputs.version }}
+          echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
+
+      - name: Build Linux Bundle
+        run: |
+          poetry run build
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: visivo-linux
+          path: dist/visivo 
+
   create-release:
     name: "Create release v${{ inputs.version }}"
     runs-on: "ubuntu-latest"
@@ -87,8 +155,8 @@ jobs:
 
       - name: Create GitHub release
         run: |
-          gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes 
-          gh release create "latest" -t "Latest versioned release" --latest=false --prerelease
+          gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes visivo-mac/visivo visivo-windows/visivo visivo-linux/visivo
+          gh release create "latest" -t "Latest versioned release" --latest=false --prerelease visivo-mac/visivo visivo-windows/visivo visivo-linux/visivo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
