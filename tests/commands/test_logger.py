@@ -1,4 +1,4 @@
-from visivo.logging.logger import Logger, TypeEnum
+from visivo.logger.logger import Logger, TypeEnum
 
 
 def test_logger_init():

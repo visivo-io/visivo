@@ -13,7 +13,7 @@ def list(object_type, working_dir, output_dir, source):
     """
     Lists all objects of a given type in the project.
     """
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     Logger.instance().debug(f"Listing {object_type}")
 

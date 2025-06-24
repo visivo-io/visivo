@@ -3,7 +3,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from threading import Thread, Event
 import time
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 import os
 from flask_socketio import SocketIO
 import logging

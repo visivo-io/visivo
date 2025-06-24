@@ -1,5 +1,5 @@
-from ..templates import queries
-from ..models.tokenized_trace import TokenizedTrace
+from visivo.templates import queries
+from visivo.models.tokenized_trace import TokenizedTrace
 from jinja2 import Template
 import os
 

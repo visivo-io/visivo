@@ -108,7 +108,7 @@ const Dashboard = ({ project, dashboardName }) => {
         {visibleItems.map((item, itemIndex) => (
           <div
             key={`item-${rowIndex}-${itemIndex}-${item.chart?.path || item.table?.path || item.selector?.path}`}
-            className={isColumn ? "w-full max-w-full" : ""}
+            className={isColumn ? 'w-full max-w-full' : ''}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
               width: isColumn ? '100%' : 'auto',

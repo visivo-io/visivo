@@ -1,5 +1,5 @@
 from visivo.utils import SCHEMA_FILE
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from importlib import reload, import_module
 from visivo.parsers.schema_generator import generate_schema
 

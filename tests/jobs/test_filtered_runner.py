@@ -121,7 +121,6 @@ def test_runner_dag_filter():
         project=project,
         output_dir=output_dir,
         dag_filter="+dashboard+",
-        thumbnail_mode="none",
         server_url=server_url,
     )
     runner.run()
@@ -141,7 +140,6 @@ def test_runner_dag_filter_with_no_jobs():
         project=project,
         output_dir=output_dir,
         dag_filter="dashboard+",
-        thumbnail_mode="none",
         server_url=server_url,
     )
     runner.run()

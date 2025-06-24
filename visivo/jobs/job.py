@@ -78,8 +78,6 @@ def _format_message(details, status, full_path=None, error_msg=None):
         action = "query: "
     elif relative_path.endswith(".duckdb"):
         action = "database file: "
-    elif relative_path.endswith(".png"):
-        action = "thumbnail: "
 
     return f"{details}{dots}[{status}]\n\t\033[2m{action}{relative_path}\033[0m{error_str}"
 

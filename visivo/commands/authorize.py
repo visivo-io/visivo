@@ -2,7 +2,7 @@ import os
 import platform
 import click
 from threading import Thread
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 import urllib.parse
 from visivo.commands.options import host
 from visivo.tokens.token_functions import (

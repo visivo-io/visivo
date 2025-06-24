@@ -2,11 +2,11 @@ from typing import Any, List, Optional
 
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.table_column_definition import TableColumnDefinition
-from .trace import Trace
+from visivo.models.trace import Trace
 from pydantic import Field
-from .base.named_model import NamedModel
-from .base.parent_model import ParentModel
-from .base.base_model import REF_REGEX, generate_ref_field
+from visivo.models.base.named_model import NamedModel
+from visivo.models.base.parent_model import ParentModel
+from visivo.models.base.base_model import REF_REGEX, generate_ref_field
 from pydantic import model_validator
 from enum import IntEnum
 

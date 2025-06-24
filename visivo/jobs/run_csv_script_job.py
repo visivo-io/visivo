@@ -1,4 +1,4 @@
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.jobs.job import (
     Job,

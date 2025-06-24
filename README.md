@@ -53,7 +53,7 @@ The development of the python CLI is straight forward.  The code is contained wi
 
 ### Prerequisites
 
-1. Python 3.10+
+1. Python 3.12+
 2. Poetry: `pip install poetry`
 3. Dependencies: `poetry install`
 

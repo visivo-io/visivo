@@ -1,10 +1,9 @@
 import os
 import sys
-import time
 import click
 from enum import Enum
 from halo import Halo
-from visivo.logging.singleton import Singleton
+from visivo.logger.singleton import Singleton
 
 
 class TypeEnum(str, Enum):

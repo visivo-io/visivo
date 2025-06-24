@@ -2,7 +2,6 @@ path: project
 name: duckdb-concurrency
 defaults:
   source_name: Example Source
-  thumbnail_mode: none
 includes: []
 destinations: []
 alerts: []
