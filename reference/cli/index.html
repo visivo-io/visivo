@@ -830,15 +830,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      install
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#list" class="md-nav__link">
     <span class="md-ellipsis">
       list
@@ -6750,15 +6741,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install" class="md-nav__link">
-    <span class="md-ellipsis">
-      install
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#list" class="md-nav__link">
     <span class="md-ellipsis">
       list
@@ -6930,14 +6912,6 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>  -pd, --project-dir TEXT  Directory to initialize the project in
   --help                   Show this message and exit.
 </code></pre></div>
-<h2 id="install">install</h2>
-<p>Install required dependencies for Visivo.</p>
-<p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code>visivo install [OPTIONS]
-</code></pre></div>
-<p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  --help  Show this message and exit.
-</code></pre></div>
 <h2 id="list">list</h2>
 <p>Lists all objects of a given type in the project.</p>
 <p><strong>Usage:</strong></p>
@@ -6956,30 +6930,21 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo run [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -w, --working-dir TEXT          Directory to run the command
-  -o, --output-dir TEXT           Directory to output results
-  -df, --dag-filter TEXT          Run the command with the given dag filter.
-                                  ie `-df 'dashboard-name'+` will only run the
-                                  dashboard named 'dashboard-name' and it's
-                                  children
-  -s, --source TEXT               Name of the default source connection to
-                                  use. This overrides the default source in
-                                  the project.
-  -th, --threads TEXT             The max number of threads to use when
-                                  running trace queries
-  -dp, --dbt-profile TEXT         The dbt profile to use
-  -dt, --dbt-target TEXT          The dbt target to use
-  -sc, --skip-compile             Skips the compile phase. This is useful if
-                                  you have already compiled just want to run
-                                  or serve.
-  -tm, --thumbnail-mode [none|missing|all]
-                                  Mode for thumbnail generation: 'none' to
-                                  disable, 'missing' to generate only missing
-                                  thumbnails, 'all' to generate all
-                                  thumbnails, 'refresh' to force regeneration
-                                  of all thumbnails
-  -p, --port INTEGER              What port to serve on
-  --help                          Show this message and exit.
+<div class="highlight"><pre><span></span><code>  -w, --working-dir TEXT   Directory to run the command
+  -o, --output-dir TEXT    Directory to output results
+  -df, --dag-filter TEXT   Run the command with the given dag filter. ie `-df
+                           'dashboard-name'+` will only run the dashboard
+                           named 'dashboard-name' and it's children
+  -s, --source TEXT        Name of the default source connection to use. This
+                           overrides the default source in the project.
+  -th, --threads TEXT      The max number of threads to use when running trace
+                           queries
+  -dp, --dbt-profile TEXT  The dbt profile to use
+  -dt, --dbt-target TEXT   The dbt target to use
+  -sc, --skip-compile      Skips the compile phase. This is useful if you have
+                           already compiled just want to run or serve.
+  -p, --port INTEGER       What port to serve on
+  --help                   Show this message and exit.
 </code></pre></div>
 <h2 id="serve">serve</h2>
 <p>Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.</p>
@@ -6987,30 +6952,21 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo serve [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -s, --source TEXT               Name of the default source connection to
-                                  use. This overrides the default source in
-                                  the project.
-  -w, --working-dir TEXT          Directory to run the command
-  -o, --output-dir TEXT           Directory to output results
-  -df, --dag-filter TEXT          Run the command with the given dag filter.
-                                  ie `-df 'dashboard-name'+` will only run the
-                                  dashboard named 'dashboard-name' and it's
-                                  children
-  -p, --port INTEGER              What port to serve on
-  -tm, --thumbnail-mode [none|missing|all]
-                                  Mode for thumbnail generation: 'none' to
-                                  disable, 'missing' to generate only missing
-                                  thumbnails, 'all' to generate all
-                                  thumbnails, 'refresh' to force regeneration
-                                  of all thumbnails
-  -th, --threads TEXT             The max number of threads to use when
-                                  running trace queries
-  -sc, --skip-compile             Skips the compile phase. This is useful if
-                                  you have already compiled just want to run
-                                  or serve.
-  -dp, --dbt-profile TEXT         The dbt profile to use
-  -dt, --dbt-target TEXT          The dbt target to use
-  --help                          Show this message and exit.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
+                           overrides the default source in the project.
+  -w, --working-dir TEXT   Directory to run the command
+  -o, --output-dir TEXT    Directory to output results
+  -df, --dag-filter TEXT   Run the command with the given dag filter. ie `-df
+                           'dashboard-name'+` will only run the dashboard
+                           named 'dashboard-name' and it's children
+  -p, --port INTEGER       What port to serve on
+  -th, --threads TEXT      The max number of threads to use when running trace
+                           queries
+  -sc, --skip-compile      Skips the compile phase. This is useful if you have
+                           already compiled just want to run or serve.
+  -dp, --dbt-profile TEXT  The dbt profile to use
+  -dt, --dbt-target TEXT   The dbt target to use
+  --help                   Show this message and exit.
 </code></pre></div>
 <h2 id="test">test</h2>
 <p>Enables testing trace values to ensure that the charts that are being produced have the characteristics that you would expect.</p>
