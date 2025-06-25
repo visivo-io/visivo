@@ -120,20 +120,15 @@ jobs:
           mkdir -p ./dists
           for dir in ./artifacts/*; do
             if [ -d "$dir" ]; then
-              zip -r "./dists/$(basename $dir).zip" "$dir"
+              cd "$dir"
+              zip -r "../../dists/$(basename $dir).zip" ./*
+              cd ../..
             fi
           done
 
       - name: Create version release
         run: |
           gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes ./dists/*
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create latest release
-        if: ${{ inputs.dryrun == false }}
-        run: |
-          gh release create "latest" -t "Latest versioned release" --latest=false --prerelease ./dists/*
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
