@@ -112,6 +112,7 @@ jobs:
   create-release:
     name: "Create release v${{ inputs.version }}"
     runs-on: "ubuntu-latest"
+    needs: [build-mac-app, build-windows-app, build-linux-app]
 
     steps:
       - name: Checkout
@@ -166,8 +167,6 @@ jobs:
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry build
           poetry publish
-
-
 
       - name: Trigger Core Deployment
         uses: peter-evans/repository-dispatch@v2
