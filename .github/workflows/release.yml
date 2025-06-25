@@ -6,6 +6,12 @@ on:
       version:
         description: "The version to release"
         required: true
+        type: string
+      dryrun:
+        description: "Whether to dry run the release"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build-mac-app:
@@ -143,32 +149,46 @@ jobs:
           author_email: info@visivo.io
           message: "Build viewer for Python package"
 
-      - name: Add and push tag
+      - name: Add and push version tag
         run: |
           git config --global user.email "info@visivo.io"
           git config --global user.name "Visivo"
           git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
           git push origin tag v${{ inputs.version }}
+
+      - name: Add and push latest tag
+        if: ${{ inputs.dryrun == false }}
+        run: |
+          git config --global user.email "info@visivo.io"
+          git config --global user.name "Visivo"
           git tag -d latest
           git push origin :refs/tags/latest
           git tag -a latest -m "Latest versioned release"
           git push origin tag latest
 
-      - name: Create GitHub release
+      - name: Create version release
         run: |
           gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes visivo-mac/visivo visivo-windows/visivo visivo-linux/visivo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create latest release
+        if: ${{ inputs.dryrun == false }}
+        run: |
           gh release create "latest" -t "Latest versioned release" --latest=false --prerelease visivo-mac/visivo visivo-windows/visivo visivo-linux/visivo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish
         id: publish
+        if: ${{ inputs.dryrun == false }}
         run: |
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry build
           poetry publish
 
       - name: Trigger Core Deployment
+        if: ${{ inputs.dryrun == false }}
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}
