@@ -49,7 +49,6 @@ jobs:
           poetry run write-schema-json
           poetry version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
-        shell: ${{ matrix.shell || 'bash' }}
 
       - name: Build Artifact
         run: poetry run build
