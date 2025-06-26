@@ -50,6 +50,7 @@ jobs:
           cd viewer && yarn install --network-timeout 600000 && yarn deploy && cd ..
           poetry install
           poetry run write-schema-json
+          poetry run copy-install-script
           poetry version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
 
@@ -86,6 +87,7 @@ jobs:
           cd viewer && yarn install && yarn deploy && cd ..
           poetry install
           poetry run write-schema-json
+          poetry run copy-install-script
           poetry version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
 
