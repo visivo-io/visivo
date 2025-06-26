@@ -6,6 +6,7 @@ VISIVO_DIR="$HOME/.visivo"
 VISIVO_BIN_DIR="$VISIVO_DIR/bin"
 REPO="visivo-io/visivo" # Please confirm this is the correct repository
 PROFILE_UPDATED=0
+PROFILE_FILE=""
 
 # Clean up on exit
 cleanup() {
