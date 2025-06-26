@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       dryrun:
-        description: "Whether to dry run the release"
+        description: "Dry run"
         required: false
         type: boolean
         default: false
@@ -91,12 +91,14 @@ jobs:
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9
+        if: ${{ inputs.dryrun == false }}
         with:
           author_name: Visivo
           author_email: info@visivo.io
           message: "Build viewer for Python package"
 
       - name: Add and push version tag
+        if: ${{ inputs.dryrun == false }}
         run: |
           git config --global user.email "info@visivo.io"
           git config --global user.name "Visivo"
