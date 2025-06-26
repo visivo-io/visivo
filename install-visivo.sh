@@ -22,8 +22,13 @@ main() {
   OS="$(uname -s)"
   case "$OS" in
     Linux*)   PLATFORM=linux;;
-    Darwin*)  PLATFORM=mac;;
-    MINGW*|CYGWIN*|MSYS*) PLATFORM=windows;;
+    Darwin*)  
+        PLATFORM=darwin-x86
+        if [ "$(uname -m)" = "arm64" ]; then
+            PLATFORM="darwin-arm64" 
+        fi
+        ;;
+    MINGW*|CYGWIN*|MSYS*) PLATFORM=windows-x86;;
     *)        echo "Error: Unsupported operating system '$OS'." >&2; exit 1;;
   esac
   echo "Detected Operating System: $PLATFORM"
