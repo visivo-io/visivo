@@ -17,6 +17,14 @@ Please refer to https://docs.visivo.io for detailed instructions on how to use t
 
 ## Install
 
+We have an install script for a self contained binary.
+
+```
+  bash -c "$(curl -fsSL https://docs.visivo.io/assets/install.sh)"
+```
+
+If have python setup and want to use it through the pip install you can:
+
 ```
 pip install visivo
 ```
@@ -32,7 +40,7 @@ python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1 
 
 To get started with (non-development version) Visivo, follow these steps:
 
-1. Install Visivo using pip: `pip install visivo`
+1. Install Visivo : `bash -c "$(curl -fsSL https://docs.visivo.io/assets/install.sh)"`
 2. Create a new project using `visivo init --project-name quick_start`.
 3. Choose `sqlite` for a quickstart.
 4. Navigate into the new project folder you just created with `cd quick_start`

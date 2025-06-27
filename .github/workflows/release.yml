@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       dryrun:
-        description: "Whether to dry run the release"
+        description: "Dry run"
         required: false
         type: boolean
         default: false
@@ -21,14 +21,17 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            artifact_name: visivo-mac
+            artifact_name: darwin-arm64
+            version_file: visivo/version.py
+          - os: macos-13
+            artifact_name: darwin-x86
             version_file: visivo/version.py
           - os: windows-latest
-            artifact_name: visivo-windows
+            artifact_name: windows-x86
             version_file: visivo\\version.py
             shell: bash
           - os: ubuntu-latest
-            artifact_name: visivo-linux
+            artifact_name: linux-x86
             version_file: visivo/version.py
 
     steps:
@@ -47,6 +50,7 @@ jobs:
           cd viewer && yarn install --network-timeout 600000 && yarn deploy && cd ..
           poetry install
           poetry run write-schema-json
+          poetry run copy-install-script
           poetry version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
 
@@ -56,7 +60,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
+          name: visivo-${{ matrix.artifact_name }}
           path: dist/visivo
 
   create-release:
@@ -83,17 +87,20 @@ jobs:
           cd viewer && yarn install && yarn deploy && cd ..
           poetry install
           poetry run write-schema-json
+          poetry run copy-install-script
           poetry version ${{ inputs.version }}
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9
+        if: ${{ inputs.dryrun == false }}
         with:
           author_name: Visivo
           author_email: info@visivo.io
           message: "Build viewer for Python package"
 
       - name: Add and push version tag
+        if: ${{ inputs.dryrun == false }}
         run: |
           git config --global user.email "info@visivo.io"
           git config --global user.name "Visivo"
