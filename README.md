@@ -20,7 +20,7 @@ Please refer to https://docs.visivo.io for detailed instructions on how to use t
 We have an install script for a self contained binary.
 
 ```
-  curl -fsSL https://visivo.sh | sh
+  curl -fsSL https://visivo.sh | bash
 ```
 
 If have python setup and want to use it through the pip install you can:
