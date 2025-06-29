@@ -22,7 +22,13 @@ main() {
   # Detect OS
   OS="$(uname -s)"
   case "$OS" in
-    Linux*)   PLATFORM=linux;;
+    Linux*)
+        ARCH=$(uname -m)
+        case "$ARCH" in
+            x86_64|amd64) PLATFORM="linux-x86";;
+            *) echo "Error: Unsupported Linux architecture '$ARCH'." >&2; exit 1;;
+        esac
+        ;;
     Darwin*)  
         PLATFORM=darwin-x86
         if [ "$(uname -m)" = "arm64" ]; then
