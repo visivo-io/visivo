@@ -2,6 +2,8 @@ from textwrap import dedent
 import yaml
 import re
 
+MARKDOWN_SAFE_DESCRIPTION = "Sets the constraint operation. `=` keeps regions equal to `value`. `<` and `<=` keep regions less than `value`. `>` and `>=` keep regions greater than `value`. `[]`, `()`, `[)`, and `(]` keep regions inside `value[0]` and `value[1]`. `][`, `)(`, `](`, and `)[` keep regions outside `value[0]` and `value[1]`. Open vs. closed intervals make no difference to constraint display, but all versions are allowed for consistency with filter transforms."
+
 
 def find_refs(obj):
     refs = []
@@ -169,10 +171,24 @@ def _get_traceprop_nested_structure(model: dict, details: list = []) -> str:
                 )
             else:
                 field_description = field_info.get("description", "")
+                if field_description.startswith("Sets the constraint operation."):
+                    field_description = MARKDOWN_SAFE_DESCRIPTION
                 position = len(details) + 1
-                types = list(
-                    map(lambda oneOf: oneOf.get("type", None), field_info.get("oneOf", []))
-                )
+
+                def get_type_from_one_of(one_of):
+                    if one_of.get("type", None):
+                        return one_of.get("type")
+                    if one_of.get("oneOf", None):
+                        for sub_one_of in one_of.get("oneOf"):
+                            if sub_one_of.get("type", None):
+                                return sub_one_of.get("type")
+                            if sub_one_of.get("$ref", None):
+                                if sub_one_of.get("$ref") == "#/$defs/color":
+                                    return "color"
+                                if sub_one_of.get("$ref") == "#/$defs/colorscale":
+                                    return "colorscale"
+
+                types = list(map(get_type_from_one_of, field_info.get("oneOf", [])))
                 # Filter out None types
                 types = [t for t in types if t is not None]
 

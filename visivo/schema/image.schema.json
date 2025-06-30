@@ -5,6 +5,7 @@
   "$defs": {
     "color": {
       "type": "string",
+      "description": "A valid color in hex, rgb, rgba, hsl, hsv, or named CSS color",
       "oneOf": [
         {
           "pattern": "^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$",
@@ -107,6 +108,7 @@
       "const": "image"
     },
     "colormodel": {
+      "description": "Color model used to map the numerical color components described in `z` into colors. If `source` is specified, this attribute will be set to `rgba256` otherwise it defaults to `rgb`.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -118,12 +120,12 @@
             "rgba256",
             "hsl",
             "hsla"
-          ],
-          "description": "Color model used to map the numerical color components described in `z` into colors. If `source` is specified, this attribute will be set to `rgba256` otherwise it defaults to `rgb`."
+          ]
         }
       ]
     },
     "customdata": {
+      "description": "Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, *scatter* traces also appends customdata items in the markers DOM elements",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -139,8 +141,7 @@
                 "type": "string"
               }
             ]
-          },
-          "description": "Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, *scatter* traces also appends customdata items in the markers DOM elements"
+          }
         }
       ]
     },
@@ -149,30 +150,31 @@
       "type": "string"
     },
     "dx": {
+      "description": "Set the pixel's horizontal size.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
         },
         {
           "type": "number",
-          "default": 1,
-          "description": "Set the pixel's horizontal size."
+          "default": 1
         }
       ]
     },
     "dy": {
+      "description": "Set the pixel's vertical size",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
         },
         {
           "type": "number",
-          "default": 1,
-          "description": "Set the pixel's vertical size"
+          "default": 1
         }
       ]
     },
     "hoverinfo": {
+      "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired.",
       "oneOf": [
         {
           "oneOf": [
@@ -194,8 +196,7 @@
                   "pattern": "^(x|y|z|color|name|text)(\\+(x|y|z|color|name|text))*$"
                 }
               ],
-              "default": "x+y+z+text+name",
-              "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired."
+              "default": "x+y+z+text+name"
             }
           ]
         },
@@ -221,8 +222,7 @@
                     "pattern": "^(x|y|z|color|name|text)(\\+(x|y|z|color|name|text))*$"
                   }
                 ],
-                "default": "x+y+z+text+name",
-                "description": "Determines which trace information appear on hover. If `none` or `skip` are set, no information is displayed upon hovering. But, if `none` is set, click and hover events are still fired."
+                "default": "x+y+z+text+name"
               }
             ]
           }
@@ -237,6 +237,7 @@
       "type": "object",
       "properties": {
         "align": {
+          "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines",
           "oneOf": [
             {
               "oneOf": [
@@ -249,8 +250,7 @@
                     "right",
                     "auto"
                   ],
-                  "default": "auto",
-                  "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines"
+                  "default": "auto"
                 }
               ]
             },
@@ -267,8 +267,7 @@
                       "right",
                       "auto"
                     ],
-                    "default": "auto",
-                    "description": "Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines"
+                    "default": "auto"
                   }
                 ]
               }
@@ -280,6 +279,7 @@
           "type": "string"
         },
         "bgcolor": {
+          "description": "Sets the background color of the hover labels for this trace",
           "oneOf": [
             {
               "oneOf": [
@@ -311,6 +311,7 @@
           "type": "string"
         },
         "bordercolor": {
+          "description": "Sets the border color of the hover labels for this trace.",
           "oneOf": [
             {
               "oneOf": [
@@ -399,6 +400,7 @@
               "type": "string"
             },
             "lineposition": {
+              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
               "oneOf": [
                 {
                   "oneOf": [
@@ -418,8 +420,7 @@
                           "pattern": "^(under|over|through)(\\+(under|over|through))*$"
                         }
                       ],
-                      "default": "none",
-                      "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                      "default": "none"
                     }
                   ]
                 },
@@ -443,8 +444,7 @@
                             "pattern": "^(under|over|through)(\\+(under|over|through))*$"
                           }
                         ],
-                        "default": "none",
-                        "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                        "default": "none"
                       }
                     ]
                   }
@@ -509,6 +509,7 @@
               "type": "string"
             },
             "style": {
+              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
               "oneOf": [
                 {
                   "oneOf": [
@@ -520,8 +521,7 @@
                         "normal",
                         "italic"
                       ],
-                      "default": "normal",
-                      "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                      "default": "normal"
                     }
                   ]
                 },
@@ -537,8 +537,7 @@
                           "normal",
                           "italic"
                         ],
-                        "default": "normal",
-                        "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                        "default": "normal"
                       }
                     ]
                   }
@@ -550,6 +549,7 @@
               "type": "string"
             },
             "textcase": {
+              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
               "oneOf": [
                 {
                   "oneOf": [
@@ -563,8 +563,7 @@
                         "upper",
                         "lower"
                       ],
-                      "default": "normal",
-                      "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                      "default": "normal"
                     }
                   ]
                 },
@@ -582,8 +581,7 @@
                           "upper",
                           "lower"
                         ],
-                        "default": "normal",
-                        "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                        "default": "normal"
                       }
                     ]
                   }
@@ -595,6 +593,7 @@
               "type": "string"
             },
             "variant": {
+              "description": "Sets the variant of the font.",
               "oneOf": [
                 {
                   "oneOf": [
@@ -610,8 +609,7 @@
                         "petite-caps",
                         "unicase"
                       ],
-                      "default": "normal",
-                      "description": "Sets the variant of the font."
+                      "default": "normal"
                     }
                   ]
                 },
@@ -631,8 +629,7 @@
                           "petite-caps",
                           "unicase"
                         ],
-                        "default": "normal",
-                        "description": "Sets the variant of the font."
+                        "default": "normal"
                       }
                     ]
                   }
@@ -644,6 +641,7 @@
               "type": "string"
             },
             "weight": {
+              "description": "Sets the weight (or boldness) of the font.",
               "oneOf": [
                 {
                   "oneOf": [
@@ -654,8 +652,7 @@
                       "type": "integer",
                       "minimum": 1,
                       "maximum": 1000,
-                      "default": "normal",
-                      "description": "Sets the weight (or boldness) of the font."
+                      "default": "normal"
                     }
                   ]
                 },
@@ -670,8 +667,7 @@
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 1000,
-                        "default": "normal",
-                        "description": "Sets the weight (or boldness) of the font."
+                        "default": "normal"
                       }
                     ]
                   }
@@ -686,6 +682,7 @@
           "additionalProperties": false
         },
         "namelength": {
+          "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis.",
           "oneOf": [
             {
               "oneOf": [
@@ -695,8 +692,7 @@
                 {
                   "type": "integer",
                   "minimum": -1,
-                  "default": 15,
-                  "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis."
+                  "default": 15
                 }
               ]
             },
@@ -710,8 +706,7 @@
                   {
                     "type": "integer",
                     "minimum": -1,
-                    "default": 15,
-                    "description": "Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer >3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to `namelength - 3` characters and add an ellipsis."
+                    "default": 15
                   }
                 ]
               }
@@ -746,6 +741,7 @@
       "type": "string"
     },
     "hovertext": {
+      "description": "Same as `text`.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -761,8 +757,7 @@
                 "type": "string"
               }
             ]
-          },
-          "description": "Same as `text`."
+          }
         }
       ]
     },
@@ -771,6 +766,7 @@
       "type": "string"
     },
     "ids": {
+      "description": "Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -786,8 +782,7 @@
                 "type": "string"
               }
             ]
-          },
-          "description": "Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type."
+          }
         }
       ]
     },
@@ -796,6 +791,7 @@
       "type": "string"
     },
     "legend": {
+      "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -803,7 +799,6 @@
         {
           "type": "string",
           "default": "legend",
-          "description": "Sets the reference to a legend to show this trace in. References to these legends are *legend*, *legend2*, *legend3*, etc. Settings for these legends are set in the layout, under `layout.legend`, `layout.legend2`, etc.",
           "pattern": "^legend([2-9]|[1-9][0-9]+)?$"
         }
       ]
@@ -830,6 +825,7 @@
               "type": "string"
             },
             "lineposition": {
+              "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc.",
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
@@ -847,8 +843,7 @@
                       "pattern": "^(under|over|through)(\\+(under|over|through))*$"
                     }
                   ],
-                  "default": "none",
-                  "description": "Sets the kind of decoration line(s) with text, such as an *under*, *over* or *through* as well as combinations e.g. *under+over*, etc."
+                  "default": "none"
                 }
               ]
             },
@@ -869,6 +864,7 @@
               ]
             },
             "style": {
+              "description": "Sets whether a font should be styled with a normal or italic face from its family.",
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
@@ -878,12 +874,12 @@
                     "normal",
                     "italic"
                   ],
-                  "default": "normal",
-                  "description": "Sets whether a font should be styled with a normal or italic face from its family."
+                  "default": "normal"
                 }
               ]
             },
             "textcase": {
+              "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.",
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
@@ -895,12 +891,12 @@
                     "upper",
                     "lower"
                   ],
-                  "default": "normal",
-                  "description": "Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized."
+                  "default": "normal"
                 }
               ]
             },
             "variant": {
+              "description": "Sets the variant of the font.",
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
@@ -914,12 +910,12 @@
                     "petite-caps",
                     "unicase"
                   ],
-                  "default": "normal",
-                  "description": "Sets the variant of the font."
+                  "default": "normal"
                 }
               ]
             },
             "weight": {
+              "description": "Sets the weight (or boldness) of the font.",
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
@@ -928,8 +924,7 @@
                   "type": "integer",
                   "minimum": 1,
                   "maximum": 1000,
-                  "default": "normal",
-                  "description": "Sets the weight (or boldness) of the font."
+                  "default": "normal"
                 }
               ]
             }
@@ -945,26 +940,26 @@
       "additionalProperties": false
     },
     "legendrank": {
+      "description": "Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with *reversed* `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
         },
         {
           "type": "number",
-          "default": 1000,
-          "description": "Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with *reversed* `legend.traceorder` they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout."
+          "default": 1000
         }
       ]
     },
     "legendwidth": {
+      "description": "Sets the width (in px or fraction) of the legend for this trace.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
         },
         {
           "type": "number",
-          "minimum": 0,
-          "description": "Sets the width (in px or fraction) of the legend for this trace."
+          "minimum": 0
         }
       ]
     },
@@ -977,6 +972,7 @@
       "type": "string"
     },
     "opacity": {
+      "description": "Sets the opacity of the trace.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -985,8 +981,7 @@
           "type": "number",
           "minimum": 0,
           "maximum": 1,
-          "default": 1,
-          "description": "Sets the opacity of the trace."
+          "default": 1
         }
       ]
     },
@@ -998,6 +993,7 @@
       "type": "object",
       "properties": {
         "maxpoints": {
+          "description": "Sets the maximum number of points to keep on the plots from an incoming stream. If `maxpoints` is set to *50*, only the newest 50 points will be displayed on the plot.",
           "oneOf": [
             {
               "$ref": "#/$defs/query-string"
@@ -1006,8 +1002,7 @@
               "type": "number",
               "minimum": 0,
               "maximum": 10000,
-              "default": 500,
-              "description": "Sets the maximum number of points to keep on the plots from an incoming stream. If `maxpoints` is set to *50*, only the newest 50 points will be displayed on the plot."
+              "default": 500
             }
           ]
         },
@@ -1020,6 +1015,7 @@
       "additionalProperties": false
     },
     "text": {
+      "description": "Sets the text elements associated with each z value.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1035,8 +1031,7 @@
                 "type": "string"
               }
             ]
-          },
-          "description": "Sets the text elements associated with each z value."
+          }
         }
       ]
     },
@@ -1052,6 +1047,7 @@
       "description": "Controls persistence of some user-driven changes to the trace: `constraintrange` in `parcoords` traces, as well as some `editable: true` modifications such as `name` and `colorbar.title`. Defaults to `layout.uirevision`. Note that other user-driven trace attribute changes are controlled by `layout` attributes: `trace.visible` is controlled by `layout.legend.uirevision`, `selectedpoints` is controlled by `layout.selectionrevision`, and `colorbar.(x|y)` (accessible with `config: {editable: true}`) is controlled by `layout.editrevision`. Trace changes are tracked by `uid`, which only falls back on trace index if no `uid` is provided. So if your app can add/remove traces before the end of the `data` array, such that the same trace has a different index, you can still preserve user-driven changes if you give each trace a `uid` that stays with it as it moves."
     },
     "visible": {
+      "description": "Determines whether or not this trace is visible. If *legendonly*, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible).",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1062,8 +1058,7 @@
             false,
             "legendonly"
           ],
-          "default": true,
-          "description": "Determines whether or not this trace is visible. If *legendonly*, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible)."
+          "default": true
         }
       ]
     },
@@ -1072,6 +1067,7 @@
       "description": "Set the image's x position. The left edge of the image (or the right edge if the x axis is reversed or dx is negative) will be found at xmin=x0-dx/2"
     },
     "xaxis": {
+      "description": "Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If *x* (the default value), the x coordinates refer to `layout.xaxis`. If *x2*, the x coordinates refer to `layout.xaxis2`, and so on.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1079,7 +1075,6 @@
         {
           "type": "string",
           "default": "x",
-          "description": "Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If *x* (the default value), the x coordinates refer to `layout.xaxis`. If *x2*, the x coordinates refer to `layout.xaxis2`, and so on.",
           "pattern": "^x([2-9]|[1-9][0-9]+)?$"
         }
       ]
@@ -1089,6 +1084,7 @@
       "description": "Set the image's y position. The top edge of the image (or the bottom edge if the y axis is NOT reversed or if dy is negative) will be found at ymin=y0-dy/2. By default when an image trace is included, the y axis will be reversed so that the image is right-side-up, but you can disable this by setting yaxis.autorange=true or by providing an explicit y axis range."
     },
     "yaxis": {
+      "description": "Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If *y* (the default value), the y coordinates refer to `layout.yaxis`. If *y2*, the y coordinates refer to `layout.yaxis2`, and so on.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1096,12 +1092,12 @@
         {
           "type": "string",
           "default": "y",
-          "description": "Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If *y* (the default value), the y coordinates refer to `layout.yaxis`. If *y2*, the y coordinates refer to `layout.yaxis2`, and so on.",
           "pattern": "^y([2-9]|[1-9][0-9]+)?$"
         }
       ]
     },
     "z": {
+      "description": "A 2-dimensional array in which each element is an array of 3 or 4 numbers representing a color.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1117,12 +1113,12 @@
                 "type": "string"
               }
             ]
-          },
-          "description": "A 2-dimensional array in which each element is an array of 3 or 4 numbers representing a color."
+          }
         }
       ]
     },
     "zmax": {
+      "description": "Array defining the higher bound for each color component. Note that the default value will depend on the colormodel. For the `rgb` colormodel, it is [255, 255, 255]. For the `rgba` colormodel, it is [255, 255, 255, 1]. For the `rgba256` colormodel, it is [255, 255, 255, 255]. For the `hsl` colormodel, it is [360, 100, 100]. For the `hsla` colormodel, it is [360, 100, 100, 1].",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1140,12 +1136,12 @@
             ]
           },
           "minItems": 4,
-          "maxItems": 4,
-          "description": "Array defining the higher bound for each color component. Note that the default value will depend on the colormodel. For the `rgb` colormodel, it is [255, 255, 255]. For the `rgba` colormodel, it is [255, 255, 255, 1]. For the `rgba256` colormodel, it is [255, 255, 255, 255]. For the `hsl` colormodel, it is [360, 100, 100]. For the `hsla` colormodel, it is [360, 100, 100, 1]."
+          "maxItems": 4
         }
       ]
     },
     "zmin": {
+      "description": "Array defining the lower bound for each color component. Note that the default value will depend on the colormodel. For the `rgb` colormodel, it is [0, 0, 0]. For the `rgba` colormodel, it is [0, 0, 0, 0]. For the `rgba256` colormodel, it is [0, 0, 0, 0]. For the `hsl` colormodel, it is [0, 0, 0]. For the `hsla` colormodel, it is [0, 0, 0, 0].",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1163,24 +1159,24 @@
             ]
           },
           "minItems": 4,
-          "maxItems": 4,
-          "description": "Array defining the lower bound for each color component. Note that the default value will depend on the colormodel. For the `rgb` colormodel, it is [0, 0, 0]. For the `rgba` colormodel, it is [0, 0, 0, 0]. For the `rgba256` colormodel, it is [0, 0, 0, 0]. For the `hsl` colormodel, it is [0, 0, 0]. For the `hsla` colormodel, it is [0, 0, 0, 0]."
+          "maxItems": 4
         }
       ]
     },
     "zorder": {
+      "description": "Sets the layer on which this trace is displayed, relative to other SVG traces on the same subplot. SVG traces with higher `zorder` appear in front of those with lower `zorder`.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
         },
         {
           "type": "integer",
-          "default": 0,
-          "description": "Sets the layer on which this trace is displayed, relative to other SVG traces on the same subplot. SVG traces with higher `zorder` appear in front of those with lower `zorder`."
+          "default": 0
         }
       ]
     },
     "zsmooth": {
+      "description": "Picks a smoothing algorithm used to smooth `z` data. This only applies for image traces that use the `source` attribute.",
       "oneOf": [
         {
           "$ref": "#/$defs/query-string"
@@ -1190,8 +1186,7 @@
             "fast",
             false
           ],
-          "default": false,
-          "description": "Picks a smoothing algorithm used to smooth `z` data. This only applies for image traces that use the `source` attribute."
+          "default": false
         }
       ]
     },
