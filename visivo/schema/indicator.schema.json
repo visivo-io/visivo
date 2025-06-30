@@ -1229,7 +1229,7 @@
               ]
             },
             "value": {
-              "description": "Sets a treshold value drawn as a line.",
+              "description": "Sets a threshold value drawn as a line.",
               "oneOf": [
                 {
                   "$ref": "#/$defs/query-string"
