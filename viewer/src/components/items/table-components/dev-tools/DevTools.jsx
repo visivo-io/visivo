@@ -22,7 +22,7 @@ const DevTools = ({
 }) => {
   // Internal state for CSV upload
   const [isUploadProcessing, setIsUploadProcessing] = useState(false);
-  
+
   // Internal state for query drawer - no need to pass these down!
   const [customQuery, setCustomQuery] = useState("");
   const [showQueryDrawer, setShowQueryDrawer] = useState(false);
@@ -62,7 +62,7 @@ const DevTools = ({
 
   const handleCSVUpload = useCallback(async ({ data, columns, fileName }) => {
     setIsUploadProcessing(true);
-    
+
     try {
       // Reset pivot state
       if (setIsPivoted) setIsPivoted(false);
@@ -79,7 +79,6 @@ const DevTools = ({
       } else {
         console.log("No DB instance available - parent should initialize");
       }
-      
       console.log(`Successfully loaded ${fileName} with ${data.length} rows`);
     } catch (error) {
       console.error("Error loading CSV data:", error);
@@ -92,42 +91,33 @@ const DevTools = ({
 
   return (
     <>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        
+      <div className="flex flex-col gap-[10px]">
         {/* Debug Information Panel */}
         {debugInformation && (
-          <Box
-            sx={{
-              mb: 2,
-              p: 2,
-              border: "1px dashed #ccc",
-              backgroundColor: "#f9f9f9",
-              fontSize: "0.8rem",
-            }}
-          >
+          <div className="mb-2 p-2 border border-dashed border-[#ccc] bg-[#f9f9f9] text-[0.8rem]">
             <Typography variant="subtitle2">Debug Information:</Typography>
             <div>• TableData rows: {tableData?.length || 0}</div>
             <div>• Available columns: {columns?.length || 0}</div>
-            <div>• Pivot status: {pivotState?.localIsPivoted ? "Active" : "Inactive"}</div>
-            <div>• Pivoted data rows: {pivotState?.localPivotedData?.length || 0}</div>
+            <div>
+              • Pivot status:{" "}
+              {pivotState?.localIsPivoted ? "Active" : "Inactive"}
+            </div>
+            <div>
+              • Pivoted data rows: {pivotState?.localPivotedData?.length || 0}
+            </div>
             {pivotState?.localPivotedData?.length > 0 && (
               <div>
                 • First pivoted item:{" "}
-                {JSON.stringify(Object.keys(pivotState.localPivotedData[0]).slice(0, 2))}
+                {JSON.stringify(
+                  Object.keys(pivotState.localPivotedData[0]).slice(0, 2)
+                )}
               </div>
             )}
-          </Box>
+          </div>
         )}
 
         {/* Dev Tools Buttons */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "10px",
-            flexWrap: "wrap"
-          }}
-        >
+        <div className="flex justify-between gap-[10px] flex-wrap">
           <Button
             variant="contained"
             color="secondary"
@@ -150,28 +140,18 @@ const DevTools = ({
             variant="contained"
             onClick={toggleQueryDrawer}
           >
-            {showQueryDrawer ? "Hide Query Input" : "Show Custom Query Input Screen"}
+            {showQueryDrawer
+              ? "Hide Query Input"
+              : "Show Custom Query Input Screen"}
           </Button>
 
           <DuckDBStatus duckDBStatus={duckDBStatus} db={db} />
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Query Drawer */}
-      <Drawer
-        anchor="right"
-        open={showQueryDrawer}
-        onClose={toggleQueryDrawer}
-      >
-        <Box
-          sx={{
-            width: 300,
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-          }}
-        >
+      <Drawer anchor="right" open={showQueryDrawer} onClose={toggleQueryDrawer}>
+        <div className="w-[300px] p-[20px] flex flex-col gap-[10px]">
           <Typography variant="h6">Run Custom SQL Query</Typography>
           <Typography variant="body2" color="textSecondary">
             Note: Query results will be displayed in the browser console.
@@ -184,7 +164,7 @@ const DevTools = ({
             rows={4}
             value={customQuery}
             onChange={(e) => setCustomQuery(e.target.value)}
-            sx={{ marginBottom: "10px" }}
+            className="mb-[10px]"
           />
           <Button
             variant="contained"
@@ -192,14 +172,10 @@ const DevTools = ({
             onClick={runCustomQuery}
             disabled={!customQuery.trim()}
           />
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={toggleQueryDrawer}
-          >
+          <Button variant="outlined" color="secondary" onClick={toggleQueryDrawer}>
             Close Query
           </Button>
-        </Box>
+        </div>
       </Drawer>
     </>
   );

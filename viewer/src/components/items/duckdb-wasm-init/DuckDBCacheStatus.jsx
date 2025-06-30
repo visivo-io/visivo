@@ -73,7 +73,7 @@ const DuckDBCacheStatus = memo(() => {
   }, []);
 
   return (
-    <Box sx={{ mt: 2, p: 1, border: "1px dashed #ccc", borderRadius: "4px" }}>
+    <div className="mt-2 p-1 border border-dashed border-[#ccc] rounded">
       <Typography variant="subtitle2">DuckDB WASM Cache Status:</Typography>
 
       {cacheInfo.exists ? (
@@ -96,15 +96,15 @@ const DuckDBCacheStatus = memo(() => {
           </Button>
         </>
       ) : (
-        <Typography variant="body2">
+        <p className="text-sm">
           • No cached version available. WASM files will be downloaded on next
           initialization.
           {cacheInfo.error && (
-            <Box sx={{ color: "error.main" }}>Error: {cacheInfo.error}</Box>
+            <div className="text-red-600">Error: {cacheInfo.error}</div>
           )}
-        </Typography>
+        </p>
       )}
-    </Box>
+    </div>
   );
 });
 

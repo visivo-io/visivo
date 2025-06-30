@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
 } from "@mui/material";
 import { memo, useRef } from "react";
@@ -40,11 +39,9 @@ const PivotColumnSelection = ({
     tableData,
   });
 
-  // Fix: Only load data once instead of on every render
   useEffect(() => {
     if (db && tableData && tableData.length > 0 && !isLoadingDuckDB && !dataLoadedRef.current) {
-      // Mark as loaded to prevent reload
-      
+
       loadDataToDuckDB(db, tableData)
       dataLoadedRef.current = true;
     }
@@ -85,7 +82,7 @@ const PivotColumnSelection = ({
   }, [executePivotLogic, pivotState, updatePivotData]);
 
 
-    const handleForceUpdate = useCallback(() => {
+  const handleForceUpdate = useCallback(() => {
     if (pivotState.localPivotedData.length > 0) {
       updatePivotData(pivotState.localPivotedData, pivotState.localPivotedColumns);
     }
@@ -122,54 +119,29 @@ const PivotColumnSelection = ({
     }
   }, [setTableData, setTableDataFromParent, useTableFromParent]);
   return (
-    <Box
-      sx={{
-        padding: "10px",
-        backgroundColor: "#f5f5f5",
-        borderRadius: "4px",
-        marginBottom: "10px",
-      }}
-    >
-      <Box sx={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px", // Add space between DuckDB status and Pivot Table Options
-            padding: "10px",
-            backgroundColor: "#f5f5f5",
-            borderRadius: "4px",
-            marginBottom: "10px",
-          }}
-        >
-        </Box>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "10px",
-          }}
-        >
-          <DevTools
-            isDevMode={isDevMode}
-            debugInformation={true}
-            duckDBStatus={duckDBStatus}
-            db={db}
-            onForceUpdate={handleForceUpdate}
-            canForceUpdate={pivotState.localPivotedData.length > 0}
-            tableData={tableData}
-            columns={columns}
-            pivotState={pivotState}
-            setIsPivoted={setIsPivoted}
-            setPivotedData={(data) => setPivotedData(data || [])}
-            setPivotedColumns={(cols) => setPivotedColumns(cols || [])}
-            useTable={useTableFromParent}
-            loadDataToDuckDB={loadDataToDuckDB}
-            setColumns={handleSetColumns}
-            setTableData={handleSetTableData}
-          />
-        </Box>
-        
+    <div className="flexp-[10px] bg-[#f5f5f5] rounded">
+      <div className="flex flex-col bg-[#f5f5f5] rounded">
+        <DevTools
+          isDevMode={isDevMode}
+          debugInformation={true}
+          duckDBStatus={duckDBStatus}
+          db={db}
+          onForceUpdate={handleForceUpdate}
+          canForceUpdate={pivotState.localPivotedData.length > 0}
+          tableData={tableData}
+          columns={columns}
+          pivotState={pivotState}
+          setIsPivoted={setIsPivoted}
+          setPivotedData={(data) => setPivotedData(data || [])}
+          setPivotedColumns={(cols) => setPivotedColumns(cols || [])}
+          useTable={useTableFromParent}
+          loadDataToDuckDB={loadDataToDuckDB}
+          setColumns={handleSetColumns}
+          setTableData={handleSetTableData}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 bg-[#f5f5f5] p-[10px] rounded">
         <PivotFields
           rowFields={pivotState.rowFields}
           columnFields={pivotState.columnFields}
@@ -182,31 +154,37 @@ const PivotColumnSelection = ({
           handleValueFieldChange={pivotState.handleValueFieldChange}
           handleAggregateFuncChange={pivotState.handleAggregateFuncChange}
         />
-        <Button
-          variant="contained"
-          color="primary"
-          disabled={
-            !pivotState.valueField || pivotState.rowFields.length === 0 || !db || pivotState.pivotLoading
-          }
-          onClick={executePivot}
-        >
-          {pivotState.pivotLoading
-            ? "Processing..."
-            : pivotState.localIsPivoted
-              ? "Update Pivot"
-              : "Apply Pivot"}
-        </Button>
-        {pivotState.localIsPivoted && (
-          <Button variant="outlined" onClick={resetPivotData}>
+        <div className="flex flex-wrap gap-2 ml-auto">
+          <Button
+            variant="contained"
+            color="primary"
+            title="Group your data by rows and columns, pick a value to aggregate, and choose an aggregation method (like sum or average)."
+            disabled={
+              !pivotState.valueField ||
+              pivotState.rowFields.length === 0 ||
+              !db ||
+              pivotState.pivotLoading
+            }
+            onClick={executePivot}
+          >
+            {pivotState.pivotLoading
+              ? "Processing..."
+              : pivotState.localIsPivoted
+                ? "Update Pivot"
+                : "Apply Pivot"}
+          </Button>
+
+          <Button
+            variant="outlined"
+            title="Restore the original unpivoted table view."
+            disabled={!pivotState.localIsPivoted}
+            onClick={resetPivotData}
+          >
             Reset to Original
           </Button>
-        )}
-        <Box sx={{ mt: 1, fontSize: "0.85rem", fontStyle: "italic" }}>
-          Select row and column fields to group by, a value field to aggregate,
-          and an aggregation function.
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 };
 

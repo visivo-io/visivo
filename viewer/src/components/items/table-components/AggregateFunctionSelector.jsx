@@ -28,7 +28,7 @@ const AggregateFunctionSelector = ({
   }, [aggregatableColumns, valueField]);
 
   return (
-    <FormControl sx={{ minWidth: 200 }}>
+    <FormControl size='small' sx={{ minWidth: 200 }}>
       <InputLabel id="aggregate-function-label">Aggregate Function</InputLabel>
       <Select
         labelId="aggregate-function-label"

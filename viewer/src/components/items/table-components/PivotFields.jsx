@@ -2,7 +2,6 @@ import RowFieldsSelector from "./RowFieldsSelector";
 import ColumnFieldsSelector from "./ColumnFieldsSelector";
 import ValueFieldDropdown from "./ValueFieldDropdown";
 import AggregateFunctionSelector from "./AggregateFunctionSelector";
-import { Box } from "@mui/material";
 import { memo, useMemo } from "react";
 import detectColumnType from "../table-helpers/detectColumnType";
 
@@ -21,28 +20,27 @@ const PivotFields = memo(
     handleAggregateFuncChange,
     tableData = [],
   }) => {
-      
     // Determine which columns are aggregatable
     const aggregatableColumns = useMemo(() => {
       if (!tableData.length) return columns;
-      
+
       return columns.map(column => {
         const rawAccessorKey = column.accessorKey || column.id;
         const accessorKey = rawAccessorKey.replace(/[.]/g, "_"); // Sanitize accessor key for react rows
         const sampleRows = tableData.slice(0, 100)
-        
+
         const isAggregatable = detectColumnType(sampleRows, accessorKey) === NUMBER;
         // const isAggregatable = true
-        
+
         return {
           ...column,
           isAggregatable
         };
       });
     }, [columns, tableData]);
-    
+
     return (
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+      <div className="flex flex-wrap gap-4">
         <RowFieldsSelector
           rowFields={rowFields}
           columns={columns}
@@ -53,7 +51,6 @@ const PivotFields = memo(
           columns={columns}
           onChange={handleColumnFieldsChange}
         />
-      
         <ValueFieldDropdown
           valueField={valueField}
           handleValueFieldChange={handleValueFieldChange}
@@ -67,7 +64,7 @@ const PivotFields = memo(
           aggregatableColumns={aggregatableColumns}
           valueField={valueField}
         />
-      </Box>
+      </div>
     );
   }
 );

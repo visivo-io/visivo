@@ -11,7 +11,6 @@ import {
 import {
   createTheme,
   ThemeProvider,
-  Box,
   Button,
   IconButton,
   CircularProgress,
@@ -253,29 +252,10 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   return (
     <ThemeProvider theme={tableTheme}>
       <ItemContainer>
-        <Box>
-          <Box
-            sx={{
-              display: "flex",
-              backgroundColor: "inherit",
-              borderRadius: "4px",
-              gap: "6px",
-              alignItems: "center",
-              padding: "11px 11px",
-              flexWrap: "wrap",
-              "@media max-width: 768px": {
-                flexDirection: "column",
-              },
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                width: "100%",
-              }}
-            >
+        <div>
+          <div className="flex flex-wrap items-center gap-[6px] p-[11px] bg-inherit rounded 
+                md:flex-row flex-col">
+            <div className="flex justify-between items-center w-full">
               <MRT_GlobalFilterTextField table={useTable} />
 
               <IconButton
@@ -289,16 +269,13 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                     color: isPivoted ? "rgb(210, 89, 70)" : "inherit",
                   }}
                 />
-                <Box
-                  component={ExpandMoreIcon}
+                <ExpandMoreIcon
+                  className={`transition-transform duration-300 ${expandedBar ? 'rotate-180' : 'rotate-0'
+                    }`}
                   fontSize="small"
-                  sx={{
-                    transform: expandedBar ? "rotate(180deg)" : "rotate(0deg)",
-                    transition: "transform 0.3s",
-                  }}
                 />
               </IconButton>
-              <Box sx={{ display: "flex", gap: "6px" }}>
+              <div className="flex gap-[6px]">
                 <MRT_ToggleFiltersButton table={useTable} />
                 <MRT_ShowHideColumnsButton table={useTable} />
                 <MRT_ToggleDensePaddingButton table={useTable} />
@@ -318,9 +295,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                     parentType="table"
                   />
                 )}
-              </Box>
-            </Box>
-            <Box sx={{ width: "100%" }}>
+              </div>
+            </div>
+            <div className="w-full">
               {expandedBar && (
                 <PivotColumnSelection
                   initialData={tableData}
@@ -347,10 +324,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                   setPivotedColumns={setPivotedColumns}
                 />
               )}
-            </Box>
-          </Box>
-
-          <Box sx={{ position: "relative" }}>
+            </div>
+          </div>
+          <div className="relative">
             <Backdrop
               sx={{
                 color: "#fff",
@@ -368,16 +344,16 @@ const Table = ({ table, project, itemWidth, height, width }) => {
               table={useTable}
               sx={{ width: width, maxHeight: `${height - 120}px` }}
             />
-          </Box>
-          <Box>
-            <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          </div>
+          <div>
+            <div className="flex justify-end">
               <MRT_TablePagination table={useTable} />
-            </Box>
-            <Box sx={{ display: "grid", width: "100%" }}>
+            </div>
+            <div className="grid w-full">
               <MRT_ToolbarAlertBanner stackAlertBanner table={useTable} />
-            </Box>
-          </Box>
-        </Box>
+            </div>
+          </div>
+        </div>
       </ItemContainer>
     </ThemeProvider>
   );
