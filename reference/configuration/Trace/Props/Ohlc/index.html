@@ -6739,144 +6739,185 @@
 <p>A schema to validate plotly trace properties</p>
 <h2 id="attributes">Attributes</h2>
 <p>These attributes apply to traces where <code>trace.props.type</code> is set to <code>ohlc</code>. You would configure these attributes on the trace with the <code>trace.props</code> object.
-</p><div class="highlight"><pre><span></span><code><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">closesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(1)!</span>
-<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(2)!</span>
+</p><div class="highlight"><pre><span></span><code><span class="nt">close</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(1)!</span>
+<span class="nt">closesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(2)!</span>
+<span class="nt">customdata</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(3)!</span>
+<span class="nt">customdatasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(4)!</span>
 <span class="nt">decreasing</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">dash</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(3)!</span>
-<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">highsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(4)!</span>
-<span class="nt">hoverinfo</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">hoverinfosrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(5)!</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(5)!</span>
+<span class="w">    </span><span class="nt">dash</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(6)!</span>
+<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(7)!</span>
+<span class="nt">high</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(8)!</span>
+<span class="nt">highsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(9)!</span>
+<span class="nt">hoverinfo</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(10)!</span>
+<span class="nt">hoverinfosrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(11)!</span>
 <span class="nt">hoverlabel</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">  </span><span class="nt">alignsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(6)!</span>
-<span class="w">  </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">  </span><span class="nt">bgcolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(7)!</span>
-<span class="w">  </span><span class="nt">bordercolor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">  </span><span class="nt">bordercolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(8)!</span>
+<span class="w">  </span><span class="nt">align</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(12)!</span>
+<span class="w">  </span><span class="nt">alignsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(13)!</span>
+<span class="w">  </span><span class="nt">bgcolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(14)!</span>
+<span class="w">  </span><span class="nt">bgcolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(15)!</span>
+<span class="w">  </span><span class="nt">bordercolor</span><span class="p">:</span><span class="w"> </span><span class="s">'color</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(16)!</span>
+<span class="w">  </span><span class="nt">bordercolorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(17)!</span>
 <span class="w">  </span><span class="nt">font</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(9)!</span>
-<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(10)!</span>
-<span class="w">    </span><span class="nt">familysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(11)!</span>
-<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">linepositionsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(12)!</span>
-<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(13)!</span>
-<span class="w">    </span><span class="nt">shadowsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(14)!</span>
-<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">sizesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(15)!</span>
-<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">stylesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(16)!</span>
-<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">textcasesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(17)!</span>
-<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">variantsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(18)!</span>
-<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">    </span><span class="nt">weightsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(19)!</span>
-<span class="w">  </span><span class="nt">namelength</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="w">  </span><span class="nt">namelengthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(20)!</span>
-<span class="w">  </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">boolean</span>
-<span class="nt">hovertext</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(21)!</span>
-<span class="nt">hovertextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(22)!</span>
-<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">idssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(23)!</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">color | array</span>
+<span class="w">    </span><span class="nt">colorsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(18)!</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(19)!</span>
+<span class="w">    </span><span class="nt">familysrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(20)!</span>
+<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(21)!</span>
+<span class="w">    </span><span class="nt">linepositionsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(22)!</span>
+<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(23)!</span>
+<span class="w">    </span><span class="nt">shadowsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(24)!</span>
+<span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number | array</span>
+<span class="w">    </span><span class="nt">sizesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(25)!</span>
+<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(26)!</span>
+<span class="w">    </span><span class="nt">stylesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(27)!</span>
+<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(28)!</span>
+<span class="w">    </span><span class="nt">textcasesrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(29)!</span>
+<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(30)!</span>
+<span class="w">    </span><span class="nt">variantsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(31)!</span>
+<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(32)!</span>
+<span class="w">    </span><span class="nt">weightsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(33)!</span>
+<span class="w">  </span><span class="nt">namelength</span><span class="p">:</span><span class="w"> </span><span class="s">'integer</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(34)!</span>
+<span class="w">  </span><span class="nt">namelengthsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(35)!</span>
+<span class="w">  </span><span class="nt">split</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(36)!</span>
+<span class="nt">hovertext</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(37)!</span>
+<span class="nt">hovertextsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(38)!</span>
+<span class="nt">ids</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(39)!</span>
+<span class="nt">idssrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(40)!</span>
 <span class="nt">increasing</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">line</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">dash</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(24)!</span>
-<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="nt">legend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">string</span>
-<span class="nt">legendgroup</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(25)!</span>
+<span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(41)!</span>
+<span class="w">    </span><span class="nt">dash</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(42)!</span>
+<span class="w">    </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(43)!</span>
+<span class="nt">legend</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(44)!</span>
+<span class="nt">legendgroup</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(45)!</span>
 <span class="nt">legendgrouptitle</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">font</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(26)!</span>
-<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(27)!</span>
+<span class="w">    </span><span class="nt">family</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(46)!</span>
+<span class="w">    </span><span class="nt">lineposition</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(47)!</span>
+<span class="w">    </span><span class="nt">shadow</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(48)!</span>
 <span class="w">    </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">integer</span>
-<span class="w">  </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(28)!</span>
-<span class="nt">legendrank</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="nt">legendwidth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
+<span class="w">    </span><span class="nt">style</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(49)!</span>
+<span class="w">    </span><span class="nt">textcase</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(50)!</span>
+<span class="w">    </span><span class="nt">variant</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(51)!</span>
+<span class="w">    </span><span class="nt">weight</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(52)!</span>
+<span class="w">  </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(53)!</span>
+<span class="nt">legendrank</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(54)!</span>
+<span class="nt">legendwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(55)!</span>
 <span class="nt">line</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">dash</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(29)!</span>
-<span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">lowsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(30)!</span>
-<span class="nt">metasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(31)!</span>
-<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(32)!</span>
-<span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">opensrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(33)!</span>
-<span class="nt">showlegend</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">boolean</span>
+<span class="w">  </span><span class="nt">dash</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(56)!</span>
+<span class="w">  </span><span class="nt">width</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(57)!</span>
+<span class="nt">low</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(58)!</span>
+<span class="nt">lowsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(59)!</span>
+<span class="nt">metasrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(60)!</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(61)!</span>
+<span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(62)!</span>
+<span class="nt">open</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(63)!</span>
+<span class="nt">opensrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(64)!</span>
+<span class="nt">showlegend</span><span class="p">:</span><span class="w"> </span><span class="s">'boolean'</span><span class="w"> </span><span class="c1">#(65)!</span>
 <span class="nt">stream</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">maxpoints</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
-<span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(34)!</span>
-<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(35)!</span>
-<span class="nt">textsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(36)!</span>
-<span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">number</span>
+<span class="w">  </span><span class="nt">maxpoints</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(66)!</span>
+<span class="w">  </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(67)!</span>
+<span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="s">'string</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">array'</span><span class="w"> </span><span class="c1">#(68)!</span>
+<span class="nt">textsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(69)!</span>
+<span class="nt">tickwidth</span><span class="p">:</span><span class="w"> </span><span class="s">'number'</span><span class="w"> </span><span class="c1">#(70)!</span>
 <span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ohlc</span>
-<span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(37)!</span>
-<span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">array</span>
-<span class="nt">xaxis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">string</span>
-<span class="nt">xcalendar</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="nt">xhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(38)!</span>
-<span class="nt">xperiodalignment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">any</span>
-<span class="nt">xsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(39)!</span>
-<span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">string</span>
-<span class="nt">yhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(40)!</span>
-<span class="nt">zorder</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">integer</span>
+<span class="nt">uid</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(71)!</span>
+<span class="nt">visible</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(72)!</span>
+<span class="nt">x</span><span class="p">:</span><span class="w"> </span><span class="s">'array'</span><span class="w"> </span><span class="c1">#(73)!</span>
+<span class="nt">xaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(74)!</span>
+<span class="nt">xcalendar</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(75)!</span>
+<span class="nt">xhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(76)!</span>
+<span class="nt">xperiodalignment</span><span class="p">:</span><span class="w"> </span><span class="s">'any'</span><span class="w"> </span><span class="c1">#(77)!</span>
+<span class="nt">xsrc</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(78)!</span>
+<span class="nt">yaxis</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(79)!</span>
+<span class="nt">yhoverformat</span><span class="p">:</span><span class="w"> </span><span class="s">'string'</span><span class="w"> </span><span class="c1">#(80)!</span>
+<span class="nt">zorder</span><span class="p">:</span><span class="w"> </span><span class="s">'integer'</span><span class="w"> </span><span class="c1">#(81)!</span>
 </code></pre></div>
 <ol>
+<li>Sets the close values.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>close</code>.</li>
+<li>Assigns extra data each datum. This may be useful when listening to hover, click and selection events. Note that, <em>scatter</em> traces also appends customdata items in the markers DOM elements</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>customdata</code>.</li>
+<li>Sets the line color.</li>
 <li>Sets the dash style of lines. Set to a dash type string (<em>solid</em>, <em>dot</em>, <em>dash</em>, <em>longdash</em>, <em>dashdot</em>, or <em>longdashdot</em>) or a dash length list in px (eg <em>5px,10px,2px,2px</em>).</li>
+<li>Sets the line width (in px).</li>
+<li>Sets the high values.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>high</code>.</li>
+<li>Determines which trace information appear on hover. If <code>none</code> or <code>skip</code> are set, no information is displayed upon hovering. But, if <code>none</code> is set, click and hover events are still fired.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>hoverinfo</code>.</li>
+<li>Sets the horizontal alignment of the text content within hover label box. Has an effect only if the hover label text spans more two or more lines</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>align</code>.</li>
+<li>Sets the background color of the hover labels for this trace</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>bgcolor</code>.</li>
+<li>Sets the border color of the hover labels for this trace.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>bordercolor</code>.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>color</code>.</li>
 <li>HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>family</code>.</li>
+<li>Sets the kind of decoration line(s) with text, such as an <em>under</em>, <em>over</em> or <em>through</em> as well as combinations e.g. <em>under+over</em>, etc.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>lineposition</code>.</li>
 <li>Sets the shape and color of the shadow behind text. <em>auto</em> places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>shadow</code>.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>size</code>.</li>
+<li>Sets whether a font should be styled with a normal or italic face from its family.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>style</code>.</li>
+<li>Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>textcase</code>.</li>
+<li>Sets the variant of the font.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>variant</code>.</li>
+<li>Sets the weight (or boldness) of the font.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>weight</code>.</li>
+<li>Sets the default length (in number of characters) of the trace name in the hover labels for all traces. -1 shows the whole name regardless of length. 0-3 shows the first 0-3 characters, and an integer &gt;3 will show the whole name if it is less than that many characters, but if it is longer, will truncate to <code>namelength - 3</code> characters and add an ellipsis.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>namelength</code>.</li>
+<li>Show hover information (open, close, high, low) in separate labels.</li>
 <li>Same as <code>text</code>.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>hovertext</code>.</li>
+<li>Assigns id labels to each datum. These ids for object constancy of data points during animation. Should be an array of strings, not numbers or any other type.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>ids</code>.</li>
+<li>Sets the line color.</li>
 <li>Sets the dash style of lines. Set to a dash type string (<em>solid</em>, <em>dot</em>, <em>dash</em>, <em>longdash</em>, <em>dashdot</em>, or <em>longdashdot</em>) or a dash length list in px (eg <em>5px,10px,2px,2px</em>).</li>
+<li>Sets the line width (in px).</li>
+<li>Sets the reference to a legend to show this trace in. References to these legends are <em>legend</em>, <em>legend2</em>, <em>legend3</em>, etc. Settings for these legends are set in the layout, under <code>layout.legend</code>, <code>layout.legend2</code>, etc.</li>
 <li>Sets the legend group for this trace. Traces and shapes part of the same legend group hide/show at the same time when toggling legend items.</li>
 <li>HTML font family - the typeface that will be applied by the web browser. The web browser can only apply a font if it is available on the system where it runs. Provide multiple font families, separated by commas, to indicate the order in which to apply fonts if they aren't available.</li>
+<li>Sets the kind of decoration line(s) with text, such as an <em>under</em>, <em>over</em> or <em>through</em> as well as combinations e.g. <em>under+over</em>, etc.</li>
 <li>Sets the shape and color of the shadow behind text. <em>auto</em> places minimal shadow and applies contrast text font color. See https://developer.mozilla.org/en-US/docs/Web/CSS/text-shadow for additional options.</li>
+<li>Sets whether a font should be styled with a normal or italic face from its family.</li>
+<li>Sets capitalization of text. It can be used to make text appear in all-uppercase or all-lowercase, or with each word capitalized.</li>
+<li>Sets the variant of the font.</li>
+<li>Sets the weight (or boldness) of the font.</li>
 <li>Sets the title of the legend group.</li>
+<li>Sets the legend rank for this trace. Items and groups with smaller ranks are presented on top/left side while with <em>reversed</em> <code>legend.traceorder</code> they are on bottom/right side. The default legendrank is 1000, so that you can use ranks less than 1000 to place certain items before all unranked items, and ranks greater than 1000 to go after all unranked items. When having unranked or equal rank items shapes would be displayed after traces i.e. according to their order in data and layout.</li>
+<li>Sets the width (in px or fraction) of the legend for this trace.</li>
 <li>Sets the dash style of lines. Set to a dash type string (<em>solid</em>, <em>dot</em>, <em>dash</em>, <em>longdash</em>, <em>dashdot</em>, or <em>longdashdot</em>) or a dash length list in px (eg <em>5px,10px,2px,2px</em>). Note that this style setting can also be set per direction via <code>increasing.line.dash</code> and <code>decreasing.line.dash</code>.</li>
+<li>[object Object] Note that this style setting can also be set per direction via <code>increasing.line.width</code> and <code>decreasing.line.width</code>.</li>
+<li>Sets the low values.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>low</code>.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>meta</code>.</li>
 <li>Sets the trace name. The trace name appears as the legend item and on hover.</li>
+<li>Sets the opacity of the trace.</li>
+<li>Sets the open values.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>open</code>.</li>
+<li>Determines whether or not an item corresponding to this trace is shown in the legend.</li>
+<li>Sets the maximum number of points to keep on the plots from an incoming stream. If <code>maxpoints</code> is set to <em>50</em>, only the newest 50 points will be displayed on the plot.</li>
 <li>The stream id number links a data trace on a plot with a stream. See https://chart-studio.plotly.com/settings for more details.</li>
 <li>Sets hover text elements associated with each sample point. If a single string, the same string appears over all the data points. If an array of string, the items are mapped in order to this trace's sample points.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>text</code>.</li>
+<li>Sets the width of the open/close tick marks relative to the <em>x</em> minimal interval.</li>
 <li>Assign an id to this trace, Use this to provide object constancy between traces during animations and transitions.</li>
+<li>Determines whether or not this trace is visible. If <em>legendonly</em>, the trace is not drawn, but can appear as a legend item (provided that the legend itself is visible).</li>
+<li>Sets the x coordinates. If absent, linear coordinate will be generated.</li>
+<li>Sets a reference between this trace's x coordinates and a 2D cartesian x axis. If <em>x</em> (the default value), the x coordinates refer to <code>layout.xaxis</code>. If <em>x2</em>, the x coordinates refer to <code>layout.xaxis2</code>, and so on.</li>
+<li>Sets the calendar system to use with <code>x</code> date data.</li>
 <li>Sets the hover text formatting rulefor <code>x</code>  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: <em>%h</em> for half of the year as a decimal number as well as <em>%{n}f</em> for fractional seconds with n digits. For example, <em>2016-10-13 09:15:23.456</em> with tickformat <em>%H~%M~%S.%2f</em> would display <em>09~15~23.46</em>By default the values are formatted using <code>xaxis.hoverformat</code>.</li>
+<li>Only relevant when the axis <code>type</code> is <em>date</em>. Sets the alignment of data points on the x axis.</li>
 <li>Sets the source reference on Chart Studio Cloud for <code>x</code>.</li>
+<li>Sets a reference between this trace's y coordinates and a 2D cartesian y axis. If <em>y</em> (the default value), the y coordinates refer to <code>layout.yaxis</code>. If <em>y2</em>, the y coordinates refer to <code>layout.yaxis2</code>, and so on.</li>
 <li>Sets the hover text formatting rulefor <code>y</code>  using d3 formatting mini-languages which are very similar to those in Python. For numbers, see: https://github.com/d3/d3-format/tree/v1.4.5#d3-format. And for dates see: https://github.com/d3/d3-time-format/tree/v2.2.3#locale_format. We add two items to d3's date formatter: <em>%h</em> for half of the year as a decimal number as well as <em>%{n}f</em> for fractional seconds with n digits. For example, <em>2016-10-13 09:15:23.456</em> with tickformat <em>%H~%M~%S.%2f</em> would display <em>09~15~23.46</em>By default the values are formatted using <code>yaxis.hoverformat</code>.</li>
+<li>Sets the layer on which this trace is displayed, relative to other SVG traces on the same subplot. SVG traces with higher <code>zorder</code> appear in front of those with lower <code>zorder</code>.</li>
 </ol></div>
 
 
