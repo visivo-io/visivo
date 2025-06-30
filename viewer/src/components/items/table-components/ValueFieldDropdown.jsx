@@ -29,14 +29,14 @@ const ValueFieldDropdown = ({
     } catch (e) {
       console.warn("Invalid session data for valueField", e);
     }
-  }, []);
+}, [columns, handleValueFieldChange, valueField]);
 
   // Save valueField to sessionStorage on change
   useEffect(() => {
     if (valueField) {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(valueField));
     }
-  }, [valueField, columns, handleValueFieldChange, valueField]);
+  }, [valueField]);
 
   return (
     <FormControl

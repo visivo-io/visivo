@@ -41,7 +41,7 @@ const ColumnFieldsSelector = memo(({ columnFields = [], columns = [], onChange }
     } catch (e) {
       console.warn("Invalid session data for column fields", e);
     }
-  }, []);
+  }, [columnFields, columns, onChange]);
 
   // Persist on change
   useEffect(() => {
