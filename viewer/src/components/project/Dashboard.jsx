@@ -97,11 +97,11 @@ const Dashboard = ({ project, dashboardName }) => {
         key={`row-${rowIndex}`}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
-          margin: '0.1rem',
+          margin: '0.5rem',
           display: isColumn ? 'flex' : 'grid',
           flexDirection: isColumn ? 'column' : undefined,
           gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
-          gap: '0.1rem',
+          gap: '0.7rem',
           ...rowStyle,
         }}
       >
