@@ -7,6 +7,7 @@ import SaveChangesModal from './modals/SaveChangesModal';
 import MoveObjectModal from './modals/MoveObjectModal';
 import DeleteObjectModal from './modals/DeleteObjectModal';
 import TextEditorModal from './modals/TextEditorModal';
+import SnackBar from '../../common/SnackBar';
 
 // Split into smaller, more focused selectors
 const selectTabs = state => state.tabs;
@@ -30,6 +31,9 @@ const EditorPanel = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isTextEditorModalOpen, setIsTextEditorModalOpen] = React.useState(false);
 
+  const [ snackBarOpen, setSnackBarOpen ] = React.useState(false)
+  const [ message, setMessage ] = React.useState("")
+
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;
 
@@ -50,6 +54,12 @@ const EditorPanel = () => {
       scrollRef.current.scrollTop = scrollPosition;
     }
   }, [scrollPosition, activeConfig]);
+
+  React.useEffect(() => {
+    if (!snackBarOpen) {
+      setMessage("")
+    }
+  }, [snackBarOpen])
 
   const handleDelete = () => {
     if (!activeTab) return;
@@ -116,9 +126,13 @@ const EditorPanel = () => {
         isOpen={isTextEditorModalOpen}
         onClose={() => setIsTextEditorModalOpen(false)}
         objectName={activeTab?.name}
+        setMessage={setMessage}
+        setSnackBarOpen={setSnackBarOpen}
       />
 
       <SaveChangesModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      <SnackBar open={snackBarOpen} setOpen={setSnackBarOpen} message={message} />
     </div>
   );
 };
