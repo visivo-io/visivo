@@ -144,8 +144,7 @@
               {
                 "type": "array",
                 "items": {},
-                "minItems": 2,
-                "maxItems": 2,
+                "minItems": 1,
                 "description": "The domain range to which the filter on the dimension is constrained. Must be an array of `[fromValue, toValue]` with `fromValue <= toValue`, or if `multiselect` is not disabled, you may give an array of arrays, where each inner array is `[fromValue, toValue]`."
               }
             ]

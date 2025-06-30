@@ -221,7 +221,6 @@
                 ]
               },
               "minItems": 1,
-              "maxItems": 1,
               "default": [
                 0,
                 30,
@@ -895,8 +894,7 @@
                   {
                     "type": "array",
                     "items": {},
-                    "minItems": 2,
-                    "maxItems": 2,
+                    "minItems": 1,
                     "description": "Sets the coordinate values corresponding to the rangebreaks. An alternative to `bounds`. Use `dvalue` to set the size of the values along the axis."
                   }
                 ]
@@ -2415,7 +2413,6 @@
                 ]
               },
               "minItems": 1,
-              "maxItems": 1,
               "default": [
                 0,
                 30,
@@ -3089,8 +3086,7 @@
                   {
                     "type": "array",
                     "items": {},
-                    "minItems": 2,
-                    "maxItems": 2,
+                    "minItems": 1,
                     "description": "Sets the coordinate values corresponding to the rangebreaks. An alternative to `bounds`. Use `dvalue` to set the size of the values along the axis."
                   }
                 ]
@@ -7132,8 +7128,7 @@
                   }
                 ]
               },
-              "minItems": 3,
-              "maxItems": 3,
+              "minItems": 1,
               "description": "Used for freeform grids, where some axes may be shared across subplots but others are not. Each entry should be a cartesian subplot id, like *xy* or *x3y2*, or ** to leave that cell empty. You may reuse x axes within the same column, and y axes within the same row. Non-cartesian subplots and traces that support `domain` can place themselves in this grid separately using the `gridcell` attribute."
             }
           ]
@@ -7165,8 +7160,7 @@
                   }
                 ]
               },
-              "minItems": 3,
-              "maxItems": 3,
+              "minItems": 1,
               "description": "Used with `yaxes` when the x and y axes are shared across columns and rows. Each entry should be an x axis id like *x*, *x2*, etc., or ** to not put an x axis in that column. Entries other than ** must be unique. Ignored if `subplots` is present. If missing but `yaxes` is present, will generate consecutive IDs."
             }
           ]
@@ -7228,8 +7222,7 @@
                   }
                 ]
               },
-              "minItems": 3,
-              "maxItems": 3,
+              "minItems": 1,
               "description": "Used with `yaxes` when the x and y axes are shared across columns and rows. Each entry should be an y axis id like *y*, *y2*, etc., or ** to not put a y axis in that row. Entries other than ** must be unique. Ignored if `subplots` is present. If missing but `xaxes` is present, will generate consecutive IDs."
             }
           ]
@@ -11472,7 +11465,6 @@
                     ]
                   },
                   "minItems": 1,
-                  "maxItems": 1,
                   "default": [
                     0,
                     30,
@@ -17864,8 +17856,7 @@
                     {
                       "type": "array",
                       "items": {},
-                      "minItems": 3,
-                      "maxItems": 3,
+                      "minItems": 1,
                       "description": "Sets the arguments values to be passed to the Plotly method set in `method` on slide."
                     }
                   ]
@@ -21963,8 +21954,7 @@
                     {
                       "type": "array",
                       "items": {},
-                      "minItems": 3,
-                      "maxItems": 3,
+                      "minItems": 1,
                       "description": "Sets the arguments values to be passed to the Plotly method set in `method` on click."
                     }
                   ]
@@ -21977,8 +21967,7 @@
                     {
                       "type": "array",
                       "items": {},
-                      "minItems": 3,
-                      "maxItems": 3,
+                      "minItems": 1,
                       "description": "Sets a 2nd set of `args`, these arguments values are passed to the Plotly method set in `method` when clicking this button while in the active state. Use this to create toggle buttons."
                     }
                   ]

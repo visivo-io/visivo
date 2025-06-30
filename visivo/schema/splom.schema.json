@@ -3644,8 +3644,7 @@
               }
             ]
           },
-          "minItems": 3,
-          "maxItems": 3,
+          "minItems": 1,
           "description": "Sets the list of x axes corresponding to dimensions of this splom trace. By default, a splom will match the first N xaxes where N is the number of input dimensions. Note that, in case where `diagonal.visible` is false and `showupperhalf` or `showlowerhalf` is false, this splom trace will generate one less x-axis and one less y-axis."
         }
       ]
@@ -3673,8 +3672,7 @@
               }
             ]
           },
-          "minItems": 3,
-          "maxItems": 3,
+          "minItems": 1,
           "description": "Sets the list of y axes corresponding to dimensions of this splom trace. By default, a splom will match the first N yaxes where N is the number of input dimensions. Note that, in case where `diagonal.visible` is false and `showupperhalf` or `showlowerhalf` is false, this splom trace will generate one less x-axis and one less y-axis."
         }
       ]

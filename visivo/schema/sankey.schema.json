@@ -1923,8 +1923,7 @@
                   }
                 ]
               },
-              "minItems": 2,
-              "maxItems": 2,
+              "minItems": 1,
               "default": [],
               "description": "Groups of nodes. Each group is defined by an array with the indices of the nodes it contains. Multiple groups can be specified."
             }
