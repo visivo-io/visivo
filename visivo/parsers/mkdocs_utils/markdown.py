@@ -170,9 +170,21 @@ def _get_traceprop_nested_structure(model: dict, details: list = []) -> str:
             else:
                 field_description = field_info.get("description", "")
                 position = len(details) + 1
-                types = list(
-                    map(lambda oneOf: oneOf.get("type", None), field_info.get("oneOf", []))
-                )
+
+                def get_type_from_one_of(one_of):
+                    if one_of.get("type", None):
+                        return one_of.get("type")
+                    if one_of.get("oneOf", None):
+                        for sub_one_of in one_of.get("oneOf"):
+                            if sub_one_of.get("type", None):
+                                return sub_one_of.get("type")
+                            if sub_one_of.get("$ref", None):
+                                if sub_one_of.get("$ref") == "#/$defs/color":
+                                    return "color"
+                                if sub_one_of.get("$ref") == "#/$defs/colorscale":
+                                    return "colorscale"
+
+                types = list(map(get_type_from_one_of, field_info.get("oneOf", [])))
                 # Filter out None types
                 types = [t for t in types if t is not None]
 
