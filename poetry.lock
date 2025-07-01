@@ -3834,6 +3834,22 @@ geography = ["GeoAlchemy2", "shapely"]
 tests = ["packaging", "pytz"]
 
 [[package]]
+name = "sqlglot"
+version = "26.33.0"
+description = "An easily customizable SQL parser and transpiler"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "sqlglot-26.33.0-py3-none-any.whl", hash = "sha256:031cee20c0c796a83d26d079a47fdce667604df430598c7eabfa4e4dfd147033"},
+    {file = "sqlglot-26.33.0.tar.gz", hash = "sha256:2817278779fa51d6def43aa0d70690b93a25c83eb18ec97130fdaf707abc0d73"},
+]
+
+[package.extras]
+dev = ["duckdb (>=0.6)", "maturin (>=1.4,<2.0)", "mypy", "pandas", "pandas-stubs", "pdoc", "pre-commit", "pyperf", "python-dateutil", "pytz", "ruff (==0.7.2)", "types-python-dateutil", "types-pytz", "typing_extensions"]
+rs = ["sqlglotrs (==0.6.1)"]
+
+[[package]]
 name = "super-collections"
 version = "0.5.3"
 description = "file: README.md"
@@ -4082,4 +4098,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = " >=3.12,<3.13"
-content-hash = "f3515665234c556bdbe7ce57f657c27a4f3fa3fa531adf91b0519ff9c73f619a"
+content-hash = "60f09a8e653d9c149b409f92fd0eb4cbe530e3f8974655b67fd69b9c0e2270af"

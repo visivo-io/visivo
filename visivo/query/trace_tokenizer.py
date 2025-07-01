@@ -8,8 +8,12 @@ from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.trace_columns import TraceColumns
 from visivo.models.trace_props.layout import Layout
 from visivo.models.trace_props.trace_props import TraceProps
-from visivo.query.dialect import Dialect
-from visivo.query.statement_classifier import StatementClassifier, StatementEnum
+from visivo.query.sql_validator import (
+    validate_and_classify_trace_sql,
+    classify_expression,
+    extract_groupby_expressions,
+    get_sqlglot_dialect
+)
 from visivo.utils import extract_value_from_function
 import warnings
 import re
@@ -22,8 +26,15 @@ class TraceTokenizer:
         self.trace = trace
         self.source = source
         self.model = model
-        self.dialect = Dialect(type=source.type)
-        self.statement_classifier = StatementClassifier(dialect=self.dialect)
+        
+        # Validate and parse the main SQL query using SQLGlot
+        try:
+            self.parsed_ast, self.query_classification, self.sqlglot_dialect = \
+                validate_and_classify_trace_sql(self.model.sql, source.type)
+        except ValueError as e:
+            # Re-raise with context about which trace failed
+            raise ValueError(f"Invalid SQL in trace '{trace.name}': {e}")
+        
         self.select_items = {}
         self._set_select_items()
         self._set_order_by()
@@ -104,28 +115,68 @@ class TraceTokenizer:
                 self.select_items.update({query_id: query_statement})
 
     def _set_groupby(self):
+        # Use SQLGlot AST to determine which expressions need GROUP BY
+        if self.query_classification in ("aggregate", "window"):
+            # Extract groupby expressions from the main query AST
+            groupby_from_ast = extract_groupby_expressions(self.parsed_ast, self.sqlglot_dialect)
+        else:
+            # For vanilla queries, start with empty list from main query
+            groupby_from_ast = []
+        
+        # Always check individual select_items and order_by for expressions that need groupby
+        additional_groupby = []
+        has_aggregate_items = False
+        
+        # Process individual select_items - check if any contain aggregates
+        for statement in self.select_items.values():
+            if not re.findall(r"^\s*'.*'\s*$", statement):
+                classification = classify_expression(statement, self.sqlglot_dialect)
+                if classification == "aggregate":
+                    has_aggregate_items = True
+                elif classification in ("vanilla", "window"):
+                    additional_groupby.append(statement)
+        
+        # Process order_by expressions
         if hasattr(self, "order_by"):
-            order_by = []
             for statement in self.order_by:
+                # Clean order by statement (remove ASC/DESC)
                 statement_lower = statement.lower()
                 statement_clean = statement_lower.replace("asc", "").replace("desc", "").strip()
-                order_by.append(statement_clean)
+                
+                # Skip literal strings
+                if not re.findall(r"^\s*'.*'\s*$", statement_clean):
+                    classification = classify_expression(statement_clean, self.sqlglot_dialect)
+                    if classification == "aggregate":
+                        has_aggregate_items = True
+                    elif classification == "vanilla":
+                        additional_groupby.append(statement_clean)
+                    elif classification == "window":
+                        # Window functions in order_by should also be added to groupby_statements
+                        # for compatibility with existing behavior
+                        has_aggregate_items = True  # Treat as needing groupby
+                        additional_groupby.append(statement_clean)
+        
+        # Process cohort_on if it's not a literal
+        cohort_on = self._get_cohort_on()
+        if not re.findall(r"^\s*'.*'\s*$", cohort_on):
+            classification = classify_expression(cohort_on, self.sqlglot_dialect)
+            if classification == "aggregate":
+                has_aggregate_items = True
+            elif classification in ("vanilla", "window"):
+                additional_groupby.append(cohort_on)
+        
+        # Only set groupby statements if we have aggregates in the select items
+        # or if the main query itself contains aggregates/windows
+        if self.query_classification in ("aggregate", "window") or has_aggregate_items:
+            # Combine and deduplicate
+            all_groupby = groupby_from_ast + additional_groupby
+            if all_groupby:
+                self.groupby_statements = list(set(all_groupby))
+            else:
+                self.groupby_statements = []
         else:
-            order_by = []
-        query_statements = list(self.select_items.values()) + order_by + [self._get_cohort_on()]
-        groupby = []
-        for statement in query_statements:
-            if re.findall(r"^\s*'.*'\s*$", statement):
-                continue
-            classification = self.statement_classifier.classify(statement)
-            match classification:
-                case StatementEnum.window:
-                    groupby.append(statement)
-                case StatementEnum.vanilla:
-                    groupby.append(statement)
-
-        if groupby:
-            self.groupby_statements = list(set(groupby))
+            # Pure vanilla query with no aggregates in select_items
+            self.groupby_statements = []
 
     def _set_filter(self):
         trace_dict = self.trace.model_dump()
@@ -134,16 +185,19 @@ class TraceTokenizer:
             filter_by = {"aggregate": [], "window": [], "vanilla": []}
             for filter in filters:
                 argument = extract_value_from_function(filter, "query")
-                classification = self.statement_classifier.classify(argument)
-                match classification:
-                    case StatementEnum.window:
-                        filter_by["window"].append(argument)
-                    case StatementEnum.vanilla:
-                        filter_by["vanilla"].append(argument)
-                    case StatementEnum.aggregate:
-                        filter_by["aggregate"].append(argument)
-            if str(self.dialect.type) != "snowflake":
-                if filter_by["window"] != []:
+                # Use SQLGlot-based classification
+                classification = classify_expression(argument, self.sqlglot_dialect)
+                
+                if classification == "window":
+                    filter_by["window"].append(argument)
+                elif classification == "vanilla":
+                    filter_by["vanilla"].append(argument)
+                elif classification == "aggregate":
+                    filter_by["aggregate"].append(argument)
+            
+            # Apply Snowflake-specific window function filtering rule
+            if self.source.type != "snowflake":
+                if filter_by["window"]:
                     warnings.warn(
                         "Window function filtering is only supported on snowflake sources",
                         Warning,

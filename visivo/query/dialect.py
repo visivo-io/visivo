@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from copy import deepcopy
+import warnings
 
 KEYWORDS = {
     "aggregates": {
@@ -133,7 +134,20 @@ KEYWORDS = {
 
 
 class Dialect(BaseModel, use_enum_values=True):
+    """
+    DEPRECATED: This class is deprecated in favor of SQLGlot-based parsing.
+    Use visivo.query.sql_validator functions instead.
+    """
     type: str
+    
+    def __init__(self, **kwargs):
+        warnings.warn(
+            "Dialect class is deprecated. Use SQLGlot-based functions from "
+            "visivo.query.sql_validator instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        super().__init__(**kwargs)
 
     def _get_keyword_store(self, keyword_type: str):
         try:
