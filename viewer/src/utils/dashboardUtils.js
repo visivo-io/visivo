@@ -3,7 +3,7 @@ function mergeLists(left, right) {
 }
 
 // Default levels if not provided by project view - used only for indices that don't have definitions
-const defaultLevels = [
+export const defaultLevels = [
   {
     title: 'Organization',
     description: 'The most important dashboards and metrics for the organization.',

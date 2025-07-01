@@ -3,7 +3,7 @@ import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
 import useStore from '../../stores/store';
-import { getLevels, organizeDashboardsByLevel } from '../../utils/dashboardUtils';
+import { getLevels, organizeDashboardsByLevel, defaultLevels } from '../../utils/dashboardUtils';
 
 // Re-export for backward compatibility
 export { getLevels, organizeDashboardsByLevel };
