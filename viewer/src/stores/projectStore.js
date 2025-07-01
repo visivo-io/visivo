@@ -1,4 +1,4 @@
-import { organizeDashboardsByLevel } from '../components/project/DashboardSection';
+import { organizeDashboardsByLevel } from '../utils/dashboardUtils';
 
 const createProjectSlice = (set, get) => ({
   // Dashboard filtering state

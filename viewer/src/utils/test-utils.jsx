@@ -2,7 +2,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryProvider } from '../contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route } from 'react-router-dom';
-import { SearchParamsProvider } from '../contexts/SearchParamsContext';
 
 export const JWT_TOKEN = {
   access:
@@ -32,15 +31,13 @@ export const withProviders = ({ children, initialPath = '/', traces = [] }) => {
 
   return (
     <MemoryRouter initialEntries={[initialPath]}>
-      <SearchParamsProvider>
-        <QueryProvider value={{ fetchTracesQuery }}>
-          <QueryClientProvider client={queryClient}>
-            <Routes>
-              <Route path={initialPath.split('?')[0]} element={children} />
-            </Routes>
-          </QueryClientProvider>
-        </QueryProvider>
-      </SearchParamsProvider>
+      <QueryProvider value={{ fetchTracesQuery }}>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path={initialPath.split('?')[0]} element={children} />
+          </Routes>
+        </QueryClientProvider>
+      </QueryProvider>
     </MemoryRouter>
   );
 };
