@@ -12,20 +12,22 @@ function Project(props) {
     filteredDashboards,
     dashboardsByLevel,
     setDashboards,
-    setCurrentDashboardName
+    setCurrentDashboardName,
+    filterDashboards
   } = useStore();
 
   // Initialize dashboards in store when props change
   useEffect(() => {
     if (props.dashboards) {
       setDashboards(props.dashboards);
+      filterDashboards();
     }
-  }, [props.dashboards, setDashboards]);
+  }, [props.dashboards]);
 
   // Update current dashboard name when it changes
   useEffect(() => {
     setCurrentDashboardName(props.dashboardName);
-  }, [props.dashboardName, setCurrentDashboardName]);
+  }, [props.dashboardName]);
 
   const renderLoading = () => {
     return <Loading />;

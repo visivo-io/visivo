@@ -29,9 +29,8 @@ const createProjectSlice = (set, get) => ({
   
   setDashboards: (dashboards) => {
     set({ dashboards });
-    // Update available tags and filter dashboards
+    // Update available tags
     get().updateAvailableTags();
-    get().filterDashboards();
   },
   
   setCurrentDashboardName: (dashboardName) => {
