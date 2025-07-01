@@ -1,10 +1,14 @@
 import React from 'react';
 import { useParams, useLoaderData } from 'react-router-dom';
 import Project from './Project';
+import { useUrlSync } from '../../hooks/useUrlSync';
 
 function ProjectContainer() {
   const { dashboardName } = useParams();
   const project = useLoaderData();
+  
+  // Initialize URL synchronization for selectors
+  useUrlSync();
 
   const dashboards = project => {
     if (!project) {

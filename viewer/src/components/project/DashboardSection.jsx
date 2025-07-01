@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DashboardCard from './DashboardCard';
 import { HiChevronRight, HiInformationCircle } from 'react-icons/hi';
 import { Tooltip } from 'flowbite-react';
+import useStore from '../../stores/store';
 
 function mergeLists(left, right) {
   return [...left, ...right.slice(-left.length)];
@@ -123,11 +124,11 @@ export const organizeDashboardsByLevel = (dashboards, projectDefaults) => {
 function DashboardSection({
   title,
   dashboards,
-  searchTerm,
   hasLevels,
   projectDefaults,
   projectId,
 }) {
+  const { searchTerm } = useStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const configuredLevels = projectDefaults?.levels || [];
