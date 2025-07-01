@@ -17,7 +17,7 @@ const editorIcons = {
   bbedit: 'https://www.barebones.com/favicon.ico',
 };
 
-const TextEditorModal = ({ isOpen, onClose, objectName }) => {
+const TextEditorModal = ({ isOpen, onClose, objectName, setSnackBarOpen, setMessage }) => {
   const [editors, setEditors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -62,10 +62,16 @@ const TextEditorModal = ({ isOpen, onClose, objectName }) => {
           filePath: filePath,
         }),
       });
+      let data = await response.json()
+
+      setSnackBarOpen(true)
+      setMessage(data?.message ?? "")
 
       if (!response.ok) {
         throw new Error('Failed to open editor');
       }
+
+      setError('Failed to open editor');
 
       onClose();
     } catch (error) {
