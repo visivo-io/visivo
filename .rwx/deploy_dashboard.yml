@@ -46,7 +46,7 @@ tasks:
   - key: sanitize-stage-name
     run: |
       SANITIZED_STAGE_NAME=$(echo "${{ init.head-ref }}" | sed 's|[/-]|_|g')
-      echo $SANITIZED_STAGE_NAME > $MINT_ENV/SANITIZED_STAGE_NAME
+      echo $SANITIZED_STAGE_NAME > $RWX_ENV/SANITIZED_STAGE_NAME
       echo "Sanitized stage name: $SANITIZED_STAGE_NAME"
 
   - key: deploy-ci-stage
