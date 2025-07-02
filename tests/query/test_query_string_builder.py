@@ -1,5 +1,4 @@
 from visivo.query.query_string_factory import QueryStringFactory
-from visivo.query.dialect import Dialect
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.trace import Trace
 from visivo.models.tokenized_trace import TokenizedTrace
