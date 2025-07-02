@@ -42,7 +42,7 @@ FROM columnize_cohort_on
     GROUP BY 
     {%- for statement in groupby_statements %}
         {{statement}} {% if not loop.last %} , {% endif %}
-    {%- endfor %}{% if groupby_statements is defined%},{% endif %}
+    {%- endfor %}{% if groupby_statements is defined and groupby_statements|length > 0 %},{% endif %}
     {{column_quotation}}cohort_on{{column_quotation}}
 {%- endif %}
 {%- if filter_by is defined %}

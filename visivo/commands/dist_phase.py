@@ -8,7 +8,7 @@ def dist_phase(output_dir, dist_dir):
     import json
     import shutil
     from glob import glob
-    import datetime
+    from datetime import datetime, UTC
     from visivo.utils import get_dashboards_dir
 
     Logger.instance().info("Creating distribution for project in folder...")
@@ -23,7 +23,7 @@ def dist_phase(output_dir, dist_dir):
 
         with open(f"{output_dir}/project.json", "r") as f:
             project_json = json.load(f)
-        created_at = (datetime.datetime.now().isoformat(),)
+        created_at = (datetime.now(UTC).isoformat(),)
         with open(f"{dist_dir}/data/project.json", "w") as f:
             f.write(
                 json.dumps(

@@ -165,9 +165,12 @@ class TraceTokenizer:
             elif classification in ("vanilla", "window"):
                 additional_groupby.append(cohort_on)
         
-        # Only set groupby statements if we have aggregates in the select items
-        # or if the main query itself contains aggregates/windows
-        if self.query_classification in ("aggregate", "window") or has_aggregate_items:
+        # Check if template will generate a GROUP BY clause
+        will_have_groupby = cohort_on != "'values'"
+        
+        # Set groupby statements if we have aggregates, main query has aggregates,
+        # or if the template will generate a GROUP BY clause due to cohort_on
+        if self.query_classification in ("aggregate", "window") or has_aggregate_items or will_have_groupby:
             # Combine and deduplicate
             all_groupby = groupby_from_ast + additional_groupby
             if all_groupby:
@@ -175,7 +178,7 @@ class TraceTokenizer:
             else:
                 self.groupby_statements = []
         else:
-            # Pure vanilla query with no aggregates in select_items
+            # Pure vanilla query with no aggregates and cohort_on is 'values'
             self.groupby_statements = []
 
     def _set_filter(self):
