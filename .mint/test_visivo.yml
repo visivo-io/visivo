@@ -24,8 +24,8 @@ tasks:
   - key: versions
     use: code
     run: |
-      cat .python-version | tee $MINT_VALUES/python
-      cat viewer/.nvmrc | sed 's/^v//' | tee $MINT_VALUES/node
+      cat .python-version | tee $RWX_VALUES/python
+      cat viewer/.nvmrc | sed 's/^v//' | tee $RWX_VALUES/node
     filter:
       - .python-version
       - viewer/.nvmrc
