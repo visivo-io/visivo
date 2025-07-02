@@ -12,7 +12,7 @@ from visivo.query.sql_validator import (
     validate_and_classify_trace_sql,
     classify_expression,
     extract_groupby_expressions,
-    get_sqlglot_dialect
+    get_sqlglot_dialect,
 )
 from visivo.utils import extract_value_from_function
 import warnings
@@ -26,15 +26,16 @@ class TraceTokenizer:
         self.trace = trace
         self.source = source
         self.model = model
-        
+
         # Validate and parse the main SQL query using SQLGlot
         try:
-            self.parsed_ast, self.query_classification, self.sqlglot_dialect = \
+            self.parsed_ast, self.query_classification, self.sqlglot_dialect = (
                 validate_and_classify_trace_sql(self.model.sql, source.type)
+            )
         except ValueError as e:
             # Re-raise with context about which trace failed
             raise ValueError(f"Invalid SQL in trace '{trace.name}': {e}")
-        
+
         self.select_items = {}
         self._set_select_items()
         self._set_order_by()
@@ -122,11 +123,11 @@ class TraceTokenizer:
         else:
             # For vanilla queries, start with empty list from main query
             groupby_from_ast = []
-        
+
         # Always check individual select_items and order_by for expressions that need groupby
         additional_groupby = []
         has_aggregate_items = False
-        
+
         # Process individual select_items - check if any contain aggregates
         for statement in self.select_items.values():
             if not re.findall(r"^\s*'.*'\s*$", statement):
@@ -135,14 +136,14 @@ class TraceTokenizer:
                     has_aggregate_items = True
                 elif classification in ("vanilla", "window"):
                     additional_groupby.append(statement)
-        
+
         # Process order_by expressions
         if hasattr(self, "order_by"):
             for statement in self.order_by:
                 # Clean order by statement (remove ASC/DESC)
                 statement_lower = statement.lower()
                 statement_clean = statement_lower.replace("asc", "").replace("desc", "").strip()
-                
+
                 # Skip literal strings
                 if not re.findall(r"^\s*'.*'\s*$", statement_clean):
                     classification = classify_expression(statement_clean, self.sqlglot_dialect)
@@ -155,7 +156,7 @@ class TraceTokenizer:
                         # for compatibility with existing behavior
                         has_aggregate_items = True  # Treat as needing groupby
                         additional_groupby.append(statement_clean)
-        
+
         # Process cohort_on if it's not a literal
         cohort_on = self._get_cohort_on()
         if not re.findall(r"^\s*'.*'\s*$", cohort_on):
@@ -164,13 +165,17 @@ class TraceTokenizer:
                 has_aggregate_items = True
             elif classification in ("vanilla", "window"):
                 additional_groupby.append(cohort_on)
-        
+
         # Check if template will generate a GROUP BY clause
         will_have_groupby = cohort_on != "'values'"
-        
+
         # Set groupby statements if we have aggregates, main query has aggregates,
         # or if the template will generate a GROUP BY clause due to cohort_on
-        if self.query_classification in ("aggregate", "window") or has_aggregate_items or will_have_groupby:
+        if (
+            self.query_classification in ("aggregate", "window")
+            or has_aggregate_items
+            or will_have_groupby
+        ):
             # Combine and deduplicate
             all_groupby = groupby_from_ast + additional_groupby
             if all_groupby:
@@ -190,14 +195,14 @@ class TraceTokenizer:
                 argument = extract_value_from_function(filter, "query")
                 # Use SQLGlot-based classification
                 classification = classify_expression(argument, self.sqlglot_dialect)
-                
+
                 if classification == "window":
                     filter_by["window"].append(argument)
                 elif classification == "vanilla":
                     filter_by["vanilla"].append(argument)
                 elif classification == "aggregate":
                     filter_by["aggregate"].append(argument)
-            
+
             # Apply Snowflake-specific window function filtering rule
             if self.source.type != "snowflake":
                 if filter_by["window"]:

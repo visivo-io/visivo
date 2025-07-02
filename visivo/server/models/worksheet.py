@@ -10,7 +10,9 @@ class WorksheetModel(Base):
     query = Column(String)
     selected_source = Column(String)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
     last_run_at = Column(DateTime)
 
     session_state = relationship(
