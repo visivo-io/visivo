@@ -55,7 +55,7 @@ class DuckdbSource(Source):
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
-                        f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name}"
+                        f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name} (READ_ONLY)"
                     )
 
             return connection
