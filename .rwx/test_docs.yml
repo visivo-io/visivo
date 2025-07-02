@@ -20,7 +20,7 @@ tasks:
 
   - key: versions
     use: code
-    run: cat .python-version | tee $MINT_VALUES/python
+    run: cat .python-version | tee $RWX_VALUES/python
     filter: [.python-version]
 
   - key: python
