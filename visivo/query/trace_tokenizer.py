@@ -179,7 +179,14 @@ class TraceTokenizer:
             # Combine and deduplicate
             all_groupby = groupby_from_ast + additional_groupby
             if all_groupby:
-                self.groupby_statements = list(set(all_groupby))
+                # Deduplicate while preserving order
+                unique_groupby = []
+                seen = set()
+                for expr in all_groupby:
+                    if expr not in seen:
+                        unique_groupby.append(expr)
+                        seen.add(expr)
+                self.groupby_statements = unique_groupby
             else:
                 self.groupby_statements = []
         else:
