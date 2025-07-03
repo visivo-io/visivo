@@ -29,7 +29,12 @@ class SqlalchemySource(Source, ABC):
             results.close()
         # Convert to dict of columns for Polars
         if data:
-            data_dict = {col: [row[i] for row in data] for i, col in enumerate(columns)}
+            data_dict = {
+                col: pl.Series(name=col,
+                            values=[row[i] for row in data],
+                            strict=False)          # key change
+                for i, col in enumerate(columns)
+            }
             return pl.DataFrame(data_dict)
         else:
             # No data, just return empty DataFrame with columns
