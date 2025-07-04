@@ -57,7 +57,7 @@ tenacity = ">=9.0.0"
 termcolor = ">=2.4.0"
 tornado = ">= 6.3"
 watchdog = ">=6.0.0"
-polars = "^1.30.0"
+polars = "^1.31.0"
 pyarrow = ">=20.0.0"
 
 [tool.poetry.group.dev.dependencies]
