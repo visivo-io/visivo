@@ -67,12 +67,18 @@ class QueryStringFactory:
         # GROUP BY clause
         if self.tokenized_trace.groupby_statements or self.tokenized_trace.cohort_on != "'values'":
             parts.append("GROUP BY")
-            group_by_items = []
+            group_by_parts = []
             if self.tokenized_trace.groupby_statements:
                 for stmt in self.tokenized_trace.groupby_statements:
-                    group_by_items.append(f"  {stmt}")
-            group_by_items.append(f"  {column_quotation}cohort_on{column_quotation}")
-            parts.append(",\n".join(group_by_items))
+                    # Strip whitespace and trailing commas from statements
+                    clean_stmt = stmt.strip().rstrip(",")
+                    # Skip invalid '*' statements in GROUP BY
+                    if clean_stmt != "*":
+                        group_by_parts.append(f"  {clean_stmt}")
+                # Only add comma if we have valid group by parts
+                if group_by_parts:
+                    parts.append(",\n".join(group_by_parts) + ",")
+            parts.append(f"  {column_quotation}cohort_on{column_quotation}")
 
         # HAVING clause (aggregate filters)
         if (
@@ -105,7 +111,7 @@ class QueryStringFactory:
             order_by_items = []
             for order_expr in self.tokenized_trace.order_by:
                 order_by_items.append(f"  {order_expr}")
-            parts.append(",\n".join(order_by_items))
+            parts.append(", ".join(order_by_items))
 
         # Source comment
         parts.append(f"-- source: {self.tokenized_trace.source}")
