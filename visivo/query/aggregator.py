@@ -19,7 +19,10 @@ class Aggregator:
         ]
         aggregated = data_frame.group_by("cohort_on").agg(agg_exprs)
         # Write JSON to a string buffer
-        rows = aggregated.to_dicts()
+        buf = io.StringIO()
+        aggregated.write_json(buf)
+        buf.seek(0)
+        rows = json.load(buf)
         # Transform to pandas-style dict
         result = {}
         for row in rows:
