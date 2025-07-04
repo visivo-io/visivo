@@ -32,8 +32,8 @@ class SqlalchemySource(Source, ABC):
             data_dict = {}
             for i, col in enumerate(columns):
                 values = [row[i] for row in data]
-                if isinstance(values[0], (dict, list)):
-                    values = [json.dumps(v) for v in values]
+                #if isinstance(values[0], (dict, list)):
+                values = [json.dumps(v) for v in values]
                 data_dict[col] = pl.Series(name=col, values=values, strict=False)
 
             return pl.DataFrame(data_dict)
