@@ -9,7 +9,7 @@ from visivo.logger.logger import Logger
 import polars as pl
 from copy import deepcopy
 import pyarrow as pa
-
+import json
 
 class SqlalchemySource(Source, ABC):
 
@@ -29,12 +29,13 @@ class SqlalchemySource(Source, ABC):
             results.close()
         # Convert to dict of columns for Polars
         if data:
-            data_dict = {
-                col: pl.Series(name=col,
-                            values=[row[i] for row in data],
-                            strict=False)          # key change
-                for i, col in enumerate(columns)
-            }
+            data_dict = {}
+            for i, col in enumerate(columns):
+                values = [row[i] for row in data]
+                if isinstance(values[0], (dict, list)):
+                    values = [json.dumps(v) for v in values]
+                data_dict[col] = pl.Series(name=col, values=values, strict=False)
+
             return pl.DataFrame(data_dict)
         else:
             # No data, just return empty DataFrame with columns
