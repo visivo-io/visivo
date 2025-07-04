@@ -37,7 +37,7 @@ def test_insert_dependent_models_successfully_inserts_to_duckdb(mocker):
     source2 = PostgresqlSource(database="test", type="postgresql")
     local_merge_model = LocalMergeModel(
         name="example_local_merge_model",
-        sql="SELECT * FROM table1 tb1 JOIN table2 tb2 ON tb1.id = tbl2.external_id",
+        sql="SELECT * FROM table1 tb1 JOIN table2 tb2 ON tb1.id = tb2.external_id",
         models=[
             SqlModel(name="model1", sql="SELECT * FROM table1", source=source1),
             SqlModel(name="model2", sql="SELECT * FROM table2", source=source2),
@@ -58,7 +58,7 @@ def test_local_merge_model_get_duckdb_source():
     source2 = PostgresqlSource(database="test", type="postgresql")
     local_merge_model = LocalMergeModel(
         name="example_local_merge_model",
-        sql="SELECT * FROM table1 tb1 JOIN table2 tb2 ON tb1.id = tbl2.external_id",
+        sql="SELECT * FROM table1 tb1 JOIN table2 tb2 ON tb1.id = tb2.external_id",
         models=[
             SqlModel(name="model1", sql="SELECT * FROM table1", source=source1),
             SqlModel(name="model2", sql="SELECT * FROM table2", source=source2),

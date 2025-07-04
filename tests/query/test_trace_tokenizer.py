@@ -1,5 +1,4 @@
 from visivo.query.trace_tokenizer import TraceTokenizer
-from visivo.query.dialect import Dialect
 from tests.factories.model_factories import SnowflakeSourceFactory, TraceFactory
 from tests.factories.model_factories import SourceFactory
 from visivo.models.trace import Trace

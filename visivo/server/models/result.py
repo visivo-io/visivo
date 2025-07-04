@@ -7,7 +7,7 @@ from visivo.server.models.base import (
     ForeignKey,
     relationship,
 )
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class ResultModel(Base):
@@ -17,7 +17,7 @@ class ResultModel(Base):
     worksheet_id = Column(String, ForeignKey("worksheets.id", ondelete="CASCADE"))
     results_json = Column(String)
     query_stats_json = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     worksheet = relationship("WorksheetModel", back_populates="results")
 
