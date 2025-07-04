@@ -6,6 +6,8 @@ import os
 import pytest
 import click
 import yaml
+import tempfile
+import shutil
 
 
 def test_Discover_files_single_file():
@@ -177,3 +179,171 @@ def test_Core_Parser_includes_git_single_file():
         git_models_file,
         profile_file,
     ]
+
+
+def test_Discover_directory_inclusion_recursive():
+    """Test recursive directory inclusion (default behavior)."""
+    # Create a temporary directory structure
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create project file
+        project_content = {
+            "name": "test_project",
+            "includes": [{"path": "config/"}]
+        }
+        project_file = os.path.join(temp_dir, PROJECT_FILE_NAME)
+        with open(project_file, 'w') as f:
+            yaml.dump(project_content, f)
+        
+        # Create config directory with nested structure
+        config_dir = os.path.join(temp_dir, "config")
+        os.makedirs(config_dir)
+        os.makedirs(os.path.join(config_dir, "subdir"))
+        
+        # Create YAML files at different levels
+        config_file1 = os.path.join(config_dir, "models.yml")
+        with open(config_file1, 'w') as f:
+            yaml.dump({"models": []}, f)
+            
+        config_file2 = os.path.join(config_dir, "sources.yml")
+        with open(config_file2, 'w') as f:
+            yaml.dump({"sources": []}, f)
+            
+        nested_file = os.path.join(config_dir, "subdir", "traces.yml")
+        with open(nested_file, 'w') as f:
+            yaml.dump({"traces": []}, f)
+        
+        # Create a non-YAML file that should be ignored
+        txt_file = os.path.join(config_dir, "readme.txt")
+        with open(txt_file, 'w') as f:
+            f.write("This should be ignored")
+        
+        discover = Discover(
+            working_dir=temp_dir,
+            output_dir=temp_dir,
+            home_dir=temp_dir
+        )
+        
+        files = discover.files
+        file_paths = [str(f) for f in files]
+        
+        # Should include project file and all YAML files recursively
+        assert str(Path(project_file)) in file_paths
+        assert str(Path(config_file1)) in file_paths
+        assert str(Path(config_file2)) in file_paths
+        assert str(Path(nested_file)) in file_paths
+        assert str(Path(txt_file)) not in file_paths
+        
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+def test_Discover_directory_inclusion_depth_zero():
+    """Test directory inclusion with depth=0 (current directory only)."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create project file
+        project_content = {
+            "name": "test_project",
+            "includes": [{"path": "config/", "depth": 0}]
+        }
+        project_file = os.path.join(temp_dir, PROJECT_FILE_NAME)
+        with open(project_file, 'w') as f:
+            yaml.dump(project_content, f)
+        
+        # Create config directory with nested structure
+        config_dir = os.path.join(temp_dir, "config")
+        os.makedirs(config_dir)
+        os.makedirs(os.path.join(config_dir, "subdir"))
+        
+        # Create YAML files at different levels
+        config_file = os.path.join(config_dir, "models.yml")
+        with open(config_file, 'w') as f:
+            yaml.dump({"models": []}, f)
+            
+        nested_file = os.path.join(config_dir, "subdir", "traces.yml")
+        with open(nested_file, 'w') as f:
+            yaml.dump({"traces": []}, f)
+        
+        discover = Discover(
+            working_dir=temp_dir,
+            output_dir=temp_dir,
+            home_dir=temp_dir
+        )
+        
+        files = discover.files
+        file_paths = [str(f) for f in files]
+        
+        # Should include project file and only top-level YAML files
+        assert str(Path(project_file)) in file_paths
+        assert str(Path(config_file)) in file_paths
+        assert str(Path(nested_file)) not in file_paths  # Should be excluded due to depth=0
+        
+    finally:
+        shutil.rmtree(temp_dir)
+
+
+def test_Discover_directory_inclusion_with_exclusions():
+    """Test directory inclusion with exclusion patterns."""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        # Create project file with exclusions
+        project_content = {
+            "name": "test_project",
+            "includes": [{
+                "path": "config/",
+                "exclusions": ["*.config.yml", "*/temp/*", "ignore_me.yml"]
+            }]
+        }
+        project_file = os.path.join(temp_dir, PROJECT_FILE_NAME)
+        with open(project_file, 'w') as f:
+            yaml.dump(project_content, f)
+        
+        # Create config directory with nested structure
+        config_dir = os.path.join(temp_dir, "config")
+        os.makedirs(config_dir)
+        os.makedirs(os.path.join(config_dir, "temp"))
+        
+        # Create YAML files that should be included
+        good_file1 = os.path.join(config_dir, "models.yml")
+        with open(good_file1, 'w') as f:
+            yaml.dump({"models": []}, f)
+            
+        good_file2 = os.path.join(config_dir, "sources.yml")
+        with open(good_file2, 'w') as f:
+            yaml.dump({"sources": []}, f)
+        
+        # Create files that should be excluded
+        config_file = os.path.join(config_dir, "app.config.yml")  # Should be excluded by pattern
+        with open(config_file, 'w') as f:
+            yaml.dump({"config": {}}, f)
+            
+        ignore_file = os.path.join(config_dir, "ignore_me.yml")  # Should be excluded by name
+        with open(ignore_file, 'w') as f:
+            yaml.dump({"ignore": {}}, f)
+            
+        temp_file = os.path.join(config_dir, "temp", "temp.yml")  # Should be excluded by path pattern
+        with open(temp_file, 'w') as f:
+            yaml.dump({"temp": {}}, f)
+        
+        discover = Discover(
+            working_dir=temp_dir,
+            output_dir=temp_dir,
+            home_dir=temp_dir
+        )
+        
+        files = discover.files
+        file_paths = [str(f) for f in files]
+        
+        # Should include project file and non-excluded YAML files
+        assert str(Path(project_file)) in file_paths
+        assert str(Path(good_file1)) in file_paths
+        assert str(Path(good_file2)) in file_paths
+        
+        # Should exclude files matching exclusion patterns
+        assert str(Path(config_file)) not in file_paths
+        assert str(Path(ignore_file)) not in file_paths
+        assert str(Path(temp_file)) not in file_paths
+        
+    finally:
+        shutil.rmtree(temp_dir)

@@ -1,6 +1,10 @@
 import os
 import click
+import fnmatch
+import re
+import glob
 from pathlib import Path
+from typing import List
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import get_profile_file
 from visivo.utils import load_yaml_file
@@ -43,6 +47,99 @@ class Discover:
             if dbt.enabled:
                 return dbt.get_output_file(output_dir=self.output_dir, working_dir=self.working_dir)
 
+    def __should_exclude_file(self, file_path: str, exclusions: List[str], base_path: str) -> bool:
+        """Check if a file should be excluded based on exclusion patterns."""
+        if not exclusions:
+            return False
+            
+        # Get relative path from base_path for pattern matching
+        try:
+            rel_path = os.path.relpath(file_path, base_path)
+        except ValueError:
+            # If we can't get relative path, use the full path
+            rel_path = file_path
+            
+        file_name = os.path.basename(file_path)
+        
+        for exclusion in exclusions:
+            # Try different pattern matching approaches
+            
+            # 1. Direct filename match
+            if exclusion == file_name:
+                return True
+                
+            # 2. Glob pattern match on filename
+            if fnmatch.fnmatch(file_name, exclusion):
+                return True
+                
+            # 3. Glob pattern match on relative path
+            if fnmatch.fnmatch(rel_path, exclusion):
+                return True
+                
+            # 4. Unix-style path pattern (e.g., */config/*)
+            unix_path = rel_path.replace(os.sep, '/')
+            if fnmatch.fnmatch(unix_path, exclusion):
+                return True
+            
+            # 5. Handle patterns like */temp/* by testing both with and without leading */
+            if exclusion.startswith('*/'):
+                # Try the pattern without the leading */
+                pattern_without_prefix = exclusion[2:]  # Remove the */
+                if fnmatch.fnmatch(unix_path, pattern_without_prefix):
+                    return True
+                # Also try matching any part of the path
+                path_parts = unix_path.split('/')
+                for i in range(len(path_parts)):
+                    partial_path = '/'.join(path_parts[i:])
+                    if fnmatch.fnmatch(partial_path, pattern_without_prefix):
+                        return True
+                
+            # 6. Try as regex pattern (catch any regex errors)
+            try:
+                if re.search(exclusion, rel_path) or re.search(exclusion, file_name):
+                    return True
+            except re.error:
+                pass  # Invalid regex, skip
+                
+        return False
+
+    def __find_yaml_files_in_directory(self, directory_path: str, depth: int = None, exclusions: List[str] = None) -> List[str]:
+        """Find YAML files in a directory with optional depth limit and exclusions."""
+        yaml_files = []
+        exclusions = exclusions or []
+        
+        if depth == 0:
+            # Only search current directory
+            for file in os.listdir(directory_path):
+                file_path = os.path.join(directory_path, file)
+                if os.path.isfile(file_path) and file.lower().endswith(('.yml', '.yaml')):
+                    if not self.__should_exclude_file(file_path, exclusions, directory_path):
+                        yaml_files.append(file_path)
+        else:
+            # Recursive search with depth limit
+            for root, dirs, files in os.walk(directory_path):
+                # Calculate current depth
+                current_depth = root[len(directory_path):].count(os.sep)
+                
+                # If we have a depth limit and we've exceeded it, skip this level
+                if depth is not None and current_depth >= depth:
+                    dirs[:] = []  # Don't go deeper
+                    continue
+                    
+                # Check files in current directory
+                for file in files:
+                    if file.lower().endswith(('.yml', '.yaml')):
+                        file_path = os.path.join(root, file)
+                        if not self.__should_exclude_file(file_path, exclusions, directory_path):
+                            yaml_files.append(file_path)
+                            
+                # Filter directories based on exclusions to avoid walking excluded paths
+                dirs[:] = [d for d in dirs if not self.__should_exclude_file(
+                    os.path.join(root, d), exclusions, directory_path
+                )]
+        
+        return sorted(yaml_files)  # Sort for consistent ordering
+
     def __add_includes(self, files, file):
         from visivo.models.include import Include
 
@@ -57,15 +154,44 @@ class Discover:
             for include_data in data["includes"]:
                 include = Include(**include_data)
                 include_path = f"{base_path}/{include.path}"
+                
+                # Handle Git repositories (existing functionality)
                 if ".git" in include.path:
                     include_path = self.__get_project_file_from_git(git_url=include.path)
-
+                    if not os.path.exists(include_path):
+                        raise click.ClickException(
+                            f'Invalid "include" in project. "{include_path}" referenced in "{file}" does not exist.'
+                        )
+                    files.append(Path(include_path))
+                    self.__add_includes(files=files, file=include_path)
+                    continue
+                
+                # Check if path exists
                 if not os.path.exists(include_path):
                     raise click.ClickException(
                         f'Invalid "include" in project. "{include_path}" referenced in "{file}" does not exist.'
                     )
-                files.append(Path(include_path))
-                self.__add_includes(files=files, file=include_path)
+                
+                # Handle directory inclusion
+                if os.path.isdir(include_path):
+                    yaml_files = self.__find_yaml_files_in_directory(
+                        directory_path=include_path,
+                        depth=include.depth,
+                        exclusions=include.exclusions
+                    )
+                    
+                    if not yaml_files:
+                        # Optionally warn if no YAML files found in directory
+                        click.echo(f'Warning: No YAML files found in directory "{include_path}"', err=True)
+                    
+                    for yaml_file in yaml_files:
+                        files.append(Path(yaml_file))
+                        self.__add_includes(files=files, file=yaml_file)
+                
+                # Handle single file inclusion (existing functionality)
+                else:
+                    files.append(Path(include_path))
+                    self.__add_includes(files=files, file=include_path)
 
     def _get_any_project_file(self, dir):
         if os.path.exists(f"{dir}/visivo_project.yml"):
