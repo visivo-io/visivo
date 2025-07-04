@@ -16,12 +16,12 @@ class Include(BaseModel):
         None,
         description="The path or git reference to external yml files or directories to include in this project",
     )
-    
+
     depth: Optional[int] = Field(
         None,
         description="Directory traversal depth. None=fully recursive, 0=current directory only, 1=one level deep, etc. Only applies to directory paths.",
     )
-    
+
     exclusions: List[str] = Field(
         default=[],
         description="Patterns to exclude from directory inclusion. Supports glob patterns and regex. Only applies to directory paths.",
