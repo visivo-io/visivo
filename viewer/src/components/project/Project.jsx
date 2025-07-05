@@ -1,19 +1,38 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Dashboard from './Dashboard';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
 import DashboardSection, { organizeDashboardsByLevel } from './DashboardSection';
 import FilterBar from './FilterBar';
+import useStore from '../../stores/store';
 
 function Project(props) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
+  const setScrollPosition = useStore(state => state.setScrollPosition);
+  const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
 
-  // Reset scroll position when dashboard changes
+  const handleScroll = useCallback(() => {
+    console.log("savedPos: ", window.scrollY)
+    setScrollPosition(props.dashboardName, window.scrollY);
+  }, [props.dashboardName, setScrollPosition]);
+
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [props.dashboardName]);
+    window.addEventListener('scroll', handleScroll);
+
+  }, [handleScroll]);
+
+  useEffect(() => {
+    console.log("scrollPositions, ", useStore.getState())
+    const savedPos = scrollPositions || 0;
+    if (!window.location.hash) {
+        window.scrollTo(0, savedPos);
+    }
+
+  }, [props.dashboardName, scrollPositions]);
+
+
 
   // Combine internal and external dashboards
   const allDashboards = props.dashboards;

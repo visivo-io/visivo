@@ -9,9 +9,15 @@ import { getSelectorByOptionName } from '../../models/Project';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
+import { itemNameToSlug } from '../items/utils';
+import useScrollToElementById from '../../hooks/useScrollToElementById';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+  const elementId = searchParams.get('element_id');
+
+  useScrollToElementById(elementId);
+
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
       observe();
@@ -169,6 +175,7 @@ const Dashboard = ({ project, dashboardName }) => {
 
       return (
         <div
+          id={itemNameToSlug(item.path)}
           className={`w-full h-full flex flex-col ${alignmentClass}`}
           style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}
         >

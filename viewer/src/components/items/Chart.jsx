@@ -7,10 +7,17 @@ import { traceNamesInData, chartDataFromCohortData } from '../../models/Trace';
 import { useTracesData } from '../../hooks/useTracesData';
 import MenuItem from '../styled/MenuItem';
 import { ItemContainer } from './ItemContainer';
+import { itemNameToSlug } from './utils';
+import MenuContainer from './MenuContainer';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import Tooltip from '@mui/material/Tooltip';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const plotRef = useRef(null);
+  const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
   // Expose loading state through ref
   useImperativeHandle(
@@ -59,19 +66,38 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const layout = structuredClone(chart.layout ? chart.layout : {});
 
   return (
-    <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}>
-      <Menu hovering={hovering && cohortSelectVisible}>
-        <MenuItem>
-          <CohortSelect
-            tracesData={tracesData}
-            onChange={onSelectedCohortChange}
-            selector={chart.selector}
-            parentName={chart.name}
-            parentType="chart"
-            onVisible={visible => setCohortSelectVisible(visible)}
-          />
-        </MenuItem>
-      </Menu>
+    <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)} id={itemNameToSlug(chart.name)}>
+      <MenuContainer>
+        <Menu hovering={hovering && cohortSelectVisible}>
+          <MenuItem>
+            <CohortSelect
+              tracesData={tracesData}
+              onChange={onSelectedCohortChange}
+              selector={chart.selector}
+              parentName={chart.name}
+              parentType="chart"
+              onVisible={visible => setCohortSelectVisible(visible)}
+            />
+          </MenuItem>
+        </Menu>
+        <Menu 
+          hovering={hovering && cohortSelectVisible}
+          withDropDown={false}
+          buttonChildren={<Tooltip title={toolTip} onMouseLeave={resetToolTip} ><FontAwesomeIcon icon={faShareAlt} /></Tooltip>}
+          buttonProps={{
+            style: {
+              cursor: 'pointer',
+              visibility: hovering ? 'visible' : 'hidden'
+            },
+            onClick: () => {
+              const url = new URL(window.location.href);
+              url.searchParams.set('element_id', itemNameToSlug(chart.name));
+              copyText(url.toString());
+            }
+          }}
+          >
+        </Menu>
+      </MenuContainer>
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}

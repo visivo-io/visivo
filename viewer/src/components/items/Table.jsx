@@ -5,7 +5,7 @@ import {
   tableColumnsWithDot,
   tableColumnsWithUnderscores,
 } from '../../models/Table';
-import { createTheme, ThemeProvider, Box, Button } from '@mui/material';
+import { createTheme, ThemeProvider, Box, Button, Tooltip } from '@mui/material';
 import { useTracesData } from '../../hooks/useTracesData';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
@@ -22,11 +22,14 @@ import {
 } from 'material-react-table';
 /* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ShareIcon from '@mui/icons-material/Share';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
+import { itemNameToSlug } from './utils';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 const Table = ({ table, project, itemWidth, height, width }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
@@ -38,6 +41,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
+  const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
   const csvConfig = mkConfig({
     fieldSeparator: ',',
@@ -102,6 +106,12 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleCopyText = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('element_id', itemNameToSlug(table.name));
+    copyText(url.toString());
+  }    
 
   const useTable = useMaterialReactTable({
     columns: tableColumnsWithUnderscores(columns).map(column => ({
@@ -176,7 +186,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   /* eslint-disable react/jsx-pascal-case */
   return (
     <ThemeProvider theme={tableTheme}>
-      <ItemContainer>
+      <ItemContainer id={itemNameToSlug(table.name)}>
         <Box>
           <Box
             sx={{
@@ -204,8 +214,22 @@ const Table = ({ table, project, itemWidth, height, width }) => {
               <Button
                 aria-label="DownloadCsv"
                 onClick={handleExportData}
-                startIcon={<FileDownloadIcon />}
-              />
+                size="small"
+                sx={{ minWidth: '40px' }}
+              ><FileDownloadIcon fontSize="medium" /></Button>
+              <Button
+                aria-label="Share Table"
+                onClick={handleCopyText}
+                size="small"
+                sx={{ minWidth: '40px' }}
+              >
+                <Tooltip 
+                  title={toolTip} 
+                  onMouseLeave={resetToolTip} 
+                  >
+                    <ShareIcon fontSize="medium"/>
+                  </Tooltip>
+              </Button>
               {!isDirectQueryResult && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
