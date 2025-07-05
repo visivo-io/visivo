@@ -1,8 +1,13 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import Table from './Table';
-import * as useTracesData from '../../hooks/useTracesData';
-import { withProviders } from '../../utils/test-utils';
-
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import Table from "./Table";
+import * as useTracesData from "../../hooks/useTracesData";
+import { withProviders } from "../../utils/test-utils";
+jest.mock("@duckdb/duckdb-wasm", () => ({
+  // Mock any specific DuckDB functions your code uses
+  selectBundle: jest.fn(),
+  createDuckDB: jest.fn(),
+  // Add other functions as needed
+}));
 let table;
 
 beforeEach(() => {
@@ -33,7 +38,7 @@ beforeEach(() => {
   };
 });
 
-test('renders table', async () => {
+test("renders table", async () => {
   const traceData = {
     traceName: {
       cohortName: {
@@ -47,17 +52,19 @@ test('renders table', async () => {
     .mockImplementation((projectId, traceNames) => traceData);
 
   //Have it return traces.
-  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+  render(<Table table={table} project={{ id: 1 }} />, {
+    wrapper: withProviders,
+  });
 
   await waitFor(() => {
-    expect(screen.getByText('Regular Column')).toBeInTheDocument();
+    expect(screen.getByText("Regular Column")).toBeInTheDocument();
   });
   await waitFor(() => {
-    expect(screen.getByText('**bold text**')).toBeInTheDocument();
+    expect(screen.getByText("**bold text**")).toBeInTheDocument();
   });
 });
 
-test('renders table when no data returned', async () => {
+test("renders table when no data returned", async () => {
   const traceData = {
     traceName: {},
   };
@@ -65,14 +72,16 @@ test('renders table when no data returned', async () => {
     .spyOn(useTracesData, 'useTracesData')
     .mockImplementation((projectId, traceNames) => traceData);
 
-  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+  render(<Table table={table} project={{ id: 1 }} />, {
+    wrapper: withProviders,
+  });
 
   await waitFor(() => {
-    expect(screen.getByText('No records to display')).toBeInTheDocument();
+    expect(screen.getByText("No records to display")).toBeInTheDocument();
   });
 });
 
-test('exports table data as CSV when export button is clicked', async () => {
+test("exports table data as CSV when export button is clicked", async () => {
   const traceData = {
     traceName: {
       cohortName: {
@@ -85,16 +94,20 @@ test('exports table data as CSV when export button is clicked', async () => {
     .spyOn(useTracesData, 'useTracesData')
     .mockImplementation((projectId, traceNames) => traceData);
 
-  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
-
-  global.URL.createObjectURL = jest.fn();
-  global.Blob = jest.fn(() => ({ type: 'text/csv;charset=utf-8;' }));
-
-  await waitFor(() => {
-    expect(screen.getByRole('button', { name: 'DownloadCsv' })).toBeInTheDocument();
+  render(<Table table={table} project={{ id: 1 }} />, {
+    wrapper: withProviders,
   });
 
-  const exportButton = screen.getByRole('button', { name: 'DownloadCsv' });
+  global.URL.createObjectURL = jest.fn();
+  global.Blob = jest.fn(() => ({ type: "text/csv;charset=utf-8;" }));
+
+  await waitFor(() => {
+    expect(
+      screen.getByRole("button", { name: "DownloadCsv" })
+    ).toBeInTheDocument();
+  });
+
+  const exportButton = screen.getByRole("button", { name: "DownloadCsv" });
   fireEvent.click(exportButton);
 
   expect(global.Blob).toHaveBeenCalledWith([expect.any(String)], {
@@ -103,7 +116,7 @@ test('exports table data as CSV when export button is clicked', async () => {
   expect(global.URL.createObjectURL).toHaveBeenCalled();
 });
 
-test('renders markdown formatted cells', async () => {
+test("renders markdown formatted cells", async () => {
   const traceData = {
     traceName: {
       cohortName: {
@@ -113,24 +126,28 @@ test('renders markdown formatted cells', async () => {
     },
   };
 
-  jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
+  jest
+    .spyOn(useTracesData, "useTracesData")
+    .mockImplementation(() => traceData);
 
-  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
-
-  await waitFor(() => {
-    expect(screen.getByText('Regular Column')).toBeInTheDocument();
+  render(<Table table={table} project={{ id: 1 }} />, {
+    wrapper: withProviders,
   });
 
   await waitFor(() => {
-    expect(screen.getByText('plain text')).toBeInTheDocument();
+    expect(screen.getByText("Regular Column")).toBeInTheDocument();
   });
 
   await waitFor(() => {
-    expect(screen.getByText('**bold text**')).toBeInTheDocument();
+    expect(screen.getByText("plain text")).toBeInTheDocument();
+  });
+
+  await waitFor(() => {
+    expect(screen.getByText("**bold text**")).toBeInTheDocument();
   });
 });
 
-test('handles non-string values in markdown cells', async () => {
+test("handles non-string values in markdown cells", async () => {
   const traceData = {
     traceName: {
       cohortName: {
@@ -139,16 +156,20 @@ test('handles non-string values in markdown cells', async () => {
     },
   };
 
-  jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
+  jest
+    .spyOn(useTracesData, "useTracesData")
+    .mockImplementation(() => traceData);
 
-  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+  render(<Table table={table} project={{ id: 1 }} />, {
+    wrapper: withProviders,
+  });
 
   await waitFor(() => {
-    expect(screen.getByText('123')).toBeInTheDocument();
+    expect(screen.getByText("123")).toBeInTheDocument();
   });
 });
 
-test('handles number values in cells', async () => {
+test("handles number values in cells", async () => {
   const traceData = {
     traceName: {
       cohortName: {
@@ -157,12 +178,16 @@ test('handles number values in cells', async () => {
     },
   };
 
-  jest.spyOn(useTracesData, 'useTracesData').mockImplementation(() => traceData);
+  jest
+    .spyOn(useTracesData, "useTracesData")
+    .mockImplementation(() => traceData);
 
-  render(<Table table={table} project={{ id: 1 }} />, { wrapper: withProviders });
+  render(<Table table={table} project={{ id: 1 }} />, {
+    wrapper: withProviders,
+  });
 
   await waitFor(() => {
-    expect(screen.getByText('123')).toBeInTheDocument();
+    expect(screen.getByText("123")).toBeInTheDocument();
   });
   expect(screen.getByText('12,345,678,901,234,568')).toBeInTheDocument();
   expect(screen.getByText('1,234,567,890.123')).toBeInTheDocument();
