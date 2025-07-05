@@ -2,7 +2,7 @@ import re
 import os
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
-from datetime import datetime, UTC
+from visivo.datetime_utils import now_utc
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
@@ -143,7 +143,7 @@ class FlaskApp:
                 # If worksheet_id is provided, save the results
                 if worksheet_id:
                     query_stats = {
-                        "timestamp": datetime.now(UTC).isoformat(),
+                        "timestamp": now_utc().isoformat(),
                         "source": source.name,
                     }
                     self.worksheet_repo.save_results(
@@ -187,7 +187,7 @@ class FlaskApp:
             return {
                 "id": "id",
                 "project_json": json.loads(self._project_json),
-                "created_at": datetime.now(UTC).isoformat(),
+                "created_at": now_utc().isoformat(),
             }
 
         @self.app.route("/data/project_history.json")
@@ -195,7 +195,7 @@ class FlaskApp:
             return [
                 {
                     "id": "id",
-                    "created_at": datetime.now(UTC).isoformat(),
+                    "created_at": now_utc().isoformat(),
                 }
             ]
 

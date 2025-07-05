@@ -1,5 +1,5 @@
 from visivo.server.models.base import Base, Column, String, DateTime, relationship
-from datetime import datetime, UTC
+from visivo.datetime_utils import now_utc
 
 
 class WorksheetModel(Base):
@@ -9,10 +9,8 @@ class WorksheetModel(Base):
     name = Column(String, nullable=False)
     query = Column(String)
     selected_source = Column(String)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
-    updated_at = Column(
-        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
+    created_at = Column(DateTime, default=lambda: now_utc())
+    updated_at = Column(DateTime, default=lambda: now_utc(), onupdate=lambda: now_utc())
     last_run_at = Column(DateTime)
 
     session_state = relationship(
