@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visivo Embed Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .embed-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .chart-container, .table-container, .dashboard-container {
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .description {
+            margin: 10px 0;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visivo Embed Examples</h1>
+        
+        <div class="embed-container">
+            <h2>Chart Example</h2>
+            <p class="description">This will embed a specific chart from your Visivo project.</p>
+            <div id="chart-example" class="chart-container"></div>
+        </div>
+
+        <div class="embed-container">
+            <h2>Table Example</h2>
+            <p class="description">This will embed a specific table from your Visivo project.</p>
+            <div id="table-example" class="table-container"></div>
+        </div>
+
+        <div class="embed-container">
+            <h2>Dashboard Example</h2>
+            <p class="description">This will embed an entire dashboard from your Visivo project.</p>
+            <div id="dashboard-example" class="dashboard-container"></div>
+        </div>
+    </div>
+
+    <!-- Load the Visivo Embed library -->
+    <script src="../embed-dist/visivo-embed.js"></script>
+    
+    <script>
+        // Example 1: Embed a chart
+        if (window.VisivoEmbed) {
+            window.VisivoEmbed.render(document.getElementById('chart-example'), {
+                project: 'my-project',
+                stage: 'production',
+                item: 'revenue-chart',
+                host: 'https://api.visivo.io', // Change this to your Visivo API server
+                apiKey: 'your-api-key-here', // Add your API key
+                style: { height: '100%', width: '100%' },
+                onLoad: (data) => console.log('Chart loaded:', data),
+                onError: (error) => console.error('Chart error:', error)
+            });
+
+            // Example 2: Embed a table
+            window.VisivoEmbed.render(document.getElementById('table-example'), {
+                project: 'my-project',
+                stage: 'production', 
+                item: 'sales-table',
+                host: 'https://api.visivo.io',
+                apiKey: 'your-api-key-here',
+                style: { height: '100%', width: '100%' },
+                onLoad: (data) => console.log('Table loaded:', data),
+                onError: (error) => console.error('Table error:', error)
+            });
+
+            // Example 3: Embed a dashboard
+            window.VisivoEmbed.render(document.getElementById('dashboard-example'), {
+                project: 'my-project',
+                stage: 'production',
+                item: 'executive-dashboard',
+                host: 'https://api.visivo.io',
+                apiKey: 'your-api-key-here',
+                style: { height: '100%', width: '100%' },
+                onLoad: (data) => console.log('Dashboard loaded:', data),
+                onError: (error) => console.error('Dashboard error:', error)
+            });
+        } else {
+            console.error('VisivoEmbed library not loaded');
+        }
+    </script>
+</body>
+</html>

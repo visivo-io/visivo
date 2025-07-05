@@ -1,14 +1,8 @@
-import Chart from '../items/Chart';
-import Table from '../items/Table';
-import Selector from '../items/Selector';
-import Markdown from 'react-markdown';
+import Item, { getItemHeight, getItemWidth } from '../items/Item';
 import useDimensions from 'react-cool-dimensions';
 import { throwError } from '../../api/utils';
 import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
@@ -21,34 +15,9 @@ const Dashboard = ({ project, dashboardName }) => {
   const widthBreakpoint = 1024;
   const isColumn = width < widthBreakpoint;
 
-  const getHeight = height => {
-    if (height === 'xsmall') {
-      return 128;
-    } else if (height === 'small') {
-      return 256;
-    } else if (height === 'medium') {
-      return 396;
-    } else if (height === 'large') {
-      return 512;
-    } else if (height === 'xlarge') {
-      return 768;
-    } else {
-      return 1024;
-    }
-  };
+  const getHeight = (height) => getItemHeight(height);
 
-  const getWidth = (items, item) => {
-    if (width < widthBreakpoint) {
-      return width;
-    }
-    const totalWidth = items.reduce((partialSum, i) => {
-      const itemWidth = i.width ? i.width : 1;
-      return partialSum + itemWidth;
-    }, 0);
-
-    const itemWidth = item.width ? item.width : 1;
-    return width * (itemWidth / totalWidth);
-  };
+  const getWidth = (items, item) => getItemWidth(width, widthBreakpoint, items, item);
 
   const dashboard = project.project_json.dashboards.find(d => d.name === dashboardName);
   if (!dashboard) {
@@ -128,78 +97,19 @@ const Dashboard = ({ project, dashboardName }) => {
     if (items.indexOf(item) < 0) {
       return null;
     }
-    if (item.chart) {
-      return (
-        <Chart
-          chart={item.chart}
-          project={project}
-          height={getHeight(row.height) - 8}
-          width={getWidth(items, item)}
-          itemWidth={item.width}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        />
-      );
-    } else if (item.table) {
-      return (
-        <Table
-          table={item.table}
-          project={project}
-          itemWidth={item.width}
-          width={getWidth(items, item)}
-          height={getHeight(row.height)}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        />
-      );
-    } else if (item.selector) {
-      return (
-        <Selector
-          selector={item.selector}
-          project={project}
-          itemWidth={item.width}
-          key={`dashboardRow${rowIndex}Item${itemIndex}`}
-        ></Selector>
-      );
-    } else if (item.markdown) {
-      const alignmentClass =
-        item.align === 'right'
-          ? 'text-right'
-          : item.align === 'center'
-            ? 'text-center'
-            : 'text-left';
 
-      return (
-        <div
-          className={`w-full h-full flex flex-col ${alignmentClass}`}
-          style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}
-        >
-          <div
-            className={`w-full h-full overflow-auto flex flex-col items-stretch ${item.justify}`}
-          >
-            <Markdown
-              className={`p-2 prose max-w-none ${
-                item.justify === 'end'
-                  ? 'mt-auto'
-                  : item.justify === 'center'
-                    ? 'my-auto'
-                    : item.justify === 'between'
-                      ? 'grow flex flex-col justify-between'
-                      : item.justify === 'around'
-                        ? 'grow flex flex-col justify-around'
-                        : item.justify === 'evenly'
-                          ? 'grow flex flex-col justify-evenly'
-                          : ''
-              }`}
-              key={`dashboardRow${rowIndex}Item${itemIndex}`}
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeSanitize]}
-            >
-              {item.markdown}
-            </Markdown>
-          </div>
-        </div>
-      );
-    }
-    return null;
+    return (
+      <Item
+        item={item}
+        project={project}
+        height={getHeight(row.height)}
+        width={getWidth(items, item)}
+        itemWidth={item.width}
+        rowIndex={rowIndex}
+        itemIndex={itemIndex}
+        keyPrefix="dashboard"
+      />
+    );
   };
 
   const getHeightStyle = row => {
