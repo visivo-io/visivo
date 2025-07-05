@@ -14,24 +14,20 @@ function Project(props) {
   const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
 
   const handleScroll = useCallback(() => {
-    console.log("savedPos: ", window.scrollY)
     setScrollPosition(props.dashboardName, window.scrollY);
   }, [props.dashboardName, setScrollPosition]);
 
   useEffect(() => {
     window.addEventListener('scroll', handleScroll);
-
   }, [handleScroll]);
 
   useEffect(() => {
-    console.log("scrollPositions, ", useStore.getState())
     const savedPos = scrollPositions || 0;
     if (!window.location.hash) {
         window.scrollTo(0, savedPos);
     }
 
   }, [props.dashboardName, scrollPositions]);
-
 
 
   // Combine internal and external dashboards
