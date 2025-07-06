@@ -5,6 +5,9 @@ import { Tooltip } from 'flowbite-react';
 import { SiSlack } from 'react-icons/si';
 import { MdMenuBook } from "react-icons/md";
 import { FaUserCircle } from 'react-icons/fa';
+import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
+import { HiTemplate } from 'react-icons/hi';
+import TumblerNavItem from './TumblerNavItem';
 
 const TopNav = () => {
   const [profileOpen, setProfileOpen] = useState(false);
@@ -16,18 +19,10 @@ const TopNav = () => {
           <Link to="/" className="flex items-center">
             <img src={logo} alt="V" className="h-7" />
           </Link>
-          <Link to="/lineage" className="text-white hover:text-gray-300">
-            Lineage
-          </Link>
-          <Link to="/explorer" className="text-white hover:text-gray-300">
-            Explorer
-          </Link>
-          <Link to="/editor" className="text-white hover:text-gray-300">
-            Editor
-          </Link>
-          <Link to="/project" className="text-white hover:text-gray-300">
-            Project
-          </Link>
+          <TumblerNavItem icon={PiTreeStructure} label="Lineage" to="/lineage" ariaLabel="Lineage" />
+          <TumblerNavItem icon={PiMagnifyingGlass} label="Explorer" to="/explorer" ariaLabel="Explorer" />
+          <TumblerNavItem icon={PiPencil} label="Editor" to="/editor" ariaLabel="Editor" />
+          <TumblerNavItem icon={HiTemplate} label="Project" to="/project" ariaLabel="Project" />
         </div>
         <div className="flex items-center gap-8">
           <Tooltip content="Join the Community" placement="bottom" trigger="hover">
