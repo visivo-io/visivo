@@ -7,6 +7,7 @@ import { MdMenuBook } from "react-icons/md";
 import { FaUserCircle } from 'react-icons/fa';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
+import { FiAlertCircle } from 'react-icons/fi';
 import TumblerNavItem from './TumblerNavItem';
 
 const TopNav = () => {
@@ -63,7 +64,7 @@ const TopNav = () => {
                   <li className="w-full flex justify-center">
                     <Tooltip
                       content={<span className="text-xs">Create a Visivo cloud account for fast & easy deployments  <a href="https://docs.visivo.io/topics/deployments/" target="_blank" rel="noopener noreferrer" className="inline align-middle text-sky-500"><MdMenuBook className="inline w-4 h-4 align-text-bottom" aria-label="Documentation" /></a></span>}
-                      placement="bottom"
+                      placement="left"
                       trigger="hover"
                     >
                       <a
@@ -73,6 +74,23 @@ const TopNav = () => {
                         className="block px-4 py-2 text-gray-700 hover:bg-gray-100 w-full text-center"
                       >
                         Log in / Sign up
+                      </a>
+                    </Tooltip>
+                  </li>
+                  <li className="w-full flex justify-center">
+                    <Tooltip
+                      content={<span className="text-xs">Found a bug or have feedback? Log an issue on GitHub <a href="https://github.com/visivo-io/visivo?tab=readme-ov-file#contributing" target="_blank" rel="noopener noreferrer" className="inline align-middle text-sky-500"><MdMenuBook className="inline w-4 h-4 align-text-bottom" aria-label="Documentation" /></a></span>}
+                      placement="left"
+                      trigger="hover"
+                    >
+                      <a
+                        href="https://github.com/visivo-io/visivo/issues/new/choose"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100 w-full text-center flex items-center justify-center gap-2"
+                      >
+                        <FiAlertCircle className="w-4 h-4 text-rose-500" />
+                        Log an Issue
                       </a>
                     </Tooltip>
                   </li>
