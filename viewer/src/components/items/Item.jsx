@@ -1,10 +1,7 @@
 import Chart from './Chart';
 import Table from './Table';
 import Selector from './Selector';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+import MarkdownItem from './MarkdownItem';
 
 /**
  * Utility function to get height value from height string
@@ -36,6 +33,11 @@ export const getItemWidth = (containerWidth, widthBreakpoint, items, item) => {
     const itemWidth = i.width ? i.width : 1;
     return partialSum + itemWidth;
   }, 0);
+
+  // Handle edge case where totalWidth is 0
+  if (totalWidth === 0) {
+    return containerWidth;
+  }
 
   const itemWidth = item.width ? item.width : 1;
   return containerWidth * (itemWidth / totalWidth);
@@ -86,43 +88,14 @@ const Item = ({
       />
     );
   } else if (item.markdown) {
-    const alignmentClass =
-      item.align === 'right'
-        ? 'text-right'
-        : item.align === 'center'
-          ? 'text-center'
-          : 'text-left';
-
     return (
-      <div
-        className={`w-full h-full flex flex-col ${alignmentClass}`}
-        style={height !== 'compact' ? { height } : {}}
+      <MarkdownItem
+        markdown={item.markdown}
+        align={item.align}
+        justify={item.justify}
+        height={height}
         key={`${keyPrefix}Row${rowIndex}Item${itemIndex}`}
-      >
-        <div
-          className={`w-full h-full overflow-auto flex flex-col items-stretch ${item.justify}`}
-        >
-          <Markdown
-            className={`p-2 prose max-w-none ${
-              item.justify === 'end'
-                ? 'mt-auto'
-                : item.justify === 'center'
-                  ? 'my-auto'
-                  : item.justify === 'between'
-                    ? 'grow flex flex-col justify-between'
-                    : item.justify === 'around'
-                      ? 'grow flex flex-col justify-around'
-                      : item.justify === 'evenly'
-                        ? 'grow flex flex-col justify-evenly'
-                        : ''
-            }`}
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeRaw, rehypeSanitize]}
-          >
-            {item.markdown}
-          </Markdown>
-        </div>
-      </div>
+      />
     );
   }
   

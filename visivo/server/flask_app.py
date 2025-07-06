@@ -369,65 +369,6 @@ class FlaskApp:
                 Logger.instance().error(f"Error updating session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        # Embed API endpoints for external usage
-        @self.app.route("/api/projects/<project_name>/stages/<stage_name>/data", methods=["GET"])
-        def get_project_data_for_embed(project_name, stage_name):
-            """Get project data for embedding (CORS-enabled endpoint)."""
-            try:
-                # Add CORS headers for embed usage
-                response_data = {
-                    "id": f"{project_name}-{stage_name}",
-                    "project_json": json.loads(self._project_json),
-                    "created_at": datetime.datetime.now().isoformat(),
-                }
-                
-                response = jsonify(response_data)
-                response.headers.add('Access-Control-Allow-Origin', '*')
-                response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-                response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-                return response
-            except Exception as e:
-                Logger.instance().error(f"Error getting project data for embed: {str(e)}")
-                error_response = jsonify({"message": str(e)})
-                error_response.headers.add('Access-Control-Allow-Origin', '*')
-                return error_response, 500
-
-        @self.app.route("/api/projects/<project_name>/stages/<stage_name>/traces/<trace_name>/data", methods=["GET"])
-        def get_trace_data_for_embed(project_name, stage_name, trace_name):
-            """Get trace data for embedding (CORS-enabled endpoint)."""
-            try:
-                # Look for trace data file
-                trace_file_path = f"{output_dir}/traces/{trace_name}/data.json"
-                if os.path.exists(trace_file_path):
-                    with open(trace_file_path, 'r') as f:
-                        trace_data = json.load(f)
-                    
-                    response = jsonify(trace_data)
-                    response.headers.add('Access-Control-Allow-Origin', '*')
-                    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-                    response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-                    return response
-                else:
-                    error_response = jsonify({"message": f"Trace data not found: {trace_name}"})
-                    error_response.headers.add('Access-Control-Allow-Origin', '*')
-                    return error_response, 404
-            except Exception as e:
-                Logger.instance().error(f"Error getting trace data for embed: {str(e)}")
-                error_response = jsonify({"message": str(e)})
-                error_response.headers.add('Access-Control-Allow-Origin', '*')
-                return error_response, 500
-
-        # OPTIONS handler for CORS preflight requests
-        @self.app.route("/api/projects/<project_name>/stages/<stage_name>/data", methods=["OPTIONS"])
-        @self.app.route("/api/projects/<project_name>/stages/<stage_name>/traces/<trace_name>/data", methods=["OPTIONS"])
-        def handle_embed_cors():
-            """Handle CORS preflight requests for embed endpoints."""
-            response = jsonify({})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-            return response
-
         @self.app.route("/api/editors/installed", methods=["GET"])
         def get_installed_editors():
             editors, platform = get_editor_configs()
