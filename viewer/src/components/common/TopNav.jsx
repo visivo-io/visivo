@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import logo from '../../images/logo.png';
 import { Tooltip } from 'flowbite-react';
 import { SiSlack } from 'react-icons/si';
-import { MdMenuBook } from "react-icons/md";
+import { MdMenuBook } from 'react-icons/md';
 import { FaUserCircle } from 'react-icons/fa';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
@@ -20,10 +20,30 @@ const TopNav = () => {
           <Link to="/" className="flex items-center">
             <img src={logo} alt="V" className="h-7" />
           </Link>
-          <TumblerNavItem icon={PiTreeStructure} label="Lineage" to="/lineage" tooltip="Visualize your project's dag to understand dependencies" />
-          <TumblerNavItem icon={PiMagnifyingGlass} label="Explorer" to="/explorer" tooltip="Drill into your data with sql to create new models or explore existing ones" />
-          <TumblerNavItem icon={PiPencil} label="Editor" to="/editor"  tooltip="Edit project objects and create new charts, traces, and more" />
-          <TumblerNavItem icon={HiTemplate} label="Project" to="/project" tooltip="View your project as it will look deployed" />
+          <TumblerNavItem
+            icon={PiTreeStructure}
+            label="Lineage"
+            to="/lineage"
+            tooltip="Visualize your project's dag to understand dependencies"
+          />
+          <TumblerNavItem
+            icon={PiMagnifyingGlass}
+            label="Explorer"
+            to="/explorer"
+            tooltip="Drill into your data with sql to create new models or explore existing ones"
+          />
+          <TumblerNavItem
+            icon={PiPencil}
+            label="Editor"
+            to="/editor"
+            tooltip="Edit project objects and create new charts, traces, and more"
+          />
+          <TumblerNavItem
+            icon={HiTemplate}
+            label="Project"
+            to="/project"
+            tooltip="View your project as it will look deployed"
+          />
         </div>
         <div className="flex items-center gap-8">
           <Tooltip content="Join the Community" placement="bottom" trigger="hover">
@@ -54,7 +74,7 @@ const TopNav = () => {
               aria-haspopup="true"
               aria-expanded={profileOpen}
               type="button"
-              onClick={() => setProfileOpen((open) => !open)}
+              onClick={() => setProfileOpen(open => !open)}
             >
               <FaUserCircle className="w-6 h-6" />
             </button>
@@ -63,7 +83,22 @@ const TopNav = () => {
                 <ul className="py-1 w-full flex flex-col items-center">
                   <li className="w-full flex justify-center">
                     <Tooltip
-                      content={<span className="text-xs">Create a Visivo cloud account for fast & easy deployments  <a href="https://docs.visivo.io/topics/deployments/" target="_blank" rel="noopener noreferrer" className="inline align-middle text-sky-500"><MdMenuBook className="inline w-4 h-4 align-text-bottom" aria-label="Documentation" /></a></span>}
+                      content={
+                        <span className="text-xs">
+                          Create a Visivo cloud account for fast & easy deployments{' '}
+                          <a
+                            href="https://docs.visivo.io/topics/deployments/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline align-middle text-sky-500"
+                          >
+                            <MdMenuBook
+                              className="inline w-4 h-4 align-text-bottom"
+                              aria-label="Documentation"
+                            />
+                          </a>
+                        </span>
+                      }
                       placement="left"
                       trigger="hover"
                     >
@@ -79,7 +114,22 @@ const TopNav = () => {
                   </li>
                   <li className="w-full flex justify-center">
                     <Tooltip
-                      content={<span className="text-xs">Found a bug or have feedback? Log an issue on GitHub <a href="https://github.com/visivo-io/visivo?tab=readme-ov-file#contributing" target="_blank" rel="noopener noreferrer" className="inline align-middle text-sky-500"><MdMenuBook className="inline w-4 h-4 align-text-bottom" aria-label="Documentation" /></a></span>}
+                      content={
+                        <span className="text-xs">
+                          Found a bug or have feedback? Log an issue on GitHub{' '}
+                          <a
+                            href="https://github.com/visivo-io/visivo?tab=readme-ov-file#contributing"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline align-middle text-sky-500"
+                          >
+                            <MdMenuBook
+                              className="inline w-4 h-4 align-text-bottom"
+                              aria-label="Documentation"
+                            />
+                          </a>
+                        </span>
+                      }
                       placement="left"
                       trigger="hover"
                     >

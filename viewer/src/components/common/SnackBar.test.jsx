@@ -2,9 +2,9 @@ import { act, render, screen, fireEvent } from '@testing-library/react';
 import SnackBar from './SnackBar';
 
 test('Render SnackBar when open is true', () => {
-  render(<SnackBar message="Text message" open={true} setOpen={jest.fn()} />)
-  expect(screen.getByText("Text message")).toBeInTheDocument()
-})
+  render(<SnackBar message="Text message" open={true} setOpen={jest.fn()} />);
+  expect(screen.getByText('Text message')).toBeInTheDocument();
+});
 
 test('Set Open to false when close SnackBar button is clicked', () => {
   const setOpenMock = jest.fn();
@@ -14,7 +14,7 @@ test('Set Open to false when close SnackBar button is clicked', () => {
   fireEvent.click(closeButton);
 
   expect(setOpenMock).toHaveBeenCalledWith(false);
-})
+});
 
 test('Set Open to false when SnackBar autoHideDuration is triggered', () => {
   jest.useFakeTimers();
@@ -27,4 +27,4 @@ test('Set Open to false when SnackBar autoHideDuration is triggered', () => {
   expect(setOpenMock).toHaveBeenCalledWith(false);
 
   jest.useRealTimers();
-})
+});

@@ -7,7 +7,7 @@ import {
 } from 'react-icons/hi';
 import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
 import { FaExternalLinkAlt } from 'react-icons/fa';
-import { FaGear } from "react-icons/fa6";
+import { FaGear } from 'react-icons/fa6';
 import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery } from 'react-icons/si';
 import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
 import { GrDocumentCsv } from 'react-icons/gr';

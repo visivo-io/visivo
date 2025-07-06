@@ -31,8 +31,8 @@ const EditorPanel = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isTextEditorModalOpen, setIsTextEditorModalOpen] = useState(false);
 
-  const [snackBarOpen, setSnackBarOpen] = useState(false)
-  const [message, setMessage] = useState("")
+  const [snackBarOpen, setSnackBarOpen] = useState(false);
+  const [message, setMessage] = useState('');
 
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;
@@ -57,9 +57,9 @@ const EditorPanel = () => {
 
   useEffect(() => {
     if (!snackBarOpen) {
-      setMessage("")
+      setMessage('');
     }
-  }, [snackBarOpen])
+  }, [snackBarOpen]);
 
   const handleDelete = () => {
     if (!activeTab) return;

@@ -62,10 +62,10 @@ const TextEditorModal = ({ isOpen, onClose, objectName, setSnackBarOpen, setMess
           filePath: filePath,
         }),
       });
-      let data = await response.json()
+      let data = await response.json();
 
-      setSnackBarOpen(true)
-      setMessage(data?.message ?? "")
+      setSnackBarOpen(true);
+      setMessage(data?.message ?? '');
 
       if (!response.ok) {
         throw new Error('Failed to open editor');

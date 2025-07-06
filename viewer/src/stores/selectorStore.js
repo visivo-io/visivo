@@ -1,58 +1,58 @@
 const createSelectorSlice = (set, get) => ({
   // Selector state - keyed by selector name
   selectorValues: {},
-  
+
   // URL synchronization state
   urlSyncEnabled: true,
-  
+
   // Actions
   setSelectorValue: (selectorName, value) => {
     const state = get();
     const newSelectorValues = {
       ...state.selectorValues,
-      [selectorName]: value
+      [selectorName]: value,
     };
-    
+
     set({ selectorValues: newSelectorValues });
-    
+
     // Sync to URL if enabled
     if (state.urlSyncEnabled && typeof window !== 'undefined') {
       get().syncToUrl(selectorName, value);
     }
   },
-  
-  setSelectorValues: (values) => {
+
+  setSelectorValues: values => {
     set({ selectorValues: { ...values } });
   },
-  
-  clearSelectorValue: (selectorName) => {
+
+  clearSelectorValue: selectorName => {
     const state = get();
     const newSelectorValues = { ...state.selectorValues };
     delete newSelectorValues[selectorName];
-    
+
     set({ selectorValues: newSelectorValues });
-    
+
     // Remove from URL if enabled
     if (state.urlSyncEnabled && typeof window !== 'undefined') {
       get().removeFromUrl(selectorName);
     }
   },
-  
+
   clearAllSelectors: () => {
     set({ selectorValues: {} });
-    
+
     // Clear URL params if enabled
     if (get().urlSyncEnabled && typeof window !== 'undefined') {
       get().clearUrlParams();
     }
   },
-  
+
   // URL synchronization methods
   syncToUrl: (selectorName, value) => {
     if (typeof window === 'undefined') return;
-    
+
     const url = new URL(window.location);
-    
+
     if (value === null || value === undefined) {
       url.searchParams.delete(selectorName);
     } else if (Array.isArray(value)) {
@@ -64,40 +64,40 @@ const createSelectorSlice = (set, get) => ({
     } else {
       url.searchParams.set(selectorName, String(value));
     }
-    
+
     // Update URL without triggering navigation
     window.history.replaceState({}, '', url);
   },
-  
-  removeFromUrl: (selectorName) => {
+
+  removeFromUrl: selectorName => {
     if (typeof window === 'undefined') return;
-    
+
     const url = new URL(window.location);
     url.searchParams.delete(selectorName);
     window.history.replaceState({}, '', url);
   },
-  
+
   clearUrlParams: () => {
     if (typeof window === 'undefined') return;
-    
+
     const url = new URL(window.location);
     const selectorValues = get().selectorValues;
-    
+
     // Remove all selector-related params
     Object.keys(selectorValues).forEach(key => {
       url.searchParams.delete(key);
     });
-    
+
     window.history.replaceState({}, '', url);
   },
-  
+
   // Load selector values from URL
   loadFromUrl: () => {
     if (typeof window === 'undefined') return;
-    
+
     const url = new URL(window.location);
     const selectorValues = {};
-    
+
     // Parse URL search params
     for (const [key, value] of url.searchParams.entries()) {
       try {
@@ -114,16 +114,16 @@ const createSelectorSlice = (set, get) => ({
         selectorValues[key] = value;
       }
     }
-    
+
     set({ selectorValues });
   },
-  
+
   // Helper methods for selector logic
   getSelectorValue: (selectorName, defaultValue = null) => {
     const { selectorValues } = get();
     return selectorValues[selectorName] ?? defaultValue;
   },
-  
+
   // Generate selector options based on configuration
   generateSelectorOptions: (selector, parentName, parentType, names) => {
     if (!selector) {
@@ -132,21 +132,21 @@ const createSelectorSlice = (set, get) => ({
         isMulti: parentType !== 'table',
         name: `${parentName} Selector`,
         visible: true,
-        options: names.map(name => ({ value: name, label: name }))
+        options: names.map(name => ({ value: name, label: name })),
       };
     }
-    
+
     return {
       isMulti: selector.type === 'multiple',
       name: selector.name,
       visible: selector.parent_name === parentName,
-      options: names.map(name => ({ value: name, label: name }))
+      options: names.map(name => ({ value: name, label: name })),
     };
   },
-  
+
   // Generate new search param value (maintains existing logic)
   generateSearchParamValue: (selectedOptions, defaultOptions, alwaysPush = false) => {
-    const getValuesFromOptions = (options) => {
+    const getValuesFromOptions = options => {
       if (Array.isArray(options)) {
         return options.map(opt => opt.value);
       } else if (options && options.value) {
@@ -154,9 +154,9 @@ const createSelectorSlice = (set, get) => ({
       }
       return [];
     };
-    
+
     const selectedValues = getValuesFromOptions(selectedOptions);
-    
+
     if (!alwaysPush) {
       const defaultValues = getValuesFromOptions(defaultOptions);
       if (
@@ -166,19 +166,19 @@ const createSelectorSlice = (set, get) => ({
         return null;
       }
     }
-    
+
     if (Array.isArray(selectedOptions)) {
       return selectedOptions.length === 0 ? 'NoCohorts' : selectedValues;
     } else if (selectedOptions && selectedOptions.value) {
       return selectedOptions.value;
     }
-    
+
     return null;
   },
-  
-  setUrlSyncEnabled: (enabled) => {
+
+  setUrlSyncEnabled: enabled => {
     set({ urlSyncEnabled: enabled });
-  }
+  },
 });
 
 export default createSelectorSlice;

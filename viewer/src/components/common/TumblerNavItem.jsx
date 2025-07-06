@@ -15,10 +15,16 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
   // We'll use translate-y and opacity for a tumbler effect
   // Custom keyframes could be added for more realism if needed
   return (
-    <Tooltip content={tooltip || label} placement="bottom" trigger="hover" animation="delay-400 duration-200" className="opacity-90 text-xs">
+    <Tooltip
+      content={tooltip || label}
+      placement="bottom"
+      trigger="hover"
+      animation="delay-400 duration-200"
+      className="opacity-90 text-xs"
+    >
       <Link
         to={to}
-        aria-label={ label }
+        aria-label={label}
         tabIndex={0}
         className={`relative flex items-center justify-center h-12 w-12 transition-colors duration-200 outline-none
           text-white hover:text-[#D25946] focus:text-[#D25946] ${isActive ? 'text-[#D25946]' : ''}`}
@@ -50,4 +56,4 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
   );
 };
 
-export default TumblerNavItem; 
+export default TumblerNavItem;
