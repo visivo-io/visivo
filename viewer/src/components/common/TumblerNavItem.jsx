@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Tooltip } from 'flowbite-react';
 
-const TumblerNavItem = ({ icon: Icon, label, to, ariaLabel }) => {
+const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const location = useLocation();
@@ -15,10 +15,10 @@ const TumblerNavItem = ({ icon: Icon, label, to, ariaLabel }) => {
   // We'll use translate-y and opacity for a tumbler effect
   // Custom keyframes could be added for more realism if needed
   return (
-    <Tooltip content={label} placement="bottom" trigger="hover">
+    <Tooltip content={tooltip || label} placement="bottom" trigger="hover" animation="delay-400 duration-200" className="opacity-90 text-xs">
       <Link
         to={to}
-        aria-label={ariaLabel || label}
+        aria-label={ label }
         tabIndex={0}
         className={`relative flex items-center justify-center h-12 w-12 transition-colors duration-200 outline-none
           text-white hover:text-[#D25946] focus:text-[#D25946] ${isActive ? 'text-[#D25946]' : ''}`}
