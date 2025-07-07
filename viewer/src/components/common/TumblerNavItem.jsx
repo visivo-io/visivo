@@ -43,7 +43,7 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
         `}
         style={{ pointerEvents: showLabel ? 'auto' : 'none' }}
       >
-        <span className="flex flex-row items-center bg-transparent text-md font-medium">
+        <span className="flex flex-row items-centergit  bg-transparent text-md font-medium">
           {label}
           <span
             className={`inline-flex items-center justify-center transition-all duration-500 w-3
@@ -53,7 +53,7 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
               content={tooltip || label}
               placement="bottom"
               trigger="hover"
-              className="opacity-90 text-xs"
+              className="opacity-90 text-xs w-56"
             >
               <span
                 tabIndex={0}
