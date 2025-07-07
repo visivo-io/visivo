@@ -10,7 +10,6 @@ import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
 import MenuContainer from './MenuContainer';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
-import Tooltip from '@mui/material/Tooltip';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 
@@ -83,7 +82,9 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
         <Menu 
           hovering={hovering && cohortSelectVisible}
           withDropDown={false}
-          buttonChildren={<Tooltip title={toolTip} onMouseLeave={resetToolTip} ><FontAwesomeIcon icon={faShareAlt} /></Tooltip>}
+          buttonChildren={
+            <FontAwesomeIcon icon={faShareAlt} />
+          }
           buttonProps={{
             style: {
               cursor: 'pointer',
@@ -93,8 +94,11 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
               const url = new URL(window.location.href);
               url.searchParams.set('element_id', itemNameToSlug(chart.name));
               copyText(url.toString());
-            }
+            },
+            onMouseLeave: resetToolTip
           }}
+          showToolTip
+          toolTip={toolTip}
           >
         </Menu>
       </MenuContainer>

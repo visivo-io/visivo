@@ -6,7 +6,6 @@ import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from "./utils";
 import MenuContainer from "./MenuContainer";
 import Menu from "./Menu";
-import { Tooltip } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShareAlt } from "@fortawesome/free-solid-svg-icons";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
@@ -34,9 +33,7 @@ const Markdown = ({ markdown, row, height }) => {
           hovering={hovering}
           withDropDown={false}
           buttonChildren={
-            <Tooltip title={toolTip} onMouseLeave={resetToolTip} >
-              <span><FontAwesomeIcon icon={faShareAlt} /></span>
-            </Tooltip>
+            <FontAwesomeIcon icon={faShareAlt} />
           }
           buttonProps={{
             style: {
@@ -47,8 +44,11 @@ const Markdown = ({ markdown, row, height }) => {
               const url = new URL(window.location.href);
               url.searchParams.set('element_id', itemNameToSlug(markdown.path));
               copyText(url.toString());
-            }
+            },
+            onMouseLeave: resetToolTip
           }}
+          showToolTip
+          toolTip={toolTip}
           >
         </Menu>
       </MenuContainer>
