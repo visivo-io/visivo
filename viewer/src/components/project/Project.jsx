@@ -3,13 +3,11 @@ import Dashboard from './Dashboard';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
-import DashboardSection, { organizeDashboardsByLevel } from './DashboardSection';
+import DashboardSection from './DashboardSection';
 import FilterBar from './FilterBar';
 import useStore from '../../stores/store';
 
 function Project(props) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState([]);
   const setScrollPosition = useStore(state => state.setScrollPosition);
   const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
 
@@ -29,39 +27,28 @@ function Project(props) {
 
   }, [props.dashboardName, scrollPositions]);
 
+  const {
+    filteredDashboards,
+    dashboardsByLevel,
+    setDashboards,
+    setCurrentDashboardName,
+    filterDashboards
+  } = useStore();
 
-  // Combine internal and external dashboards
-  const allDashboards = props.dashboards;
+  // Initialize dashboards in store when props change
+  useEffect(() => {
+    if (props.dashboards) {
+      setDashboards(props.dashboards);
+      filterDashboards();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.dashboards]);
 
-  const availableTags = useMemo(() => {
-    if (!allDashboards.length) return [];
-    const tagSet = new Set();
-    allDashboards.forEach(dashboard => {
-      if (dashboard.tags) {
-        dashboard.tags.forEach(tag => tagSet.add(tag));
-      }
-    });
-    return Array.from(tagSet);
-  }, [allDashboards]);
-
-  const filteredDashboards = useMemo(() => {
-    if (!allDashboards.length) return [];
-    return allDashboards.filter(dashboard => {
-      const matchesSearch =
-        dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (dashboard.description &&
-          dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesTags =
-        selectedTags.length === 0 ||
-        (dashboard.tags && selectedTags.every(tag => dashboard.tags.includes(tag)));
-      return matchesSearch && matchesTags;
-    });
-  }, [allDashboards, searchTerm, selectedTags]);
-
-  const dashboardsByLevel = useMemo(
-    () => organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.defaults),
-    [filteredDashboards, props.project?.project_json?.defaults]
-  );
+  // Update current dashboard name when it changes
+  useEffect(() => {
+    setCurrentDashboardName(props.dashboardName);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.dashboardName]);
 
   const renderLoading = () => {
     return <Loading />;
@@ -71,14 +58,7 @@ function Project(props) {
     return (
       <Container className="min-h-screen">
         <div className="max-w-[2000px] w-full mx-auto pt-1 px-4 sm:px-6 h-full">
-          <FilterBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedTags={selectedTags}
-            setSelectedTags={setSelectedTags}
-            availableTags={availableTags}
-            totalCount={filteredDashboards.length}
-          />
+          <FilterBar />
 
           <div className="flex-1 w-full">
             {Object.entries(dashboardsByLevel).map(([level, dashboards]) => (
@@ -89,8 +69,7 @@ function Project(props) {
                   ...dashboard,
                 }))}
                 projectId={props.project.id}
-                searchTerm={searchTerm}
-                hasLevels={dashboardsByLevel.length > 0}
+                hasLevels={Object.keys(dashboardsByLevel).length > 0}
                 projectDefaults={props.project?.project_json?.defaults}
               />
             ))}

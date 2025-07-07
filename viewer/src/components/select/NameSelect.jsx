@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useContext } from 'react';
+import { useEffect, useMemo } from 'react';
 import Select from 'react-select';
-import SearchParamsContext from '../../contexts/SearchParamsContext';
+import useStore from '../../stores/store';
+import { useUrlSync } from '../../hooks/useUrlSync';
 
 export const getOptionsFromValues = valueArrayOrString => {
   if (!valueArrayOrString) {
@@ -59,27 +60,18 @@ const NameSelect = ({
   alwaysPushSelectionToUrl = false,
   onVisible = () => {},
 }) => {
-  const [searchParams, setStateSearchParam] = useContext(SearchParamsContext);
-  let isMulti;
-  let name;
-  let visible;
-  if (selector) {
-    isMulti = selector.type === 'multiple';
-    name = selector.name;
-    visible = selector.parent_name === parentName;
-  } else {
-    isMulti = parentType === 'table' ? false : true;
-    name = `${parentName} Selector`;
-    visible = true;
-  }
+  const [, setStateSearchParam] = useUrlSync();
+  const { generateSelectorOptions, getSelectorValue } = useStore();
+  // Generate selector configuration using store helper
+  const selectorConfig = generateSelectorOptions(selector, parentName, parentType, names);
+  const { isMulti, name, visible, options } = selectorConfig;
+
+  // Get current selector value from store
+  const currentValue = getSelectorValue(name);
 
   useEffect(() => {
     onVisible(visible);
   }, [visible, onVisible]);
-
-  const options = names.map(name => {
-    return { value: name, label: name };
-  });
 
   const defaultOptions = useMemo(() => {
     return isMulti ? options : options[0];
@@ -93,9 +85,9 @@ const NameSelect = ({
     );
   };
 
-  // Set the default value if the selector is not in the url
+  // Set the default value if the selector is not set
   useEffect(() => {
-    if (alwaysPushSelectionToUrl) {
+    if (alwaysPushSelectionToUrl && currentValue === null) {
       const getDefaultSearchParam = () => {
         if (Array.isArray(defaultOptions)) {
           return defaultOptions.map(option => option.value).join(',');
@@ -105,18 +97,15 @@ const NameSelect = ({
           return null;
         }
       };
-      if (!searchParams.has(name)) {
+      if (currentValue === null) {
         setStateSearchParam(name, getDefaultSearchParam());
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), JSON.stringify(defaultOptions)]);
-
+  }, [alwaysPushSelectionToUrl, currentValue, name, defaultOptions, setStateSearchParam]);
+  
   const selectedNames = useMemo(() => {
-    if (searchParams.has(name) && searchParams.get(name).includes('NoCohorts')) {
-      return null;
-    } else if (searchParams.has(name)) {
-      return searchParams.get(name).split(',');
+    if (currentValue !== null && currentValue !== undefined) {
+      return currentValue;
     } else if (!defaultOptions) {
       return null;
     } else {
@@ -124,13 +113,11 @@ const NameSelect = ({
         ? defaultOptions.map(ds => ds.value)
         : defaultOptions.value;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, selector, JSON.stringify(defaultOptions)]);
+  }, [currentValue, defaultOptions]);
 
   const selectedOptions = useMemo(() => {
     return getOptionsFromValues(selectedNames);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(selectedNames)]);
+  }, [selectedNames]);
 
   useEffect(() => {
     onChange(selectedNames);
@@ -142,6 +129,7 @@ const NameSelect = ({
       {showLabel && <label htmlFor={`selector${name}`}>Selector</label>}
       {visible && (
         <Select
+          styles={{ menu: provided => ({ ...provided, zIndex: 9999 })}}
           data-testid="selector"
           name="selector"
           inputId={`selector${name}`}

@@ -83,10 +83,11 @@ test('renders dashboard names without dashboard name param', async () => {
     </QueryClientProvider>
   );
 
+  // Look for the specific heading we expect
   const text = await screen.findByRole('heading', {
-    name: /dashboard/i,
+    name: /^dashboard$/i,
     level: 3,
-  });
+  }, { timeout: 3000 });
   expect(text).toBeInTheDocument();
 });
 

@@ -4,6 +4,8 @@ import { devtools, persist } from 'zustand/middleware';
 import createEditorSlice from './editorStore';
 import createExplorerSlice from './explorerStore';
 import createCommonSlice from './commonStore';
+import createProjectSlice from './projectStore';
+import createSelectorSlice from './selectorStore';
 
 const useStore = create(
   devtools((...a) => ({
@@ -13,6 +15,8 @@ const useStore = create(
       name: 'common-storage',
       partialize: (state) => ({ scrollPositions: state.scrollPositions })
     })(...a)
+    ...createProjectSlice(...a),
+    ...createSelectorSlice(...a),
   }))
 );
 

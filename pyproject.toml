@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "visivo"
-version = "1.0.62"
+version = "1.0.63"
 description = "Visivo CLI for BI and visualizations as code"
 authors = ["Visivo People"]
 documentation = "https://docs.visivo.io/"
@@ -9,7 +9,7 @@ packages = [{include = "visivo"}]
 
 [project]
 name = "visivo"
-version = "1.0.62"
+version = "1.0.63"
 description = "Visivo CLI for BI and visualizations as code"
 authors = [
     {name = "Visivo People"}
@@ -57,7 +57,7 @@ tenacity = ">=9.0.0"
 termcolor = ">=2.4.0"
 tornado = ">= 6.3"
 watchdog = ">=6.0.0"
-polars = "^1.30.0"
+polars = "^1.31.0"
 pyarrow = ">=20.0.0"
 
 [tool.poetry.group.dev.dependencies]
