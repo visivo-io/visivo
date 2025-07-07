@@ -76,9 +76,9 @@ const Home = () => {
     <SearchParamsProvider>
       <div className="visivo-home min-h-screen bg-gray-50">
         <TopNav />
-        <div className={isProject ? '' : 'mx-4'}>
+        <div className={'pt-14'}>
           {isProject && (
-            <div className="flex flex-row justify-between items-center whitespace-nowrap py-4">
+            <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">
               <Breadcrumbs />
               <ProjectHistory />
             </div>

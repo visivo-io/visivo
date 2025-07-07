@@ -8,16 +8,12 @@ import useStore from '../stores/store';
  */
 export const useUrlSync = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { 
-    selectorValues, 
-    setSelectorValues, 
-    setSelectorValue
-  } = useStore();
+  const { selectorValues, setSelectorValues, setSelectorValue } = useStore();
 
   // Initialize selector values from URL on mount
   useEffect(() => {
     const initialValues = {};
-    
+
     for (const [key, value] of searchParams.entries()) {
       try {
         // Try to parse as JSON array first
@@ -33,7 +29,7 @@ export const useUrlSync = () => {
         initialValues[key] = value;
       }
     }
-    
+
     if (Object.keys(initialValues).length > 0) {
       setSelectorValues(initialValues);
     }
@@ -42,12 +38,12 @@ export const useUrlSync = () => {
   // Sync URL when selector values change
   useEffect(() => {
     const params = new URLSearchParams();
-    
+
     Object.entries(selectorValues).forEach(([key, value]) => {
       if (value === null || value === undefined) {
         return; // Don't add null/undefined values
       }
-      
+
       if (Array.isArray(value)) {
         if (value.length === 0) {
           params.set(key, 'NoCohorts');
@@ -58,11 +54,11 @@ export const useUrlSync = () => {
         params.set(key, String(value));
       }
     });
-    
+
     // Update URL params if they've changed
     const currentParams = searchParams.toString();
     const newParams = params.toString();
-    
+
     if (currentParams !== newParams) {
       setSearchParams(params, { replace: true }); // Use replace to avoid adding to history
     }

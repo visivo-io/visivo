@@ -8,13 +8,7 @@ import { getLevels, organizeDashboardsByLevel, defaultLevels } from '../../utils
 // Re-export for backward compatibility
 export { getLevels, organizeDashboardsByLevel };
 
-function DashboardSection({
-  title,
-  dashboards,
-  hasLevels,
-  projectDefaults,
-  projectId,
-}) {
+function DashboardSection({ title, dashboards, hasLevels, projectDefaults, projectId }) {
   const { searchTerm } = useStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
 

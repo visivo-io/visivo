@@ -6,7 +6,7 @@ import { useUrlSync } from '../../hooks/useUrlSync';
 function ProjectContainer() {
   const { dashboardName } = useParams();
   const project = useLoaderData();
-  
+
   // Initialize URL synchronization for selectors
   useUrlSync();
 
@@ -27,9 +27,7 @@ function ProjectContainer() {
     });
   }, [project]);
 
-  return (
-    <Project project={project} dashboards={dashboards} dashboardName={dashboardName} />
-  );
+  return <Project project={project} dashboards={dashboards} dashboardName={dashboardName} />;
 }
 
 export default ProjectContainer;
