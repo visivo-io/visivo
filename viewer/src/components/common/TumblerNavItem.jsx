@@ -43,9 +43,12 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
         `}
         style={{ pointerEvents: showLabel ? 'auto' : 'none' }}
       >
-        <span className="flex flex-row items-center gap-1 bg-transparent text-sm font-medium">
+        <span className="flex flex-row items-center gap-1 bg-transparent text-md font-medium">
           {label}
-          {showInfoIcon && (
+          <span
+            className={`inline-flex items-center justify-center transition-all duration-500 w-3
+              ${showInfoIcon ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}`}
+          >
             <Tooltip
               content={tooltip || label}
               placement="bottom"
@@ -57,11 +60,11 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
                 aria-label="More info"
                 className="ml-1 cursor-pointer text-[#D25946] hover:text-[#B24538] focus:text-[#B24538] transition-colors duration-200 outline-none flex items-center"
               >
-                <FiInfo className="w-4 h-4 align-middle" style={{ display: 'inline', verticalAlign: 'middle' }} />
+                <FiInfo className="w-3 h-3 align-middle" style={{ display: 'inline', verticalAlign: 'middle' }} />
                 <span className="sr-only">Show info</span>
               </span>
             </Tooltip>
-          )}
+          </span>
         </span>
       </span>
       {/* For accessibility, visually hidden label for screen readers */}
