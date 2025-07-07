@@ -6550,7 +6550,19 @@
 <td>path</td>
 <td>string</td>
 <td>None</td>
-<td>The path or git reference to external yml files to include in this project</td>
+<td>The path or git reference to external yml files or directories to include in this project</td>
+</tr>
+<tr>
+<td>depth</td>
+<td>integer</td>
+<td>None</td>
+<td>Directory traversal depth. None=fully recursive, 0=current directory only, 1=one level deep, etc. Only applies to directory paths.</td>
+</tr>
+<tr>
+<td>exclusions</td>
+<td>array</td>
+<td>[]</td>
+<td>Patterns to exclude from directory inclusion. Supports glob patterns and regex. Only applies to directory paths.</td>
 </tr>
 </tbody>
 </table></div>

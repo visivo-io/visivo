@@ -562,6 +562,57 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#directory-inclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Directory Inclusion
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Directory Inclusion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#controlling-directory-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      Controlling Directory Depth
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#excluding-files-and-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      Excluding Files and Directories
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-directory-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Directory Examples
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-matching-for-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pattern Matching for Exclusions
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#external-projects" class="md-nav__link">
     <span class="md-ellipsis">
       External Projects
@@ -6570,6 +6621,57 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#directory-inclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      Directory Inclusion
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Directory Inclusion">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#controlling-directory-depth" class="md-nav__link">
+    <span class="md-ellipsis">
+      Controlling Directory Depth
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#excluding-files-and-directories" class="md-nav__link">
+    <span class="md-ellipsis">
+      Excluding Files and Directories
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advanced-directory-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Advanced Directory Examples
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-matching-for-exclusions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pattern Matching for Exclusions
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#external-projects" class="md-nav__link">
     <span class="md-ellipsis">
       External Projects
@@ -6610,6 +6712,75 @@
 </code></pre></div>
 <p>Use whatever system best matches your use case. </p>
 <p>Your includes can include other includes, allowing for nesting.  Be wise!</p>
+<h2 id="directory-inclusion">Directory Inclusion</h2>
+<p>For larger projects with many YAML files, you can include entire directories instead of listing individual files. By default, Visivo will recursively search through all subdirectories and include all <code>.yml</code> and <code>.yaml</code> files:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">includes</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./config/</span>
+</code></pre></div>
+<h3 id="controlling-directory-depth">Controlling Directory Depth</h3>
+<p>You can control how deep Visivo searches within directories using the <code>depth</code> parameter:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">includes</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># Include only files directly in the config directory (no subdirectories)</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./config/</span>
+<span class="w">    </span><span class="nt">depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+
+<span class="w">  </span><span class="c1"># Include files in config directory and one level of subdirectories</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./models/</span>
+<span class="w">    </span><span class="nt">depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+
+<span class="w">  </span><span class="c1"># Fully recursive search (default behavior)</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./all-files/</span>
+<span class="w">    </span><span class="nt">depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w">  </span><span class="c1"># or omit depth entirely</span>
+</code></pre></div>
+<ul>
+<li><code>depth: 0</code> - Only files in the specified directory (no subdirectories)</li>
+<li><code>depth: 1</code> - Files in the directory and one level of subdirectories</li>
+<li><code>depth: null</code> or omitted - Fully recursive search through all subdirectories (default)</li>
+</ul>
+<h3 id="excluding-files-and-directories">Excluding Files and Directories</h3>
+<p>Use the <code>exclusions</code> parameter to skip specific files or directories. Exclusions support multiple pattern types:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">includes</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./config/</span>
+<span class="w">    </span><span class="nt">exclusions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*.backup.yml"</span><span class="w">        </span><span class="c1"># Exclude all .backup.yml files</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"temp_config.yml"</span><span class="w">     </span><span class="c1"># Exclude specific file by name</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*/temp/*"</span><span class="w">           </span><span class="c1"># Exclude anything in temp directories</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*/archive/*"</span><span class="w">        </span><span class="c1"># Exclude anything in archive directories</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*.config.yml"</span><span class="w">       </span><span class="c1"># Exclude configuration template files</span>
+</code></pre></div>
+<h3 id="advanced-directory-examples">Advanced Directory Examples</h3>
+<p>Combine depth control and exclusions for precise file selection:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">includes</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># Include all YAML files recursively, but skip backup and temp files</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./project-configs/</span>
+<span class="w">    </span><span class="nt">exclusions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*.backup.yml"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*.temp.yml"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*/backup/*"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*/temp/*"</span>
+
+<span class="w">  </span><span class="c1"># Include only top-level model files, skip nested configurations</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./models/</span>
+<span class="w">    </span><span class="nt">depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">    </span><span class="nt">exclusions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*.config.yml"</span>
+
+<span class="w">  </span><span class="c1"># Include specific dashboard subdirectories but exclude test files</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">./dashboards/</span>
+<span class="w">    </span><span class="nt">depth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">    </span><span class="nt">exclusions</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*test*"</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"*/drafts/*"</span>
+</code></pre></div>
+<h3 id="pattern-matching-for-exclusions">Pattern Matching for Exclusions</h3>
+<p>Exclusions support several pattern matching approaches:</p>
+<ul>
+<li><strong>Filename patterns</strong>: <code>*.backup.yml</code>, <code>temp_*</code></li>
+<li><strong>Path patterns</strong>: <code>*/temp/*</code>, <code>config/*/old/*</code></li>
+<li><strong>Exact names</strong>: <code>old_config.yml</code>, <code>deprecated.yml</code></li>
+<li><strong>Regex patterns</strong>: Advanced users can use regex for complex matching</li>
+</ul>
+<p>The exclusion patterns are matched against both the filename and the relative path from the include directory.</p>
 <h2 id="external-projects">External Projects</h2>
 <p>One of the most powerful aspects of Visivo is the ability to include public GitHub repos that contain Visivo dashboards in your project.  This gives everyone to share a useful dashboard that they may have. </p>
 <p>We have published a series of projects that allow you to quickly build dashboards based on some popular tools.</p>
