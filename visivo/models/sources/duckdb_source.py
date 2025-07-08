@@ -1,10 +1,9 @@
 from typing import Literal, Optional, List
 from visivo.models.base.base_model import BaseModel
-from visivo.models.sources.source import Source
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field
 import click
 import duckdb
-import polars as pl
 
 DuckdbType = Literal["duckdb"]
 
@@ -17,7 +16,7 @@ class DuckdbAttachment(BaseModel):
     )
 
 
-class DuckdbSource(Source):
+class DuckdbSource(SqlalchemySource):
     """
     DuckdbSources hold the connection information to DuckDB data sources.
 
@@ -48,22 +47,23 @@ class DuckdbSource(Source):
     )
 
     def get_connection(self, read_only: bool = False):
+        """Return a DuckDBPyConnection using SQLAlchemy's engine."""
         try:
-
-            connection = duckdb.connect(self.database, read_only=read_only)
-
+            connection = self.get_engine().raw_connection()
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
                         f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name} (READ_ONLY)"
                     )
-
             return connection
-
         except Exception as err:
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
+
+
+    def get_dialect(self):
+        return "duckdb"
 
     def read_sql(self, query: str):
         try:
@@ -87,13 +87,12 @@ class DuckdbSource(Source):
 
                 return data
         except Exception as err:
-            raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
+            raise click.ClickException(
+                f"Error executing query on source '{self.name}': {str(err)}"
+            )
 
     def connect(self, read_only: bool = False):
         return DuckDBConnection(source=self, read_only=read_only)
-
-    def get_dialect(self):
-        return "duckdb"
 
 
 class DuckDBConnection:
@@ -110,3 +109,5 @@ class DuckDBConnection:
         if self.conn:
             self.conn.close()
             self.conn = None
+
+

@@ -11,6 +11,7 @@ from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
 from visivo.telemetry.middleware import init_telemetry_middleware
+from visivo.server.source_metadata import gather_source_metadata
 import subprocess
 import hashlib
 
@@ -77,6 +78,15 @@ class FlaskApp:
                 return jsonify(project_file_path)
             else:
                 return jsonify({})
+
+        @self.app.route("/api/project/sources_metadata", methods=["GET"])
+        def sources_metadata():
+            try:
+                metadata = gather_source_metadata(self._project.sources)
+                return jsonify(metadata)
+            except Exception as e:
+                Logger.instance().error(f"Error gathering source metadata: {str(e)}")
+                return jsonify({"message": str(e)}), 500
 
         @self.app.route("/api/project/write_changes", methods=["POST"])
         def write_changes():
