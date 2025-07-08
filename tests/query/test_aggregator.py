@@ -2,6 +2,7 @@ import os
 import json
 import polars as pl
 from decimal import Decimal
+from datetime import datetime, date, time
 from visivo.query.aggregator import Aggregator
 from tests.support.utils import temp_folder, temp_file
 
@@ -411,3 +412,73 @@ def test_decimal_data_handling():
     assert isinstance(cohort_data["total"], list), "total should be aggregated into a list"
     assert len(cohort_data["total"]) == 2, "Should have 2 total values"
     assert cohort_data["total"] == [1296.225, 356.4225], "Total values should be converted to float"
+
+
+def test_datetime_data_handling():
+    """
+    Test that datetime, date, and time objects from database queries are properly converted to JSON-serializable format.
+    """
+    output_dir = temp_folder()
+
+    # Create test data with datetime types (common in database data)
+    test_datetime = datetime(2023, 12, 25, 15, 30, 45)
+    test_date = date(2023, 12, 25)
+    test_time = time(15, 30, 45)
+
+    test_data = [
+        {
+            "cohort_on": "temporal_data",
+            "created_at": test_datetime,
+            "event_date": test_date,
+            "event_time": test_time,
+        },
+        {
+            "cohort_on": "temporal_data",
+            "created_at": datetime(2023, 12, 26, 10, 15, 30),
+            "event_date": date(2023, 12, 26),
+            "event_time": time(10, 15, 30),
+        },
+    ]
+
+    # This should work without throwing JSON serialization errors
+    Aggregator.aggregate_data(test_data, output_dir)
+
+    # Verify the output was created successfully
+    output_file = os.path.join(output_dir, "data.json")
+    assert os.path.exists(output_file), "Output file should be created"
+
+    # Verify we can read and parse the JSON
+    with open(output_file, "r") as f:
+        result = json.load(f)
+
+    # Verify the structure is correct
+    assert "temporal_data" in result, "Should have the temporal_data cohort"
+    cohort_data = result["temporal_data"]
+
+    # Verify datetime values were converted to ISO strings and aggregated properly
+    assert isinstance(
+        cohort_data["created_at"], list
+    ), "created_at should be aggregated into a list"
+    assert len(cohort_data["created_at"]) == 2, "Should have 2 created_at values"
+    assert cohort_data["created_at"] == [
+        "2023-12-25T15:30:45",
+        "2023-12-26T10:15:30",
+    ], "Datetime values should be ISO strings"
+
+    assert isinstance(
+        cohort_data["event_date"], list
+    ), "event_date should be aggregated into a list"
+    assert len(cohort_data["event_date"]) == 2, "Should have 2 event_date values"
+    assert cohort_data["event_date"] == [
+        "2023-12-25",
+        "2023-12-26",
+    ], "Date values should be ISO strings"
+
+    assert isinstance(
+        cohort_data["event_time"], list
+    ), "event_time should be aggregated into a list"
+    assert len(cohort_data["event_time"]) == 2, "Should have 2 event_time values"
+    assert cohort_data["event_time"] == [
+        "15:30:45",
+        "10:15:30",
+    ], "Time values should be ISO strings"

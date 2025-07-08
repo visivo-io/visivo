@@ -3,6 +3,7 @@ import json
 import base64
 from collections import defaultdict
 from decimal import Decimal
+from datetime import datetime, date, time
 
 
 class Aggregator:
@@ -15,6 +16,12 @@ class Aggregator:
         elif isinstance(obj, Decimal):
             # Convert Decimal to float for JSON serialization
             return float(obj)
+        elif isinstance(obj, (datetime, date)):
+            # Convert datetime/date to ISO format string
+            return obj.isoformat()
+        elif isinstance(obj, time):
+            # Convert time to string format
+            return obj.isoformat()
         elif isinstance(obj, list):
             # Recursively handle lists
             return [Aggregator._make_json_serializable(item) for item in obj]
