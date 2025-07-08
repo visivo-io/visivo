@@ -3,9 +3,14 @@ import { HiOutlineClipboardCopy } from 'react-icons/hi';
 import Pill from '../common/Pill';
 import { Sidebar } from '../styled/Sidebar';
 import useStore from '../../stores/store';
+import TreeView from '@mui/x-tree-view/TreeView';
+import TreeItem from '@mui/x-tree-view/TreeItem';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
 const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick }) => {
   const { setInfo } = useStore();
+  const sourcesMeta = useStore(state => state.sourcesMeta);
 
   const validData = React.useMemo(() => {
     if (!Array.isArray(data)) return [];
@@ -59,8 +64,68 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
       >
         <option value="models">SQL Models</option>
         <option value="traces">SQL Traces</option>
+        <option value="sources">Sources</option>
       </select>
-      {validData.map(item => renderTreeItem(item))}
+      {selectedTab === 'sources' ? (
+        <TreeView
+          defaultCollapseIcon={<ExpandMoreIcon />}
+          defaultExpandIcon={<ChevronRightIcon />}
+        >
+          {sourcesMeta?.sources?.map((src, idx) => (
+            <TreeItem nodeId={`src-${idx}`} label={src.name} key={src.name}>
+              {src.databases.map((db, dIdx) => (
+                <TreeItem
+                  nodeId={`src-${idx}-db-${dIdx}`}
+                  label={db.name}
+                  key={`${src.name}-${db.name}`}
+                >
+                  {db.schemas
+                    ? db.schemas.map((sc, sIdx) => (
+                        <TreeItem
+                          nodeId={`src-${idx}-db-${dIdx}-sc-${sIdx}`}
+                          label={sc.name}
+                          key={`${src.name}-${db.name}-${sc.name}`}
+                        >
+                          {sc.tables.map((tbl, tIdx) => (
+                            <TreeItem
+                              nodeId={`src-${idx}-db-${dIdx}-sc-${sIdx}-tbl-${tIdx}`}
+                              label={tbl.name}
+                              key={`${src.name}-${db.name}-${sc.name}-${tbl.name}`}
+                            >
+                              {tbl.columns.map((col, cIdx) => (
+                                <TreeItem
+                                  nodeId={`src-${idx}-db-${dIdx}-sc-${sIdx}-tbl-${tIdx}-col-${cIdx}`}
+                                  label={col}
+                                  key={`${src.name}-${db.name}-${sc.name}-${tbl.name}-${col}`}
+                                />
+                              ))}
+                            </TreeItem>
+                          ))}
+                        </TreeItem>
+                      ))
+                    : db.tables.map((tbl, tIdx) => (
+                        <TreeItem
+                          nodeId={`src-${idx}-db-${dIdx}-tbl-${tIdx}`}
+                          label={tbl.name}
+                          key={`${src.name}-${db.name}-${tbl.name}`}
+                        >
+                          {tbl.columns.map((col, cIdx) => (
+                            <TreeItem
+                              nodeId={`src-${idx}-db-${dIdx}-tbl-${tIdx}-col-${cIdx}`}
+                              label={col}
+                              key={`${src.name}-${db.name}-${tbl.name}-${col}`}
+                            />
+                          ))}
+                        </TreeItem>
+                      ))}
+                </TreeItem>
+              ))}
+            </TreeItem>
+          ))}
+        </TreeView>
+      ) : (
+        validData.map(item => renderTreeItem(item))
+      )}
     </Sidebar>
   );
 });

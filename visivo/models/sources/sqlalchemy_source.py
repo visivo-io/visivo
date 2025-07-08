@@ -3,7 +3,7 @@ from typing import Any, Optional
 import click
 from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, text, inspect
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
 import polars as pl
@@ -90,3 +90,71 @@ class SqlalchemySource(Source, ABC):
 
     def connect_args(self):
         return {}
+
+    def list_databases(self):
+        """Return a list of database names for this source."""
+        engine = self.get_engine()
+        dialect = engine.dialect.name
+        try:
+            with engine.connect() as conn:
+                if dialect.startswith("mysql"):
+                    rows = conn.execute(text("SHOW DATABASES")).fetchall()
+                    return [r[0] for r in rows]
+                if dialect.startswith("postgresql"):
+                    rows = conn.execute(text("SELECT datname FROM pg_database"))
+                    return [r[0] for r in rows]
+                if dialect.startswith("snowflake"):
+                    rows = conn.execute(text("SHOW DATABASES"))
+                    return [r[1] for r in rows]
+                if dialect.startswith("duckdb"):
+                    rows = conn.execute(text("PRAGMA database_list")).fetchall()
+                    return [r[2] for r in rows if r[2]]
+        except Exception:
+            pass
+        return [self.database]
+
+    def introspect(self):
+        """Return metadata about databases, schemas, tables, and columns."""
+        result = {"name": self.name, "type": self.type, "databases": []}
+        db_names = self.list_databases()
+        for db_name in db_names:
+            src_copy = deepcopy(self)
+            src_copy.database = db_name
+            src_copy._engine = None
+            engine = src_copy.get_engine()
+            inspector = inspect(engine)
+            try:
+                schemas = inspector.get_schema_names()
+            except Exception:
+                schemas = []
+            db_entry = {"name": db_name}
+            if schemas:
+                db_entry["schemas"] = []
+                for schema in schemas:
+                    try:
+                        tables = inspector.get_table_names(schema=schema)
+                    except Exception:
+                        tables = []
+                    table_entries = []
+                    for table in tables:
+                        try:
+                            cols = [c["name"] for c in inspector.get_columns(table, schema=schema)]
+                        except Exception:
+                            cols = []
+                        table_entries.append({"name": table, "columns": cols})
+                    db_entry["schemas"].append({"name": schema, "tables": table_entries})
+            else:
+                try:
+                    tables = inspector.get_table_names()
+                except Exception:
+                    tables = []
+                table_entries = []
+                for table in tables:
+                    try:
+                        cols = [c["name"] for c in inspector.get_columns(table)]
+                    except Exception:
+                        cols = []
+                    table_entries.append({"name": table, "columns": cols})
+                db_entry["tables"] = table_entries
+            result["databases"].append(db_entry)
+        return result

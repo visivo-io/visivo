@@ -22,6 +22,9 @@ const createExplorerSlice = (set, get) => ({
   explorerData: null,
   setExplorerData: explorerData => set({ explorerData }),
 
+  sourcesMeta: null,
+  setSourcesMeta: sourcesMeta => set({ sourcesMeta }),
+
   treeData: [],
   setTreeData: treeData => set({ treeData }),
 

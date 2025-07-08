@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import ExplorerTree from './ExplorerTree';
 import { fetchTraceQuery } from '../../services/queryService';
-import { fetchExplorer } from '../../api/explorer';
+import { fetchExplorer, fetchSourceMetadata } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
 import { useWorksheets } from '../../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
@@ -66,6 +66,7 @@ const QueryExplorer = () => {
     setSelectedType,
     setExplorerData,
     setSelectedSource,
+    setSourcesMeta,
     setQueryStats,
     setSplitRatio,
     setIsDragging,
@@ -148,14 +149,29 @@ const QueryExplorer = () => {
               setSelectedSource(data.sources[0]);
             }
           }
+      }
+    } catch (err) {
+      console.error('Error loading explorer data:', err);
+      setError('Failed to load explorer data');
+    }
+  };
+  loadExplorerData();
+  }, [setExplorerData, setSelectedSource, setError]);
+
+  useEffect(() => {
+    const loadMetadata = async () => {
+      try {
+        const meta = await fetchSourceMetadata();
+        if (meta) {
+          setSourcesMeta(meta);
         }
       } catch (err) {
-        console.error('Error loading explorer data:', err);
-        setError('Failed to load explorer data');
+        console.error('Error loading source metadata:', err);
+        setError('Failed to load source metadata');
       }
     };
-    loadExplorerData();
-  }, [setExplorerData, setSelectedSource, setError]);
+    loadMetadata();
+  }, [setSourcesMeta, setError]);
 
   const transformData = React.useCallback(() => {
     if (!explorerData) return [];
