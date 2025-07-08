@@ -284,11 +284,19 @@ def test_python_aggregation_with_binary_data():
     assert len(cohort_data["numeric_data"]) == 2, "Should have 2 numeric values"
     assert cohort_data["numeric_data"] == [42, 84], "Numeric values should be correct"
 
-    # Binary data should be handled as-is (Python can serialize bytes to JSON as base64)
+    # Binary data should be converted to base64 strings for JSON serialization
     assert isinstance(
         cohort_data["binary_data"], list
     ), "binary_data should be aggregated into a list"
     assert len(cohort_data["binary_data"]) == 2, "Should have 2 binary values"
+    
+    # Verify the binary data was converted to base64 strings
+    import base64
+    expected_binary_1 = base64.b64encode(b"\x12\x34\x56\x78\x9a\xbc\xde\xf0").decode('utf-8')
+    expected_binary_2 = base64.b64encode(b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11").decode('utf-8')
+    
+    assert cohort_data["binary_data"][0] == expected_binary_1, "First binary value should be base64 encoded"
+    assert cohort_data["binary_data"][1] == expected_binary_2, "Second binary value should be base64 encoded"
 
 
 def test_pure_python_aggregation_compatibility():

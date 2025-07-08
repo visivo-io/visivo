@@ -1,10 +1,27 @@
 import os
 import polars as pl
 import json
+import base64
 from collections import defaultdict
 
 
 class Aggregator:
+    @staticmethod
+    def _make_json_serializable(obj):
+        """Convert objects to JSON-serializable format"""
+        if isinstance(obj, bytes):
+            # Convert bytes to base64 string
+            return base64.b64encode(obj).decode('utf-8')
+        elif isinstance(obj, list):
+            # Recursively handle lists
+            return [Aggregator._make_json_serializable(item) for item in obj]
+        elif isinstance(obj, dict):
+            # Recursively handle dictionaries
+            return {key: Aggregator._make_json_serializable(value) for key, value in obj.items()}
+        else:
+            # Return as-is for JSON-serializable types
+            return obj
+
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
         # Read JSON file directly with Python instead of Polars
@@ -82,7 +99,10 @@ class Aggregator:
             
             result[cohort] = aggregated_row
         
+        # Make result JSON-serializable (handles bytes, etc.)
+        json_safe_result = cls._make_json_serializable(result)
+        
         # Write result to JSON file
         os.makedirs(trace_dir, exist_ok=True)
         with open(f"{trace_dir}/data.json", "w") as fp:
-            json.dump(result, fp, indent=4)
+            json.dump(json_safe_result, fp, indent=4)
