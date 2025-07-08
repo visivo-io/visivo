@@ -1,6 +1,7 @@
 import os
 import json
 import polars as pl
+from decimal import Decimal
 from visivo.query.aggregator import Aggregator
 from tests.support.utils import temp_folder, temp_file
 
@@ -239,21 +240,24 @@ def test_python_aggregation_with_binary_data():
 
     output_dir = temp_folder()
 
-    # Create data with binary content that would cause Polars issues
-    df = pl.DataFrame(
+    # Create raw data (simulating what read_sql would return)
+    raw_data = [
         {
-            "cohort_on": ["test_cohort", "test_cohort"],  # Same cohort to trigger aggregation
-            "binary_data": [
-                b"\x12\x34\x56\x78\x9a\xbc\xde\xf0",  # 8-byte binary data
-                b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11",  # Different 8-byte binary data
-            ],
-            "text_data": ["value1", "value2"],
-            "numeric_data": [42, 84],
-        }
-    )
+            "cohort_on": "test_cohort",
+            "binary_data": b"\x12\x34\x56\x78\x9a\xbc\xde\xf0",  # 8-byte binary data
+            "text_data": "value1",
+            "numeric_data": 42,
+        },
+        {
+            "cohort_on": "test_cohort",  # Same cohort to trigger aggregation
+            "binary_data": b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11",  # Different 8-byte binary data
+            "text_data": "value2",
+            "numeric_data": 84,
+        },
+    ]
 
     # This should work with the pure Python implementation
-    Aggregator.aggregate_data_frame(df, output_dir)
+    Aggregator.aggregate_data_frame(raw_data, output_dir)
 
     # Verify the output was created successfully
     output_file = os.path.join(output_dir, "data.json")
@@ -289,14 +293,19 @@ def test_python_aggregation_with_binary_data():
         cohort_data["binary_data"], list
     ), "binary_data should be aggregated into a list"
     assert len(cohort_data["binary_data"]) == 2, "Should have 2 binary values"
-    
+
     # Verify the binary data was converted to base64 strings
     import base64
-    expected_binary_1 = base64.b64encode(b"\x12\x34\x56\x78\x9a\xbc\xde\xf0").decode('utf-8')
-    expected_binary_2 = base64.b64encode(b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11").decode('utf-8')
-    
-    assert cohort_data["binary_data"][0] == expected_binary_1, "First binary value should be base64 encoded"
-    assert cohort_data["binary_data"][1] == expected_binary_2, "Second binary value should be base64 encoded"
+
+    expected_binary_1 = base64.b64encode(b"\x12\x34\x56\x78\x9a\xbc\xde\xf0").decode("utf-8")
+    expected_binary_2 = base64.b64encode(b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11").decode("utf-8")
+
+    assert (
+        cohort_data["binary_data"][0] == expected_binary_1
+    ), "First binary value should be base64 encoded"
+    assert (
+        cohort_data["binary_data"][1] == expected_binary_2
+    ), "Second binary value should be base64 encoded"
 
 
 def test_pure_python_aggregation_compatibility():
@@ -351,3 +360,54 @@ def test_pure_python_aggregation_compatibility():
         result = json.load(f)
 
     assert result == expected_output, f"Expected {expected_output}, got {result}"
+
+
+def test_decimal_data_handling():
+    """
+    Test that Decimal objects from database queries are properly converted to JSON-serializable format.
+    """
+    output_dir = temp_folder()
+
+    # Create test data with Decimal values (common in financial/database data)
+    test_data = [
+        {
+            "cohort_on": "financial_data",
+            "price": Decimal("123.45"),
+            "quantity": Decimal("10.5"),
+            "total": Decimal("1296.225"),
+        },
+        {
+            "cohort_on": "financial_data",
+            "price": Decimal("67.89"),
+            "quantity": Decimal("5.25"),
+            "total": Decimal("356.4225"),
+        },
+    ]
+
+    # This should work without throwing JSON serialization errors
+    Aggregator.aggregate_data(test_data, output_dir)
+
+    # Verify the output was created successfully
+    output_file = os.path.join(output_dir, "data.json")
+    assert os.path.exists(output_file), "Output file should be created"
+
+    # Verify we can read and parse the JSON
+    with open(output_file, "r") as f:
+        result = json.load(f)
+
+    # Verify the structure is correct
+    assert "financial_data" in result, "Should have the financial_data cohort"
+    cohort_data = result["financial_data"]
+
+    # Verify Decimal values were converted to floats and aggregated properly
+    assert isinstance(cohort_data["price"], list), "price should be aggregated into a list"
+    assert len(cohort_data["price"]) == 2, "Should have 2 price values"
+    assert cohort_data["price"] == [123.45, 67.89], "Price values should be converted to float"
+
+    assert isinstance(cohort_data["quantity"], list), "quantity should be aggregated into a list"
+    assert len(cohort_data["quantity"]) == 2, "Should have 2 quantity values"
+    assert cohort_data["quantity"] == [10.5, 5.25], "Quantity values should be converted to float"
+
+    assert isinstance(cohort_data["total"], list), "total should be aggregated into a list"
+    assert len(cohort_data["total"]) == 2, "Should have 2 total values"
+    assert cohort_data["total"] == [1296.225, 356.4225], "Total values should be converted to float"

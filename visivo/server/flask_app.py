@@ -132,12 +132,15 @@ class FlaskApp:
                 result = source.read_sql(query)
 
                 # Transform the result into the expected format
-                if result is None or result.height == 0:
+                # result is now a list of dictionaries instead of a Polars DataFrame
+                if result is None or len(result) == 0:
                     response_data = {"columns": [], "rows": []}
                 else:
+                    # Extract column names from the first row
+                    columns = list(result[0].keys()) if result else []
                     response_data = {
-                        "columns": list(result.columns),
-                        "rows": result.to_dicts(),
+                        "columns": columns,
+                        "rows": result,
                     }
 
                 # If worksheet_id is provided, save the results
