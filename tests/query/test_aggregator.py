@@ -1,5 +1,6 @@
 import os
 import json
+import polars as pl
 from visivo.query.aggregator import Aggregator
 from tests.support.utils import temp_folder, temp_file
 
@@ -228,3 +229,117 @@ def test_json_aggregation_basic():
         result = json.load(f)
 
     assert result == expected_output
+
+
+def test_python_aggregation_with_binary_data():
+    """
+    Test that the new pure Python aggregation handles all data types correctly,
+    including binary data that would cause issues with Polars.
+    """
+
+    output_dir = temp_folder()
+
+    # Create data with binary content that would cause Polars issues
+    df = pl.DataFrame(
+        {
+            "cohort_on": ["test_cohort", "test_cohort"],  # Same cohort to trigger aggregation
+            "binary_data": [
+                b"\x12\x34\x56\x78\x9a\xbc\xde\xf0",  # 8-byte binary data
+                b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11",  # Different 8-byte binary data
+            ],
+            "text_data": ["value1", "value2"],
+            "numeric_data": [42, 84],
+        }
+    )
+
+    # This should work with the pure Python implementation
+    Aggregator.aggregate_data_frame(df, output_dir)
+
+    # Verify the output was created successfully
+    output_file = os.path.join(output_dir, "data.json")
+    assert os.path.exists(output_file), "Output file should be created"
+
+    # Verify we can read and parse the JSON
+    with open(output_file, "r") as f:
+        result = json.load(f)
+
+    # Verify the structure is correct
+    assert "test_cohort" in result, "Should have the test cohort"
+    assert "binary_data" in result["test_cohort"], "Should have binary_data column"
+    assert "text_data" in result["test_cohort"], "Should have text_data column"
+    assert "numeric_data" in result["test_cohort"], "Should have numeric_data column"
+
+    # Verify the data was aggregated into lists (since we have 2 rows with same cohort)
+    cohort_data = result["test_cohort"]
+
+    # Text data should be aggregated into a list
+    assert isinstance(cohort_data["text_data"], list), "text_data should be aggregated into a list"
+    assert len(cohort_data["text_data"]) == 2, "Should have 2 text values"
+    assert cohort_data["text_data"] == ["value1", "value2"], "Text values should be correct"
+
+    # Numeric data should be aggregated into a list
+    assert isinstance(
+        cohort_data["numeric_data"], list
+    ), "numeric_data should be aggregated into a list"
+    assert len(cohort_data["numeric_data"]) == 2, "Should have 2 numeric values"
+    assert cohort_data["numeric_data"] == [42, 84], "Numeric values should be correct"
+
+    # Binary data should be handled as-is (Python can serialize bytes to JSON as base64)
+    assert isinstance(
+        cohort_data["binary_data"], list
+    ), "binary_data should be aggregated into a list"
+    assert len(cohort_data["binary_data"]) == 2, "Should have 2 binary values"
+
+
+def test_pure_python_aggregation_compatibility():
+    """
+    Test that the pure Python aggregation produces the same results as the original Polars version
+    for normal data (ensuring we maintain backward compatibility).
+    """
+
+    output_dir = temp_folder()
+
+    # Use the same test data as the original test
+    test_data = [
+        {
+            "cohort_on": "2023-Q1",
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [10, 20],
+            "props.text": ["10", "20"],
+        },
+        {
+            "cohort_on": "2023-Q1",
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [15, 25],
+            "props.text": ["15", "25"],
+        },
+        {
+            "cohort_on": "2023-Q2",
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [30, 40],
+            "props.text": ["30", "40"],
+        },
+    ]
+
+    expected_output = {
+        "2023-Q1": {
+            "columns.x_data": [["A", "B"], ["A", "B"]],
+            "columns.y_data": [[10, 20], [15, 25]],
+            "props.text": [["10", "20"], ["15", "25"]],
+        },
+        "2023-Q2": {
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [30, 40],
+            "props.text": ["30", "40"],
+        },
+    }
+
+    # Test with direct data
+    Aggregator.aggregate_data(test_data, output_dir)
+
+    # Verify output
+    output_file = os.path.join(output_dir, "data.json")
+    with open(output_file, "r") as f:
+        result = json.load(f)
+
+    assert result == expected_output, f"Expected {expected_output}, got {result}"
