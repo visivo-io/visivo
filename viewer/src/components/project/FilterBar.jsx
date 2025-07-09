@@ -10,9 +10,9 @@ function FilterBar() {
     selectedTags,
     setSelectedTags,
     availableTags,
-    filteredDashboards
+    filteredDashboards,
   } = useStore();
-  
+
   const totalCount = filteredDashboards.length;
   return (
     <div className="mb-4">

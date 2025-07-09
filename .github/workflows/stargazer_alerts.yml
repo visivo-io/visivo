@@ -1,0 +1,14 @@
+on:
+  watch:
+    types: [started]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack alert
+        uses: slackapi/slack-github-action@v2
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          slack-message: |
+            :star: ${{ github.actor }} just starred ${{ github.repository }}

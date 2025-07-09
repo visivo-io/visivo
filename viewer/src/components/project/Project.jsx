@@ -60,7 +60,7 @@ function Project(props) {
     dashboardsByLevel,
     setDashboards,
     setCurrentDashboardName,
-    filterDashboards
+    filterDashboards,
   } = useStore();
 
   // Initialize dashboards in store when props change
@@ -69,13 +69,13 @@ function Project(props) {
       setDashboards(props.dashboards);
       filterDashboards();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.dashboards]);
 
   // Update current dashboard name when it changes
   useEffect(() => {
     setCurrentDashboardName(props.dashboardName);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.dashboardName]);
 
   const renderLoading = () => {

@@ -102,7 +102,7 @@ const NameSelect = ({
       }
     }
   }, [alwaysPushSelectionToUrl, currentValue, name, defaultOptions, setStateSearchParam]);
-  
+
   const selectedNames = useMemo(() => {
     if (currentValue !== null && currentValue !== undefined) {
       return currentValue;
@@ -129,7 +129,7 @@ const NameSelect = ({
       {showLabel && <label htmlFor={`selector${name}`}>Selector</label>}
       {visible && (
         <Select
-          styles={{ menu: provided => ({ ...provided, zIndex: 9999 })}}
+          styles={{ menu: provided => ({ ...provided, zIndex: 9999 }) }}
           data-testid="selector"
           name="selector"
           inputId={`selector${name}`}

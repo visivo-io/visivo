@@ -28,21 +28,20 @@ class SqlalchemySource(Source, ABC):
             columns = list(results.keys())
             data = results.fetchall()
             results.close()
-        # Convert to dict of columns for Polars
-        if data:
-            data_dict = {}
-            data_dict = {col: [row[i] for row in data] for i, col in enumerate(columns)}
-            for i, col in enumerate(columns):
-                values = [row[i] for row in data]
-                if isinstance(values[0], (dict, list)):
-                    values = [json.dumps(v) for v in values]
-                data_dict[col] = values
 
-            return pl.DataFrame(data_dict)
-        else:
-            # No data, just return empty DataFrame with columns
-            schema = {col: pl.String for col in columns}
-            return pl.DataFrame({col: [] for col in columns}, schema=schema)
+        # Convert to list of dictionaries
+        result_data = []
+        for row in data:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                value = row[i]
+                # Convert complex types to JSON strings for consistency
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value)
+                row_dict[col] = value
+            result_data.append(row_dict)
+
+        return result_data
 
     def get_connection(self):
 
