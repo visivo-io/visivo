@@ -93,9 +93,8 @@ class Aggregator:
 
                 # Only process columns that have values
                 if values:
-                    # Apply the same unwrapping logic as the original
-                    # If there's only one value, unwrap it from the list
-                    if len(values) == 1:
+                    # If there's only one value and it is a list, unwrap it from the list
+                    if len(values) == 1 and isinstance(values[0], list):
                         aggregated_row[col] = values[0]
                     else:
                         aggregated_row[col] = values
