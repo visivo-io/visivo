@@ -4,6 +4,7 @@ import base64
 from collections import defaultdict
 from decimal import Decimal
 from datetime import datetime, date, time
+from visivo.logger.logger import Logger
 
 
 class Aggregator:
@@ -11,26 +12,27 @@ class Aggregator:
     def _make_json_serializable(obj):
         """Convert objects to JSON-serializable format"""
         if isinstance(obj, bytes):
-            # Convert bytes to base64 string
             return base64.b64encode(obj).decode("utf-8")
         elif isinstance(obj, Decimal):
-            # Convert Decimal to float for JSON serialization
             return float(obj)
         elif isinstance(obj, (datetime, date)):
-            # Convert datetime/date to ISO format string
             return obj.isoformat()
         elif isinstance(obj, time):
-            # Convert time to string format
             return obj.isoformat()
         elif isinstance(obj, list):
-            # Recursively handle lists
             return [Aggregator._make_json_serializable(item) for item in obj]
         elif isinstance(obj, dict):
-            # Recursively handle dictionaries
             return {key: Aggregator._make_json_serializable(value) for key, value in obj.items()}
-        else:
-            # Return as-is for JSON-serializable types
+        elif (
+            isinstance(obj, bool)
+            or isinstance(obj, int)
+            or isinstance(obj, float)
+            or isinstance(obj, str)
+            or obj is None
+        ):
             return obj
+        else:
+            return str(obj)
 
     @classmethod
     def aggregate(cls, json_file: str, trace_dir: str):
