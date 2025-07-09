@@ -43,7 +43,7 @@ const Markdown = ({ markdown, row, height }) => {
             },
             onClick: () => {
               const url = new URL(window.location.href);
-              url.searchParams.set('element_id', itemNameToSlug(markdown.path));
+              url.searchParams.set('element_id', window.scrollY);
               copyText(url.toString());
             },
             onMouseLeave: resetToolTip

@@ -117,7 +117,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
   const handleCopyText = () => {
     const url = new URL(window.location.href);
-    url.searchParams.set('element_id', itemNameToSlug(table.name));
+    url.searchParams.set('element_id', window.scrollY);
     copyText(url.toString());
   }
 

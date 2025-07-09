@@ -92,7 +92,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
             },
             onClick: () => {
               const url = new URL(window.location.href);
-              url.searchParams.set('element_id', itemNameToSlug(chart.name));
+              url.searchParams.set('element_id', window.scrollY);
               copyText(url.toString());
             },
             onMouseLeave: resetToolTip

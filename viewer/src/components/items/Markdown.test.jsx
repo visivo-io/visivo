@@ -55,7 +55,7 @@ describe('Markdown Component', () => {
     fireEvent.click(shareIcon);
 
     expect(mockCopyText).toHaveBeenCalledTimes(1);
-    expect(mockCopyText).toHaveBeenCalledWith(expect.stringContaining('element_id=sample-markdown'));
+    expect(mockCopyText).toHaveBeenCalledWith(expect.stringContaining('element_id=0'));
   });
 
   test('calls resetToolTip on mouse leave of share icon', () => {

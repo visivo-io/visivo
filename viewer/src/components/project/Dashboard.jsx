@@ -5,14 +5,10 @@ import useDimensions from 'react-cool-dimensions';
 import { throwError } from '../../api/utils';
 import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
-import useScrollToElementById from '../../hooks/useScrollToElementById';
 import Markdown from '../items/Markdown';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
-  const elementId = searchParams.get('element_id');
-
-  useScrollToElementById(elementId);
 
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
