@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import useStore from '../../../stores/store';
 import TabBar from './TabBar';
 import ActionButtons from './ActionButtons';
@@ -7,6 +7,7 @@ import SaveChangesModal from './modals/SaveChangesModal';
 import MoveObjectModal from './modals/MoveObjectModal';
 import DeleteObjectModal from './modals/DeleteObjectModal';
 import TextEditorModal from './modals/TextEditorModal';
+import SnackBar from '../../common/SnackBar';
 
 // Split into smaller, more focused selectors
 const selectTabs = state => state.tabs;
@@ -24,32 +25,41 @@ const EditorPanel = () => {
   const closeTab = useStore(state => state.closeTab);
 
   // Modal states
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isMoveModalOpen, setIsMoveModalOpen] = React.useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [isTextEditorModalOpen, setIsTextEditorModalOpen] = React.useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isTextEditorModalOpen, setIsTextEditorModalOpen] = useState(false);
+
+  const [snackBarOpen, setSnackBarOpen] = useState(false)
+  const [message, setMessage] = useState("")
 
   const activeTab = activeTabId ? tabs.find(tab => tab.id === activeTabId) : null;
   const activeConfig = activeTab && namedChildren[activeTab.name]?.config;
 
   // Add ref for scroll container
-  const scrollRef = React.useRef(null);
-  const [scrollPosition, setScrollPosition] = React.useState(0);
+  const scrollRef = useRef(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   // Save scroll position before update
-  const handleScroll = React.useCallback(() => {
+  const handleScroll = useCallback(() => {
     if (scrollRef.current) {
       setScrollPosition(scrollRef.current.scrollTop);
     }
   }, []);
 
   // Restore scroll position after update
-  React.useEffect(() => {
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollPosition;
     }
   }, [scrollPosition, activeConfig]);
+
+  useEffect(() => {
+    if (!snackBarOpen) {
+      setMessage("")
+    }
+  }, [snackBarOpen])
 
   const handleDelete = () => {
     if (!activeTab) return;
@@ -116,9 +126,13 @@ const EditorPanel = () => {
         isOpen={isTextEditorModalOpen}
         onClose={() => setIsTextEditorModalOpen(false)}
         objectName={activeTab?.name}
+        setMessage={setMessage}
+        setSnackBarOpen={setSnackBarOpen}
       />
 
       <SaveChangesModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+
+      <SnackBar open={snackBarOpen} setOpen={setSnackBarOpen} message={message} />
     </div>
   );
 };

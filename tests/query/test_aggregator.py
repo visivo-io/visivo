@@ -180,3 +180,51 @@ def test_polars_aggregator_matches_pandas():
     with open(f"{output_dir}/data.json") as f:
         result = json.load(f)
     assert result == PANDAS_OUTPUT
+
+
+def test_json_aggregation_basic():
+    """Test basic JSON aggregation functionality with simple data"""
+    output_dir = temp_folder()
+
+    # Simple test data with two cohorts
+    simple_input = """[
+        {
+            "cohort_on": "2023-Q1",
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [10, 20],
+            "props.text": ["10", "20"]
+        },
+        {
+            "cohort_on": "2023-Q1", 
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [15, 25],
+            "props.text": ["15", "25"]
+        },
+        {
+            "cohort_on": "2023-Q2",
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [30, 40],
+            "props.text": ["30", "40"]
+        }
+    ]"""
+
+    expected_output = {
+        "2023-Q1": {
+            "columns.x_data": [["A", "B"], ["A", "B"]],
+            "columns.y_data": [[10, 20], [15, 25]],
+            "props.text": [["10", "20"], ["15", "25"]],
+        },
+        "2023-Q2": {
+            "columns.x_data": ["A", "B"],
+            "columns.y_data": [30, 40],
+            "props.text": ["30", "40"],
+        },
+    }
+
+    input_path = temp_file("simple_input.json", simple_input, output_dir=output_dir)
+    Aggregator.aggregate(str(input_path), output_dir)
+
+    with open(f"{output_dir}/data.json") as f:
+        result = json.load(f)
+
+    assert result == expected_output
