@@ -2,8 +2,6 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { MemoryRouter, useSearchParams } from 'react-router-dom';
 import useScrollToElementById from './useScrollToElementById';
 
-window.HTMLElement.prototype.scrollIntoView = jest.fn();
-
 jest.mock('react-router-dom', () => {
   const originalModule = jest.requireActual('react-router-dom');
   return {
@@ -15,16 +13,18 @@ jest.mock('react-router-dom', () => {
 describe('useScrollToElementById', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
   });
 
   test('should scroll to element and update search params', async () => {
-    // Setup the element in the DOM
     const elementId = 'test-element';
+
+    // Setup test element in DOM
     const element = document.createElement('div');
     element.setAttribute('id', elementId);
+    element.scrollIntoView = jest.fn();
     document.body.appendChild(element);
 
-    // Mock search params
     const deleteMock = jest.fn();
     const setSearchParamsMock = jest.fn();
 
@@ -33,18 +33,17 @@ describe('useScrollToElementById', () => {
       setSearchParamsMock,
     ]);
 
-    const { result } = renderHook(() => useScrollToElementById(elementId), { wrapper: MemoryRouter });
+    const wrapper = ({ children }) => <MemoryRouter>{children}</MemoryRouter>;
 
-    // Wait until scrollIntoView has been called
+    renderHook(() => useScrollToElementById(elementId), { wrapper });
+
     await waitFor(() => {
       expect(element.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
     });
 
-    // Check that searchParams.delete was called to clean URL
     expect(deleteMock).toHaveBeenCalledWith('element_id');
     expect(setSearchParamsMock).toHaveBeenCalled();
 
-    // Cleanup
     document.body.removeChild(element);
   });
 
@@ -56,11 +55,14 @@ describe('useScrollToElementById', () => {
       setSearchParamsMock,
     ]);
 
-    const { result } = renderHook(() => useScrollToElementById(null), { wrapper: MemoryRouter });
+    const wrapper = ({ children }) => <MemoryRouter>{children}</MemoryRouter>;
+
+    renderHook(() => useScrollToElementById(null), { wrapper });
 
     await waitFor(() => {
       expect(window.HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     });
+
     expect(setSearchParamsMock).not.toHaveBeenCalled();
   });
 });

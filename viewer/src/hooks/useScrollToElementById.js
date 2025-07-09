@@ -2,11 +2,13 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const useScrollToElementById = (elementId) => {
-  const element = document.getElementById(elementId);
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (!elementId) return;
+
+    const element = document.getElementById(elementId);
 
     const scrollToElement = () => {
 
@@ -22,7 +24,7 @@ const useScrollToElementById = (elementId) => {
 
     scrollToElement();
 
-  }, [elementId, element, searchParams, setSearchParams]);
+  }, [elementId, searchParams, setSearchParams]);
 };
 
 export default useScrollToElementById;
