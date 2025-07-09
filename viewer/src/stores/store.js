@@ -11,12 +11,12 @@ const useStore = create(
   devtools((...a) => ({
     ...createEditorSlice(...a),
     ...createExplorerSlice(...a),
+    ...createProjectSlice(...a),
+    ...createSelectorSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
       partialize: (state) => ({ scrollPositions: state.scrollPositions })
     })(...a)
-    ...createProjectSlice(...a),
-    ...createSelectorSlice(...a),
   }))
 );
 

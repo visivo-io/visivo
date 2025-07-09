@@ -24,6 +24,7 @@ const Markdown = ({ markdown, row, height }) => {
   return (
     <div
       id={itemNameToSlug(markdown.path)}
+      data-testid={itemNameToSlug(markdown.path)} 
       className={`relative w-full h-full flex flex-col ${alignmentClass}`}
       style={row.height !== 'compact' ? { height: height } : {}}
       onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)}
