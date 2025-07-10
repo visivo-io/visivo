@@ -1,5 +1,6 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.logger.logger import Logger
 from pydantic import Field
 
 PostgresqlType = Literal["postgresql"]
@@ -46,6 +47,6 @@ class PostgresqlSource(SqlalchemySource):
                     text("SELECT datname FROM pg_database WHERE datistemplate = false")
                 ).fetchall()
                 return [r[0] for r in rows]
-        except Exception:
-            # Fallback to configured database if query fails
-            return [self.database]
+        except Exception as e:
+            # Re-raise to allow proper error handling in UI
+            raise e

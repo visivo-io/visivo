@@ -2,6 +2,7 @@ from typing import List, Literal, Optional, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field
+from visivo.logger.logger import Logger
 
 
 class Attachment(BaseModel):
@@ -61,3 +62,34 @@ class SqliteSource(SqlalchemySource):
 
     def get_dialect(self):
         return "sqlite+pysqlite"
+
+    def list_databases(self):
+        """List databases for SQLite source.
+
+        SQLite works with single database files, so this method verifies
+        the database file is accessible and valid by testing the connection.
+        """
+        try:
+            # Test the connection by running a simple query
+            # This will fail if the database file doesn't exist or is corrupted
+            Logger.instance().debug(f"SQLite testing connection for database: {self.database}")
+            with self.get_connection() as connection:
+                from sqlalchemy import text
+
+                connection.execute(text("SELECT 1"))
+                Logger.instance().debug(f"SQLite connection test successful for: {self.database}")
+
+            # SQLite always has a single "main" database
+            databases = ["main"]
+
+            # If attachments are configured, list them as well
+            if self.attach:
+                for attachment in self.attach:
+                    databases.append(attachment.schema_name)
+
+            return databases
+
+        except Exception as e:
+            # Re-raise the exception - this indicates connection failure
+            # This prevents returning a false positive about database availability
+            raise e

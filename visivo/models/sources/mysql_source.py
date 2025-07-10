@@ -44,6 +44,6 @@ class MysqlSource(SqlalchemySource):
 
                 rows = connection.execute(text("SHOW DATABASES")).fetchall()
                 return [r[0] for r in rows]
-        except Exception:
-            # Fallback to configured database if query fails
-            return [self.database]
+        except Exception as e:
+            # Re-raise to allow proper error handling in UI
+            raise e
