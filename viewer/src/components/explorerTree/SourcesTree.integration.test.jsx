@@ -18,44 +18,43 @@ jest.mock('@mui/x-tree-view/SimpleTreeView', () => ({
     mockOnExpandedItemsChange = onExpandedItemsChange;
     mockExpandedItems = expandedItems || [];
     return <div data-testid="tree-view">{children}</div>;
-  }
+  },
 }));
 
 jest.mock('@mui/x-tree-view/TreeItem', () => ({
   TreeItem: ({ children, itemId, label }) => {
     const React = require('react');
-    const handleClick = React.useCallback((e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Simulate tree expansion
-      const isExpanded = mockExpandedItems.includes(itemId);
-      
-      let newExpanded;
-      if (isExpanded) {
-        // Collapse
-        newExpanded = mockExpandedItems.filter(id => id !== itemId);
-      } else {
-        // Expand
-        newExpanded = [...mockExpandedItems, itemId];
-      }
-      
-      if (mockOnExpandedItemsChange) {
-        mockOnExpandedItemsChange(null, newExpanded);
-      }
-    }, [itemId]);
-    
+    const handleClick = React.useCallback(
+      e => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Simulate tree expansion
+        const isExpanded = mockExpandedItems.includes(itemId);
+
+        let newExpanded;
+        if (isExpanded) {
+          // Collapse
+          newExpanded = mockExpandedItems.filter(id => id !== itemId);
+        } else {
+          // Expand
+          newExpanded = [...mockExpandedItems, itemId];
+        }
+
+        if (mockOnExpandedItemsChange) {
+          mockOnExpandedItemsChange(null, newExpanded);
+        }
+      },
+      [itemId]
+    );
+
     return (
-      <div 
-        data-testid={`tree-item-${itemId}`} 
-        onClick={handleClick}
-        style={{ cursor: 'pointer' }}
-      >
+      <div data-testid={`tree-item-${itemId}`} onClick={handleClick} style={{ cursor: 'pointer' }}>
         <div data-testid={`tree-label-${itemId}`}>{label}</div>
         <div data-testid={`tree-children-${itemId}`}>{children}</div>
       </div>
     );
-  }
+  },
 }));
 
 describe('SourcesTree Integration - Drilling Issue', () => {
@@ -91,15 +90,15 @@ describe('SourcesTree Integration - Drilling Issue', () => {
         loadSourcesCalled = true;
         // Simulate loading sources
         mockStoreData.sourcesMetadata.sources = [
-          { name: 'postgres_db', type: 'postgresql', status: 'connected' }
+          { name: 'postgres_db', type: 'postgresql', status: 'connected' },
         ];
       }),
-      loadDatabases: jest.fn((sourceName) => {
+      loadDatabases: jest.fn(sourceName => {
         loadDatabasesCalled = true;
         // Simulate loading databases
         mockStoreData.sourcesMetadata.loadedDatabases[sourceName] = [
           { name: 'production' },
-          { name: 'staging' }
+          { name: 'staging' },
         ];
       }),
       loadSchemas: jest.fn((sourceName, dbName) => {
@@ -108,7 +107,7 @@ describe('SourcesTree Integration - Drilling Issue', () => {
         const key = `${sourceName}.${dbName}`;
         mockStoreData.sourcesMetadata.loadedSchemas[key] = {
           has_schemas: true,
-          schemas: [{ name: 'public' }, { name: 'private' }]
+          schemas: [{ name: 'public' }, { name: 'private' }],
         };
       }),
       loadTables: jest.fn(),
@@ -116,7 +115,7 @@ describe('SourcesTree Integration - Drilling Issue', () => {
       setInfo: jest.fn(),
     };
 
-    useStore.mockImplementation((selector) => selector(mockStoreData));
+    useStore.mockImplementation(selector => selector(mockStoreData));
   });
 
   test('should be able to drill from source to database to schema', async () => {
@@ -133,12 +132,12 @@ describe('SourcesTree Integration - Drilling Issue', () => {
     // Find and click on source
     const sourceNodeId = btoa(JSON.stringify({ type: 'source', path: ['postgres_db'] }));
     const sourceItem = screen.getByTestId(`tree-item-${sourceNodeId}`);
-    
+
     expect(sourceItem).toBeInTheDocument();
-    
+
     // Click to expand source
     fireEvent.click(sourceItem);
-    
+
     await waitFor(() => {
       expect(mockStoreData.loadDatabases).toHaveBeenCalledWith('postgres_db');
     });
@@ -147,8 +146,10 @@ describe('SourcesTree Integration - Drilling Issue', () => {
     rerender(<SourcesTree />);
 
     // Verify databases are rendered
-    const dbNodeId = btoa(JSON.stringify({ type: 'database', path: ['postgres_db', 'production'] }));
-    
+    const dbNodeId = btoa(
+      JSON.stringify({ type: 'database', path: ['postgres_db', 'production'] })
+    );
+
     await waitFor(() => {
       const dbItem = screen.queryByTestId(`tree-item-${dbNodeId}`);
       expect(dbItem).toBeInTheDocument();
@@ -157,7 +158,7 @@ describe('SourcesTree Integration - Drilling Issue', () => {
     // Click to expand database
     const dbItem = screen.getByTestId(`tree-item-${dbNodeId}`);
     fireEvent.click(dbItem);
-    
+
     await waitFor(() => {
       expect(mockStoreData.loadSchemas).toHaveBeenCalledWith('postgres_db', 'production');
     });
@@ -166,13 +167,15 @@ describe('SourcesTree Integration - Drilling Issue', () => {
     rerender(<SourcesTree />);
 
     // Verify schemas are rendered
-    const schemaNodeId = btoa(JSON.stringify({ type: 'schema', path: ['postgres_db', 'production', 'public'] }));
-    
+    const schemaNodeId = btoa(
+      JSON.stringify({ type: 'schema', path: ['postgres_db', 'production', 'public'] })
+    );
+
     await waitFor(() => {
       const schemaItem = screen.queryByTestId(`tree-item-${schemaNodeId}`);
       expect(schemaItem).toBeInTheDocument();
     });
-    
+
     // Verify the drilling worked
     expect(loadSourcesCalled).toBe(true);
     expect(loadDatabasesCalled).toBe(true);
@@ -184,11 +187,9 @@ describe('SourcesTree Integration - Drilling Issue', () => {
 
     // Set up sources and databases
     mockStoreData.sourcesMetadata.sources = [
-      { name: 'test_source', type: 'postgresql', status: 'connected' }
+      { name: 'test_source', type: 'postgresql', status: 'connected' },
     ];
-    mockStoreData.sourcesMetadata.loadedDatabases['test_source'] = [
-      { name: 'test_db' }
-    ];
+    mockStoreData.sourcesMetadata.loadedDatabases['test_source'] = [{ name: 'test_db' }];
 
     rerender(<SourcesTree />);
 
@@ -207,7 +208,7 @@ describe('SourcesTree Integration - Drilling Issue', () => {
     // Set up multiple sources
     mockStoreData.sourcesMetadata.sources = [
       { name: 'source1', type: 'postgresql', status: 'connected' },
-      { name: 'source2', type: 'mysql', status: 'connected' }
+      { name: 'source2', type: 'mysql', status: 'connected' },
     ];
 
     rerender(<SourcesTree />);
@@ -217,14 +218,14 @@ describe('SourcesTree Integration - Drilling Issue', () => {
 
     // Expand first source
     fireEvent.click(screen.getByTestId(`tree-item-${source1Id}`));
-    
+
     await waitFor(() => {
       expect(mockStoreData.loadDatabases).toHaveBeenCalledWith('source1');
     });
 
     // Expand second source
     fireEvent.click(screen.getByTestId(`tree-item-${source2Id}`));
-    
+
     await waitFor(() => {
       expect(mockStoreData.loadDatabases).toHaveBeenCalledWith('source2');
     });
