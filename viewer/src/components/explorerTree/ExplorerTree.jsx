@@ -11,24 +11,24 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
   return (
     <StyledSidebar>
       <SelectContainer>
-        <div className="flex items-center justify-center gap-2 p-2">
+        <div className="flex items-center justify-center gap-5 p-2">
           <Tooltip title="Sources" placement="bottom">
             <button
               onClick={() => onTypeChange('sources')}
-              className={`p-3 rounded-lg transition-all duration-200 ${
+              className={`p-2 rounded-lg transition-all duration-200 ${
                 selectedTab === 'sources'
                   ? 'bg-blue-100 text-blue-700 shadow-md'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              <FaServer size={24} />
+              <FaServer size={22} />
             </button>
           </Tooltip>
 
           <Tooltip title="SQL Models" placement="bottom">
             <button
               onClick={() => onTypeChange('models')}
-              className={`p-3 rounded-lg transition-all duration-200 ${
+              className={`p-2 rounded-lg transition-all duration-200 ${
                 selectedTab === 'models'
                   ? 'bg-violet-100 text-violet-700 shadow-md'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -41,7 +41,7 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
           <Tooltip title="SQL Traces" placement="bottom">
             <button
               onClick={() => onTypeChange('traces')}
-              className={`p-3 rounded-lg transition-all duration-200 ${
+              className={`p-2 rounded-lg transition-all duration-200 ${
                 selectedTab === 'traces'
                   ? 'bg-orange-100 text-orange-700 shadow-md'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
