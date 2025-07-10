@@ -1,9 +1,11 @@
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
-from pydantic import Field
+from pydantic import Field, PrivateAttr
 import click
-import duckdb
+from sqlalchemy import create_engine, event
+from sqlalchemy.pool import NullPool
+from visivo.logger.logger import Logger
 
 DuckdbType = Literal["duckdb"]
 
@@ -17,6 +19,8 @@ class DuckdbAttachment(BaseModel):
 
 
 class DuckdbSource(SqlalchemySource):
+    # Cache both read-only and read-write engines
+    _read_only_engine: Any = PrivateAttr(default=None)
     """
     DuckdbSources hold the connection information to DuckDB data sources.
 
@@ -46,10 +50,36 @@ class DuckdbSource(SqlalchemySource):
         description="List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.",
     )
 
+    def get_engine(self, read_only: bool = False):
+        """Get engine with proper read_only support for DuckDB."""
+        if read_only:
+            if not self._read_only_engine:
+                Logger.instance().debug(f"Creating read-only engine for Source: {self.name}")
+                self._read_only_engine = create_engine(
+                    self.url(), 
+                    poolclass=NullPool, 
+                    connect_args={'read_only': True}
+                )
+                
+                @event.listens_for(self._read_only_engine, "connect")
+                def connect_readonly(dbapi_connection, connection_record):
+                    if self.after_connect:
+                        cursor_obj = dbapi_connection.cursor()
+                        cursor_obj.execute(self.after_connect)
+                        cursor_obj.close()
+            
+            return self._read_only_engine
+        else:
+            # Use the parent's cached read-write engine
+            return super().get_engine()
+    
     def get_connection(self, read_only: bool = False):
-        """Return a DuckDBPyConnection using SQLAlchemy's engine."""
+        """Return a DuckDBPyConnection using SQLAlchemy's engine with proper read_only support."""
         try:
-            connection = self.get_engine().raw_connection()
+            # Get the appropriate engine (cached read-only or read-write)
+            engine = self.get_engine(read_only=read_only)
+            connection = engine.raw_connection()
+            
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
@@ -92,7 +122,24 @@ class DuckdbSource(SqlalchemySource):
             )
 
     def connect(self, read_only: bool = False):
+        """Create a context manager for DuckDB connections."""
         return DuckDBConnection(source=self, read_only=read_only)
+    
+    def connect_args(self):
+        """Override to provide DuckDB-specific connection arguments for the default engine."""
+        # The default cached engine (via super().get_engine()) is read-write
+        # Read-only connections use a separate cached engine
+        return {}
+    
+    def list_databases(self):
+        """Return list of databases for DuckDB (includes attached databases)."""
+        try:
+            with self.connect(read_only=True) as connection:
+                rows = connection.execute("PRAGMA database_list").fetchall()
+                return [r[2] for r in rows if r[2]]
+        except Exception:
+            # Fallback to configured database if query fails
+            return [self.database]
 
 
 class DuckDBConnection:
@@ -109,5 +156,7 @@ class DuckDBConnection:
         if self.conn:
             self.conn.close()
             self.conn = None
+        # Return None to propagate any exceptions
+        return None
 
 
