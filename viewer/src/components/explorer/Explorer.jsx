@@ -7,6 +7,7 @@ import { useWorksheets } from '../../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
 import QueryPanel from './QueryPanel';
 import Divider from './Divider';
+import VerticalDivider from './VerticalDivider';
 import ResultsPanel from './ResultsPanel';
 import useStore from '../../stores/store';
 import { getAncestors } from '../lineage/graphUtils';
@@ -26,6 +27,7 @@ const MainContent = tw.div`
   flex-1
   min-h-0
   overflow-hidden
+  relative
 `;
 
 const RightPanel = tw.div`
@@ -72,11 +74,13 @@ const QueryExplorer = () => {
     setActiveWorksheetId,
   } = useStore();
 
+  const [sidebarWidth, setSidebarWidth] = React.useState(300);
+  const [isResizingSidebar, setIsResizingSidebar] = React.useState(false);
+
   const project = useStore(state => state.project);
   const namedChildren = useStore(state => state.namedChildren);
   const isLoading = useStore(state => state.isLoading);
   const isDragging = useStore(state => state.isDragging);
-  const query = useStore(state => state.query);
   const info = useStore(state => state.info);
   const explorerData = useStore(state => state.explorerData);
   const selectedSource = useStore(state => state.selectedSource);
@@ -295,6 +299,31 @@ const QueryExplorer = () => {
     }
   }, [activeWorksheetId, loadWorksheetResults, setResults, setQueryStats]);
 
+  // Handle sidebar resizing
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isResizingSidebar) return;
+      
+      // Calculate new width based on mouse position
+      const newWidth = Math.max(200, Math.min(600, e.clientX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false);
+    };
+
+    if (isResizingSidebar) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingSidebar]);
+
   return (
     <Container>
       <div className="flex flex-col h-full">
@@ -304,11 +333,21 @@ const QueryExplorer = () => {
           </Info>
         )}
         <MainContent>
-          <ExplorerTree
-            data={treeData}
-            selectedTab={selectedType}
-            onTypeChange={handleTabChange}
-            onItemClick={handleItemClick}
+          <div style={{ width: `${sidebarWidth}px`, flexShrink: 0, display: 'flex' }}>
+            <ExplorerTree
+              data={treeData}
+              selectedTab={selectedType}
+              onTypeChange={handleTabChange}
+              onItemClick={handleItemClick}
+            />
+          </div>
+          
+          <VerticalDivider
+            isDragging={isResizingSidebar}
+            handleMouseDown={(e) => {
+              e.preventDefault();
+              setIsResizingSidebar(true);
+            }}
           />
 
           <RightPanel id="right-panel">
