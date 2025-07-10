@@ -12,11 +12,14 @@ jest.mock('../../api/explorer');
 jest.mock('../../stores/store');
 
 // Mock MUI TreeView components
+let mockExpandHandler = null;
+let mockExpandedItems = [];
+
 jest.mock('@mui/x-tree-view/SimpleTreeView', () => ({
   SimpleTreeView: ({ children, onExpandedItemsChange, expandedItems }) => {
-    // Store the expansion handler in a way we can call it
-    window.__treeExpandHandler = onExpandedItemsChange;
-    window.__expandedItems = expandedItems;
+    // Store the expansion handler in module scope
+    mockExpandHandler = onExpandedItemsChange;
+    mockExpandedItems = expandedItems || [];
     return <div data-testid="tree-view">{children}</div>;
   },
 }));
@@ -25,15 +28,15 @@ jest.mock('@mui/x-tree-view/TreeItem', () => ({
   TreeItem: ({ children, itemId, label, ...props }) => {
     const handleClick = () => {
       // Simulate expansion
-      if (window.__treeExpandHandler) {
-        const currentExpanded = window.__expandedItems || [];
+      if (mockExpandHandler) {
+        const currentExpanded = mockExpandedItems;
         if (currentExpanded.includes(itemId)) {
-          window.__treeExpandHandler(
+          mockExpandHandler(
             null,
             currentExpanded.filter(id => id !== itemId)
           );
         } else {
-          window.__treeExpandHandler(null, [...currentExpanded, itemId]);
+          mockExpandHandler(null, [...currentExpanded, itemId]);
         }
       }
     };
@@ -128,13 +131,11 @@ describe('SourcesTree Drilling Tests', () => {
 
     // Mock loadDatabases
     mockStoreData.loadDatabases.mockImplementation(sourceName => {
-      console.log('loadDatabases called for:', sourceName);
       mockStoreData.sourcesMetadata.loadedDatabases[sourceName] = [{ name: 'test_db' }];
     });
 
     // Mock loadSchemas
     mockStoreData.loadSchemas.mockImplementation((sourceName, dbName) => {
-      console.log('loadSchemas called for:', sourceName, dbName);
       const key = `${sourceName}.${dbName}`;
       mockStoreData.sourcesMetadata.loadedSchemas[key] = {
         schemas: [{ name: 'public' }],
@@ -144,14 +145,12 @@ describe('SourcesTree Drilling Tests', () => {
 
     // Mock loadTables
     mockStoreData.loadTables.mockImplementation((sourceName, dbName, schemaName) => {
-      console.log('loadTables called for:', sourceName, dbName, schemaName);
       const key = `${sourceName}.${dbName}.${schemaName}`;
       mockStoreData.sourcesMetadata.loadedTables[key] = [{ name: 'users' }];
     });
 
     // Mock loadColumns
     mockStoreData.loadColumns.mockImplementation((sourceName, dbName, tableName, schemaName) => {
-      console.log('loadColumns called for:', sourceName, dbName, tableName, schemaName);
       const key = `${sourceName}.${dbName}.${schemaName}.${tableName}`;
       mockStoreData.sourcesMetadata.loadedColumns[key] = [
         { name: 'id', type: 'integer' },
@@ -260,8 +259,8 @@ describe('SourcesTree Drilling Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId(`tree-item-${columnNodeId1}`)).toBeInTheDocument();
-      expect(screen.getByTestId(`tree-item-${columnNodeId2}`)).toBeInTheDocument();
     });
+    expect(screen.getByTestId(`tree-item-${columnNodeId2}`)).toBeInTheDocument();
   });
 
   test('should handle databases without schemas (DuckDB/SQLite)', async () => {
@@ -362,8 +361,8 @@ describe('SourcesTree Drilling Tests', () => {
 
     await waitFor(() => {
       expect(mockStoreData.loadSchemas).toHaveBeenCalledWith('duckdb_source', 'main');
-      expect(mockStoreData.loadTables).toHaveBeenCalledWith('duckdb_source', 'main');
     });
+    expect(mockStoreData.loadTables).toHaveBeenCalledWith('duckdb_source', 'main');
 
     rerender(<SourcesTree />);
 
@@ -382,8 +381,7 @@ describe('SourcesTree Drilling Tests', () => {
       expect(mockStoreData.loadColumns).toHaveBeenCalledWith(
         'duckdb_source',
         'main',
-        'products',
-        undefined
+        'products'
       );
     });
 

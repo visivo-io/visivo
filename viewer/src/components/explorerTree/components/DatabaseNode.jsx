@@ -72,7 +72,8 @@ const DatabaseNode = ({ database, sourceName }) => {
         ) : (
           isLoadingTables && (
             <TreeItem
-              itemId={`${nodeId}-loading`}
+              key={`${nodeId}-loading-tables`}
+              itemId={`${nodeId}-loading-tables`}
               label={<LoadingLabel>Loading tables...</LoadingLabel>}
             />
           )
@@ -80,7 +81,8 @@ const DatabaseNode = ({ database, sourceName }) => {
       ) : // Schema data not loaded yet
       isLoadingSchemas ? (
         <TreeItem
-          itemId={`${nodeId}-loading`}
+          key={`${nodeId}-loading-schemas`}
+          itemId={`${nodeId}-loading-schemas`}
           label={
             <ItemLabel>
               <CircularProgress size={14} />
@@ -91,6 +93,7 @@ const DatabaseNode = ({ database, sourceName }) => {
       ) : (
         // Not loading and no data - show placeholder to allow expansion
         <TreeItem
+          key={`${nodeId}-placeholder`}
           itemId={`${nodeId}-placeholder`}
           label={<LoadingLabel>Click to expand</LoadingLabel>}
         />

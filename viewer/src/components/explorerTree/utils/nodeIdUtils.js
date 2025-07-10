@@ -8,7 +8,7 @@ export const parseNodeId = nodeId => {
   try {
     return JSON.parse(atob(nodeId));
   } catch (e) {
-    console.error('Failed to parse node ID:', nodeId, e);
+    // Invalid node ID - return null
     return null;
   }
 };
