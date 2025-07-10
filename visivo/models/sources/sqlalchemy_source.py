@@ -93,7 +93,7 @@ class SqlalchemySource(Source, ABC):
 
     def list_databases(self):
         """Return a list of database names for this source.
-        
+
         Base implementation returns the configured database.
         Override in specific source classes to support multiple databases.
         """
@@ -103,17 +103,17 @@ class SqlalchemySource(Source, ABC):
         """Return metadata about databases, schemas, tables, and columns efficiently."""
         result = {"name": self.name, "type": self.type, "databases": []}
         db_names = self.list_databases()
-        
+
         # Use read-only engine for introspection when available (DuckDB)
         engine = None
         try:
-            if hasattr(self, 'get_engine') and 'read_only' in self.get_engine.__code__.co_varnames:
+            if hasattr(self, "get_engine") and "read_only" in self.get_engine.__code__.co_varnames:
                 engine = self.get_engine(read_only=True)
             else:
                 engine = self.get_engine()
-                
+
             dialect = engine.dialect.name
-            
+
             # Handle different database paradigms efficiently
             if dialect.startswith(("duckdb", "mysql", "snowflake")):
                 # These can access multiple databases via single connection
@@ -124,25 +124,25 @@ class SqlalchemySource(Source, ABC):
             else:
                 # Default to single connection approach for other dialects
                 result["databases"] = self._introspect_via_single_connection(engine, db_names)
-                
+
         except Exception as e:
             Logger.instance().error(f"Error during introspection for {self.name}: {str(e)}")
             result["error"] = str(e)
         finally:
             # Clean up if we created a temporary engine
-            if engine and hasattr(self, '_read_only_engine') and engine == self._read_only_engine:
+            if engine and hasattr(self, "_read_only_engine") and engine == self._read_only_engine:
                 pass  # Don't dispose cached engines
             elif engine and engine != self._engine:
                 engine.dispose()
-                
+
         return result
-    
+
     def _introspect_via_single_connection(self, engine, db_names):
         """Introspect multiple databases using a single connection."""
         databases = []
         inspector = inspect(engine)
         dialect = engine.dialect.name
-        
+
         with engine.connect() as conn:
             for db_name in db_names:
                 try:
@@ -151,20 +151,20 @@ class SqlalchemySource(Source, ABC):
                         conn.execute(text(f"USE {db_name}"))
                         # Need new inspector after database switch
                         inspector = inspect(engine)
-                    
+
                     db_entry = self._introspect_database(inspector, db_name)
                     databases.append(db_entry)
-                    
+
                 except Exception as e:
                     Logger.instance().debug(f"Failed to introspect database {db_name}: {str(e)}")
                     databases.append({"name": db_name, "error": str(e)})
-                    
+
         return databases
-    
+
     def _introspect_via_multiple_connections(self, db_names):
         """Introspect databases that require separate connections (PostgreSQL)."""
         databases = []
-        
+
         for db_name in db_names:
             engine = None
             try:
@@ -173,16 +173,16 @@ class SqlalchemySource(Source, ABC):
                     src_copy = deepcopy(self)
                     src_copy.database = db_name
                     src_copy._engine = None
-                    if hasattr(src_copy, '_read_only_engine'):
+                    if hasattr(src_copy, "_read_only_engine"):
                         src_copy._read_only_engine = None
                     engine = src_copy.get_engine()
                 else:
                     engine = self.get_engine()
-                
+
                 inspector = inspect(engine)
                 db_entry = self._introspect_database(inspector, db_name)
                 databases.append(db_entry)
-                
+
             except Exception as e:
                 Logger.instance().debug(f"Failed to introspect database {db_name}: {str(e)}")
                 databases.append({"name": db_name, "error": str(e)})
@@ -190,18 +190,18 @@ class SqlalchemySource(Source, ABC):
                 # Only dispose if we created a temporary engine
                 if engine and db_name != self.database:
                     engine.dispose()
-                    
+
         return databases
-    
+
     def _introspect_database(self, inspector, db_name):
         """Introspect a single database using the provided inspector."""
         try:
             schemas = inspector.get_schema_names()
         except Exception:
             schemas = []
-            
+
         db_entry = {"name": db_name}
-        
+
         if schemas:
             db_entry["schemas"] = []
             for schema in schemas:
@@ -209,7 +209,7 @@ class SqlalchemySource(Source, ABC):
                     tables = inspector.get_table_names(schema=schema)
                 except Exception:
                     tables = []
-                    
+
                 table_entries = []
                 for table in tables:
                     try:
@@ -217,7 +217,7 @@ class SqlalchemySource(Source, ABC):
                     except Exception:
                         cols = []
                     table_entries.append({"name": table, "columns": cols})
-                    
+
                 db_entry["schemas"].append({"name": schema, "tables": table_entries})
         else:
             # No schemas, list tables directly
@@ -225,7 +225,7 @@ class SqlalchemySource(Source, ABC):
                 tables = inspector.get_table_names()
             except Exception:
                 tables = []
-                
+
             table_entries = []
             for table in tables:
                 try:
@@ -233,7 +233,7 @@ class SqlalchemySource(Source, ABC):
                 except Exception:
                     cols = []
                 table_entries.append({"name": table, "columns": cols})
-                
+
             db_entry["tables"] = table_entries
-            
+
         return db_entry

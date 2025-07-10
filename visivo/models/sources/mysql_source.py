@@ -35,12 +35,13 @@ class MysqlSource(SqlalchemySource):
 
     def get_dialect(self):
         return "mysql+pymysql"
-    
+
     def list_databases(self):
         """Return list of databases for MySQL server."""
         try:
             with self.get_connection() as connection:
                 from sqlalchemy import text
+
                 rows = connection.execute(text("SHOW DATABASES")).fetchall()
                 return [r[0] for r in rows]
         except Exception:

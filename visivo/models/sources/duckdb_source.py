@@ -56,63 +56,61 @@ class DuckdbSource(SqlalchemySource):
             if not self._read_only_engine:
                 Logger.instance().debug(f"Creating read-only engine for Source: {self.name}")
                 self._read_only_engine = create_engine(
-                    self.url(), 
-                    poolclass=NullPool, 
-                    connect_args={'read_only': True}
+                    self.url(), poolclass=NullPool, connect_args={"read_only": True}
                 )
-                
+
                 @event.listens_for(self._read_only_engine, "connect")
                 def connect_readonly(dbapi_connection, connection_record):
                     if self.after_connect:
                         cursor_obj = dbapi_connection.cursor()
                         cursor_obj.execute(self.after_connect)
                         cursor_obj.close()
-            
+
             return self._read_only_engine
         else:
             # Create read-write engine with proper connection args
             if not self._engine:
                 Logger.instance().debug(f"Creating read-write engine for Source: {self.name}")
                 self._engine = create_engine(
-                    self.url(), 
-                    poolclass=NullPool, 
-                    connect_args={'read_only': False}
+                    self.url(), poolclass=NullPool, connect_args={"read_only": False}
                 )
-                
+
                 @event.listens_for(self._engine, "connect")
                 def connect_readwrite(dbapi_connection, connection_record):
                     if self.after_connect:
                         cursor_obj = dbapi_connection.cursor()
                         cursor_obj.execute(self.after_connect)
                         cursor_obj.close()
-            
+
             return self._engine
-    
+
     def get_connection(self, read_only: bool = False):
         """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
         try:
             import duckdb
             import os
-            
+
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
-            
+
             # Ensure database file exists for write operations
             if not read_only and not os.path.exists(self.database):
-                Logger.instance().debug(f"Database file {self.database} does not exist, creating it")
+                Logger.instance().debug(
+                    f"Database file {self.database} does not exist, creating it"
+                )
                 os.makedirs(os.path.dirname(self.database), exist_ok=True)
                 # Create the database file
                 temp_conn = duckdb.connect(self.database)
                 temp_conn.close()
-            
+
             # Connect directly to DuckDB with proper read_only flag
             Logger.instance().debug(f"Connecting to {self.database} with read_only={read_only}")
             connection = duckdb.connect(self.database, read_only=read_only)
             Logger.instance().debug(f"Direct DuckDB connection established for {self.name}")
-            
+
             # Execute after_connect if specified
             if self.after_connect:
                 connection.execute(self.after_connect)
-            
+
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
@@ -123,7 +121,6 @@ class DuckdbSource(SqlalchemySource):
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
-
 
     def get_dialect(self):
         return "duckdb"
@@ -150,20 +147,18 @@ class DuckdbSource(SqlalchemySource):
 
                 return data
         except Exception as err:
-            raise click.ClickException(
-                f"Error executing query on source '{self.name}': {str(err)}"
-            )
+            raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
 
     def connect(self, read_only: bool = False):
         """Create a context manager for DuckDB connections."""
         return DuckDBConnection(source=self, read_only=read_only)
-    
+
     def connect_args(self):
         """Override to provide DuckDB-specific connection arguments for the default engine."""
         # The default cached engine (via super().get_engine()) is read-write
         # Read-only connections use a separate cached engine
         return {}
-    
+
     def list_databases(self):
         """Return list of databases for DuckDB (includes attached databases)."""
         try:
@@ -173,7 +168,7 @@ class DuckdbSource(SqlalchemySource):
         except Exception:
             # Fallback to configured database if query fails
             return [self.database]
-    
+
     def dispose_engines(self):
         """Dispose of cached engines to release database locks."""
         if self._read_only_engine:
@@ -182,7 +177,7 @@ class DuckdbSource(SqlalchemySource):
         if self._engine:
             self._engine.dispose()
             self._engine = None
-    
+
     def __del__(self):
         """Ensure engines are disposed when source is destroyed."""
         try:
@@ -190,20 +185,20 @@ class DuckdbSource(SqlalchemySource):
         except Exception:
             # Ignore errors during cleanup
             pass
-    
+
     @classmethod
     def create_empty_database(cls, database_path: str):
         """Create an empty DuckDB database file."""
         import duckdb
         import os
-        
+
         # Ensure directory exists
         os.makedirs(os.path.dirname(database_path), exist_ok=True)
-        
+
         # Remove file if it exists (in case it's an invalid empty file)
         if os.path.exists(database_path):
             os.unlink(database_path)
-        
+
         # Create empty database
         conn = duckdb.connect(database_path)
         conn.close()
@@ -225,5 +220,3 @@ class DuckDBConnection:
             self.conn = None
         # Return None to propagate any exceptions
         return None
-
-
