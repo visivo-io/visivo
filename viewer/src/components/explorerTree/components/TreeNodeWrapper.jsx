@@ -1,5 +1,5 @@
 import React from 'react';
-import { TreeItem } from '@mui/x-tree-view';
+import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { ItemLabel, LoadingLabel, ItemIcon } from '../styles/TreeStyles';
