@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import ExplorerTree from './ExplorerTree';
+import ExplorerTree from '../explorerTree/ExplorerTree';
 import { fetchTraceQuery } from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
@@ -152,13 +152,13 @@ const QueryExplorer = () => {
               setSelectedSource(data.sources[0]);
             }
           }
+        }
+      } catch (err) {
+        console.error('Error loading explorer data:', err);
+        setError('Failed to load explorer data');
       }
-    } catch (err) {
-      console.error('Error loading explorer data:', err);
-      setError('Failed to load explorer data');
-    }
-  };
-  loadExplorerData();
+    };
+    loadExplorerData();
   }, [setExplorerData, setSelectedSource, setError]);
 
   // Removed old metadata loading - now using lazy loading in ExplorerTree
@@ -301,9 +301,9 @@ const QueryExplorer = () => {
 
   // Handle sidebar resizing
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = e => {
       if (!isResizingSidebar) return;
-      
+
       // Calculate new width based on mouse position
       const newWidth = Math.max(200, Math.min(600, e.clientX));
       setSidebarWidth(newWidth);
@@ -341,10 +341,10 @@ const QueryExplorer = () => {
               onItemClick={handleItemClick}
             />
           </div>
-          
+
           <VerticalDivider
             isDragging={isResizingSidebar}
-            handleMouseDown={(e) => {
+            handleMouseDown={e => {
               e.preventDefault();
               setIsResizingSidebar(true);
             }}

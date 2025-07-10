@@ -33,7 +33,7 @@ export const fetchSources = async () => {
   }
 };
 
-export const fetchDatabases = async (sourceName) => {
+export const fetchDatabases = async sourceName => {
   const response = await fetch(`/api/project/sources/${encodeURIComponent(sourceName)}/databases`);
   if (response.status === 200) {
     const data = await response.json();
@@ -61,19 +61,23 @@ export const fetchTables = async (sourceName, databaseName, schemaName = null) =
   const url = schemaName
     ? `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas/${encodeURIComponent(schemaName)}/tables`
     : `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/tables`;
-  
+
   const response = await fetch(url);
   if (response.status === 200) {
     const data = await response.json();
     return data;
   } else {
-    console.error(`Failed to fetch tables for ${sourceName}.${databaseName}.${schemaName || 'default'}`);
+    console.error(
+      `Failed to fetch tables for ${sourceName}.${databaseName}.${schemaName || 'default'}`
+    );
     return null;
   }
 };
 
-export const testSourceConnection = async (sourceName) => {
-  const response = await fetch(`/api/project/sources/${encodeURIComponent(sourceName)}/test-connection`);
+export const testSourceConnection = async sourceName => {
+  const response = await fetch(
+    `/api/project/sources/${encodeURIComponent(sourceName)}/test-connection`
+  );
   if (response.status === 200) {
     const data = await response.json();
     return data;
@@ -87,13 +91,15 @@ export const fetchColumns = async (sourceName, databaseName, tableName, schemaNa
   const url = schemaName
     ? `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas/${encodeURIComponent(schemaName)}/tables/${encodeURIComponent(tableName)}/columns`
     : `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/tables/${encodeURIComponent(tableName)}/columns`;
-  
+
   const response = await fetch(url);
   if (response.status === 200) {
     const data = await response.json();
     return data;
   } else {
-    console.error(`Failed to fetch columns for ${sourceName}.${databaseName}.${schemaName || 'default'}.${tableName}`);
+    console.error(
+      `Failed to fetch columns for ${sourceName}.${databaseName}.${schemaName || 'default'}.${tableName}`
+    );
     return null;
   }
 };

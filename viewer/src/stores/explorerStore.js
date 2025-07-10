@@ -1,11 +1,11 @@
 import { executeQuery } from '../services/queryService';
-import { 
-  fetchSources, 
-  fetchDatabases, 
-  fetchSchemas, 
-  fetchTables, 
+import {
+  fetchSources,
+  fetchDatabases,
+  fetchSchemas,
+  fetchTables,
   fetchColumns,
-  testSourceConnection 
+  testSourceConnection,
 } from '../api/explorer';
 
 const createExplorerSlice = (set, get) => ({
@@ -36,12 +36,12 @@ const createExplorerSlice = (set, get) => ({
   // Lazy-loading state management
   sourcesMetadata: {
     sources: [],
-    loadedDatabases: {},    // sourceName -> databases[]
-    loadedSchemas: {},      // `${sourceName}.${dbName}` -> schemas[]
-    loadedTables: {},       // `${sourceName}.${dbName}.${schemaName}` -> tables[]
-    loadedColumns: {},      // `${sourceName}.${dbName}.${tableName}` -> columns[]
+    loadedDatabases: {}, // sourceName -> databases[]
+    loadedSchemas: {}, // `${sourceName}.${dbName}` -> schemas[]
+    loadedTables: {}, // `${sourceName}.${dbName}.${schemaName}` -> tables[]
+    loadedColumns: {}, // `${sourceName}.${dbName}.${tableName}` -> columns[]
   },
-  
+
   // Loading states for each level
   loadingStates: {
     sources: false,
@@ -49,7 +49,7 @@ const createExplorerSlice = (set, get) => ({
     schemas: {},
     tables: {},
     columns: {},
-    connections: {},  // Track connection test loading states
+    connections: {}, // Track connection test loading states
   },
 
   treeData: [],
@@ -149,23 +149,23 @@ const createExplorerSlice = (set, get) => ({
   // Lazy-loading methods
   loadSources: async () => {
     const { sourcesMetadata, loadingStates, setError } = get();
-    
+
     // Check if already loaded
     if (sourcesMetadata.sources.length > 0 || loadingStates.sources) {
       return;
     }
-    
+
     set(state => ({
-      loadingStates: { ...state.loadingStates, sources: true }
+      loadingStates: { ...state.loadingStates, sources: true },
     }));
-    
+
     try {
       const data = await fetchSources();
       if (data && data.sources) {
         set(state => ({
-          sourcesMetadata: { ...state.sourcesMetadata, sources: data.sources }
+          sourcesMetadata: { ...state.sourcesMetadata, sources: data.sources },
         }));
-        
+
         // Trigger connection tests for all sources in the background
         data.sources.forEach(source => {
           get().testConnection(source.name);
@@ -175,26 +175,26 @@ const createExplorerSlice = (set, get) => ({
       setError('Failed to load sources');
     } finally {
       set(state => ({
-        loadingStates: { ...state.loadingStates, sources: false }
+        loadingStates: { ...state.loadingStates, sources: false },
       }));
     }
   },
-  
-  testConnection: async (sourceName) => {
+
+  testConnection: async sourceName => {
     const { loadingStates } = get();
-    
+
     // Check if already testing
     if (loadingStates.connections[sourceName]) {
       return;
     }
-    
+
     set(state => ({
-      loadingStates: { 
-        ...state.loadingStates, 
-        connections: { ...state.loadingStates.connections, [sourceName]: true }
-      }
+      loadingStates: {
+        ...state.loadingStates,
+        connections: { ...state.loadingStates.connections, [sourceName]: true },
+      },
     }));
-    
+
     try {
       const result = await testSourceConnection(sourceName);
       if (result) {
@@ -202,12 +202,10 @@ const createExplorerSlice = (set, get) => ({
         set(state => ({
           sourcesMetadata: {
             ...state.sourcesMetadata,
-            sources: state.sourcesMetadata.sources.map(src => 
-              src.name === sourceName 
-                ? { ...src, status: result.status, error: result.error }
-                : src
-            )
-          }
+            sources: state.sourcesMetadata.sources.map(src =>
+              src.name === sourceName ? { ...src, status: result.status, error: result.error } : src
+            ),
+          },
         }));
       }
     } catch (err) {
@@ -215,74 +213,72 @@ const createExplorerSlice = (set, get) => ({
       set(state => ({
         sourcesMetadata: {
           ...state.sourcesMetadata,
-          sources: state.sourcesMetadata.sources.map(src => 
-            src.name === sourceName 
+          sources: state.sourcesMetadata.sources.map(src =>
+            src.name === sourceName
               ? { ...src, status: 'connection_failed', error: err.message }
               : src
-          )
-        }
+          ),
+        },
       }));
     } finally {
       set(state => ({
-        loadingStates: { 
-          ...state.loadingStates, 
-          connections: { ...state.loadingStates.connections, [sourceName]: false }
-        }
+        loadingStates: {
+          ...state.loadingStates,
+          connections: { ...state.loadingStates.connections, [sourceName]: false },
+        },
       }));
     }
   },
 
-  loadDatabases: async (sourceName) => {
+  loadDatabases: async sourceName => {
     const { sourcesMetadata, loadingStates, setError } = get();
-    
+
     // Check if already loaded or loading
     if (sourcesMetadata.loadedDatabases[sourceName] || loadingStates.databases[sourceName]) {
       return;
     }
-    
+
     set(state => ({
-      loadingStates: { 
-        ...state.loadingStates, 
-        databases: { ...state.loadingStates.databases, [sourceName]: true }
-      }
+      loadingStates: {
+        ...state.loadingStates,
+        databases: { ...state.loadingStates.databases, [sourceName]: true },
+      },
     }));
-    
+
     try {
       const data = await fetchDatabases(sourceName);
       if (data) {
         set(state => ({
-          sourcesMetadata: { 
-            ...state.sourcesMetadata, 
-            loadedDatabases: { 
-              ...state.sourcesMetadata.loadedDatabases, 
-              [sourceName]: data.databases || []
-            }
-          }
+          sourcesMetadata: {
+            ...state.sourcesMetadata,
+            loadedDatabases: {
+              ...state.sourcesMetadata.loadedDatabases,
+              [sourceName]: data.databases || [],
+            },
+          },
         }));
-        
+
         // Update source status if connection failed
         if (data.status === 'connection_failed') {
           set(state => ({
             sourcesMetadata: {
               ...state.sourcesMetadata,
-              sources: state.sourcesMetadata.sources.map(src => 
-                src.name === sourceName 
+              sources: state.sourcesMetadata.sources.map(src =>
+                src.name === sourceName
                   ? { ...src, status: 'connection_failed', error: data.error }
                   : src
-              )
-            }
+              ),
+            },
           }));
         } else if (data.status === 'connected') {
           // Update source status to connected
           set(state => ({
             sourcesMetadata: {
               ...state.sourcesMetadata,
-              sources: state.sourcesMetadata.sources.map(src => 
-                src.name === sourceName 
-                  ? { ...src, status: 'connected' }
-                  : src
-              )
-            }
+              sources: state.sourcesMetadata.sources.map(src =>
+                src.name === sourceName ? { ...src, status: 'connected' } : src
+              ),
+            },
           }));
         }
       }
@@ -292,19 +288,23 @@ const createExplorerSlice = (set, get) => ({
       set(state => ({
         sourcesMetadata: {
           ...state.sourcesMetadata,
-          sources: state.sourcesMetadata.sources.map(src => 
-            src.name === sourceName 
-              ? { ...src, status: 'connection_failed', error: err.message || 'Failed to load databases' }
+          sources: state.sourcesMetadata.sources.map(src =>
+            src.name === sourceName
+              ? {
+                  ...src,
+                  status: 'connection_failed',
+                  error: err.message || 'Failed to load databases',
+                }
               : src
-          )
-        }
+          ),
+        },
       }));
     } finally {
       set(state => ({
-        loadingStates: { 
-          ...state.loadingStates, 
-          databases: { ...state.loadingStates.databases, [sourceName]: false }
-        }
+        loadingStates: {
+          ...state.loadingStates,
+          databases: { ...state.loadingStates.databases, [sourceName]: false },
+        },
       }));
     }
   },
@@ -312,105 +312,110 @@ const createExplorerSlice = (set, get) => ({
   loadSchemas: async (sourceName, databaseName) => {
     const { sourcesMetadata, loadingStates, setError } = get();
     const key = `${sourceName}.${databaseName}`;
-    
+
     // Check if already loaded or loading
     if (sourcesMetadata.loadedSchemas[key] !== undefined || loadingStates.schemas[key]) {
       return;
     }
-    
+
     set(state => ({
-      loadingStates: { 
-        ...state.loadingStates, 
-        schemas: { ...state.loadingStates.schemas, [key]: true }
-      }
+      loadingStates: {
+        ...state.loadingStates,
+        schemas: { ...state.loadingStates.schemas, [key]: true },
+      },
     }));
-    
+
     try {
       const data = await fetchSchemas(sourceName, databaseName);
       if (data) {
         set(state => ({
-          sourcesMetadata: { 
-            ...state.sourcesMetadata, 
-            loadedSchemas: { 
-              ...state.sourcesMetadata.loadedSchemas, 
-              [key]: data
-            }
-          }
+          sourcesMetadata: {
+            ...state.sourcesMetadata,
+            loadedSchemas: {
+              ...state.sourcesMetadata.loadedSchemas,
+              [key]: data,
+            },
+          },
         }));
+
+        // If no schemas, automatically load tables
+        if (data && !data.has_schemas) {
+          await get().loadTables(sourceName, databaseName);
+        }
       }
     } catch (err) {
       setError(`Failed to load schemas for ${databaseName}`);
     } finally {
       set(state => ({
-        loadingStates: { 
-          ...state.loadingStates, 
-          schemas: { ...state.loadingStates.schemas, [key]: false }
-        }
+        loadingStates: {
+          ...state.loadingStates,
+          schemas: { ...state.loadingStates.schemas, [key]: false },
+        },
       }));
     }
   },
 
   loadTables: async (sourceName, databaseName, schemaName = null) => {
     const { sourcesMetadata, loadingStates, setError } = get();
-    const key = schemaName 
+    const key = schemaName
       ? `${sourceName}.${databaseName}.${schemaName}`
       : `${sourceName}.${databaseName}`;
-    
+
     // Check if already loaded or loading
     if (sourcesMetadata.loadedTables[key] || loadingStates.tables[key]) {
       return;
     }
-    
+
     set(state => ({
-      loadingStates: { 
-        ...state.loadingStates, 
-        tables: { ...state.loadingStates.tables, [key]: true }
-      }
+      loadingStates: {
+        ...state.loadingStates,
+        tables: { ...state.loadingStates.tables, [key]: true },
+      },
     }));
-    
+
     try {
       const data = await fetchTables(sourceName, databaseName, schemaName);
       if (data) {
         if (data.error) {
           // Handle error response from API
           set(state => ({
-            sourcesMetadata: { 
-              ...state.sourcesMetadata, 
-              loadedTables: { 
-                ...state.sourcesMetadata.loadedTables, 
-                [key]: { error: data.error }
-              }
-            }
+            sourcesMetadata: {
+              ...state.sourcesMetadata,
+              loadedTables: {
+                ...state.sourcesMetadata.loadedTables,
+                [key]: { error: data.error },
+              },
+            },
           }));
         } else if (data.tables) {
           set(state => ({
-            sourcesMetadata: { 
-              ...state.sourcesMetadata, 
-              loadedTables: { 
-                ...state.sourcesMetadata.loadedTables, 
-                [key]: data.tables
-              }
-            }
+            sourcesMetadata: {
+              ...state.sourcesMetadata,
+              loadedTables: {
+                ...state.sourcesMetadata.loadedTables,
+                [key]: data.tables,
+              },
+            },
           }));
         }
       }
     } catch (err) {
       setError(`Failed to load tables`);
       set(state => ({
-        sourcesMetadata: { 
-          ...state.sourcesMetadata, 
-          loadedTables: { 
-            ...state.sourcesMetadata.loadedTables, 
-            [key]: { error: err.message || 'Failed to load tables' }
-          }
-        }
+        sourcesMetadata: {
+          ...state.sourcesMetadata,
+          loadedTables: {
+            ...state.sourcesMetadata.loadedTables,
+            [key]: { error: err.message || 'Failed to load tables' },
+          },
+        },
       }));
     } finally {
       set(state => ({
-        loadingStates: { 
-          ...state.loadingStates, 
-          tables: { ...state.loadingStates.tables, [key]: false }
-        }
+        loadingStates: {
+          ...state.loadingStates,
+          tables: { ...state.loadingStates.tables, [key]: false },
+        },
       }));
     }
   },
@@ -420,40 +425,40 @@ const createExplorerSlice = (set, get) => ({
     const key = schemaName
       ? `${sourceName}.${databaseName}.${schemaName}.${tableName}`
       : `${sourceName}.${databaseName}.${tableName}`;
-    
+
     // Check if already loaded or loading
     if (sourcesMetadata.loadedColumns[key] || loadingStates.columns[key]) {
       return;
     }
-    
+
     set(state => ({
-      loadingStates: { 
-        ...state.loadingStates, 
-        columns: { ...state.loadingStates.columns, [key]: true }
-      }
+      loadingStates: {
+        ...state.loadingStates,
+        columns: { ...state.loadingStates.columns, [key]: true },
+      },
     }));
-    
+
     try {
       const data = await fetchColumns(sourceName, databaseName, tableName, schemaName);
       if (data && data.columns) {
         set(state => ({
-          sourcesMetadata: { 
-            ...state.sourcesMetadata, 
-            loadedColumns: { 
-              ...state.sourcesMetadata.loadedColumns, 
-              [key]: data.columns
-            }
-          }
+          sourcesMetadata: {
+            ...state.sourcesMetadata,
+            loadedColumns: {
+              ...state.sourcesMetadata.loadedColumns,
+              [key]: data.columns,
+            },
+          },
         }));
       }
     } catch (err) {
       setError(`Failed to load columns for ${tableName}`);
     } finally {
       set(state => ({
-        loadingStates: { 
-          ...state.loadingStates, 
-          columns: { ...state.loadingStates.columns, [key]: false }
-        }
+        loadingStates: {
+          ...state.loadingStates,
+          columns: { ...state.loadingStates.columns, [key]: false },
+        },
       }));
     }
   },
