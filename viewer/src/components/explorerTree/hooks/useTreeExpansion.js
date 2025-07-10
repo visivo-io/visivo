@@ -4,7 +4,7 @@ import { useTreeContext } from '../TreeContext';
 
 export const useTreeExpansion = () => {
   const [expandedNodes, setExpandedNodes] = useState([]);
-  const { sourcesMetadata, loadDatabases, loadSchemas, loadTables, loadColumns } = useTreeContext();
+  const { loadDatabases, loadSchemas, loadTables, loadColumns } = useTreeContext();
 
   const handleNodeToggle = useCallback(
     async (event, nodeIds) => {
@@ -54,7 +54,7 @@ export const useTreeExpansion = () => {
           }
 
           default:
-            console.warn(`Unknown node type: ${type}`);
+            // Unknown node type - ignore
         }
       }
     },

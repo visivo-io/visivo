@@ -120,7 +120,7 @@ describe('SourcesTree Integration - Drilling Issue', () => {
   });
 
   test('should be able to drill from source to database to schema', async () => {
-    const { rerender, container } = render(<SourcesTree />);
+    const { rerender } = render(<SourcesTree />);
 
     // Wait for sources to load
     await waitFor(() => {
