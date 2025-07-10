@@ -1,5 +1,6 @@
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.logger.logger import Logger
+from sqlalchemy import text
 
 
 def get_sources_list(sources):
@@ -11,10 +12,57 @@ def get_sources_list(sources):
                 "name": src.name,
                 "type": src.type,
                 "database": getattr(src, 'database', None),
-                "status": "available"  # We'll update this when they try to connect
+                "status": "unknown"  # Connection not tested yet
             }
             data["sources"].append(source_info)
     return data
+
+
+def test_source_connection(sources, source_name):
+    """Test connection to a specific source."""
+    for src in sources:
+        if isinstance(src, SqlalchemySource) and src.name == source_name:
+            try:
+                Logger.instance().info(f"Testing connection for source: {source_name}")
+                
+                # Get engine
+                engine = None
+                if hasattr(src, "get_engine") and "read_only" in src.get_engine.__code__.co_varnames:
+                    engine = src.get_engine(read_only=True)
+                else:
+                    engine = src.get_engine()
+                
+                # Test connection with a simple query
+                with engine.connect() as conn:
+                    # Use dialect-appropriate test query
+                    dialect = engine.dialect.name
+                    if dialect == "snowflake":
+                        conn.execute(text("SELECT 1"))
+                    elif dialect.startswith("mysql"):
+                        conn.execute(text("SELECT 1"))
+                    elif dialect == "postgresql":
+                        conn.execute(text("SELECT 1"))
+                    elif dialect == "sqlite":
+                        conn.execute(text("SELECT 1"))
+                    elif dialect == "duckdb":
+                        conn.execute(text("SELECT 1"))
+                    else:
+                        conn.execute(text("SELECT 1"))
+                
+                return {
+                    "source": source_name,
+                    "status": "connected"
+                }
+                
+            except Exception as e:
+                Logger.instance().debug(f"Connection test failed for {source_name}: {e}")
+                return {
+                    "source": source_name,
+                    "status": "connection_failed",
+                    "error": str(e)
+                }
+    
+    return {"error": f"Source '{source_name}' not found"}, 404
 
 
 def get_source_databases(sources, source_name):
