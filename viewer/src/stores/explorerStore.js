@@ -213,10 +213,33 @@ const createExplorerSlice = (set, get) => ({
               )
             }
           }));
+        } else if (data.status === 'connected') {
+          // Update source status to connected
+          set(state => ({
+            sourcesMetadata: {
+              ...state.sourcesMetadata,
+              sources: state.sourcesMetadata.sources.map(src => 
+                src.name === sourceName 
+                  ? { ...src, status: 'connected' }
+                  : src
+              )
+            }
+          }));
         }
       }
     } catch (err) {
       setError(`Failed to load databases for ${sourceName}`);
+      // Mark source as having an error
+      set(state => ({
+        sourcesMetadata: {
+          ...state.sourcesMetadata,
+          sources: state.sourcesMetadata.sources.map(src => 
+            src.name === sourceName 
+              ? { ...src, status: 'connection_failed', error: err.message || 'Failed to load databases' }
+              : src
+          )
+        }
+      }));
     } finally {
       set(state => ({
         loadingStates: { 
@@ -288,19 +311,41 @@ const createExplorerSlice = (set, get) => ({
     
     try {
       const data = await fetchTables(sourceName, databaseName, schemaName);
-      if (data && data.tables) {
-        set(state => ({
-          sourcesMetadata: { 
-            ...state.sourcesMetadata, 
-            loadedTables: { 
-              ...state.sourcesMetadata.loadedTables, 
-              [key]: data.tables
+      if (data) {
+        if (data.error) {
+          // Handle error response from API
+          set(state => ({
+            sourcesMetadata: { 
+              ...state.sourcesMetadata, 
+              loadedTables: { 
+                ...state.sourcesMetadata.loadedTables, 
+                [key]: { error: data.error }
+              }
             }
-          }
-        }));
+          }));
+        } else if (data.tables) {
+          set(state => ({
+            sourcesMetadata: { 
+              ...state.sourcesMetadata, 
+              loadedTables: { 
+                ...state.sourcesMetadata.loadedTables, 
+                [key]: data.tables
+              }
+            }
+          }));
+        }
       }
     } catch (err) {
       setError(`Failed to load tables`);
+      set(state => ({
+        sourcesMetadata: { 
+          ...state.sourcesMetadata, 
+          loadedTables: { 
+            ...state.sourcesMetadata.loadedTables, 
+            [key]: { error: err.message || 'Failed to load tables' }
+          }
+        }
+      }));
     } finally {
       set(state => ({
         loadingStates: { 

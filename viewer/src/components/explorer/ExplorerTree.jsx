@@ -8,6 +8,249 @@ import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CircularProgress from '@mui/material/CircularProgress';
+import StorageIcon from '@mui/icons-material/Storage';
+import FolderIcon from '@mui/icons-material/Folder';
+import SchemaIcon from '@mui/icons-material/Schema';
+import TableChartIcon from '@mui/icons-material/TableChart';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { styled } from '@mui/material/styles';
+
+// Styled components for better UI
+const StyledSidebar = styled(Sidebar)`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+`;
+
+const SelectContainer = styled('div')`
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+`;
+
+const TreeContainer = styled('div')`
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+`;
+
+const StyledTreeView = styled(SimpleTreeView)`
+  .MuiTreeItem-content {
+    padding: 4px 8px;
+    margin: 2px 0;
+    border-radius: 4px;
+    
+    &:hover {
+      background-color: #f3f4f6;
+    }
+    
+    &.Mui-selected {
+      background-color: #e0e7ff;
+      
+      &:hover {
+        background-color: #c7d2fe;
+      }
+    }
+  }
+  
+  .MuiTreeItem-label {
+    font-size: 14px;
+    color: #374151;
+  }
+`;
+
+const ItemLabel = styled('div')`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0;
+`;
+
+const ItemIcon = styled('span')`
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+`;
+
+const ItemName = styled('span')`
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const StatusBadge = styled('span')`
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+  
+  &.connected {
+    background-color: #d1fae5;
+    color: #059669;
+  }
+  
+  &.failed {
+    background-color: #fee2e2;
+    color: #dc2626;
+  }
+`;
+
+const ColumnInfo = styled('div')`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+`;
+
+const ColumnName = styled('span')`
+  font-weight: 600;
+  color: #1f2937;
+`;
+
+const ColumnType = styled('span')`
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+`;
+
+const LoadingLabel = styled('span')`
+  font-style: italic;
+  color: #9ca3af;
+  font-size: 13px;
+`;
+
+const EmptyMessage = styled('div')`
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 14px;
+`;
+
+const CopyButton = styled('button')`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #6b7280;
+  
+  &:hover {
+    background-color: #e5e7eb;
+    color: #374151;
+  }
+`;
+
+// Subcomponents
+const SourceTreeItem = ({ source, srcIdx, isLoadingDatabases, children }) => {
+  const sourceLabel = (
+    <ItemLabel>
+      <ItemIcon><StorageIcon fontSize="small" /></ItemIcon>
+      <ItemName title={source.name}>{source.name}</ItemName>
+      {source.status === 'connection_failed' && (
+        <StatusBadge className="failed">Failed</StatusBadge>
+      )}
+      {source.status === 'connected' && (
+        <StatusBadge className="connected">Connected</StatusBadge>
+      )}
+      {isLoadingDatabases && <CircularProgress size={14} />}
+    </ItemLabel>
+  );
+  
+  return (
+    <TreeItem itemId={`src-${srcIdx}`} label={sourceLabel}>
+      {children}
+    </TreeItem>
+  );
+};
+
+const DatabaseTreeItem = ({ database, dbNodeId, isLoadingSchemas, children }) => {
+  const dbLabel = (
+    <ItemLabel>
+      <ItemIcon><FolderIcon fontSize="small" /></ItemIcon>
+      <ItemName title={database.name}>{database.name}</ItemName>
+      {isLoadingSchemas && <CircularProgress size={12} />}
+    </ItemLabel>
+  );
+  
+  return (
+    <TreeItem itemId={dbNodeId} label={dbLabel}>
+      {children}
+    </TreeItem>
+  );
+};
+
+const SchemaTreeItem = ({ schema, schemaNodeId, isLoadingTables, children }) => {
+  const schemaLabel = (
+    <ItemLabel>
+      <ItemIcon><SchemaIcon fontSize="small" /></ItemIcon>
+      <ItemName title={schema.name}>{schema.name}</ItemName>
+      {isLoadingTables && <CircularProgress size={12} />}
+    </ItemLabel>
+  );
+  
+  return (
+    <TreeItem itemId={schemaNodeId} label={schemaLabel}>
+      {children}
+    </TreeItem>
+  );
+};
+
+const TableTreeItem = ({ table, tableNodeId, isLoadingColumns, children }) => {
+  const tableLabel = (
+    <ItemLabel>
+      <ItemIcon><TableChartIcon fontSize="small" /></ItemIcon>
+      <ItemName title={table.name}>{table.name}</ItemName>
+      {isLoadingColumns && <CircularProgress size={10} />}
+    </ItemLabel>
+  );
+  
+  return (
+    <TreeItem itemId={tableNodeId} label={tableLabel}>
+      {children}
+    </TreeItem>
+  );
+};
+
+const ColumnTreeItem = ({ column, columnNodeId }) => {
+  const columnLabel = (
+    <ColumnInfo>
+      <ItemIcon><ViewColumnIcon fontSize="small" /></ItemIcon>
+      <ColumnName>{column.name}</ColumnName>
+      <ColumnType>{column.type}</ColumnType>
+    </ColumnInfo>
+  );
+  
+  return <TreeItem itemId={columnNodeId} label={columnLabel} />;
+};
 
 const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick }) => {
   const { setInfo } = useStore();
@@ -26,16 +269,9 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
   // Load sources when Sources tab is selected
   useEffect(() => {
     if (selectedTab === 'sources') {
-      console.log('Loading sources for Sources tab...');
       loadSources();
     }
   }, [selectedTab, loadSources]);
-  
-  // Debug log the sources metadata
-  useEffect(() => {
-    console.log('Sources metadata:', sourcesMetadata);
-    console.log('Loading states:', loadingStates);
-  }, [sourcesMetadata, loadingStates]);
 
   const validData = React.useMemo(() => {
     if (!Array.isArray(data)) return [];
@@ -52,11 +288,11 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
   );
   
   const handleNodeToggle = React.useCallback(
-    async (_, itemIds) => {
-      setExpandedNodes(itemIds);
+    async (_, nodeIds) => {
+      setExpandedNodes(nodeIds);
       
       // Find newly expanded nodes
-      const newlyExpanded = itemIds.filter(id => !expandedNodes.includes(id));
+      const newlyExpanded = nodeIds.filter(id => !expandedNodes.includes(id));
       
       for (const itemId of newlyExpanded) {
         const parts = itemId.split('-');
@@ -142,7 +378,7 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
         }
       }
     },
-    [expandedNodes, loadDatabases, loadSchemas, loadTables, loadColumns, sourcesMetadata.loadedSchemas]
+    [expandedNodes, loadDatabases, loadSchemas, loadTables, loadColumns, sourcesMetadata.sources, sourcesMetadata.loadedDatabases, sourcesMetadata.loadedSchemas, sourcesMetadata.loadedTables]
   );
 
   const renderTreeItem = React.useCallback(
@@ -152,10 +388,10 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
       return (
         <div key={node.id} className="mb-2 mr-1 ml-1">
           <Pill name={node.name} type={node.type} onClick={() => onItemClick(node)}>
-            <button onClick={e => handleCopyName(e, node.name)}>
+            <CopyButton onClick={e => handleCopyName(e, node.name)}>
               <HiOutlineClipboardCopy className="w-4 h-4" />
               <span className="sr-only">Copy name</span>
-            </button>
+            </CopyButton>
           </Pill>
           {Array.isArray(node.children) && node.children.length > 0 && (
             <ul className="pl-6 mt-1">
@@ -171,232 +407,207 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
   );
 
   return (
-    <Sidebar>
-      <select
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
-        value={selectedTab}
-        onChange={e => onTypeChange(e.target.value)}
-      >
-        <option value="models">SQL Models</option>
-        <option value="traces">SQL Traces</option>
-        <option value="sources">Sources</option>
-      </select>
-      {selectedTab === 'sources' ? (
-        loadingStates.sources ? (
-          <div className="p-4 text-center">
-            <CircularProgress size={24} />
-            <p className="mt-2 text-sm text-gray-600">Loading sources...</p>
-          </div>
-        ) : sourcesMetadata.sources && sourcesMetadata.sources.length > 0 ? (
-          <SimpleTreeView
-            slots={{
-              collapseIcon: ExpandMoreIcon,
-              expandIcon: ChevronRightIcon,
-            }}
-            expandedItems={expandedNodes}
-            onExpandedItemsChange={handleNodeToggle}
-          >
-            {sourcesMetadata.sources.map((src, srcIdx) => {
-              // Debug logging
-              if (!src || !src.name) {
-                console.error('Invalid source:', src, 'at index:', srcIdx);
-                return null;
-              }
-              
-              const itemId = `src-${srcIdx}`;
-              const databases = sourcesMetadata.loadedDatabases[src.name];
-              const isLoadingDatabases = loadingStates.databases[src.name];
-              
-              const sourceLabel = (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>{src.name}</span>
-                  {src.status === 'connection_failed' && (
-                    <span style={{ 
-                      backgroundColor: '#ef4444', 
-                      color: 'white', 
-                      padding: '2px 6px', 
-                      borderRadius: '4px', 
-                      fontSize: '10px',
-                      fontWeight: 'bold'
-                    }}>
-                      CONNECTION FAILED
-                    </span>
-                  )}
-                  {src.status === 'connected' && (
-                    <span style={{ 
-                      backgroundColor: '#10b981', 
-                      color: 'white', 
-                      padding: '2px 6px', 
-                      borderRadius: '4px', 
-                      fontSize: '10px',
-                      fontWeight: 'bold'
-                    }}>
-                      CONNECTED
-                    </span>
-                  )}
-                  {isLoadingDatabases && <CircularProgress size={14} />}
-                </div>
-              );
-              
-              return (
-                <TreeItem itemId={itemId} label={sourceLabel} key={`src-${srcIdx}-${src.name}`}>
-                  {src.status === 'connection_failed' && src.error ? (
-                    <TreeItem
-                      itemId={`src-${srcIdx}-error`}
-                      label={
-                        <span style={{ color: '#ef4444', fontStyle: 'italic' }}>
-                          Error: {src.error}
-                        </span>
-                      }
-                    />
-                  ) : databases ? (
-                    databases.map((db, dbIdx) => {
-                      const dbNodeId = `db-${srcIdx}-${dbIdx}`;
-                      const schemaKey = `${src.name}.${db.name}`;
-                      const schemaData = sourcesMetadata.loadedSchemas[schemaKey];
-                      const isLoadingSchemas = loadingStates.schemas[schemaKey];
-                      
-                      const dbLabel = (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>{db.name}</span>
-                          {isLoadingSchemas && <CircularProgress size={12} />}
-                        </div>
-                      );
-                      
-                      return (
-                        <TreeItem itemId={dbNodeId} label={dbLabel} key={`${src.name}-${db.name}`}>
-                          {schemaData && (
-                            schemaData.has_schemas ? (
-                              // Database has schemas
-                              schemaData.schemas?.map((schema, schemaIdx) => {
-                                const schemaNodeId = `schema-${srcIdx}-${dbIdx}-${schemaIdx}`;
-                                const tableKey = `${src.name}.${db.name}.${schema.name}`;
-                                const tables = sourcesMetadata.loadedTables[tableKey];
-                                const isLoadingTables = loadingStates.tables[tableKey];
-                                
-                                const schemaLabel = (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span>{schema.name}</span>
-                                    {isLoadingTables && <CircularProgress size={12} />}
-                                  </div>
-                                );
-                                
-                                return (
-                                  <TreeItem itemId={schemaNodeId} label={schemaLabel} key={`${src.name}-${db.name}-${schema.name}`}>
-                                    {tables?.map((table, tableIdx) => {
-                                      const tableNodeId = `table-${srcIdx}-${dbIdx}-${schemaIdx}-${tableIdx}`;
-                                      const columnKey = `${src.name}.${db.name}.${schema.name}.${table.name}`;
-                                      const columns = sourcesMetadata.loadedColumns[columnKey];
-                                      const isLoadingColumns = loadingStates.columns[columnKey];
-                                      
-                                      const tableLabel = (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                          <span>{table.name}</span>
-                                          {isLoadingColumns && <CircularProgress size={10} />}
-                                        </div>
-                                      );
-                                      
-                                      return (
-                                        <TreeItem itemId={tableNodeId} label={tableLabel} key={`${src.name}-${db.name}-${schema.name}-${table.name}`}>
-                                          {columns?.map((col, colIdx) => (
-                                            <TreeItem
-                                              itemId={`col-${srcIdx}-${dbIdx}-${schemaIdx}-${tableIdx}-${colIdx}`}
-                                              label={
-                                                <div style={{ fontSize: '12px' }}>
-                                                  <span style={{ fontWeight: 'bold' }}>{col.name}</span>
-                                                  <span style={{ color: '#666', marginLeft: '8px' }}>{col.type}</span>
-                                                </div>
-                                              }
-                                              key={`${src.name}-${db.name}-${schema.name}-${table.name}-${col.name}`}
-                                            />
-                                          ))}
-                                        </TreeItem>
-                                      );
-                                    })}
-                                  </TreeItem>
-                                );
-                              })
-                            ) : (
-                              // Database has no schemas - tables at root level
-                              (() => {
-                                const tableKey = `${src.name}.${db.name}`;
-                                const tables = sourcesMetadata.loadedTables[tableKey];
-                                const isLoadingTables = loadingStates.tables[tableKey];
-                                
-                                return tables ? tables.map((table, tableIdx) => {
-                                  const tableNodeId = `table-${srcIdx}-${dbIdx}-${tableIdx}`;
-                                  const columnKey = `${src.name}.${db.name}.${table.name}`;
-                                  const columns = sourcesMetadata.loadedColumns[columnKey];
-                                  const isLoadingColumns = loadingStates.columns[columnKey];
-                                  
-                                  const tableLabel = (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span>{table.name}</span>
-                                      {isLoadingColumns && <CircularProgress size={10} />}
-                                    </div>
-                                  );
-                                  
-                                  return (
-                                    <TreeItem itemId={tableNodeId} label={tableLabel} key={`${src.name}-${db.name}-${table.name}`}>
-                                      {columns?.map((col, colIdx) => (
-                                        <TreeItem
-                                          itemId={`col-${srcIdx}-${dbIdx}-${tableIdx}-${colIdx}`}
-                                          label={
-                                            <div style={{ fontSize: '12px' }}>
-                                              <span style={{ fontWeight: 'bold' }}>{col.name}</span>
-                                              <span style={{ color: '#666', marginLeft: '8px' }}>{col.type}</span>
-                                            </div>
-                                          }
-                                          key={`${src.name}-${db.name}-${table.name}-${col.name}`}
-                                        />
-                                      ))}
-                                    </TreeItem>
-                                  );
-                                }) : (
-                                  isLoadingTables && (
-                                    <TreeItem
-                                      itemId={`db-${srcIdx}-${dbIdx}-loading`}
-                                      label={
-                                        <span style={{ fontStyle: 'italic', color: '#999' }}>
-                                          Loading tables...
-                                        </span>
-                                      }
-                                    />
-                                  )
-                                );
-                              })()
-                            )
-                          )}
-                        </TreeItem>
-                      );
-                    })
-                  ) : (
-                    !isLoadingDatabases && !src.error && (
+    <StyledSidebar>
+      <SelectContainer>
+        <select
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={selectedTab}
+          onChange={e => onTypeChange(e.target.value)}
+        >
+          <option value="models">SQL Models</option>
+          <option value="traces">SQL Traces</option>
+          <option value="sources">Sources</option>
+        </select>
+      </SelectContainer>
+      
+      <TreeContainer>
+        {selectedTab === 'sources' ? (
+          loadingStates.sources ? (
+            <EmptyMessage>
+              <CircularProgress size={24} />
+              <p className="mt-2">Loading sources...</p>
+            </EmptyMessage>
+          ) : sourcesMetadata.sources && sourcesMetadata.sources.length > 0 ? (
+            <StyledTreeView
+              slots={{
+                collapseIcon: ExpandMoreIcon,
+                expandIcon: ChevronRightIcon,
+              }}
+              expanded={expandedNodes}
+              onExpandedItemsChange={handleNodeToggle}
+            >
+              {sourcesMetadata.sources.map((src, srcIdx) => {
+                if (!src || !src.name) return null;
+                
+                const databases = sourcesMetadata.loadedDatabases[src.name];
+                const isLoadingDatabases = loadingStates.databases[src.name];
+                
+                return (
+                  <SourceTreeItem
+                    key={`src-${srcIdx}-${src.name}`}
+                    source={src}
+                    srcIdx={srcIdx}
+                    isLoadingDatabases={isLoadingDatabases}
+                  >
+                    {src.status === 'connection_failed' && src.error ? (
                       <TreeItem
-                        itemId={`src-${srcIdx}-empty`}
+                        itemId={`src-${srcIdx}-error`}
                         label={
-                          <span style={{ fontStyle: 'italic', color: '#999' }}>
-                            Click to load databases
-                          </span>
+                          <ItemLabel>
+                            <ItemIcon><ErrorOutlineIcon fontSize="small" color="error" /></ItemIcon>
+                            <span style={{ color: '#dc2626', fontSize: '13px' }}>
+                              {src.error}
+                            </span>
+                          </ItemLabel>
                         }
                       />
-                    )
-                  )}
-                </TreeItem>
-              );
-            }).filter(Boolean)}
-          </SimpleTreeView>
+                    ) : databases ? (
+                      databases.map((db, dbIdx) => {
+                        const dbNodeId = `db-${srcIdx}-${dbIdx}`;
+                        const schemaKey = `${src.name}.${db.name}`;
+                        const schemaData = sourcesMetadata.loadedSchemas[schemaKey];
+                        const isLoadingSchemas = loadingStates.schemas[schemaKey];
+                        
+                        return (
+                          <DatabaseTreeItem
+                            key={`${src.name}-${db.name}`}
+                            database={db}
+                            dbNodeId={dbNodeId}
+                            isLoadingSchemas={isLoadingSchemas}
+                          >
+                            {schemaData ? (
+                              schemaData.has_schemas ? (
+                                // Database has schemas
+                                schemaData.schemas?.map((schema, schemaIdx) => {
+                                  const schemaNodeId = `schema-${srcIdx}-${dbIdx}-${schemaIdx}`;
+                                  const tableKey = `${src.name}.${db.name}.${schema.name}`;
+                                  const tables = sourcesMetadata.loadedTables[tableKey];
+                                  const isLoadingTables = loadingStates.tables[tableKey];
+                                  
+                                  return (
+                                    <SchemaTreeItem
+                                      key={`${src.name}-${db.name}-${schema.name}`}
+                                      schema={schema}
+                                      schemaNodeId={schemaNodeId}
+                                      isLoadingTables={isLoadingTables}
+                                    >
+                                      {tables?.error ? (
+                                        <TreeItem
+                                          itemId={`schema-${srcIdx}-${dbIdx}-${schemaIdx}-error`}
+                                          label={
+                                            <ItemLabel>
+                                              <ItemIcon><ErrorOutlineIcon fontSize="small" color="error" /></ItemIcon>
+                                              <span style={{ color: '#dc2626', fontSize: '13px' }}>
+                                                Connection failed
+                                              </span>
+                                            </ItemLabel>
+                                          }
+                                        />
+                                      ) : Array.isArray(tables) ? tables.map((table, tableIdx) => {
+                                        const tableNodeId = `table-${srcIdx}-${dbIdx}-${schemaIdx}-${tableIdx}`;
+                                        const columnKey = `${src.name}.${db.name}.${schema.name}.${table.name}`;
+                                        const columns = sourcesMetadata.loadedColumns[columnKey];
+                                        const isLoadingColumns = loadingStates.columns[columnKey];
+                                        
+                                        return (
+                                          <TableTreeItem
+                                            key={`${src.name}-${db.name}-${schema.name}-${table.name}`}
+                                            table={table}
+                                            tableNodeId={tableNodeId}
+                                            isLoadingColumns={isLoadingColumns}
+                                          >
+                                            {columns?.map((col, colIdx) => (
+                                              <ColumnTreeItem
+                                                key={`${src.name}-${db.name}-${schema.name}-${table.name}-${col.name}`}
+                                                column={col}
+                                                columnNodeId={`col-${srcIdx}-${dbIdx}-${schemaIdx}-${tableIdx}-${colIdx}`}
+                                              />
+                                            ))}
+                                          </TableTreeItem>
+                                        );
+                                      }) : null}
+                                    </SchemaTreeItem>
+                                  );
+                                })
+                              ) : (
+                                // Database has no schemas - tables at root level
+                                (() => {
+                                  const tableKey = `${src.name}.${db.name}`;
+                                  const tables = sourcesMetadata.loadedTables[tableKey];
+                                  const isLoadingTables = loadingStates.tables[tableKey];
+                                  
+                                  return tables?.error ? (
+                                    <TreeItem
+                                      itemId={`db-${srcIdx}-${dbIdx}-error`}
+                                      label={
+                                        <ItemLabel>
+                                          <ItemIcon><ErrorOutlineIcon fontSize="small" color="error" /></ItemIcon>
+                                          <span style={{ color: '#dc2626', fontSize: '13px' }}>
+                                            Connection failed
+                                          </span>
+                                        </ItemLabel>
+                                      }
+                                    />
+                                  ) : Array.isArray(tables) ? tables.map((table, tableIdx) => {
+                                    const tableNodeId = `table-${srcIdx}-${dbIdx}-${tableIdx}`;
+                                    const columnKey = `${src.name}.${db.name}.${table.name}`;
+                                    const columns = sourcesMetadata.loadedColumns[columnKey];
+                                    const isLoadingColumns = loadingStates.columns[columnKey];
+                                    
+                                    return (
+                                      <TableTreeItem
+                                        key={`${src.name}-${db.name}-${table.name}`}
+                                        table={table}
+                                        tableNodeId={tableNodeId}
+                                        isLoadingColumns={isLoadingColumns}
+                                      >
+                                        {columns?.map((col, colIdx) => (
+                                          <ColumnTreeItem
+                                            key={`${src.name}-${db.name}-${table.name}-${col.name}`}
+                                            column={col}
+                                            columnNodeId={`col-${srcIdx}-${dbIdx}-${tableIdx}-${colIdx}`}
+                                          />
+                                        ))}
+                                      </TableTreeItem>
+                                    );
+                                  }) : (
+                                    isLoadingTables && (
+                                      <TreeItem
+                                        itemId={`db-${srcIdx}-${dbIdx}-loading`}
+                                        label={<LoadingLabel>Loading tables...</LoadingLabel>}
+                                      />
+                                    )
+                                  );
+                                })()
+                              )
+                            ) : null}
+                          </DatabaseTreeItem>
+                        );
+                      })
+                    ) : (
+                      !isLoadingDatabases && !src.error && (
+                        <TreeItem
+                          itemId={`src-${srcIdx}-empty`}
+                          label={<LoadingLabel>Click to load databases</LoadingLabel>}
+                        />
+                      )
+                    )}
+                  </SourceTreeItem>
+                );
+              }).filter(Boolean)}
+            </StyledTreeView>
+          ) : (
+            <EmptyMessage>No sources available</EmptyMessage>
+          )
         ) : (
-          <div className="p-4 text-sm text-gray-500 text-center">No sources available</div>
-        )
-      ) : (
-        validData.length > 0 ? (
-          validData.map(item => renderTreeItem(item))
-        ) : (
-          <div className="p-4 text-sm text-gray-500 text-center">No items to display</div>
-        )
-      )}
-    </Sidebar>
+          validData.length > 0 ? (
+            validData.map(item => renderTreeItem(item))
+          ) : (
+            <EmptyMessage>No items to display</EmptyMessage>
+          )
+        )}
+      </TreeContainer>
+    </StyledSidebar>
   );
 });
 
