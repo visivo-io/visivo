@@ -1,6 +1,6 @@
 import React from 'react';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
-import FolderIcon from '@mui/icons-material/Folder';
+import { HiOutlineDatabase } from 'react-icons/hi';
 import CircularProgress from '@mui/material/CircularProgress';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { ItemLabel, ItemIcon, ItemName, LoadingLabel } from '../styles/TreeStyles';
@@ -25,7 +25,7 @@ const DatabaseNode = ({ database, sourceName }) => {
   const dbLabel = (
     <ItemLabel>
       <ItemIcon>
-        <FolderIcon fontSize="small" />
+        <HiOutlineDatabase size={20} />
       </ItemIcon>
       <ItemName title={database.name}>{database.name}</ItemName>
       {(isLoadingSchemas || isLoadingTables) && <CircularProgress size={12} />}
