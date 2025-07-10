@@ -17,7 +17,7 @@ from visivo.server.source_metadata import (
     get_database_schemas,
     get_schema_tables,
     get_table_columns,
-    test_source_connection,
+    check_source_connection,
 )
 import subprocess
 import hashlib
@@ -107,7 +107,7 @@ class FlaskApp:
         def test_connection(source_name):
             """Test connection to a specific source."""
             try:
-                result = test_source_connection(self._project.sources, source_name)
+                result = check_source_connection(self._project.sources, source_name)
                 if isinstance(result, tuple):  # Error response
                     return jsonify(result[0]), result[1]
                 return jsonify(result)
