@@ -14,7 +14,11 @@ import SchemaIcon from '@mui/icons-material/Schema';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { styled } from '@mui/material/styles';
+import { Tooltip } from 'flowbite-react';
 
 // Styled components for better UI
 const StyledSidebar = styled(Sidebar)`
@@ -102,23 +106,10 @@ const ItemName = styled('span')`
   white-space: nowrap;
 `;
 
-const StatusBadge = styled('span')`
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  white-space: nowrap;
-  
-  &.connected {
-    background-color: #d1fae5;
-    color: #059669;
-  }
-  
-  &.failed {
-    background-color: #fee2e2;
-    color: #dc2626;
-  }
+const StatusIcon = styled('span')`
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
 `;
 
 const ColumnInfo = styled('div')`
@@ -170,16 +161,31 @@ const CopyButton = styled('button')`
 `;
 
 // Subcomponents
-const SourceTreeItem = ({ source, srcIdx, isLoadingDatabases, children }) => {
+const SourceTreeItem = ({ source, srcIdx, isLoadingDatabases, isTestingConnection, children }) => {
   const sourceLabel = (
     <ItemLabel>
       <ItemIcon><StorageIcon fontSize="small" /></ItemIcon>
       <ItemName title={source.name}>{source.name}</ItemName>
-      {source.status === 'connection_failed' && (
-        <StatusBadge className="failed">Failed</StatusBadge>
-      )}
-      {source.status === 'connected' && (
-        <StatusBadge className="connected">Connected</StatusBadge>
+      {isTestingConnection ? (
+        <CircularProgress size={16} />
+      ) : source.status === 'connection_failed' ? (
+        <Tooltip content={source.error || 'Connection failed'}>
+          <StatusIcon>
+            <CancelIcon fontSize="small" style={{ color: '#dc2626' }} />
+          </StatusIcon>
+        </Tooltip>
+      ) : source.status === 'connected' ? (
+        <Tooltip content="Connected">
+          <StatusIcon>
+            <CheckCircleIcon fontSize="small" style={{ color: '#059669' }} />
+          </StatusIcon>
+        </Tooltip>
+      ) : (
+        <Tooltip content="Connection not tested">
+          <StatusIcon>
+            <HelpOutlineIcon fontSize="small" style={{ color: '#6b7280' }} />
+          </StatusIcon>
+        </Tooltip>
       )}
       {isLoadingDatabases && <CircularProgress size={14} />}
     </ItemLabel>
@@ -441,6 +447,7 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
                 
                 const databases = sourcesMetadata.loadedDatabases[src.name];
                 const isLoadingDatabases = loadingStates.databases[src.name];
+                const isTestingConnection = loadingStates.connections[src.name];
                 
                 return (
                   <SourceTreeItem
@@ -448,6 +455,7 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
                     source={src}
                     srcIdx={srcIdx}
                     isLoadingDatabases={isLoadingDatabases}
+                    isTestingConnection={isTestingConnection}
                   >
                     {src.status === 'connection_failed' && src.error ? (
                       <TreeItem

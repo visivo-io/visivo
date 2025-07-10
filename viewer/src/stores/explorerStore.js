@@ -4,7 +4,8 @@ import {
   fetchDatabases, 
   fetchSchemas, 
   fetchTables, 
-  fetchColumns 
+  fetchColumns,
+  testSourceConnection 
 } from '../api/explorer';
 
 const createExplorerSlice = (set, get) => ({
@@ -48,6 +49,7 @@ const createExplorerSlice = (set, get) => ({
     schemas: {},
     tables: {},
     columns: {},
+    connections: {},  // Track connection test loading states
   },
 
   treeData: [],
@@ -163,12 +165,69 @@ const createExplorerSlice = (set, get) => ({
         set(state => ({
           sourcesMetadata: { ...state.sourcesMetadata, sources: data.sources }
         }));
+        
+        // Trigger connection tests for all sources in the background
+        data.sources.forEach(source => {
+          get().testConnection(source.name);
+        });
       }
     } catch (err) {
       setError('Failed to load sources');
     } finally {
       set(state => ({
         loadingStates: { ...state.loadingStates, sources: false }
+      }));
+    }
+  },
+  
+  testConnection: async (sourceName) => {
+    const { loadingStates } = get();
+    
+    // Check if already testing
+    if (loadingStates.connections[sourceName]) {
+      return;
+    }
+    
+    set(state => ({
+      loadingStates: { 
+        ...state.loadingStates, 
+        connections: { ...state.loadingStates.connections, [sourceName]: true }
+      }
+    }));
+    
+    try {
+      const result = await testSourceConnection(sourceName);
+      if (result) {
+        // Update source status
+        set(state => ({
+          sourcesMetadata: {
+            ...state.sourcesMetadata,
+            sources: state.sourcesMetadata.sources.map(src => 
+              src.name === sourceName 
+                ? { ...src, status: result.status, error: result.error }
+                : src
+            )
+          }
+        }));
+      }
+    } catch (err) {
+      // Mark as failed
+      set(state => ({
+        sourcesMetadata: {
+          ...state.sourcesMetadata,
+          sources: state.sourcesMetadata.sources.map(src => 
+            src.name === sourceName 
+              ? { ...src, status: 'connection_failed', error: err.message }
+              : src
+          )
+        }
+      }));
+    } finally {
+      set(state => ({
+        loadingStates: { 
+          ...state.loadingStates, 
+          connections: { ...state.loadingStates.connections, [sourceName]: false }
+        }
       }));
     }
   },
