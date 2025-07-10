@@ -60,7 +60,10 @@ const TumblerNavItem = ({ icon: Icon, label, to, tooltip }) => {
                 aria-label="More info"
                 className="ml-1 cursor-pointer text-[#D25946] hover:text-[#B24538] focus:text-[#B24538] transition-colors duration-200 outline-none flex items-center"
               >
-                <FiInfo className="w-3 h-3 align-middle" style={{ display: 'inline', verticalAlign: 'middle' }} />
+                <FiInfo
+                  className="w-3 h-3 align-middle"
+                  style={{ display: 'inline', verticalAlign: 'middle' }}
+                />
                 <span className="sr-only">Show info</span>
               </span>
             </Tooltip>
