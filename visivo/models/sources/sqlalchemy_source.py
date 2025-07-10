@@ -94,10 +94,13 @@ class SqlalchemySource(Source, ABC):
     def list_databases(self):
         """Return a list of database names for this source.
 
-        Base implementation returns the configured database.
-        Override in specific source classes to support multiple databases.
+        This method must be overridden by each source implementation to ensure
+        proper connection testing and database discovery.
         """
-        return [self.database]
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement list_databases() method. "
+            "This ensures proper connection testing rather than falsely returning a default."
+        )
 
     def introspect(self):
         """Return metadata about databases, schemas, tables, and columns efficiently."""

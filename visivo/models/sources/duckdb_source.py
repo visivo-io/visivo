@@ -164,10 +164,29 @@ class DuckdbSource(SqlalchemySource):
         try:
             with self.connect(read_only=True) as connection:
                 rows = connection.execute("PRAGMA database_list").fetchall()
-                return [r[2] for r in rows if r[2]]
-        except Exception:
-            # Fallback to configured database if query fails
-            return [self.database]
+                databases = []
+
+                # DuckDB returns: (sequence_num, db_name, file_path)
+                # For DuckDB, we always return 'main' as the primary database name
+                # This provides consistency and avoids exposing file paths in the UI
+
+                Logger.instance().debug(f"DuckDB PRAGMA database_list result: {rows}")
+
+                # Always add 'main' for the primary database
+                databases.append("main")
+
+                # Add any attached databases (excluding temp/system)
+                for row in rows:
+                    db_name = row[1]
+                    if db_name not in ["temp", "system", "main"] and row[2]:
+                        # For attached databases, use their actual names
+                        databases.append(db_name)
+
+                Logger.instance().debug(f"DuckDB list_databases returning: {databases}")
+                return databases
+        except Exception as e:
+            # Re-raise to allow proper error handling in UI
+            raise e
 
     def dispose_engines(self):
         """Dispose of cached engines to release database locks."""
