@@ -48,6 +48,22 @@ Visivo is a data visualization tool with two main components:
 - **Job system**: `jobs/` - DAG-based job runner for executing data transformations
 - **Query engine**: `query/` - SQL query building and execution
 
+#### CLI Command Structure
+Each CLI command follows a consistent pattern:
+- `commands/{command}.py` - Click command definition with options/arguments
+- `commands/{command}_phase.py` - Implementation logic for the command
+
+**Key Commands**:
+- `compile` - Parses project files and generates artifacts (project.json, explorer.json)
+- `run` - Executes trace queries and generates data files via DAG runner
+- `serve` - Starts Flask server with hot reload for development
+- `test` - Compiles project and runs test assertions
+
+#### Execution Flow
+1. **Compile Phase**: YAML parsing → Pydantic models → JSON artifacts
+2. **Run Phase**: Project loading → DAG execution → Trace query execution → Data file generation
+3. **Serve Phase**: Run phase + Flask server + file watching + hot reload
+
 ### 2. JavaScript Viewer (`viewer/` directory)
 - **Framework**: React with Vite build system
 - **State management**: Zustand stores in `src/stores/`
@@ -122,6 +138,30 @@ Visivo uses MkDocs with Material theme for documentation generation. The system 
 - **Spellcheck**: Validates content against `mkdocs/known_words.txt`
 - **Custom macros**: `mkdocs/src/main.py` provides custom Jinja macros
 - **Trace props**: Special handling for Plotly trace properties documentation
+
+## Source Introspection Architecture
+
+### When Introspection Happens (Server Only)
+Source introspection is **only** performed by the Flask server, never during CLI execution:
+
+- **Server API**: `/api/project/sources_metadata` endpoint in `server/flask_app.py`
+- **Implementation**: `server/source_metadata.py` → `gather_source_metadata()` → `source.introspect()`
+- **Base class**: `SqlalchemySource.introspect()` uses SQLAlchemy Inspector to discover schemas/tables/columns
+- **UI integration**: React Explorer component fetches metadata on-demand when needed
+
+### When Introspection Does NOT Happen (CLI Commands)
+The CLI execution path is introspection-free to maintain performance:
+
+- **Run phase**: Only executes trace queries and generates data files
+- **Compile phase**: Only parses YAML and generates artifacts
+- **Source connection tests**: Use minimal "SELECT 1" queries for connectivity validation
+- **Model execution**: CsvScriptModel and LocalMergeModel never introspect sources
+
+### Key Design Principles
+1. **Lazy Loading**: Introspection only when requested by UI
+2. **Separation of Concerns**: Data generation (CLI) vs metadata discovery (server)
+3. **Performance**: Execution path remains fast without expensive schema operations
+4. **Error Isolation**: Introspection failures don't break core functionality
 
 ## Common Tasks
 

@@ -168,15 +168,33 @@ class CsvScriptModel(Model):
 
     def insert_csv_to_duckdb(self, output_dir):
         import subprocess
+        from visivo.logger.logger import Logger
 
         try:
-            process = subprocess.Popen(self.args, stdout=subprocess.PIPE)
+            Logger.instance().debug(f"Starting CSV script model: {self.name}")
+            
+            # Execute subprocess and wait for completion BEFORE opening database connection
+            Logger.instance().debug(f"CSV script model {self.name}: Executing subprocess")
+            process = subprocess.Popen(self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout, stderr = process.communicate()  # Wait for subprocess to complete
+            
+            if process.returncode != 0:
+                raise click.ClickException(
+                    f"Command failed with return code {process.returncode}. stderr: {stderr.decode()}"
+                )
+            
+            Logger.instance().debug(f"CSV script model {self.name}: Subprocess completed successfully")
+            csv = io.StringIO(stdout.decode())
+            self.validate_stream_is_csv(csv)
+
+            # Now that we have the CSV data, open the database connection
             source = self.get_duckdb_source(output_dir)
-            with source.connect() as connection:
-                csv = io.StringIO(process.stdout.read().decode())
-
-                self.validate_stream_is_csv(csv)
-
+            Logger.instance().debug(f"CSV script model {self.name}: Database path: {source.database}")
+            
+            Logger.instance().debug(f"CSV script model {self.name}: Attempting connection")
+            with source.connect(read_only=False) as connection:
+                Logger.instance().debug(f"CSV script model {self.name}: Connection established")
+                
                 data_frame = pl.read_csv(csv)
 
                 # Register the Polars DataFrame as a DuckDB view
@@ -187,6 +205,11 @@ class CsvScriptModel(Model):
                 )
                 duckdb_conn.execute(f"DELETE FROM {self.table_name}")
                 duckdb_conn.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
+                Logger.instance().debug(f"CSV script model {self.name}: Data inserted successfully")
+            
+            # Clean up engines to release locks
+            source.dispose_engines()
+            Logger.instance().debug(f"CSV script model {self.name}: Completed successfully")
         except Exception as e:
             raise click.ClickException(
                 f"Error parsing or generating the csv output of node:{self.name} model's command. Verify command's output and try again. Full error: {repr(e)}"

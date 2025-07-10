@@ -77,7 +77,7 @@ class LocalMergeModel(Model, ParentModel):
                 data = source.read_sql(model.sql)
                 # Convert list of dictionaries to Polars DataFrame for DuckDB insertion
                 data_frame = pl.DataFrame(data)
-                with duckdb_source.connect() as connection:
+                with duckdb_source.connect(read_only=False) as connection:
                     connection.execute("DROP TABLE IF EXISTS model")
                     connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
 
@@ -90,7 +90,7 @@ class LocalMergeModel(Model, ParentModel):
             )
 
         duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
-        with duckdb_source.connect() as connection:
+        with duckdb_source.connect(read_only=False) as connection:
             data_frame = connection.execute(self.sql).pl()
             connection.execute("DROP TABLE IF EXISTS model")
             connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
