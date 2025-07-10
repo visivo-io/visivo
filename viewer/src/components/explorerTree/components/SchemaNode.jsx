@@ -1,12 +1,11 @@
 import React from 'react';
-import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import SchemaIcon from '@mui/icons-material/Schema';
 import CircularProgress from '@mui/material/CircularProgress';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import { ItemLabel, ItemIcon, ItemName, LoadingLabel } from '../styles/TreeStyles';
+import { ItemLabel, ItemIcon, ItemName } from '../styles/TreeStyles';
 import { createSchemaNodeId, getDataKey } from '../utils/nodeIdUtils';
 import { useTreeContext } from '../TreeContext';
 import TableNode from './TableNode';
+import TreeNodeWrapper from './TreeNodeWrapper';
 
 const SchemaNode = ({ schema, sourceName, databaseName }) => {
   const { sourcesMetadata, loadingStates } = useTreeContext();
@@ -26,48 +25,33 @@ const SchemaNode = ({ schema, sourceName, databaseName }) => {
     </ItemLabel>
   );
 
+  // Determine what to render based on state
+  let children = null;
+  let isLoading = isLoadingTables;
+  let error = tables?.error || null;
+
+  if (Array.isArray(tables)) {
+    children = tables.map(table => (
+      <TableNode
+        key={table.name}
+        table={table}
+        sourceName={sourceName}
+        databaseName={databaseName}
+        schemaName={schema.name}
+      />
+    ));
+  }
+
   return (
-    <TreeItem itemId={nodeId} label={schemaLabel}>
-      {tables?.error ? (
-        <TreeItem
-          itemId={`${nodeId}-error`}
-          label={
-            <ItemLabel>
-              <ItemIcon>
-                <ErrorOutlineIcon fontSize="small" color="error" />
-              </ItemIcon>
-              <span style={{ color: '#dc2626', fontSize: '13px' }}>Connection failed</span>
-            </ItemLabel>
-          }
-        />
-      ) : Array.isArray(tables) ? (
-        tables.map(table => (
-          <TableNode
-            key={table.name}
-            table={table}
-            sourceName={sourceName}
-            databaseName={databaseName}
-            schemaName={schema.name}
-          />
-        ))
-      ) : isLoadingTables ? (
-        <TreeItem
-          itemId={`${nodeId}-loading`}
-          label={
-            <ItemLabel>
-              <CircularProgress size={12} />
-              <LoadingLabel>Loading tables...</LoadingLabel>
-            </ItemLabel>
-          }
-        />
-      ) : (
-        // Not loading and no data - show placeholder to allow expansion
-        <TreeItem
-          itemId={`${nodeId}-placeholder`}
-          label={<LoadingLabel>Click to expand</LoadingLabel>}
-        />
-      )}
-    </TreeItem>
+    <TreeNodeWrapper
+      nodeId={nodeId}
+      label={schemaLabel}
+      isLoading={isLoading}
+      error={error}
+      loadingText="Loading tables..."
+    >
+      {children}
+    </TreeNodeWrapper>
   );
 };
 
