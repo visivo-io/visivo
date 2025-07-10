@@ -378,11 +378,7 @@ describe('SourcesTree Drilling Tests', () => {
     fireEvent.click(screen.getByTestId(`tree-item-${tableNodeId}`));
 
     await waitFor(() => {
-      expect(mockStoreData.loadColumns).toHaveBeenCalledWith(
-        'duckdb_source',
-        'main',
-        'products'
-      );
+      expect(mockStoreData.loadColumns).toHaveBeenCalledWith('duckdb_source', 'main', 'products');
     });
 
     rerender(<SourcesTree />);

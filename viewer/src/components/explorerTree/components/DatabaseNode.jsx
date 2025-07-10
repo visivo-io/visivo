@@ -22,7 +22,6 @@ const DatabaseNode = ({ database, sourceName }) => {
   const tables = sourcesMetadata.loadedTables[tableKey];
   const isLoadingTables = loadingStates.tables[tableKey];
 
-
   const dbLabel = (
     <ItemLabel>
       <ItemIcon>

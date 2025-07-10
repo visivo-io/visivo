@@ -54,7 +54,7 @@ export const useTreeExpansion = () => {
           }
 
           default:
-            // Unknown node type - ignore
+          // Unknown node type - ignore
         }
       }
     },
