@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Format code**: `poetry run black .` (line length: 100)
 - **Install package locally**: `pip install -e .`
 - **Run CLI**: `visivo [command]`
+- **Ensure python file formatting**: ensure that all python files are formatted in accordance with our black settings
 
 ### JavaScript Viewer Development
 - **Install dependencies**: `yarn install` (in `viewer/` directory)

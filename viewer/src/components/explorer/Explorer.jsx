@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import ExplorerTree from './ExplorerTree';
 import { fetchTraceQuery } from '../../services/queryService';
-import { fetchExplorer, fetchSourceMetadata } from '../../api/explorer';
+import { fetchExplorer } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
 import { useWorksheets } from '../../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
@@ -66,7 +66,6 @@ const QueryExplorer = () => {
     setSelectedType,
     setExplorerData,
     setSelectedSource,
-    setSourcesMeta,
     setQueryStats,
     setSplitRatio,
     setIsDragging,
@@ -158,20 +157,7 @@ const QueryExplorer = () => {
   loadExplorerData();
   }, [setExplorerData, setSelectedSource, setError]);
 
-  useEffect(() => {
-    const loadMetadata = async () => {
-      try {
-        const meta = await fetchSourceMetadata();
-        if (meta) {
-          setSourcesMeta(meta);
-        }
-      } catch (err) {
-        console.error('Error loading source metadata:', err);
-        setError('Failed to load source metadata');
-      }
-    };
-    loadMetadata();
-  }, [setSourcesMeta, setError]);
+  // Removed old metadata loading - now using lazy loading in ExplorerTree
 
   const transformData = React.useCallback(() => {
     if (!explorerData) return [];
@@ -183,7 +169,6 @@ const QueryExplorer = () => {
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
-            .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .map((model, index) => ({
               id: `model-${model.name}-${index}`,
@@ -315,7 +300,7 @@ const QueryExplorer = () => {
       <div className="flex flex-col h-full">
         {info && (
           <Info>
-            <p>{query}</p>
+            <p>{info}</p>
           </Info>
         )}
         <MainContent>
