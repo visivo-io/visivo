@@ -70,15 +70,48 @@ class DuckdbSource(SqlalchemySource):
             
             return self._read_only_engine
         else:
-            # Use the parent's cached read-write engine
-            return super().get_engine()
+            # Create read-write engine with proper connection args
+            if not self._engine:
+                Logger.instance().debug(f"Creating read-write engine for Source: {self.name}")
+                self._engine = create_engine(
+                    self.url(), 
+                    poolclass=NullPool, 
+                    connect_args={'read_only': False}
+                )
+                
+                @event.listens_for(self._engine, "connect")
+                def connect_readwrite(dbapi_connection, connection_record):
+                    if self.after_connect:
+                        cursor_obj = dbapi_connection.cursor()
+                        cursor_obj.execute(self.after_connect)
+                        cursor_obj.close()
+            
+            return self._engine
     
     def get_connection(self, read_only: bool = False):
-        """Return a DuckDBPyConnection using SQLAlchemy's engine with proper read_only support."""
+        """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
         try:
-            # Get the appropriate engine (cached read-only or read-write)
-            engine = self.get_engine(read_only=read_only)
-            connection = engine.raw_connection()
+            import duckdb
+            import os
+            
+            Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
+            
+            # Ensure database file exists for write operations
+            if not read_only and not os.path.exists(self.database):
+                Logger.instance().debug(f"Database file {self.database} does not exist, creating it")
+                os.makedirs(os.path.dirname(self.database), exist_ok=True)
+                # Create the database file
+                temp_conn = duckdb.connect(self.database)
+                temp_conn.close()
+            
+            # Connect directly to DuckDB with proper read_only flag
+            Logger.instance().debug(f"Connecting to {self.database} with read_only={read_only}")
+            connection = duckdb.connect(self.database, read_only=read_only)
+            Logger.instance().debug(f"Direct DuckDB connection established for {self.name}")
+            
+            # Execute after_connect if specified
+            if self.after_connect:
+                connection.execute(self.after_connect)
             
             if self.attach:
                 for attachment in self.attach:
@@ -140,6 +173,40 @@ class DuckdbSource(SqlalchemySource):
         except Exception:
             # Fallback to configured database if query fails
             return [self.database]
+    
+    def dispose_engines(self):
+        """Dispose of cached engines to release database locks."""
+        if self._read_only_engine:
+            self._read_only_engine.dispose()
+            self._read_only_engine = None
+        if self._engine:
+            self._engine.dispose()
+            self._engine = None
+    
+    def __del__(self):
+        """Ensure engines are disposed when source is destroyed."""
+        try:
+            self.dispose_engines()
+        except Exception:
+            # Ignore errors during cleanup
+            pass
+    
+    @classmethod
+    def create_empty_database(cls, database_path: str):
+        """Create an empty DuckDB database file."""
+        import duckdb
+        import os
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(database_path), exist_ok=True)
+        
+        # Remove file if it exists (in case it's an invalid empty file)
+        if os.path.exists(database_path):
+            os.unlink(database_path)
+        
+        # Create empty database
+        conn = duckdb.connect(database_path)
+        conn.close()
 
 
 class DuckDBConnection:
