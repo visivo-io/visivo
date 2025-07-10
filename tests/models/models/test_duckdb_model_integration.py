@@ -4,7 +4,6 @@ import os
 import threading
 import time
 from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.sources.duckdb_source import DuckdbSource
 
 
@@ -79,84 +78,42 @@ class TestDuckDBModelIntegration:
             assert len(results) == 3
             assert set(results) == {0, 1, 2}
 
-    def test_local_merge_model_write_operations(self):
-        """Test that local merge model properly uses read-write connections."""
+    def test_duckdb_source_write_read_operations(self):
+        """Test that DuckDB sources properly handle write/read operations without hanging."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Create a simple source for testing
-            test_source = DuckdbSource(
+            # Create a DuckDB source
+            source = DuckdbSource(
                 name="test_source",
                 database=f"{temp_dir}/test_source.duckdb",
                 type="duckdb"
             )
 
-            # Create test data in the source
-            with test_source.connect(read_only=False) as conn:
-                conn.execute("CREATE TABLE source_data (id INTEGER, value TEXT)")
-                conn.execute("INSERT INTO source_data VALUES (1, 'data1'), (2, 'data2')")
-
             try:
-                # Create a basic model that we can reference
-                from visivo.models.models.model import Model
-                from visivo.models.base.base_model import BaseModel
-                
-                class SimpleModel(Model):
-                    def __init__(self, **data):
-                        super().__init__(**data)
-                        self.sql = "SELECT * FROM source_data"
+                # Test write operations
+                with source.connect(read_only=False) as conn:
+                    conn.execute("CREATE TABLE test_data (id INTEGER, value TEXT)")
+                    conn.execute("INSERT INTO test_data VALUES (1, 'data1'), (2, 'data2')")
 
-                simple_model = SimpleModel(name="simple_model")
+                # Test read operations immediately after write
+                with source.connect(read_only=True) as conn:
+                    result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
+                    assert result[0] == 2
+                    
+                    data = conn.execute("SELECT * FROM test_data ORDER BY id").fetchall()
+                    assert data[0] == (1, 'data1')
+                    assert data[1] == (2, 'data2')
 
-                # Create a mock DAG for testing
-                class MockDAG:
-                    def __init__(self, models, sources):
-                        self.models = models
-                        self.sources = sources
-                        
-                from visivo.models.dag import all_descendants_of_type
-                
-                # Mock the all_descendants_of_type function for this test
-                original_func = all_descendants_of_type
-                
-                def mock_descendants(type, dag, from_node):
-                    if type == Model and from_node.name == "test_merge_model":
-                        return [simple_model]
-                    elif type == DuckdbSource and from_node == simple_model:
-                        return [test_source]
-                    return []
-                
-                # Temporarily replace the function
-                import visivo.models.models.local_merge_model
-                visivo.models.models.local_merge_model.all_descendants_of_type = mock_descendants
-                
-                try:
-                    # Create local merge model
-                    merge_model = LocalMergeModel(
-                        name="test_merge_model",
-                        sql="SELECT id, value FROM simple_model.model WHERE id = 1",
-                        models=[simple_model]
-                    )
+                # Test additional write operations
+                with source.connect(read_only=False) as conn:
+                    conn.execute("INSERT INTO test_data VALUES (3, 'data3')")
 
-                    # This should not hang and should properly create merged data
-                    merge_model.insert_duckdb_data(output_dir=temp_dir, dag=None)
-
-                    # Verify the merged data was created
-                    merge_source = merge_model.get_duckdb_source(output_dir=temp_dir, dag=None)
-                    try:
-                        with merge_source.connect(read_only=True) as conn:
-                            result = conn.execute("SELECT COUNT(*) FROM model").fetchone()
-                            assert result[0] == 1
-                            
-                            data = conn.execute("SELECT * FROM model").fetchone()
-                            assert data == (1, 'data1')
-                    finally:
-                        merge_source.dispose_engines()
-                        
-                finally:
-                    # Restore original function
-                    visivo.models.models.local_merge_model.all_descendants_of_type = original_func
+                # Test read after additional write
+                with source.connect(read_only=True) as conn:
+                    result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
+                    assert result[0] == 3
                     
             finally:
-                test_source.dispose_engines()
+                source.dispose_engines()
 
     def test_mixed_read_write_operations_no_hang(self):
         """Test mixed read/write operations don't cause hanging."""

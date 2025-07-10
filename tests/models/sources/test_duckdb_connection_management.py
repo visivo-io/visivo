@@ -267,15 +267,35 @@ class TestDuckDBConnectionManagement:
             assert metadata["type"] == "duckdb"
             assert len(metadata["databases"]) >= 1
             
-            # Find the main database
+            # Find the main database and test table
             main_db = None
+            test_table = None
+            
             for db in metadata["databases"]:
-                if "test_table" in [table["name"] for table in db.get("tables", [])]:
-                    main_db = db
+                # Check tables in root level
+                if "tables" in db:
+                    for table in db["tables"]:
+                        if table["name"] == "test_table":
+                            main_db = db
+                            test_table = table
+                            break
+                
+                # Check tables in schemas
+                if "schemas" in db:
+                    for schema in db["schemas"]:
+                        for table in schema.get("tables", []):
+                            if table["name"] == "test_table":
+                                main_db = db
+                                test_table = table
+                                break
+                        if test_table:
+                            break
+                
+                if test_table:
                     break
             
-            assert main_db is not None
-            test_table = next(table for table in main_db["tables"] if table["name"] == "test_table")
+            assert main_db is not None, f"Could not find database with test_table. Metadata: {metadata}"
+            assert test_table is not None, f"Could not find test_table. Metadata: {metadata}"
             assert "id" in test_table["columns"]
             assert "name" in test_table["columns"]
 
