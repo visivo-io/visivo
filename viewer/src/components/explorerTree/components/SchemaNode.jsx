@@ -50,18 +50,22 @@ const SchemaNode = ({ schema, sourceName, databaseName }) => {
             schemaName={schema.name}
           />
         ))
+      ) : isLoadingTables ? (
+        <TreeItem
+          itemId={`${nodeId}-loading`}
+          label={
+            <ItemLabel>
+              <CircularProgress size={12} />
+              <LoadingLabel>Loading tables...</LoadingLabel>
+            </ItemLabel>
+          }
+        />
       ) : (
-        isLoadingTables && (
-          <TreeItem
-            itemId={`${nodeId}-loading`}
-            label={
-              <ItemLabel>
-                <CircularProgress size={12} />
-                <LoadingLabel>Loading tables...</LoadingLabel>
-              </ItemLabel>
-            }
-          />
-        )
+        // Not loading and no data - show placeholder to allow expansion
+        <TreeItem
+          itemId={`${nodeId}-placeholder`}
+          label={<LoadingLabel>Click to expand</LoadingLabel>}
+        />
       )}
     </TreeItem>
   );
