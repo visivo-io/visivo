@@ -1,12 +1,34 @@
 // Utility functions for generating and parsing node IDs
 
+// Unicode-safe base64 encoding
+const encodeBase64 = str => {
+  return btoa(
+    encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+      return String.fromCharCode('0x' + p1);
+    })
+  );
+};
+
+// Unicode-safe base64 decoding
+const decodeBase64 = str => {
+  return decodeURIComponent(
+    atob(str)
+      .split('')
+      .map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      })
+      .join('')
+  );
+};
+
 export const createNodeId = (type, path) => {
-  return btoa(JSON.stringify({ type, path }));
+  return encodeBase64(JSON.stringify({ type, path }));
 };
 
 export const parseNodeId = nodeId => {
   try {
-    return JSON.parse(atob(nodeId));
+    if (!nodeId) return null;
+    return JSON.parse(decodeBase64(nodeId));
   } catch (e) {
     // Invalid node ID - return null
     return null;

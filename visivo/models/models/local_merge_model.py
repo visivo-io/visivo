@@ -80,6 +80,8 @@ class LocalMergeModel(Model, ParentModel):
                 with duckdb_source.connect(read_only=False) as connection:
                     connection.execute("DROP TABLE IF EXISTS model")
                     connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+                # Clean up engines to release locks
+                duckdb_source.dispose_engines()
 
     def insert_duckdb_data(self, output_dir, dag):
         try:
@@ -90,10 +92,14 @@ class LocalMergeModel(Model, ParentModel):
             )
 
         duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
-        with duckdb_source.connect(read_only=False) as connection:
-            data_frame = connection.execute(self.sql).pl()
-            connection.execute("DROP TABLE IF EXISTS model")
-            connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+        try:
+            with duckdb_source.connect(read_only=False) as connection:
+                data_frame = connection.execute(self.sql).pl()
+                connection.execute("DROP TABLE IF EXISTS model")
+                connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
+        finally:
+            # Clean up engines to release locks
+            duckdb_source.dispose_engines()
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:
         if isinstance(model, CsvScriptModel):

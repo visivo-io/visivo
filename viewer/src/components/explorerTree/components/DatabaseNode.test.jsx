@@ -78,7 +78,7 @@ describe('DatabaseNode', () => {
       </TreeProvider>
     );
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('Loading schemas...')).toBeInTheDocument();
   });
 
   test('should render schemas when database has schemas', () => {

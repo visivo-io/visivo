@@ -105,6 +105,36 @@ describe('nodeIdUtils', () => {
       });
     });
 
+    it('should handle Unicode characters correctly', () => {
+      const unicodeTests = [
+        '测试数据库', // Chinese
+        'データベース', // Japanese
+        'База_данных', // Russian
+        'emoji_🚀_table', // Emoji
+        'café_résumé', // Accented characters
+      ];
+
+      unicodeTests.forEach(name => {
+        const sourceId = createSourceNodeId(name);
+        const parsed = parseNodeId(sourceId);
+
+        expect(parsed).toEqual({
+          type: 'source',
+          path: [name],
+        });
+      });
+    });
+
+    it('should handle complex Unicode in table paths', () => {
+      const tableId = createTableNodeId('source_中文', 'db_测试', 'schema_🌏', 'table_café');
+      const parsed = parseNodeId(tableId);
+
+      expect(parsed).toEqual({
+        type: 'table',
+        path: ['source_中文', 'db_测试', 'schema_🌏', 'table_café'],
+      });
+    });
+
     it('should handle empty strings', () => {
       const sourceId = createSourceNodeId('');
       const parsed = parseNodeId(sourceId);
