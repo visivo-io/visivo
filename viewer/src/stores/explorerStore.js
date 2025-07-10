@@ -55,7 +55,7 @@ const createExplorerSlice = (set, get) => ({
   treeData: [],
   setTreeData: treeData => set({ treeData }),
 
-  selectedType: 'models',
+  selectedType: 'sources',
   setSelectedType: selectedType => set({ selectedType }),
 
   selectedSource: null,

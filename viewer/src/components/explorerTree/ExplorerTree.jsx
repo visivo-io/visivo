@@ -2,20 +2,55 @@ import React from 'react';
 import { StyledSidebar, SelectContainer, TreeContainer } from './styles/TreeStyles';
 import ModelsTracesList from './ModelsTracesList';
 import SourcesTree from './SourcesTree';
+import { HiOutlineDatabase } from 'react-icons/hi';
+import { MdScatterPlot } from 'react-icons/md';
+import { FaServer } from 'react-icons/fa';
+import { Tooltip } from '@mui/material';
 
 const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick }) => {
   return (
     <StyledSidebar>
       <SelectContainer>
-        <select
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={selectedTab}
-          onChange={e => onTypeChange(e.target.value)}
-        >
-          <option value="models">SQL Models</option>
-          <option value="traces">SQL Traces</option>
-          <option value="sources">Sources</option>
-        </select>
+        <div className="flex items-center justify-center gap-2 p-2">
+          <Tooltip title="Sources" placement="bottom">
+            <button
+              onClick={() => onTypeChange('sources')}
+              className={`p-3 rounded-lg transition-all duration-200 ${
+                selectedTab === 'sources'
+                  ? 'bg-blue-100 text-blue-700 shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <FaServer size={24} />
+            </button>
+          </Tooltip>
+
+          <Tooltip title="SQL Models" placement="bottom">
+            <button
+              onClick={() => onTypeChange('models')}
+              className={`p-3 rounded-lg transition-all duration-200 ${
+                selectedTab === 'models'
+                  ? 'bg-violet-100 text-violet-700 shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <HiOutlineDatabase size={28} />
+            </button>
+          </Tooltip>
+
+          <Tooltip title="SQL Traces" placement="bottom">
+            <button
+              onClick={() => onTypeChange('traces')}
+              className={`p-3 rounded-lg transition-all duration-200 ${
+                selectedTab === 'traces'
+                  ? 'bg-orange-100 text-orange-700 shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <MdScatterPlot size={24} />
+            </button>
+          </Tooltip>
+        </div>
       </SelectContainer>
 
       <TreeContainer>
