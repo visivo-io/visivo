@@ -37,8 +37,8 @@ const TableNode = ({ table, sourceName, databaseName, schemaName }) => {
             </ItemLabel>
           }
         />
-      ) : (
-        columns?.map(col => (
+      ) : columns && columns.length > 0 ? (
+        columns.map(col => (
           <ColumnNode
             key={col.name}
             column={col}
@@ -48,6 +48,12 @@ const TableNode = ({ table, sourceName, databaseName, schemaName }) => {
             tableName={table.name}
           />
         ))
+      ) : (
+        // Not loading and no data - show placeholder to allow expansion
+        <TreeItem
+          itemId={`${nodeId}-placeholder`}
+          label={<LoadingLabel>Click to expand</LoadingLabel>}
+        />
       )}
     </TreeItem>
   );

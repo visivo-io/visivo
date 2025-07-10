@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import FolderIcon from '@mui/icons-material/Folder';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -22,6 +22,30 @@ const DatabaseNode = ({ database, sourceName }) => {
   const tables = sourcesMetadata.loadedTables[tableKey];
   const isLoadingTables = loadingStates.tables[tableKey];
 
+  // Debug logging
+  useEffect(() => {
+    console.log(`DatabaseNode render:`, {
+      database: database.name,
+      sourceName,
+      nodeId,
+      schemaKey,
+      schemaData,
+      isLoadingSchemas,
+      tableKey,
+      tables,
+      isLoadingTables,
+    });
+  }, [
+    database.name,
+    sourceName,
+    nodeId,
+    schemaKey,
+    schemaData,
+    isLoadingSchemas,
+    tableKey,
+    tables,
+    isLoadingTables,
+  ]);
 
   const dbLabel = (
     <ItemLabel>
@@ -33,34 +57,45 @@ const DatabaseNode = ({ database, sourceName }) => {
     </ItemLabel>
   );
 
-  return (
-    <TreeItem itemId={nodeId} label={dbLabel}>
-      {schemaData ? (
-        schemaData.has_schemas ? (
-          // Database has schemas
-          schemaData.schemas?.map(schema => (
-            <SchemaNode
-              key={schema.name}
-              schema={schema}
-              sourceName={sourceName}
-              databaseName={database.name}
-            />
-          ))
-        ) : // Database has no schemas - render tables directly
-        tables?.error ? (
-          <TreeItem
-            itemId={`${nodeId}-error`}
-            label={
-              <ItemLabel>
-                <ItemIcon>
-                  <ErrorOutlineIcon fontSize="small" color="error" />
-                </ItemIcon>
-                <span style={{ color: '#dc2626', fontSize: '13px' }}>Connection failed</span>
-              </ItemLabel>
-            }
+  const renderChildren = () => {
+    console.log(`DatabaseNode renderChildren:`, {
+      schemaData,
+      hasSchemas: schemaData?.has_schemas,
+      schemas: schemaData?.schemas,
+      tables,
+      isLoadingSchemas,
+      isLoadingTables,
+    });
+
+    if (schemaData) {
+      if (schemaData.has_schemas) {
+        // Database has schemas
+        return schemaData.schemas?.map(schema => (
+          <SchemaNode
+            key={schema.name}
+            schema={schema}
+            sourceName={sourceName}
+            databaseName={database.name}
           />
-        ) : Array.isArray(tables) ? (
-          tables.map(table => (
+        ));
+      } else {
+        // Database has no schemas - render tables directly
+        if (tables?.error) {
+          return (
+            <TreeItem
+              itemId={`${nodeId}-error`}
+              label={
+                <ItemLabel>
+                  <ItemIcon>
+                    <ErrorOutlineIcon fontSize="small" color="error" />
+                  </ItemIcon>
+                  <span style={{ color: '#dc2626', fontSize: '13px' }}>Connection failed</span>
+                </ItemLabel>
+              }
+            />
+          );
+        } else if (Array.isArray(tables)) {
+          return tables.map(table => (
             <TableNode
               key={table.name}
               table={table}
@@ -68,17 +103,19 @@ const DatabaseNode = ({ database, sourceName }) => {
               databaseName={database.name}
               schemaName={null}
             />
-          ))
-        ) : (
-          isLoadingTables && (
+          ));
+        } else if (isLoadingTables) {
+          return (
             <TreeItem
               itemId={`${nodeId}-loading`}
               label={<LoadingLabel>Loading tables...</LoadingLabel>}
             />
-          )
-        )
-      ) : // Schema data not loaded yet
-      isLoadingSchemas ? (
+          );
+        }
+      }
+    } else if (isLoadingSchemas) {
+      // Schema data not loaded yet
+      return (
         <TreeItem
           itemId={`${nodeId}-loading`}
           label={
@@ -88,13 +125,21 @@ const DatabaseNode = ({ database, sourceName }) => {
             </ItemLabel>
           }
         />
-      ) : (
-        // Not loading and no data - show placeholder to allow expansion
+      );
+    } else {
+      // Not loading and no data - show placeholder to allow expansion
+      return (
         <TreeItem
           itemId={`${nodeId}-placeholder`}
           label={<LoadingLabel>Click to expand</LoadingLabel>}
         />
-      )}
+      );
+    }
+  };
+
+  return (
+    <TreeItem itemId={nodeId} label={dbLabel}>
+      {renderChildren()}
     </TreeItem>
   );
 };

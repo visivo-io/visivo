@@ -8,8 +8,6 @@ export const useTreeExpansion = () => {
 
   const handleNodeToggle = useCallback(
     async (event, nodeIds) => {
-      console.log('Node toggle:', { currentExpanded: expandedNodes, newNodeIds: nodeIds });
-
       // Find newly expanded nodes
       const newlyExpanded = nodeIds.filter(id => !expandedNodes.includes(id));
 
@@ -22,7 +20,6 @@ export const useTreeExpansion = () => {
         if (!nodeInfo) continue;
 
         const { type, path } = nodeInfo;
-        console.log(`Loading data for ${type} node:`, path);
 
         switch (type) {
           case 'source': {
