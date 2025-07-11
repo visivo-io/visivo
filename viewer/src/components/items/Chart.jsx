@@ -16,7 +16,7 @@ import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const plotRef = useRef(null);
-  const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
+  const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
   // Expose loading state through ref
   useImperativeHandle(
@@ -65,7 +65,11 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const layout = structuredClone(chart.layout ? chart.layout : {});
 
   return (
-    <ItemContainer onMouseOver={() => setHovering(true)} onMouseOut={() => setHovering(false)} id={itemNameToSlug(chart.name)}>
+    <ItemContainer
+      onMouseOver={() => setHovering(true)}
+      onMouseOut={() => setHovering(false)}
+      id={itemNameToSlug(chart.name)}
+    >
       <MenuContainer>
         <Menu hovering={hovering && cohortSelectVisible}>
           <MenuItem>
@@ -79,28 +83,25 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
             />
           </MenuItem>
         </Menu>
-        <Menu 
+        <Menu
           hovering={hovering && cohortSelectVisible}
           withDropDown={false}
-          buttonChildren={
-            <FontAwesomeIcon icon={faShareAlt} />
-          }
+          buttonChildren={<FontAwesomeIcon icon={faShareAlt} />}
           buttonProps={{
             style: {
               cursor: 'pointer',
-              visibility: hovering ? 'visible' : 'hidden'
+              visibility: hovering ? 'visible' : 'hidden',
             },
             onClick: () => {
               const url = new URL(window.location.href);
               url.searchParams.set('element_id', window.scrollY);
               copyText(url.toString());
             },
-            onMouseLeave: resetToolTip
+            onMouseLeave: resetToolTip,
           }}
           showToolTip
           toolTip={toolTip}
-          >
-        </Menu>
+        ></Menu>
       </MenuContainer>
       <Plot
         key={`chart_${chart.name}`}
