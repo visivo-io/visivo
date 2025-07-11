@@ -31,7 +31,15 @@ def compile_phase(
     try:
         from visivo.telemetry import get_telemetry_context
         from visivo.telemetry.collector import collect_project_metrics
+        from visivo.telemetry.config import hash_project_name
 
+        # Store hashed project name
+        if project and hasattr(project, "name"):
+            project_hash = hash_project_name(project.name)
+            if project_hash:
+                get_telemetry_context().set("project_hash", project_hash)
+
+        # Collect object counts
         object_counts = collect_project_metrics(project)
         if object_counts:  # Only store if we successfully collected metrics
             get_telemetry_context().set("object_counts", object_counts)

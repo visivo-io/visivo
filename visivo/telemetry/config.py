@@ -4,6 +4,7 @@ Telemetry configuration and opt-out logic.
 
 import os
 import uuid
+import hashlib
 from pathlib import Path
 from typing import Optional
 import yaml
@@ -60,6 +61,58 @@ def is_telemetry_enabled(project_defaults: Optional[object] = None) -> bool:
     return True
 
 
+def is_ci_environment() -> bool:
+    """
+    Detect if we're running in a CI/CD environment.
+
+    Checks for common CI environment variables that indicate
+    we're running in an automated environment rather than
+    on a developer's machine.
+
+    Returns:
+        bool: True if running in CI/CD, False otherwise
+    """
+    # Common CI environment variables
+    ci_env_vars = [
+        "CI",  # Generic CI indicator (GitHub Actions, GitLab CI, CircleCI, etc.)
+        "CONTINUOUS_INTEGRATION",  # Generic
+        "GITHUB_ACTIONS",  # GitHub Actions
+        "GITLAB_CI",  # GitLab CI
+        "CIRCLECI",  # CircleCI
+        "JENKINS_HOME",  # Jenkins
+        "JENKINS_URL",  # Jenkins
+        "TEAMCITY_VERSION",  # TeamCity
+        "TRAVIS",  # Travis CI
+        "BUILDKITE",  # Buildkite
+        "DRONE",  # Drone
+        "BITBUCKET_BUILD_NUMBER",  # Bitbucket Pipelines
+        "SEMAPHORE",  # Semaphore CI
+        "APPVEYOR",  # AppVeyor
+        "WERCKER",  # Wercker
+        "MAGNUM",  # Magnum CI
+        "MINT",  # Mint (rwx)
+        "CODEBUILD_BUILD_ID",  # AWS CodeBuild
+        "TF_BUILD",  # Azure DevOps
+        "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",  # Azure DevOps
+    ]
+
+    # Check if any CI environment variable is set
+    for var in ci_env_vars:
+        if os.getenv(var):
+            return True
+
+    # Additional heuristics for container environments
+    # Check if running in Docker
+    if os.path.exists("/.dockerenv"):
+        return True
+
+    # Check for Kubernetes
+    if os.getenv("KUBERNETES_SERVICE_HOST"):
+        return True
+
+    return False
+
+
 def get_machine_id() -> str:
     """
     Get or create a persistent anonymous machine ID.
@@ -68,9 +121,19 @@ def get_machine_id() -> str:
     on first use. This provides anonymous user identification while
     preserving privacy.
 
+    For CI/CD environments, generates a special prefixed ID that
+    changes with each run to avoid persistence issues.
+
     Returns:
         str: A UUID string that uniquely identifies this installation
     """
+    # Check if we're in CI/CD
+    if is_ci_environment():
+        # For CI, generate a new ID each time with a special prefix
+        # This helps us identify CI runs and doesn't try to persist
+        return f"ci-{uuid.uuid4()}"
+
+    # Normal user environment - use persistent ID
     visivo_dir = Path.home() / ".visivo"
     machine_id_path = visivo_dir / "machine_id"
 
@@ -79,9 +142,10 @@ def get_machine_id() -> str:
         try:
             with open(machine_id_path, "r") as f:
                 machine_id = f.read().strip()
-                # Validate it's a valid UUID
-                uuid.UUID(machine_id)
-                return machine_id
+                # Validate it's a valid UUID (no prefix for regular users)
+                if not machine_id.startswith("ci-"):
+                    uuid.UUID(machine_id)
+                    return machine_id
         except Exception:
             # If file is corrupted or invalid, regenerate
             pass
@@ -103,3 +167,32 @@ def get_machine_id() -> str:
         pass
 
     return machine_id
+
+
+def hash_project_name(project_name: Optional[str]) -> Optional[str]:
+    """
+    Hash a project name for privacy-preserving analytics.
+
+    Uses SHA-256 with a salt to create a consistent but irreversible
+    hash of the project name. This allows tracking unique projects
+    without exposing actual project names.
+
+    Args:
+        project_name: The project name to hash
+
+    Returns:
+        str: Hexadecimal hash of the project name, or None if no name provided
+    """
+    if not project_name:
+        return None
+
+    # Use a fixed salt to ensure consistent hashing across runs
+    # This salt makes it harder to reverse-engineer project names
+    salt = "visivo-telemetry-v1"
+
+    # Create hash
+    hash_input = f"{salt}:{project_name}".encode("utf-8")
+    hash_value = hashlib.sha256(hash_input).hexdigest()
+
+    # Return first 16 characters for brevity (still plenty of entropy)
+    return hash_value[:16]

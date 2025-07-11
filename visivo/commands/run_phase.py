@@ -71,6 +71,13 @@ def run_phase(
     try:
         from visivo.telemetry import get_telemetry_context
         from visivo.telemetry.collector import count_filtered_jobs
+        from visivo.telemetry.config import hash_project_name
+
+        # Store hashed project name
+        if project and hasattr(project, "name"):
+            project_hash = hash_project_name(project.name)
+            if project_hash:
+                get_telemetry_context().set("project_hash", project_hash)
 
         job_count = count_filtered_jobs(project.dag(), dag_filter)
         if job_count > 0:  # Only store if we successfully counted

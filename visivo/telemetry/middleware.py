@@ -27,6 +27,13 @@ def init_telemetry_middleware(app: Flask, project=None):
     # Get the telemetry client
     client = get_telemetry_client(enabled=True)
 
+    # Hash the project name if available
+    project_hash = None
+    if project and hasattr(project, "name"):
+        from .config import hash_project_name
+
+        project_hash = hash_project_name(project.name)
+
     @app.before_request
     def before_request():
         """Record the start time of the request."""
@@ -65,6 +72,7 @@ def init_telemetry_middleware(app: Flask, project=None):
             method=request.method,
             status_code=response.status_code,
             duration_ms=duration_ms,
+            project_hash=project_hash,
         )
 
         client.track(event)

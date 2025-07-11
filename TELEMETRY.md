@@ -16,12 +16,14 @@ Visivo collects anonymous usage telemetry to help us understand how the tool is 
 - High-level metrics:
   - Number of jobs executed (for `run` command)
   - Count of objects by type (for `compile` command)
+- Hashed project name (16-character hash, consistent across runs)
 
 ### API Requests
 - Endpoint path (with IDs replaced by placeholders)
 - HTTP method
 - Response status code
 - Request duration
+- Hashed project name (same hash as CLI commands)
 
 ### Common Metadata
 - Visivo version
@@ -30,7 +32,10 @@ Visivo collects anonymous usage telemetry to help us understand how the tool is 
 - Operating system version
 - System architecture (e.g., x86_64, arm64)
 - Anonymous machine ID (random UUID stored in ~/.visivo/machine_id)
+  - In CI/CD environments: Prefixed with "ci-" and regenerated each run
+  - In regular environments: Persistent across runs
 - Anonymous session ID (regenerated each time Visivo starts)
+- CI/CD indicator (is_ci: true/false)
 
 ## Example of Command Sanitization
 
@@ -51,13 +56,25 @@ We collect:
 - Personal information (no emails, usernames, or personal identifiers)
 - File contents or file paths (actual paths are replaced with `<path>`)
 - SQL queries or query results
-- Project names or data
+- Actual project names (only hashed versions are collected)
+- Project data or configurations
 - Environment variables (except telemetry settings)
 - IP addresses or location data
 - Error messages or stack traces
 - Actual values of command arguments (replaced with placeholders)
 
 Note: The machine ID is a random UUID generated on first use and contains no information about your system or identity. It simply allows us to count unique installations.
+
+## Project Name Hashing
+
+To help us understand how many unique projects use Visivo while preserving privacy, we hash project names using SHA-256 with a salt. This creates a consistent 16-character identifier that:
+
+- Cannot be reversed to reveal the original project name
+- Is the same every time for the same project name
+- Allows us to count unique projects and track usage patterns per project
+- Does not expose any sensitive information about your project
+
+For example, a project named "my-secret-project" might be hashed to "a7b9c2d4e6f8g1h3" (example only).
 
 ## Opting Out
 
@@ -89,6 +106,33 @@ telemetry_enabled: false
 - If telemetry fails to send, it fails silently without affecting your work
 - All telemetry operations have a 1-second timeout
 - The telemetry client runs in a separate thread
+
+## CI/CD Environment Detection
+
+Visivo automatically detects when it's running in CI/CD environments to help us understand usage patterns between development and automated workflows. The following CI/CD systems are detected:
+
+- GitHub Actions
+- GitLab CI
+- CircleCI
+- Jenkins
+- Travis CI
+- Azure DevOps
+- AWS CodeBuild
+- Bitbucket Pipelines
+- Mint (rwx)
+- Docker containers
+- Kubernetes pods
+- Any environment with `CI=true`
+
+In CI/CD environments:
+- Machine IDs are prefixed with "ci-" for easy identification
+- Machine IDs are not persisted (regenerated each run)
+- The `is_ci` property is set to `true` in all events
+
+This helps us:
+- Separate CI/CD usage from developer usage
+- Understand adoption in automated workflows
+- Avoid counting CI runs as unique users
 
 ## Open Source
 

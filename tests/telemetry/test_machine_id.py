@@ -15,6 +15,8 @@ class TestMachineId:
         """Test that machine ID is generated and stored correctly."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        # Ensure we're not in CI environment
+        monkeypatch.delenv("CI", raising=False)
 
         # Get machine ID
         machine_id1 = get_machine_id()
@@ -35,6 +37,8 @@ class TestMachineId:
         """Test that machine ID persists across calls."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        # Ensure we're not in CI environment
+        monkeypatch.delenv("CI", raising=False)
 
         # Get machine ID twice
         machine_id1 = get_machine_id()
@@ -47,6 +51,8 @@ class TestMachineId:
         """Test that corrupted machine ID file is regenerated."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        # Ensure we're not in CI environment
+        monkeypatch.delenv("CI", raising=False)
 
         # Create corrupted file
         visivo_dir = tmp_path / ".visivo"
@@ -70,6 +76,8 @@ class TestMachineId:
         """Test behavior when directory is read-only."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        # Ensure we're not in CI environment
+        monkeypatch.delenv("CI", raising=False)
 
         # Make directory read-only
         tmp_path.chmod(0o555)
@@ -90,6 +98,8 @@ class TestMachineId:
         """Test that events include the machine ID."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        # Ensure we're not in CI environment
+        monkeypatch.delenv("CI", raising=False)
 
         # Clear cached machine ID
         import visivo.telemetry.events

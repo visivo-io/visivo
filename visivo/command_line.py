@@ -157,6 +157,7 @@ def safe_visivo():
                 success=True,
                 job_count=context_data.get("job_count"),
                 object_counts=context_data.get("object_counts"),
+                project_hash=context_data.get("project_hash"),
             )
             telemetry_client.track(event)
 

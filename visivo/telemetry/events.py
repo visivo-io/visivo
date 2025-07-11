@@ -9,7 +9,7 @@ import platform
 import sys
 import uuid
 from visivo.version import VISIVO_VERSION
-from .config import get_machine_id
+from .config import get_machine_id, is_ci_environment
 
 
 # Generate a session ID that's unique per CLI/API session but not persistent
@@ -56,6 +56,7 @@ class CLIEvent(BaseEvent):
         error_type: Optional[str] = None,
         job_count: Optional[int] = None,
         object_counts: Optional[Dict[str, int]] = None,
+        project_hash: Optional[str] = None,
     ) -> "CLIEvent":
         """Create a CLI event with common properties."""
         properties = {
@@ -68,6 +69,7 @@ class CLIEvent(BaseEvent):
             "platform": platform.system().lower(),
             "platform_version": platform.version(),
             "architecture": platform.machine(),
+            "is_ci": is_ci_environment(),
         }
 
         if error_type:
@@ -78,6 +80,9 @@ class CLIEvent(BaseEvent):
 
         if object_counts:
             properties["object_counts"] = object_counts
+
+        if project_hash:
+            properties["project_hash"] = project_hash
 
         return cls(
             event_type="cli_command",
@@ -99,6 +104,7 @@ class APIEvent(BaseEvent):
         method: str,
         status_code: int,
         duration_ms: int,
+        project_hash: Optional[str] = None,
     ) -> "APIEvent":
         """Create an API event with common properties."""
         properties = {
@@ -111,7 +117,11 @@ class APIEvent(BaseEvent):
             "platform": platform.system().lower(),
             "platform_version": platform.version(),
             "architecture": platform.machine(),
+            "is_ci": is_ci_environment(),
         }
+
+        if project_hash:
+            properties["project_hash"] = project_hash
 
         return cls(
             event_type="api_request",

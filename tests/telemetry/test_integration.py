@@ -116,7 +116,7 @@ class TestTelemetryIntegration:
         project_file = tmp_path / "project.visivo.yml"
         project_file.write_text(
             """
-name: test-project
+name: integration-test-project
 defaults:
   source_name: test_source
 sources:
@@ -184,13 +184,32 @@ charts:
         assert "machine_id" in event
         import uuid
 
-        uuid.UUID(event["machine_id"])  # Validate it's a valid UUID
+        # Machine ID might have "ci-" prefix in CI environments
+        machine_id = event["machine_id"]
+        if machine_id.startswith("ci-"):
+            # Validate the UUID part after the prefix
+            uuid.UUID(machine_id[3:])
+        else:
+            # Regular UUID
+            uuid.UUID(machine_id)
 
         # Check object counts
         counts = event["properties"]["object_counts"]
         assert counts["models"] == 1
         assert counts["traces"] == 1
         assert counts["charts"] == 1
+
+        # Check project hash is present
+        assert "project_hash" in event["properties"]
+        project_hash = event["properties"]["project_hash"]
+        assert len(project_hash) == 16  # Should be 16 characters
+        assert project_hash.isalnum()  # Should be alphanumeric
+
+        # Verify it's consistent with the hash function
+        from visivo.telemetry.config import hash_project_name
+
+        expected_hash = hash_project_name("integration-test-project")
+        assert project_hash == expected_hash
 
     def test_api_telemetry(self, mock_server):
         """Test that API events can be tracked."""
@@ -238,7 +257,14 @@ charts:
             assert "machine_id" in event
             import uuid
 
-            uuid.UUID(event["machine_id"])
+            # Machine ID might have "ci-" prefix in CI environments
+            machine_id = event["machine_id"]
+            if machine_id.startswith("ci-"):
+                # Validate the UUID part after the prefix
+                uuid.UUID(machine_id[3:])
+            else:
+                # Regular UUID
+                uuid.UUID(machine_id)
 
     def test_telemetry_disabled_by_env(self, mock_server, tmp_path):
         """Test that telemetry is disabled when env var is set."""
