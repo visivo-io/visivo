@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import re
 import click
+import datetime
+import sys
 from visivo.logger.logger import Logger
 from visivo.models.base.query_string import QueryString
 from visivo.templates.render_yaml import render_yaml
@@ -27,6 +29,25 @@ PROJECT_CHILDREN = [
     "dashboards",
     "destinations",
 ]
+
+
+def get_utc_now():
+    """
+    Get the current UTC datetime in a way that's compatible with all Python versions >3.10.
+
+    This function handles the deprecation warning for datetime.datetime.utcnow() by using
+    the newer timezone-aware approach when available (Python 3.11+) and falling back
+    to the older method for Python 3.10.
+
+    Returns:
+        datetime: A timezone-aware datetime object representing the current UTC time
+    """
+    if sys.version_info >= (3, 11):
+        # Use the new timezone-aware method for Python 3.11+
+        return datetime.datetime.now(datetime.timezone.utc)
+    else:
+        # Fall back to the deprecated method for Python 3.10 and add timezone info
+        return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
 
 
 def get_dashboards_dir(output_dir):

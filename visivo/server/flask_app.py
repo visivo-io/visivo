@@ -5,7 +5,7 @@ from flask import Flask, send_from_directory, request, jsonify, Response, send_f
 import datetime
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
-from visivo.utils import VIEWER_PATH, SCHEMA_FILE
+from visivo.utils import VIEWER_PATH, SCHEMA_FILE, get_utc_now
 from visivo.logger.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
@@ -146,7 +146,7 @@ class FlaskApp:
                 # If worksheet_id is provided, save the results
                 if worksheet_id:
                     query_stats = {
-                        "timestamp": datetime.datetime.utcnow().isoformat(),
+                        "timestamp": get_utc_now().isoformat(),
                         "source": source.name,
                     }
                     self.worksheet_repo.save_results(
