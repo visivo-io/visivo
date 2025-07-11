@@ -75,16 +75,68 @@ extra_css:
   - stylesheets/brand_colors.css
   - stylesheets/icon-colors.css
 nav:
-  - Getting Started: index.md
-  - Change Log: https://github.com/visivo-io/visivo/releases
-  - Topics:
-      - Linting: topics/linting.md
-      - Including: topics/including.md
-      - Sources: topics/sources.md
-      - Deployment: topics/deployments.md
-      - Testing: topics/testing.md
-      - Interactivity: topics/interactivity.md
-      - Annotations & Shapes: topics/annotations.md
+  - Home: index.md
+  - Quick Start:
+      - Installation: quickstart/installation.md
+      - Your First Dashboard: quickstart/first-dashboard.md
+      - Connect Your Data: quickstart/connect-data.md
+  - Chart Gallery:
+      - Overview: gallery/index.md
+      - Basic Charts:
+          - Scatter & Line: gallery/scatter.md
+          - Bar Charts: gallery/bar.md
+          - Pie Charts: gallery/pie.md
+      - Statistical:
+          - Box Plots: gallery/box.md
+          - Histograms: gallery/histogram.md
+          - Violin Plots: gallery/violin.md
+      - Time Series:
+          - Candlestick: gallery/candlestick.md
+          - OHLC: gallery/ohlc.md
+          - Area Charts: gallery/area.md
+      - Advanced:
+          - 3D Visualizations: gallery/3d.md
+          - Geographic Maps: gallery/maps.md
+          - Hierarchical: gallery/hierarchical.md
+  - Tutorials:
+      - Overview: tutorials/index.md
+      - Building a Sales Dashboard: tutorials/sales-dashboard.md
+      - Creating Time Series Charts: tutorials/time-series.md
+      - Multi-Source Analytics: tutorials/multi-source.md
+  - How-To Guides:
+      - Overview: howto/index.md
+      - Data Sources:
+          - Connect to PostgreSQL: howto/postgres.md
+          - Connect to Snowflake: howto/snowflake.md
+          - Working with dbt: howto/dbt.md
+      - Dashboards:
+          - Layout & Positioning: howto/layout.md
+          - Selectors & Filters: howto/selectors.md
+          - Annotations & Shapes: howto/annotations.md
+          - Adding Interactivity: howto/interactivity.md
+      - Deployment:
+          - Deploy to Cloud: howto/cloud-deploy.md
+          - Self-Hosting: howto/self-host.md
+          - GitHub Actions: howto/github-actions.md
+          - Deployment Strategies: howto/deployments.md
+      - Development:
+          - Linting & Validation: howto/linting.md
+  - Concepts:
+      - Overview: concepts/index.md
+      - How Visivo Works: concepts/architecture.md
+      - Viewpoint: concepts/viewpoint.md
+      - Sources & Models: concepts/data-flow.md
+      - Data Sources: concepts/sources.md
+      - Configuration as Code: concepts/config-as-code.md
+      - Including Files: concepts/including.md
+  - Cookbook:
+      - Overview: cookbook/index.md
+      - Business Dashboards:
+          - KPI Dashboard: cookbook/kpi-dashboard.md
+          - Sales Analytics: cookbook/sales-analytics.md
+      - Engineering:
+          - CI/CD Metrics: cookbook/cicd-metrics.md
+          - System Monitoring: cookbook/monitoring.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
@@ -267,6 +319,4 @@ nav:
               - reference/functions/jinja/variables.md
           - Run Time:
               - reference/functions/runtime_functions/index.md
-  - Background:
-      - Viewpoint: viewpoint.md
-      - How It Works: how_it_works.md
+  - Change Log: https://github.com/visivo-io/visivo/releases
