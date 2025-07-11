@@ -9,10 +9,22 @@ import platform
 import sys
 import uuid
 from visivo.version import VISIVO_VERSION
+from .config import get_machine_id
 
 
 # Generate a session ID that's unique per CLI/API session but not persistent
 SESSION_ID = str(uuid.uuid4())
+
+# Get the machine ID (will be created on first use)
+MACHINE_ID = None  # Lazy load to avoid I/O during import
+
+
+def _get_machine_id() -> str:
+    """Get machine ID, caching the result."""
+    global MACHINE_ID
+    if MACHINE_ID is None:
+        MACHINE_ID = get_machine_id()
+    return MACHINE_ID
 
 
 @dataclass
@@ -22,6 +34,7 @@ class BaseEvent:
     event_type: str
     timestamp: str
     session_id: str
+    machine_id: str
     properties: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -70,6 +83,7 @@ class CLIEvent(BaseEvent):
             event_type="cli_command",
             timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             session_id=SESSION_ID,
+            machine_id=_get_machine_id(),
             properties=properties,
         )
 
@@ -103,5 +117,6 @@ class APIEvent(BaseEvent):
             event_type="api_request",
             timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             session_id=SESSION_ID,
+            machine_id=_get_machine_id(),
             properties=properties,
         )

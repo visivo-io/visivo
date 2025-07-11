@@ -29,6 +29,7 @@ Visivo collects anonymous usage telemetry to help us understand how the tool is 
 - Operating system (e.g., darwin, linux, windows)
 - Operating system version
 - System architecture (e.g., x86_64, arm64)
+- Anonymous machine ID (random UUID stored in ~/.visivo/machine_id)
 - Anonymous session ID (regenerated each time Visivo starts)
 
 ## Example of Command Sanitization
@@ -47,7 +48,7 @@ We collect:
 ```
 
 ## What We DO NOT Collect
-- Personal information or user identifiers
+- Personal information (no emails, usernames, or personal identifiers)
 - File contents or file paths (actual paths are replaced with `<path>`)
 - SQL queries or query results
 - Project names or data
@@ -55,6 +56,8 @@ We collect:
 - IP addresses or location data
 - Error messages or stack traces
 - Actual values of command arguments (replaced with placeholders)
+
+Note: The machine ID is a random UUID generated on first use and contains no information about your system or identity. It simply allows us to count unique installations.
 
 ## Opting Out
 
