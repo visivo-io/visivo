@@ -5,10 +5,13 @@ import {
   tableColumnsWithDot,
   tableColumnsWithUnderscores,
 } from '../../models/Table';
-import { createTheme, ThemeProvider, Box, Button } from '@mui/material';
+import { createTheme, ThemeProvider, Box, IconButton, Button, Tooltip, useMediaQuery, useTheme, TextField, InputAdornment } from '@mui/material';
 import { useTracesData } from '../../hooks/useTracesData';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+
 /* eslint-disable react/jsx-pascal-case */
 import {
   MRT_ShowHideColumnsButton,
@@ -22,14 +25,20 @@ import {
 } from 'material-react-table';
 /* eslint-enable react/jsx-pascal-case */
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import ShareIcon from '@mui/icons-material/Share';
 import { mkConfig, generateCsv } from 'export-to-csv';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
+import { itemNameToSlug } from './utils';
+import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 
 const Table = ({ table, project, itemWidth, height, width }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   // Always call the hook, but with empty array if it's a direct query
   const tracesData = useTracesData(
     project.id,
@@ -38,6 +47,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
+  const [searchIsVisible, setSearchIsVisible] = useState(false)
+
+  const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
   const csvConfig = mkConfig({
     fieldSeparator: ',',
@@ -102,6 +114,14 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     link.click();
     document.body.removeChild(link);
   };
+
+  const handleCopyText = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('element_id', window.scrollY);
+    copyText(url.toString());
+  }
+
+  const toggleSearch = () => setSearchIsVisible(!searchIsVisible)
 
   const useTable = useMaterialReactTable({
     columns: tableColumnsWithUnderscores(columns).map(column => ({
@@ -173,10 +193,11 @@ const Table = ({ table, project, itemWidth, height, width }) => {
       });
     }
   };
+
   /* eslint-disable react/jsx-pascal-case */
   return (
     <ThemeProvider theme={tableTheme}>
-      <ItemContainer>
+      <ItemContainer id={itemNameToSlug(table.name)}>
         <Box>
           <Box
             sx={{
@@ -193,19 +214,80 @@ const Table = ({ table, project, itemWidth, height, width }) => {
               },
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{
+              display: isMobile ? 'none' : 'flex', 
+              alignItems: 'center',
+            }}>
               <MRT_GlobalFilterTextField table={useTable} />
             </Box>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {!searchIsVisible ?
+            <Box sx={{
+              display: !isMobile ? 'none' : 'flex', 
+              alignItems: 'center',
+            }}>
+              <IconButton
+                  onClick={toggleSearch}
+                  sx={{
+                    minWidth: '40px',
+                    height: '40px',
+                    color: 'text.secondary',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
+                  }}
+                  aria-label="Open search"
+                >
+                  <SearchIcon />
+                </IconButton>
+            </Box>
+            :
+            <Box sx={{
+              display: !isMobile ? 'none' : 'flex', 
+              alignItems: 'center',
+            }}>
+              <IconButton
+                  onClick={toggleSearch}
+                  sx={{
+                    minWidth: '40px',
+                    height: '40px',
+                    color: 'text.secondary',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
+                  }}
+                  aria-label="Open search"
+                >
+                  <CloseIcon />
+                </IconButton>
+            </Box>
+            }
+            
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? '': '16px' }}>
               <MRT_ToggleFiltersButton table={useTable} />
               <MRT_ShowHideColumnsButton table={useTable} />
               <MRT_ToggleDensePaddingButton table={useTable} />
               <Button
                 aria-label="DownloadCsv"
                 onClick={handleExportData}
-                startIcon={<FileDownloadIcon />}
-              />
+                size="small"
+                sx={{ minWidth: '40px' }}
+              ><FileDownloadIcon fontSize="medium" /></Button>
+              <Button
+                aria-label="Share Table"
+                onClick={handleCopyText}
+                size="small"
+                sx={{ minWidth: '40px' }}
+              >
+                <Tooltip 
+                  title={toolTip} 
+                  onMouseLeave={resetToolTip} 
+                  >
+                    <ShareIcon fontSize="medium"/>
+                  </Tooltip>
+              </Button>
+        
               {!isDirectQueryResult && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
@@ -216,6 +298,38 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 />
               )}
             </Box>
+            { 
+              searchIsVisible && isMobile ? 
+              <Box sx={{ display: 'flex', width: '100%', minWidth: 0, flexBasis: '100%' }}>
+                  <TextField
+                    value={useTable.getState().globalFilter ?? ''}
+                    onChange={e => useTable.setGlobalFilter(e.target.value || undefined)}
+                    placeholder="Search..."
+                    size="small"
+                    variant="outlined"
+                    fullWidth
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon />
+                        </InputAdornment>
+                      ),
+                      endAdornment: useTable.getState().globalFilter ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => useTable.setGlobalFilter(undefined)}
+                          size="small"
+                          edge="end"
+                        >
+                          <CloseIcon />
+                        </IconButton>
+                      </InputAdornment>
+                      ) : null
+                    }}
+                  />
+                </Box>
+                  : undefined
+                }
           </Box>
 
           <MRT_TableContainer

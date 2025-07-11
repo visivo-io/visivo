@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Dashboard from './Dashboard';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
@@ -6,8 +6,55 @@ import { HiTemplate } from 'react-icons/hi';
 import DashboardSection from './DashboardSection';
 import FilterBar from './FilterBar';
 import useStore from '../../stores/store';
+import { throttle } from 'lodash';
+import { useSearchParams } from 'react-router-dom';
 
 function Project(props) {
+  const [searchParams] = useSearchParams();
+  const elementId = searchParams.get('element_id');
+  const setScrollPosition = useStore(state => state.setScrollPosition);
+  const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
+  const throttleRef = useRef();
+  const [ windowPosition, setWindowPosition ] = useState('')
+
+  const { dashboardName } = props;
+
+  useEffect(() => {
+    if (elementId && windowPosition === "") {
+      setWindowPosition(elementId)
+    }
+  }, [elementId, windowPosition])
+
+  useEffect(() => {
+    throttleRef.current = throttle((name) => {
+      setScrollPosition(name, window.scrollY);
+    }, 100);
+  }, [setScrollPosition]);
+
+  useEffect(() => {
+    const handleScroll = () => throttleRef.current(dashboardName);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [dashboardName]);
+
+  useEffect(() => {
+    const savedPos = scrollPositions || 0;
+    if (!window.location.hash) {
+        if(windowPosition && windowPosition !== ""){
+          requestAnimationFrame(() => {
+            window.scrollTo(0, windowPosition);
+            setWindowPosition(null)
+          });
+        }else{
+          requestAnimationFrame(() => {
+            window.scrollTo(0, savedPos);
+          });
+        }
+         
+    }
+
+  }, [props.dashboardName, scrollPositions, windowPosition, searchParams]);
+
   const {
     filteredDashboards,
     dashboardsByLevel,
