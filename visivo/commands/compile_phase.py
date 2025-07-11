@@ -26,6 +26,18 @@ def compile_phase(
     project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
     parse_duration = round(time() - parse_start, 2)
     Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
+    
+    # Collect project metrics for telemetry (lightweight operation)
+    try:
+        from visivo.telemetry import get_telemetry_context
+        from visivo.telemetry.collector import collect_project_metrics
+        
+        object_counts = collect_project_metrics(project)
+        if object_counts:  # Only store if we successfully collected metrics
+            get_telemetry_context().set("object_counts", object_counts)
+    except Exception:
+        # Silently ignore any telemetry errors
+        pass
 
     # Track artifacts writing
     artifacts_start = time()

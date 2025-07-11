@@ -67,6 +67,18 @@ def run_phase(
     source_details = "\n" if default_source == None else f" and default source {default_source}\n"
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
+    # Count jobs for telemetry (lightweight operation)
+    try:
+        from visivo.telemetry import get_telemetry_context
+        from visivo.telemetry.collector import count_filtered_jobs
+        
+        job_count = count_filtered_jobs(project.dag(), dag_filter)
+        if job_count > 0:  # Only store if we successfully counted
+            get_telemetry_context().set("job_count", job_count)
+    except Exception:
+        # Silently ignore any telemetry errors
+        pass
+    
     runner = FilteredRunner(
         project=project,
         output_dir=output_dir,

@@ -66,6 +66,12 @@ class Defaults(BaseModel):
             ]
         },
     )
+    telemetry_enabled: Optional[bool] = Field(
+        None,
+        description="Controls whether anonymous usage telemetry is collected for this project. "
+        "When set to false, no telemetry data will be sent. "
+        "Can also be disabled globally via VISIVO_TELEMETRY_DISABLED environment variable.",
+    )
 
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))

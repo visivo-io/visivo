@@ -76,6 +76,18 @@ To get started with Visivo, follow these steps:
 5. Run `visivo serve` to start the development server
 6. Open your web browser and navigate to `http://localhost:8000` to view your charts
 
+# Telemetry
+
+Visivo collects anonymous usage telemetry to help improve the tool. This data helps us understand which features are used most and identify areas for improvement. 
+
+**Privacy First**: We do not collect any personal information, file contents, queries, or sensitive data.
+
+To opt out of telemetry, you can:
+- Set the environment variable: `export VISIVO_TELEMETRY_DISABLED=true`
+- Or add to your project configuration: `telemetry_enabled: false`
+
+For more details, see [TELEMETRY.md](TELEMETRY.md).
+
 # Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/visivo-io/visivo/tags). 

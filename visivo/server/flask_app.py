@@ -10,6 +10,7 @@ from visivo.logger.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
+from visivo.telemetry.middleware import init_telemetry_middleware
 import subprocess
 import hashlib
 
@@ -25,6 +26,9 @@ class FlaskApp:
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
+        
+        # Initialize telemetry middleware
+        init_telemetry_middleware(self.app, project)
 
         @self.app.route("/data/<trace_name>/data.json")
         def serve_trace_data(trace_name):

@@ -1,0 +1,100 @@
+"""
+Event definitions and schemas for telemetry.
+"""
+
+from dataclasses import dataclass, asdict
+from datetime import datetime, timezone
+from typing import Dict, Any, Optional, Literal
+import platform
+import sys
+import uuid
+from visivo.version import VISIVO_VERSION
+
+
+# Generate a session ID that's unique per CLI/API session but not persistent
+SESSION_ID = str(uuid.uuid4())
+
+
+@dataclass
+class BaseEvent:
+    """Base class for all telemetry events."""
+    event_type: str
+    timestamp: str
+    session_id: str
+    properties: Dict[str, Any]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert event to dictionary for JSON serialization."""
+        return asdict(self)
+
+
+@dataclass
+class CLIEvent(BaseEvent):
+    """Event for CLI command execution."""
+    
+    @classmethod
+    def create(
+        cls,
+        command: str,
+        duration_ms: int,
+        success: bool,
+        error_type: Optional[str] = None,
+        job_count: Optional[int] = None,
+        object_counts: Optional[Dict[str, int]] = None,
+    ) -> "CLIEvent":
+        """Create a CLI event with common properties."""
+        properties = {
+            "command": command,
+            "duration_ms": duration_ms,
+            "success": success,
+            "visivo_version": VISIVO_VERSION,
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": platform.system().lower(),
+        }
+        
+        if error_type:
+            properties["error_type"] = error_type
+        
+        if job_count is not None:
+            properties["job_count"] = job_count
+            
+        if object_counts:
+            properties["object_counts"] = object_counts
+        
+        return cls(
+            event_type="cli_command",
+            timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            session_id=SESSION_ID,
+            properties=properties,
+        )
+
+
+@dataclass
+class APIEvent(BaseEvent):
+    """Event for API request."""
+    
+    @classmethod
+    def create(
+        cls,
+        endpoint: str,
+        method: str,
+        status_code: int,
+        duration_ms: int,
+    ) -> "APIEvent":
+        """Create an API event with common properties."""
+        properties = {
+            "endpoint": endpoint,
+            "method": method,
+            "status_code": status_code,
+            "duration_ms": duration_ms,
+            "visivo_version": VISIVO_VERSION,
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": platform.system().lower(),
+        }
+        
+        return cls(
+            event_type="api_request",
+            timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            session_id=SESSION_ID,
+            properties=properties,
+        )
