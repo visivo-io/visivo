@@ -130,3 +130,15 @@ class SnowflakeSource(SqlalchemySource):
         url = URL(**url_attributes)
 
         return url
+
+    def list_databases(self):
+        """Return list of databases for Snowflake account."""
+        try:
+            with self.get_connection() as connection:
+                from sqlalchemy import text
+
+                rows = connection.execute(text("SHOW DATABASES")).fetchall()
+                return [r[1] for r in rows]  # Database name is in column 1
+        except Exception as e:
+            # Re-raise to allow proper error handling in UI
+            raise e
