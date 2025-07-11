@@ -1,7 +1,7 @@
 import Chart from './Chart';
 import Table from './Table';
 import Selector from './Selector';
-import MarkdownItem from './MarkdownItem';
+import Markdown from './Markdown';
 
 /**
  * Utility function to get height value from height string
@@ -54,7 +54,8 @@ const Item = ({
   itemWidth = 1,
   rowIndex = 0,
   itemIndex = 0,
-  keyPrefix = 'item'
+  keyPrefix = 'item',
+  row = null
 }) => {
   if (item.chart) {
     return (
@@ -89,10 +90,9 @@ const Item = ({
     );
   } else if (item.markdown) {
     return (
-      <MarkdownItem
-        markdown={item.markdown}
-        align={item.align}
-        justify={item.justify}
+      <Markdown
+        markdown={item}
+        row={row}
         height={height}
         key={`${keyPrefix}Row${rowIndex}Item${itemIndex}`}
       />

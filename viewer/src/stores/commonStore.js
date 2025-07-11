@@ -7,6 +7,12 @@ const createCommonSlice = (set, get) => ({
     const project = await fetchProject();
     set({ project });
   },
+  scrollPositions: {},
+  setScrollPosition: (dashName, pos) => {
+    set(state => ({
+      scrollPositions: { ...state.scrollPositions, [dashName]: pos }
+    }));
+  }
 });
 
 export default createCommonSlice;

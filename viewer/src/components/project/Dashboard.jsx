@@ -6,6 +6,7 @@ import { getSelectorByOptionName } from '../../models/Project';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
       observe();
@@ -108,6 +109,7 @@ const Dashboard = ({ project, dashboardName }) => {
         rowIndex={rowIndex}
         itemIndex={itemIndex}
         keyPrefix="dashboard"
+        row={row}
       />
     );
   };

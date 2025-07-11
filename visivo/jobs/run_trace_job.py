@@ -34,13 +34,13 @@ def action(trace, dag, output_dir):
     query_string = _get_query_string(trace, dag, output_dir)
     try:
         start_time = time()
-        data_frame = source.read_sql(query_string)
+        data = source.read_sql(query_string)
         success_message = format_message_success(
             details=f"Updated data for trace \033[4m{trace.name}\033[0m",
             start_time=start_time,
             full_path=None,
         )
-        Aggregator.aggregate_data_frame(data_frame=data_frame, trace_dir=trace_directory)
+        Aggregator.aggregate_data_frame(data=data, trace_dir=trace_directory)
         return JobResult(item=trace, success=True, message=success_message)
     except Exception as e:
         if hasattr(e, "message"):
