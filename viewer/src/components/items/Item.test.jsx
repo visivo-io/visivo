@@ -120,7 +120,7 @@ describe('Item component', () => {
 
     const { container } = render(<Item item={unknownItem} project={mockProject} />);
 
-    expect(container.firstChild).toBeNull();
+    expect(container).toBeEmptyDOMElement();
   });
 
   test('renders with specified row and item indices', () => {
