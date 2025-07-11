@@ -66,18 +66,37 @@ class TestCIDetection:
 
     def test_not_ci_environment(self, monkeypatch):
         """Test detection when not in CI."""
-        # Clear all CI environment variables
-        ci_vars = [
+        # We need to clear ALL possible CI environment variables
+        all_ci_vars = [
             "CI",
+            "CONTINUOUS_INTEGRATION",
             "GITHUB_ACTIONS",
             "GITLAB_CI",
             "CIRCLECI",
             "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
             "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
             "KUBERNETES_SERVICE_HOST",
         ]
-        for var in ci_vars:
+        for var in all_ci_vars:
             monkeypatch.delenv(var, raising=False)
+
+        # Also mock os.path.exists to return False for /.dockerenv
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         assert is_ci_environment() is False
 
@@ -116,8 +135,38 @@ class TestCIMachineId:
 
     def test_regular_machine_id_format(self, monkeypatch, tmp_path):
         """Test that regular machine IDs don't have prefix."""
-        # Clear CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
+
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         machine_id = get_machine_id()
@@ -130,8 +179,38 @@ class TestCIMachineId:
 
     def test_regular_machine_id_persistent(self, monkeypatch, tmp_path):
         """Test that regular machine IDs are persistent."""
-        # Clear CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
+
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
         # Get machine ID twice
@@ -160,8 +239,37 @@ class TestCIMachineId:
         assert cli_event.to_dict()["properties"]["is_ci"] is True
         assert api_event.to_dict()["properties"]["is_ci"] is True
 
-        # Test without CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Test without CI environment - clear ALL CI vars
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         cli_event2 = CLIEvent.create(command="test", command_args=[], duration_ms=100, success=True)
 

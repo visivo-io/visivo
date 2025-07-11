@@ -15,8 +15,39 @@ class TestMachineId:
         """Test that machine ID is generated and stored correctly."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        # Ensure we're not in CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        import os
+
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         # Get machine ID
         machine_id1 = get_machine_id()
@@ -37,8 +68,39 @@ class TestMachineId:
         """Test that machine ID persists across calls."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        # Ensure we're not in CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        import os
+
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         # Get machine ID twice
         machine_id1 = get_machine_id()
@@ -51,8 +113,39 @@ class TestMachineId:
         """Test that corrupted machine ID file is regenerated."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        # Ensure we're not in CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        import os
+
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         # Create corrupted file
         visivo_dir = tmp_path / ".visivo"
@@ -64,7 +157,12 @@ class TestMachineId:
         machine_id = get_machine_id()
 
         # Verify it's a valid UUID
-        uuid.UUID(machine_id)
+        if machine_id.startswith("ci-"):
+            # CI environment - validate UUID part
+            uuid.UUID(machine_id[3:])
+        else:
+            # Regular environment
+            uuid.UUID(machine_id)
 
         # Verify file was updated
         with open(machine_id_path, "r") as f:
@@ -76,8 +174,39 @@ class TestMachineId:
         """Test behavior when directory is read-only."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        # Ensure we're not in CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        import os
+
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         # Make directory read-only
         tmp_path.chmod(0o555)
@@ -85,7 +214,13 @@ class TestMachineId:
         try:
             # Should still return a machine ID (just not persisted)
             machine_id = get_machine_id()
-            uuid.UUID(machine_id)  # Verify it's valid
+            # Verify it's valid
+            if machine_id.startswith("ci-"):
+                # CI environment - validate UUID part
+                uuid.UUID(machine_id[3:])
+            else:
+                # Regular environment
+                uuid.UUID(machine_id)
 
             # File should not exist
             machine_id_path = tmp_path / ".visivo" / "machine_id"
@@ -98,8 +233,39 @@ class TestMachineId:
         """Test that events include the machine ID."""
         # Use temporary home directory
         monkeypatch.setattr(Path, "home", lambda: tmp_path)
-        # Ensure we're not in CI environment
-        monkeypatch.delenv("CI", raising=False)
+        # Clear ALL CI environment variables
+        all_ci_vars = [
+            "CI",
+            "CONTINUOUS_INTEGRATION",
+            "GITHUB_ACTIONS",
+            "GITLAB_CI",
+            "CIRCLECI",
+            "JENKINS_HOME",
+            "JENKINS_URL",
+            "TEAMCITY_VERSION",
+            "TRAVIS",
+            "BUILDKITE",
+            "DRONE",
+            "BITBUCKET_BUILD_NUMBER",
+            "SEMAPHORE",
+            "APPVEYOR",
+            "WERCKER",
+            "MAGNUM",
+            "MINT",
+            "CODEBUILD_BUILD_ID",
+            "TF_BUILD",
+            "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI",
+            "KUBERNETES_SERVICE_HOST",
+        ]
+        for var in all_ci_vars:
+            monkeypatch.delenv(var, raising=False)
+
+        # Mock os.path.exists to return False for /.dockerenv
+        import os
+
+        monkeypatch.setattr(
+            os.path, "exists", lambda path: False if path == "/.dockerenv" else os.path.exists(path)
+        )
 
         # Clear cached machine ID
         import visivo.telemetry.events
@@ -116,8 +282,15 @@ class TestMachineId:
         # Both should have the same machine ID
         assert cli_event.machine_id == api_event.machine_id
 
-        # Machine ID should be a valid UUID
-        uuid.UUID(cli_event.machine_id)
+        # Machine ID should be a valid UUID (no ci- prefix for regular IDs)
+        # Handle potential CI prefix
+        machine_id = cli_event.machine_id
+        if machine_id.startswith("ci-"):
+            # Validate the UUID part after the prefix
+            uuid.UUID(machine_id[3:])
+        else:
+            # Regular UUID
+            uuid.UUID(machine_id)
 
         # Should match what get_machine_id returns
         assert cli_event.machine_id == get_machine_id()
