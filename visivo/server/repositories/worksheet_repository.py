@@ -4,6 +4,7 @@ from visivo.server.models.worksheet import Base, WorksheetModel
 from visivo.server.models.session_state import SessionStateModel
 from visivo.server.models.result import ResultModel
 from datetime import datetime
+from visivo.utils import get_utc_now
 import uuid
 
 
@@ -137,7 +138,7 @@ class WorksheetRepository:
             if not worksheet:
                 return False
 
-            worksheet.last_run_at = datetime.utcnow()
+            worksheet.last_run_at = get_utc_now()
             result = ResultModel(
                 worksheet=worksheet, results_json=results_json, query_stats_json=query_stats_json
             )
