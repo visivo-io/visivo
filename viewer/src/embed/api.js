@@ -5,11 +5,11 @@ function createHeaders(apiKey) {
   const headers = {
     'Content-Type': 'application/json',
   };
-  
+
   if (apiKey) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
-  
+
   return headers;
 }
 
@@ -26,7 +26,9 @@ export async function fetchProjectData(host, projectId, stageId, apiKey = null) 
     });
 
     if (!projectResponse.ok) {
-      throw new Error(`Failed to fetch project: ${projectResponse.status} ${projectResponse.statusText}`);
+      throw new Error(
+        `Failed to fetch project: ${projectResponse.status} ${projectResponse.statusText}`
+      );
     }
 
     const projectData = await projectResponse.json();
@@ -73,9 +75,9 @@ export async function fetchTracesData(host, projectId, stageId, traces, apiKey =
   const traceData = {};
 
   // Fetch all traces in parallel
-  const promises = traces.map(async (trace) => {
+  const promises = traces.map(async trace => {
     const url = `${host}/api/traces/${trace.id || trace.name}/`;
-    
+
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -83,7 +85,9 @@ export async function fetchTracesData(host, projectId, stageId, traces, apiKey =
       });
 
       if (!response.ok) {
-        console.warn(`Failed to fetch trace data for ${trace.name}: ${response.status} ${response.statusText}`);
+        console.warn(
+          `Failed to fetch trace data for ${trace.name}: ${response.status} ${response.statusText}`
+        );
         return { name: trace.name, data: null };
       }
 
@@ -98,7 +102,7 @@ export async function fetchTracesData(host, projectId, stageId, traces, apiKey =
   const results = await Promise.all(promises);
 
   // Organize results by trace name
-  results.forEach((result) => {
+  results.forEach(result => {
     if (result.data) {
       traceData[result.name] = result.data;
     }
@@ -124,7 +128,7 @@ export async function fetchProjectByName(host, projectName, apiKey = null) {
 
     const projects = await response.json();
     const project = projects.find(p => p.name === projectName);
-    
+
     if (!project) {
       throw new Error(`Project "${projectName}" not found`);
     }
@@ -155,7 +159,7 @@ export async function fetchStageByName(host, projectId, stageName, apiKey = null
 
     const stages = await response.json();
     const stage = stages.find(s => s.name === stageName && s.project === projectId);
-    
+
     if (!stage) {
       throw new Error(`Stage "${stageName}" not found in project`);
     }

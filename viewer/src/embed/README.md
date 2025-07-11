@@ -25,6 +25,7 @@ yarn build:embed:global
 ```
 
 The built files will be in the `embed-dist/` directory:
+
 - `index.esm.js` - ES modules for React apps
 - `index.cjs.js` - CommonJS for React apps
 - `visivo-embed.js` - Global build for script tag usage
@@ -39,15 +40,15 @@ import { Visivo } from './src/embed';
 
 function MyDashboard() {
   return (
-    <Visivo 
+    <Visivo
       project="my-project"
       stage="production"
       item="sales-dashboard"
       host="https://api.visivo.io"
       apiKey="your-api-key-here"
       style={{ height: '500px', width: '100%' }}
-      onLoad={(data) => console.log('Loaded:', data)}
-      onError={(error) => console.error('Error:', error)}
+      onLoad={data => console.log('Loaded:', data)}
+      onError={error => console.error('Error:', error)}
     />
   );
 }
@@ -64,7 +65,7 @@ function MyDashboard() {
     stage: 'production',
     item: 'sales-dashboard',
     host: 'https://api.visivo.io',
-    apiKey: 'your-api-key-here'
+    apiKey: 'your-api-key-here',
   });
 </script>
 ```
@@ -95,7 +96,7 @@ The embed components use these Django API endpoints:
 - `GET /api/projects/` - List all projects
 - `GET /api/projects/{id}/` - Get specific project details
 - `GET /api/stages/` - List all stages
-- `GET /api/stages/{id}/` - Get specific stage details  
+- `GET /api/stages/{id}/` - Get specific stage details
 - `GET /api/traces/{id}/` - Get specific trace data
 
 The embed system resolves project and stage names to IDs by searching through the list endpoints, then fetches detailed data using the ID-based endpoints. Authentication is handled via Bearer tokens passed in the Authorization header.

@@ -16,7 +16,7 @@ const Dashboard = ({ project, dashboardName }) => {
   const widthBreakpoint = 1024;
   const isColumn = width < widthBreakpoint;
 
-  const getHeight = (height) => getItemHeight(height);
+  const getHeight = height => getItemHeight(height);
 
   const getWidth = (items, item) => getItemWidth(width, widthBreakpoint, items, item);
 

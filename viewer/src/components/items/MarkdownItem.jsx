@@ -6,24 +6,20 @@ import rehypeSanitize from 'rehype-sanitize';
 /**
  * MarkdownItem component for rendering markdown content in dashboards
  */
-const MarkdownItem = ({ 
-  markdown, 
-  align = 'left', 
-  justify = 'start', 
+const MarkdownItem = ({
+  markdown,
+  align = 'left',
+  justify = 'start',
   height = 396,
   className = '',
-  style = {} 
+  style = {},
 }) => {
   const alignmentClass =
-    align === 'right'
-      ? 'text-right'
-      : align === 'center'
-        ? 'text-center'
-        : 'text-left';
+    align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
 
   const containerStyle = {
     ...style,
-    ...(height !== 'compact' ? { height } : {})
+    ...(height !== 'compact' ? { height } : {}),
   };
 
   return (
@@ -31,9 +27,7 @@ const MarkdownItem = ({
       className={`w-full h-full flex flex-col ${alignmentClass} ${className}`}
       style={containerStyle}
     >
-      <div
-        className={`w-full h-full overflow-auto flex flex-col items-stretch ${justify}`}
-      >
+      <div className={`w-full h-full overflow-auto flex flex-col items-stretch ${justify}`}>
         <Markdown
           className={`p-2 prose max-w-none ${
             justify === 'end'

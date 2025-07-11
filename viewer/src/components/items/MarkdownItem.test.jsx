@@ -12,10 +12,12 @@ describe('MarkdownItem', () => {
   test('renders markdown content', () => {
     const markdown = '# Hello World\n\nThis is **bold** text.';
     render(<MarkdownItem markdown={markdown} />);
-    
+
     // Check that the markdown content is passed to the Markdown component
     // Note: newlines become spaces in text content
-    expect(screen.getByTestId('markdown-content')).toHaveTextContent('# Hello World This is **bold** text.');
+    expect(screen.getByTestId('markdown-content')).toHaveTextContent(
+      '# Hello World This is **bold** text.'
+    );
   });
 
   test('applies text alignment classes', () => {
@@ -36,27 +38,29 @@ describe('MarkdownItem', () => {
   });
 
   test('applies justify classes to inner div', () => {
-    const { container } = render(
-      <MarkdownItem markdown="Start" justify="start" />
-    );
+    const { container } = render(<MarkdownItem markdown="Start" justify="start" />);
     // The justify class is applied to the inner container div
     const outerDiv = container.firstChild;
     const innerDiv = outerDiv.querySelector('div');
-    
-    expect(innerDiv).toHaveClass('w-full', 'h-full', 'overflow-auto', 'flex', 'flex-col', 'items-stretch', 'start');
+
+    expect(innerDiv).toHaveClass(
+      'w-full',
+      'h-full',
+      'overflow-auto',
+      'flex',
+      'flex-col',
+      'items-stretch',
+      'start'
+    );
   });
 
   test('applies height when not compact', () => {
-    const { container } = render(
-      <MarkdownItem markdown="Test" height={500} />
-    );
+    const { container } = render(<MarkdownItem markdown="Test" height={500} />);
     expect(container.firstChild).toHaveStyle({ height: '500px' });
   });
 
   test('does not apply height when compact', () => {
-    const { container } = render(
-      <MarkdownItem markdown="Test" height="compact" />
-    );
+    const { container } = render(<MarkdownItem markdown="Test" height="compact" />);
     // When height is "compact", no specific height style should be applied
     const style = getComputedStyle(container.firstChild);
     expect(style.height).toBe('');
@@ -64,11 +68,7 @@ describe('MarkdownItem', () => {
 
   test('applies custom className and style', () => {
     const { container } = render(
-      <MarkdownItem 
-        markdown="Test" 
-        className="custom-class" 
-        style={{ backgroundColor: 'red' }} 
-      />
+      <MarkdownItem markdown="Test" className="custom-class" style={{ backgroundColor: 'red' }} />
     );
     expect(container.firstChild).toHaveClass('custom-class');
     expect(container.firstChild).toHaveStyle({ backgroundColor: 'red' });
@@ -76,18 +76,16 @@ describe('MarkdownItem', () => {
 
   test('renders basic markdown content', () => {
     const markdown = 'This is **bold** and *italic* text.';
-    
+
     render(<MarkdownItem markdown={markdown} />);
-    
+
     // Check that the markdown content is passed to the component
     expect(screen.getByTestId('markdown-content')).toHaveTextContent(markdown);
   });
 
   test('renders with markdown content', () => {
-    const { container } = render(
-      <MarkdownItem markdown="# Test Heading" />
-    );
-    
+    const { container } = render(<MarkdownItem markdown="# Test Heading" />);
+
     // Verify the component renders
     expect(container.firstChild).toBeInTheDocument();
     expect(screen.getByTestId('markdown-content')).toHaveTextContent('# Test Heading');

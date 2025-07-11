@@ -32,11 +32,11 @@ jest.mock('./Selector', () => {
   };
 });
 
-jest.mock('./MarkdownItem', () => {
-  return function MockMarkdownItem({ markdown, align, justify, height }) {
+jest.mock('./Markdown', () => {
+  return function MockMarkdown({ markdown, row, height }) {
     return (
       <div data-testid="markdown">
-        Markdown: {markdown} - align: {align}, justify: {justify}, height: {height}
+        Markdown: {markdown.markdown || 'content'} - height: {height}, row: {JSON.stringify(row)}
       </div>
     );
   };
@@ -45,12 +45,12 @@ jest.mock('./MarkdownItem', () => {
 describe('Item component', () => {
   const mockProject = {
     id: 'test-project',
-    project_json: {}
+    project_json: {},
   };
 
   test('renders chart item', () => {
     const chartItem = {
-      chart: { name: 'test-chart' }
+      chart: { name: 'test-chart' },
     };
 
     render(
@@ -73,18 +73,10 @@ describe('Item component', () => {
 
   test('renders table item', () => {
     const tableItem = {
-      table: { name: 'test-table' }
+      table: { name: 'test-table' },
     };
 
-    render(
-      <Item
-        item={tableItem}
-        project={mockProject}
-        height={500}
-        width={800}
-        itemWidth={1}
-      />
-    );
+    render(<Item item={tableItem} project={mockProject} height={500} width={800} itemWidth={1} />);
 
     const table = screen.getByTestId('table');
     expect(table).toBeInTheDocument();
@@ -93,16 +85,10 @@ describe('Item component', () => {
 
   test('renders selector item', () => {
     const selectorItem = {
-      selector: { name: 'test-selector' }
+      selector: { name: 'test-selector' },
     };
 
-    render(
-      <Item
-        item={selectorItem}
-        project={mockProject}
-        itemWidth={3}
-      />
-    );
+    render(<Item item={selectorItem} project={mockProject} itemWidth={3} />);
 
     const selector = screen.getByTestId('selector');
     expect(selector).toBeInTheDocument();
@@ -113,40 +99,33 @@ describe('Item component', () => {
     const markdownItem = {
       markdown: '# Test Markdown',
       align: 'center',
-      justify: 'between'
+      justify: 'between',
     };
 
-    render(
-      <Item
-        item={markdownItem}
-        project={mockProject}
-        height={300}
-      />
-    );
+    const mockRow = { height: 'medium' };
+
+    render(<Item item={markdownItem} project={mockProject} height={300} row={mockRow} />);
 
     const markdown = screen.getByTestId('markdown');
     expect(markdown).toBeInTheDocument();
-    expect(markdown).toHaveTextContent('Markdown: # Test Markdown - align: center, justify: between, height: 300');
+    expect(markdown).toHaveTextContent(
+      'Markdown: # Test Markdown - height: 300, row: {"height":"medium"}'
+    );
   });
 
   test('returns null for unknown item type', () => {
     const unknownItem = {
-      unknown: { name: 'test' }
+      unknown: { name: 'test' },
     };
 
-    const { container } = render(
-      <Item
-        item={unknownItem}
-        project={mockProject}
-      />
-    );
+    const { container } = render(<Item item={unknownItem} project={mockProject} />);
 
     expect(container.firstChild).toBeNull();
   });
 
   test('renders with specified row and item indices', () => {
     const chartItem = {
-      chart: { name: 'test-chart' }
+      chart: { name: 'test-chart' },
     };
 
     render(
@@ -167,15 +146,10 @@ describe('Item component', () => {
 
   test('uses default props when not provided', () => {
     const chartItem = {
-      chart: { name: 'default-test' }
+      chart: { name: 'default-test' },
     };
 
-    render(
-      <Item
-        item={chartItem}
-        project={mockProject}
-      />
-    );
+    render(<Item item={chartItem} project={mockProject} />);
 
     const chart = screen.getByTestId('chart');
     expect(chart).toHaveTextContent('Chart: default-test - 388x600 (itemWidth: 1)'); // 396 - 8 = 388

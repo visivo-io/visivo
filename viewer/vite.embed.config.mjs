@@ -23,7 +23,26 @@ export default defineConfig(({ mode }) => {
       },
       outDir: 'embed-dist',
       rollupOptions: {
-        external: isGlobal ? [] : ['react', 'react-dom'],
+        external: isGlobal ? [] : [
+          'react', 
+          'react-dom', 
+          'react-router-dom', 
+          '@tanstack/react-query',
+          'react-markdown',
+          'remark-gfm',
+          'rehype-raw', 
+          'rehype-sanitize',
+          'copy-to-clipboard',
+          '@fortawesome/react-fontawesome',
+          '@fortawesome/free-solid-svg-icons'
+        ],
+        onwarn(warning, warn) {
+          // Suppress warnings about unresolved dependencies in global build
+          if (isGlobal && warning.code === 'UNRESOLVED_IMPORT') {
+            return;
+          }
+          warn(warning);
+        },
         output: isGlobal ? {
           globals: {
             // For global build, we include React in the bundle
@@ -36,7 +55,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       // Minify in production
-      minify: 'terser',
+      minify: 'esbuild',
       sourcemap: true,
     },
     define: {

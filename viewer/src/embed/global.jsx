@@ -31,13 +31,13 @@ const VisivoEmbedGlobal = {
   /**
    * Unmount a Visivo component from a DOM container
    */
-  unmount: (container) => {
+  unmount: container => {
     const root = roots.get(container);
     if (root) {
       root.unmount();
       roots.delete(container);
     }
-  }
+  },
 };
 
 // Make it available globally

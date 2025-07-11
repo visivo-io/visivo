@@ -6,7 +6,7 @@ import Markdown from './Markdown';
 /**
  * Utility function to get height value from height string
  */
-export const getItemHeight = (height) => {
+export const getItemHeight = height => {
   if (height === 'xsmall') {
     return 128;
   } else if (height === 'small') {
@@ -46,16 +46,16 @@ export const getItemWidth = (containerWidth, widthBreakpoint, items, item) => {
 /**
  * Item component that renders dashboard items (charts, tables, selectors, markdown)
  */
-const Item = ({ 
-  item, 
-  project, 
-  height = 396, 
-  width = 600, 
+const Item = ({
+  item,
+  project,
+  height = 396,
+  width = 600,
   itemWidth = 1,
   rowIndex = 0,
   itemIndex = 0,
   keyPrefix = 'item',
-  row = null
+  row = null,
 }) => {
   if (item.chart) {
     return (
@@ -98,7 +98,7 @@ const Item = ({
       />
     );
   }
-  
+
   return null;
 };
 

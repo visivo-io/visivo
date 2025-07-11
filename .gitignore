@@ -18,6 +18,7 @@ venv.bak/
 
 target
 dist/
+embed-dist/
 build/
 
 tmp

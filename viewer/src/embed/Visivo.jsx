@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  fetchProjectData, 
-  fetchTracesData, 
-  fetchProjectByName, 
-  fetchStageByName 
-} from './api';
+import { fetchProjectData, fetchTracesData, fetchProjectByName, fetchStageByName } from './api';
 import { EmbedProvider } from './EmbedProvider';
 import Dashboard from '../components/project/Dashboard';
 import Item from '../components/items/Item';
@@ -23,7 +18,7 @@ export const Visivo = ({
   loading,
   error,
   onLoad,
-  onError
+  onError,
 }) => {
   const [projectData, setProjectData] = useState(null);
   const [traceData, setTraceData] = useState({});
@@ -48,9 +43,9 @@ export const Visivo = ({
 
         // Fetch combined project and stage data
         const projData = await fetchProjectData(host, projectData.id, stageData.id, apiKey);
-        
+
         if (!isMounted) return;
-        
+
         setProjectData(projData);
 
         // Find the requested item
@@ -61,28 +56,34 @@ export const Visivo = ({
 
         // Collect all traces needed for this item
         const traces = collectTracesFromItem(foundItem);
-        
+
         // Fetch trace data
         let tracesDataResult = {};
         if (traces.length > 0) {
-          tracesDataResult = await fetchTracesData(host, projectData.id, stageData.id, traces, apiKey);
+          tracesDataResult = await fetchTracesData(
+            host,
+            projectData.id,
+            stageData.id,
+            traces,
+            apiKey
+          );
         }
 
         if (!isMounted) return;
-        
+
         setTraceData(tracesDataResult);
         setIsLoading(false);
-        
+
         if (onLoad) {
           onLoad({ project: projData, traces: tracesDataResult });
         }
       } catch (err) {
         if (!isMounted) return;
-        
+
         const error = err instanceof Error ? err : new Error(String(err));
         setErrorState(error);
         setIsLoading(false);
-        
+
         if (onError) {
           onError(error);
         }
@@ -102,20 +103,24 @@ export const Visivo = ({
       return <>{loading}</>;
     }
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        padding: '20px'
-      }}>
-        <div style={{
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #3498db',
-          borderRadius: '50%',
-          width: '30px',
-          height: '30px',
-          animation: 'spin 1s linear infinite'
-        }} />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '20px',
+        }}
+      >
+        <div
+          style={{
+            border: '3px solid #f3f3f3',
+            borderTop: '3px solid #3498db',
+            borderRadius: '50%',
+            width: '30px',
+            height: '30px',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
         <span style={{ marginLeft: '10px' }}>Loading {item}...</span>
       </div>
     );
@@ -127,19 +132,19 @@ export const Visivo = ({
       return <>{error}</>;
     }
     return (
-      <div style={{ 
-        padding: '16px', 
-        border: '1px solid #f56565', 
-        borderRadius: '4px', 
-        backgroundColor: '#fed7d7',
-        color: '#742a2a'
-      }}>
+      <div
+        style={{
+          padding: '16px',
+          border: '1px solid #f56565',
+          borderRadius: '4px',
+          backgroundColor: '#fed7d7',
+          color: '#742a2a',
+        }}
+      >
         <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>
           Error loading {item}
         </h3>
-        <p style={{ margin: '0', fontSize: '12px' }}>
-          {errorState.message}
-        </p>
+        <p style={{ margin: '0', fontSize: '12px' }}>{errorState.message}</p>
       </div>
     );
   }
@@ -152,15 +157,13 @@ export const Visivo = ({
   const foundItem = findItemInProject(projectData, item);
   if (!foundItem) {
     return (
-      <div style={{ padding: '16px', color: '#e53e3e' }}>
-        Item "{item}" not found in project
-      </div>
+      <div style={{ padding: '16px', color: '#e53e3e' }}>Item "{item}" not found in project</div>
     );
   }
 
   const containerStyle = {
     width: '100%',
-    ...style
+    ...style,
   };
 
   return (
@@ -177,31 +180,31 @@ export const Visivo = ({
  */
 function findItemInProject(projectData, itemName) {
   const { project_json } = projectData;
-  
+
   // Search in dashboards
   if (project_json.dashboards) {
     const dashboard = project_json.dashboards.find(d => d.name === itemName);
     if (dashboard) return { type: 'dashboard', data: dashboard };
   }
-  
+
   // Search in charts
   if (project_json.charts) {
     const chart = project_json.charts.find(c => c.name === itemName);
     if (chart) return { type: 'chart', data: chart };
   }
-  
+
   // Search in tables
   if (project_json.tables) {
     const table = project_json.tables.find(t => t.name === itemName);
     if (table) return { type: 'table', data: table };
   }
-  
+
   // Search in markdowns
   if (project_json.markdowns) {
     const markdown = project_json.markdowns.find(m => m.name === itemName);
     if (markdown) return { type: 'markdown', data: markdown };
   }
-  
+
   return null;
 }
 
@@ -210,19 +213,19 @@ function findItemInProject(projectData, itemName) {
  */
 function collectTracesFromItem(item) {
   const traces = [];
-  
+
   if (item.type === 'dashboard' && item.data.rows) {
-    item.data.rows.forEach((row) => {
+    item.data.rows.forEach(row => {
       if (row.items) {
-        row.items.forEach((subItem) => {
+        row.items.forEach(subItem => {
           traces.push(...collectTracesFromAnyItem(subItem));
         });
       }
     });
   } else if ((item.type === 'chart' || item.type === 'table') && item.data.traces) {
-    traces.push(...item.data.traces.map((t) => ({ name: t.name })));
+    traces.push(...item.data.traces.map(t => ({ name: t.name })));
   }
-  
+
   return traces;
 }
 
@@ -231,15 +234,15 @@ function collectTracesFromItem(item) {
  */
 function collectTracesFromAnyItem(item) {
   const traces = [];
-  
+
   if (item.chart && item.chart.traces) {
-    traces.push(...item.chart.traces.map((t) => ({ name: t.name })));
+    traces.push(...item.chart.traces.map(t => ({ name: t.name })));
   }
-  
+
   if (item.table && item.table.traces) {
-    traces.push(...item.table.traces.map((t) => ({ name: t.name })));
+    traces.push(...item.table.traces.map(t => ({ name: t.name })));
   }
-  
+
   return traces;
 }
 
@@ -249,17 +252,12 @@ function collectTracesFromAnyItem(item) {
 function renderItem(item, traceData, projectData) {
   const project = {
     id: projectData.id,
-    project_json: projectData.project_json
+    project_json: projectData.project_json,
   };
 
   switch (item.type) {
     case 'dashboard':
-      return (
-        <Dashboard
-          project={project}
-          dashboardName={item.data.name}
-        />
-      );
+      return <Dashboard project={project} dashboardName={item.data.name} />;
     case 'chart':
     case 'table':
     case 'markdown':
@@ -275,9 +273,7 @@ function renderItem(item, traceData, projectData) {
       );
     default:
       return (
-        <div style={{ padding: '16px', color: '#e53e3e' }}>
-          Unknown item type: {item.type}
-        </div>
+        <div style={{ padding: '16px', color: '#e53e3e' }}>Unknown item type: {item.type}</div>
       );
   }
 }

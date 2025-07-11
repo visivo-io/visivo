@@ -18,12 +18,7 @@ const queryClient = new QueryClient({
  * Provider that sets up the necessary context for embed components
  * This provides the same context as the main viewer but adapted for embed usage
  */
-export const EmbedProvider = ({
-  children,
-  projectId,
-  traceData = {},
-  useMemoryRouter = false,
-}) => {
+export const EmbedProvider = ({ children, projectId, traceData = {}, useMemoryRouter = false }) => {
   // Create a mock query context value that works with embed data
   const queryContextValue = {
     fetchTracesQuery: (projectId, traceNames) => ({
@@ -47,9 +42,7 @@ export const EmbedProvider = ({
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <QueryProvider value={queryContextValue}>
-          {children}
-        </QueryProvider>
+        <QueryProvider value={queryContextValue}>{children}</QueryProvider>
       </Router>
     </QueryClientProvider>
   );
