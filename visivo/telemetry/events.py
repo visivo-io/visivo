@@ -4,7 +4,7 @@ Event definitions and schemas for telemetry.
 
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, Literal
+from typing import Dict, Any, Optional, Literal, List
 import platform
 import sys
 import uuid
@@ -18,11 +18,12 @@ SESSION_ID = str(uuid.uuid4())
 @dataclass
 class BaseEvent:
     """Base class for all telemetry events."""
+
     event_type: str
     timestamp: str
     session_id: str
     properties: Dict[str, Any]
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert event to dictionary for JSON serialization."""
         return asdict(self)
@@ -31,11 +32,12 @@ class BaseEvent:
 @dataclass
 class CLIEvent(BaseEvent):
     """Event for CLI command execution."""
-    
+
     @classmethod
     def create(
         cls,
         command: str,
+        command_args: List[str],
         duration_ms: int,
         success: bool,
         error_type: Optional[str] = None,
@@ -45,25 +47,28 @@ class CLIEvent(BaseEvent):
         """Create a CLI event with common properties."""
         properties = {
             "command": command,
+            "command_args": command_args,
             "duration_ms": duration_ms,
             "success": success,
             "visivo_version": VISIVO_VERSION,
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "platform": platform.system().lower(),
+            "platform_version": platform.version(),
+            "architecture": platform.machine(),
         }
-        
+
         if error_type:
             properties["error_type"] = error_type
-        
+
         if job_count is not None:
             properties["job_count"] = job_count
-            
+
         if object_counts:
             properties["object_counts"] = object_counts
-        
+
         return cls(
             event_type="cli_command",
-            timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             session_id=SESSION_ID,
             properties=properties,
         )
@@ -72,7 +77,7 @@ class CLIEvent(BaseEvent):
 @dataclass
 class APIEvent(BaseEvent):
     """Event for API request."""
-    
+
     @classmethod
     def create(
         cls,
@@ -90,11 +95,13 @@ class APIEvent(BaseEvent):
             "visivo_version": VISIVO_VERSION,
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "platform": platform.system().lower(),
+            "platform_version": platform.version(),
+            "architecture": platform.machine(),
         }
-        
+
         return cls(
             event_type="api_request",
-            timestamp=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             session_id=SESSION_ID,
             properties=properties,
         )

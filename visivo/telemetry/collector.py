@@ -9,13 +9,13 @@ from visivo.models.project import Project
 def collect_project_metrics(project: Project) -> Dict[str, int]:
     """
     Collect high-level metrics from a project.
-    
+
     This function is designed to be very fast and only collects
     counts of top-level objects without any expensive operations.
-    
+
     Args:
         project: The Visivo project to collect metrics from
-        
+
     Returns:
         Dictionary of object type to count
     """
@@ -35,14 +35,14 @@ def collect_project_metrics(project: Project) -> Dict[str, int]:
 def count_filtered_jobs(project_dag, dag_filter: str) -> int:
     """
     Count the number of jobs that will be run based on the DAG filter.
-    
+
     This is a lightweight operation that just counts the filtered DAGs
     without executing them.
-    
+
     Args:
         project_dag: The project DAG object
         dag_filter: The filter string for selecting jobs
-        
+
     Returns:
         Number of jobs that match the filter
     """

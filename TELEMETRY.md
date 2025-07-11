@@ -6,6 +6,10 @@ Visivo collects anonymous usage telemetry to help us understand how the tool is 
 
 ### CLI Commands
 - Command name (e.g., `run`, `compile`, `serve`)
+- Command arguments (sanitized - paths and values are replaced with placeholders)
+  - Sensitive flags like `--token`, `--password` are tracked but their values are redacted
+  - File paths are replaced with `<path>`
+  - Other values are replaced with `<value>`
 - Execution duration
 - Success/failure status
 - Error type (not the error message)
@@ -23,16 +27,34 @@ Visivo collects anonymous usage telemetry to help us understand how the tool is 
 - Visivo version
 - Python version
 - Operating system (e.g., darwin, linux, windows)
+- Operating system version
+- System architecture (e.g., x86_64, arm64)
 - Anonymous session ID (regenerated each time Visivo starts)
+
+## Example of Command Sanitization
+
+When you run a command like:
+```bash
+visivo run --dag-filter +my_chart+ --threads 4 --output-dir /home/user/output
+```
+
+We collect:
+```json
+{
+  "command": "run",
+  "command_args": ["--dag-filter", "<value>", "--threads", "<value>", "--output-dir", "<path>"]
+}
+```
 
 ## What We DO NOT Collect
 - Personal information or user identifiers
-- File contents or file paths
+- File contents or file paths (actual paths are replaced with `<path>`)
 - SQL queries or query results
 - Project names or data
 - Environment variables (except telemetry settings)
 - IP addresses or location data
 - Error messages or stack traces
+- Actual values of command arguments (replaced with placeholders)
 
 ## Opting Out
 

@@ -26,7 +26,7 @@ class FlaskApp:
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
-        
+
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
