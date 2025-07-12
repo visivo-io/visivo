@@ -13,6 +13,13 @@ import yaml
 TELEMETRY_ENDPOINT = os.getenv("VISIVO_TELEMETRY_ENDPOINT", "https://telemetry.visivo.io/v1/events")
 TELEMETRY_TIMEOUT = 1.0  # Maximum time to wait for telemetry requests
 
+# PostHog configuration
+# This is a placeholder key - in production, this should be:
+# 1. Set via environment variable VISIVO_POSTHOG_API_KEY
+# 2. Or use a self-hosted PostHog instance
+POSTHOG_API_KEY = os.getenv("VISIVO_POSTHOG_API_KEY", "phc_visivo_telemetry_placeholder")
+POSTHOG_HOST = os.getenv("VISIVO_POSTHOG_HOST", "https://app.posthog.com")
+
 
 def _check_env_disabled() -> bool:
     """Check if telemetry is disabled via environment variable."""

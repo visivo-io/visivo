@@ -1,41 +1,40 @@
 """
-Tests for telemetry client.
+Tests for telemetry client with PostHog SDK.
 """
 
 import os
-import time
-import threading
 from unittest import mock
-import urllib.request
-import urllib.error
+import posthog
 
 from visivo.telemetry.client import TelemetryClient, get_telemetry_client
 from visivo.telemetry.events import CLIEvent
 
 
 class TestTelemetryClient:
-    """Test telemetry client functionality."""
+    """Test telemetry client functionality with PostHog."""
 
     def setup_method(self):
         """Disable telemetry for all tests."""
         os.environ["VISIVO_TELEMETRY_DISABLED"] = "true"
+        # Reset PostHog state
+        posthog.disabled = True
+        posthog.project_api_key = None
 
     def test_client_disabled(self):
-        """Test that disabled client doesn't start worker thread."""
+        """Test that disabled client doesn't initialize PostHog."""
         client = TelemetryClient(enabled=False)
         assert not client.enabled
-        assert client._worker_thread is None
+        assert not client._initialized
 
     def test_client_enabled(self):
-        """Test that enabled client starts worker thread."""
-        client = TelemetryClient(enabled=True)
-        assert client.enabled
-        assert client._worker_thread is not None
-        assert client._worker_thread.is_alive()
-        assert client._worker_thread.daemon
-
-        # Clean up
-        client.shutdown()
+        """Test that enabled client initializes PostHog."""
+        # Mock PostHog to avoid actual initialization
+        with mock.patch("posthog.project_api_key", None):
+            client = TelemetryClient(enabled=True)
+            assert client.enabled
+            assert client._initialized
+            # PostHog should be configured
+            assert posthog.disabled is False
 
     def test_track_when_disabled(self):
         """Test that tracking does nothing when client is disabled."""
@@ -45,147 +44,102 @@ class TestTelemetryClient:
         # Should not raise any exceptions
         client.track(event)
 
-        # Queue should remain empty
-        assert client._event_queue.empty()
-
     def test_track_when_enabled(self):
-        """Test that tracking adds events to queue when enabled."""
-        client = TelemetryClient(enabled=True)
-        event = CLIEvent.create("test", [], 100, True)
+        """Test that tracking calls PostHog when enabled."""
+        with mock.patch("posthog.capture") as mock_capture:
+            client = TelemetryClient(enabled=True)
+            event = CLIEvent.create("test", ["--flag"], 100, True)
 
-        client.track(event)
+            client.track(event)
 
-        # Event should be in queue
-        assert not client._event_queue.empty()
-        queued_event = client._event_queue.get_nowait()
-        assert queued_event["event_type"] == "cli_command"
+            # Verify PostHog capture was called
+            mock_capture.assert_called_once()
+            call_args = mock_capture.call_args
 
-        # Clean up
-        client.shutdown()
-
-    @mock.patch("urllib.request.urlopen")
-    def test_send_batch(self, mock_urlopen):
-        """Test batch sending functionality."""
-        client = TelemetryClient(enabled=True)
-
-        # Create mock response
-        mock_response = mock.MagicMock()
-        mock_urlopen.return_value.__enter__.return_value = mock_response
-
-        # Create test events
-        events = [{"event_type": "test", "data": i} for i in range(3)]
-
-        # Send batch
-        client._send_batch(events)
-
-        # Verify request was made
-        mock_urlopen.assert_called_once()
-        request = mock_urlopen.call_args[0][0]
-        assert isinstance(request, urllib.request.Request)
-        assert request.get_method() == "POST"
-        assert request.get_header("Content-type") == "application/json"
-
-        # Clean up
-        client.shutdown()
-
-    @mock.patch("urllib.request.urlopen")
-    def test_send_batch_error_handling(self, mock_urlopen):
-        """Test that send errors are silently ignored."""
-        client = TelemetryClient(enabled=True)
-
-        # Make urlopen raise an exception
-        mock_urlopen.side_effect = urllib.error.URLError("Network error")
-
-        # Should not raise exception
-        client._send_batch([{"event_type": "test"}])
-
-        # Clean up
-        client.shutdown()
+            # Check the arguments
+            assert call_args[1]["event"] == "cli_command"
+            assert (
+                "machine_id" in call_args[1]["distinct_id"]
+                or call_args[1]["distinct_id"] == event.machine_id
+            )
+            assert call_args[1]["properties"]["command"] == "test"
+            assert call_args[1]["properties"]["success"] is True
 
     def test_flush_when_disabled(self):
         """Test that flush does nothing when disabled."""
         client = TelemetryClient(enabled=False)
-        # Should complete immediately without error
-        client.flush(timeout=0.1)
+        # Should not raise any exceptions
+        client.flush()
 
-    @mock.patch("urllib.request.urlopen")
-    def test_flush_when_enabled(self, mock_urlopen):
-        """Test that flush waits for queue to empty."""
-        client = TelemetryClient(enabled=True)
-
-        # Add an event
-        event = CLIEvent.create("test", [], 100, True)
-        client.track(event)
-
-        # Flush should process the event
-        client.flush(timeout=2.0)
-
-        # Queue should be empty after flush
-        assert client._event_queue.empty()
-
-        # Clean up
-        client.shutdown()
+    def test_flush_when_enabled(self):
+        """Test that flush calls PostHog flush."""
+        with mock.patch("posthog.flush") as mock_flush:
+            client = TelemetryClient(enabled=True)
+            client.flush()
+            mock_flush.assert_called_once()
 
     def test_shutdown(self):
-        """Test client shutdown."""
-        client = TelemetryClient(enabled=True)
-        assert client._worker_thread.is_alive()
-
-        client.shutdown()
-
-        # Worker thread should stop
-        assert client._stop_event.is_set()
-        # Give thread time to stop
-        time.sleep(0.1)
-        assert not client._worker_thread.is_alive()
+        """Test that shutdown calls PostHog shutdown."""
+        with mock.patch("posthog.shutdown") as mock_shutdown:
+            client = TelemetryClient(enabled=True)
+            client.shutdown()
+            mock_shutdown.assert_called_once()
 
     def test_global_client_singleton(self):
         """Test that get_telemetry_client returns singleton."""
-        client1 = get_telemetry_client(enabled=False)
-        client2 = get_telemetry_client(enabled=False)
-        assert client1 is client2
-
-        # Reset global client for other tests
+        # Clear global client
         import visivo.telemetry.client
 
         visivo.telemetry.client._global_client = None
 
-    @mock.patch("urllib.request.urlopen")
-    def test_batching_by_size(self, mock_urlopen):
-        """Test that client batches events by size (100 events)."""
-        client = TelemetryClient(enabled=True)
+        client1 = get_telemetry_client(enabled=False)
+        client2 = get_telemetry_client(enabled=False)
 
-        # Track 150 events (should trigger 1 batch of 100)
-        for i in range(150):
-            event = CLIEvent.create(f"test{i}", [], 100, True)
+        assert client1 is client2
+
+    def test_error_handling(self):
+        """Test that errors in PostHog are silently ignored."""
+        with mock.patch("posthog.capture", side_effect=Exception("Test error")):
+            client = TelemetryClient(enabled=True)
+            event = CLIEvent.create("test", [], 100, True)
+
+            # Should not raise exception
             client.track(event)
 
-        # Give worker time to process
-        time.sleep(0.5)
+        with mock.patch("posthog.flush", side_effect=Exception("Test error")):
+            # Should not raise exception
+            client.flush()
 
-        # Should have made at least one call with 100 events
-        assert mock_urlopen.call_count >= 1
+        with mock.patch("posthog.shutdown", side_effect=Exception("Test error")):
+            # Should not raise exception
+            client.shutdown()
 
-        # Clean up
-        client.shutdown()
+    def test_posthog_configuration(self):
+        """Test that PostHog is configured correctly."""
+        # Set test configuration
+        os.environ["VISIVO_POSTHOG_API_KEY"] = "test_key"
+        os.environ["VISIVO_POSTHOG_HOST"] = "https://test.posthog.com"
 
-    @mock.patch("urllib.request.urlopen")
-    def test_no_blocking_on_full_queue(self, mock_urlopen):
-        """Test that tracking doesn't block if queue is somehow full."""
+        # Reload modules to pick up new env vars
+        import importlib
+        import visivo.telemetry.config
+        import visivo.telemetry.client
+
+        importlib.reload(visivo.telemetry.config)
+        importlib.reload(visivo.telemetry.client)
+
+        # Import the reloaded TelemetryClient
+        from visivo.telemetry.client import TelemetryClient
+
+        # Create client
         client = TelemetryClient(enabled=True)
 
-        # Fill the queue (unlikely in practice)
-        # This test ensures track() uses put_nowait
-        event = CLIEvent.create("test", [], 100, True)
-
-        # Track should complete quickly even with many events
-        start_time = time.time()
-        for _ in range(10000):
-            client.track(event)
-        elapsed = time.time() - start_time
-
-        # Should complete quickly (less than 1 second)
-        assert elapsed < 1.0
+        # Check PostHog configuration
+        assert posthog.project_api_key == "test_key"
+        assert posthog.host == "https://test.posthog.com"
 
         # Clean up
-        client.shutdown()
+        del os.environ["VISIVO_POSTHOG_API_KEY"]
+        del os.environ["VISIVO_POSTHOG_HOST"]
+        importlib.reload(visivo.telemetry.config)
+        importlib.reload(visivo.telemetry.client)

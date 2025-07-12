@@ -2,6 +2,8 @@
 
 Visivo collects anonymous usage telemetry to help us understand how the tool is being used and improve it over time. This telemetry is privacy-focused and does not collect any personal information, file contents, queries, or sensitive data.
 
+**Note:** Visivo uses PostHog for telemetry collection. You can use your own PostHog instance by setting the `VISIVO_POSTHOG_HOST` and `VISIVO_POSTHOG_API_KEY` environment variables.
+
 ## What We Collect
 
 ### CLI Commands
@@ -99,12 +101,21 @@ Create or edit `~/.visivo/config.yml`:
 telemetry_enabled: false
 ```
 
+## Using Your Own PostHog Instance
+
+If you want to use your own PostHog instance for telemetry collection:
+
+```bash
+export VISIVO_POSTHOG_HOST=https://your-posthog-instance.com
+export VISIVO_POSTHOG_API_KEY=your-project-api-key
+```
+
 ## Implementation Details
 
-- Telemetry is sent asynchronously and will not impact performance
-- Events are batched and sent in the background
+- Telemetry is sent asynchronously using the PostHog SDK
+- Events are automatically batched and sent in the background
 - If telemetry fails to send, it fails silently without affecting your work
-- All telemetry operations have a 1-second timeout
+- All telemetry operations respect PostHog's built-in timeouts and error handling
 - The telemetry client runs in a separate thread
 
 ## CI/CD Environment Detection
