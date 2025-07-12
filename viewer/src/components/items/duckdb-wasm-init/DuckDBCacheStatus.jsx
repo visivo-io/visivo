@@ -1,5 +1,5 @@
-import React, { memo, useEffect, useState } from "react";
-import { Box, Typography, Button } from "@mui/material";
+import { memo, useEffect, useState } from "react";
+import { Typography, Button } from "@mui/material";
 
 const DuckDBCacheStatus = memo(() => {
   const [cacheInfo, setCacheInfo] = useState({
