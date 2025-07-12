@@ -1,4 +1,4 @@
-import { Box, Button, Typography, Drawer, TextField } from "@mui/material";
+import { Button, Typography, Drawer, TextField } from "@mui/material";
 import CSVUploadButton from "../CSVUploadButton";
 import DuckDBStatus from "../DuckDBStatus";
 import { useState, useCallback } from "react";

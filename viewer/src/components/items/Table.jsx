@@ -68,6 +68,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     decimalSeparator: ".",
     useKeysAsHeaders: true,
   });
+  const [hasOpenedPivot, setHasOpenedPivot] = useState(false);
+
 
   useEffect(() => {
     if (selectedTableCohort && tracesData) {
@@ -151,35 +153,35 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const useTable = useMaterialReactTable({
     columns: isPivoted
       ? pivotedColumns.map((column) => ({
-          ...column,
-          Cell: ({ cell }) => {
-            const value = cell.getValue();
+        ...column,
+        Cell: ({ cell }) => {
+          const value = cell.getValue();
 
-            if (typeof value === "number" && `${value}`.length < 18) {
-              return new Intl.NumberFormat(navigator.language).format(value);
-            }
-            return value;
-          },
-        }))
+          if (typeof value === "number" && `${value}`.length < 18) {
+            return new Intl.NumberFormat(navigator.language).format(value);
+          }
+          return value;
+        },
+      }))
       : tableColumnsWithUnderscores(columns).map((column) => ({
-          ...column,
-          Cell: ({ cell }) => {
-            const value = cell.getValue();
-            if (column.markdown) {
-              return (
-                <Markdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw, rehypeSanitize]}
-                >
-                  {value}
-                </Markdown>
-              );
-            } else if (typeof value === "number" && `${value}`.length < 18) {
-              return new Intl.NumberFormat(navigator.language).format(value);
-            }
-            return value;
-          },
-        })),
+        ...column,
+        Cell: ({ cell }) => {
+          const value = cell.getValue();
+          if (column.markdown) {
+            return (
+              <Markdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw, rehypeSanitize]}
+              >
+                {value}
+              </Markdown>
+            );
+          } else if (typeof value === "number" && `${value}`.length < 18) {
+            return new Intl.NumberFormat(navigator.language).format(value);
+          }
+          return value;
+        },
+      })),
 
     data: isPivoted ? pivotedData : tableData,
     enableRowSelection: true,
@@ -246,7 +248,13 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   });
 
   const toggleExpandedBar = () => {
-    setExpandedBar(!expandedBar);
+    setExpandedBar((prev) => {
+      const next = !prev;
+      if (next && !hasOpenedPivot) {
+        setHasOpenedPivot(true);
+      }
+      return next;
+    });
   };
   /* eslint-disable react/jsx-pascal-case */
   return (
@@ -297,8 +305,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 )}
               </div>
             </div>
-            <div className="w-full">
-              {expandedBar && (
+            {hasOpenedPivot && (
+              <div style={{ display: expandedBar ? "block" : "none" }}>
                 <PivotColumnSelection
                   initialData={tableData}
                   initialColumns={columns}
@@ -313,18 +321,18 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                   setDuckDBStatus={setDuckDBStatus}
                   setColumns={(cols) => {
                     setColumns(cols);
-                    setIsCSVData(true); // Set the flag when CSV column data is loaded
+                    setIsCSVData(true);
                   }}
                   setTableData={(data) => {
                     setTableData(data);
-                    setIsCSVData(true); // Set the flag when CSV table data is loaded
+                    setIsCSVData(true);
                   }}
                   setIsPivoted={setIsPivoted}
                   setPivotedData={setPivotedData}
                   setPivotedColumns={setPivotedColumns}
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
           <div className="relative">
             <Backdrop

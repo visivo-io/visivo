@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   FormControl,
   InputLabel,
@@ -9,37 +8,7 @@ import {
 } from "@mui/material";
 import { memo } from "react";
 
-const STORAGE_KEY = "pivotRowFields";
-
 const RowFieldsSelector = memo(({ rowFields = [], columns = [], onChange }) => {
-  // Load from sessionStorage on mount
-  useEffect(() => {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          // ensure fields still exist in current columns
-          const validFields = parsed.filter((field) =>
-            columns.some(
-              (col) => col.accessorKey === field || col.id === field
-            )
-          );
-          if (validFields.length > 0) {
-            onChange({ target: { value: validFields } });
-          }
-        }
-      } catch (e) {
-        console.warn("Invalid session data for row fields", e);
-      }
-    }
-  }, [columns, onChange]);
-
-  // Save to sessionStorage on change
-  useEffect(() => {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(rowFields));
-  }, [rowFields]);
-
   return (
     <FormControl
       size="small"

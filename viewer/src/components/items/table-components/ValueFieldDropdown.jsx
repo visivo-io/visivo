@@ -1,42 +1,11 @@
-import { useEffect, useRef } from "react";
 import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
-
-const STORAGE_KEY = "pivotValueField";
 
 const ValueFieldDropdown = ({
   valueField,
   handleValueFieldChange,
   columns = [],
 }) => {
-  const hasRestored = useRef(false);
 
-  // Load value from sessionStorage on first mount
-  useEffect(() => {
-    if (hasRestored.current) return;
-    hasRestored.current = true;
-
-    const stored = sessionStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-
-    try {
-      const parsed = JSON.parse(stored);
-      const isValid = columns.some(
-        (col) => col.accessorKey === parsed || col.id === parsed
-      );
-      if (isValid && parsed !== valueField) {
-        handleValueFieldChange({ target: { value: parsed } });
-      }
-    } catch (e) {
-      console.warn("Invalid session data for valueField", e);
-    }
-}, [columns, handleValueFieldChange, valueField]);
-
-  // Save valueField to sessionStorage on change
-  useEffect(() => {
-    if (valueField) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(valueField));
-    }
-  }, [valueField]);
 
   return (
     <FormControl
