@@ -18,7 +18,7 @@ class TestTelemetryClient:
         os.environ["VISIVO_TELEMETRY_DISABLED"] = "true"
         # Reset PostHog state
         posthog.disabled = True
-        posthog.project_api_key = None
+        posthog.api_key = None
 
     def test_client_disabled(self):
         """Test that disabled client doesn't initialize PostHog."""
@@ -29,7 +29,7 @@ class TestTelemetryClient:
     def test_client_enabled(self):
         """Test that enabled client initializes PostHog."""
         # Mock PostHog to avoid actual initialization
-        with mock.patch("posthog.project_api_key", None):
+        with mock.patch("posthog.api_key", None):
             client = TelemetryClient(enabled=True)
             assert client.enabled
             assert client._initialized
@@ -64,6 +64,8 @@ class TestTelemetryClient:
             )
             assert call_args[1]["properties"]["command"] == "test"
             assert call_args[1]["properties"]["success"] is True
+            # Verify IP address is masked for privacy
+            assert call_args[1]["properties"]["$ip"] == "0.0.0.0"
 
     def test_flush_when_disabled(self):
         """Test that flush does nothing when disabled."""
@@ -135,7 +137,7 @@ class TestTelemetryClient:
         client = TelemetryClient(enabled=True)
 
         # Check PostHog configuration
-        assert posthog.project_api_key == "test_key"
+        assert posthog.api_key == "test_key"
         assert posthog.host == "https://test.posthog.com"
 
         # Clean up
@@ -143,3 +145,27 @@ class TestTelemetryClient:
         del os.environ["VISIVO_POSTHOG_HOST"]
         importlib.reload(visivo.telemetry.config)
         importlib.reload(visivo.telemetry.client)
+
+    def test_privacy_protection(self):
+        """Test that privacy protection features are working."""
+        with mock.patch("posthog.capture") as mock_capture:
+            client = TelemetryClient(enabled=True)
+            event = CLIEvent.create("test", ["--token", "secret"], 100, True)
+
+            client.track(event)
+
+            # Verify PostHog capture was called
+            mock_capture.assert_called_once()
+            call_args = mock_capture.call_args
+
+            # Check that IP is masked
+            assert call_args[1]["properties"]["$ip"] == "0.0.0.0"
+
+            # Verify machine ID is being used as distinct_id
+            assert (
+                "machine_id" in str(call_args[1]["distinct_id"])
+                or call_args[1]["distinct_id"] == event.machine_id
+            )
+
+            # Command args should be present (sanitization happens in CLI layer)
+            assert call_args[1]["properties"]["command_args"] == ["--token", "secret"]

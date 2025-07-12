@@ -1,4 +1,4 @@
-# Telemetry in Visivo
+# Telemetry
 
 Visivo collects anonymous usage telemetry to help us understand how the tool is being used and improve it over time. This telemetry is privacy-focused and does not collect any personal information, file contents, queries, or sensitive data.
 
@@ -61,7 +61,7 @@ We collect:
 - Actual project names (only hashed versions are collected)
 - Project data or configurations
 - Environment variables (except telemetry settings)
-- IP addresses or location data
+- IP addresses (all events are sent with IP masked as "0.0.0.0" to prevent PII collection)
 - Error messages or stack traces
 - Actual values of command arguments (replaced with placeholders)
 

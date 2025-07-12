@@ -14,10 +14,12 @@ TELEMETRY_ENDPOINT = os.getenv("VISIVO_TELEMETRY_ENDPOINT", "https://telemetry.v
 TELEMETRY_TIMEOUT = 1.0  # Maximum time to wait for telemetry requests
 
 # PostHog configuration
-# This is a placeholder key - in production, this should be:
-# 1. Set via environment variable VISIVO_POSTHOG_API_KEY
-# 2. Or use a self-hosted PostHog instance
-POSTHOG_API_KEY = os.getenv("VISIVO_POSTHOG_API_KEY", "phc_visivo_telemetry_placeholder")
+# This API key is for the Visivo project on PostHog Cloud
+# Users can override this by setting VISIVO_POSTHOG_API_KEY environment variable
+# or use their own self-hosted PostHog instance
+POSTHOG_API_KEY = os.getenv(
+    "VISIVO_POSTHOG_API_KEY", "phc_DaLOz39kD2u4ZFNi6aXQuA7ncmnbAGoE8dLZc2z7Agj"
+)
 POSTHOG_HOST = os.getenv("VISIVO_POSTHOG_HOST", "https://app.posthog.com")
 
 

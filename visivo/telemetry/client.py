@@ -35,7 +35,7 @@ class TelemetryClient:
             return
 
         # Initialize PostHog with configuration
-        posthog.project_api_key = POSTHOG_API_KEY
+        posthog.api_key = POSTHOG_API_KEY
         posthog.host = POSTHOG_HOST
 
         # Configure PostHog settings for privacy
@@ -63,6 +63,7 @@ class TelemetryClient:
             event_dict = event.to_dict()
 
             # PostHog expects a specific format
+            # Don't pass timestamp as string - PostHog will add its own
             posthog.capture(
                 distinct_id=event_dict.get("machine_id", "anonymous"),
                 event=event_dict.get("event_type", "unknown"),
@@ -70,8 +71,9 @@ class TelemetryClient:
                     **event_dict.get("properties", {}),
                     "session_id": event_dict.get("session_id"),
                     "timestamp": event_dict.get("timestamp"),
+                    # Override IP to prevent PII collection
+                    "$ip": "0.0.0.0",
                 },
-                timestamp=event_dict.get("timestamp"),
             )
         except Exception:
             # Silently ignore all telemetry errors
