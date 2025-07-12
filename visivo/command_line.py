@@ -11,6 +11,8 @@ from pydantic import ValidationError
 import sys
 
 from visivo.parsers.line_validation_error import LineValidationError
+from visivo.telemetry import TelemetryClient, is_telemetry_enabled, get_telemetry_context
+from visivo.telemetry.events import CLIEvent
 
 from visivo.commands.dbt import dbt
 from visivo.commands.deploy import deploy
@@ -94,13 +96,77 @@ def print_issue_url():
 
 
 def safe_visivo():
+    # Clear telemetry context for fresh start
+    get_telemetry_context().clear()
+
+    # Initialize telemetry client if enabled
+    telemetry_enabled = is_telemetry_enabled()
+    telemetry_client = TelemetryClient(enabled=telemetry_enabled) if telemetry_enabled else None
+
+    # Track command execution
+    command_name = None
+    command_args = []
+    error_type = None
+    success = False
+
     try:
+        # Get the full command structure
+        if len(sys.argv) > 1:
+            command_name = sys.argv[1]
+            # Handle special cases like --version, --help
+            if command_name.startswith("-"):
+                command_name = "help"
+
+            # Capture command arguments (sanitized)
+            command_args = []
+            if len(sys.argv) > 2:
+                skip_next = False
+                for i, arg in enumerate(sys.argv[2:], 2):
+                    if skip_next:
+                        command_args.append("<redacted>")
+                        skip_next = False
+                        continue
+
+                    # Check if this is a sensitive flag
+                    if arg in ["--token", "--password", "--key", "--api-key", "--secret"]:
+                        command_args.append(arg)
+                        skip_next = True  # Skip the next value
+                    # Skip file paths and values that might be sensitive
+                    elif arg.startswith("/") or arg.startswith("~") or "\\" in arg:
+                        command_args.append("<path>")
+                    elif not arg.startswith("-"):
+                        # This might be a value for a previous flag
+                        command_args.append("<value>")
+                    else:
+                        # Keep flags and options
+                        command_args.append(arg)
+
         visivo(standalone_mode=False)
-        Logger.instance().info(f"Visivo execution time: {round(time() - start_time, 2)}s")
+        execution_time = round(time() - start_time, 2)
+        Logger.instance().info(f"Visivo execution time: {execution_time}s")
+        success = True
+
+        # Track successful command
+        if telemetry_client and command_name:
+            # Get any additional metrics from context
+            context_data = get_telemetry_context().get_all()
+            event = CLIEvent.create(
+                command=command_name,
+                command_args=command_args,
+                duration_ms=int(execution_time * 1000),
+                success=True,
+                job_count=context_data.get("job_count"),
+                object_counts=context_data.get("object_counts"),
+                project_hash=context_data.get("project_hash"),
+            )
+            telemetry_client.track(event)
+
     except (ValidationError, LineValidationError) as e:
+        error_type = type(e).__name__
         Logger.instance().error(str(e))
         sys.exit(1)
     except Exception as e:
+        error_type = type(e).__name__
         if "STACKTRACE" in os.environ and os.environ["STACKTRACE"] == "true":
             raise e
         Logger.instance().error("An unexpected error has occurred")
@@ -110,6 +176,23 @@ def safe_visivo():
         )
         print_issue_url()
         sys.exit(1)
+    finally:
+        # Track failed command if an error occurred
+        if telemetry_client and command_name and not success:
+            execution_time = round(time() - start_time, 2)
+            event = CLIEvent.create(
+                command=command_name,
+                command_args=command_args,
+                duration_ms=int(execution_time * 1000),
+                success=False,
+                error_type=error_type,
+            )
+            telemetry_client.track(event)
+
+        # Ensure telemetry is flushed before exit
+        if telemetry_client:
+            telemetry_client.flush()
+            telemetry_client.shutdown()
 
 
 if __name__ == "__main__":

@@ -85,6 +85,7 @@ nav:
       - Testing: topics/testing.md
       - Interactivity: topics/interactivity.md
       - Annotations & Shapes: topics/annotations.md
+      - Telemetry: topics/telemetry.md
   - Reference:
       - CLI: reference/cli.md
       - Configuration:
