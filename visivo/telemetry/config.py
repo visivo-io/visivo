@@ -161,6 +161,7 @@ def get_machine_id() -> str:
 
     # Generate new machine ID
     machine_id = str(uuid.uuid4())
+    is_new_installation = True  # Flag to track this is a new installation
 
     # Ensure directory exists
     try:
@@ -174,6 +175,21 @@ def get_machine_id() -> str:
         # If we can't write the file, just return the generated ID
         # It will be regenerated next time, but that's better than failing
         pass
+
+    # Send new installation event if telemetry is enabled
+    # We do this after creating the machine ID to avoid circular imports
+    if is_new_installation and is_telemetry_enabled():
+        try:
+            # Import here to avoid circular dependencies
+            from .client import get_telemetry_client
+            from .events import NewInstallationEvent
+
+            client = get_telemetry_client(enabled=True)
+            event = NewInstallationEvent.create(machine_id)
+            client.track(event)
+        except Exception:
+            # Silently ignore telemetry errors
+            pass
 
     return machine_id
 

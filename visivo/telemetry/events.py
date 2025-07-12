@@ -130,3 +130,28 @@ class APIEvent(BaseEvent):
             machine_id=_get_machine_id(),
             properties=properties,
         )
+
+
+@dataclass
+class NewInstallationEvent(BaseEvent):
+    """Event for when a new machine ID is created (new user/installation)."""
+
+    @classmethod
+    def create(cls, machine_id: str) -> "NewInstallationEvent":
+        """Create a new installation event with system properties."""
+        properties = {
+            "visivo_version": VISIVO_VERSION,
+            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "platform": platform.system().lower(),
+            "platform_version": platform.version(),
+            "architecture": platform.machine(),
+            "is_ci": is_ci_environment(),
+        }
+
+        return cls(
+            event_type="new_installation",
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            session_id=SESSION_ID,
+            machine_id=machine_id,  # Use the provided machine_id instead of calling _get_machine_id()
+            properties=properties,
+        )

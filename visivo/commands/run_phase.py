@@ -1,6 +1,5 @@
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
-import os
 
 
 def _collect_run_telemetry(project, dag_filter):
