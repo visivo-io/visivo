@@ -3,6 +3,27 @@ from visivo.models.project import Project
 import os
 
 
+def _collect_run_telemetry(project, dag_filter):
+    """Collect telemetry metrics during run phase."""
+    try:
+        from visivo.telemetry import get_telemetry_context
+        from visivo.telemetry.collector import count_filtered_jobs
+        from visivo.telemetry.config import hash_project_name
+
+        # Store hashed project name
+        if project and hasattr(project, "name"):
+            project_hash = hash_project_name(project.name)
+            if project_hash:
+                get_telemetry_context().set("project_hash", project_hash)
+
+        job_count = count_filtered_jobs(project.dag(), dag_filter)
+        if job_count > 0:  # Only store if we successfully counted
+            get_telemetry_context().set("job_count", job_count)
+    except Exception:
+        # Silently ignore any telemetry errors
+        pass
+
+
 def run_phase(
     default_source: str,
     output_dir: str,
@@ -67,24 +88,8 @@ def run_phase(
     source_details = "\n" if default_source == None else f" and default source {default_source}\n"
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
-    # Count jobs for telemetry (lightweight operation)
-    try:
-        from visivo.telemetry import get_telemetry_context
-        from visivo.telemetry.collector import count_filtered_jobs
-        from visivo.telemetry.config import hash_project_name
-
-        # Store hashed project name
-        if project and hasattr(project, "name"):
-            project_hash = hash_project_name(project.name)
-            if project_hash:
-                get_telemetry_context().set("project_hash", project_hash)
-
-        job_count = count_filtered_jobs(project.dag(), dag_filter)
-        if job_count > 0:  # Only store if we successfully counted
-            get_telemetry_context().set("job_count", job_count)
-    except Exception:
-        # Silently ignore any telemetry errors
-        pass
+    # Count jobs for telemetry
+    _collect_run_telemetry(project, dag_filter)
 
     runner = FilteredRunner(
         project=project,
