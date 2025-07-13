@@ -68,6 +68,7 @@
     "start": "yarn run start:local",
     "start:local": "cp src/LocalProviders.jsx src/Providers.jsx && vite",
     "start:dist": "cp src/DistProviders.jsx src/Providers.jsx && vite",
+    "start:embed": "cd ../test-projects/integration && python3 -m http.server 3000",
     "test": "jest",
     "build": "vite build",
     "build:embed": "yarn run build:embed:lib && yarn run build:embed:global",

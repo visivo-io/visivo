@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visivo Integration Test - Embed</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .embed-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .chart-container, .table-container, .dashboard-container {
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .description {
+            margin: 10px 0;
+            color: #666;
+            font-style: italic;
+        }
+        .config-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Visivo Integration Test - Embed Examples</h1>
+        
+        <div class="embed-container">
+            <h2>Indicator Chart</h2>
+            <p class="description">Testing the indicator chart from the integration project.</p>
+            <div class="config-info">
+                Project: integration<br>
+                Chart: indicator_chart<br>
+                Trace: Indicator Trace
+            </div>
+            <div id="indicator-chart" class="chart-container"></div>
+        </div>
+
+        <div class="embed-container">
+            <h2>Surface Chart</h2>
+            <p class="description">Testing the surface chart from the integration project.</p>
+            <div class="config-info">
+                Project: integration<br>
+                Chart: surface-chart<br>
+                Trace: Surface Trace
+            </div>
+            <div id="surface-chart" class="chart-container"></div>
+        </div>
+
+        <div class="embed-container">
+            <h2>Fibonacci Waterfall Chart</h2>
+            <p class="description">Testing the Fibonacci waterfall chart from the integration project.</p>
+            <div class="config-info">
+                Project: integration<br>
+                Trace: Fibonacci Waterfall
+            </div>
+            <div id="fibonacci-waterfall" class="chart-container"></div>
+        </div>
+
+        <div class="embed-container">
+            <h2>Simple Dashboard</h2>
+            <p class="description">Testing the Simple Dashboard from the integration project.</p>
+            <div class="config-info">
+                Project: integration<br>
+                Dashboard: Simple Dashboard
+            </div>
+            <div id="simple-dashboard" class="dashboard-container"></div>
+        </div>
+
+        <div class="embed-container">
+            <h2>Table Dashboard</h2>
+            <p class="description">Testing the Table Name dashboard with markdown and tables.</p>
+            <div class="config-info">
+                Project: integration<br>
+                Dashboard: Table Name
+            </div>
+            <div id="table-dashboard" class="dashboard-container"></div>
+        </div>
+    </div>
+
+    <!-- Load the Visivo Embed library -->
+    <script src="../../viewer/embed-dist/visivo-embed.js"></script>
+    
+    <script>
+        // Configuration for local development
+        const config = {
+            host: 'http://localhost:8000',  // Local development server
+            project: 'integration',
+            style: { height: '100%', width: '100%' },
+            onLoad: (data) => console.log('Item loaded:', data),
+            onError: (error) => console.error('Item error:', error)
+        };
+
+        if (window.VisivoEmbed) {
+            // Example 1: Embed indicator chart
+            window.VisivoEmbed.render(document.getElementById('indicator-chart'), {
+                ...config,
+                item: 'indicator_chart'
+            });
+
+            // Example 2: Embed surface chart
+            window.VisivoEmbed.render(document.getElementById('surface-chart'), {
+                ...config,
+                item: 'surface-chart'
+            });
+
+            // Example 3: Embed fibonacci waterfall trace directly
+            window.VisivoEmbed.render(document.getElementById('fibonacci-waterfall'), {
+                ...config,
+                item: 'Fibonacci Waterfall'
+            });
+
+            // Example 4: Embed Simple Dashboard
+            window.VisivoEmbed.render(document.getElementById('simple-dashboard'), {
+                ...config,
+                item: 'Simple Dashboard'
+            });
+
+            // Example 5: Embed Table Name dashboard
+            window.VisivoEmbed.render(document.getElementById('table-dashboard'), {
+                ...config,
+                item: 'Table Name'
+            });
+        } else {
+            console.error('VisivoEmbed library not loaded');
+            document.body.innerHTML += '<div style="color: red; text-align: center; margin: 20px;">Error: VisivoEmbed library failed to load. Make sure the embed build exists.</div>';
+        }
+    </script>
+</body>
+</html>
