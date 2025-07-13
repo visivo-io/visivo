@@ -9,7 +9,7 @@ from unittest import TestCase
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-from visivo.telemetry.config import get_machine_id
+from visivo.telemetry.machine_id import get_machine_id
 from visivo.telemetry.events import NewInstallationEvent
 
 
@@ -40,7 +40,7 @@ class TestNewInstallationEvent(TestCase):
         # Re-disable telemetry for other tests
         os.environ["VISIVO_TELEMETRY_DISABLED"] = "true"
 
-    @patch("visivo.telemetry.config.is_ci_environment")
+    @patch("visivo.telemetry.machine_id.is_ci_environment")
     @patch("visivo.telemetry.client.get_telemetry_client")
     def test_new_installation_event_fires_on_first_machine_id(self, mock_get_client, mock_is_ci):
         """Test that NewInstallationEvent fires when creating a new machine ID."""
@@ -68,7 +68,7 @@ class TestNewInstallationEvent(TestCase):
         self.assertEqual(event.event_type, "new_installation")
         self.assertEqual(event.machine_id, machine_id)
 
-    @patch("visivo.telemetry.config.is_ci_environment")
+    @patch("visivo.telemetry.machine_id.is_ci_environment")
     @patch("visivo.telemetry.client.get_telemetry_client")
     def test_no_event_on_existing_machine_id(self, mock_get_client, mock_is_ci):
         """Test that no event fires when machine ID already exists."""
@@ -93,7 +93,7 @@ class TestNewInstallationEvent(TestCase):
         # Verify no event was sent
         mock_client.track.assert_not_called()
 
-    @patch("visivo.telemetry.config.is_ci_environment")
+    @patch("visivo.telemetry.machine_id.is_ci_environment")
     @patch("visivo.telemetry.client.get_telemetry_client")
     def test_no_event_in_ci_environment(self, mock_get_client, mock_is_ci):
         """Test that no installation event fires in CI environments."""

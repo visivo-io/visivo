@@ -5,19 +5,9 @@ from visivo.models.project import Project
 def _collect_run_telemetry(project, dag_filter):
     """Collect telemetry metrics during run phase."""
     try:
-        from visivo.telemetry import get_telemetry_context
-        from visivo.telemetry.collector import count_filtered_jobs
-        from visivo.telemetry.config import hash_project_name
+        from visivo.telemetry.command_tracker import track_run_metrics
 
-        # Store hashed project name
-        if project and hasattr(project, "name"):
-            project_hash = hash_project_name(project.name)
-            if project_hash:
-                get_telemetry_context().set("project_hash", project_hash)
-
-        job_count = count_filtered_jobs(project.dag(), dag_filter)
-        if job_count > 0:  # Only store if we successfully counted
-            get_telemetry_context().set("job_count", job_count)
+        track_run_metrics(project, dag_filter)
     except Exception:
         # Silently ignore any telemetry errors
         pass

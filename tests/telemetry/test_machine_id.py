@@ -5,7 +5,7 @@ Tests for machine ID functionality.
 import uuid
 from pathlib import Path
 import pytest
-from visivo.telemetry.config import get_machine_id
+from visivo.telemetry.machine_id import get_machine_id
 
 
 class TestMachineId:

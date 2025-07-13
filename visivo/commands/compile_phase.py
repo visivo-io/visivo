@@ -16,20 +16,9 @@ Logger.instance().debug(f"Compile Import completed in {import_duration}s")
 def _collect_compile_telemetry(project):
     """Collect telemetry metrics during compile phase."""
     try:
-        from visivo.telemetry import get_telemetry_context
-        from visivo.telemetry.collector import collect_project_metrics
-        from visivo.telemetry.config import hash_project_name
+        from visivo.telemetry.command_tracker import track_compile_metrics
 
-        # Store hashed project name
-        if project and hasattr(project, "name"):
-            project_hash = hash_project_name(project.name)
-            if project_hash:
-                get_telemetry_context().set("project_hash", project_hash)
-
-        # Collect object counts
-        object_counts = collect_project_metrics(project)
-        if object_counts:  # Only store if we successfully collected metrics
-            get_telemetry_context().set("object_counts", object_counts)
+        track_compile_metrics(project)
     except Exception:
         # Silently ignore any telemetry errors
         pass

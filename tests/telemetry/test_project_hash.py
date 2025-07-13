@@ -3,7 +3,7 @@ Tests for project name hashing functionality.
 """
 
 import pytest
-from visivo.telemetry.config import hash_project_name
+from visivo.telemetry.utils import hash_project_name
 from visivo.telemetry.events import CLIEvent, APIEvent
 
 

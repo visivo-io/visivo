@@ -9,7 +9,8 @@ import platform
 import sys
 import uuid
 from visivo.version import VISIVO_VERSION
-from .config import get_machine_id, is_ci_environment
+from .config import is_ci_environment
+from .machine_id import get_machine_id
 
 
 # Generate a session ID that's unique per CLI/API session but not persistent

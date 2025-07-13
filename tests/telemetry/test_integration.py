@@ -1,5 +1,8 @@
 """
 Integration tests for telemetry functionality.
+
+DEPRECATED: These tests were for the old custom telemetry implementation.
+See test_integration_posthog.py for the new PostHog-based integration tests.
 """
 
 import os

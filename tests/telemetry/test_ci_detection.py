@@ -6,7 +6,8 @@ import os
 import uuid
 from pathlib import Path
 import pytest
-from visivo.telemetry.config import is_ci_environment, get_machine_id
+from visivo.telemetry.config import is_ci_environment
+from visivo.telemetry.machine_id import get_machine_id
 
 
 class TestCIDetection:
