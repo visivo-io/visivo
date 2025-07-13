@@ -13,6 +13,17 @@ import_duration = round(time() - compile_import_start, 2)
 Logger.instance().debug(f"Compile Import completed in {import_duration}s")
 
 
+def _collect_compile_telemetry(project):
+    """Collect telemetry metrics during compile phase."""
+    try:
+        from visivo.telemetry.command_tracker import track_compile_metrics
+
+        track_compile_metrics(project)
+    except Exception:
+        # Silently ignore any telemetry errors
+        pass
+
+
 def compile_phase(
     default_source: str,
     working_dir: str,
@@ -26,6 +37,9 @@ def compile_phase(
     project = parse_project_phase(working_dir, output_dir, default_source, dbt_profile, dbt_target)
     parse_duration = round(time() - parse_start, 2)
     Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
+
+    # Collect project metrics for telemetry
+    _collect_compile_telemetry(project)
 
     # Track artifacts writing
     artifacts_start = time()
