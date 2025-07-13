@@ -15,18 +15,18 @@ function Project(props) {
   const setScrollPosition = useStore(state => state.setScrollPosition);
   const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
   const throttleRef = useRef();
-  const [ windowPosition, setWindowPosition ] = useState('')
+  const [windowPosition, setWindowPosition] = useState('');
 
   const { dashboardName } = props;
 
   useEffect(() => {
-    if (elementId && windowPosition === "") {
-      setWindowPosition(elementId)
+    if (elementId && windowPosition === '') {
+      setWindowPosition(elementId);
     }
-  }, [elementId, windowPosition])
+  }, [elementId, windowPosition]);
 
   useEffect(() => {
-    throttleRef.current = throttle((name) => {
+    throttleRef.current = throttle(name => {
       setScrollPosition(name, window.scrollY);
     }, 100);
   }, [setScrollPosition]);
@@ -40,19 +40,17 @@ function Project(props) {
   useEffect(() => {
     const savedPos = scrollPositions || 0;
     if (!window.location.hash) {
-        if(windowPosition && windowPosition !== ""){
-          requestAnimationFrame(() => {
-            window.scrollTo(0, windowPosition);
-            setWindowPosition(null)
-          });
-        }else{
-          requestAnimationFrame(() => {
-            window.scrollTo(0, savedPos);
-          });
-        }
-         
+      if (windowPosition && windowPosition !== '') {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, windowPosition);
+          setWindowPosition(null);
+        });
+      } else {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, savedPos);
+        });
+      }
     }
-
   }, [props.dashboardName, scrollPositions, windowPosition, searchParams]);
 
   const {
