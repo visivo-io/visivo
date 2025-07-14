@@ -1,10 +1,12 @@
-from typing import Literal, Optional, List
+from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
-from visivo.models.sources.source import Source
-from pydantic import Field
+from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from pydantic import Field, PrivateAttr
 import click
+from sqlalchemy import create_engine, event
+from sqlalchemy.pool import NullPool
+from visivo.logger.logger import Logger
 import duckdb
-import polars as pl
 
 DuckdbType = Literal["duckdb"]
 
@@ -17,7 +19,9 @@ class DuckdbAttachment(BaseModel):
     )
 
 
-class DuckdbSource(Source):
+class DuckdbSource(SqlalchemySource):
+    # Cache both read-only and read-write engines
+    _read_only_engine: Any = PrivateAttr(default=None)
     """
     DuckdbSources hold the connection information to DuckDB data sources.
 
@@ -47,23 +51,83 @@ class DuckdbSource(Source):
         description="List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.",
     )
 
-    def get_connection(self, read_only: bool = False):
-        try:
+    def get_engine(self, read_only: bool = False):
+        """Get engine with proper read_only support for DuckDB."""
+        if read_only:
+            if not self._read_only_engine:
+                Logger.instance().debug(f"Creating read-only engine for Source: {self.name}")
+                self._read_only_engine = create_engine(
+                    self.url(), poolclass=NullPool, connect_args={"read_only": True}
+                )
 
+                @event.listens_for(self._read_only_engine, "connect")
+                def connect_readonly(dbapi_connection, connection_record):
+                    if self.after_connect:
+                        cursor_obj = dbapi_connection.cursor()
+                        cursor_obj.execute(self.after_connect)
+                        cursor_obj.close()
+
+            return self._read_only_engine
+        else:
+            # Create read-write engine with proper connection args
+            if not self._engine:
+                Logger.instance().debug(f"Creating read-write engine for Source: {self.name}")
+                self._engine = create_engine(
+                    self.url(), poolclass=NullPool, connect_args={"read_only": False}
+                )
+
+                @event.listens_for(self._engine, "connect")
+                def connect_readwrite(dbapi_connection, connection_record):
+                    if self.after_connect:
+                        cursor_obj = dbapi_connection.cursor()
+                        cursor_obj.execute(self.after_connect)
+                        cursor_obj.close()
+
+            return self._engine
+
+    def get_connection(self, read_only: bool = False):
+        """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
+        try:
+            import duckdb
+            import os
+
+            Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
+
+            # Ensure database file exists for write operations
+            if not read_only and not os.path.exists(self.database):
+                Logger.instance().debug(
+                    f"Database file {self.database} does not exist, creating it"
+                )
+                os.makedirs(os.path.dirname(self.database), exist_ok=True)
+                # Create the database file
+                temp_conn = duckdb.connect(self.database)
+                temp_conn.close()
+
+            # Connect directly to DuckDB with proper read_only flag
+            Logger.instance().debug(f"Connecting to {self.database} with read_only={read_only}")
             connection = duckdb.connect(self.database, read_only=read_only)
+            Logger.instance().debug(f"Direct DuckDB connection established for {self.name}")
+
+            # Execute after_connect if specified
+            if self.after_connect:
+                connection.execute(self.after_connect)
 
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
                         f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name} (READ_ONLY)"
                     )
-
             return connection
-
         except Exception as err:
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
+
+    def connect(self, read_only: bool = False):
+        return DuckDBConnection(source=self, read_only=read_only)
+
+    def get_dialect(self):
+        return "duckdb"
 
     def read_sql(self, query: str):
         try:
@@ -89,11 +153,28 @@ class DuckdbSource(Source):
         except Exception as err:
             raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
 
-    def connect(self, read_only: bool = False):
-        return DuckDBConnection(source=self, read_only=read_only)
+    def connect_args(self):
+        """Override to provide DuckDB-specific connection arguments for the default engine."""
+        # The default cached engine (via super().get_engine()) is read-write
+        # Read-only connections use a separate cached engine
+        return {}
 
-    def get_dialect(self):
-        return "duckdb"
+    def dispose_engines(self):
+        """Dispose of cached engines to release database locks."""
+        if self._read_only_engine:
+            self._read_only_engine.dispose()
+            self._read_only_engine = None
+        if self._engine:
+            self._engine.dispose()
+            self._engine = None
+
+    def __del__(self):
+        """Ensure engines are disposed when source is destroyed."""
+        try:
+            self.dispose_engines()
+        except Exception:
+            # Ignore errors during cleanup
+            pass
 
 
 class DuckDBConnection:
@@ -110,3 +191,5 @@ class DuckDBConnection:
         if self.conn:
             self.conn.close()
             self.conn = None
+        # Return None to propagate any exceptions
+        return None
