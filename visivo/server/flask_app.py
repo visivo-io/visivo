@@ -10,10 +10,10 @@ from visivo.logger.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
-<<<<<<< HEAD
+
 from visivo.telemetry.middleware import init_telemetry_middleware
 from visivo.server.source_metadata import gather_source_metadata
-=======
+
 from visivo.server.source_metadata import (
     gather_source_metadata,
     get_sources_list,
@@ -23,7 +23,6 @@ from visivo.server.source_metadata import (
     get_table_columns,
     check_source_connection,
 )
->>>>>>> 4543c072 (Broke out inspection to atomic APIs)
 import subprocess
 import hashlib
 
