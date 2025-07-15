@@ -1,5 +1,5 @@
 from visivo.models.color_palette import ColorPalette
-from ..factories.model_factories import ChartFactory
+from tests.factories.model_factories import ChartFactory
 from pydantic import ValidationError
 import pytest
 

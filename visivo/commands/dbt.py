@@ -16,7 +16,7 @@ def dbt(working_dir, output_dir, dbt_profile, dbt_target):
     """
     Refreshes the dbt objects in the for use in Visivo.
     """
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     Logger.instance().debug("Refreshing dbt models and sources.")
 

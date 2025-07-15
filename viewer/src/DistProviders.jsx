@@ -1,5 +1,6 @@
 import React from 'react';
 import DistRouter from './DistRouter';
+import { futureFlags } from './router-config';
 import { RouterProvider } from 'react-router-dom';
 import { QueryProvider } from './contexts/QueryContext';
 import { fetchTracesQuery } from './queries/traces';
@@ -12,7 +13,10 @@ export default function DistProviders() {
   return (
     <QueryClientProvider client={queryClient}>
       <QueryProvider value={{ fetchTracesQuery, fetchDashboardQuery }}>
-        <RouterProvider router={DistRouter} />
+        <RouterProvider
+          router={DistRouter}
+          future={futureFlags}
+        />
       </QueryProvider>
     </QueryClientProvider>
   );

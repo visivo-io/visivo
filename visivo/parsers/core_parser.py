@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from visivo.parsers.line_validation_error import LineValidationError
 from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
 from visivo.utils import load_yaml_file, PROJECT_CHILDREN
-from ..models.project import Project
+from visivo.models.project import Project
 
 
 class CoreParser:

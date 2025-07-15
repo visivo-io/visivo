@@ -3,7 +3,6 @@ import Breadcrumbs from './common/Breadcrumbs';
 import ProjectHistory from './project/ProjectHistory';
 import { useLoaderData } from 'react-router-dom';
 import Error from './styled/Error';
-import { SearchParamsProvider } from '../contexts/SearchParamsContext';
 import TopNav from './common/TopNav';
 import { HiTemplate } from 'react-icons/hi';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
@@ -73,21 +72,19 @@ const Home = () => {
   );
 
   return (
-    <SearchParamsProvider>
-      <div className="visivo-home min-h-screen bg-gray-50">
-        <TopNav />
-        <div className={isProject ? '' : 'mx-4'}>
-          {isProject && (
-            <div className="flex flex-row justify-between items-center whitespace-nowrap py-4">
-              <Breadcrumbs />
-              <ProjectHistory />
-            </div>
-          )}
-          {error && error.message && <Error>{error.message}</Error>}
-          {isRoot ? renderNavigationCards() : <Outlet />}
-        </div>
+    <div className="visivo-home min-h-screen bg-gray-50">
+      <TopNav />
+      <div className={'pt-14'}>
+        {isProject && (
+          <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">
+            <Breadcrumbs />
+            <ProjectHistory />
+          </div>
+        )}
+        {error && error.message && <Error>{error.message}</Error>}
+        {isRoot ? renderNavigationCards() : <Outlet />}
       </div>
-    </SearchParamsProvider>
+    </div>
   );
 };
 

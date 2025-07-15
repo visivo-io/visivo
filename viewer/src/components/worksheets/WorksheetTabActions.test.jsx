@@ -12,7 +12,7 @@ jest.mock('../../api/worksheet');
 
 // Test wrapper component
 const TestWrapper = ({ children }) => (
-  <BrowserRouter>
+  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <QueryProvider value={{ fetchTracesQuery: jest.fn(), fetchDashboardQuery: jest.fn() }}>
       <WorksheetProvider>{children}</WorksheetProvider>
     </QueryProvider>

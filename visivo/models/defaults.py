@@ -50,10 +50,6 @@ class Defaults(BaseModel):
         8,
         description="The number of threads to use when running queries.",
     )
-    thumbnail_mode: Literal["none", "missing", "all"] = Field(
-        "missing",
-        description="Mode for thumbnail generation: 'none' to disable, 'missing' to generate only missing thumbnails, 'all' to generate all thumbnails",
-    )
     levels: List[Level] = Field(
         default_factory=list,
         description="Enables you to customize the project level view of your dashboards. Ordered list of dashboard levels with titles and descriptions",
@@ -69,6 +65,12 @@ class Defaults(BaseModel):
                 },
             ]
         },
+    )
+    telemetry_enabled: Optional[bool] = Field(
+        None,
+        description="Controls whether anonymous usage telemetry is collected for this project. "
+        "When set to false, no telemetry data will be sent. "
+        "Can also be disabled globally via VISIVO_TELEMETRY_DISABLED environment variable.",
     )
 
     def __hash__(self):

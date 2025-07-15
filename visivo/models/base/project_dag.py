@@ -1,7 +1,7 @@
 import json
 import re
 from networkx import DiGraph, simple_cycles, is_directed_acyclic_graph
-from visivo.models.dag import all_descendants_with_name, parse_filter_str, show_dag_fig
+from visivo.models.dag import all_descendants_with_name, parse_filter_str
 from typing import List, Optional
 
 
@@ -239,6 +239,3 @@ class ProjectDag(DiGraph):
                 changed_dag_filter.append(f"{new_node.name}+")
 
         return ",".join(changed_dag_filter)
-
-    def show(self):
-        show_dag_fig(self)

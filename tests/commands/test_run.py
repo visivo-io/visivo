@@ -68,7 +68,6 @@ def test_run_with_model_ref():
     response = runner.invoke(
         run, ["-w", working_dir, "-o", output_dir, "-s", "source", "-p", str(port)]
     )
-
     assert "Running project" in response.output
     assert response.exit_code == 0
 

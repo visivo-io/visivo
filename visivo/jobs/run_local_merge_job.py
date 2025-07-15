@@ -7,7 +7,7 @@ from visivo.jobs.job import (
     start_message,
 )
 from time import time
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 
 
 def action(local_merge_model: LocalMergeModel, output_dir, dag):

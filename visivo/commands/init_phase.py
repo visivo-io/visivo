@@ -4,7 +4,7 @@ import yaml
 import json
 import os
 from pathlib import Path
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 from visivo.models.include import Include
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.postgresql_source import PostgresqlSource, PostgresqlType

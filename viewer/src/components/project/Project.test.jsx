@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import Project from './Project';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import QueryContext from '../../contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
+import { createMemoryRouter } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 // Mock window.scrollTo
 beforeAll(() => {
   window.scrollTo = jest.fn();
@@ -37,7 +38,7 @@ const fetchTraces = () => {
 };
 
 const mockQueryContext = {
-  fetchDashboardQuery: jest.fn(),
+  fetchDashboardQuery: () => ({ queryFn: jest.fn().mockResolvedValue(project), queryKey: ['dashboard'] }),
 };
 
 // Create a new QueryClient instance for each test
@@ -48,65 +49,80 @@ const queryClient = new QueryClient({
     },
   },
 });
+const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
+const loadProject = () => {
+  return { ...project, created_at: '2024-08-07T13:07:34Z', id: '1' };
+};
 
-test('renders dashboard names without dashboard name param', async () => {
-  const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
+test('renders dashboard overview without dashboard name param', async () => {
+  let dashboardName = null;
+  const routes = [
+    {
+      path: '/:dashboardName?',
+      element: (
+        <Project
+          project={project}
+          fetchTraces={fetchTraces}
+          dashboardName={dashboardName}
+          dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
+        />
+      ),
+      id: 'project',
+      loader: loadProject,
+    },
+  ];
+  const router = createMemoryRouter(routes, {
+    initialEntries: ['/'],
+    initialIndex: 0,
+    future: futureFlags,
+  });
+
   render(
     <QueryClientProvider client={queryClient}>
       <QueryContext.Provider value={mockQueryContext}>
-        <MemoryRouter initialEntries={['/dashboard']}>
-          <Routes>
-            <Route
-              path="/:dashboardName?"
-              element={
-                <Project
-                  project={project}
-                  fetchTraces={fetchTraces}
-                  dashboardName={null}
-                  dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
-                />
-              }
-            />
-            )
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider router={router} future={futureFlags} />
       </QueryContext.Provider>
     </QueryClientProvider>
   );
 
-  const text = await screen.findByRole('heading', {
-    name: /dashboard/i,
-    level: 3,
-  });
-  expect(text).toBeInTheDocument();
+  const unassignedSection = await screen.findByText('Unassigned', {}, { timeout: 3000 });
+  expect(unassignedSection).toBeInTheDocument();
 });
 
 test('renders dashboard with dashboard name param', async () => {
-  const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
+  let dashboardName = 'dashboard';
+  const routes = [
+    {
+      path: '/:dashboardName?',
+      element: (
+        <Project
+          project={project}
+          fetchTraces={fetchTraces}
+          dashboardName={dashboardName}
+          dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
+        />
+      ),
+      id: 'project',
+      loader: loadProject,
+    },
+  ];
+  const router = createMemoryRouter(routes, {
+    initialEntries: ['/dashboard'],
+    initialIndex: 0,
+    future: futureFlags,
+  });
 
   render(
     <QueryClientProvider client={queryClient}>
       <QueryContext.Provider value={mockQueryContext}>
-        <MemoryRouter initialEntries={['/dashboard']}>
-          <Routes>
-            <Route
-              path="/:dashboardName?"
-              element={
-                <Project
-                  project={project}
-                  fetchTraces={fetchTraces}
-                  dashboardName={'dashboard'}
-                  dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
-                />
-              }
-            />
-            )
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider router={router} future={futureFlags} />
       </QueryContext.Provider>
     </QueryClientProvider>
   );
 
-  const text = await screen.findByText(/First Markdown/);
-  expect(text).toBeInTheDocument();
+  const unassignedSection = screen.queryByText('Unassigned');
+  expect(unassignedSection).not.toBeInTheDocument();
+
+  const dashboard = await screen.findByText(/First Markdown/);
+  expect(dashboard).toBeInTheDocument();
 });

@@ -1,6 +1,16 @@
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
-import os
+
+
+def _collect_run_telemetry(project, dag_filter):
+    """Collect telemetry metrics during run phase."""
+    try:
+        from visivo.telemetry.command_tracker import track_run_metrics
+
+        track_run_metrics(project, dag_filter)
+    except Exception:
+        # Silently ignore any telemetry errors
+        pass
 
 
 def run_phase(
@@ -12,19 +22,14 @@ def run_phase(
     soft_failure: bool = False,
     dbt_profile: str = None,
     dbt_target: str = None,
-    thumbnail_mode: str = None,
     skip_compile: bool = False,
     project: Project = None,
     server_url: str = None,
 ):
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
     from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
 
-    if not server_url and thumbnail_mode == "all":
-        raise Exception(
-            "Thumbnail mode is set to 'all', but no server URL is provided. A running server is required to generate thumbnails."
-        )
     # Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
     if project and skip_compile:
         Logger.instance().debug(
@@ -64,9 +69,6 @@ def run_phase(
 
     Logger.instance().debug(f"DAG filter: {dag_filter}")
     # Initialize project defaults if not present
-    if thumbnail_mode is None and project.defaults and project.defaults.thumbnail_mode:
-        thumbnail_mode = project.defaults.thumbnail_mode
-
     if threads is None and project.defaults and project.defaults.threads:
         threads = project.defaults.threads
     else:
@@ -75,13 +77,15 @@ def run_phase(
     source_details = "\n" if default_source == None else f" and default source {default_source}\n"
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
 
+    # Count jobs for telemetry
+    _collect_run_telemetry(project, dag_filter)
+
     runner = FilteredRunner(
         project=project,
         output_dir=output_dir,
         threads=threads,
         soft_failure=soft_failure,
         dag_filter=dag_filter,
-        thumbnail_mode=thumbnail_mode,
         server_url=server_url,
     )
     runner.run()

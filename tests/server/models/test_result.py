@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime
+from visivo.utils import get_utc_now
 from visivo.server.models.worksheet import WorksheetModel
 from visivo.server.models.result import ResultModel
 
@@ -24,7 +25,7 @@ def test_result_creation(session):
 
 def test_result_to_dict(session):
     """Test the to_dict method of ResultModel."""
-    now = datetime.utcnow()
+    now = get_utc_now()
     worksheet = WorksheetModel(id="test-id", name="Test Worksheet")
     result = ResultModel(
         worksheet=worksheet,

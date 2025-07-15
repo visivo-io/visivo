@@ -17,27 +17,76 @@ Please refer to https://docs.visivo.io for detailed instructions on how to use t
 
 ## Install
 
+We have an install script for a self contained binary.
+
+### Install Latest Version
+
+```bash
+curl -fsSL https://visivo.sh | bash
 ```
+
+### Install Specific Version
+
+To install a specific version, you can pass the version as a parameter:
+
+```bash
+# Install version 1.0.64
+curl -fsSL https://visivo.sh | bash -s -- --version 1.0.64
+
+# Or with the 'v' prefix
+curl -fsSL https://visivo.sh | bash -s -- --version v1.0.64
+
+# Short form
+curl -fsSL https://visivo.sh | bash -s -- -v 1.0.64
+```
+
+### Installation Help
+
+To see all available installation options:
+
+```bash
+curl -fsSL https://visivo.sh | bash -s -- --help
+```
+
+> **Note**: To find available versions, check the [releases page](https://github.com/visivo-io/visivo/releases) or the [tags on this repository](https://github.com/visivo-io/visivo/tags).
+
+### Python Installation
+
+If you have Python setup and want to use it through pip install:
+
+```bash
 pip install visivo
 ```
 
 If you want to install a preview version you can install from a beta tag:
 
-```
+```bash
 python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1 --force-reinstall
 ```
 
 
 ## Quickstart
 
-To get started with (non-development version) Visivo, follow these steps:
+To get started with Visivo, follow these steps:
 
-1. Install Visivo using pip: `pip install visivo`
+1. Install Visivo: `curl -fsSL https://visivo.sh | bash`
 2. Create a new project using `visivo init --project-name quick_start`.
 3. Choose `sqlite` for a quickstart.
 4. Navigate into the new project folder you just created with `cd quick_start`
 5. Run `visivo serve` to start the development server
 6. Open your web browser and navigate to `http://localhost:8000` to view your charts
+
+# Telemetry
+
+Visivo collects anonymous usage telemetry to help improve the tool. This data helps us understand which features are used most and identify areas for improvement. 
+
+**Privacy First**: We do not collect any personal information, file contents, queries, or sensitive data.
+
+To opt out of telemetry, you can:
+- Set the environment variable: `export VISIVO_TELEMETRY_DISABLED=true`
+- Or add to your project configuration: `telemetry_enabled: false`
+
+For more details, see [TELEMETRY.md](TELEMETRY.md).
 
 # Versioning
 

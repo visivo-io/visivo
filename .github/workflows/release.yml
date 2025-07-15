@@ -4,18 +4,76 @@ on:
   workflow_dispatch:
     inputs:
       version:
+        description: "The version to release"
         required: true
+        type: string
+      dryrun:
+        description: "Dry run"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
+  build-app:
+    name: "Build App (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: darwin-arm64
+            version_file: visivo/version.py
+          - os: macos-13
+            artifact_name: darwin-x86
+            version_file: visivo/version.py
+          - os: windows-latest
+            artifact_name: windows-x86
+            version_file: visivo\\version.py
+            shell: bash
+          - os: ubuntu-latest
+            artifact_name: linux-x86
+            version_file: visivo/version.py
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v9
+
+      - name: Build App
+        run: |
+          cd viewer && yarn install --network-timeout 600000 && yarn deploy && cd ..
+          poetry install
+          poetry run write-schema-json
+          poetry run copy-install-script
+          poetry version ${{ inputs.version }}
+          echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
+
+      - name: Build Artifact
+        run: poetry run build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: visivo-${{ matrix.artifact_name }}
+          path: dist/visivo
+
   create-release:
     name: "Create release v${{ inputs.version }}"
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
+    needs: build-app
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.BYPASS_RULES_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -29,42 +87,69 @@ jobs:
           cd viewer && yarn install && yarn deploy && cd ..
           poetry install
           poetry run write-schema-json
+          poetry run copy-install-script
           poetry version ${{ inputs.version }}
+          ls -la
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9
+        if: ${{ inputs.dryrun == false }}
         with:
           author_name: Visivo
           author_email: info@visivo.io
           message: "Build viewer for Python package"
 
-      - name: Add and push tag
+      - name: Add and push version tag
+        if: ${{ inputs.dryrun == false }}
         run: |
           git config --global user.email "info@visivo.io"
           git config --global user.name "Visivo"
           git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
           git push origin tag v${{ inputs.version }}
-          git tag -d latest
-          git push origin :refs/tags/latest
+
+      - name: Add and push latest tag
+        if: ${{ inputs.dryrun == false }}
+        run: |
+          git config --global user.email "info@visivo.io"
+          git config --global user.name "Visivo"
+          git tag -d latest || true
+          git push origin :refs/tags/latest || true
           git tag -a latest -m "Latest versioned release"
           git push origin tag latest
 
-      - name: Create GitHub release
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Zip artifacts
         run: |
-          gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes 
-          gh release create "latest" -t "Latest versioned release" --latest=false --prerelease
+          mkdir -p ./dists
+          for dir in ./artifacts/*; do
+            if [ -d "$dir" ]; then
+              cd "$dir"
+              zip -r "../../dists/$(basename $dir).zip" ./*
+              cd ../..
+            fi
+          done
+
+      - name: Create version release
+        run: |
+          gh release create "v${{ inputs.version }}" -t "Release v${{ inputs.version }}" --generate-notes ./dists/*
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish
         id: publish
+        if: ${{ inputs.dryrun == false }}
         run: |
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry build
           poetry publish
 
       - name: Trigger Core Deployment
+        if: ${{ inputs.dryrun == false }}
         uses: peter-evans/repository-dispatch@v2
         with:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}

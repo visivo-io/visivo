@@ -25,7 +25,9 @@ const PreviewPanel = ({ project }) => {
   // Render preview based on object type
   const renderPreview = () => {
     if (!activeTab) {
-      return <div className="text-gray-500">Click on a dashboard, trace, or chart to see a preview</div>;
+      return (
+        <div className="text-gray-500">Click on a dashboard, trace, or chart to see a preview</div>
+      );
     }
     switch (activeTab.type) {
       case 'Chart':
@@ -55,7 +57,6 @@ const PreviewPanel = ({ project }) => {
 
   return (
     <div className="flex-1 h-full bg-white p-4 border-t border-gray-200 overflow-hidden flex flex-col min-h-0">
-      
       <div className="flex-1 overflow-auto min-h-0">{renderPreview()}</div>
     </div>
   );

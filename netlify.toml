@@ -1,0 +1,5 @@
+# netlify.toml
+[[headers]]
+  for = "/install.sh"
+  [headers.values]
+    Content-Type = "text/plain"

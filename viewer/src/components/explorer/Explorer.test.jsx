@@ -194,7 +194,7 @@ const renderWithProviders = ui => {
   };
 
   return render(
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <QueryProvider value={mockQueryContext}>
         <WorksheetProvider>{ui}</WorksheetProvider>
       </QueryProvider>

@@ -1,4 +1,4 @@
-from .core_parser import CoreParser
+from visivo.parsers.core_parser import CoreParser
 
 
 # This gives us a place to call different Parsers depending on project type

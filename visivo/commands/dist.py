@@ -17,7 +17,7 @@ def dist(output_dir, dist_dir, deployment_root):
 
     Note: Make sure to run `visivo run` before running `visivo dist`.
     """
-    from visivo.logging.logger import Logger
+    from visivo.logger.logger import Logger
 
     Logger.instance().debug("Creating Dist")
 

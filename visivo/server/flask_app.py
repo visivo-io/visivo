@@ -5,12 +5,14 @@ from flask import Flask, send_from_directory, request, jsonify, Response, send_f
 import datetime
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
-from visivo.utils import VIEWER_PATH, SCHEMA_FILE
-from visivo.logging.logger import Logger
+from visivo.utils import VIEWER_PATH, SCHEMA_FILE, get_utc_now
+from visivo.logger.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
+from visivo.telemetry.middleware import init_telemetry_middleware
 import subprocess
+import hashlib
 
 
 class FlaskApp:
@@ -24,6 +26,9 @@ class FlaskApp:
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
+
+        # Initialize telemetry middleware
+        init_telemetry_middleware(self.app, project)
 
         @self.app.route("/data/<trace_name>/data.json")
         def serve_trace_data(trace_name):
@@ -131,18 +136,21 @@ class FlaskApp:
                 result = source.read_sql(query)
 
                 # Transform the result into the expected format
-                if result is None or result.empty:
+                # result is now a list of dictionaries instead of a Polars DataFrame
+                if result is None or len(result) == 0:
                     response_data = {"columns": [], "rows": []}
                 else:
+                    # Extract column names from the first row
+                    columns = list(result[0].keys()) if result else []
                     response_data = {
-                        "columns": list(result.columns),
-                        "rows": result.to_dict("records"),
+                        "columns": columns,
+                        "rows": result,
                     }
 
                 # If worksheet_id is provided, save the results
                 if worksheet_id:
                     query_stats = {
-                        "timestamp": datetime.datetime.utcnow().isoformat(),
+                        "timestamp": get_utc_now().isoformat(),
                         "source": source.name,
                     }
                     self.worksheet_repo.save_results(
@@ -218,10 +226,23 @@ class FlaskApp:
 
             return html
 
-        @self.app.route("/data/dashboards/<dashboard_name_hash>.png")
+        @self.app.route("/data/dashboards/<dashboard_name>", methods=["GET"])
+        def get_dashboard(dashboard_name):
+            dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+            thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
+            exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
+
+            return {
+                "id": dashboard_name,
+                "name": dashboard_name,
+                "signed_thumbnail_file_url": (
+                    f"/data/dashboards/{dashboard_name_hash}.png" if exists else None
+                ),
+            }
+
+        @self.app.route("/data/dashboards/<dashboard_name_hash>.png", methods=["GET"])
         def get_thumbnail(dashboard_name_hash):
             try:
-                # Since static_url_path="/data" maps to output_dir, we can use send_from_directory with output_dir
                 thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
                 if not os.path.exists(os.path.join(output_dir, thumbnail_path)):
                     Logger.instance().debug(f"Thumbnail not found at path: {thumbnail_path}")
@@ -230,6 +251,33 @@ class FlaskApp:
                 return send_from_directory(output_dir, thumbnail_path)
             except Exception as e:
                 Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
+                return jsonify({"message": str(e)}), 500
+
+        @self.app.route("/data/dashboards/<dashboard_name_hash>.png", methods=["POST"])
+        def create_thumbnail(dashboard_name_hash):
+            try:
+                if "file" not in request.files:
+                    return jsonify({"message": "No file provided"}), 400
+
+                file = request.files["file"]
+                if file.filename == "" or not file.filename.endswith(".png"):
+                    return jsonify({"message": "Invalid file - must be a PNG"}), 400
+
+                dashboard_dir = os.path.join(output_dir, "dashboards")
+                os.makedirs(dashboard_dir, exist_ok=True)
+
+                thumbnail_path = os.path.join(dashboard_dir, f"{dashboard_name_hash}.png")
+
+                file.save(thumbnail_path)
+
+                return jsonify(
+                    {
+                        "signed_thumbnail_file_url": f"/data/dashboards/{dashboard_name_hash}.png",
+                    }
+                )
+
+            except Exception as e:
+                Logger.instance().error(f"Error creating thumbnail: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
         @self.app.route("/api/worksheet", methods=["GET"])

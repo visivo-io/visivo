@@ -1,97 +1,82 @@
-import React, { useState, useMemo, useEffect, useContext } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Dashboard from './Dashboard';
 import Loading from '../common/Loading';
 import { Container } from '../styled/Container';
 import { HiTemplate } from 'react-icons/hi';
-import DashboardSection, { organizeDashboardsByLevel } from './DashboardSection';
+import DashboardSection from './DashboardSection';
 import FilterBar from './FilterBar';
-import QueryContext from '../../contexts/QueryContext';
-import { fetchDashboardThumbnail } from '../../queries/dashboardThumbnails';
-import { useQuery } from '@tanstack/react-query';
+import useStore from '../../stores/store';
+import { throttle } from 'lodash';
+import { useSearchParams } from 'react-router-dom';
 
 function Project(props) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState([]);
-  const { fetchDashboardQuery } = useContext(QueryContext);
+  const [searchParams] = useSearchParams();
+  const elementId = searchParams.get('element_id');
+  const setScrollPosition = useStore(state => state.setScrollPosition);
+  const scrollPositions = useStore(state => state.scrollPositions[props.dashboardName]);
+  const throttleRef = useRef();
+  const [ windowPosition, setWindowPosition ] = useState('')
 
-  // Reset scroll position when dashboard changes
+  const { dashboardName } = props;
+
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [props.dashboardName]);
+    if (elementId && windowPosition === "") {
+      setWindowPosition(elementId)
+    }
+  }, [elementId, windowPosition])
 
-  // Combine internal and external dashboards
-  const allDashboards = props.dashboards;
+  useEffect(() => {
+    throttleRef.current = throttle((name) => {
+      setScrollPosition(name, window.scrollY);
+    }, 100);
+  }, [setScrollPosition]);
 
-  const internalDashboards = allDashboards.filter(dashboard => dashboard.type === 'internal');
+  useEffect(() => {
+    const handleScroll = () => throttleRef.current(dashboardName);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [dashboardName]);
 
-  // Use React Query to handle thumbnail loading
-  const projectId = props.project?.id || props.project?.project_id;
-  const dashboardNames = allDashboards.map(d => d.name);
-
-  const { data: thumbnails = {} } = useQuery({
-    queryKey: ['dashboards', projectId, dashboardNames],
-    queryFn: async () => {
-      if (!projectId || dashboardNames.length === 0) {
-        return {};
-      }
-
-      const results = await Promise.all(
-        dashboardNames.map(async dashboardName => {
-          const query = fetchDashboardQuery(projectId, dashboardName);
-          const dashboardData = await query.queryFn().catch(e => {
-            return null;
+  useEffect(() => {
+    const savedPos = scrollPositions || 0;
+    if (!window.location.hash) {
+        if(windowPosition && windowPosition !== ""){
+          requestAnimationFrame(() => {
+            window.scrollTo(0, windowPosition);
+            setWindowPosition(null)
           });
-          if (dashboardData) {
-            try {
-              if (internalDashboards.map(d => d.name).includes(dashboardData.name)) {
-                const thumbnail = await fetchDashboardThumbnail(dashboardData);
-                return [dashboardData.name, thumbnail];
-              } else {
-                return [dashboardData.name, null];
-              }
-            } catch (e) {
-              return null;
-            }
-          }
-          return null;
-        })
-      );
+        }else{
+          requestAnimationFrame(() => {
+            window.scrollTo(0, savedPos);
+          });
+        }
+         
+    }
 
-      return Object.fromEntries(results.filter(Boolean));
-    },
-    enabled: Boolean(projectId) && dashboardNames.length > 0,
-    staleTime: 1000 * 60 * 5,
-  });
+  }, [props.dashboardName, scrollPositions, windowPosition, searchParams]);
 
-  const availableTags = useMemo(() => {
-    if (!allDashboards.length) return [];
-    const tagSet = new Set();
-    allDashboards.forEach(dashboard => {
-      if (dashboard.tags) {
-        dashboard.tags.forEach(tag => tagSet.add(tag));
-      }
-    });
-    return Array.from(tagSet);
-  }, [allDashboards]);
+  const {
+    filteredDashboards,
+    dashboardsByLevel,
+    setDashboards,
+    setCurrentDashboardName,
+    filterDashboards,
+  } = useStore();
 
-  const filteredDashboards = useMemo(() => {
-    if (!allDashboards.length) return [];
-    return allDashboards.filter(dashboard => {
-      const matchesSearch =
-        dashboard.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (dashboard.description &&
-          dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesTags =
-        selectedTags.length === 0 ||
-        (dashboard.tags && selectedTags.every(tag => dashboard.tags.includes(tag)));
-      return matchesSearch && matchesTags;
-    });
-  }, [allDashboards, searchTerm, selectedTags]);
+  // Initialize dashboards in store when props change
+  useEffect(() => {
+    if (props.dashboards) {
+      setDashboards(props.dashboards);
+      filterDashboards();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.dashboards]);
 
-  const dashboardsByLevel = useMemo(
-    () => organizeDashboardsByLevel(filteredDashboards, props.project?.project_json?.defaults),
-    [filteredDashboards, props.project?.project_json?.defaults]
-  );
+  // Update current dashboard name when it changes
+  useEffect(() => {
+    setCurrentDashboardName(props.dashboardName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.dashboardName]);
 
   const renderLoading = () => {
     return <Loading />;
@@ -101,14 +86,7 @@ function Project(props) {
     return (
       <Container className="min-h-screen">
         <div className="max-w-[2000px] w-full mx-auto pt-1 px-4 sm:px-6 h-full">
-          <FilterBar
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedTags={selectedTags}
-            setSelectedTags={setSelectedTags}
-            availableTags={availableTags}
-            totalCount={filteredDashboards.length}
-          />
+          <FilterBar />
 
           <div className="flex-1 w-full">
             {Object.entries(dashboardsByLevel).map(([level, dashboards]) => (
@@ -117,10 +95,9 @@ function Project(props) {
                 title={level}
                 dashboards={dashboards.map(dashboard => ({
                   ...dashboard,
-                  thumbnail: thumbnails[dashboard.name],
                 }))}
-                searchTerm={searchTerm}
-                hasLevels={dashboardsByLevel.length > 0}
+                projectId={props.project.id}
+                hasLevels={Object.keys(dashboardsByLevel).length > 0}
                 projectDefaults={props.project?.project_json?.defaults}
               />
             ))}

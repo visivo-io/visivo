@@ -21,6 +21,92 @@ Use whatever system best matches your use case.
 
 Your includes can include other includes, allowing for nesting.  Be wise!
 
+## Directory Inclusion
+
+For larger projects with many YAML files, you can include entire directories instead of listing individual files. By default, Visivo will recursively search through all subdirectories and include all `.yml` and `.yaml` files:
+
+``` yaml
+includes:
+  - path: ./config/
+```
+
+### Controlling Directory Depth
+
+You can control how deep Visivo searches within directories using the `depth` parameter:
+
+``` yaml
+includes:
+  # Include only files directly in the config directory (no subdirectories)
+  - path: ./config/
+    depth: 0
+  
+  # Include files in config directory and one level of subdirectories
+  - path: ./models/
+    depth: 1
+  
+  # Fully recursive search (default behavior)
+  - path: ./all-files/
+    depth: null  # or omit depth entirely
+```
+
+- `depth: 0` - Only files in the specified directory (no subdirectories)
+- `depth: 1` - Files in the directory and one level of subdirectories
+- `depth: null` or omitted - Fully recursive search through all subdirectories (default)
+
+### Excluding Files and Directories
+
+Use the `exclusions` parameter to skip specific files or directories. Exclusions support multiple pattern types:
+
+``` yaml
+includes:
+  - path: ./config/
+    exclusions:
+      - "*.backup.yml"        # Exclude all .backup.yml files
+      - "temp_config.yml"     # Exclude specific file by name
+      - "*/temp/*"           # Exclude anything in temp directories
+      - "*/archive/*"        # Exclude anything in archive directories
+      - "*.config.yml"       # Exclude configuration template files
+```
+
+### Advanced Directory Examples
+
+Combine depth control and exclusions for precise file selection:
+
+``` yaml
+includes:
+  # Include all YAML files recursively, but skip backup and temp files
+  - path: ./project-configs/
+    exclusions:
+      - "*.backup.yml"
+      - "*.temp.yml"
+      - "*/backup/*"
+      - "*/temp/*"
+  
+  # Include only top-level model files, skip nested configurations
+  - path: ./models/
+    depth: 0
+    exclusions:
+      - "*.config.yml"
+  
+  # Include specific dashboard subdirectories but exclude test files
+  - path: ./dashboards/
+    depth: 2
+    exclusions:
+      - "*test*"
+      - "*/drafts/*"
+```
+
+### Pattern Matching for Exclusions
+
+Exclusions support several pattern matching approaches:
+
+- **Filename patterns**: `*.backup.yml`, `temp_*`
+- **Path patterns**: `*/temp/*`, `config/*/old/*`
+- **Exact names**: `old_config.yml`, `deprecated.yml`
+- **Regex patterns**: Advanced users can use regex for complex matching
+
+The exclusion patterns are matched against both the filename and the relative path from the include directory.
+
 ## External Projects
 
 One of the most powerful aspects of Visivo is the ability to include public GitHub repos that contain Visivo dashboards in your project.  This gives everyone to share a useful dashboard that they may have. 

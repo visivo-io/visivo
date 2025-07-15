@@ -8,6 +8,7 @@ from visivo.models.models.model import Model
 from visivo.models.sources.duckdb_source import DuckdbAttachment, DuckdbSource
 import click
 import os
+import polars as pl
 
 from visivo.models.sources.source import Source
 
@@ -73,7 +74,9 @@ class LocalMergeModel(Model, ParentModel):
             else:
                 duckdb_source = self._get_duckdb_from_model(model, output_dir, dag)
                 source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
-                data_frame = source.read_sql(model.sql)
+                data = source.read_sql(model.sql)
+                # Convert list of dictionaries to Polars DataFrame for DuckDB insertion
+                data_frame = pl.DataFrame(data)
                 with duckdb_source.connect() as connection:
                     connection.execute("DROP TABLE IF EXISTS model")
                     connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
@@ -88,7 +91,7 @@ class LocalMergeModel(Model, ParentModel):
 
         duckdb_source = self.get_duckdb_source(output_dir=output_dir, dag=dag)
         with duckdb_source.connect() as connection:
-            data_frame = connection.execute(self.sql).fetchdf()
+            data_frame = connection.execute(self.sql).pl()
             connection.execute("DROP TABLE IF EXISTS model")
             connection.execute("CREATE TABLE model AS SELECT * FROM data_frame")
 

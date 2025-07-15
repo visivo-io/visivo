@@ -5,9 +5,11 @@ from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.pool import NullPool
-from visivo.logging.logger import Logger
-from pandas import DataFrame
+from visivo.logger.logger import Logger
+import polars as pl
 from copy import deepcopy
+import pyarrow as pa
+import json
 
 
 class SqlalchemySource(Source, ABC):
@@ -20,15 +22,26 @@ class SqlalchemySource(Source, ABC):
         raise NotImplementedError(f"No dialect method implemented for {self.type}")
 
     def read_sql(self, query: str):
-
         with self.connect() as connection:
             query = text(query)
             results = connection.execute(query)
-            columns = results.keys()
+            columns = list(results.keys())
             data = results.fetchall()
             results.close()
 
-        return DataFrame(data, columns=columns)
+        # Convert to list of dictionaries
+        result_data = []
+        for row in data:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                value = row[i]
+                # Convert complex types to JSON strings for consistency
+                if isinstance(value, (dict, list)):
+                    value = json.dumps(value)
+                row_dict[col] = value
+            result_data.append(row_dict)
+
+        return result_data
 
     def get_connection(self):
 

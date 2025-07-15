@@ -1,4 +1,12 @@
-from .base import Base, Column, String, Integer, Boolean, ForeignKey, relationship
+from visivo.server.models.base import (
+    Base,
+    Column,
+    String,
+    Integer,
+    Boolean,
+    ForeignKey,
+    relationship,
+)
 
 
 class SessionStateModel(Base):

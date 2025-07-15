@@ -1,5 +1,5 @@
 from visivo.utils import DIST_PATH
-from visivo.logging.logger import Logger
+from visivo.logger.logger import Logger
 import traceback
 
 
@@ -16,10 +16,10 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
     os.makedirs(f"{dist_dir}/data", exist_ok=True)
 
     try:
-        thumbnail_dir = get_dashboards_dir(output_dir)
-        if os.path.exists(thumbnail_dir):
-            dist_thumbnail_dir = os.path.join(dist_dir, "data", "dashboards")
-            shutil.copytree(thumbnail_dir, dist_thumbnail_dir, dirs_exist_ok=True)
+        dashboards_dir = get_dashboards_dir(output_dir)
+        if os.path.exists(dashboards_dir):
+            dist_dashboards_dir = os.path.join(dist_dir, "data", "dashboards")
+            shutil.copytree(dashboards_dir, dist_dashboards_dir, dirs_exist_ok=True)
 
         with open(f"{output_dir}/project.json", "r") as f:
             project_json = json.load(f)
