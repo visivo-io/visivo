@@ -4,13 +4,25 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
-import { ResizeObserver } from '@juggle/resize-observer';
+import 'resize-observer-polyfill/dist/ResizeObserver.global';
 
-if (!('ResizeObserver' in window)) {
-  window.ResizeObserver = ResizeObserver;
-  // Only use it when you have this trouble: https://github.com/wellyshen/react-cool-dimensions/issues/45
-  // window.ResizeObserverEntry = ResizeObserverEntry;
-}
+// This polyfill ensures react-cool-dimensions works properly in tests
+// Mock console.error to suppress react-cool-dimensions warnings in tests
+const originalError = console.error;
+console.error = (...args) => {
+  if (args[0]?.includes?.('react-cool-dimensions: the browser doesn\'t support Resize Observer')) {
+    return;
+  }
+  if (args[0]?.includes?.('Function components cannot be given refs')) {
+    return;
+  }
+  if (args[0]?.message?.includes?.('Not implemented: navigation') || 
+      args[0]?.toString?.()?.includes?.('Not implemented: navigation')) {
+    return;
+  }
+  originalError(...args);
+};
+
 window.URL.createObjectURL = function () {};
 
 jest.mock('react-plotly.js', () => props => {

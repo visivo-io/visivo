@@ -60,7 +60,7 @@ test('renders single select', async () => {
 test('renders with push to history', async () => {
   let history = createBrowserHistory();
 
-  const TestWrapper = ({ children }) => <HistoryRouter history={history}>{children}</HistoryRouter>;
+  const TestWrapper = ({ children }) => <HistoryRouter history={history} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{children}</HistoryRouter>;
 
   render(
     <NameSelect

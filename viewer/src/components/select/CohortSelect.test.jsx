@@ -75,7 +75,7 @@ test('renders single select', async () => {
 test('renders with push to history', async () => {
   let history = createBrowserHistory();
   render(
-    <HistoryRouter history={history}>
+    <HistoryRouter history={history} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <CohortSelect
         tracesData={tracesData}
         showLabel

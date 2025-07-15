@@ -1,7 +1,7 @@
 import Loading from '../common/Loading';
 import Menu from './Menu';
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo, useRef, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import CohortSelect from '../select/CohortSelect';
 import { traceNamesInData, chartDataFromCohortData } from '../../models/Trace';
 import { useTracesData } from '../../hooks/useTracesData';
@@ -13,19 +13,11 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 
-const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
+const Chart = ({ chart, project, itemWidth, height, width }) => {
   const [isLoading, setIsLoading] = useState(true);
   const plotRef = useRef(null);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
-  // Expose loading state through ref
-  useImperativeHandle(
-    ref,
-    () => ({
-      isLoading,
-    }),
-    [isLoading]
-  );
 
   const traceNames = chart.traces.map(trace => trace.name);
   const tracesData = useTracesData(project.id, traceNames);
@@ -116,6 +108,6 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       />
     </ItemContainer>
   );
-});
+};
 
 export default Chart;
