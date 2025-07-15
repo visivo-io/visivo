@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useTracesData } from './useTracesData';
 import { withProviders } from '../utils/test-utils';
 import { QueryProvider } from '../contexts/QueryContext';
+import { URLProvider } from '../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as fetchTracesData from '../queries/tracesData';
 
@@ -33,9 +34,11 @@ describe('useTraceDate', () => {
     const { result } = renderHook(() => useTracesData('projectId', ['traceName']), {
       wrapper: ({ children }) => {
         return (
-          <QueryProvider value={{ fetchTracesQuery }}>
-            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-          </QueryProvider>
+          <URLProvider environment="local">
+            <QueryProvider>
+              <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+            </QueryProvider>
+          </URLProvider>
         );
       },
     });

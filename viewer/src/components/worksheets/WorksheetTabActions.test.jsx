@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import WorksheetTabActions from './WorksheetTabActions';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
 import { QueryProvider } from '../../contexts/QueryContext';
+import { URLProvider } from '../../contexts/URLContext';
 import { BrowserRouter } from 'react-router-dom';
 import * as worksheetApi from '../../api/worksheet';
 
@@ -13,9 +14,11 @@ jest.mock('../../api/worksheet');
 // Test wrapper component
 const TestWrapper = ({ children }) => (
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-    <QueryProvider value={{ fetchTracesQuery: jest.fn(), fetchDashboardQuery: jest.fn() }}>
-      <WorksheetProvider>{children}</WorksheetProvider>
-    </QueryProvider>
+    <URLProvider environment="local">
+      <QueryProvider>
+        <WorksheetProvider>{children}</WorksheetProvider>
+      </QueryProvider>
+    </URLProvider>
   </BrowserRouter>
 );
 
