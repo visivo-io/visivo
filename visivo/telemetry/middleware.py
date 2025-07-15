@@ -30,7 +30,7 @@ def init_telemetry_middleware(app: Flask, project=None):
     # Hash the project name if available
     project_hash = None
     if project and hasattr(project, "name"):
-        from .config import hash_project_name
+        from .utils import hash_project_name
 
         project_hash = hash_project_name(project.name)
 
