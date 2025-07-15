@@ -170,6 +170,24 @@ tasks:
       STACKTRACE: true
     filter: [test-projects/integration]
 
+  - key: test-serve-command
+    use: visivo-install
+    run: |
+      cd test-projects/integration
+      # Test that visivo serve starts without errors
+      timeout 10 visivo serve -s local-duckdb || exit_code=$?
+      # timeout returns 124 if it times out (expected behavior)
+      if [ "${exit_code:-0}" -ne 0 ] && [ "${exit_code:-0}" -ne 124 ]; then
+        echo "visivo serve failed with exit code $exit_code"
+        exit 1
+      fi
+      # Verify that the project compiled successfully
+      test -f target/project.json || (echo "project.json not found" && exit 1)
+      echo "visivo serve started successfully"
+    env:
+      STACKTRACE: true
+    filter: [test-projects/integration]
+
   - key: postgres-packages
     run: |
       sudo apt-get update
