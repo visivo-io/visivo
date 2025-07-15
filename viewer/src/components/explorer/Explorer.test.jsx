@@ -4,6 +4,7 @@ import '@testing-library/jest-dom';
 import { useLoaderData, BrowserRouter } from 'react-router-dom';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
 import { QueryProvider } from '../../contexts/QueryContext';
+import { URLProvider } from '../../contexts/URLContext';
 import Explorer from './Explorer';
 import * as queryService from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
@@ -188,16 +189,13 @@ jest.mock('../../contexts/WorksheetContext', () => ({
 
 // Wrap component with necessary providers
 const renderWithProviders = ui => {
-  const mockQueryContext = {
-    fetchTracesQuery: jest.fn(),
-    fetchDashboardQuery: jest.fn(),
-  };
-
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <QueryProvider value={mockQueryContext}>
-        <WorksheetProvider>{ui}</WorksheetProvider>
-      </QueryProvider>
+      <URLProvider environment="local">
+        <QueryProvider>
+          <WorksheetProvider>{ui}</WorksheetProvider>
+        </QueryProvider>
+      </URLProvider>
     </BrowserRouter>
   );
 };

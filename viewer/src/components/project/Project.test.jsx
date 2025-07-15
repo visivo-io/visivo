@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import Project from './Project';
-import QueryContext from '../../contexts/QueryContext';
+import { QueryProvider } from '../../contexts/QueryContext';
+import { URLProvider } from '../../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter } from 'react-router-dom';
 import { RouterProvider } from 'react-router-dom';
@@ -37,9 +38,7 @@ const fetchTraces = () => {
   return [];
 };
 
-const mockQueryContext = {
-  fetchDashboardQuery: () => ({ queryFn: jest.fn().mockResolvedValue(project), queryKey: ['dashboard'] }),
-};
+// Mock QueryContext is no longer needed - QueryProvider creates these automatically
 
 // Create a new QueryClient instance for each test
 const queryClient = new QueryClient({
@@ -79,9 +78,11 @@ test('renders dashboard overview without dashboard name param', async () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <QueryContext.Provider value={mockQueryContext}>
-        <RouterProvider router={router} future={futureFlags} />
-      </QueryContext.Provider>
+      <URLProvider environment="local">
+        <QueryProvider>
+          <RouterProvider router={router} future={futureFlags} />
+        </QueryProvider>
+      </URLProvider>
     </QueryClientProvider>
   );
 
@@ -114,9 +115,11 @@ test('renders dashboard with dashboard name param', async () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <QueryContext.Provider value={mockQueryContext}>
-        <RouterProvider router={router} future={futureFlags} />
-      </QueryContext.Provider>
+      <URLProvider environment="local">
+        <QueryProvider>
+          <RouterProvider router={router} future={futureFlags} />
+        </QueryProvider>
+      </URLProvider>
     </QueryClientProvider>
   );
 
