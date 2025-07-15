@@ -4,6 +4,7 @@ import QueryContext from '../../contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter } from 'react-router-dom';
 import { RouterProvider } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 // Mock window.scrollTo
 beforeAll(() => {
   window.scrollTo = jest.fn();
@@ -37,7 +38,7 @@ const fetchTraces = () => {
 };
 
 const mockQueryContext = {
-  fetchDashboardQuery: () => ({ queryFn: jest.fn(), queryKey: ['dashboard'] }),
+  fetchDashboardQuery: () => ({ queryFn: jest.fn().mockResolvedValue(project), queryKey: ['dashboard'] }),
 };
 
 // Create a new QueryClient instance for each test
@@ -50,10 +51,10 @@ const queryClient = new QueryClient({
 });
 const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
 const loadProject = () => {
-  return { created_at: '2024-08-07T13:07:34Z', id: '1' };
+  return { ...project, created_at: '2024-08-07T13:07:34Z', id: '1' };
 };
 
-test('renders dashboard names without dashboard name param', async () => {
+test('renders dashboard overview without dashboard name param', async () => {
   let dashboardName = null;
   const routes = [
     {
@@ -73,26 +74,19 @@ test('renders dashboard names without dashboard name param', async () => {
   const router = createMemoryRouter(routes, {
     initialEntries: ['/'],
     initialIndex: 0,
+    future: futureFlags,
   });
 
   render(
     <QueryClientProvider client={queryClient}>
       <QueryContext.Provider value={mockQueryContext}>
-        <RouterProvider router={router} />
+        <RouterProvider router={router} future={futureFlags} />
       </QueryContext.Provider>
     </QueryClientProvider>
   );
 
-  // Look for the specific heading we expect
-  const text = await screen.findByRole(
-    'heading',
-    {
-      name: /^dashboard$/i,
-      level: 3,
-    },
-    { timeout: 3000 }
-  );
-  expect(text).toBeInTheDocument();
+  const unassignedSection = await screen.findByText('Unassigned', {}, { timeout: 3000 });
+  expect(unassignedSection).toBeInTheDocument();
 });
 
 test('renders dashboard with dashboard name param', async () => {
@@ -115,16 +109,20 @@ test('renders dashboard with dashboard name param', async () => {
   const router = createMemoryRouter(routes, {
     initialEntries: ['/dashboard'],
     initialIndex: 0,
+    future: futureFlags,
   });
 
   render(
     <QueryClientProvider client={queryClient}>
       <QueryContext.Provider value={mockQueryContext}>
-        <RouterProvider router={router} />
+        <RouterProvider router={router} future={futureFlags} />
       </QueryContext.Provider>
     </QueryClientProvider>
   );
 
-  const text = await screen.findByText(/First Markdown/);
-  expect(text).toBeInTheDocument();
+  const unassignedSection = screen.queryByText('Unassigned');
+  expect(unassignedSection).not.toBeInTheDocument();
+
+  const dashboard = await screen.findByText(/First Markdown/);
+  expect(dashboard).toBeInTheDocument();
 });

@@ -1,7 +1,7 @@
 import Loading from '../common/Loading';
 import Menu from './Menu';
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo, useRef, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useImperativeHandle } from 'react';
 import CohortSelect from '../select/CohortSelect';
 import { traceNamesInData, chartDataFromCohortData } from '../../models/Trace';
 import { useTracesData } from '../../hooks/useTracesData';
@@ -15,7 +15,6 @@ import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
-  const plotRef = useRef(null);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
   // Expose loading state through ref
@@ -109,7 +108,6 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
         config={{ displayModeBar: false }}
-        ref={plotRef}
         onAfterPlot={() => {
           setIsLoading(false);
         }}

@@ -128,6 +128,7 @@
     "prettier": "^3.2.5",
     "react-select-event": "^5.5.1",
     "react-test-renderer": "^19.0.0",
+    "resize-observer-polyfill": "^1.5.1",
     "unist-util-visit-parents": "^5.0.0",
     "vite-plugin-eslint": "^1.8.1",
     "whatwg-fetch": "^3.6.20"

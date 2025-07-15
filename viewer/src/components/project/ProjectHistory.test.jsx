@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { futureFlags } from '../../router-config';
 import ProjectHistory from './ProjectHistory';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const queryClient = new QueryClient();
@@ -20,12 +21,13 @@ const routes = [
 const router = createMemoryRouter(routes, {
   initialEntries: ['/project'],
   initialIndex: 0,
+  future: futureFlags,
 });
 
 test('renders date', async () => {
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <RouterProvider router={router} future={futureFlags} />
     </QueryClientProvider>
   );
 
