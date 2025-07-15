@@ -54,7 +54,7 @@ const loadProject = () => {
   return { ...project, created_at: '2024-08-07T13:07:34Z', id: '1' };
 };
 
-test('renders dashboard names without dashboard name param', async () => {
+test('renders dashboard overview without dashboard name param', async () => {
   let dashboardName = null;
   const routes = [
     {
@@ -85,16 +85,8 @@ test('renders dashboard names without dashboard name param', async () => {
     </QueryClientProvider>
   );
 
-  // Look for the specific heading we expect
-  const text = await screen.findByRole(
-    'heading',
-    {
-      name: /^dashboard$/i,
-      level: 3,
-    },
-    { timeout: 3000 }
-  );
-  expect(text).toBeInTheDocument();
+  const unassignedSection = await screen.findByText('Unassigned', {}, { timeout: 3000 });
+  expect(unassignedSection).toBeInTheDocument();
 });
 
 test('renders dashboard with dashboard name param', async () => {
@@ -128,6 +120,9 @@ test('renders dashboard with dashboard name param', async () => {
     </QueryClientProvider>
   );
 
-  const text = await screen.findByText(/First Markdown/);
-  expect(text).toBeInTheDocument();
+  const unassignedSection = screen.queryByText('Unassigned');
+  expect(unassignedSection).not.toBeInTheDocument();
+
+  const dashboard = await screen.findByText(/First Markdown/);
+  expect(dashboard).toBeInTheDocument();
 });

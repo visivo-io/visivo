@@ -14,7 +14,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 
 const Chart = ({ chart, project, itemWidth, height, width }) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [setIsLoading] = useState(true);
   const plotRef = useRef(null);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
