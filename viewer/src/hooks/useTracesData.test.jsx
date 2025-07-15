@@ -1,10 +1,12 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useTracesData } from './useTracesData';
 import { withProviders } from '../utils/test-utils';
-import { QueryProvider } from '../contexts/QueryContext';
-import { URLProvider } from '../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as fetchTracesData from '../queries/tracesData';
+import * as tracesApi from '../api/traces';
+
+// Mock the API
+jest.mock('../api/traces');
 
 describe('useTraceDate', () => {
   test('should return empty object when no traces', async () => {
@@ -16,10 +18,6 @@ describe('useTraceDate', () => {
   });
 
   test('should return trace data', async () => {
-    const fetchTracesQuery = (projectId, name) => ({
-      queryKey: ['trace', projectId, name],
-      queryFn: () => [{ name: 'traceName' }],
-    });
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -28,20 +26,19 @@ describe('useTraceDate', () => {
       },
     });
 
+    // Mock the API function
+    tracesApi.fetchTracesQuery.mockResolvedValue([{ name: 'traceName' }]);
+
     jest
       .spyOn(fetchTracesData, 'fetchTracesData')
       .mockImplementation((projectId, traceNames) => ({ traceName: { data: 'data' } }));
+    
     const { result } = renderHook(() => useTracesData('projectId', ['traceName']), {
       wrapper: ({ children }) => {
-        return (
-          <URLProvider environment="local">
-            <QueryProvider>
-              <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-            </QueryProvider>
-          </URLProvider>
-        );
+        return withProviders({ children });
       },
     });
+    
     await waitFor(() => {
       expect(result.current).toStrictEqual({ traceName: { data: 'data' } });
     });

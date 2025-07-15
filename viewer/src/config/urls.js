@@ -15,6 +15,10 @@ const URL_PATTERNS = {
     traceData: '/api/traces/{name}/data/',
     dashboardThumbnail: '/api/dashboards/{hash}.png',
     
+    // New query endpoints (replaces provider-based queries)
+    tracesQuery: '/api/traces/',
+    dashboardQuery: '/api/dashboard/{name}/',
+    
     // Interactive endpoints (local only)
     worksheet: '/api/worksheet/',
     worksheetDetail: '/api/worksheet/{id}/',
@@ -40,6 +44,10 @@ const URL_PATTERNS = {
     error: '/data/error.json',
     traceData: '/data/{name}/data.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
+    
+    // New query endpoints for dist mode
+    tracesQuery: '/data/traces.json',
+    dashboardQuery: '/data/dashboard/{name}.json',
     
     // Interactive endpoints not available in dist
     worksheet: null,

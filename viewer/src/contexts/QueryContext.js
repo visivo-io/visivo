@@ -1,6 +1,5 @@
 import React, { createContext, useContext } from 'react';
 import { useURLConfig } from './URLContext';
-import md5 from 'md5';
 
 /**
  * Context for query-related utilities
@@ -8,48 +7,14 @@ import md5 from 'md5';
 const QueryContext = createContext();
 
 /**
- * Enhanced QueryProvider that creates query functions based on URL configuration
+ * Enhanced QueryProvider that provides URL utilities
+ * Query functions have been moved to their respective API modules
  */
 export function QueryProvider({ children }) {
   const urlConfig = useURLConfig();
 
-  // Create query functions based on URL configuration
+  // Provide URL utilities - query functions are now in API modules
   const queryUtils = {
-    /**
-     * Create a traces query for React Query
-     * @param {string} projectId - Project ID
-     * @param {string[]} names - Array of trace names
-     * @returns {object} React Query configuration
-     */
-    fetchTracesQuery: (projectId, names) => ({
-      queryKey: ['trace', projectId, names],
-      queryFn: async () => {
-        return names.map(name => ({
-          name: name,
-          id: name,
-          signed_data_file_url: urlConfig.getUrl('traceData', { name }),
-        }));
-      },
-    }),
-
-    /**
-     * Create a dashboard query for React Query
-     * @param {string} projectId - Project ID  
-     * @param {string} name - Dashboard name
-     * @returns {object} React Query configuration
-     */
-    fetchDashboardQuery: (projectId, name) => ({
-      queryKey: ['dashboard', projectId, name],
-      queryFn: async () => {
-        const hash = md5(name);
-        return {
-          name: name,
-          id: name,
-          signed_thumbnail_file_url: urlConfig.getUrl('dashboardThumbnail', { hash }),
-        };
-      },
-    }),
-
     /**
      * Get URL for any endpoint
      * @param {string} key - Endpoint key
