@@ -1,7 +1,7 @@
 import Loading from '../common/Loading';
 import Menu from './Menu';
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useImperativeHandle } from 'react';
 import CohortSelect from '../select/CohortSelect';
 import { traceNamesInData, chartDataFromCohortData } from '../../models/Trace';
 import { useTracesData } from '../../hooks/useTracesData';
@@ -13,11 +13,18 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 
-const Chart = ({ chart, project, itemWidth, height, width }) => {
-  const [setIsLoading] = useState(true);
-  const plotRef = useRef(null);
+const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
+  const [isLoading, setIsLoading] = useState(true);
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
 
+  // Expose loading state through ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      isLoading,
+    }),
+    [isLoading]
+  );
 
   const traceNames = chart.traces.map(trace => trace.name);
   const tracesData = useTracesData(project.id, traceNames);
@@ -101,13 +108,12 @@ const Chart = ({ chart, project, itemWidth, height, width }) => {
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
         config={{ displayModeBar: false }}
-        ref={plotRef}
         onAfterPlot={() => {
           setIsLoading(false);
         }}
       />
     </ItemContainer>
   );
-};
+});
 
 export default Chart;

@@ -13,9 +13,6 @@ console.error = (...args) => {
   if (args[0]?.includes?.('react-cool-dimensions: the browser doesn\'t support Resize Observer')) {
     return;
   }
-  if (args[0]?.includes?.('Function components cannot be given refs')) {
-    return;
-  }
   if (args[0]?.message?.includes?.('Not implemented: navigation') || 
       args[0]?.toString?.()?.includes?.('Not implemented: navigation')) {
     return;
