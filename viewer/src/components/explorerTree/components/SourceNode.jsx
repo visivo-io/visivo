@@ -10,7 +10,7 @@ import { ItemLabel, ItemIcon, StatusIcon, LoadingLabel } from '../styles/TreeSty
 import { createSourceNodeId } from '../utils/nodeIdUtils';
 import { useTreeContext } from '../TreeContext';
 import DatabaseNode from './DatabaseNode';
-import SourcePill from './SourcePill';
+import Pill from '../../common/Pill';
 
 const SourceNode = ({ source }) => {
   const { sourcesMetadata, loadingStates } = useTreeContext();
@@ -22,7 +22,7 @@ const SourceNode = ({ source }) => {
 
   const sourceLabel = (
     <div style={{ marginRight: '8px', marginLeft: '8px', marginTop: '4px', marginBottom: '4px' }}>
-      <SourcePill source={source}>
+      <Pill name={source.name}>
         {isTestingConnection ? (
           <CircularProgress size={16} />
         ) : source.status === 'connection_failed' ? (
@@ -45,7 +45,7 @@ const SourceNode = ({ source }) => {
           </Tooltip>
         )}
         {isLoadingDatabases && <CircularProgress size={14} />}
-      </SourcePill>
+      </Pill>
     </div>
   );
 

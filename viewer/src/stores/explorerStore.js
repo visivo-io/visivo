@@ -1,6 +1,5 @@
 import { executeQuery } from '../services/queryService';
 import {
-  fetchSources,
   fetchDatabases,
   fetchSchemas,
   fetchTables,
@@ -148,7 +147,7 @@ const createExplorerSlice = (set, get) => ({
 
   // Lazy-loading methods
   loadSources: async () => {
-    const { sourcesMetadata, loadingStates, setError } = get();
+    const { sourcesMetadata, loadingStates, namedChildren } = get();
 
     // Check if already loaded
     if (sourcesMetadata.sources.length > 0 || loadingStates.sources) {
@@ -160,19 +159,26 @@ const createExplorerSlice = (set, get) => ({
     }));
 
     try {
-      const data = await fetchSources();
-      if (data && data.sources) {
-        set(state => ({
-          sourcesMetadata: { ...state.sourcesMetadata, sources: data.sources },
+      // Get sources from namedChildren
+      const sources = Object.values(namedChildren || {})
+        .filter(item => item.type_key === 'sources')
+        .map(item => ({
+          name: item.config.name,
+          type: item.type,
+          database: item.config.database,
+          status: 'unknown',
         }));
 
-        // Trigger connection tests for all sources in the background
-        data.sources.forEach(source => {
-          get().testConnection(source.name);
-        });
-      }
+      set(state => ({
+        sourcesMetadata: { ...state.sourcesMetadata, sources },
+      }));
+
+      // Trigger connection tests for all sources in the background
+      sources.forEach(source => {
+        get().testConnection(source.name);
+      });
     } catch (err) {
-      setError('Failed to load sources');
+      get().setError('Failed to load sources');
     } finally {
       set(state => ({
         loadingStates: { ...state.loadingStates, sources: false },

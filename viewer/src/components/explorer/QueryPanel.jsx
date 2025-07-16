@@ -14,7 +14,6 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
     error,
     setError,
     isLoading,
-    explorerData,
     selectedSource,
     setSelectedSource,
     handleRunQuery,
@@ -89,7 +88,6 @@ const QueryPanel = ({ editorRef, monacoRef }) => {
         <div className="flex-1 flex items-center justify-center">
           <SourceDropdown
             selectedSource={selectedSource}
-            sources={explorerData?.sources || []}
             onSourceChange={setSelectedSource}
             isLoading={isLoading}
           />

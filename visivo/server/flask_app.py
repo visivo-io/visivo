@@ -12,11 +12,8 @@ from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
 
 from visivo.telemetry.middleware import init_telemetry_middleware
-from visivo.server.source_metadata import gather_source_metadata
-
 from visivo.server.source_metadata import (
     gather_source_metadata,
-    get_sources_list,
     get_source_databases,
     get_database_schemas,
     get_schema_tables,
@@ -100,16 +97,6 @@ class FlaskApp:
                 return jsonify({"message": str(e)}), 500
 
         # Lazy-loading endpoints for source metadata
-        @self.app.route("/api/project/sources", methods=["GET"])
-        def list_sources():
-            """List all sources with basic info (no introspection)."""
-            try:
-                result = get_sources_list(self._project.sources)
-                return jsonify(result)
-            except Exception as e:
-                Logger.instance().error(f"Error listing sources: {str(e)}")
-                return jsonify({"message": str(e)}), 500
-
         @self.app.route("/api/project/sources/<source_name>/test-connection", methods=["GET"])
         def test_connection(source_name):
             """Test connection to a specific source."""

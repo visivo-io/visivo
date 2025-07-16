@@ -22,17 +22,6 @@ export const fetchSourceMetadata = async () => {
 
 // Lazy-loading API functions
 
-export const fetchSources = async () => {
-  const response = await fetch('/api/project/sources');
-  if (response.status === 200) {
-    const data = await response.json();
-    return data;
-  } else {
-    console.error('Failed to fetch sources');
-    return null;
-  }
-};
-
 export const fetchDatabases = async sourceName => {
   const response = await fetch(`/api/project/sources/${encodeURIComponent(sourceName)}/databases`);
   if (response.status === 200) {

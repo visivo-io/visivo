@@ -1,17 +1,18 @@
 import React from 'react';
 import Select, { components } from 'react-select';
 import { Tooltip } from '@mui/material';
-import SourcePill from '../explorerTree/components/SourcePill';
+import Pill from '../common/Pill';
 import { HiOutlineDatabase, HiChevronDown } from 'react-icons/hi';
 import { TYPE_STYLE_MAP } from '../styled/VisivoObjectStyles';
+import useStore from '../../stores/store';
 
-// Custom Option component that renders SourcePill
+// Custom Option component that renders Pill
 const Option = props => {
   const { data } = props;
   return (
     <components.Option {...props}>
       <div className="py-1">
-        <SourcePill source={data} />
+        <Pill name={data.name} />
       </div>
     </components.Option>
   );
@@ -19,24 +20,9 @@ const Option = props => {
 
 // Custom SingleValue component that renders the source content
 const SingleValue = ({ data, ...props }) => {
-  // Map source type to the correct style configuration
-  const getTypeKey = source => {
-    if (!source || !source.type) return null;
-
-    const typeMap = {
-      duckdb: 'DuckdbSource',
-      mysql: 'MysqlSource',
-      postgresql: 'PostgresqlSource',
-      snowflake: 'SnowflakeSource',
-      sqlite: 'SqliteSource',
-      bigquery: 'BigQuerySource',
-    };
-
-    return typeMap[source.type.toLowerCase()] || null;
-  };
-
-  const typeKey = getTypeKey(data);
-  const typeConfig = TYPE_STYLE_MAP[typeKey] || {
+  const namedChildren = useStore(state => state.namedChildren);
+  const sourceData = namedChildren[data.name];
+  const typeConfig = TYPE_STYLE_MAP[sourceData?.type] || {
     bg: 'bg-gray-100',
     text: 'text-gray-800',
     border: 'border-gray-200',
@@ -78,30 +64,34 @@ const Control = props => {
 // Hide the default dropdown indicator
 const DropdownIndicator = () => null;
 
-const SourceDropdown = ({ selectedSource, sources, onSourceChange, isLoading }) => {
+const SourceDropdown = ({ selectedSource, onSourceChange, isLoading }) => {
+  const namedChildren = useStore(state => state.namedChildren);
+
+  // Get sources from namedChildren
+  const sources = Object.values(namedChildren || {}).filter(item => item.type_key === 'sources');
+
   // Map sources to options format expected by react-select
-  const options =
-    sources?.map(source => ({
-      ...source,
-      value: source.name,
-      label: source.name,
-    })) || [];
+  const options = sources.map(source => ({
+    name: source.config.name,
+    value: source.config.name,
+    label: source.config.name,
+  }));
 
   const selectedOption = options.find(opt => opt.name === selectedSource?.name) || null;
 
   const handleChange = option => {
     if (option && onSourceChange) {
-      // Find the full source object and pass it to the handler
-      const source = sources.find(s => s.name === option.name);
-      if (source) {
-        onSourceChange(source);
+      // Pass the source config to the handler
+      const sourceData = namedChildren[option.name];
+      if (sourceData) {
+        onSourceChange(sourceData.config);
       }
     }
   };
 
   // Custom styles for react-select to match our design
   const customStyles = {
-    control: (base, state) => ({
+    control: base => ({
       ...base,
       backgroundColor: 'transparent',
       border: 'none',

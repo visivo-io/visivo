@@ -80,6 +80,7 @@ describe('SourcesTree Drilling Tests', () => {
       loadTables: jest.fn(),
       loadColumns: jest.fn(),
       setInfo: jest.fn(),
+      namedChildren: {},
     };
 
     useStore.mockImplementation(selector => selector(mockStoreData));
@@ -87,9 +88,20 @@ describe('SourcesTree Drilling Tests', () => {
 
   test('should drill from source to database to schema to table to column', async () => {
     // Mock API responses
-    explorerApi.fetchSources.mockResolvedValue({
-      sources: [{ name: 'postgres_source', type: 'postgresql', status: 'connected' }],
-    });
+    // Set up sources in the mock store
+    mockStoreData.sourcesMetadata.sources = [
+      { name: 'postgres_source', type: 'PostgresqlSource', status: 'connected' },
+    ];
+
+    // Add source to namedChildren
+    mockStoreData.namedChildren['postgres_source'] = {
+      type: 'PostgresqlSource',
+      type_key: 'sources',
+      config: {
+        name: 'postgres_source',
+        type: 'postgresql',
+      },
+    };
 
     explorerApi.fetchDatabases.mockResolvedValue({
       source: 'postgres_source',
@@ -127,6 +139,15 @@ describe('SourcesTree Drilling Tests', () => {
       mockStoreData.sourcesMetadata.sources = [
         { name: 'postgres_source', type: 'postgresql', status: 'connected' },
       ];
+      // Also update namedChildren when loading sources
+      mockStoreData.namedChildren['postgres_source'] = {
+        type: 'PostgresqlSource',
+        type_key: 'sources',
+        config: {
+          name: 'postgres_source',
+          type: 'postgresql',
+        },
+      };
     });
 
     // Mock loadDatabases
@@ -265,9 +286,20 @@ describe('SourcesTree Drilling Tests', () => {
 
   test('should handle databases without schemas (DuckDB/SQLite)', async () => {
     // Mock API responses
-    explorerApi.fetchSources.mockResolvedValue({
-      sources: [{ name: 'duckdb_source', type: 'duckdb', status: 'connected' }],
-    });
+    // Set up sources in the mock store
+    mockStoreData.sourcesMetadata.sources = [
+      { name: 'duckdb_source', type: 'DuckdbSource', status: 'connected' },
+    ];
+
+    // Add source to namedChildren
+    mockStoreData.namedChildren['duckdb_source'] = {
+      type: 'DuckdbSource',
+      type_key: 'sources',
+      config: {
+        name: 'duckdb_source',
+        type: 'duckdb',
+      },
+    };
 
     explorerApi.fetchDatabases.mockResolvedValue({
       source: 'duckdb_source',
@@ -305,6 +337,15 @@ describe('SourcesTree Drilling Tests', () => {
       mockStoreData.sourcesMetadata.sources = [
         { name: 'duckdb_source', type: 'duckdb', status: 'connected' },
       ];
+      // Also update namedChildren when loading sources
+      mockStoreData.namedChildren['duckdb_source'] = {
+        type: 'DuckdbSource',
+        type_key: 'sources',
+        config: {
+          name: 'duckdb_source',
+          type: 'duckdb',
+        },
+      };
     });
 
     mockStoreData.loadDatabases.mockImplementation(sourceName => {

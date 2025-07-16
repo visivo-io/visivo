@@ -49,13 +49,22 @@ describe('SourceNode', () => {
         databases: {},
         connections: {},
       },
+      namedChildren: {},
     };
 
     useStore.mockImplementation(selector => selector(mockStoreData));
   });
 
+  const setupSourceInStore = source => {
+    mockStoreData.namedChildren[source.name] = {
+      type: 'DuckdbSource',
+      config: source,
+    };
+  };
+
   test('should render source name', () => {
     const source = { name: 'test_source', status: 'unknown' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -68,6 +77,7 @@ describe('SourceNode', () => {
 
   test('should show connected status with check icon', () => {
     const source = { name: 'test_source', status: 'connected' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -84,6 +94,7 @@ describe('SourceNode', () => {
       status: 'connection_failed',
       error: 'Connection timeout',
     };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -97,6 +108,7 @@ describe('SourceNode', () => {
 
   test('should show unknown status with help icon', () => {
     const source = { name: 'test_source', status: 'unknown' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -111,6 +123,7 @@ describe('SourceNode', () => {
     mockStoreData.loadingStates.connections = { test_source: true };
 
     const source = { name: 'test_source', status: 'unknown' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -127,6 +140,7 @@ describe('SourceNode', () => {
     };
 
     const source = { name: 'test_source', status: 'connected' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -142,6 +156,7 @@ describe('SourceNode', () => {
     mockStoreData.loadingStates.databases = { test_source: true };
 
     const source = { name: 'test_source', status: 'connected' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -154,6 +169,7 @@ describe('SourceNode', () => {
 
   test('should show placeholder when no databases loaded', () => {
     const source = { name: 'test_source', status: 'connected' };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>
@@ -174,6 +190,7 @@ describe('SourceNode', () => {
       status: 'connection_failed',
       error: 'Failed',
     };
+    setupSourceInStore(source);
 
     render(
       <TreeProvider>

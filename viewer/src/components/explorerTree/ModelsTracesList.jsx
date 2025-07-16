@@ -1,32 +1,8 @@
 import React from 'react';
 import { HiOutlineClipboardCopy } from 'react-icons/hi';
 import Pill from '../common/Pill';
-import { styled } from '@mui/material/styles';
+import { CopyButton, EmptyMessage } from './styles/TreeStyles';
 import useStore from '../../stores/store';
-
-const CopyButton = styled('button')`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 4px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: #6b7280;
-
-  &:hover {
-    background-color: #e5e7eb;
-    color: #374151;
-  }
-`;
-
-const EmptyMessage = styled('div')`
-  padding: 24px;
-  text-align: center;
-  color: #6b7280;
-  font-size: 14px;
-`;
 
 const ModelsTracesList = ({ data, onItemClick }) => {
   const { setInfo } = useStore();

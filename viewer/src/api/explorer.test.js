@@ -1,7 +1,6 @@
 import {
   fetchExplorer,
   fetchSourceMetadata,
-  fetchSources,
   fetchDatabases,
   fetchSchemas,
   fetchTables,
@@ -72,33 +71,6 @@ describe('explorer API functions', () => {
 
       expect(result).toBeNull();
       expect(console.error).toHaveBeenCalledWith('Failed to fetch source metadata');
-    });
-  });
-
-  describe('fetchSources', () => {
-    it('should fetch sources successfully', async () => {
-      const mockData = { sources: [{ name: 'source1' }, { name: 'source2' }] };
-      fetch.mockResolvedValueOnce({
-        status: 200,
-        json: async () => mockData,
-      });
-
-      const result = await fetchSources();
-
-      expect(fetch).toHaveBeenCalledWith('/api/project/sources');
-      expect(result).toEqual(mockData);
-      expect(console.error).not.toHaveBeenCalled();
-    });
-
-    it('should return null and log error on failure', async () => {
-      fetch.mockResolvedValueOnce({
-        status: 401,
-      });
-
-      const result = await fetchSources();
-
-      expect(result).toBeNull();
-      expect(console.error).toHaveBeenCalledWith('Failed to fetch sources');
     });
   });
 
@@ -435,7 +407,6 @@ describe('explorer API functions', () => {
       // Test each function throws the error
       await expect(fetchExplorer()).rejects.toThrow('Connection refused');
       await expect(fetchSourceMetadata()).rejects.toThrow('Connection refused');
-      await expect(fetchSources()).rejects.toThrow('Connection refused');
       await expect(fetchDatabases('test')).rejects.toThrow('Connection refused');
       await expect(fetchSchemas('test', 'db')).rejects.toThrow('Connection refused');
       await expect(fetchTables('test', 'db')).rejects.toThrow('Connection refused');

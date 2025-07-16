@@ -92,6 +92,15 @@ describe('SourcesTree Integration - Drilling Issue', () => {
         mockStoreData.sourcesMetadata.sources = [
           { name: 'postgres_db', type: 'postgresql', status: 'connected' },
         ];
+        // Also update namedChildren when loading sources
+        mockStoreData.namedChildren['postgres_db'] = {
+          type: 'PostgresqlSource',
+          type_key: 'sources',
+          config: {
+            name: 'postgres_db',
+            type: 'postgresql',
+          },
+        };
       }),
       loadDatabases: jest.fn(sourceName => {
         loadDatabasesCalled = true;
@@ -113,6 +122,16 @@ describe('SourcesTree Integration - Drilling Issue', () => {
       loadTables: jest.fn(),
       loadColumns: jest.fn(),
       setInfo: jest.fn(),
+      namedChildren: {
+        postgres_db: {
+          type: 'PostgresqlSource',
+          type_key: 'sources',
+          config: {
+            name: 'postgres_db',
+            type: 'postgresql',
+          },
+        },
+      },
     };
 
     useStore.mockImplementation(selector => selector(mockStoreData));
@@ -191,6 +210,16 @@ describe('SourcesTree Integration - Drilling Issue', () => {
     ];
     mockStoreData.sourcesMetadata.loadedDatabases['test_source'] = [{ name: 'test_db' }];
 
+    // Add source to namedChildren
+    mockStoreData.namedChildren['test_source'] = {
+      type: 'PostgresqlSource',
+      type_key: 'sources',
+      config: {
+        name: 'test_source',
+        type: 'postgresql',
+      },
+    };
+
     rerender(<SourcesTree />);
 
     // The database should be rendered
@@ -210,6 +239,24 @@ describe('SourcesTree Integration - Drilling Issue', () => {
       { name: 'source1', type: 'postgresql', status: 'connected' },
       { name: 'source2', type: 'mysql', status: 'connected' },
     ];
+
+    // Add sources to namedChildren
+    mockStoreData.namedChildren['source1'] = {
+      type: 'PostgresqlSource',
+      type_key: 'sources',
+      config: {
+        name: 'source1',
+        type: 'postgresql',
+      },
+    };
+    mockStoreData.namedChildren['source2'] = {
+      type: 'MysqlSource',
+      type_key: 'sources',
+      config: {
+        name: 'source2',
+        type: 'mysql',
+      },
+    };
 
     rerender(<SourcesTree />);
 
