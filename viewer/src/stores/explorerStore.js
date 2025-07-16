@@ -149,8 +149,18 @@ const createExplorerSlice = (set, get) => ({
   loadSources: async () => {
     const { sourcesMetadata, loadingStates, namedChildren } = get();
 
+    // Check if already loading
+    if (loadingStates.sources) {
+      return;
+    }
+
+    // If namedChildren is not loaded yet, don't proceed
+    if (!namedChildren || Object.keys(namedChildren).length === 0) {
+      return;
+    }
+
     // Check if already loaded
-    if (sourcesMetadata.sources.length > 0 || loadingStates.sources) {
+    if (sourcesMetadata.sources.length > 0) {
       return;
     }
 

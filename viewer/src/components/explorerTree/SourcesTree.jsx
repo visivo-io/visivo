@@ -6,15 +6,19 @@ import { TreeProvider, useTreeContext } from './TreeContext';
 import { useTreeExpansion } from './hooks/useTreeExpansion';
 import { StyledTreeView, EmptyMessage } from './styles/TreeStyles';
 import SourceNode from './components/SourceNode';
+import useStore from '../../stores/store';
 
 const SourcesTreeContent = () => {
   const { sourcesMetadata, loadingStates, loadSources } = useTreeContext();
   const { expandedNodes, handleNodeToggle } = useTreeExpansion();
+  const namedChildren = useStore(state => state.namedChildren);
 
-  // Load sources when component mounts
+  // Load sources when component mounts or when namedChildren changes
   useEffect(() => {
-    loadSources();
-  }, [loadSources]);
+    if (namedChildren && Object.keys(namedChildren).length > 0) {
+      loadSources();
+    }
+  }, [loadSources, namedChildren]);
 
   if (loadingStates.sources) {
     return (

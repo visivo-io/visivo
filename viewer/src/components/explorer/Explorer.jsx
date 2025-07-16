@@ -140,18 +140,6 @@ const QueryExplorer = () => {
         const data = await fetchExplorer();
         if (data) {
           setExplorerData(data);
-          if (data.sources && data.sources.length > 0) {
-            if (data.default_source) {
-              const defaultSource = data.sources.find(s => s.name === data.default_source);
-              if (defaultSource) {
-                setSelectedSource(defaultSource);
-              } else {
-                setSelectedSource(data.sources[0]);
-              }
-            } else {
-              setSelectedSource(data.sources[0]);
-            }
-          }
         }
       } catch (err) {
         console.error('Error loading explorer data:', err);
@@ -159,7 +147,27 @@ const QueryExplorer = () => {
       }
     };
     loadExplorerData();
-  }, [setExplorerData, setSelectedSource, setError]);
+  }, [setExplorerData, setError]);
+
+  // Set default source from namedChildren when available
+  useEffect(() => {
+    if (namedChildren && Object.keys(namedChildren).length > 0 && !selectedSource) {
+      const sources = Object.values(namedChildren).filter(item => item.type_key === 'sources');
+      if (sources.length > 0) {
+        // Check if there's a default source from explorerData
+        if (explorerData?.default_source) {
+          const defaultSource = sources.find(s => s.config.name === explorerData.default_source);
+          if (defaultSource) {
+            setSelectedSource(defaultSource.config);
+          } else {
+            setSelectedSource(sources[0].config);
+          }
+        } else {
+          setSelectedSource(sources[0].config);
+        }
+      }
+    }
+  }, [namedChildren, selectedSource, explorerData, setSelectedSource]);
 
   // Removed old metadata loading - now using lazy loading in ExplorerTree
 
@@ -224,13 +232,20 @@ const QueryExplorer = () => {
       switch (item.type) {
         case 'model':
           if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
-            newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
+            const duckdbSource = Object.values(namedChildren || {}).find(
+              child => child.type_key === 'sources' && child.type === 'DuckdbSource'
+            );
+            newSource = duckdbSource ? duckdbSource.config : selectedSource;
           } else if (item.config.source) {
-            newSource =
-              explorerData?.sources?.find(s => s.name === item.config.source.name) ||
-              selectedSource;
+            const matchingSource = Object.values(namedChildren || {}).find(
+              child => child.type_key === 'sources' && child.config.name === item.config.source.name
+            );
+            newSource = matchingSource ? matchingSource.config : selectedSource;
           } else {
-            newSource = explorerData?.sources?.[0] || selectedSource;
+            const sources = Object.values(namedChildren || {}).filter(
+              child => child.type_key === 'sources'
+            );
+            newSource = sources.length > 0 ? sources[0].config : selectedSource;
           }
           newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
           break;
@@ -272,12 +287,15 @@ const QueryExplorer = () => {
     const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
     if (activeWorksheet) {
       setQuery(activeWorksheet.query || '');
-      if (activeWorksheet.selected_source) {
-        const source = explorerData?.sources?.find(s => s.name === activeWorksheet.selected_source);
-        if (source) setSelectedSource(source);
+      if (activeWorksheet.selected_source && namedChildren) {
+        const sourceData = Object.values(namedChildren).find(
+          item =>
+            item.type_key === 'sources' && item.config.name === activeWorksheet.selected_source
+        );
+        if (sourceData) setSelectedSource(sourceData.config);
       }
     }
-  }, [activeWorksheetId, worksheets, explorerData?.sources, setQuery, setSelectedSource]);
+  }, [activeWorksheetId, worksheets, namedChildren, setQuery, setSelectedSource]);
 
   // Effect to load results when active worksheet changes
   useEffect(() => {
