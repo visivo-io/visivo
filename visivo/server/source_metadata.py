@@ -52,21 +52,6 @@ def _source_not_found_error(source_name: str) -> Tuple[dict, int]:
 # Main functions refactored
 
 
-def get_sources_list(sources: List[Any]) -> dict:
-    """Return basic information about all sources without introspection."""
-    data = {"sources": []}
-    for src in sources:
-        if isinstance(src, SqlalchemySource):
-            source_info = {
-                "name": src.name,
-                "type": src.type,
-                "database": getattr(src, "database", None),
-                "status": "unknown",
-            }
-            data["sources"].append(source_info)
-    return data
-
-
 def check_source_connection(sources, source_name):
     """Test connection to a specific source."""
     src = _find_source(sources, source_name)

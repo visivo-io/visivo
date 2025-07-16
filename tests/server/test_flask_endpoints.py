@@ -51,39 +51,6 @@ class TestFlaskSourceEndpoints:
 
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_list_sources_success(self):
-        """Test GET /api/project/sources returns source list."""
-        with patch("visivo.server.flask_app.get_sources_list") as mock_get_sources:
-            mock_get_sources.return_value = {
-                "sources": [
-                    {
-                        "name": "test_source",
-                        "type": "postgresql",
-                        "database": "test_db",
-                        "status": "unknown",
-                    }
-                ]
-            }
-
-            response = self.client.get("/api/project/sources")
-
-            assert response.status_code == 200
-            data = json.loads(response.data)
-            assert len(data["sources"]) == 1
-            assert data["sources"][0]["name"] == "test_source"
-            mock_get_sources.assert_called_once_with(self.mock_project.sources)
-
-    def test_list_sources_error(self):
-        """Test GET /api/project/sources handles errors."""
-        with patch("visivo.server.flask_app.get_sources_list") as mock_get_sources:
-            mock_get_sources.side_effect = Exception("Database error")
-
-            response = self.client.get("/api/project/sources")
-
-            assert response.status_code == 500
-            data = json.loads(response.data)
-            assert "Database error" in data["message"]
-
     def test_test_connection_success(self):
         """Test GET /api/project/sources/<name>/test-connection."""
         with patch("visivo.server.flask_app.check_source_connection") as mock_test:

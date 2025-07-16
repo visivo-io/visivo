@@ -19,7 +19,6 @@ from visivo.server.source_metadata import (
     get_schema_tables,
     get_table_columns,
     check_source_connection,
-    get_sources_list,
 )
 import subprocess
 import hashlib
@@ -98,16 +97,6 @@ class FlaskApp:
                 return jsonify({"message": str(e)}), 500
 
         # Lazy-loading endpoints for source metadata
-        @self.app.route("/api/project/sources", methods=["GET"])
-        def list_sources():
-            """List all sources with basic information."""
-            try:
-                result = get_sources_list(self._project.sources)
-                return jsonify(result)
-            except Exception as e:
-                Logger.instance().error(f"Error listing sources: {str(e)}")
-                return jsonify({"message": str(e)}), 500
-
         @self.app.route("/api/project/sources/<source_name>/test-connection", methods=["GET"])
         def test_connection(source_name):
             """Test connection to a specific source."""

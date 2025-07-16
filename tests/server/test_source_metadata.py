@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from visivo.server.source_metadata import (
-    get_sources_list,
     check_source_connection,
     get_source_databases,
     get_database_schemas,
@@ -40,50 +39,6 @@ class TestSourceMetadata:
     def teardown_method(self):
         """Clean up patches."""
         self.isinstance_patcher.stop()
-
-    def test_get_sources_list_with_sqlalchemy_sources(self):
-        """Test get_sources_list returns correct source information."""
-        # Setup
-        sources = [self.mock_source]
-
-        # Execute
-        result = get_sources_list(sources)
-
-        # Assert
-        assert result == {
-            "sources": [
-                {
-                    "name": "test_source",
-                    "type": "postgresql",
-                    "database": "test_db",
-                    "status": "unknown",
-                }
-            ]
-        }
-
-    def test_get_sources_list_with_no_database_attr(self):
-        """Test get_sources_list handles sources without database attribute."""
-        # Setup
-        mock_source = Mock()
-        mock_source.name = "source_no_db"
-        mock_source.type = "bigquery"
-        delattr(mock_source, "database")  # Remove database attribute
-        sources = [mock_source]
-
-        # Execute
-        result = get_sources_list(sources)
-
-        # Assert
-        assert result == {
-            "sources": [
-                {"name": "source_no_db", "type": "bigquery", "database": None, "status": "unknown"}
-            ]
-        }
-
-    def test_get_sources_list_empty(self):
-        """Test get_sources_list with empty sources list."""
-        result = get_sources_list([])
-        assert result == {"sources": []}
 
     def test_test_source_connection_success(self):
         """Test successful source connection test."""
@@ -551,7 +506,6 @@ class TestSourceMetadata:
             mock_isinstance_local.side_effect = isinstance_side_effect_local
 
             # Test each function
-            assert get_sources_list(sources) == {"sources": []}
             assert check_source_connection(sources, "not_sqlalchemy") == (
                 {"error": "Source 'not_sqlalchemy' not found"},
                 404,
