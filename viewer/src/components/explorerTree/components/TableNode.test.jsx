@@ -52,9 +52,9 @@ describe('TableNode', () => {
 
     render(
       <TreeProvider>
-        <TableNode 
-          table={table} 
-          sourceName={sourceName} 
+        <TableNode
+          table={table}
+          sourceName={sourceName}
           databaseName={databaseName}
           schemaName={schemaName}
         />
@@ -69,16 +69,16 @@ describe('TableNode', () => {
     const sourceName = 'test_source';
     const databaseName = 'test_db';
     const schemaName = 'public';
-    
+
     mockStoreData.loadingStates.columns = {
       'test_source.test_db.public.users': true,
     };
 
     render(
       <TreeProvider>
-        <TableNode 
-          table={table} 
-          sourceName={sourceName} 
+        <TableNode
+          table={table}
+          sourceName={sourceName}
           databaseName={databaseName}
           schemaName={schemaName}
         />
@@ -95,7 +95,7 @@ describe('TableNode', () => {
     const sourceName = 'test_source';
     const databaseName = 'test_db';
     const schemaName = 'public';
-    
+
     mockStoreData.sourcesMetadata.loadedColumns = {
       'test_source.test_db.public.users': [
         { name: 'id', type: 'INTEGER' },
@@ -105,9 +105,9 @@ describe('TableNode', () => {
 
     render(
       <TreeProvider>
-        <TableNode 
-          table={table} 
-          sourceName={sourceName} 
+        <TableNode
+          table={table}
+          sourceName={sourceName}
           databaseName={databaseName}
           schemaName={schemaName}
         />
@@ -122,18 +122,16 @@ describe('TableNode', () => {
     const table = { name: 'users' };
     const sourceName = 'test_source';
     const databaseName = 'test_db';
-    
+
     mockStoreData.sourcesMetadata.loadedColumns = {
-      'test_source.test_db.users': [
-        { name: 'id', type: 'BIGINT' },
-      ],
+      'test_source.test_db.users': [{ name: 'id', type: 'BIGINT' }],
     };
 
     render(
       <TreeProvider>
-        <TableNode 
-          table={table} 
-          sourceName={sourceName} 
+        <TableNode
+          table={table}
+          sourceName={sourceName}
           databaseName={databaseName}
           schemaName={null}
         />
@@ -151,9 +149,9 @@ describe('TableNode', () => {
 
     render(
       <TreeProvider>
-        <TableNode 
-          table={table} 
-          sourceName={sourceName} 
+        <TableNode
+          table={table}
+          sourceName={sourceName}
           databaseName={databaseName}
           schemaName={schemaName}
         />
@@ -168,16 +166,16 @@ describe('TableNode', () => {
     const sourceName = 'test_source';
     const databaseName = 'test_db';
     const schemaName = 'public';
-    
+
     mockStoreData.sourcesMetadata.loadedColumns = {
       'test_source.test_db.public.users': [],
     };
 
     render(
       <TreeProvider>
-        <TableNode 
-          table={table} 
-          sourceName={sourceName} 
+        <TableNode
+          table={table}
+          sourceName={sourceName}
           databaseName={databaseName}
           schemaName={schemaName}
         />

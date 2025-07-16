@@ -65,7 +65,7 @@ describe('SchemaNode', () => {
     const schema = { name: 'public' };
     const sourceName = 'test_source';
     const databaseName = 'test_db';
-    
+
     mockStoreData.loadingStates.tables = {
       'test_source.test_db.public': true,
     };
@@ -83,12 +83,9 @@ describe('SchemaNode', () => {
     const schema = { name: 'public' };
     const sourceName = 'test_source';
     const databaseName = 'test_db';
-    
+
     mockStoreData.sourcesMetadata.loadedTables = {
-      'test_source.test_db.public': [
-        { name: 'users' },
-        { name: 'orders' },
-      ],
+      'test_source.test_db.public': [{ name: 'users' }, { name: 'orders' }],
     };
 
     render(
@@ -105,7 +102,7 @@ describe('SchemaNode', () => {
     const schema = { name: 'public' };
     const sourceName = 'test_source';
     const databaseName = 'test_db';
-    
+
     mockStoreData.sourcesMetadata.loadedTables = {
       'test_source.test_db.public': [],
     };
@@ -123,7 +120,7 @@ describe('SchemaNode', () => {
     const schema = { name: 'public' };
     const sourceName = 'test_source';
     const databaseName = 'test_db';
-    
+
     // TreeNodeWrapper will handle error display based on the error prop
     // For now, we just ensure the component renders without crashing
 

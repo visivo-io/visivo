@@ -13,10 +13,7 @@ export default function DistProviders() {
   return (
     <QueryClientProvider client={queryClient}>
       <QueryProvider value={{ fetchTracesQuery, fetchDashboardQuery }}>
-        <RouterProvider
-          router={DistRouter}
-          future={futureFlags}
-        />
+        <RouterProvider router={DistRouter} future={futureFlags} />
       </QueryProvider>
     </QueryClientProvider>
   );

@@ -79,10 +79,10 @@ describe('SourceNode', () => {
   });
 
   test('should show connection failed status with error icon', () => {
-    const source = { 
-      name: 'test_source', 
+    const source = {
+      name: 'test_source',
       status: 'connection_failed',
-      error: 'Connection timeout'
+      error: 'Connection timeout',
     };
 
     render(
@@ -109,7 +109,7 @@ describe('SourceNode', () => {
 
   test('should show loading spinner when testing connection', () => {
     mockStoreData.loadingStates.connections = { test_source: true };
-    
+
     const source = { name: 'test_source', status: 'unknown' };
 
     render(
@@ -123,10 +123,7 @@ describe('SourceNode', () => {
 
   test('should render database nodes when databases are loaded', () => {
     mockStoreData.sourcesMetadata.loadedDatabases = {
-      test_source: [
-        { name: 'db1' },
-        { name: 'db2' },
-      ],
+      test_source: [{ name: 'db1' }, { name: 'db2' }],
     };
 
     const source = { name: 'test_source', status: 'connected' };
@@ -143,7 +140,7 @@ describe('SourceNode', () => {
 
   test('should show loading spinner when loading databases', () => {
     mockStoreData.loadingStates.databases = { test_source: true };
-    
+
     const source = { name: 'test_source', status: 'connected' };
 
     render(
@@ -172,10 +169,10 @@ describe('SourceNode', () => {
       test_source: [{ name: 'db1' }],
     };
 
-    const source = { 
-      name: 'test_source', 
+    const source = {
+      name: 'test_source',
       status: 'connection_failed',
-      error: 'Failed'
+      error: 'Failed',
     };
 
     render(

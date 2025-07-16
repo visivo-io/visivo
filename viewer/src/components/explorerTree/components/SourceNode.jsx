@@ -1,16 +1,16 @@
 import React from 'react';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
-import StorageIcon from '@mui/icons-material/Storage';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Tooltip } from 'flowbite-react';
-import { ItemLabel, ItemIcon, ItemName, StatusIcon, LoadingLabel } from '../styles/TreeStyles';
+import { ItemLabel, ItemIcon, StatusIcon, LoadingLabel } from '../styles/TreeStyles';
 import { createSourceNodeId } from '../utils/nodeIdUtils';
 import { useTreeContext } from '../TreeContext';
 import DatabaseNode from './DatabaseNode';
+import SourcePill from './SourcePill';
 
 const SourceNode = ({ source }) => {
   const { sourcesMetadata, loadingStates } = useTreeContext();
@@ -21,34 +21,32 @@ const SourceNode = ({ source }) => {
   const isTestingConnection = loadingStates.connections[source.name];
 
   const sourceLabel = (
-    <ItemLabel>
-      <ItemIcon>
-        <StorageIcon fontSize="small" />
-      </ItemIcon>
-      <ItemName title={source.name}>{source.name}</ItemName>
-      {isTestingConnection ? (
-        <CircularProgress size={16} />
-      ) : source.status === 'connection_failed' ? (
-        <Tooltip content={source.error || 'Connection failed'}>
-          <StatusIcon>
-            <CancelIcon fontSize="small" style={{ color: '#dc2626' }} />
-          </StatusIcon>
-        </Tooltip>
-      ) : source.status === 'connected' ? (
-        <Tooltip content="Connected">
-          <StatusIcon>
-            <CheckCircleIcon fontSize="small" style={{ color: '#059669' }} />
-          </StatusIcon>
-        </Tooltip>
-      ) : (
-        <Tooltip content="Connection not tested">
-          <StatusIcon>
-            <HelpOutlineIcon fontSize="small" style={{ color: '#6b7280' }} />
-          </StatusIcon>
-        </Tooltip>
-      )}
-      {isLoadingDatabases && <CircularProgress size={14} />}
-    </ItemLabel>
+    <div style={{ marginRight: '8px', marginLeft: '8px', marginTop: '4px', marginBottom: '4px' }}>
+      <SourcePill source={source}>
+        {isTestingConnection ? (
+          <CircularProgress size={16} />
+        ) : source.status === 'connection_failed' ? (
+          <Tooltip content={source.error || 'Connection failed'}>
+            <StatusIcon>
+              <CancelIcon fontSize="small" style={{ color: '#dc2626' }} />
+            </StatusIcon>
+          </Tooltip>
+        ) : source.status === 'connected' ? (
+          <Tooltip content="Connected">
+            <StatusIcon>
+              <CheckCircleIcon fontSize="small" style={{ color: '#059669' }} />
+            </StatusIcon>
+          </Tooltip>
+        ) : (
+          <Tooltip content="Connection not tested">
+            <StatusIcon>
+              <HelpOutlineIcon fontSize="small" style={{ color: '#6b7280' }} />
+            </StatusIcon>
+          </Tooltip>
+        )}
+        {isLoadingDatabases && <CircularProgress size={14} />}
+      </SourcePill>
+    </div>
   );
 
   return (

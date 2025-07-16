@@ -114,9 +114,7 @@ describe('ColumnNode', () => {
     ];
 
     columnTypes.forEach(column => {
-      const { unmount } = render(
-        <ColumnNode {...defaultProps} column={column} />
-      );
+      const { unmount } = render(<ColumnNode {...defaultProps} column={column} />);
 
       expect(screen.getByTestId('column-name')).toHaveTextContent(column.name);
       expect(screen.getByTestId('column-type')).toHaveTextContent(column.type);

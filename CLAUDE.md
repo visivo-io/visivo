@@ -20,6 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Build for production**: `yarn build`
 - **Lint**: `yarn lint`
 - **Format**: `yarn format`
+- **Always run yarn test when making JS changes to ensure that components are not breaking**
 
 ### Combined Development
 - **Deploy viewer to CLI**: `yarn deploy` (builds both local and dist versions)

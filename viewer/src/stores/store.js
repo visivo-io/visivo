@@ -15,8 +15,8 @@ const useStore = create(
     ...createSelectorSlice(...a),
     ...persist(createCommonSlice, {
       name: 'common-storage',
-      partialize: (state) => ({ scrollPositions: state.scrollPositions })
-    })(...a)
+      partialize: state => ({ scrollPositions: state.scrollPositions }),
+    })(...a),
   }))
 );
 
