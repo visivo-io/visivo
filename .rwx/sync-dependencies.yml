@@ -1,0 +1,97 @@
+on:
+  github:
+    pull_request:
+      actions: [opened, reopened, synchronize]
+      init:
+        commit-sha: ${{ event.git.sha }}
+    push:
+      if: ${{ event.git.branch == 'main' }}
+      init:
+        commit-sha: ${{ event.git.sha }}
+
+base:
+  os: ubuntu 22.04
+  tag: 1.0
+
+tasks:
+  - key: visivo-code
+    call: mint/git-clone 1.6.4
+    with:
+      repository: https://github.com/visivo-io/visivo.git
+      ref: ${{ init.commit-sha }}
+      path: visivo
+      github-access-token: ${{ github.token }}
+
+  - key: core-code
+    call: mint/git-clone 1.6.4
+    with:
+      repository: https://github.com/visivo-io/core.git
+      path: core
+      ref: main
+      preserve-git-dir: true
+      github-access-token: ${{ github.token }}
+        
+  - key: jq
+    run: sudo apt-get update && sudo apt-get install -y jq
+
+  - key: versions
+    use: [core-code]
+    run: |
+      cat core/app/.nvmrc | sed 's/^v//' | tee $MINT_VALUES/node
+    filter:
+      - core/app/.nvmrc
+
+  - key: node
+    call: mint/install-node 1.1.4
+    with:
+      node-version: ${{ tasks.versions.values.node }}
+
+  - key: yarn
+    use: node
+    run: npm install --global yarn
+
+  - key: sync-dependencies
+    use: [visivo-code, core-code, jq, yarn]
+    run: |
+      # Run the sync script
+      cd core
+      ./scripts/sync_dependencies.sh
+      
+      # Check if there are changes
+      if git diff --quiet app/package.json; then
+        echo "false" > $MINT_VALUES/has_changes
+      else
+        cd app
+        yarn install
+        echo "true" > $MINT_VALUES/has_changes
+      fi
+  - key: github-cli
+    call: github/install-cli 1.0.5 
+
+  - key: create-pull-request
+    use: [sync-dependencies, github-cli]
+    if: ${{ tasks.sync-dependencies.values.has_changes == 'true' }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.VISIVO_CORE_DEPENDENCY_SYNC_TOKEN }}
+    run: |
+      BRANCH="sync-dependencies"
+
+      cd core
+      # Setup git
+      git config user.name "github-actions[bot]"
+      git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Create branch
+      git checkout -b "$BRANCH"
+
+      # Add & commit changes
+      git add app/package.json app/yarn.lock
+      git commit -m "chore: sync dependencies from visivo-io/visivo viewer"
+
+      # Push branch (force since it's auto-generated)
+      git push -u origin "$BRANCH"
+
+      # Create pull request with gh cli
+      gh pr create \
+        --title "Sync dependencies from visivo-io/visivo viewer" \
+        --body "This PR automatically syncs dependencies from the \`visivo-io/visivo\` viewer package.json." \
