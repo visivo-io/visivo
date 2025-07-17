@@ -1,9 +1,27 @@
+from pathlib import Path
 import re
 import os
 import json
+import duckdb
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
+
+from git import Repo
+import yaml
+from visivo.commands.utils import create_source
+from visivo.discovery.discover import Discover
+from visivo.models.chart import Chart
+from visivo.models.dashboard import Dashboard
+from visivo.models.defaults import Defaults
+from visivo.models.include import Include
+from visivo.models.item import Item
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.project import Project
+from visivo.models.row import Row
+from visivo.models.source import CreateSourceRequest, SourceTypeEnum
+from visivo.models.table import Table
+from visivo.models.trace import Trace
+from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE
 from visivo.logger.logger import Logger
@@ -12,6 +30,10 @@ from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
 import subprocess
 import hashlib
+
+from visivo.version import VISIVO_VERSION
+
+GIT_TEMP_DIR = "tempgit"
 
 
 class FlaskApp:
@@ -418,6 +440,7 @@ class FlaskApp:
                     if command[0] == "open":
                         # When using 'open' command, file path goes at the end
                         subprocess.Popen(command + ["--", file_path])
+                        subprocess.call(["wmctrl", "-a", file_path])
                     else:
                         # When using 'code' command directly
                         subprocess.Popen(command + [file_path])
@@ -428,6 +451,240 @@ class FlaskApp:
                 return jsonify({"message": "File opened successfully"}), 200
             except Exception as e:
                 return jsonify({"error": str(e)}), 500
+
+        def handle_file_upload(file, source, source_type, project_dir):
+            """Creating Dashboard for CSV and Excel uploads"""
+            dashboards = []
+            file_path = os.path.join(project_dir, file.filename)
+            file.save(file_path)
+            table_name = re.sub(r"\W|^(?=\d)", "_", os.path.splitext(file.filename)[0])
+
+            with source.connect() as conn:
+                conn.execute("INSTALL 'excel'")
+                conn.execute("LOAD 'excel'")
+
+                if source_type == SourceTypeEnum.csv:
+                    load_csv(conn, file_path, table_name)
+                elif source_type == SourceTypeEnum.excel:
+                    conn.execute(
+                        f"""CREATE TABLE "{table_name}" AS SELECT * FROM read_xlsx('{file_path}')"""
+                    )
+
+                columns = conn.execute(f'PRAGMA table_info("{table_name}")').fetchall()
+                quoted_cols = [f'"{col[1]}"' for col in columns]
+
+                model = SqlModel(
+                    name="file_extract_model",
+                    sql=f'SELECT {", ".join(quoted_cols)} FROM "{table_name}"',
+                )
+                trace = Trace(
+                    name="file_extract_trace",
+                    model=model,
+                    columns={col[1]: f'"{col[1]}"' for col in columns},
+                )
+                column_defs = [
+                    {"header": col[1].replace("_", " ").title(), "key": f"columns.{col[1]}"}
+                    for col in columns
+                ]
+                table = Table(
+                    name=f"{table_name}_table",
+                    traces=[trace],
+                    column_defs=[{"trace_name": trace.name, "columns": column_defs}],
+                )
+
+                return [
+                    Dashboard(name="CSV/Excel Dashboard", rows=[Row(items=[Item(table=table)])])
+                ]
+
+            return dashboards
+
+        def load_csv(conn, file_path, table_name):
+            """Load CSV Data to DuckDB if table does not already exist"""
+            # Check if table already exists
+            table_exists = (
+                conn.execute(
+                    f"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '{table_name}'"
+                ).fetchone()[0]
+                > 0
+            )
+
+            if table_exists:
+                Logger.instance().info(f"Table '{table_name}' already exists. Skipping creation.")
+                return
+
+            try:
+                conn.execute(
+                    f"""CREATE TABLE "{table_name}" AS SELECT * FROM read_csv_auto('{file_path}', encoding='UTF-8')"""
+                )
+            except duckdb.InvalidInputException:
+                try:
+                    conn.execute(
+                        f"""CREATE TABLE "{table_name}" AS SELECT * FROM read_csv_auto('{file_path}', encoding='UTF-16')"""
+                    )
+                except duckdb.InvalidInputException:
+                    conn.execute(
+                        f"""CREATE TABLE "{table_name}" AS SELECT * FROM read_csv_auto('{file_path}', ignore_errors=true)"""
+                    )
+                    Logger.instance().warning(
+                        f"Loaded {os.path.basename(file_path)} with some encoding errors (invalid rows skipped)"
+                    )
+
+        def create_example_dashboard():
+            model = SqlModel(name="Example Model", sql="SELECT * FROM test_table")
+            trace = Trace(
+                name="Example Trace",
+                model=model,
+                props={"type": "scatter", "x": "?{x}", "y": "?{y}"},
+            )
+            chart = Chart(name="Example Chart", traces=[trace])
+            return Dashboard(name="Example Dashboard", rows=[Row(items=[Item(chart=chart)])])
+
+        def write_project_file(project):
+            with open(project.project_file_path, "w") as f:
+                content = yaml.dump(
+                    json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False
+                )
+                content = content.replace("'**********'", "\"{{ env_var('DB_PASSWORD') }}\"")
+                f.write(content)
+
+        @self.app.route("/api/project/create", methods=["POST"])
+        def create_project():
+            form = request.form
+            file = request.files.get("file")
+
+            project_name = form.get("project_name", "").strip()
+            source_type = form.get("source_type", "").strip()
+            source_name = form.get("source_name", "").strip()
+            project_dir = form.get("project_dir", "").strip()
+            database = form.get("database", "Quickstart")
+            port = form.get("port")
+
+            if not project_name:
+                return jsonify({"message": "Project name is required"}), 400
+            if not source_type:
+                return jsonify({"message": "Source type is required"}), 400
+
+            if not source_name:
+                return jsonify({"message": "Source type is required"}), 400
+
+            """ Create source """
+            data = CreateSourceRequest(
+                project_name=project_name,
+                source_name=form.get("source_name", "Example Source"),
+                database=database,
+                source_type=source_type,
+                host=form.get("host", ""),
+                port=port,
+                username=form.get("username", ""),
+                password=form.get("password", ""),
+                account=form.get("account", ""),
+                warehouse=form.get("warehouse", ""),
+                credentials_base64=form.get("credentials_base64", ""),
+                project=form.get("project", ""),
+                dataset=form.get("dataset", ""),
+                project_dir=project_dir,
+            )
+            source = create_source(**data.model_dump())
+
+            if isinstance(source, str):
+                return jsonify({"message": source}), 400
+            if not source:
+                return jsonify({"message": "Failed to create source"}), 400
+
+            dashboards = []
+
+            """ Handle uploaded file """
+            if file:
+                dashboards += handle_file_upload(file, source, source_type, project_dir)
+
+            """ Add example dashboard """
+            if source_type == SourceTypeEnum.duckdb or source_type == SourceTypeEnum.sqlite:
+                dashboards.append(create_example_dashboard())
+
+            """ Create project """
+            project = Project(
+                name=project_name,
+                includes=[
+                    Include(
+                        path=f"visivo-io/visivo.git@v{VISIVO_VERSION} -- test-projects/demo/dashboards/welcome.visivo.yml"
+                    )
+                ],
+                defaults=Defaults(source_name=source.name),
+                sources=[source],
+                dashboards=dashboards,
+            )
+
+            """ Write project file """
+            project.project_file_path = (
+                os.path.join(project_dir, "project.visivo.yml")
+                if project_dir
+                else "project.visivo.yml"
+            )
+            write_project_file(project)
+
+            if project_dir:
+                with open(os.path.join(project_dir, ".gitignore"), "w") as f:
+                    f.write(".env\ntarget\n.visivo_cache")
+
+            self.project = project
+
+            return jsonify({"message": "Project created successfully"})
+
+        @self.app.route("/api/project/load_example", methods=["POST"])
+        def load_example():
+            """Load example project from GitHub"""
+            data = request.get_json()
+
+            project_name = data.get("project_name", "").strip()
+            example_type = data.get("example_type", "github-releases")
+            project_dir = data.get("project_dir", "")
+
+            if not project_name:
+                return jsonify({"message": "Project name is required"}), 400
+
+            repo_url = f"https://github.com/visivo-io/{example_type}.git"
+
+            if project_dir == ".":
+                os.makedirs(GIT_TEMP_DIR, exist_ok=True)
+                project_path = Path(GIT_TEMP_DIR)
+                env_path = Path(GIT_TEMP_DIR) / ".env"
+            else:
+                project_path = Path(project_dir)
+                env_path = Path(project_dir) / ".env"
+
+            try:
+                Repo.clone_from(repo_url, project_path)
+
+                if not (project_path / ".git").exists():
+                    return jsonify({"message": f"Failed to clone {example_type}"}), 500
+
+                with open(env_path, "w") as fp:
+                    fp.write("REPO_NAME=visivo\nREPO_COMPANY=visivo-io")
+
+                discover = Discover(working_dir=project_path, output_dir=None)
+                parser = ParserFactory().build(
+                    project_file=discover.project_file, files=discover.files
+                )
+
+                try:
+                    project = parser.parse()
+                    self.project = project
+
+                except yaml.YAMLError as e:
+                    message = "\n"
+                    if hasattr(e, "problem_mark"):
+                        mark = e.problem_mark
+                        message = f"\n Error position: line:{mark.line+1} column:{mark.column+1}\n"
+
+                    Logger.instance().error(
+                        f"There was an error parsing the yml file(s):{message} {e}"
+                    )
+
+                return jsonify({"message": "Project created successfully"}), 200
+
+            except Exception as e:
+                Logger.instance().error(f"Error cloning releases: {str(e)}")
+                return jsonify({"message": f"Failed to clone github repository"}), 500
 
     @property
     def project(self):

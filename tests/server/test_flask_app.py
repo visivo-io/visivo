@@ -1,3 +1,6 @@
+import io
+import tempfile
+from unittest.mock import MagicMock
 import pytest
 import json
 import os
@@ -6,6 +9,7 @@ from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from tests.factories.model_factories import ProjectFactory, SourceFactory
 from tests.support.utils import temp_folder
 from visivo.commands.utils import create_file_database
+from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
@@ -322,3 +326,65 @@ def test_execute_query_invalid_sql(client, worksheet_repo, capsys):
     captured = capsys.readouterr()
     assert "sqlite3.OperationalError" in data["message"]
     assert "Query execution error" in captured.out
+
+
+def test_missing_project_name(client):
+    """Test POST api/project/create when project name is not available."""
+    res = client.post("/api/project/create", data={"source_type": "duckdb"})
+    assert res.status_code == 400
+    assert b"Project name is required" in res.data
+
+
+def test_missing_source_type(client):
+    """Test POST api/project/create when source type is not available."""
+    res = client.post("/api/project/create", data={"project_name": "Test Project"})
+    assert res.status_code == 400
+    assert b"Source type is required" in res.data
+
+
+def test_create_project_with_file(client):
+    """Test POST api/project/create with csv file upload."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dummy_csv = io.BytesIO(b"col1,col2\n1,2\n3,4")
+        dummy_csv.filename = "data.csv"
+
+        res = client.post(
+            "/api/project/create",
+            data={
+                "project_name": "File Project",
+                "source_type": "duckdb",
+                "project_dir": tmpdir,
+                "file": (dummy_csv, dummy_csv.filename),
+            },
+            content_type="multipart/form-data",
+        )
+
+        assert res.status_code == 200
+        assert b"Project created successfully" in res.data
+
+        project_file = os.path.join(tmpdir, "project.visivo.yml")
+        assert os.path.exists(project_file)
+
+        gitignore = os.path.join(tmpdir, ".gitignore")
+        assert os.path.exists(gitignore)
+        with open(gitignore) as f:
+            assert ".env" in f.read()
+
+
+def test_create_project_sqlite_source_only(client):
+    """Test POST api/project/create when source is available."""
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        res = client.post(
+            "/api/project/create",
+            data={
+                "project_name": "SQLite Project",
+                "source_type": "sqlite",
+                "project_dir": tmpdir,
+            },
+        )
+
+        assert res.status_code == 200
+        assert b"Project created successfully" in res.data
+
+        assert os.path.exists(os.path.join(tmpdir, "project.visivo.yml"))

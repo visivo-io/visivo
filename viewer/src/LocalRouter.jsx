@@ -9,9 +9,19 @@ import ErrorPage from './components/common/ErrorPage';
 import Lineage from './components/lineage/Lineage';
 import Explorer from './components/explorer/Explorer';
 import Editor from './components/editors/Editor';
+import Onboarding from './components/onboarding/Onboarding';
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(
+    <>
+    <Route
+        id="onboarding"
+        path="/onboarding"
+        element={<Onboarding />}
+        handle={{
+          crumb: () => <BreadcrumbLink to="/onboarding">Onboarding</BreadcrumbLink>,
+        }}
+      />
     <Route
       path="/"
       element={<Home />}
@@ -71,6 +81,7 @@ const LocalRouter = createBrowserRouter(
         />
       </Route>
     </Route>
+    </>
   )
 );
 
