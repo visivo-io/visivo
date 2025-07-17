@@ -352,7 +352,8 @@ def test_create_project_with_file(client):
             "/api/project/create",
             data={
                 "project_name": "File Project",
-                "source_type": "duckdb",
+                "source_name": "My SQLite Source",
+                "source_type": "csv",
                 "project_dir": tmpdir,
                 "file": (dummy_csv, dummy_csv.filename),
             },
@@ -380,11 +381,11 @@ def test_create_project_sqlite_source_only(client):
             data={
                 "project_name": "SQLite Project",
                 "source_type": "sqlite",
+                "source_name": "My SQLite Source",
                 "project_dir": tmpdir,
             },
         )
 
         assert res.status_code == 200
         assert b"Project created successfully" in res.data
-
         assert os.path.exists(os.path.join(tmpdir, "project.visivo.yml"))
