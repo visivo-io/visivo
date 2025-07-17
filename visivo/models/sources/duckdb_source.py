@@ -55,7 +55,7 @@ class DuckdbSource(Source):
             if self.attach:
                 for attachment in self.attach:
                     connection.execute(
-                        f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name}"
+                        f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name} (READ_ONLY)"
                     )
 
             return connection
@@ -68,8 +68,24 @@ class DuckdbSource(Source):
     def read_sql(self, query: str):
         try:
             with self.connect(read_only=True) as connection:
-                result = connection.execute(query).pl()
-                return result
+                # Execute query and get raw results
+                result = connection.execute(query)
+
+                # Get column names
+                columns = [desc[0] for desc in result.description] if result.description else []
+
+                # Fetch all rows
+                rows = result.fetchall()
+
+                # Convert to list of dictionaries
+                data = []
+                for row in rows:
+                    row_dict = {}
+                    for i, col in enumerate(columns):
+                        row_dict[col] = row[i]
+                    data.append(row_dict)
+
+                return data
         except Exception as err:
             raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
 

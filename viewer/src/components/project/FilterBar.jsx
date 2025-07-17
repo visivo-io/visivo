@@ -1,15 +1,19 @@
 import React from 'react';
 import { Badge } from 'flowbite-react';
 import { HiSearch } from 'react-icons/hi';
+import useStore from '../../stores/store';
 
-function FilterBar({
-  searchTerm,
-  setSearchTerm,
-  selectedTags,
-  setSelectedTags,
-  availableTags,
-  totalCount,
-}) {
+function FilterBar() {
+  const {
+    searchTerm,
+    setSearchTerm,
+    selectedTags,
+    setSelectedTags,
+    availableTags,
+    filteredDashboards,
+  } = useStore();
+
+  const totalCount = filteredDashboards.length;
   return (
     <div className="mb-4">
       <div className="space-y-3">

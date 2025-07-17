@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useLoaderData } from 'react-router-dom';
 import Project from './Project';
+import { useUrlSync } from '../../hooks/useUrlSync';
 
 function ProjectContainer() {
   const { dashboardName } = useParams();
   const project = useLoaderData();
 
-  const dashboards = project => {
+  // Initialize URL synchronization for selectors
+  useUrlSync();
+
+  const dashboards = useMemo(() => {
     if (!project) {
       return [];
     }
@@ -21,11 +25,9 @@ function ProjectContainer() {
         path: '',
       };
     });
-  };
+  }, [project]);
 
-  return (
-    <Project project={project} dashboards={dashboards(project)} dashboardName={dashboardName} />
-  );
+  return <Project project={project} dashboards={dashboards} dashboardName={dashboardName} />;
 }
 
 export default ProjectContainer;

@@ -7,6 +7,7 @@ import {
 } from 'react-icons/hi';
 import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
 import { FaExternalLinkAlt } from 'react-icons/fa';
+import { FaGear } from 'react-icons/fa6';
 import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery } from 'react-icons/si';
 import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
 import { GrDocumentCsv, GrDocumentExcel } from 'react-icons/gr';
@@ -147,5 +148,11 @@ export const TYPE_STYLE_MAP = {
     text: 'text-slate-800',
     border: 'border-slate-200',
     icon: SiSqlite,
+  },
+  Project: {
+    bg: 'bg-gray-100',
+    text: 'text-gray-800',
+    border: 'border-gray-200',
+    icon: FaGear,
   },
 };

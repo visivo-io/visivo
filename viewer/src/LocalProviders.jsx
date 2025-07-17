@@ -1,5 +1,6 @@
 import React from 'react';
 import LocalRouter from './LocalRouter';
+import { futureFlags } from './router-config';
 import { RouterProvider } from 'react-router-dom';
 import { QueryProvider } from './contexts/QueryContext';
 import { WorksheetProvider } from './contexts/WorksheetContext';
@@ -17,10 +18,7 @@ export default function LocalProviders() {
           <StoreProvider>
             <RouterProvider
               router={LocalRouter}
-              future={{
-                v7_startTransition: true,
-                v7_relativeSplatPath: true,
-              }}
+              future={futureFlags}
             />
           </StoreProvider>
         </WorksheetProvider>

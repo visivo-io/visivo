@@ -23,11 +23,12 @@ from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.parsers.serializer import Serializer
-from visivo.utils import VIEWER_PATH, SCHEMA_FILE
+from visivo.utils import VIEWER_PATH, SCHEMA_FILE, get_utc_now
 from visivo.logger.logger import Logger
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.repositories.worksheet_repository import WorksheetRepository
 from visivo.server.text_editors import get_editor_configs
+from visivo.telemetry.middleware import init_telemetry_middleware
 import subprocess
 import hashlib
 
@@ -47,6 +48,9 @@ class FlaskApp:
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))
+
+        # Initialize telemetry middleware
+        init_telemetry_middleware(self.app, project)
 
         @self.app.route("/data/<trace_name>/data.json")
         def serve_trace_data(trace_name):
@@ -154,18 +158,21 @@ class FlaskApp:
                 result = source.read_sql(query)
 
                 # Transform the result into the expected format
-                if result is None or result.height == 0:
+                # result is now a list of dictionaries instead of a Polars DataFrame
+                if result is None or len(result) == 0:
                     response_data = {"columns": [], "rows": []}
                 else:
+                    # Extract column names from the first row
+                    columns = list(result[0].keys()) if result else []
                     response_data = {
-                        "columns": list(result.columns),
-                        "rows": result.to_dicts(),
+                        "columns": columns,
+                        "rows": result,
                     }
 
                 # If worksheet_id is provided, save the results
                 if worksheet_id:
                     query_stats = {
-                        "timestamp": datetime.datetime.utcnow().isoformat(),
+                        "timestamp": get_utc_now().isoformat(),
                         "source": source.name,
                     }
                     self.worksheet_repo.save_results(

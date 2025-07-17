@@ -1,6 +1,16 @@
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
-import os
+
+
+def _collect_run_telemetry(project, dag_filter):
+    """Collect telemetry metrics during run phase."""
+    try:
+        from visivo.telemetry.command_tracker import track_run_metrics
+
+        track_run_metrics(project, dag_filter)
+    except Exception:
+        # Silently ignore any telemetry errors
+        pass
 
 
 def run_phase(
@@ -66,6 +76,9 @@ def run_phase(
 
     source_details = "\n" if default_source == None else f" and default source {default_source}\n"
     Logger.instance().info(f"Running project across {threads} threads" + source_details)
+
+    # Count jobs for telemetry
+    _collect_run_telemetry(project, dag_filter)
 
     runner = FilteredRunner(
         project=project,

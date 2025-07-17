@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Home from './Home';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { futureFlags } from '../router-config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import useStore from '../stores/store';
 
@@ -26,6 +27,7 @@ const routes = [
 const router = createMemoryRouter(routes, {
   initialEntries: ['/'],
   initialIndex: 0,
+  future: futureFlags,
 });
 
 test('renders error message', async () => {
@@ -33,7 +35,7 @@ test('renders error message', async () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <RouterProvider router={router} future={futureFlags} />
     </QueryClientProvider>
   );
 

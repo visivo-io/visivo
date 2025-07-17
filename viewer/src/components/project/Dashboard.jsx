@@ -1,17 +1,15 @@
 import Chart from '../items/Chart';
 import Table from '../items/Table';
 import Selector from '../items/Selector';
-import Markdown from 'react-markdown';
 import useDimensions from 'react-cool-dimensions';
 import { throwError } from '../../api/utils';
 import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+import Markdown from '../items/Markdown';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
+
   const { observe, width } = useDimensions({
     onResize: ({ observe }) => {
       observe();
@@ -97,11 +95,11 @@ const Dashboard = ({ project, dashboardName }) => {
         key={`row-${rowIndex}`}
         className={`dashboard-row w-full max-w-full ${isColumn ? 'flex' : 'grid justify-center'}`}
         style={{
-          margin: '0.1rem',
+          margin: '0.5rem',
           display: isColumn ? 'flex' : 'grid',
           flexDirection: isColumn ? 'column' : undefined,
           gridTemplateColumns: isColumn ? undefined : `repeat(${totalWidth}, 1fr)`,
-          gap: '0.1rem',
+          gap: '0.7rem',
           ...rowStyle,
         }}
       >
@@ -160,44 +158,14 @@ const Dashboard = ({ project, dashboardName }) => {
         ></Selector>
       );
     } else if (item.markdown) {
-      const alignmentClass =
-        item.align === 'right'
-          ? 'text-right'
-          : item.align === 'center'
-            ? 'text-center'
-            : 'text-left';
-
       return (
-        <div
-          className={`w-full h-full flex flex-col ${alignmentClass}`}
-          style={row.height !== 'compact' ? { height: getHeight(row.height) } : {}}
-        >
-          <div
-            className={`w-full h-full overflow-auto flex flex-col items-stretch ${item.justify}`}
-          >
-            <Markdown
-              className={`p-2 prose max-w-none ${
-                item.justify === 'end'
-                  ? 'mt-auto'
-                  : item.justify === 'center'
-                    ? 'my-auto'
-                    : item.justify === 'between'
-                      ? 'grow flex flex-col justify-between'
-                      : item.justify === 'around'
-                        ? 'grow flex flex-col justify-around'
-                        : item.justify === 'evenly'
-                          ? 'grow flex flex-col justify-evenly'
-                          : ''
-              }`}
-              key={`dashboardRow${rowIndex}Item${itemIndex}`}
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeRaw, rehypeSanitize]}
-            >
-              {item.markdown}
-            </Markdown>
-          </div>
-        </div>
-      );
+        <Markdown 
+          key={`dashboardRow${rowIndex}Item${itemIndex}`}
+          markdown={item}
+          row={row}
+          height={getHeight(row.height)}
+        />
+      )
     }
     return null;
   };

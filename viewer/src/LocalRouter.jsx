@@ -1,5 +1,6 @@
 import React from 'react';
 import { Route, createBrowserRouter, createRoutesFromElements } from 'react-router-dom';
+import { futureFlags } from './router-config';
 import { loadProject } from './loaders/project';
 import { loadError } from './loaders/error';
 import Home from './components/Home';
@@ -82,7 +83,10 @@ const LocalRouter = createBrowserRouter(
       </Route>
     </Route>
     </>
-  )
+  ),
+  {
+    future: futureFlags,
+  }
 );
 
 export default LocalRouter;

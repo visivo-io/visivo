@@ -4,7 +4,7 @@ import selectEvent from 'react-select-event';
 import { withProviders } from '../../utils/test-utils';
 import { createBrowserHistory } from 'history';
 import { unstable_HistoryRouter as HistoryRouter } from 'react-router-dom';
-import { SearchParamsProvider } from '../../contexts/SearchParamsContext';
+
 const tracesData = {
   'Trace Name 1': {
     'Cohort Name 1': {},
@@ -75,17 +75,15 @@ test('renders single select', async () => {
 test('renders with push to history', async () => {
   let history = createBrowserHistory();
   render(
-    <HistoryRouter history={history}>
-      <SearchParamsProvider>
-        <CohortSelect
-          tracesData={tracesData}
-          showLabel
-          alwaysPushSelectionToUrl={true}
-          onVisible={() => {}}
-          selector={{ type: 'single', name: 'selector' }}
-          onChange={() => {}}
-        />
-      </SearchParamsProvider>
+    <HistoryRouter history={history} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <CohortSelect
+        tracesData={tracesData}
+        showLabel
+        alwaysPushSelectionToUrl={true}
+        onVisible={() => {}}
+        selector={{ type: 'single', name: 'selector' }}
+        onChange={() => {}}
+      />
     </HistoryRouter>
   );
 
