@@ -86,8 +86,7 @@
       "<rootDir>/src"
     ],
     "transformIgnorePatterns": [
-      "<rootDir>/node_modules/(?!export-to-csv)/",
-      "<rootDir>/node_modules/(?!d3)/"
+      "<rootDir>/node_modules/(?!export-to-csv)/"
     ],
     "setupFilesAfterEnv": [
       "<rootDir>/src/setupTests.js"
