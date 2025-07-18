@@ -1,9 +1,5 @@
 on:
   github:
-    pull_request:
-      actions: [opened, reopened, synchronize]
-      init:
-        commit-sha: ${{ event.git.sha }}
     push:
       if: ${{ event.git.branch == 'main' }}
       init:
