@@ -34,6 +34,7 @@ class Project(NamedModel, ParentModel):
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
     project_file_path: Optional[str] = None
+    project_dir: Optional[str] = None
     cli_version: Optional[str] = Field(
         default=VISIVO_VERSION,
         description="The version of the CLI that created the project.",

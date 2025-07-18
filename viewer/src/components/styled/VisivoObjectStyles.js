@@ -10,7 +10,34 @@ import { FaExternalLinkAlt } from 'react-icons/fa';
 import { FaGear } from 'react-icons/fa6';
 import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery } from 'react-icons/si';
 import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
-import { GrDocumentCsv } from 'react-icons/gr';
+import { GrDocumentCsv, GrDocumentExcel } from 'react-icons/gr';
+
+export const TYPE_VALUE_MAP = {
+  CSVFileSource: {
+    value: 'csv'
+  },
+  ExcelFileSource: {
+    value: 'xls'
+  },
+  BigQuerySource: {
+    value: 'bigquery'
+  },
+  SnowflakeSource: {
+    value: 'snowflake'
+  },
+  MysqlSource: {
+    value: 'mysql'
+  },
+  PostgresqlSource: {
+    value: 'postgresql'
+  },
+  DuckdbSource: {
+    value: 'duckdb'
+  },
+  SqliteSource: {
+    value: 'sqlite'
+  }
+}
 
 export const TYPE_STYLE_MAP = {
   Chart: {
@@ -25,11 +52,23 @@ export const TYPE_STYLE_MAP = {
     border: 'border-green-200',
     icon: GrDocumentCsv,
   },
+  CSVFileSource: {
+    bg: 'bg-teal-100',
+    text: 'text-teal-800',
+    border: 'border-teal-200',
+    icon: GrDocumentCsv,
+  },
   Dashboard: {
     bg: 'bg-purple-100',
     text: 'text-purple-800',
     border: 'border-purple-200',
     icon: HiOutlineViewGrid,
+  },
+  ExcelFileSource: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    border: 'border-green-200',
+    icon: GrDocumentExcel,
   },
   Selector: {
     bg: 'bg-yellow-100',

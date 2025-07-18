@@ -1,5 +1,8 @@
 import os
 import json
+from unittest.mock import patch
+
+import click
 from visivo.commands.serve_phase import serve_phase
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import create_file_database
@@ -104,11 +107,16 @@ def test_serve_phase_returns_server_and_callbacks(test_project, output_dir):
     assert callable(on_server_ready)
 
 
-def test_serve_command_handles_errors(output_dir):
-    with runner.isolated_filesystem():
-        port = get_test_port()
+def test_serve_command_raises_when_parse_fails(output_dir, tmp_path):
+    port = get_test_port()
+
+    with patch("visivo.commands.serve.parse_project_phase") as mock_parse:
+        mock_parse.side_effect = click.ClickException("Mock parse failure")
+
         result = runner.invoke(
-            serve, ["--output-dir", output_dir, "--working-dir", ".", "--port", str(port)]
+            serve,
+            ["--output-dir", str(output_dir), "--working-dir", str(tmp_path), "--port", str(port)],
         )
+
         assert result.exit_code != 0
-        assert "error" in result.output.lower()
+        assert "mock parse failure" in result.output.lower()

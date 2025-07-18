@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { TYPE_STYLE_MAP } from '../../components/styled/VisivoObjectStyles';
+import React, { useState, useEffect, useCallback } from 'react';
+import { TYPE_STYLE_MAP, TYPE_VALUE_MAP } from '../../components/styled/VisivoObjectStyles';
 import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
 import useStore from '../../stores/store';
 
-const CreateObjectModal = ({ isOpen, onClose }) => {
-  const [step, setStep] = useState('property'); // 'property' | 'type' | 'name' | 'attributes'
-  const [selectedProperty, setSelectedProperty] = useState(null);
+const OPTIONAL_REQUIREMENTS = ["host", "username", "password", "warehouse", "account", "project"]
+
+const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'property', onSubmitCallback }) => {
+  const [step, setStep] = useState(objStep); // 'property' | 'type' | 'name' | 'attributes'
+  const [selectedProperty, setSelectedProperty] = useState(objSelectedProperty);
   const [selectedType, setSelectedType] = useState(null);
   const [objectName, setObjectName] = useState('');
   const [attributes, setAttributes] = useState({});
   const [selectedFilePath, setSelectedFilePath] = useState('');
+  const [selectedSource, setSelectedSource] = useState(null)
 
   const schema = useStore(state => state.schema);
   const openTab = useStore(state => state.openTab);
@@ -19,21 +22,22 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   const projectFilePath = useStore(state => state.projectFilePath);
 
   // Reset all state to initial values
-  const resetState = () => {
-    setStep('property');
-    setSelectedProperty(null);
-    setSelectedType(null);
-    setObjectName('');
-    setAttributes({});
-    setSelectedFilePath('');
-  };
+  const resetState = useCallback(() => {
+  setStep(objStep);
+  setSelectedProperty(objSelectedProperty);
+  setSelectedType(null);
+  setObjectName('');
+  setAttributes({});
+  setSelectedFilePath('');
+}, [objStep, objSelectedProperty]);
 
   // Add effect to reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       resetState();
     }
-  }, [isOpen]);
+  }, [isOpen, resetState]);
+
 
   const getValidTypesForProperty = prop => {
     if (!schema?.properties) return [];
@@ -68,6 +72,7 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
   };
 
   const handleTypeSelect = type => {
+    setSelectedSource(TYPE_VALUE_MAP[type])
     setSelectedType(type);
     setStep('name');
   };
@@ -76,11 +81,21 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
     if (!schema?.$defs?.[type]) return [];
 
     const typeSchema = schema.$defs[type];
-    const required = typeSchema.required || [];
+
+    let mergedRequired = typeSchema.required || [];
     const properties = typeSchema.properties || {};
 
+    if (onSubmitCallback) {
+        mergedRequired = [
+        ...new Set([
+          ...mergedRequired,
+          ...OPTIONAL_REQUIREMENTS.filter(optKey => optKey in properties),
+        ]),
+      ];
+    }
+    
     // Filter out 'name' since we already have it
-    return required
+    return mergedRequired
       .filter(key => key !== 'name')
       .map(key => ({
         name: key,
@@ -114,11 +129,12 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
       config: {
         name: objectName,
         ...attributes,
+        type: selectedSource.value
       },
       status: 'New', // Set status to New for new objects
       file_path: selectedFilePath || projectFilePath, // defaults to existing project file path
       new_file_path: selectedFilePath || projectFilePath,
-      path: null,
+      path: null
     };
 
     // Update store with new object
@@ -128,9 +144,13 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
         [objectName]: newObject,
       },
     });
-
     // Open the new object in a tab
-    openTab(objectName, selectedType);
+    if (onSubmitCallback) {
+      onSubmitCallback(newObject)
+    }else{
+      openTab(objectName, selectedType);
+    }
+
     resetState();
     onClose();
   };
@@ -255,17 +275,18 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
             {getRequiredAttributes(selectedType).map(attr => (
               <div key={attr.name} className="mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  {attr.title || attr.name}
+                  {attr.title || attr.name} {!OPTIONAL_REQUIREMENTS.includes(attr.name) && <span className="text-red-500"> *</span>}
                 </label>
                 {attr.description && (
                   <p className="text-xs text-gray-500 mb-1">{attr.description}</p>
                 )}
 
                 {/* String input */}
-                {(attr.type === 'string' || !attr.type) && (
+                {((attr.type === 'string' || !attr.type) && attr.name !== 'type') && (
                   <input
                     type="text"
                     value={attributes[attr.name] || ''}
+                    required={!OPTIONAL_REQUIREMENTS.includes(attr.name)}
                     onChange={e =>
                       setAttributes(prev => ({
                         ...prev,
@@ -276,6 +297,39 @@ const CreateObjectModal = ({ isOpen, onClose }) => {
                     placeholder={`Enter ${(attr.title || attr.name).toLowerCase()}...`}
                   />
                 )}
+
+                {((attr.type === 'string' || !attr.type) && attr.name === 'type') && (
+                  <select
+                    value={selectedSource.value}
+                    disabled={true}
+                    className="mt-1  block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  >
+                    <option value="" disabled>Select a source...</option>
+                    <option value="sqlite">SQLite (local DB)</option>
+                    <option value="duckdb">DuckDB (in-memory/local)</option>
+                    <option value="postgresql">PostgreSQL</option>
+                    <option value="mysql">MySQL</option>
+                    <option value="snowflake">Snowflake</option>
+                    <option value="bigquery">BigQuery</option>
+                    <option value="csv">CSV File</option>
+                    <option value="xls">Excel File</option>
+                  </select>
+                )}
+
+                {/* File input */}
+                  {attr.type === 'file' && (
+                    <input
+                      type="file"
+                      onChange={e => {
+                        const file = e.target.files?.[0] || null;
+                        setAttributes(prev => ({
+                          ...prev,
+                          [attr.name]: file,
+                        }));
+                      }}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                    />
+                  )}
 
                 {/* Reference input (like model refs) */}
                 {attr.$ref && (

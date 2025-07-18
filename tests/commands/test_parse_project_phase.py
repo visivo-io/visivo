@@ -4,7 +4,7 @@ import yaml
 import click
 from unittest.mock import patch, MagicMock
 from visivo.commands.parse_project_phase import parse_project_phase
-from visivo.models.project import Defaults
+from visivo.models.project import Defaults, Project
 from tests.factories.model_factories import ProjectFactory, DbtFactory
 from tests.support.utils import temp_folder, temp_yml_file
 from visivo.parsers.file_names import PROJECT_FILE_NAME
@@ -118,16 +118,16 @@ def test_parse_project_phase_with_invalid_yaml(working_dir, output_dir):
 
 def test_parse_project_phase_with_missing_project_file(working_dir, output_dir):
     """Test parse_project_phase when project file is missing"""
-    with pytest.raises(click.ClickException) as exc_info:
-        parse_project_phase(
-            working_dir=working_dir,
-            output_dir=output_dir,
-            default_source=None,
-            dbt_profile=None,
-            dbt_target=None,
-        )
+    project = parse_project_phase(
+        working_dir=working_dir,
+        output_dir=output_dir,
+        default_source=None,
+        dbt_profile=None,
+        dbt_target=None,
+    )
 
-    assert 'Project file "project.visivo.yml" not found' in str(exc_info.value)
+    assert isinstance(project, Project)
+    assert project.name == "Quickstart Visivo"
 
 
 def test_parse_project_phase_with_dbt_error(dbt_project, working_dir, output_dir):

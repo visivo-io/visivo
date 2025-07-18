@@ -26,6 +26,10 @@ class Discover:
         return Path(self._get_any_project_file(self.working_dir))
 
     @property
+    def project_file_exists(self):
+        return self._get_file_exists_status(self.working_dir)
+
+    @property
     def files(self):
         if not os.path.exists(self.project_file):
             raise click.ClickException(f'Project file "{PROJECT_FILE_NAME}" not found')
@@ -206,6 +210,11 @@ class Discover:
             return f"{dir}/visivo_project.yml"
 
         return f"{dir}/{PROJECT_FILE_NAME}"
+
+    def _get_file_exists_status(self, dir):
+        if dir == "":
+            return os.path.exists(f"{PROJECT_FILE_NAME}")
+        return os.path.exists(f"{dir}/{PROJECT_FILE_NAME}")
 
     def __get_project_file_from_git(self, git_url):
         from git import Repo
