@@ -10,6 +10,9 @@ jest.mock('../api/traces');
 
 describe('useTraceDate', () => {
   test('should return empty object when no traces', async () => {
+    // Mock the API function to return empty array
+    tracesApi.fetchTracesQuery.mockResolvedValue([]);
+    
     const { result } = renderHook(() => useTracesData('projectId', []), { wrapper: withProviders });
 
     await waitFor(() => {
