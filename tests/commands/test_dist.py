@@ -113,18 +113,23 @@ def test_dist_includes_viewer_files(setup_project, output_dir, dist_dir):
     # Check that viewer files are present
     assert os.path.exists(os.path.join(dist_dir, "index.html"))
     assert os.path.exists(os.path.join(dist_dir, "assets"))
-    
+
     # Verify index.html references exist
     with open(os.path.join(dist_dir, "index.html"), "r") as f:
         html_content = f.read()
         # Extract JS and CSS file references
         import re
+
         js_matches = re.findall(r'src="/assets/(index-[\w]+\.js)"', html_content)
         css_matches = re.findall(r'href="/assets/(index-[\w]+\.css)"', html_content)
-        
+
         # Verify referenced files exist
         for js_file in js_matches:
-            assert os.path.exists(os.path.join(dist_dir, "assets", js_file)), f"Missing JS file: {js_file}"
-        
+            assert os.path.exists(
+                os.path.join(dist_dir, "assets", js_file)
+            ), f"Missing JS file: {js_file}"
+
         for css_file in css_matches:
-            assert os.path.exists(os.path.join(dist_dir, "assets", css_file)), f"Missing CSS file: {css_file}"
+            assert os.path.exists(
+                os.path.join(dist_dir, "assets", css_file)
+            ), f"Missing CSS file: {css_file}"
