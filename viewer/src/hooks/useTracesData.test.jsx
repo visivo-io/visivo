@@ -11,7 +11,7 @@ jest.mock('../api/traces');
 describe('useTraceDate', () => {
   test('should return empty object when no traces', async () => {
     // Mock the API function to return empty array
-    tracesApi.fetchTracesQuery.mockResolvedValue([]);
+    tracesApi.fetchTraces.mockResolvedValue([]);
     
     const { result } = renderHook(() => useTracesData('projectId', []), { wrapper: withProviders });
 
@@ -30,7 +30,7 @@ describe('useTraceDate', () => {
     });
 
     // Mock the API function
-    tracesApi.fetchTracesQuery.mockResolvedValue([{ name: 'traceName' }]);
+    tracesApi.fetchTraces.mockResolvedValue([{ name: 'traceName' }]);
 
     jest
       .spyOn(fetchTracesData, 'fetchTracesData')

@@ -42,7 +42,13 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
         with open(f"{dist_dir}/data/project_history.json", "w") as f:
             f.write(json.dumps([{"created_at": created_at, "id": "id"}]))
 
+        # Copy explorer.json if it exists
+        if os.path.exists(f"{output_dir}/explorer.json"):
+            shutil.copyfile(f"{output_dir}/explorer.json", f"{dist_dir}/data/explorer.json")
+
+        # Generate traces.json for dist mode
         trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
+        traces_list = []
         for trace_dir in trace_dirs:
             trace_name = os.path.basename(os.path.normpath(trace_dir))
             if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
@@ -51,6 +57,38 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                     f"{output_dir}/traces/{trace_name}/data.json",
                     f"{dist_dir}/data/{trace_name}/data.json",
                 )
+                # Add trace info for traces.json
+                traces_list.append({
+                    "name": trace_name,
+                    "id": trace_name,
+                    "signed_data_file_url": f"/data/{trace_name}/data.json",
+                })
+        
+        # Write traces.json
+        with open(f"{dist_dir}/data/traces.json", "w") as f:
+            json.dump(traces_list, f)
+
+        # Generate dashboard JSON files for dist mode
+        import hashlib
+        if "dashboards" in project_json:
+            os.makedirs(f"{dist_dir}/data/dashboard", exist_ok=True)
+            for dashboard in project_json["dashboards"]:
+                dashboard_name = dashboard["name"]
+                dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+                thumbnail_path = os.path.join(dist_dir, "data", "dashboards", f"{dashboard_name_hash}.png")
+                thumbnail_exists = os.path.exists(thumbnail_path)
+                
+                dashboard_data = {
+                    "id": dashboard_name,
+                    "name": dashboard_name,
+                    "signed_thumbnail_file_url": (
+                        f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
+                    ),
+                }
+                
+                # Write individual dashboard JSON file
+                with open(f"{dist_dir}/data/dashboard/{dashboard_name}.json", "w") as f:
+                    json.dump(dashboard_data, f)
 
         shutil.copytree(DIST_PATH, dist_dir, dirs_exist_ok=True)
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTracesData } from '../queries/tracesData';
-import { fetchTracesQuery } from '../api/traces';
+import { fetchTraces } from '../api/traces';
 
 function filterObject(obj, keys) {
   return Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
@@ -15,7 +15,7 @@ export const useTracesData = (projectId, traceNames) => {
 
   const { data: traces, isLoading } = useQuery({
     queryKey: ['trace', projectId, memoizedTraceNames],
-    queryFn: () => fetchTracesQuery(projectId, memoizedTraceNames),
+    queryFn: () => fetchTraces(projectId, memoizedTraceNames),
   });
 
   useEffect(() => {

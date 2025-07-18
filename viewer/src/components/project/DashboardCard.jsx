@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import md5 from 'md5';
 import { useRouteLoaderData } from 'react-router-dom';
 import DashboardThumbnail from './DashboardThumbnail';
-import { fetchDashboardQuery } from '../../api/dashboard';
+import { fetchDashboard } from '../../api/dashboard';
 
 const GENERATING_THUMBNAIL_URL = 'GENERATING';
 
@@ -17,7 +17,7 @@ function DashboardCard({ projectId, dashboard }) {
 
   const { data: dashboardData } = useQuery({
     queryKey: ['dashboard', projectId, dashboard.name],
-    queryFn: () => fetchDashboardQuery(projectId, dashboard.name),
+    queryFn: () => fetchDashboard(projectId, dashboard.name),
   });
 
   const onThumbnailGenerated = async blob => {

@@ -181,6 +181,48 @@ class FlaskApp:
                 Logger.instance().error(f"Error reading trace query: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
+        @self.app.route("/api/dashboard/<dashboard_name>/", methods=["GET"])
+        def get_dashboard_api(dashboard_name):
+            """API endpoint for dashboard data"""
+            try:
+                dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+                thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
+                thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
+
+                return jsonify({
+                    "id": dashboard_name,
+                    "name": dashboard_name,
+                    "signed_thumbnail_file_url": (
+                        f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
+                    ),
+                })
+            except Exception as e:
+                Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
+                return jsonify({"message": str(e)}), 500
+
+        @self.app.route("/api/traces/", methods=["GET"])
+        def get_traces_api():
+            """API endpoint for traces data"""
+            try:
+                # Get trace names from query parameters
+                trace_names = request.args.getlist('names')
+                project_id = request.args.get('project_id')
+                
+                # For now, return traces with data URLs (like the old hardcoded logic)
+                # This matches the expected format from the client
+                traces = []
+                for name in trace_names:
+                    traces.append({
+                        "name": name,
+                        "id": name,
+                        "signed_data_file_url": f"/data/{name}/data.json",
+                    })
+                
+                return jsonify(traces)
+            except Exception as e:
+                Logger.instance().error(f"Error fetching traces data: {str(e)}")
+                return jsonify({"message": str(e)}), 500
+
         @self.app.route("/data/error.json")
         def error():
             if os.path.exists(f"{output_dir}/error.json"):
