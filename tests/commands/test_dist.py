@@ -95,3 +95,36 @@ def test_dist_errors_with_invalid_project_file(output_dir, dist_dir):
 
     # Check for error message instead of exit code
     assert "Error creating dist" in result.output
+
+
+def test_dist_includes_viewer_files(setup_project, output_dir, dist_dir):
+    project, working_dir = setup_project
+
+    # First run the project to generate data
+    from visivo.commands.run import run
+
+    run_result = runner.invoke(run, ["-w", working_dir, "-o", output_dir, "-s", "source"])
+    assert run_result.exit_code == 0
+
+    # Then run dist to package it
+    result = runner.invoke(dist, ["--output-dir", output_dir, "--dist-dir", dist_dir])
+    assert result.exit_code == 0
+
+    # Check that viewer files are present
+    assert os.path.exists(os.path.join(dist_dir, "index.html"))
+    assert os.path.exists(os.path.join(dist_dir, "assets"))
+    
+    # Verify index.html references exist
+    with open(os.path.join(dist_dir, "index.html"), "r") as f:
+        html_content = f.read()
+        # Extract JS and CSS file references
+        import re
+        js_matches = re.findall(r'src="/assets/(index-[\w]+\.js)"', html_content)
+        css_matches = re.findall(r'href="/assets/(index-[\w]+\.css)"', html_content)
+        
+        # Verify referenced files exist
+        for js_file in js_matches:
+            assert os.path.exists(os.path.join(dist_dir, "assets", js_file)), f"Missing JS file: {js_file}"
+        
+        for css_file in css_matches:
+            assert os.path.exists(os.path.join(dist_dir, "assets", css_file)), f"Missing CSS file: {css_file}"

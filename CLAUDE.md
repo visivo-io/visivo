@@ -60,6 +60,7 @@ Each CLI command follows a consistent pattern:
 - `run` - Executes trace queries and generates data files via DAG runner
 - `serve` - Starts Flask server with hot reload for development
 - `test` - Compiles project and runs test assertions
+- `dist` - Creates a static website distribution of the project (requires viewer to be built)
 
 #### Execution Flow
 1. **Compile Phase**: YAML parsing → Pydantic models → JSON artifacts
@@ -97,6 +98,51 @@ Each CLI command follows a consistent pattern:
 2. **Viewer changes**: Edit in `viewer/src/`, test with `yarn test`, run with `yarn start`
 3. **Integration**: Use `yarn deploy` to build viewer into CLI package
 4. **Testing**: Use projects in `test-projects/` for end-to-end testing
+
+## Viewer Build Process and Distribution
+
+### Important: Viewer Build Synchronization
+
+The Visivo CLI includes pre-built viewers in `visivo/viewers/`:
+- **`local/`** - Used by `visivo serve` for development with hot reload
+- **`dist/`** - Used by `visivo dist` to create static website distributions
+
+**⚠️ Critical**: These viewers must be rebuilt after any significant changes to the viewer code:
+```bash
+cd viewer
+yarn deploy:local  # Rebuild local viewer
+yarn deploy:dist   # Rebuild dist viewer
+yarn deploy        # Rebuild both viewers
+```
+
+### The `visivo dist` Command
+
+The `dist` command creates a static website distribution of your Visivo project:
+
+1. **Purpose**: Generates a self-contained static website that can be hosted anywhere (Netlify, GitHub Pages, etc.)
+2. **Prerequisites**: 
+   - Run `visivo run` first to generate data files
+   - Ensure the dist viewer is up-to-date (`yarn deploy:dist`)
+3. **Output**: Creates a `dist/` directory with:
+   - Pre-built React viewer
+   - All data files from `.visivo/`
+   - HTML entry point with correct file references
+
+### Troubleshooting Dist Issues
+
+Common problems and solutions:
+
+1. **Blank screen when serving dist**:
+   - Usually means the viewer is out of sync
+   - Solution: `cd viewer && yarn deploy:dist`
+
+2. **Missing StoreProvider errors**:
+   - The dist viewer is missing required context providers
+   - Check that `DistProviders.jsx` includes all necessary providers
+
+3. **Hash mismatch in index.html**:
+   - The HTML references different JS/CSS files than what exists
+   - Solution: Rebuild the viewer to ensure consistent hashes
 
 ## Key Configuration Files
 

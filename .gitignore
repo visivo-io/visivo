@@ -17,6 +17,7 @@ env.bak/
 venv.bak/
 
 target
+prds/
 dist/
 build/
 
