@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import Project from './Project';
-import { QueryProvider } from '../../contexts/QueryContext';
 import { URLProvider } from '../../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter } from 'react-router-dom';
@@ -79,9 +78,7 @@ test('renders dashboard overview without dashboard name param', async () => {
   render(
     <QueryClientProvider client={queryClient}>
       <URLProvider environment="local">
-        <QueryProvider>
-          <RouterProvider router={router} future={futureFlags} />
-        </QueryProvider>
+        <RouterProvider router={router} future={futureFlags} />
       </URLProvider>
     </QueryClientProvider>
   );
@@ -116,9 +113,7 @@ test('renders dashboard with dashboard name param', async () => {
   render(
     <QueryClientProvider client={queryClient}>
       <URLProvider environment="local">
-        <QueryProvider>
-          <RouterProvider router={router} future={futureFlags} />
-        </QueryProvider>
+        <RouterProvider router={router} future={futureFlags} />
       </URLProvider>
     </QueryClientProvider>
   );

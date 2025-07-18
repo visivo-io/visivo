@@ -1,6 +1,5 @@
 import { MemoryRouter } from 'react-router-dom';
 import { futureFlags } from '../router-config';
-import { QueryProvider } from '../contexts/QueryContext';
 import { URLProvider } from '../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route } from 'react-router-dom';
@@ -29,13 +28,11 @@ export const withProviders = ({ children, initialPath = '/', traces = [], enviro
   return (
     <MemoryRouter initialEntries={[initialPath]} future={futureFlags}>
       <URLProvider environment={environment}>
-        <QueryProvider>
-          <QueryClientProvider client={queryClient}>
-            <Routes>
-              <Route path={initialPath.split('?')[0]} element={children} />
-            </Routes>
-          </QueryClientProvider>
-        </QueryProvider>
+        <QueryClientProvider client={queryClient}>
+          <Routes>
+            <Route path={initialPath.split('?')[0]} element={children} />
+          </Routes>
+        </QueryClientProvider>
       </URLProvider>
     </MemoryRouter>
   );

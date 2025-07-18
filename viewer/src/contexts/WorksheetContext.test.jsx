@@ -3,7 +3,6 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { WorksheetProvider, useWorksheets } from './WorksheetContext';
-import { QueryProvider } from '../contexts/QueryContext';
 import { URLProvider } from '../contexts/URLContext';
 import * as worksheetApi from '../api/worksheet';
 
@@ -93,9 +92,7 @@ const renderWithProviders = ui => {
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <URLProvider environment="local">
-        <QueryProvider>
-          <WorksheetProvider>{ui}</WorksheetProvider>
-        </QueryProvider>
+        <WorksheetProvider>{ui}</WorksheetProvider>
       </URLProvider>
     </BrowserRouter>
   );

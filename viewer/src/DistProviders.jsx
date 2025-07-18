@@ -2,7 +2,6 @@ import React from 'react';
 import DistRouter from './DistRouter';
 import { futureFlags } from './router-config';
 import { RouterProvider } from 'react-router-dom';
-import { QueryProvider } from './contexts/QueryContext';
 import { URLProvider } from './contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -12,12 +11,10 @@ export default function DistProviders() {
   return (
     <QueryClientProvider client={queryClient}>
       <URLProvider environment="dist">
-        <QueryProvider>
-          <RouterProvider
-            router={DistRouter}
-            future={futureFlags}
-          />
-        </QueryProvider>
+        <RouterProvider
+          router={DistRouter}
+          future={futureFlags}
+        />
       </URLProvider>
     </QueryClientProvider>
   );

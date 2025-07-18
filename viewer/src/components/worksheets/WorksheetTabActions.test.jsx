@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WorksheetTabActions from './WorksheetTabActions';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
-import { QueryProvider } from '../../contexts/QueryContext';
 import { URLProvider } from '../../contexts/URLContext';
 import { BrowserRouter } from 'react-router-dom';
 import * as worksheetApi from '../../api/worksheet';
@@ -15,9 +14,7 @@ jest.mock('../../api/worksheet');
 const TestWrapper = ({ children }) => (
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <URLProvider environment="local">
-      <QueryProvider>
-        <WorksheetProvider>{children}</WorksheetProvider>
-      </QueryProvider>
+      <WorksheetProvider>{children}</WorksheetProvider>
     </URLProvider>
   </BrowserRouter>
 );

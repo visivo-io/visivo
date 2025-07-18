@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useLoaderData, BrowserRouter } from 'react-router-dom';
 import { WorksheetProvider } from '../../contexts/WorksheetContext';
-import { QueryProvider } from '../../contexts/QueryContext';
 import { URLProvider } from '../../contexts/URLContext';
 import Explorer from './Explorer';
 import * as queryService from '../../services/queryService';
@@ -192,9 +191,7 @@ const renderWithProviders = ui => {
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <URLProvider environment="local">
-        <QueryProvider>
-          <WorksheetProvider>{ui}</WorksheetProvider>
-        </QueryProvider>
+        <WorksheetProvider>{ui}</WorksheetProvider>
       </URLProvider>
     </BrowserRouter>
   );
