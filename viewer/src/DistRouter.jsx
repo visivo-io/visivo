@@ -8,11 +8,15 @@ import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
 import { loadError } from './loaders/error';
 import logo from './images/logo.png';
+import { createURLConfig } from './config/urls';
 
+const urlConfig = createURLConfig();
+const root = urlConfig.deploymentRoot || '/';
+  
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
     <Route
-      path="/"
+      path={root}
       element={<DistHome />}
       loader={loadError}
       handle={{
@@ -24,7 +28,7 @@ const DistRouter = createBrowserRouter(
       }}
     >
       <Route
-        path="/"
+        path={root}
         element={<ProjectContainer />}
         errorElement={<ErrorPage />}
         shouldRevalidate={() => false}
