@@ -1,7 +1,7 @@
-import { getApiUrl } from './config';
+import { getUrl } from '../config/urls';
 
 export const fetchProjectFilePath = async () => {
-  const response = await fetch(getApiUrl('/api/project/project_file_path'));
+  const response = await fetch(getUrl('projectFilePath'));
   if (response.status === 200) {
     return await response.json();
   } else {

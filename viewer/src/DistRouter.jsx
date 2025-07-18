@@ -8,9 +8,10 @@ import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
 import { loadError } from './loaders/error';
 import logo from './images/logo.png';
-import { getApiUrl } from './api/config';
+import { createURLConfig } from './config/urls';
 
-const root = getApiUrl('/');
+const urlConfig = createURLConfig();
+const root = urlConfig.deploymentRoot || '/';
   
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(

@@ -1,7 +1,7 @@
-import { getApiUrl } from './config';
+import { getUrl } from '../config/urls';
 
 export const listWorksheets = async () => {
-  const response = await fetch(getApiUrl('/api/worksheet'));
+  const response = await fetch(getUrl('worksheet'));
   if (response.status === 200) {
     return await response.json();
   }
@@ -9,7 +9,7 @@ export const listWorksheets = async () => {
 };
 
 export const getWorksheet = async id => {
-  const response = await fetch(getApiUrl(`/api/worksheet/${id}`));
+  const response = await fetch(getUrl('worksheetDetail', { id }));
   if (response.status === 200) {
     return await response.json();
   }
@@ -17,7 +17,7 @@ export const getWorksheet = async id => {
 };
 
 export const createWorksheet = async data => {
-  const response = await fetch(getApiUrl('/api/worksheet'), {
+  const response = await fetch(getUrl('worksheet'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -31,7 +31,7 @@ export const createWorksheet = async data => {
 };
 
 export const updateWorksheet = async (id, data) => {
-  const response = await fetch(getApiUrl(`/api/worksheet/${id}`), {
+  const response = await fetch(getUrl('worksheetDetail', { id }), {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ export const updateWorksheet = async (id, data) => {
 };
 
 export const deleteWorksheet = async id => {
-  const response = await fetch(getApiUrl(`/api/worksheet/${id}`), {
+  const response = await fetch(getUrl('worksheetDetail', { id }), {
     method: 'DELETE',
   });
   if (response.status === 200) {
@@ -55,7 +55,7 @@ export const deleteWorksheet = async id => {
 };
 
 export const getSessionState = async () => {
-  const response = await fetch(getApiUrl('/api/worksheet/session'));
+  const response = await fetch(getUrl('worksheetSession'));
   if (response.status === 200) {
     return await response.json();
   }
@@ -63,7 +63,7 @@ export const getSessionState = async () => {
 };
 
 export const updateSessionState = async states => {
-  const response = await fetch(getApiUrl('/api/worksheet/session'), {
+  const response = await fetch(getUrl('worksheetSession'), {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
