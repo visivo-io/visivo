@@ -1,4 +1,5 @@
 import { getUrl } from '../config/urls';
+import md5 from 'md5';
 
 /**
  * Fetch dashboard data
@@ -7,10 +8,12 @@ import { getUrl } from '../config/urls';
  * @returns {Promise<Object>} Dashboard object with thumbnail URL
  */
 export const fetchDashboard = async (projectId, name) => {
-  // In local mode, this will call /api/dashboard/{name}/
-  // In dist mode, this will fetch /data/dashboard/{name}.json
+  // Calculate hash from dashboard name for consistent URL generation
+  const nameHash = md5(name);
   
-  const url = new URL(getUrl('dashboardQuery', { name }), window.location.origin);
+  // In local mode, this will call /api/dashboard/{hash}.json
+  // In dist mode, this will fetch /data/dashboard/{hash}.json
+  const url = new URL(getUrl('dashboardQuery', { hash: nameHash }), window.location.origin);
   
   if (projectId) {
     url.searchParams.append('project_id', projectId);

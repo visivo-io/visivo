@@ -1,6 +1,7 @@
 import re
 import os
 import json
+import glob
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
 from visivo.models.project import Project
@@ -44,6 +45,53 @@ class FlaskApp:
                 Logger.instance().error(f"Error serving trace data: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
+        @self.app.route("/api/traces/<hash>/")
+        def serve_trace_data_by_hash(hash):
+            """API endpoint to serve trace data by hash"""
+            try:
+                # Find trace name by hash
+                trace_dirs = glob.glob(f"{output_dir}/traces/*/")
+                for trace_dir in trace_dirs:
+                    trace_name = os.path.basename(os.path.normpath(trace_dir))
+                    trace_name_hash = hashlib.md5(trace_name.encode()).hexdigest()
+                    if trace_name_hash == hash:
+                        data_file = os.path.join(trace_dir, "data.json")
+                        if os.path.exists(data_file):
+                            return send_file(data_file)
+                        break
+                
+                return jsonify({"message": f"Trace data not found for hash: {hash}"}), 404
+            except Exception as e:
+                Logger.instance().error(f"Error serving trace data by hash: {str(e)}")
+                return jsonify({"message": str(e)}), 500
+
+        @self.app.route("/api/dashboards/<hash>/")
+        def serve_dashboard_by_hash(hash):
+            """API endpoint to serve dashboard JSON by hash"""
+            try:
+                # Find dashboard name by hash
+                if hasattr(self, '_project') and self._project:
+                    for dashboard in self._project.dashboards:
+                        dashboard_name = dashboard.name
+                        dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
+                        if dashboard_name_hash == hash:
+                            thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
+                            thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
+                            
+                            dashboard_data = {
+                                "id": dashboard_name,
+                                "name": dashboard_name,
+                                "signed_thumbnail_file_url": (
+                                    f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
+                                ),
+                            }
+                            return jsonify(dashboard_data)
+                
+                return jsonify({"message": f"Dashboard not found for hash: {hash}"}), 404
+            except Exception as e:
+                Logger.instance().error(f"Error serving dashboard by hash: {str(e)}")
+                return jsonify({"message": str(e)}), 500
+
         @self.app.route("/data/explorer.json")
         def explorer():
             if os.path.exists(f"{output_dir}/explorer.json"):
@@ -62,7 +110,7 @@ class FlaskApp:
                     404,
                 )
 
-        @self.app.route("/api/project/named_children", methods=["GET"])
+        @self.app.route("/api/project/named_children/", methods=["GET"])
         def named_children():
             named_children = self._project.named_child_nodes()
             if named_children:
@@ -70,7 +118,7 @@ class FlaskApp:
             else:
                 return jsonify({})
 
-        @self.app.route("/api/project/project_file_path", methods=["GET"])
+        @self.app.route("/api/project/project_file_path/", methods=["GET"])
         def project_file_path():
             project_file_path = self._project.project_file_path
             if project_file_path:
@@ -78,7 +126,7 @@ class FlaskApp:
             else:
                 return jsonify({})
 
-        @self.app.route("/api/project/write_changes", methods=["POST"])
+        @self.app.route("/api/project/write_changes/", methods=["POST"])
         def write_changes():
 
             data = request.get_json()
@@ -94,7 +142,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error writing changes: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/query/<project_id>", methods=["POST"])
+        @self.app.route("/api/query/<project_id>/", methods=["POST"])
         def execute_query(project_id):
             try:
                 data = request.get_json()
@@ -163,7 +211,7 @@ class FlaskApp:
                 Logger.instance().error(f"Query execution error: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/trace/<trace_name>/query", methods=["GET"])
+        @self.app.route("/api/trace/<trace_name>/query/", methods=["GET"])
         def get_trace_query(trace_name):
             try:
                 query_file_path = f"{output_dir}/traces/{trace_name}/query.sql"
@@ -181,7 +229,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error reading trace query: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/dashboard/<dashboard_name>/", methods=["GET"])
+        @self.app.route("/api/dashboards/<dashboard_name>/", methods=["GET"])
         def get_dashboard_api(dashboard_name):
             """API endpoint for dashboard data"""
             try:
@@ -208,14 +256,14 @@ class FlaskApp:
                 trace_names = request.args.getlist('names')
                 project_id = request.args.get('project_id')
                 
-                # For now, return traces with data URLs (like the old hardcoded logic)
-                # This matches the expected format from the client
+                # Return traces with hash-based data URLs
                 traces = []
                 for name in trace_names:
+                    name_hash = hashlib.md5(name.encode()).hexdigest()
                     traces.append({
                         "name": name,
                         "id": name,
-                        "signed_data_file_url": f"/data/{name}/data.json",
+                        "signed_data_file_url": f"/api/traces/{name_hash}.json",
                     })
                 
                 return jsonify(traces)
@@ -322,7 +370,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error creating thumbnail: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet", methods=["GET"])
+        @self.app.route("/api/worksheet/", methods=["GET"])
         def list_worksheets():
             """List all worksheets."""
             try:
@@ -332,7 +380,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error listing worksheets: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet/<worksheet_id>", methods=["GET"])
+        @self.app.route("/api/worksheet/<worksheet_id>/", methods=["GET"])
         def get_worksheet(worksheet_id):
             """Get a specific worksheet."""
             try:
@@ -344,7 +392,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error getting worksheet: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet", methods=["POST"])
+        @self.app.route("/api/worksheet/", methods=["POST"])
         def create_worksheet():
             """Create a new worksheet."""
             try:
@@ -362,7 +410,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error creating worksheet: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet/<worksheet_id>", methods=["PUT"])
+        @self.app.route("/api/worksheet/<worksheet_id>/", methods=["PUT"])
         def update_worksheet(worksheet_id):
             """Update a worksheet."""
             try:
@@ -379,7 +427,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error updating worksheet: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet/<worksheet_id>", methods=["DELETE"])
+        @self.app.route("/api/worksheet/<worksheet_id>/", methods=["DELETE"])
         def delete_worksheet(worksheet_id):
             """Delete a worksheet."""
             try:
@@ -391,7 +439,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error deleting worksheet: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet/session", methods=["GET"])
+        @self.app.route("/api/worksheet/session/", methods=["GET"])
         def get_session_state():
             """Get the current session state."""
             try:
@@ -401,7 +449,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error getting session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/worksheet/session", methods=["PUT"])
+        @self.app.route("/api/worksheet/session/", methods=["PUT"])
         def update_session_state():
             """Update the session state."""
             try:
@@ -418,7 +466,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error updating session state: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/api/editors/installed", methods=["GET"])
+        @self.app.route("/api/editors/installed/", methods=["GET"])
         def get_installed_editors():
             editors, platform = get_editor_configs()
 
@@ -437,7 +485,7 @@ class FlaskApp:
 
             return jsonify(installed_editors)
 
-        @self.app.route("/api/editors/open", methods=["POST"])
+        @self.app.route("/api/editors/open/", methods=["POST"])
         def open_in_editor():
             data = request.get_json()
             if not data or "editorId" not in data or "filePath" not in data:

@@ -12,12 +12,12 @@ const URL_PATTERNS = {
     dag: '/api/dag/',
     schema: '/api/schema/',
     error: '/api/error/',
-    traceData: '/api/traces/{name}/data/',
+    traceData: '/api/traces/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png',
     
     // New query endpoints (replaces provider-based queries)
     tracesQuery: '/api/traces/',
-    dashboardQuery: '/api/dashboard/{name}/',
+    dashboardQuery: '/api/dashboards/{hash}/',
     
     // Interactive endpoints (local only)
     worksheet: '/api/worksheet/',
@@ -42,12 +42,12 @@ const URL_PATTERNS = {
     dag: '/data/dag.json',
     schema: '/data/schema.json',
     error: '/data/error.json',
-    traceData: '/data/{name}/data.json',
+    traceData: '/data/traces/{hash}.json',
     dashboardThumbnail: '/data/dashboards/{hash}.png',
     
     // New query endpoints for dist mode
     tracesQuery: '/data/traces.json',
-    dashboardQuery: '/data/dashboard/{name}.json',
+    dashboardQuery: '/data/dashboards/{hash}.json',
     
     // Interactive endpoints not available in dist
     worksheet: null,
