@@ -16,10 +16,7 @@ export default function LocalProviders() {
       <QueryProvider value={{ fetchTracesQuery, fetchDashboardQuery }}>
         <WorksheetProvider>
           <StoreProvider>
-            <RouterProvider
-              router={LocalRouter}
-              future={futureFlags}
-            />
+            <RouterProvider router={LocalRouter} future={futureFlags} />
           </StoreProvider>
         </WorksheetProvider>
       </QueryProvider>

@@ -15,6 +15,7 @@ api_venv/
 ENV/
 env.bak/
 venv.bak/
+prds/
 
 target
 dist/

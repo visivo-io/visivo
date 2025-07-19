@@ -47,7 +47,7 @@ async def start_files(file_names, description, form_headers, host, progress):
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {description} files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {description} files: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
@@ -77,7 +77,7 @@ async def finish_files(file_ids, description, form_headers, host, progress):
                 return "finished"
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while finishing files: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to finish files: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
@@ -114,7 +114,7 @@ async def upload_file(name, upload_url, file_name, output_dir, form_headers, pro
                     return "uploaded"
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating '{name}': {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to upload data for '{name}': {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
@@ -152,7 +152,7 @@ async def create_trace_records(batch, project_id, json_headers, host, progress):
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {len(batch)} traces: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(batch)} traces: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
@@ -201,7 +201,7 @@ async def create_dashboard_records(
                 return response.json()
         except httpx.HTTPStatusError as e:
             Logger.instance().error(
-                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] HTTP error while creating {len(dashboards)} dashboards: {repr(e)} - Response: {e.response.text}"
+                f"\t[Attempt {attempt.get()}/{MAX_ATTEMPTS}] Failed to create {len(dashboards)} dashboards: {repr(e)} - Response: {e.response.text}"
             )
             raise
         except Exception as e:
