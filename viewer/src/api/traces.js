@@ -10,18 +10,23 @@ export const fetchTraces = async (projectId, names) => {
   // In local mode, this will call /api/traces/ with trace names as query params
   // In dist mode, this will fetch /data/traces.json
   
-  const url = new URL(getUrl('tracesQuery'), window.location.origin);
+  let url = getUrl('tracesQuery');
+  const params = [];
   
   // Add trace names as query parameters for local mode
   if (names && names.length > 0) {
-    names.forEach(name => url.searchParams.append('names', name));
+    names.forEach(name => params.push(`names=${encodeURIComponent(name)}`));
   }
   
   if (projectId) {
-    url.searchParams.append('project_id', projectId);
+    params.push(`project_id=${encodeURIComponent(projectId)}`);
   }
   
-  const response = await fetch(url.toString());
+  if (params.length > 0) {
+    url += `?${params.join('&')}`;
+  }
+  
+  const response = await fetch(url);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch traces data: ${response.status}`);

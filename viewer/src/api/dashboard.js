@@ -13,13 +13,14 @@ export const fetchDashboard = async (projectId, name) => {
   
   // In local mode, this will call /api/dashboard/{hash}.json
   // In dist mode, this will fetch /data/dashboard/{hash}.json
-  const url = new URL(getUrl('dashboardQuery', { hash: nameHash }), window.location.origin);
+  let url = getUrl('dashboardQuery', { hash: nameHash });
   
   if (projectId) {
-    url.searchParams.append('project_id', projectId);
+    const separator = url.includes('?') ? '&' : '?';
+    url += `${separator}project_id=${encodeURIComponent(projectId)}`;
   }
   
-  const response = await fetch(url.toString());
+  const response = await fetch(url);
   
   if (!response.ok) {
     throw new Error(`Failed to fetch dashboard data: ${response.status}`);

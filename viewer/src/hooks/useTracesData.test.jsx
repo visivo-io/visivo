@@ -1,7 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useTracesData } from './useTracesData';
 import { withProviders } from '../utils/test-utils';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as fetchTracesData from '../queries/tracesData';
 import * as tracesApi from '../api/traces';
 
@@ -21,14 +20,6 @@ describe('useTraceDate', () => {
   });
 
   test('should return trace data', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    });
-
     // Mock the API function
     tracesApi.fetchTraces.mockResolvedValue([{ name: 'traceName' }]);
 

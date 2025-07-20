@@ -30,7 +30,7 @@ describe('explorer API functions', () => {
 
       const result = await fetchExplorer();
 
-      expect(fetch).toHaveBeenCalledWith('/data/explorer.json');
+      expect(fetch).toHaveBeenCalledWith('/api/explorer/');
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
     });

@@ -68,7 +68,7 @@ class FlaskApp:
                         if os.path.exists(data_file):
                             return send_file(data_file)
                         break
-                
+
                 return jsonify({"message": f"Trace data not found for hash: {hash}"}), 404
             except Exception as e:
                 Logger.instance().error(f"Error serving trace data by hash: {str(e)}")
@@ -79,23 +79,29 @@ class FlaskApp:
             """API endpoint to serve dashboard JSON by hash"""
             try:
                 # Find dashboard name by hash
-                if hasattr(self, '_project') and self._project:
+                if hasattr(self, "_project") and self._project:
                     for dashboard in self._project.dashboards:
                         dashboard_name = dashboard.name
                         dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
                         if dashboard_name_hash == hash:
-                            thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
-                            thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
-                            
+                            thumbnail_path = os.path.join(
+                                "dashboards", f"{dashboard_name_hash}.png"
+                            )
+                            thumbnail_exists = os.path.exists(
+                                os.path.join(output_dir, thumbnail_path)
+                            )
+
                             dashboard_data = {
                                 "id": dashboard_name,
                                 "name": dashboard_name,
                                 "signed_thumbnail_file_url": (
-                                    f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
+                                    f"/data/dashboards/{dashboard_name_hash}.png"
+                                    if thumbnail_exists
+                                    else None
                                 ),
                             }
                             return jsonify(dashboard_data)
-                
+
                 return jsonify({"message": f"Dashboard not found for hash: {hash}"}), 404
             except Exception as e:
                 Logger.instance().error(f"Error serving dashboard by hash: {str(e)}")
@@ -103,6 +109,14 @@ class FlaskApp:
 
         @self.app.route("/data/explorer.json")
         def explorer():
+            if os.path.exists(f"{output_dir}/explorer.json"):
+                with open(f"{output_dir}/explorer.json", "r") as f:
+                    return json.load(f)
+            else:
+                return json.dumps({})
+
+        @self.app.route("/api/explorer/")
+        def explorer_api():
             if os.path.exists(f"{output_dir}/explorer.json"):
                 with open(f"{output_dir}/explorer.json", "r") as f:
                     return json.load(f)
@@ -359,13 +373,17 @@ class FlaskApp:
                 thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
                 thumbnail_exists = os.path.exists(os.path.join(output_dir, thumbnail_path))
 
-                return jsonify({
-                    "id": dashboard_name,
-                    "name": dashboard_name,
-                    "signed_thumbnail_file_url": (
-                        f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
-                    ),
-                })
+                return jsonify(
+                    {
+                        "id": dashboard_name,
+                        "name": dashboard_name,
+                        "signed_thumbnail_file_url": (
+                            f"/data/dashboards/{dashboard_name_hash}.png"
+                            if thumbnail_exists
+                            else None
+                        ),
+                    }
+                )
             except Exception as e:
                 Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
                 return jsonify({"message": str(e)}), 500
@@ -375,19 +393,21 @@ class FlaskApp:
             """API endpoint for traces data"""
             try:
                 # Get trace names from query parameters
-                trace_names = request.args.getlist('names')
-                project_id = request.args.get('project_id')
-                
+                trace_names = request.args.getlist("names")
+                project_id = request.args.get("project_id")
+
                 # Return traces with hash-based data URLs
                 traces = []
                 for name in trace_names:
                     name_hash = hashlib.md5(name.encode()).hexdigest()
-                    traces.append({
-                        "name": name,
-                        "id": name,
-                        "signed_data_file_url": f"/api/traces/{name_hash}.json",
-                    })
-                
+                    traces.append(
+                        {
+                            "name": name,
+                            "id": name,
+                            "signed_data_file_url": f"/api/traces/{name_hash}.json",
+                        }
+                    )
+
                 return jsonify(traces)
             except Exception as e:
                 Logger.instance().error(f"Error fetching traces data: {str(e)}")

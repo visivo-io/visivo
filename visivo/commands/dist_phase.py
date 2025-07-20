@@ -48,10 +48,11 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
 
         # Generate traces.json for dist mode
         import hashlib
+
         trace_dirs = glob(f"{output_dir}/traces/*/", recursive=True)
         traces_list = []
         os.makedirs(f"{dist_dir}/data/traces", exist_ok=True)
-        
+
         for trace_dir in trace_dirs:
             trace_name = os.path.basename(os.path.normpath(trace_dir))
             if os.path.exists(f"{output_dir}/traces/{trace_name}/data.json"):
@@ -62,12 +63,14 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                     f"{dist_dir}/data/traces/{trace_name_hash}.json",
                 )
                 # Add trace info for traces.json
-                traces_list.append({
-                    "name": trace_name,
-                    "id": trace_name,
-                    "signed_data_file_url": f"/data/traces/{trace_name_hash}.json",
-                })
-        
+                traces_list.append(
+                    {
+                        "name": trace_name,
+                        "id": trace_name,
+                        "signed_data_file_url": f"/data/traces/{trace_name_hash}.json",
+                    }
+                )
+
         # Write traces.json
         with open(f"{dist_dir}/data/traces.json", "w") as f:
             json.dump(traces_list, f)
@@ -78,9 +81,11 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
             for dashboard in project_json["dashboards"]:
                 dashboard_name = dashboard["name"]
                 dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
-                thumbnail_path = os.path.join(dist_dir, "data", "dashboards", f"{dashboard_name_hash}.png")
+                thumbnail_path = os.path.join(
+                    dist_dir, "data", "dashboards", f"{dashboard_name_hash}.png"
+                )
                 thumbnail_exists = os.path.exists(thumbnail_path)
-                
+
                 dashboard_data = {
                     "id": dashboard_name,
                     "name": dashboard_name,
@@ -88,7 +93,7 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                         f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
                     ),
                 }
-                
+
                 # Write individual dashboard JSON file using hash-based filename
                 with open(f"{dist_dir}/data/dashboards/{dashboard_name_hash}.json", "w") as f:
                     json.dump(dashboard_data, f)
