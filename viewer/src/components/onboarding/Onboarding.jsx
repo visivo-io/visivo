@@ -28,6 +28,7 @@ const Onboarding = () => {
   const [errorMessage, setErrorMessage] = useState("");
 
   const isNewProject = useStore((state) => state.isNewProject);
+  const isOnBoardingLoading = useStore((state) => state.isOnBoardingLoading);
   const project = useStore((state) => state.project);
   const projectDir = project?.project_json?.project_dir ?? "";
 
@@ -51,7 +52,7 @@ const Onboarding = () => {
     setIsLoading(false);
   };
 
-  const handleProjectNameSubmit = () => {
+  const handleSetProjectName = () => {
     const trimmedName = tempProjectName.trim();
     if (trimmedName) {
       setProjectName(trimmedName);
@@ -67,14 +68,8 @@ const Onboarding = () => {
     formData.append(key, value ?? "");
   };
 
-  const handleAddDataSource = async (data) => {
-    const { config } = data;
+  const createSource = async (config) => {
     const formData = new FormData();
-    setLoadingAction(ACTIONS.DATA_SOURCE);
-    setLoadingText("Connecting source...");
-    setIsLoading(true);
-
-    if (config?.file) formData.append("file", config.file);
     safeAppend("project_name", projectName, formData);
     safeAppend("source_name", config?.name, formData);
     safeAppend("source_type", config?.type, formData);
@@ -88,21 +83,93 @@ const Onboarding = () => {
     safeAppend("credentials_base64", config?.credentials_base64, formData);
     safeAppend("project", config?.project, formData);
     safeAppend("dataset", config?.dataset, formData);
-    safeAppend("project_dir", project?.project_json?.project_dir, formData);
+    safeAppend("project_dir", projectDir, formData);
 
-    const response = await fetch("/api/project/create", {
+    const res = await fetch("/api/source/create", {
       method: "POST",
       body: formData,
     });
 
-    if (!response.ok) {
-      const data = await response.json();
-      const message = data.message
-      setErrorMessage(message ?? "Failed to connect to the data source.")
-      setShowErrorToast(true)
-      closeLoading()
-    } else setLoadingText("Preparing project ...")
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to connect to the data source.");
+    }
+
+    return data.source; 
   };
+
+
+
+  const uploadSourceFile = async (config) => {
+    const formData = new FormData();
+    formData.append("file", config.file);
+    formData.append("project_dir", projectDir);
+    formData.append("source_type", config?.type);
+
+    const res = await fetch("/api/source/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to upload the file.");
+    }
+
+    return data.dashboard; 
+  };
+
+  const finalizeProject = async (config, source, dashboard) => {
+    const res = await fetch("/api/project/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project_name: projectName,
+        project_dir: projectDir,
+        sources: [source],
+        dashboards: dashboard ? [dashboard] : [],
+        include_example_dashboard: !dashboard,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to finalize the project.");
+    }
+
+    return data;
+  };
+
+  const handleAddDataSource = async (data) => {
+    const { config } = data;
+    setLoadingAction(ACTIONS.DATA_SOURCE);
+    setIsLoading(true);
+
+    try {
+      setLoadingText("Connecting source...");
+      const source = await createSource(config); 
+
+      let dashboard = null;
+
+      if (config?.file) {
+        setLoadingText("Uploading file...");
+        dashboard = await uploadSourceFile(config); 
+      }
+
+      setLoadingText("Finalizing project...");
+      await finalizeProject(config, source, dashboard);
+      setIsLoading(true);
+      setLoadingText("Preparing dashboards...");
+    } catch (err) {
+      const message = err?.message ?? "An unexpected error occurred.";
+      setErrorMessage(message);
+      setShowErrorToast(true);
+    } 
+  };
+
 
   const handleLoadExample = async () => {
     setLoadingAction(ACTIONS.GITHUB_RELEASE);
@@ -130,7 +197,7 @@ const Onboarding = () => {
 
   const isLoadingAction = (action) => isLoading && loadingAction === action;
 
-  if (isNewProject === undefined) {
+  if (isOnBoardingLoading) {
     return (
       <div className="flex items-center justify-center h-screen w-screen">
         <Loading />
@@ -273,9 +340,10 @@ const Onboarding = () => {
 
       {showNameModal && (
         <ProjectModal
-          handleProjectNameSubmit={handleProjectNameSubmit}
+          handleSetProjectName={handleSetProjectName}
           tempProjectName={tempProjectName}
           setTempProjectName={setTempProjectName}
+          projectDir={projectDir}
         />
       )}
     </>

@@ -127,7 +127,6 @@ def create_source(
         env_path.write_text(f"{var}={value}")
 
     if source_type in {
-        SourceTypeEnum.sqlite,
         SourceTypeEnum.duckdb,
         SourceTypeEnum.csv,
         SourceTypeEnum.excel,
@@ -139,7 +138,6 @@ def create_source(
         if source_type == SourceTypeEnum.duckdb:
             create_file_database(source.url(), project_dir)
 
-        Logger.instance().info("HERER")
         write_env("DB_PASSWORD", "EXAMPLE_password_l0cation")
         return source
 

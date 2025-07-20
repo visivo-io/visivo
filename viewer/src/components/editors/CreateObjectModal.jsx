@@ -282,7 +282,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                 )}
 
                 {/* String input */}
-                {((attr.type === 'string' || !attr.type) && attr.name !== 'type') && (
+                {((attr.type === 'string' || !attr.type) && attr.name !== 'type' && attr.title !== 'File') && (
                   <input
                     type="text"
                     value={attributes[attr.name] || ''}
@@ -317,7 +317,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                 )}
 
                 {/* File input */}
-                  {attr.type === 'file' && (
+                  {attr.type === 'string' && attr.title === 'File' &&(
                     <input
                       type="file"
                       onChange={e => {
