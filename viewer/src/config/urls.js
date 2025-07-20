@@ -73,15 +73,29 @@ class URLConfig {
     this.deploymentRoot = options.deploymentRoot || '';
     this.environment = options.environment || 'local';
     
-    // Normalize deployment root
-    this.deploymentRoot = this.deploymentRoot.endsWith('/') 
-      ? this.deploymentRoot.slice(0, -1) 
-      : this.deploymentRoot;
+    // Normalize deployment root: should be '' for base or '/subfolder' for subfolders
+    if (this.deploymentRoot) {
+      // Ensure it starts with / and doesn't end with /
+      if (!this.deploymentRoot.startsWith('/')) {
+        this.deploymentRoot = '/' + this.deploymentRoot;
+      }
+      if (this.deploymentRoot.endsWith('/')) {
+        this.deploymentRoot = this.deploymentRoot.slice(0, -1);
+      }
+    }
       
     // Normalize host
     this.host = this.host.endsWith('/') 
       ? this.host.slice(0, -1) 
       : this.host;
+  }
+
+  /**
+   * Get the route for React Router (always starts with /)
+   * @returns {string} - Route path for React Router
+   */
+  getRoute() {
+    return this.deploymentRoot || '/';
   }
 
   /**
@@ -163,41 +177,67 @@ class URLConfig {
 }
 
 /**
- * Auto-detect environment from window.deploymentRoot
- * @returns {string} - 'local' or 'dist'
+ * Get deployment root from window object
+ * @returns {string} - Deployment root from window or empty string
  */
-function detectEnvironment() {
-  // In local development, deploymentRoot is typically empty or undefined
-  // In dist, it's set to a specific path
-  if (typeof window !== 'undefined' && window.deploymentRoot !== undefined) {
-    return window.deploymentRoot === '' ? 'local' : 'dist';
+function getWindowDeploymentRoot() {
+  if (typeof window !== 'undefined' && 'deploymentRoot' in window) {
+    return window.deploymentRoot || '';
   }
-  return 'local';
+  return '';
 }
 
 /**
- * Create URLConfig instance with auto-detected settings
- * @param {object} overrides - Override auto-detected settings
+ * Create URLConfig instance with explicit settings
+ * @param {object} options - Configuration options
+ * @param {string} options.environment - Environment ('local' or 'dist') - required
+ * @param {string} options.host - Base host URL (optional)
+ * @param {string} options.deploymentRoot - Deployment root path (optional)
  * @returns {URLConfig}
  */
-export function createURLConfig(overrides = {}) {
-  const environment = overrides.environment || detectEnvironment();
-  const deploymentRoot = overrides.deploymentRoot || 
-    (typeof window !== 'undefined' ? window.deploymentRoot || '' : '');
+export function createURLConfig(options = {}) {
+  if (!options.environment) {
+    throw new Error('Environment is required when creating URLConfig');
+  }
   
-  return new URLConfig({
-    environment,
-    deploymentRoot,
-    host: '',
-    ...overrides
-  });
+  const config = {
+    environment: options.environment,
+    host: options.host || '',
+  };
+  
+  // Handle deploymentRoot: explicit option takes precedence, then window.deploymentRoot, then default to ''
+  if ('deploymentRoot' in options) {
+    config.deploymentRoot = options.deploymentRoot;
+  } else {
+    config.deploymentRoot = getWindowDeploymentRoot();
+  }
+  
+  return new URLConfig(config);
 }
 
 // Export URLConfig class for advanced usage
 export { URLConfig };
 
-// Create default instance
-export const urlConfig = createURLConfig();
+// Global reference for the current URL config (set by URLProvider)
+let _globalURLConfig = null;
 
-// Convenience function for getting URLs
-export const getUrl = (key, params) => urlConfig.getUrl(key, params);
+/**
+ * Set the global URL config instance (used by URLProvider)
+ * @param {URLConfig} config 
+ */
+export function _setGlobalURLConfig(config) {
+  _globalURLConfig = config;
+}
+
+/**
+ * Get URL using the global config (context-aware)
+ * @param {string} key - Endpoint key
+ * @param {object} params - URL parameters
+ * @returns {string} - Complete URL
+ */
+export function getUrl(key, params = {}) {
+  if (!_globalURLConfig) {
+    throw new Error('getUrl() called before URLProvider was initialized. Make sure your component is wrapped in URLProvider.');
+  }
+  return _globalURLConfig.getUrl(key, params);
+}

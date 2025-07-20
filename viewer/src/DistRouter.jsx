@@ -10,8 +10,8 @@ import { loadError } from './loaders/error';
 import logo from './images/logo.png';
 import { createURLConfig } from './config/urls';
 
-const urlConfig = createURLConfig();
-const root = urlConfig.deploymentRoot || '/';
+const urlConfig = createURLConfig({ environment: 'dist' });
+const root = urlConfig.getRoute();
   
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import { createURLConfig } from '../config/urls';
+import React, { createContext, useContext, useMemo, useEffect } from 'react';
+import { createURLConfig, _setGlobalURLConfig } from '../config/urls';
 
 /**
  * Context for URL configuration
@@ -11,7 +11,7 @@ const URLContext = createContext();
  * @param {object} props
  * @param {string} props.host - Base host URL (optional)
  * @param {string} props.deploymentRoot - Deployment root path (optional)
- * @param {string} props.environment - Environment ('local' or 'dist', auto-detected if not provided)
+ * @param {string} props.environment - Environment ('local' or 'dist') - required
  * @param {React.ReactNode} props.children
  */
 export function URLProvider({ host, deploymentRoot, environment, children }) {
@@ -22,6 +22,11 @@ export function URLProvider({ host, deploymentRoot, environment, children }) {
       environment
     });
   }, [host, deploymentRoot, environment]);
+
+  // Set the global config for getUrl() function
+  useEffect(() => {
+    _setGlobalURLConfig(urlConfig);
+  }, [urlConfig]);
 
   return (
     <URLContext.Provider value={urlConfig}>

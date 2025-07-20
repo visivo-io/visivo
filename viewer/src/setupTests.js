@@ -41,3 +41,12 @@ const { Response, Headers, Request } = require('whatwg-fetch');
 global.Response = Response;
 global.Headers = Headers;
 global.Request = Request;
+
+// Set up a default URL config for tests
+import { _setGlobalURLConfig, createURLConfig } from './config/urls';
+
+beforeEach(() => {
+  // Set up a test URL config before each test
+  const testConfig = createURLConfig({ environment: 'local' });
+  _setGlobalURLConfig(testConfig);
+});
