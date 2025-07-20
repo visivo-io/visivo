@@ -3,18 +3,14 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Project from "./Project";
 
-// Mock the Dashboard component since we're testing the Project component logic
+// Mock Dashboard component
 jest.mock("./Dashboard", () => ({ project, dashboardName }) => (
-  <div data-testid="dashboard-component">
-    Dashboard: {dashboardName}
-  </div>
+  <div data-testid="dashboard-component">Dashboard: {dashboardName}</div>
 ));
-
 jest.mock("../../stores/store", () => {
-  const { createStore } = require("zustand/vanilla");
-  const { useStore } = require("zustand");
+  const { create } = require("zustand");
 
-  const store = createStore(() => ({
+  const useStore = create(() => ({
     setScrollPosition: jest.fn(),
     scrollPositions: {},
     filteredDashboards: [],
@@ -43,12 +39,13 @@ jest.mock("../../stores/store", () => {
 
   return {
     __esModule: true,
-    default: (selector) => useStore(store, selector),
+    default: useStore,
   };
 });
 
 describe("Project Component", () => {
   const mockProject = {
+    id: 1,
     project_json: {
       dashboards: [
         {
@@ -66,6 +63,7 @@ describe("Project Component", () => {
           ],
         },
       ],
+      defaults: {},
     },
   };
 
@@ -76,9 +74,8 @@ describe("Project Component", () => {
       <MemoryRouter>
         <Project
           project={mockProject}
-          fetchTraces={fetchTraces}
           dashboardName="dashboard"
-          dashboards={[{ name: "dashboard", path: "/dashboard" }]}
+          fetchTraces={fetchTraces}
         />
       </MemoryRouter>
     );
@@ -92,9 +89,8 @@ describe("Project Component", () => {
       <MemoryRouter>
         <Project
           project={mockProject}
-          fetchTraces={fetchTraces}
           dashboardName="dashboard"
-          dashboards={[{ name: "dashboard", path: "/dashboard" }]}
+          fetchTraces={fetchTraces}
         />
       </MemoryRouter>
     );
