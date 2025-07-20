@@ -1,16 +1,11 @@
 import React from 'react';
 import { HiOutlineClipboardCopy } from 'react-icons/hi';
 import Pill from '../common/Pill';
-import { Sidebar } from '../styled/Sidebar';
+import { CopyButton, EmptyMessage } from './styles/TreeStyles';
 import useStore from '../../stores/store';
 
-const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick }) => {
+const ModelsTracesList = ({ data, onItemClick }) => {
   const { setInfo } = useStore();
-
-  const validData = React.useMemo(() => {
-    if (!Array.isArray(data)) return [];
-    return data.filter(item => item && typeof item === 'object' && item.name);
-  }, [data]);
 
   const handleCopyName = React.useCallback(
     (e, name) => {
@@ -28,10 +23,10 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
       return (
         <div key={node.id} className="mb-2 mr-1 ml-1">
           <Pill name={node.name} type={node.type} onClick={() => onItemClick(node)}>
-            <button onClick={e => handleCopyName(e, node.name)}>
+            <CopyButton onClick={e => handleCopyName(e, node.name)}>
               <HiOutlineClipboardCopy className="w-4 h-4" />
               <span className="sr-only">Copy name</span>
-            </button>
+            </CopyButton>
           </Pill>
           {Array.isArray(node.children) && node.children.length > 0 && (
             <ul className="pl-6 mt-1">
@@ -46,23 +41,16 @@ const ExplorerTree = React.memo(({ data, selectedTab, onTypeChange, onItemClick 
     [handleCopyName, onItemClick]
   );
 
-  if (!validData.length) {
-    return <div className="p-4 text-sm text-gray-500 text-center">No items to display</div>;
+  const validData = React.useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return data.filter(item => item && typeof item === 'object' && item.name);
+  }, [data]);
+
+  if (validData.length === 0) {
+    return <EmptyMessage>No items to display</EmptyMessage>;
   }
 
-  return (
-    <Sidebar>
-      <select
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
-        value={selectedTab}
-        onChange={e => onTypeChange(e.target.value)}
-      >
-        <option value="models">SQL Models</option>
-        <option value="traces">SQL Traces</option>
-      </select>
-      {validData.map(item => renderTreeItem(item))}
-    </Sidebar>
-  );
-});
+  return <>{validData.map(item => renderTreeItem(item))}</>;
+};
 
-export default ExplorerTree;
+export default ModelsTracesList;

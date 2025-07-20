@@ -7,20 +7,13 @@ const createCommonSlice = (set, get) => {
     const dashboards = project?.project_json?.dashboards ?? [];
     const isNew = project?.project_json?.name === "Quickstart Visivo" && dashboards.length === 0;
     set({ isNewProject: isNew });
-    set({ isOnBoardingLoading: false });
   };
 
   return {
     project: null,
     projectFilePath: null,
     isNewProject: undefined,
-    isOnBoardingLoading: true,
-    scrollPositions: {},
-    setScrollPosition: (dashName, pos) => {
-      set(state => ({
-        scrollPositions: { ...state.scrollPositions, [dashName]: pos }
-      }));
-    },
+
     setProject: (project) => {
       set({ project });
       evaluateIsNewProject();

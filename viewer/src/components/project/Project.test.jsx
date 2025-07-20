@@ -38,7 +38,10 @@ const fetchTraces = () => {
 };
 
 const mockQueryContext = {
-  fetchDashboardQuery: () => ({ queryFn: jest.fn().mockResolvedValue(project), queryKey: ['dashboard'] }),
+  fetchDashboardQuery: () => ({
+    queryFn: jest.fn().mockResolvedValue(project),
+    queryKey: ['dashboard'],
+  }),
 };
 
 // Create a new QueryClient instance for each test

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import ExplorerTree from './ExplorerTree';
+import ExplorerTree from '../explorerTree/ExplorerTree';
 import { fetchTraceQuery } from '../../services/queryService';
 import { fetchExplorer } from '../../api/explorer';
 import tw from 'tailwind-styled-components';
@@ -7,6 +7,7 @@ import { useWorksheets } from '../../contexts/WorksheetContext';
 import { useQueryHotkeys } from '../../hooks/useQueryHotkeys';
 import QueryPanel from './QueryPanel';
 import Divider from './Divider';
+import VerticalDivider from './VerticalDivider';
 import ResultsPanel from './ResultsPanel';
 import useStore from '../../stores/store';
 import { getAncestors } from '../lineage/graphUtils';
@@ -26,6 +27,7 @@ const MainContent = tw.div`
   flex-1
   min-h-0
   overflow-hidden
+  relative
 `;
 
 const RightPanel = tw.div`
@@ -72,11 +74,13 @@ const QueryExplorer = () => {
     setActiveWorksheetId,
   } = useStore();
 
+  const [sidebarWidth, setSidebarWidth] = React.useState(300);
+  const [isResizingSidebar, setIsResizingSidebar] = React.useState(false);
+
   const project = useStore(state => state.project);
   const namedChildren = useStore(state => state.namedChildren);
   const isLoading = useStore(state => state.isLoading);
   const isDragging = useStore(state => state.isDragging);
-  const query = useStore(state => state.query);
   const info = useStore(state => state.info);
   const explorerData = useStore(state => state.explorerData);
   const selectedSource = useStore(state => state.selectedSource);
@@ -136,18 +140,6 @@ const QueryExplorer = () => {
         const data = await fetchExplorer();
         if (data) {
           setExplorerData(data);
-          if (data.sources && data.sources.length > 0) {
-            if (data.default_source) {
-              const defaultSource = data.sources.find(s => s.name === data.default_source);
-              if (defaultSource) {
-                setSelectedSource(defaultSource);
-              } else {
-                setSelectedSource(data.sources[0]);
-              }
-            } else {
-              setSelectedSource(data.sources[0]);
-            }
-          }
         }
       } catch (err) {
         console.error('Error loading explorer data:', err);
@@ -155,7 +147,29 @@ const QueryExplorer = () => {
       }
     };
     loadExplorerData();
-  }, [setExplorerData, setSelectedSource, setError]);
+  }, [setExplorerData, setError]);
+
+  // Set default source from namedChildren when available
+  useEffect(() => {
+    if (namedChildren && Object.keys(namedChildren).length > 0 && !selectedSource) {
+      const sources = Object.values(namedChildren).filter(item => item.type_key === 'sources');
+      if (sources.length > 0) {
+        // Check if there's a default source from explorerData
+        if (explorerData?.default_source) {
+          const defaultSource = sources.find(s => s.config.name === explorerData.default_source);
+          if (defaultSource) {
+            setSelectedSource(defaultSource.config);
+          } else {
+            setSelectedSource(sources[0].config);
+          }
+        } else {
+          setSelectedSource(sources[0].config);
+        }
+      }
+    }
+  }, [namedChildren, selectedSource, explorerData, setSelectedSource]);
+
+  // Removed old metadata loading - now using lazy loading in ExplorerTree
 
   const transformData = React.useCallback(() => {
     if (!explorerData) return [];
@@ -167,7 +181,6 @@ const QueryExplorer = () => {
         if (explorerData.models) {
           const modelItems = explorerData.models
             .filter(model => model && typeof model === 'object' && model.name)
-            .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .filter(model => !HIDDEN_MODEL_TYPES.includes(namedChildren[model.name]?.type))
             .map((model, index) => ({
               id: `model-${model.name}-${index}`,
@@ -219,13 +232,20 @@ const QueryExplorer = () => {
       switch (item.type) {
         case 'model':
           if (item.config.type === 'CsvScriptModel' || item.config.type === 'LocalMergeModel') {
-            newSource = explorerData?.sources?.find(s => s.type === 'duckdb') || selectedSource;
+            const duckdbSource = Object.values(namedChildren || {}).find(
+              child => child.type_key === 'sources' && child.type === 'DuckdbSource'
+            );
+            newSource = duckdbSource ? duckdbSource.config : selectedSource;
           } else if (item.config.source) {
-            newSource =
-              explorerData?.sources?.find(s => s.name === item.config.source.name) ||
-              selectedSource;
+            const matchingSource = Object.values(namedChildren || {}).find(
+              child => child.type_key === 'sources' && child.config.name === item.config.source.name
+            );
+            newSource = matchingSource ? matchingSource.config : selectedSource;
           } else {
-            newSource = explorerData?.sources?.[0] || selectedSource;
+            const sources = Object.values(namedChildren || {}).filter(
+              child => child.type_key === 'sources'
+            );
+            newSource = sources.length > 0 ? sources[0].config : selectedSource;
           }
           newQuery = `WITH model AS (${item.config.sql})\nSELECT * FROM model LIMIT 10;`;
           break;
@@ -267,12 +287,15 @@ const QueryExplorer = () => {
     const activeWorksheet = worksheets.find(w => w.id === activeWorksheetId);
     if (activeWorksheet) {
       setQuery(activeWorksheet.query || '');
-      if (activeWorksheet.selected_source) {
-        const source = explorerData?.sources?.find(s => s.name === activeWorksheet.selected_source);
-        if (source) setSelectedSource(source);
+      if (activeWorksheet.selected_source && namedChildren) {
+        const sourceData = Object.values(namedChildren).find(
+          item =>
+            item.type_key === 'sources' && item.config.name === activeWorksheet.selected_source
+        );
+        if (sourceData) setSelectedSource(sourceData.config);
       }
     }
-  }, [activeWorksheetId, worksheets, explorerData?.sources, setQuery, setSelectedSource]);
+  }, [activeWorksheetId, worksheets, namedChildren, setQuery, setSelectedSource]);
 
   // Effect to load results when active worksheet changes
   useEffect(() => {
@@ -294,20 +317,55 @@ const QueryExplorer = () => {
     }
   }, [activeWorksheetId, loadWorksheetResults, setResults, setQueryStats]);
 
+  // Handle sidebar resizing
+  useEffect(() => {
+    const handleMouseMove = e => {
+      if (!isResizingSidebar) return;
+
+      // Calculate new width based on mouse position
+      const newWidth = Math.max(200, Math.min(600, e.clientX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingSidebar(false);
+    };
+
+    if (isResizingSidebar) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingSidebar]);
+
   return (
     <Container>
       <div className="flex flex-col h-full">
         {info && (
           <Info>
-            <p>{query}</p>
+            <p>{info}</p>
           </Info>
         )}
         <MainContent>
-          <ExplorerTree
-            data={treeData}
-            selectedTab={selectedType}
-            onTypeChange={handleTabChange}
-            onItemClick={handleItemClick}
+          <div style={{ width: `${sidebarWidth}px`, flexShrink: 0, display: 'flex' }}>
+            <ExplorerTree
+              data={treeData}
+              selectedTab={selectedType}
+              onTypeChange={handleTabChange}
+              onItemClick={handleItemClick}
+            />
+          </div>
+
+          <VerticalDivider
+            isDragging={isResizingSidebar}
+            handleMouseDown={e => {
+              e.preventDefault();
+              setIsResizingSidebar(true);
+            }}
           />
 
           <RightPanel id="right-panel">
