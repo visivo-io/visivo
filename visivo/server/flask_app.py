@@ -40,20 +40,6 @@ class FlaskApp:
         # Initialize telemetry middleware
         init_telemetry_middleware(self.app, project)
 
-        @self.app.route("/data/<trace_name>/data.json")
-        def serve_trace_data(trace_name):
-            try:
-                trace_dir = os.path.join(output_dir, "traces", trace_name)
-                if not os.path.exists(trace_dir):
-                    return (
-                        jsonify({"message": f"Trace directory not found: {trace_name}"}),
-                        404,
-                    )
-                return send_from_directory(trace_dir, "data.json")
-            except Exception as e:
-                Logger.instance().error(f"Error serving trace data: {str(e)}")
-                return jsonify({"message": str(e)}), 500
-
         @self.app.route("/api/traces/<hash>/")
         def serve_trace_data_by_hash(hash):
             """API endpoint to serve trace data by hash"""
@@ -95,7 +81,7 @@ class FlaskApp:
                                 "id": dashboard_name,
                                 "name": dashboard_name,
                                 "signed_thumbnail_file_url": (
-                                    f"/data/dashboards/{dashboard_name_hash}.png"
+                                    f"/api/dashboards/{dashboard_name_hash}.png"
                                     if thumbnail_exists
                                     else None
                                 ),
@@ -107,14 +93,6 @@ class FlaskApp:
                 Logger.instance().error(f"Error serving dashboard by hash: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/data/explorer.json")
-        def explorer():
-            if os.path.exists(f"{output_dir}/explorer.json"):
-                with open(f"{output_dir}/explorer.json", "r") as f:
-                    return json.load(f)
-            else:
-                return json.dumps({})
-
         @self.app.route("/api/explorer/")
         def explorer_api():
             if os.path.exists(f"{output_dir}/explorer.json"):
@@ -123,7 +101,7 @@ class FlaskApp:
             else:
                 return json.dumps({})
 
-        @self.app.route("/data/schema.json")
+        @self.app.route("/api/schema/")
         def schema():
             if os.path.exists(SCHEMA_FILE):
                 return send_file(SCHEMA_FILE)
@@ -378,7 +356,7 @@ class FlaskApp:
                         "id": dashboard_name,
                         "name": dashboard_name,
                         "signed_thumbnail_file_url": (
-                            f"/data/dashboards/{dashboard_name_hash}.png"
+                            f"/api/dashboards/{dashboard_name_hash}.png"
                             if thumbnail_exists
                             else None
                         ),
@@ -404,7 +382,7 @@ class FlaskApp:
                         {
                             "name": name,
                             "id": name,
-                            "signed_data_file_url": f"/api/traces/{name_hash}.json",
+                            "signed_data_file_url": f"/api/traces/{name_hash}/",
                         }
                     )
 
@@ -413,7 +391,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error fetching traces data: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/data/error.json")
+        @self.app.route("/api/error/")
         def error():
             if os.path.exists(f"{output_dir}/error.json"):
                 with open(f"{output_dir}/error.json", "r") as error_file:
@@ -421,7 +399,7 @@ class FlaskApp:
             else:
                 return json.dumps({})
 
-        @self.app.route("/data/project.json")
+        @self.app.route("/api/project/")
         def projects():
             return {
                 "id": "id",
@@ -429,7 +407,7 @@ class FlaskApp:
                 "created_at": datetime.datetime.now().isoformat(),
             }
 
-        @self.app.route("/data/project_history.json")
+        @self.app.route("/api/project_history/")
         def project_history():
             return [
                 {
@@ -458,7 +436,7 @@ class FlaskApp:
 
             return html
 
-        @self.app.route("/data/dashboards/<dashboard_name>", methods=["GET"])
+        @self.app.route("/api/dashboards/<dashboard_name>", methods=["GET"])
         def get_dashboard(dashboard_name):
             dashboard_name_hash = hashlib.md5(dashboard_name.encode()).hexdigest()
             thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
@@ -468,11 +446,11 @@ class FlaskApp:
                 "id": dashboard_name,
                 "name": dashboard_name,
                 "signed_thumbnail_file_url": (
-                    f"/data/dashboards/{dashboard_name_hash}.png" if exists else None
+                    f"/api/dashboards/{dashboard_name_hash}.png" if exists else None
                 ),
             }
 
-        @self.app.route("/data/dashboards/<dashboard_name_hash>.png", methods=["GET"])
+        @self.app.route("/api/dashboards/<dashboard_name_hash>.png", methods=["GET"])
         def get_thumbnail(dashboard_name_hash):
             try:
                 thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
@@ -485,7 +463,7 @@ class FlaskApp:
                 Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
                 return jsonify({"message": str(e)}), 500
 
-        @self.app.route("/data/dashboards/<dashboard_name_hash>.png", methods=["POST"])
+        @self.app.route("/api/dashboards/<dashboard_name_hash>.png", methods=["POST"])
         def create_thumbnail(dashboard_name_hash):
             try:
                 if "file" not in request.files:
@@ -504,7 +482,7 @@ class FlaskApp:
 
                 return jsonify(
                     {
-                        "signed_thumbnail_file_url": f"/data/dashboards/{dashboard_name_hash}.png",
+                        "signed_thumbnail_file_url": f"/api/dashboards/{dashboard_name_hash}.png",
                     }
                 )
 

@@ -73,11 +73,11 @@ def test_serve(output_dir):
 
     # Test the Flask app directly
     client = server.app.test_client()
-    response = client.get("/data/project.json")
+    response = client.get("/api/project/")
     response_json = json.loads(response.data)
     assert "project_json" in response_json
 
-    response = client.get("/data/error.json")
+    response = client.get("/api/error/")
     response_json = json.loads(response.data)
     assert "error" not in response_json
 
