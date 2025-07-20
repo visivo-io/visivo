@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useMemo, useEffect } from 'react';
-import { createURLConfig, _setGlobalURLConfig } from '../config/urls';
+import React, { createContext, useContext, useMemo } from 'react';
+import { createURLConfig } from '../config/urls';
 
 /**
  * Context for URL configuration
@@ -22,11 +22,6 @@ export function URLProvider({ host, deploymentRoot, environment, children }) {
       environment
     });
   }, [host, deploymentRoot, environment]);
-
-  // Set the global config for getUrl() function
-  useEffect(() => {
-    _setGlobalURLConfig(urlConfig);
-  }, [urlConfig]);
 
   return (
     <URLContext.Provider value={urlConfig}>

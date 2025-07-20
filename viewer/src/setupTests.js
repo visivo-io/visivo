@@ -46,7 +46,7 @@ global.Request = Request;
 import { _setGlobalURLConfig, createURLConfig } from './config/urls';
 
 beforeEach(() => {
-  // Set up a test URL config before each test
+  // Set up a test URL config
   const testConfig = createURLConfig({ environment: 'local' });
   _setGlobalURLConfig(testConfig);
 });

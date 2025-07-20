@@ -147,33 +147,6 @@ class URLConfig {
     const patterns = URL_PATTERNS[this.environment];
     return patterns && patterns[key] !== null && patterns[key] !== undefined;
   }
-
-  /**
-   * Get all available endpoint keys for the current environment
-   * @returns {string[]}
-   */
-  getAvailableKeys() {
-    const patterns = URL_PATTERNS[this.environment];
-    if (!patterns) return [];
-    
-    return Object.entries(patterns)
-      .filter(([key, pattern]) => pattern !== null)
-      .map(([key]) => key);
-  }
-
-  /**
-   * Create a new URLConfig with different options
-   * @param {object} newOptions - New configuration options
-   * @returns {URLConfig}
-   */
-  withOptions(newOptions) {
-    return new URLConfig({
-      host: this.host,
-      deploymentRoot: this.deploymentRoot,
-      environment: this.environment,
-      ...newOptions
-    });
-  }
 }
 
 /**
@@ -218,11 +191,11 @@ export function createURLConfig(options = {}) {
 // Export URLConfig class for advanced usage
 export { URLConfig };
 
-// Global reference for the current URL config (set by URLProvider)
+// Global reference for when context is not available (loaders, stores)
 let _globalURLConfig = null;
 
 /**
- * Set the global URL config instance (used by URLProvider)
+ * Set the global URL config (used by router setup and URLProvider)
  * @param {URLConfig} config 
  */
 export function _setGlobalURLConfig(config) {
@@ -230,14 +203,14 @@ export function _setGlobalURLConfig(config) {
 }
 
 /**
- * Get URL using the global config (context-aware)
+ * Get URL using global config (backwards compatible)
  * @param {string} key - Endpoint key
  * @param {object} params - URL parameters
  * @returns {string} - Complete URL
  */
 export function getUrl(key, params = {}) {
   if (!_globalURLConfig) {
-    throw new Error('getUrl() called before URLProvider was initialized. Make sure your component is wrapped in URLProvider.');
+    throw new Error('getUrl() called before URLConfig was initialized.');
   }
   return _globalURLConfig.getUrl(key, params);
 }

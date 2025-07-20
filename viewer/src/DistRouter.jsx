@@ -8,10 +8,13 @@ import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
 import { loadError } from './loaders/error';
 import logo from './images/logo.png';
-import { createURLConfig } from './config/urls';
+import { createURLConfig, _setGlobalURLConfig } from './config/urls';
 
 const urlConfig = createURLConfig({ environment: 'dist' });
 const root = urlConfig.getRoute();
+
+// Set global URL config for API calls
+_setGlobalURLConfig(urlConfig);
   
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
