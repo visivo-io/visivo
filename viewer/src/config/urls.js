@@ -72,6 +72,8 @@ class URLConfig {
     this.host = options.host || '';
     this.deploymentRoot = options.deploymentRoot || '';
     this.environment = options.environment || 'local';
+
+    console.log('URLConfig', options);
     
     // Normalize deployment root: should be '' for base or '/subfolder' for subfolders
     if (this.deploymentRoot) {

@@ -54,15 +54,3 @@ export function useURL(key, params = {}) {
     return urlConfig.getUrl(key, params);
   }, [urlConfig, key, params]);
 }
-
-/**
- * Hook to check if an endpoint is available
- * @param {string} key - Endpoint key
- * @returns {boolean}
- */
-export function useIsURLAvailable(key) {
-  const urlConfig = useURLConfig();
-  return useMemo(() => {
-    return urlConfig.isAvailable(key);
-  }, [urlConfig, key]);
-}
