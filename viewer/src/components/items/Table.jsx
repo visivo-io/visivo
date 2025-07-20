@@ -5,7 +5,18 @@ import {
   tableColumnsWithDot,
   tableColumnsWithUnderscores,
 } from '../../models/Table';
-import { createTheme, ThemeProvider, Box, IconButton, Button, Tooltip, useMediaQuery, useTheme, TextField, InputAdornment } from '@mui/material';
+import {
+  createTheme,
+  ThemeProvider,
+  Box,
+  IconButton,
+  Button,
+  Tooltip,
+  useMediaQuery,
+  useTheme,
+  TextField,
+  InputAdornment,
+} from '@mui/material';
 import { useTracesData } from '../../hooks/useTracesData';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
@@ -47,9 +58,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
-  const [searchIsVisible, setSearchIsVisible] = useState(false)
+  const [searchIsVisible, setSearchIsVisible] = useState(false);
 
-  const { toolTip, copyText, resetToolTip } = useCopyToClipboard()
+  const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
 
   const csvConfig = mkConfig({
     fieldSeparator: ',',
@@ -119,9 +130,9 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     const url = new URL(window.location.href);
     url.searchParams.set('element_id', window.scrollY);
     copyText(url.toString());
-  }
+  };
 
-  const toggleSearch = () => setSearchIsVisible(!searchIsVisible)
+  const toggleSearch = () => setSearchIsVisible(!searchIsVisible);
 
   const useTable = useMaterialReactTable({
     columns: tableColumnsWithUnderscores(columns).map(column => ({
@@ -214,19 +225,23 @@ const Table = ({ table, project, itemWidth, height, width }) => {
               },
             }}
           >
-            <Box sx={{
-              display: isMobile ? 'none' : 'flex', 
-              alignItems: 'center',
-            }}>
+            <Box
+              sx={{
+                display: isMobile ? 'none' : 'flex',
+                alignItems: 'center',
+              }}
+            >
               <MRT_GlobalFilterTextField table={useTable} />
             </Box>
 
-            {!searchIsVisible ?
-            <Box sx={{
-              display: !isMobile ? 'none' : 'flex', 
-              alignItems: 'center',
-            }}>
-              <IconButton
+            {!searchIsVisible ? (
+              <Box
+                sx={{
+                  display: !isMobile ? 'none' : 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <IconButton
                   onClick={toggleSearch}
                   sx={{
                     minWidth: '40px',
@@ -240,13 +255,15 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 >
                   <SearchIcon />
                 </IconButton>
-            </Box>
-            :
-            <Box sx={{
-              display: !isMobile ? 'none' : 'flex', 
-              alignItems: 'center',
-            }}>
-              <IconButton
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: !isMobile ? 'none' : 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <IconButton
                   onClick={toggleSearch}
                   sx={{
                     minWidth: '40px',
@@ -260,11 +277,10 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 >
                   <CloseIcon />
                 </IconButton>
-            </Box>
-            }
-            
+              </Box>
+            )}
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? '': '16px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? '' : '16px' }}>
               <MRT_ToggleFiltersButton table={useTable} />
               <MRT_ShowHideColumnsButton table={useTable} />
               <MRT_ToggleDensePaddingButton table={useTable} />
@@ -273,21 +289,20 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 onClick={handleExportData}
                 size="small"
                 sx={{ minWidth: '40px' }}
-              ><FileDownloadIcon fontSize="medium" /></Button>
+              >
+                <FileDownloadIcon fontSize="medium" />
+              </Button>
               <Button
                 aria-label="Share Table"
                 onClick={handleCopyText}
                 size="small"
                 sx={{ minWidth: '40px' }}
               >
-                <Tooltip 
-                  title={toolTip} 
-                  onMouseLeave={resetToolTip} 
-                  >
-                    <ShareIcon fontSize="medium"/>
-                  </Tooltip>
+                <Tooltip title={toolTip} onMouseLeave={resetToolTip}>
+                  <ShareIcon fontSize="medium" />
+                </Tooltip>
               </Button>
-        
+
               {!isDirectQueryResult && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
@@ -298,23 +313,22 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 />
               )}
             </Box>
-            { 
-              searchIsVisible && isMobile ? 
+            {searchIsVisible && isMobile ? (
               <Box sx={{ display: 'flex', width: '100%', minWidth: 0, flexBasis: '100%' }}>
-                  <TextField
-                    value={useTable.getState().globalFilter ?? ''}
-                    onChange={e => useTable.setGlobalFilter(e.target.value || undefined)}
-                    placeholder="Search..."
-                    size="small"
-                    variant="outlined"
-                    fullWidth
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon />
-                        </InputAdornment>
-                      ),
-                      endAdornment: useTable.getState().globalFilter ? (
+                <TextField
+                  value={useTable.getState().globalFilter ?? ''}
+                  onChange={e => useTable.setGlobalFilter(e.target.value || undefined)}
+                  placeholder="Search..."
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                    endAdornment: useTable.getState().globalFilter ? (
                       <InputAdornment position="end">
                         <IconButton
                           onClick={() => useTable.setGlobalFilter(undefined)}
@@ -324,12 +338,11 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                           <CloseIcon />
                         </IconButton>
                       </InputAdornment>
-                      ) : null
-                    }}
-                  />
-                </Box>
-                  : undefined
-                }
+                    ) : null,
+                  }}
+                />
+              </Box>
+            ) : undefined}
           </Box>
 
           <MRT_TableContainer

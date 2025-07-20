@@ -144,3 +144,47 @@ class BigQuerySource(SqlalchemySource):
             base_url += f"?credentials_base64={credentials}"
 
         return base_url
+
+    def list_databases(self):
+        """List all datasets in the BigQuery project.
+
+        For BigQuery, datasets are equivalent to databases.
+        This method will test the connection by actually querying for datasets.
+        """
+        try:
+            # Query to list all datasets in the project
+            query = f"""
+            SELECT schema_name
+            FROM `{self.project}.INFORMATION_SCHEMA.SCHEMATA`
+            ORDER BY schema_name
+            """
+
+            result = self.read_sql(query)
+            datasets = result["schema_name"].to_list() if result.height > 0 else []
+
+            # If no datasets found but query succeeded, connection is valid
+            if not datasets and self.database:
+                # Return configured dataset if query returns empty but connection works
+                return [self.database]
+
+            return datasets if datasets else []
+
+        except Exception as e:
+            # If we can't list datasets, try to verify the configured dataset exists
+            if self.database:
+                try:
+                    # Test if we can query the configured dataset
+                    test_query = f"""
+                    SELECT 1 
+                    FROM `{self.project}.{self.database}.INFORMATION_SCHEMA.TABLES` 
+                    LIMIT 1
+                    """
+                    self.read_sql(test_query)
+                    # If query succeeds, the dataset exists and is accessible
+                    return [self.database]
+                except Exception:
+                    # Dataset doesn't exist or isn't accessible
+                    pass
+
+            # Re-raise the original exception for proper error handling
+            raise e

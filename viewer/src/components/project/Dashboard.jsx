@@ -159,13 +159,13 @@ const Dashboard = ({ project, dashboardName }) => {
       );
     } else if (item.markdown) {
       return (
-        <Markdown 
+        <Markdown
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
           markdown={item}
           row={row}
           height={getHeight(row.height)}
         />
-      )
+      );
     }
     return null;
   };

@@ -10,9 +10,9 @@ const createCommonSlice = (set, get) => ({
   scrollPositions: {},
   setScrollPosition: (dashName, pos) => {
     set(state => ({
-      scrollPositions: { ...state.scrollPositions, [dashName]: pos }
+      scrollPositions: { ...state.scrollPositions, [dashName]: pos },
     }));
-  }
+  },
 });
 
 export default createCommonSlice;

@@ -37,7 +37,6 @@ const fetchTraces = () => {
   return [];
 };
 
-// Mock QueryContext is no longer needed - QueryProvider creates these automatically
 
 // Create a new QueryClient instance for each test
 const queryClient = new QueryClient({

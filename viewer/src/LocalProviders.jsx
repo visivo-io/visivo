@@ -15,10 +15,7 @@ export default function LocalProviders() {
       <URLProvider environment="local">
         <WorksheetProvider>
           <StoreProvider>
-            <RouterProvider
-              router={LocalRouter}
-              future={futureFlags}
-            />
+            <RouterProvider router={LocalRouter} future={futureFlags} />
           </StoreProvider>
         </WorksheetProvider>
       </URLProvider>

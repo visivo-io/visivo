@@ -10,11 +10,13 @@ import 'resize-observer-polyfill/dist/ResizeObserver.global';
 // Mock console.error to suppress react-cool-dimensions warnings in tests
 const originalError = console.error;
 console.error = (...args) => {
-  if (args[0]?.includes?.('react-cool-dimensions: the browser doesn\'t support Resize Observer')) {
+  if (args[0]?.includes?.("react-cool-dimensions: the browser doesn't support Resize Observer")) {
     return;
   }
-  if (args[0]?.message?.includes?.('Not implemented: navigation') || 
-      args[0]?.toString?.()?.includes?.('Not implemented: navigation')) {
+  if (
+    args[0]?.message?.includes?.('Not implemented: navigation') ||
+    args[0]?.toString?.()?.includes?.('Not implemented: navigation')
+  ) {
     return;
   }
   originalError(...args);
