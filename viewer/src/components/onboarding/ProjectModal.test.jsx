@@ -1,20 +1,33 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import '@testing-library/jest-dom';
 import ProjectModal from "./ProjectModal";
 
-let handleProjectNameSubmit;
+// Mocks
+let handleSetProjectName;
 let setTempProjectName;
 
 beforeEach(() => {
-  handleProjectNameSubmit = jest.fn();
+  handleSetProjectName = jest.fn();
   setTempProjectName = jest.fn();
+
+  // mock fetch
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({}),
+    })
+  );
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
 });
 
 test("renders the modal with input and button", () => {
   render(
     <ProjectModal
-      handleProjectNameSubmit={handleProjectNameSubmit}
+      handleSetProjectName={handleSetProjectName}
       tempProjectName=""
       setTempProjectName={setTempProjectName}
     />
@@ -28,7 +41,7 @@ test("renders the modal with input and button", () => {
 test("calls setTempProjectName when input changes", () => {
   render(
     <ProjectModal
-      handleProjectNameSubmit={handleProjectNameSubmit}
+      handleSetProjectName={handleSetProjectName}
       tempProjectName=""
       setTempProjectName={setTempProjectName}
     />
@@ -40,10 +53,10 @@ test("calls setTempProjectName when input changes", () => {
   expect(setTempProjectName).toHaveBeenCalledWith("Test Project");
 });
 
-test("calls handleProjectNameSubmit when Enter is pressed", () => {
+test("calls handleSetProjectName when Enter is pressed", async () => {
   render(
     <ProjectModal
-      handleProjectNameSubmit={handleProjectNameSubmit}
+      handleSetProjectName={handleSetProjectName}
       tempProjectName="Test Project"
       setTempProjectName={setTempProjectName}
     />
@@ -52,13 +65,15 @@ test("calls handleProjectNameSubmit when Enter is pressed", () => {
   const input = screen.getByPlaceholderText(/e.g., Sales Analytics/i);
   fireEvent.keyUp(input, { key: 'Enter', code: 'Enter' });
 
-  expect(handleProjectNameSubmit).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(handleSetProjectName).toHaveBeenCalled();
+  });
 });
 
 test("disables the Continue button when input is empty", () => {
   render(
     <ProjectModal
-      handleProjectNameSubmit={handleProjectNameSubmit}
+      handleSetProjectName={handleSetProjectName}
       tempProjectName=""
       setTempProjectName={setTempProjectName}
     />
@@ -71,7 +86,7 @@ test("disables the Continue button when input is empty", () => {
 test("enables the Continue button when input is not empty", () => {
   render(
     <ProjectModal
-      handleProjectNameSubmit={handleProjectNameSubmit}
+      handleSetProjectName={handleSetProjectName}
       tempProjectName="My Project"
       setTempProjectName={setTempProjectName}
     />
@@ -81,10 +96,10 @@ test("enables the Continue button when input is not empty", () => {
   expect(button).toBeEnabled();
 });
 
-test("calls handleProjectNameSubmit when button is clicked", () => {
+test("calls handleSetProjectName when button is clicked", async () => {
   render(
     <ProjectModal
-      handleProjectNameSubmit={handleProjectNameSubmit}
+      handleSetProjectName={handleSetProjectName}
       tempProjectName="Another Project"
       setTempProjectName={setTempProjectName}
     />
@@ -93,5 +108,7 @@ test("calls handleProjectNameSubmit when button is clicked", () => {
   const button = screen.getByRole("button", { name: /Continue/i });
   fireEvent.click(button);
 
-  expect(handleProjectNameSubmit).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(handleSetProjectName).toHaveBeenCalled();
+  });
 });

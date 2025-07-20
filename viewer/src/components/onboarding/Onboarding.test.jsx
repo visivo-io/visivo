@@ -10,7 +10,7 @@ jest.mock("react-router-dom", () => ({
 }));
 
 jest.mock("../../stores/store");
-jest.mock("./ProjectModal", () => ({ handleProjectNameSubmit, tempProjectName, setTempProjectName }) => (
+jest.mock("./ProjectModal", () => ({ handleSetProjectName, tempProjectName, setTempProjectName }) => (
   <div data-testid="project-modal">Project Modal</div>
 ));
 jest.mock("../editors/CreateObjectModal", () => (props) =>
@@ -19,8 +19,22 @@ jest.mock("../editors/CreateObjectModal", () => (props) =>
 jest.mock("../common/Loading", () => () => <div data-testid="loading">Loading...</div>);
 jest.mock("./FeatureCard", () => () => <div data-testid="feature-card">FeatureCard</div>);
 
+// Mock the store values that the component uses
+const mockStoreValues = {
+  isNewProject: true,
+  isOnBoardingLoading: false,
+  project: {
+    project_json: {
+      project_dir: "/test/project"
+    }
+  }
+};
+
 beforeEach(() => {
-  useStore.mockReturnValue(true); // isNewProject
+  // Reset to default mock values before each test
+  useStore.mockImplementation((selector) => {
+    return selector(mockStoreValues);
+  });
 });
 
 afterEach(() => {
@@ -61,15 +75,28 @@ test("handles 'Import Example' click", async () => {
   });
 });
 
-
 test("redirects if not a new project", () => {
-  useStore.mockReturnValue(false); // Simulate existing project
+  // Override the mock for this specific test
+  useStore.mockImplementation((selector) => {
+    return selector({
+      ...mockStoreValues,
+      isNewProject: false
+    });
+  });
+  
   render(<Onboarding />);
   expect(screen.getByTestId("navigate")).toBeInTheDocument();
 });
 
-test("shows loading spinner while project status is undefined", () => {
-  useStore.mockReturnValue(undefined);
+test("shows loading spinner while onboarding is loading", () => {
+  // Override the mock for this specific test
+  useStore.mockImplementation((selector) => {
+    return selector({
+      ...mockStoreValues,
+      isOnBoardingLoading: true
+    });
+  });
+  
   render(<Onboarding />);
   expect(screen.getByTestId("loading")).toBeInTheDocument();
 });

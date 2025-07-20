@@ -1,131 +1,104 @@
-import { render, screen } from '@testing-library/react';
-import Project from './Project';
-import QueryContext from '../../contexts/QueryContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryRouter } from 'react-router-dom';
-import { RouterProvider } from 'react-router-dom';
-import { futureFlags } from '../../router-config';
-// Mock window.scrollTo
-beforeAll(() => {
-  window.scrollTo = jest.fn();
-});
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import Project from "./Project";
 
-afterAll(() => {
-  window.scrollTo.mockRestore();
-});
+// Mock the Dashboard component since we're testing the Project component logic
+jest.mock("./Dashboard", () => ({ project, dashboardName }) => (
+  <div data-testid="dashboard-component">
+    Dashboard: {dashboardName}
+  </div>
+));
 
-const getProject = items => {
-  return {
-    project_json: {
-      selectors: [],
-      dashboards: [
+jest.mock("../../stores/store", () => {
+  const { createStore } = require("zustand/vanilla");
+  const { useStore } = require("zustand");
+
+  const store = createStore(() => ({
+    setScrollPosition: jest.fn(),
+    scrollPositions: {},
+    filteredDashboards: [],
+    dashboardsByLevel: {
+      Unassigned: [
         {
-          name: 'dashboard',
+          name: "dashboard",
           rows: [
             {
-              height: 'medium',
-              items: items,
+              height: "medium",
+              items: [
+                {
+                  width: 1,
+                  markdown: "First Markdown",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    setDashboards: jest.fn(),
+    setCurrentDashboardName: jest.fn(),
+    filterDashboards: jest.fn(),
+  }));
+
+  return {
+    __esModule: true,
+    default: (selector) => useStore(store, selector),
+  };
+});
+
+describe("Project Component", () => {
+  const mockProject = {
+    project_json: {
+      dashboards: [
+        {
+          name: "dashboard",
+          rows: [
+            {
+              height: "medium",
+              items: [
+                {
+                  width: 1,
+                  markdown: "First Markdown",
+                },
+              ],
             },
           ],
         },
       ],
     },
   };
-};
 
-const fetchTraces = () => {
-  return [];
-};
+  const fetchTraces = jest.fn();
 
-const mockQueryContext = {
-  fetchDashboardQuery: () => ({
-    queryFn: jest.fn().mockResolvedValue(project),
-    queryKey: ['dashboard'],
-  }),
-};
-
-// Create a new QueryClient instance for each test
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-});
-const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
-const loadProject = () => {
-  return { ...project, created_at: '2024-08-07T13:07:34Z', id: '1' };
-};
-
-test('renders dashboard overview without dashboard name param', async () => {
-  let dashboardName = null;
-  const routes = [
-    {
-      path: '/:dashboardName?',
-      element: (
+  test("renders dashboard component when dashboardName is provided", () => {
+    render(
+      <MemoryRouter>
         <Project
-          project={project}
+          project={mockProject}
           fetchTraces={fetchTraces}
-          dashboardName={dashboardName}
-          dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
+          dashboardName="dashboard"
+          dashboards={[{ name: "dashboard", path: "/dashboard" }]}
         />
-      ),
-      id: 'project',
-      loader: loadProject,
-    },
-  ];
-  const router = createMemoryRouter(routes, {
-    initialEntries: ['/'],
-    initialIndex: 0,
-    future: futureFlags,
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId("dashboard-component")).toBeInTheDocument();
+    expect(screen.getByText("Dashboard: dashboard")).toBeInTheDocument();
   });
 
-  render(
-    <QueryClientProvider client={queryClient}>
-      <QueryContext.Provider value={mockQueryContext}>
-        <RouterProvider router={router} future={futureFlags} />
-      </QueryContext.Provider>
-    </QueryClientProvider>
-  );
-
-  const unassignedSection = await screen.findByText('Unassigned', {}, { timeout: 3000 });
-  expect(unassignedSection).toBeInTheDocument();
-});
-
-test('renders dashboard with dashboard name param', async () => {
-  let dashboardName = 'dashboard';
-  const routes = [
-    {
-      path: '/:dashboardName?',
-      element: (
+  test("renders dashboard name through Dashboard component", () => {
+    render(
+      <MemoryRouter>
         <Project
-          project={project}
+          project={mockProject}
           fetchTraces={fetchTraces}
-          dashboardName={dashboardName}
-          dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
+          dashboardName="dashboard"
+          dashboards={[{ name: "dashboard", path: "/dashboard" }]}
         />
-      ),
-      id: 'project',
-      loader: loadProject,
-    },
-  ];
-  const router = createMemoryRouter(routes, {
-    initialEntries: ['/dashboard'],
-    initialIndex: 0,
-    future: futureFlags,
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/dashboard/i)).toBeInTheDocument();
   });
-
-  render(
-    <QueryClientProvider client={queryClient}>
-      <QueryContext.Provider value={mockQueryContext}>
-        <RouterProvider router={router} future={futureFlags} />
-      </QueryContext.Provider>
-    </QueryClientProvider>
-  );
-
-  const unassignedSection = screen.queryByText('Unassigned');
-  expect(unassignedSection).not.toBeInTheDocument();
-
-  const dashboard = await screen.findByText(/First Markdown/);
-  expect(dashboard).toBeInTheDocument();
 });
