@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, Navigate } from 'react-router-dom';
 import Breadcrumbs from './common/Breadcrumbs';
 import ProjectHistory from './project/ProjectHistory';
 import { useLoaderData } from 'react-router-dom';
@@ -6,12 +6,27 @@ import Error from './styled/Error';
 import TopNav from './common/TopNav';
 import { HiTemplate } from 'react-icons/hi';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
+import useStore from '../stores/store';
+import Loading from './common/Loading';
 
 const Home = () => {
   const error = useLoaderData();
   const location = useLocation();
   const isRoot = location.pathname === '/';
   const isProject = location.pathname.startsWith('/project');
+
+  const isNewProject = useStore(state => state.isNewProject);
+
+  if (isNewProject === undefined) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen">
+        <Loading />
+      </div>
+    )
+  }
+
+  if (isNewProject && isRoot) return <Navigate to="/onboarding" />;
+
 
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">

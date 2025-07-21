@@ -1,3 +1,6 @@
+import io
+import tempfile
+from unittest.mock import MagicMock
 import pytest
 import json
 import os
@@ -322,3 +325,49 @@ def test_execute_query_invalid_sql(client, worksheet_repo, capsys):
     captured = capsys.readouterr()
     assert "sqlite3.OperationalError" in data["message"]
     assert "Query execution error" in captured.out
+
+
+def test_missing_project_name(client):
+    """Test POST /api/project/init when project name is missing."""
+    res = client.post("/api/project/init", json={"project_dir": "/tmp/somepath"})
+    assert res.status_code == 400
+    assert b"Project name is required" in res.data
+
+
+def test_create_project_with_file_upload(client):
+    """Test POST /api/source/upload with a CSV file upload."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dummy_csv = io.BytesIO(b"col1,col2\n1,2\n3,4")
+        dummy_csv.filename = "test.csv"
+
+        res = client.post(
+            "/api/source/upload",
+            data={
+                "source_type": "csv",
+                "source_name": "Uploaded Source",
+                "project_dir": tmpdir,
+                "file": (dummy_csv, dummy_csv.filename),
+            },
+            content_type="multipart/form-data",
+        )
+
+        assert res.status_code == 200
+        data = json.loads(res.data)
+        assert data["message"] == "File uploaded"
+        assert "dashboard" in data
+
+
+def test_create_sqlite_project_source_only(client):
+    """Test POST /api/source/create with SQLite source."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        res = client.post(
+            "/api/source/create",
+            data={
+                "project_name": "SQLite Project",
+                "source_type": "sqlite",
+                "source_name": "My SQLite Source",
+                "project_dir": tmpdir,
+            },
+        )
+        assert res.status_code == 200
+        assert b"Source created" in res.data
