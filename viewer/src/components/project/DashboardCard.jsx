@@ -14,20 +14,36 @@ function DashboardCard({ projectId, dashboard }) {
   const { fetchDashboardQuery } = useContext(QueryContext);
   const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
+  const [thumbnailState, setThumbnailState] = useState('idle'); // idle, loading, generating, uploading, complete, error
   const cardRef = useRef(null);
 
   const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
 
   const onThumbnailGenerated = async blob => {
-    const formData = new FormData();
-    formData.append('file', blob, `${dashboard.name}.png`);
-    const dashboardNameHash = md5(dashboard.name);
-    const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
-      method: 'POST',
-      body: formData,
-    });
-    const json = await response.json();
-    setImageUrl(json.signed_thumbnail_file_url);
+    try {
+      setThumbnailState('uploading');
+      
+      const formData = new FormData();
+      formData.append('file', blob, `${dashboard.name}.png`);
+      const dashboardNameHash = md5(dashboard.name);
+      
+      const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
+      }
+      
+      const json = await response.json();
+      setImageUrl(json.signed_thumbnail_file_url);
+      setThumbnailState('complete');
+      
+    } catch (error) {
+      console.error('Error uploading thumbnail:', error);
+      setThumbnailState('error');
+    }
   };
 
   useEffect(() => {
@@ -54,8 +70,24 @@ function DashboardCard({ projectId, dashboard }) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center relative">
             <HiTemplate className="w-8 h-8 text-primary-300" />
+            {/* Progress indicator overlay */}
+            {(thumbnailState === 'loading' || thumbnailState === 'generating' || thumbnailState === 'uploading') && (
+              <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mb-2"></div>
+                <span className="text-white text-xs font-medium">
+                  {thumbnailState === 'loading' && 'Loading charts...'}
+                  {thumbnailState === 'generating' && 'Generating...'}
+                  {thumbnailState === 'uploading' && 'Saving...'}
+                </span>
+              </div>
+            )}
+            {thumbnailState === 'error' && (
+              <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center">
+                <span className="text-red-600 text-xs font-medium">Preview failed</span>
+              </div>
+            )}
           </div>
         )}
         <div className="absolute top-0 left-0 right-0 p-1.5 bg-linear-to-b from-black/50 to-transparent">
@@ -108,6 +140,7 @@ function DashboardCard({ projectId, dashboard }) {
           dashboard={dashboard}
           project={project}
           onThumbnailGenerated={onThumbnailGenerated}
+          onStateChange={setThumbnailState}
         />
       )}
     </Link>

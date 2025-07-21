@@ -3,6 +3,7 @@ import os
 import json
 from flask import Flask, send_from_directory, request, jsonify, Response, send_file
 import datetime
+from concurrent.futures import ThreadPoolExecutor
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
 from visivo.utils import VIEWER_PATH, SCHEMA_FILE, get_utc_now
@@ -22,6 +23,42 @@ from visivo.server.source_metadata import (
 )
 import subprocess
 import hashlib
+
+
+# Global thread pool executor for thumbnail processing
+thumbnail_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="thumbnail")
+
+
+def save_thumbnail_async(file_content: bytes, dashboard_name_hash: str, output_dir: str) -> str:
+    """
+    Save thumbnail file asynchronously in a background thread.
+    
+    Args:
+        file_content: Binary content of the PNG file
+        dashboard_name_hash: MD5 hash of dashboard name for filename
+        output_dir: Base output directory
+        
+    Returns:
+        str: Path to the saved thumbnail file
+        
+    Raises:
+        Exception: If file saving fails
+    """
+    try:
+        dashboard_dir = os.path.join(output_dir, "dashboards")
+        os.makedirs(dashboard_dir, exist_ok=True)
+        
+        thumbnail_path = os.path.join(dashboard_dir, f"{dashboard_name_hash}.png")
+        
+        with open(thumbnail_path, 'wb') as f:
+            f.write(file_content)
+        
+        Logger.instance().debug(f"Thumbnail saved asynchronously: {thumbnail_path}")
+        return thumbnail_path
+        
+    except Exception as e:
+        Logger.instance().error(f"Error saving thumbnail asynchronously: {str(e)}")
+        raise
 
 
 class FlaskApp:
@@ -385,18 +422,40 @@ class FlaskApp:
                 if file.filename == "" or not file.filename.endswith(".png"):
                     return jsonify({"message": "Invalid file - must be a PNG"}), 400
 
-                dashboard_dir = os.path.join(output_dir, "dashboards")
-                os.makedirs(dashboard_dir, exist_ok=True)
-
-                thumbnail_path = os.path.join(dashboard_dir, f"{dashboard_name_hash}.png")
-
-                file.save(thumbnail_path)
-
-                return jsonify(
-                    {
-                        "signed_thumbnail_file_url": f"/data/dashboards/{dashboard_name_hash}.png",
-                    }
+                # Read file content into memory to avoid file handle issues in background thread
+                file_content = file.read()
+                
+                # Submit thumbnail saving to background thread pool
+                future = thumbnail_executor.submit(
+                    save_thumbnail_async, 
+                    file_content, 
+                    dashboard_name_hash, 
+                    output_dir
                 )
+                
+                try:
+                    # Wait for completion with a reasonable timeout
+                    thumbnail_path = future.result(timeout=10)  # 10 second timeout
+                    
+                    return jsonify({
+                        "signed_thumbnail_file_url": f"/data/dashboards/{dashboard_name_hash}.png",
+                        "status": "completed"
+                    })
+                    
+                except Exception as save_error:
+                    Logger.instance().error(f"Error saving thumbnail in background: {str(save_error)}")
+                    # Fallback to synchronous save if background processing fails
+                    dashboard_dir = os.path.join(output_dir, "dashboards")
+                    os.makedirs(dashboard_dir, exist_ok=True)
+                    thumbnail_path = os.path.join(dashboard_dir, f"{dashboard_name_hash}.png")
+                    
+                    with open(thumbnail_path, 'wb') as f:
+                        f.write(file_content)
+                    
+                    return jsonify({
+                        "signed_thumbnail_file_url": f"/data/dashboards/{dashboard_name_hash}.png",
+                        "status": "completed"
+                    })
 
             except Exception as e:
                 Logger.instance().error(f"Error creating thumbnail: {str(e)}")

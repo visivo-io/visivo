@@ -2,15 +2,73 @@ import React, { useEffect } from 'react';
 import html2canvas from 'html2canvas-pro';
 import Dashboard from './Dashboard';
 
-function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
+function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateChange }) {
   const containerRef = React.useRef();
   const ASPECT_RATIO = 16 / 10;
 
   useEffect(() => {
+    const waitForChartsToLoad = async () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Wait for Plotly charts to finish rendering
+      const plotlyPlots = container.querySelectorAll('.js-plotly-plot');
+      if (plotlyPlots.length > 0) {
+        await Promise.all(
+          Array.from(plotlyPlots).map(plot => 
+            new Promise(resolve => {
+              // Check if plot is already rendered
+              if (plot._fullLayout && plot._fullData) {
+                resolve();
+              } else {
+                // Wait for plotly_afterplot event
+                const handler = () => {
+                  plot.removeEventListener('plotly_afterplot', handler);
+                  resolve();
+                };
+                plot.addEventListener('plotly_afterplot', handler);
+                
+                // Fallback timeout in case event doesn't fire
+                setTimeout(resolve, 2000);
+              }
+            })
+          )
+        );
+      }
+
+      // Wait for any images to load
+      const images = container.querySelectorAll('img');
+      if (images.length > 0) {
+        await Promise.all(
+          Array.from(images).map(img => 
+            new Promise(resolve => {
+              if (img.complete) {
+                resolve();
+              } else {
+                img.onload = resolve;
+                img.onerror = resolve; // Don't block on broken images
+                setTimeout(resolve, 1000); // Fallback timeout
+              }
+            })
+          )
+        );
+      }
+
+      // Small delay to ensure DOM is stable after all async operations
+      await new Promise(resolve => setTimeout(resolve, 100));
+    };
+
     const generateThumbnail = async () => {
       if (containerRef.current) {
         try {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Notify parent that we're starting chart loading
+          onStateChange?.('loading');
+          
+          // Wait for charts and images to be ready instead of hardcoded delay
+          await waitForChartsToLoad();
+          
+          // Notify parent that we're generating the thumbnail
+          onStateChange?.('generating');
 
           const canvas = await html2canvas(containerRef.current, {
             scale: 1,
@@ -67,9 +125,17 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
             tempCanvas.height
           );
 
-          tempCanvas.toBlob(blob => onThumbnailGenerated(blob));
+          tempCanvas.toBlob(blob => {
+            if (blob) {
+              onThumbnailGenerated(blob);
+            } else {
+              console.error('Failed to generate thumbnail blob');
+              onStateChange?.('error');
+            }
+          });
         } catch (error) {
           console.error('Error generating thumbnail:', error);
+          onStateChange?.('error');
         }
       }
     };
