@@ -20,7 +20,6 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error gathering source metadata: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    # Lazy-loading endpoints for source metadata
     @app.route("/api/project/sources/<source_name>/test-connection", methods=["GET"])
     def test_connection(source_name):
         """Test connection to a specific source."""
