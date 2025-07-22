@@ -13,7 +13,12 @@ const createCommonSlice = (set, get) => {
     project: null,
     projectFilePath: null,
     isNewProject: undefined,
-
+    scrollPositions: {},
+    setScrollPosition: (dashName, pos) => {
+      set(state => ({
+        scrollPositions: { ...state.scrollPositions, [dashName]: pos }
+      }));
+    },
     setProject: (project) => {
       set({ project });
       evaluateIsNewProject();
