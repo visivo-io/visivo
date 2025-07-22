@@ -1,6 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, startTransition } from 'react';
 import html2canvas from 'html2canvas-pro';
 import Dashboard from './Dashboard';
+
+// Utility function to yield control back to the browser
+const yieldToMain = () => {
+  return new Promise(resolve => {
+    // Use requestIdleCallback if available, otherwise setTimeout
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(resolve);
+    } else {
+      setTimeout(resolve, 0);
+    }
+  });
+};
 
 function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateChange }) {
   const containerRef = React.useRef();
@@ -11,30 +23,46 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
       const container = containerRef.current;
       if (!container) return;
 
+      // Yield control before starting heavy work
+      await yieldToMain();
+
       // Wait for Plotly charts to finish rendering
       const plotlyPlots = container.querySelectorAll('.js-plotly-plot');
       if (plotlyPlots.length > 0) {
-        await Promise.all(
-          Array.from(plotlyPlots).map(plot => 
-            new Promise(resolve => {
-              // Check if plot is already rendered
-              if (plot._fullLayout && plot._fullData) {
-                resolve();
-              } else {
-                // Wait for plotly_afterplot event
-                const handler = () => {
-                  plot.removeEventListener('plotly_afterplot', handler);
+        // Process charts in smaller batches to avoid blocking
+        const batchSize = 2;
+        for (let i = 0; i < plotlyPlots.length; i += batchSize) {
+          const batch = Array.from(plotlyPlots).slice(i, i + batchSize);
+          await Promise.all(
+            batch.map(plot => 
+              new Promise(resolve => {
+                // Check if plot is already rendered
+                if (plot._fullLayout && plot._fullData) {
                   resolve();
-                };
-                plot.addEventListener('plotly_afterplot', handler);
-                
-                // Fallback timeout in case event doesn't fire
-                setTimeout(resolve, 2000);
-              }
-            })
-          )
-        );
+                } else {
+                  // Wait for plotly_afterplot event
+                  const handler = () => {
+                    plot.removeEventListener('plotly_afterplot', handler);
+                    resolve();
+                  };
+                  plot.addEventListener('plotly_afterplot', handler);
+                  
+                  // Fallback timeout in case event doesn't fire
+                  setTimeout(resolve, 2000);
+                }
+              })
+            )
+          );
+          
+          // Yield control between batches
+          if (i + batchSize < plotlyPlots.length) {
+            await yieldToMain();
+          }
+        }
       }
+
+      // Yield control before processing images
+      await yieldToMain();
 
       // Wait for any images to load
       const images = container.querySelectorAll('img');
@@ -54,8 +82,8 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
         );
       }
 
-      // Small delay to ensure DOM is stable after all async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Final yield before thumbnail generation
+      await yieldToMain();
     };
 
     const generateThumbnail = async () => {
@@ -67,8 +95,14 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
           // Wait for charts and images to be ready instead of hardcoded delay
           await waitForChartsToLoad();
           
+          // Yield before starting canvas generation
+          await yieldToMain();
+          
           // Notify parent that we're generating the thumbnail
           onStateChange?.('generating');
+
+          // Yield again to ensure state update is processed
+          await yieldToMain();
 
           const canvas = await html2canvas(containerRef.current, {
             scale: 1,
@@ -104,6 +138,9 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
             },
           });
 
+          // Yield after html2canvas completes
+          await yieldToMain();
+
           const tempCanvas = document.createElement('canvas');
           const TARGET_WIDTH = 800;
           tempCanvas.width = TARGET_WIDTH;
@@ -125,6 +162,9 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
             tempCanvas.height
           );
 
+          // Yield before blob generation
+          await yieldToMain();
+
           tempCanvas.toBlob(blob => {
             if (blob) {
               onThumbnailGenerated(blob);
@@ -140,8 +180,11 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
       }
     };
 
-    generateThumbnail();
-  }, [dashboard, onThumbnailGenerated, ASPECT_RATIO]);
+    // Use startTransition to mark thumbnail generation as non-urgent
+    startTransition(() => {
+      generateThumbnail();
+    });
+  }, [dashboard, onThumbnailGenerated, onStateChange, ASPECT_RATIO]);
 
   return (
     <div

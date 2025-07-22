@@ -15,6 +15,7 @@ function DashboardCard({ projectId, dashboard }) {
   const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
   const [thumbnailState, setThumbnailState] = useState('idle'); // idle, loading, generating, uploading, complete, error
+  const [shouldStartThumbnail, setShouldStartThumbnail] = useState(false);
   const cardRef = useRef(null);
 
   const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
@@ -55,6 +56,53 @@ function DashboardCard({ projectId, dashboard }) {
       setImageUrl(dashboardData.signed_thumbnail_file_url);
     }
   }, [dashboardData]);
+
+  // Defer thumbnail generation to avoid blocking initial navigation
+  useEffect(() => {
+    // Capture the ref value to avoid stale closure issues
+    const currentCardRef = cardRef.current;
+    
+    // Use intersection observer to only generate thumbnails for visible cards
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !shouldStartThumbnail) {
+            // Card is visible, start thumbnail generation with idle callback
+            if (typeof requestIdleCallback !== 'undefined') {
+              requestIdleCallback(() => {
+                setShouldStartThumbnail(true);
+              }, { timeout: 2000 }); // Fallback timeout after 2 seconds
+            } else {
+              // Fallback for browsers without requestIdleCallback
+              setTimeout(() => {
+                setShouldStartThumbnail(true);
+              }, 100);
+            }
+          }
+        });
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before the card is visible
+        threshold: 0.1
+      }
+    );
+
+    if (currentCardRef) {
+      observer.observe(currentCardRef);
+    }
+
+    return () => {
+      if (currentCardRef) {
+        observer.unobserve(currentCardRef);
+      }
+    };
+  }, [shouldStartThumbnail]);
+
+  const needThumbnail = shouldStartThumbnail && 
+    !!dashboardData && 
+    !dashboardData.signed_thumbnail_file_url && 
+    !imageUrl && 
+    !!project;
 
   const CardContent = () => (
     <div
@@ -125,8 +173,6 @@ function DashboardCard({ projectId, dashboard }) {
     </div>
   );
 
-  const needThumbnail =
-    !!dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && !!project;
 
   return dashboard.type === 'external' ? (
     <a href={dashboard.href} target="_blank" rel="noopener noreferrer" className="block h-full">
