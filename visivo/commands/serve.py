@@ -78,7 +78,7 @@ def serve(
 
         project.project_dir = final_project_dir
         working_dir = final_project_dir
-        os.makedirs(working_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
 
     else:
         project = parse_project_phase(
