@@ -1,5 +1,5 @@
 import React from 'react';
-import DistRouter from './DistRouter';
+import DistRouter, { distURLConfig } from './DistRouter';
 import { futureFlags } from './router-config';
 import { RouterProvider } from 'react-router-dom';
 import { URLProvider } from './contexts/URLContext';
@@ -10,7 +10,7 @@ const queryClient = new QueryClient();
 export default function DistProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <URLProvider environment="dist">
+      <URLProvider urlConfig={distURLConfig}>
         <RouterProvider
           router={DistRouter}
           future={futureFlags}

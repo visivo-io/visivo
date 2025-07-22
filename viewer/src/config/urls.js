@@ -72,8 +72,6 @@ class URLConfig {
     this.host = options.host || '';
     this.deploymentRoot = options.deploymentRoot || '';
     this.environment = options.environment || 'local';
-
-    console.log('URLConfig', options);
     
     // Normalize deployment root: should be '' for base or '/subfolder' for subfolders
     if (this.deploymentRoot) {
@@ -192,27 +190,3 @@ export function createURLConfig(options = {}) {
 
 // Export URLConfig class for advanced usage
 export { URLConfig };
-
-// Global reference for when context is not available (loaders, stores)
-let _globalURLConfig = null;
-
-/**
- * Set the global URL config (used by router setup and URLProvider)
- * @param {URLConfig} config 
- */
-export function _setGlobalURLConfig(config) {
-  _globalURLConfig = config;
-}
-
-/**
- * Get URL using global config (backwards compatible)
- * @param {string} key - Endpoint key
- * @param {object} params - URL parameters
- * @returns {string} - Complete URL
- */
-export function getUrl(key, params = {}) {
-  if (!_globalURLConfig) {
-    throw new Error('getUrl() called before URLConfig was initialized.');
-  }
-  return _globalURLConfig.getUrl(key, params);
-}

@@ -1,4 +1,4 @@
-import { getUrl } from '../config/urls';
+import { getUrl } from '../contexts/URLContext';
 
 export const fetchProject = async () => {
   const response = await fetch(getUrl('project'));

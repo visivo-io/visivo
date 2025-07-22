@@ -1,4 +1,4 @@
-import { getUrl } from '../config/urls';
+import { getUrl } from '../contexts/URLContext';
 
 export const executeQuery = async (query, projectId, sourceName, worksheetId = null) => {
   const response = await fetch(getUrl('queryExecution', { projectId }), {

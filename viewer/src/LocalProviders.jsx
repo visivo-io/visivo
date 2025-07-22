@@ -1,5 +1,5 @@
 import React from 'react';
-import LocalRouter from './LocalRouter';
+import LocalRouter, { localURLConfig } from './LocalRouter';
 import { futureFlags } from './router-config';
 import { RouterProvider } from 'react-router-dom';
 import { URLProvider } from './contexts/URLContext';
@@ -12,7 +12,7 @@ const queryClient = new QueryClient();
 export default function LocalProviders() {
   return (
     <QueryClientProvider client={queryClient}>
-      <URLProvider environment="local">
+      <URLProvider urlConfig={localURLConfig}>
         <WorksheetProvider>
           <StoreProvider>
             <RouterProvider router={LocalRouter} future={futureFlags} />

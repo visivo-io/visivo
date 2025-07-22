@@ -10,11 +10,11 @@ import ErrorPage from './components/common/ErrorPage';
 import Lineage from './components/lineage/Lineage';
 import Explorer from './components/explorer/Explorer';
 import Editor from './components/editors/Editor';
-import { createURLConfig, _setGlobalURLConfig } from './config/urls';
+import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
-// Set global URL config for API calls
-const urlConfig = createURLConfig({ environment: 'local' });
-_setGlobalURLConfig(urlConfig);
+// Set global URL config early for router loaders
+export const localURLConfig = createURLConfig({ environment: 'local' });
+setGlobalURLConfig(localURLConfig);
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(

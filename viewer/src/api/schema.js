@@ -1,4 +1,4 @@
-import { getUrl } from '../config/urls';
+import { getUrl } from '../contexts/URLContext';
 
 export const fetchSchema = async () => {
   const response = await fetch(getUrl('schema'));

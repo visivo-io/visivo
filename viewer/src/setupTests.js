@@ -6,6 +6,9 @@ import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
 import 'resize-observer-polyfill/dist/ResizeObserver.global';
 
+// Set up a default URL config for tests
+import { setGlobalURLConfig, createURLConfig } from './contexts/URLContext';
+
 // This polyfill ensures react-cool-dimensions works properly in tests
 // Mock console.error to suppress react-cool-dimensions warnings in tests
 const originalError = console.error;
@@ -42,11 +45,8 @@ global.Response = Response;
 global.Headers = Headers;
 global.Request = Request;
 
-// Set up a default URL config for tests
-import { _setGlobalURLConfig, createURLConfig } from './config/urls';
-
 beforeEach(() => {
   // Set up a test URL config
   const testConfig = createURLConfig({ environment: 'local' });
-  _setGlobalURLConfig(testConfig);
+  setGlobalURLConfig(testConfig);
 });

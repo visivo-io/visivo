@@ -1,30 +1,68 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { createURLConfig } from '../config/urls';
 
+// Re-export createURLConfig for convenience
+export { createURLConfig };
+
 /**
  * Context for URL configuration
  */
 const URLContext = createContext();
 
+// Global reference for when context is not available (loaders, stores)
+let globalURLConfig = null;
+
+/**
+ * Set the global URL config (used internally by URLProvider)
+ * @param {URLConfig} config 
+ */
+export function setGlobalURLConfig(config) {
+  globalURLConfig = config;
+}
+
+/**
+ * Get URL using global config (backwards compatible)
+ * @param {string} key - Endpoint key
+ * @param {object} params - URL parameters
+ * @returns {string} - Complete URL
+ */
+export function getUrl(key, params = {}) {
+  if (!globalURLConfig) {
+    throw new Error('getUrl() called before URLConfig was initialized. Make sure URLProvider is rendered before any API calls.');
+  }
+  return globalURLConfig.getUrl(key, params);
+}
+
 /**
  * Provider component for URL configuration
  * @param {object} props
- * @param {string} props.host - Base host URL (optional)
- * @param {string} props.deploymentRoot - Deployment root path (optional)
- * @param {string} props.environment - Environment ('local' or 'dist') - required
+ * @param {URLConfig} props.urlConfig - URLConfig instance to use (optional)
+ * @param {string} props.host - Base host URL (optional, used if urlConfig not provided)
+ * @param {string} props.deploymentRoot - Deployment root path (optional, used if urlConfig not provided)
+ * @param {string} props.environment - Environment ('local' or 'dist') - required if urlConfig not provided
  * @param {React.ReactNode} props.children
  */
-export function URLProvider({ host, deploymentRoot, environment, children }) {
-  const urlConfig = useMemo(() => {
-    return createURLConfig({
+export function URLProvider({ urlConfig, host, deploymentRoot, environment, children }) {
+  const finalUrlConfig = useMemo(() => {
+    // If URLConfig instance is provided directly, use it
+    if (urlConfig) {
+      setGlobalURLConfig(urlConfig);
+      return urlConfig;
+    }
+    
+    // Otherwise, fall back to creating from individual props (for backward compatibility)
+    const newConfig = createURLConfig({
       host,
       deploymentRoot,
       environment
     });
-  }, [host, deploymentRoot, environment]);
+    
+    setGlobalURLConfig(newConfig);
+    return newConfig;
+  }, [urlConfig, host, deploymentRoot, environment]);
 
   return (
-    <URLContext.Provider value={urlConfig}>
+    <URLContext.Provider value={finalUrlConfig}>
       {children}
     </URLContext.Provider>
   );
