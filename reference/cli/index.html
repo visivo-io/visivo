@@ -9,7 +9,7 @@
       
       
       
-        <link rel="prev" href="../../topics/annotations/">
+        <link rel="prev" href="../../topics/telemetry/">
       
       
         <link rel="next" href="../configuration/Alert/">
@@ -435,6 +435,8 @@
       
         
       
+        
+      
     
     
     
@@ -622,6 +624,29 @@
   
   <span class="md-ellipsis">
     Annotations & Shapes
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../topics/telemetry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Telemetry
     
   </span>
   
@@ -2199,6 +2224,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2700,6 +2729,122 @@
     </li>
   
 
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../configuration/Sources/CSVFileSource/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    CSVFileSource
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_7">
+            <span class="md-nav__icon md-icon"></span>
+            CSVFileSource
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_10_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../configuration/Sources/ExcelFileSource/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    ExcelFileSource
+    
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_2_10_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_10_8">
+            <span class="md-nav__icon md-icon"></span>
+            ExcelFileSource
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
               
             
           </ul>
@@ -6947,26 +7092,30 @@ This folder can be statically deployed to any web server, hosting service, or bu
   --help                   Show this message and exit.
 </code></pre></div>
 <h2 id="serve">serve</h2>
-<p>Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.</p>
 <p><strong>Usage:</strong></p>
-<div class="highlight"><pre><span></span><code>visivo serve [OPTIONS]
+<div class="highlight"><pre><span></span><code>visivo serve [OPTIONS] [PROJECT_DIR]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -s, --source TEXT        Name of the default source connection to use. This
-                           overrides the default source in the project.
-  -w, --working-dir TEXT   Directory to run the command
-  -o, --output-dir TEXT    Directory to output results
-  -df, --dag-filter TEXT   Run the command with the given dag filter. ie `-df
-                           'dashboard-name'+` will only run the dashboard
-                           named 'dashboard-name' and it's children
-  -p, --port INTEGER       What port to serve on
-  -th, --threads TEXT      The max number of threads to use when running trace
-                           queries
-  -sc, --skip-compile      Skips the compile phase. This is useful if you have
-                           already compiled just want to run or serve.
-  -dp, --dbt-profile TEXT  The dbt profile to use
-  -dt, --dbt-target TEXT   The dbt target to use
-  --help                   Show this message and exit.
+<div class="highlight"><pre><span></span><code>  -s, --source TEXT              Name of the default source connection to use.
+                                 This overrides the default source in the
+                                 project.
+  -w, --working-dir TEXT         Directory to run the command
+  -o, --output-dir TEXT          Directory to output results
+  -df, --dag-filter TEXT         Run the command with the given dag filter. ie
+                                 `-df 'dashboard-name'+` will only run the
+                                 dashboard named 'dashboard-name' and it's
+                                 children
+  -p, --port INTEGER             What port to serve on
+  -th, --threads TEXT            The max number of threads to use when running
+                                 trace queries
+  -sc, --skip-compile            Skips the compile phase. This is useful if
+                                 you have already compiled just want to run or
+                                 serve.
+  -dp, --dbt-profile TEXT        The dbt profile to use
+  -dt, --dbt-target TEXT         The dbt target to use
+  --pd, --project-dir DIRECTORY  Directory to initialize the project in
+  -n, --new                      Start a new Visivo session
+  --help                         Show this message and exit.
 </code></pre></div>
 <h2 id="test">test</h2>
 <p>Enables testing trace values to ensure that the charts that are being produced have the characteristics that you would expect.</p>
