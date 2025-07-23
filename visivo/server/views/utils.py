@@ -66,5 +66,14 @@ def write_project_file(project, project_dir):
 
     if project_dir:
         gitignore_path = os.path.join(project_dir, ".gitignore")
-        with open(gitignore_path, "w") as f:
-            f.write(".env\ntarget\n.visivo_cache")
+        lines_to_add = {".env", "target", ".visivo_cache"}
+
+        existing_lines = set()
+        if os.path.exists(gitignore_path):
+            with open(gitignore_path, "r") as f:
+                existing_lines = {line.strip() for line in f}
+
+        with open(gitignore_path, "a") as f:
+            for line in lines_to_add:
+                if line not in existing_lines:
+                    f.write(line + "\n")

@@ -71,8 +71,8 @@ def serve(
         if source:
             project.defaults.source_name = source
 
-        final_project_dir = pd or project_dir or "."
-        if os.path.exists(final_project_dir) and final_project_dir != ".":
+        final_project_dir = pd or project_dir or os.path.abspath(".")
+        if os.path.exists(final_project_dir) and final_project_dir != os.getcwd():
             logger.error(f"Project already exists at '{final_project_dir}'")
             raise click.ClickException("Project directory already exists.")
 
