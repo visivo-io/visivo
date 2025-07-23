@@ -1,3 +1,4 @@
+import webbrowser
 from visivo.commands.compile_phase import compile_phase
 from visivo.logger.logger import Logger
 
@@ -18,6 +19,7 @@ def serve_phase(
     skip_compile,
     project,
     server_url,
+    new=False,
 ):
 
     app = FlaskApp(
@@ -92,6 +94,14 @@ def serve_phase(
             else:
                 Logger.instance().success("Initial Data Refresh Complete.")
                 Logger.instance().info("View your project at: " + server_url)
+                try:
+                    if new:
+                        webbrowser.open(server_url, new=0, autoraise=True)
+                except Exception as e:
+                    error_message = str(e)
+                    if os.environ.get("STACKTRACE"):
+                        error_message = f"{str(e)}\n{traceback.format_exc()}"
+                    Logger.instance().error(error_message)
         except Exception as e:
             error_message = str(e)
             if os.environ.get("STACKTRACE"):

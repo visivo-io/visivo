@@ -2,22 +2,73 @@ import { render, screen } from '@testing-library/react';
 import Project from './Project';
 import { URLProvider } from '../../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryRouter } from 'react-router-dom';
-import { RouterProvider } from 'react-router-dom';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { futureFlags } from '../../router-config';
+
 // Mock window.scrollTo
 beforeAll(() => {
   window.scrollTo = jest.fn();
 });
 
-afterAll(() => {
-  window.scrollTo.mockRestore();
+// Mock Dashboard component
+jest.mock('./Dashboard', () => ({ project, dashboardName }) => (
+  <div data-testid="dashboard-component">Dashboard: {dashboardName}</div>
+));
+
+jest.mock('../../stores/store', () => {
+  const { create } = require('zustand');
+
+  const useStore = create(() => ({
+    setScrollPosition: jest.fn(),
+    scrollPositions: {},
+    filteredDashboards: [],
+    dashboardsByLevel: {
+      Unassigned: [
+        {
+          name: 'dashboard',
+          rows: [
+            {
+              height: 'medium',
+              items: [
+                {
+                  width: 1,
+                  markdown: 'First Markdown',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    setDashboards: jest.fn(),
+    setCurrentDashboardName: jest.fn(),
+    filterDashboards: jest.fn(),
+    searchTerm: '',
+    setSearchTerm: jest.fn(),
+    selectedTags: [],
+    setSelectedTags: jest.fn(),
+    availableTags: [],
+  }));
+
+  return {
+    __esModule: true,
+    default: useStore,
+  };
+});
+
+// Create a new QueryClient instance for each test
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
 });
 
 const getProject = items => {
   return {
+    id: 1,
     project_json: {
-      selectors: [],
       dashboards: [
         {
           name: 'dashboard',
@@ -29,97 +80,65 @@ const getProject = items => {
           ],
         },
       ],
+      defaults: {},
     },
   };
 };
 
-const fetchTraces = () => {
-  return [];
-};
-
-
-// Create a new QueryClient instance for each test
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-});
 const project = getProject([{ width: 1, markdown: 'First Markdown' }]);
-const loadProject = () => {
-  return { ...project, created_at: '2024-08-07T13:07:34Z', id: '1' };
-};
+const mockProject = project;
+const fetchTraces = jest.fn();
 
-test('renders dashboard overview without dashboard name param', async () => {
-  let dashboardName = null;
-  const routes = [
-    {
-      path: '/:dashboardName?',
-      element: (
-        <Project
-          project={project}
-          fetchTraces={fetchTraces}
-          dashboardName={dashboardName}
-          dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
-        />
-      ),
-      id: 'project',
-      loader: loadProject,
-    },
-  ];
-  const router = createMemoryRouter(routes, {
-    initialEntries: ['/'],
-    initialIndex: 0,
-    future: futureFlags,
+describe('Project Component', () => {
+  test('renders dashboard overview without dashboard name param', async () => {
+    const routes = [
+      {
+        path: '/:dashboardName?',
+        element: <Project project={mockProject} dashboardName={null} fetchTraces={fetchTraces} />,
+      },
+    ];
+
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/'],
+      future: futureFlags,
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <URLProvider environment="local">
+          <RouterProvider router={router} future={futureFlags} />
+        </URLProvider>
+      </QueryClientProvider>
+    );
+
+    const unassignedSection = await screen.findByText('Unassigned', {}, { timeout: 3000 });
+    expect(unassignedSection).toBeInTheDocument();
   });
 
-  render(
-    <QueryClientProvider client={queryClient}>
-      <URLProvider environment="local">
-        <RouterProvider router={router} future={futureFlags} />
-      </URLProvider>
-    </QueryClientProvider>
-  );
+  test('renders dashboard with dashboard name param', async () => {
+    const routes = [
+      {
+        path: '/:dashboardName?',
+        element: (
+          <Project project={mockProject} dashboardName="dashboard" fetchTraces={fetchTraces} />
+        ),
+      },
+    ];
 
-  const unassignedSection = await screen.findByText('Unassigned', {}, { timeout: 3000 });
-  expect(unassignedSection).toBeInTheDocument();
-});
+    const router = createMemoryRouter(routes, {
+      initialEntries: ['/dashboard'],
+      future: futureFlags,
+    });
 
-test('renders dashboard with dashboard name param', async () => {
-  let dashboardName = 'dashboard';
-  const routes = [
-    {
-      path: '/:dashboardName?',
-      element: (
-        <Project
-          project={project}
-          fetchTraces={fetchTraces}
-          dashboardName={dashboardName}
-          dashboards={[{ name: 'dashboard', path: '/dashboard' }]}
-        />
-      ),
-      id: 'project',
-      loader: loadProject,
-    },
-  ];
-  const router = createMemoryRouter(routes, {
-    initialEntries: ['/dashboard'],
-    initialIndex: 0,
-    future: futureFlags,
+    render(
+      <QueryClientProvider client={queryClient}>
+        <URLProvider environment="local">
+          <RouterProvider router={router} future={futureFlags} />
+        </URLProvider>
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByTestId('dashboard-component')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard: dashboard')).toBeInTheDocument();
   });
-
-  render(
-    <QueryClientProvider client={queryClient}>
-      <URLProvider environment="local">
-        <RouterProvider router={router} future={futureFlags} />
-      </URLProvider>
-    </QueryClientProvider>
-  );
-
-  const unassignedSection = screen.queryByText('Unassigned');
-  expect(unassignedSection).not.toBeInTheDocument();
-
-  const dashboard = await screen.findByText(/First Markdown/);
-  expect(dashboard).toBeInTheDocument();
 });

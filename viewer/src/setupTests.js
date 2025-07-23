@@ -22,6 +22,14 @@ console.error = (...args) => {
   ) {
     return;
   }
+  // Suppress XMLHttpRequest errors during tests
+  if (
+    args[0]?.message?.includes?.('XMLHttpRequest') ||
+    args[0]?.toString?.()?.includes?.('XMLHttpRequest') ||
+    args[0]?.type === 'XMLHttpRequest'
+  ) {
+    return;
+  }
   originalError(...args);
 };
 

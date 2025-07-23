@@ -3,6 +3,12 @@ import Home from './Home';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { futureFlags } from '../router-config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import useStore from '../stores/store';
+
+jest.mock('../stores/store', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
 
 const queryClient = new QueryClient();
 
@@ -25,6 +31,8 @@ const router = createMemoryRouter(routes, {
 });
 
 test('renders error message', async () => {
+  useStore.mockImplementation(cb => cb({ isNewProject: false }));
+
   render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} future={futureFlags} />

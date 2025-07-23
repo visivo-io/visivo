@@ -53,10 +53,10 @@ class TestFlaskSourceEndpoints:
 
     def test_test_connection_success(self):
         """Test GET /api/project/sources/<name>/test-connection."""
-        with patch("visivo.server.flask_app.check_source_connection") as mock_test:
+        with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
             mock_test.return_value = {"source": "test_source", "status": "connected"}
 
-            response = self.client.get("/api/project/sources/test_source/test-connection")
+            response = self.client.get("/api/project/sources/test_source/test-connection/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -65,10 +65,10 @@ class TestFlaskSourceEndpoints:
 
     def test_test_connection_not_found(self):
         """Test connection test for non-existent source."""
-        with patch("visivo.server.flask_app.check_source_connection") as mock_test:
+        with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
             mock_test.return_value = ({"error": "Source 'bad_source' not found"}, 404)
 
-            response = self.client.get("/api/project/sources/bad_source/test-connection")
+            response = self.client.get("/api/project/sources/bad_source/test-connection/")
 
             assert response.status_code == 404
             data = json.loads(response.data)
@@ -76,14 +76,14 @@ class TestFlaskSourceEndpoints:
 
     def test_list_source_databases_success(self):
         """Test GET /api/project/sources/<name>/databases."""
-        with patch("visivo.server.flask_app.get_source_databases") as mock_get_dbs:
+        with patch("visivo.server.views.sources_views.get_source_databases") as mock_get_dbs:
             mock_get_dbs.return_value = {
                 "source": "test_source",
                 "databases": [{"name": "db1"}, {"name": "db2"}],
                 "status": "connected",
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases")
+            response = self.client.get("/api/project/sources/test_source/databases/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -92,10 +92,10 @@ class TestFlaskSourceEndpoints:
 
     def test_list_source_databases_error(self):
         """Test database listing error handling."""
-        with patch("visivo.server.flask_app.get_source_databases") as mock_get_dbs:
+        with patch("visivo.server.views.sources_views.get_source_databases") as mock_get_dbs:
             mock_get_dbs.side_effect = Exception("Connection failed")
 
-            response = self.client.get("/api/project/sources/test_source/databases")
+            response = self.client.get("/api/project/sources/test_source/databases/")
 
             assert response.status_code == 500
             data = json.loads(response.data)
@@ -103,7 +103,7 @@ class TestFlaskSourceEndpoints:
 
     def test_list_database_schemas_success(self):
         """Test GET /api/project/sources/<name>/databases/<db>/schemas."""
-        with patch("visivo.server.flask_app.get_database_schemas") as mock_get_schemas:
+        with patch("visivo.server.views.sources_views.get_database_schemas") as mock_get_schemas:
             mock_get_schemas.return_value = {
                 "source": "test_source",
                 "database": "test_db",
@@ -111,7 +111,9 @@ class TestFlaskSourceEndpoints:
                 "has_schemas": True,
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases/test_db/schemas")
+            response = self.client.get(
+                "/api/project/sources/test_source/databases/test_db/schemas/"
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -120,7 +122,7 @@ class TestFlaskSourceEndpoints:
 
     def test_list_database_schemas_no_schemas(self):
         """Test schema listing for database without schemas."""
-        with patch("visivo.server.flask_app.get_database_schemas") as mock_get_schemas:
+        with patch("visivo.server.views.sources_views.get_database_schemas") as mock_get_schemas:
             mock_get_schemas.return_value = {
                 "source": "test_source",
                 "database": "test_db",
@@ -128,7 +130,9 @@ class TestFlaskSourceEndpoints:
                 "has_schemas": False,
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases/test_db/schemas")
+            response = self.client.get(
+                "/api/project/sources/test_source/databases/test_db/schemas/"
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -137,7 +141,7 @@ class TestFlaskSourceEndpoints:
 
     def test_list_database_tables_no_schema(self):
         """Test GET /api/project/sources/<name>/databases/<db>/tables."""
-        with patch("visivo.server.flask_app.get_schema_tables") as mock_get_tables:
+        with patch("visivo.server.views.sources_views.get_schema_tables") as mock_get_tables:
             mock_get_tables.return_value = {
                 "source": "test_source",
                 "database": "test_db",
@@ -145,7 +149,7 @@ class TestFlaskSourceEndpoints:
                 "tables": [{"name": "users"}, {"name": "orders"}],
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases/test_db/tables")
+            response = self.client.get("/api/project/sources/test_source/databases/test_db/tables/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -157,7 +161,7 @@ class TestFlaskSourceEndpoints:
 
     def test_list_schema_tables_with_schema(self):
         """Test GET /api/project/sources/<name>/databases/<db>/schemas/<schema>/tables."""
-        with patch("visivo.server.flask_app.get_schema_tables") as mock_get_tables:
+        with patch("visivo.server.views.sources_views.get_schema_tables") as mock_get_tables:
             mock_get_tables.return_value = {
                 "source": "test_source",
                 "database": "test_db",
@@ -166,7 +170,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/test_source/databases/test_db/schemas/public/tables"
+                "/api/project/sources/test_source/databases/test_db/schemas/public/tables/"
             )
 
             assert response.status_code == 200
@@ -179,7 +183,7 @@ class TestFlaskSourceEndpoints:
 
     def test_list_table_columns_no_schema(self):
         """Test GET /api/project/sources/<name>/databases/<db>/tables/<table>/columns."""
-        with patch("visivo.server.flask_app.get_table_columns") as mock_get_cols:
+        with patch("visivo.server.views.sources_views.get_table_columns") as mock_get_cols:
             mock_get_cols.return_value = {
                 "source": "test_source",
                 "database": "test_db",
@@ -192,7 +196,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/test_source/databases/test_db/tables/users/columns"
+                "/api/project/sources/test_source/databases/test_db/tables/users/columns/"
             )
 
             assert response.status_code == 200
@@ -206,7 +210,7 @@ class TestFlaskSourceEndpoints:
 
     def test_list_table_columns_with_schema(self):
         """Test GET /api/project/sources/<name>/databases/<db>/schemas/<schema>/tables/<table>/columns."""
-        with patch("visivo.server.flask_app.get_table_columns") as mock_get_cols:
+        with patch("visivo.server.views.sources_views.get_table_columns") as mock_get_cols:
             mock_get_cols.return_value = {
                 "source": "test_source",
                 "database": "test_db",
@@ -219,7 +223,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/test_source/databases/test_db/schemas/public/tables/users/columns"
+                "/api/project/sources/test_source/databases/test_db/schemas/public/tables/users/columns/"
             )
 
             assert response.status_code == 200
@@ -233,7 +237,7 @@ class TestFlaskSourceEndpoints:
 
     def test_sources_metadata_success(self):
         """Test GET /api/project/sources_metadata returns all metadata."""
-        with patch("visivo.server.flask_app.gather_source_metadata") as mock_gather:
+        with patch("visivo.server.views.sources_views.gather_source_metadata") as mock_gather:
             mock_gather.return_value = {
                 "sources": [
                     {
@@ -250,7 +254,7 @@ class TestFlaskSourceEndpoints:
                 ]
             }
 
-            response = self.client.get("/api/project/sources_metadata")
+            response = self.client.get("/api/project/sources_metadata/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -260,10 +264,10 @@ class TestFlaskSourceEndpoints:
 
     def test_sources_metadata_error(self):
         """Test sources_metadata error handling."""
-        with patch("visivo.server.flask_app.gather_source_metadata") as mock_gather:
+        with patch("visivo.server.views.sources_views.gather_source_metadata") as mock_gather:
             mock_gather.side_effect = Exception("Introspection failed")
 
-            response = self.client.get("/api/project/sources_metadata")
+            response = self.client.get("/api/project/sources_metadata/")
 
             assert response.status_code == 500
             data = json.loads(response.data)
@@ -273,15 +277,15 @@ class TestFlaskSourceEndpoints:
         """Test that all endpoints handle tuple error responses correctly."""
         # Test each endpoint that checks for tuple responses
         endpoints_and_mocks = [
-            ("/api/project/sources/test/test-connection", "check_source_connection"),
-            ("/api/project/sources/test/databases", "get_source_databases"),
-            ("/api/project/sources/test/databases/db/schemas", "get_database_schemas"),
-            ("/api/project/sources/test/databases/db/tables", "get_schema_tables"),
-            ("/api/project/sources/test/databases/db/tables/tbl/columns", "get_table_columns"),
+            ("/api/project/sources/test/test-connection/", "check_source_connection"),
+            ("/api/project/sources/test/databases/", "get_source_databases"),
+            ("/api/project/sources/test/databases/db/schemas/", "get_database_schemas"),
+            ("/api/project/sources/test/databases/db/tables/", "get_schema_tables"),
+            ("/api/project/sources/test/databases/db/tables/tbl/columns/", "get_table_columns"),
         ]
 
         for endpoint, mock_name in endpoints_and_mocks:
-            with patch(f"visivo.server.flask_app.{mock_name}") as mock_func:
+            with patch(f"visivo.server.views.sources_views.{mock_name}") as mock_func:
                 mock_func.return_value = ({"error": "Custom error"}, 400)
 
                 response = self.client.get(endpoint)
@@ -299,17 +303,17 @@ class TestFlaskSourceEndpoints:
         ]
 
         for source_name in special_names:
-            with patch("visivo.server.flask_app.check_source_connection") as mock_test:
+            with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
                 mock_test.return_value = {"source": source_name, "status": "connected"}
 
-                response = self.client.get(f"/api/project/sources/{source_name}/test-connection")
+                response = self.client.get(f"/api/project/sources/{source_name}/test-connection/")
 
                 assert response.status_code == 200
                 mock_test.assert_called_with(self.mock_project.sources, source_name)
 
     def test_multiple_path_parameters(self):
         """Test endpoints with multiple path parameters."""
-        with patch("visivo.server.flask_app.get_schema_tables") as mock_get_tables:
+        with patch("visivo.server.views.sources_views.get_schema_tables") as mock_get_tables:
             mock_get_tables.return_value = {
                 "source": "my_source",
                 "database": "my_db",
@@ -318,7 +322,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/my_source/databases/my_db/schemas/my_schema/tables"
+                "/api/project/sources/my_source/databases/my_db/schemas/my_schema/tables/"
             )
 
             assert response.status_code == 200

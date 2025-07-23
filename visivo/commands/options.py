@@ -6,11 +6,13 @@ from visivo.models.base.named_model import NAME_REGEX
 
 
 def working_dir(function):
-    click.option(
-        "-w",
-        "--working-dir",
-        help="Directory to run the command",
-        default=os.getcwd(),
+    def callback(ctx, param, value):
+        ctx.ensure_object(dict)
+        ctx.obj["is_default_working_dir"] = value is None
+        return value if value is not None else os.getcwd()
+
+    function = click.option(
+        "-w", "--working-dir", help="Directory to run the command", default=None, callback=callback
     )(function)
     return function
 
@@ -154,6 +156,29 @@ def skip_compile(function):
         help="Skips the compile phase. This is useful if you have already compiled just want to run or serve.",
         is_flag=True,
         default=False,
+    )(function)
+    return function
+
+
+def new(function):
+    function = click.option(
+        "-n",
+        "--new",
+        help="Start a new Visivo session",
+        is_flag=True,
+        default=False,
+    )(function)
+
+    function = click.option(
+        "--pd",
+        "--project-dir",
+        help="Directory to initialize the project in",
+        type=click.Path(file_okay=False, dir_okay=True),
+    )(function)
+
+    function = click.argument(
+        "project_dir",
+        required=False,
     )(function)
     return function
 

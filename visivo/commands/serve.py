@@ -1,6 +1,8 @@
-import click
+import os
+from pathlib import Path
 from time import time
-import json
+
+import click
 
 from visivo.commands.options import (
     dag_filter,
@@ -12,7 +14,14 @@ from visivo.commands.options import (
     dbt_profile,
     dbt_target,
     skip_compile,
+    new,
 )
+from visivo.discovery.discover import Discover
+from visivo.models.defaults import Defaults
+from visivo.models.project import Project
+from visivo.commands.serve_phase import serve_phase
+from visivo.commands.parse_project_phase import parse_project_phase
+from visivo.logger.logger import Logger
 
 
 @click.command()
@@ -25,7 +34,10 @@ from visivo.commands.options import (
 @skip_compile
 @dbt_profile
 @dbt_target
+@new
+@click.pass_context
 def serve(
+    ctx,
     output_dir,
     working_dir,
     source,
@@ -35,28 +47,50 @@ def serve(
     skip_compile,
     dbt_profile,
     dbt_target,
+    new,
+    project_dir,
+    pd,
 ):
-    """
-    Enables fast local development by spinning up a localhost server to run and view your project locally. Visivo will automatically refresh your project and re-run traces that have changed when you make updates to project files.
-    """
     start_time = time()
-    from visivo.commands.serve_phase import serve_phase
-    from visivo.commands.parse_project_phase import parse_project_phase
-    from visivo.logger.logger import Logger
-
+    logger = Logger.instance()
     server_url = f"http://localhost:{port}"
+    is_default_working_dir = ctx.obj.get("is_default_working_dir")
 
-    # Parse project first
-    project = parse_project_phase(
-        working_dir=working_dir,
-        output_dir=output_dir,
-        default_source=source,
-        dbt_profile=dbt_profile,
-        dbt_target=dbt_target,
-    )
+    if is_default_working_dir and not new:
+        discover = Discover(working_dir=working_dir, output_dir=output_dir)
+        new = not discover.project_file_exists
 
-    # Create and configure server & callbacks
-    server, on_project_change, on_server_ready = serve_phase(
+    # Handle new project creation
+    if new:
+        skip_compile = True
+        project = Project(
+            name="Quickstart Visivo", sources=[], models=[], traces=[], charts=[], dashboards=[]
+        )
+
+        project.defaults = project.defaults or Defaults()
+        if source:
+            project.defaults.source_name = source
+
+        final_project_dir = pd or project_dir or "."
+        if os.path.exists(final_project_dir) and final_project_dir != ".":
+            logger.error(f"Project already exists at '{final_project_dir}'")
+            raise click.ClickException("Project directory already exists.")
+
+        project.project_dir = final_project_dir
+        working_dir = final_project_dir
+        os.makedirs(output_dir, exist_ok=True)
+
+    else:
+        project = parse_project_phase(
+            working_dir=working_dir,
+            output_dir=output_dir,
+            default_source=source,
+            dbt_profile=dbt_profile,
+            dbt_target=dbt_target,
+        )
+
+    # Start the development server
+    server, on_change, on_ready = serve_phase(
         output_dir=output_dir,
         working_dir=working_dir,
         default_source=source,
@@ -65,17 +99,15 @@ def serve(
         skip_compile=skip_compile,
         project=project,
         server_url=server_url,
+        new=new,
     )
 
-    # Start serving with hot reload
-    serve_duration = time() - start_time
-    Logger.instance().info(f"Initial build completed in {round(serve_duration, 2)}s")
-    Logger.instance().info(f"Server running at {server_url}")
+    logger.info(f"Initial build completed in {round(time() - start_time, 2)}s")
+    logger.info(f"Server running at {server_url}")
 
-    # Start the server with file watching
     server.serve(
         host="0.0.0.0",
         port=port,
-        on_change_callback=on_project_change,
-        on_server_ready=on_server_ready,
+        on_change_callback=on_change,
+        on_server_ready=on_ready,
     )
