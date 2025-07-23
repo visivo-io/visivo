@@ -8,7 +8,21 @@ class DefaultSource:
     pass
 
 
-class Source(ABC, NamedModel):
+class BaseSource(ABC, NamedModel):
+
+    @abstractmethod
+    def get_connection(self):
+        raise NotImplementedError(f"No get_connection method implemented for {self.type}")
+
+    @abstractmethod
+    def read_sql(self, query: str):
+        raise NotImplementedError(f"No read sql method implemented for {self.type}")
+
+    def connect(self):
+        return Connection(source=self)
+
+
+class Source(BaseSource):
     """
     Sources hold the connection information to your data sources.
     """
@@ -26,19 +40,8 @@ class Source(ABC, NamedModel):
         None, description="The schema that the Visivo project will use in queries."
     )
 
-    @abstractmethod
-    def get_connection(self):
-        raise NotImplementedError(f"No get_connection method implemented for {self.type}")
-
-    @abstractmethod
-    def read_sql(self, query: str):
-        raise NotImplementedError(f"No read sql method implemented for {self.type}")
-
     def get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
-
-    def connect(self):
-        return Connection(source=self)
 
     def url(self):
         from sqlalchemy.engine import URL
