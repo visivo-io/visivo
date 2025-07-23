@@ -14,7 +14,6 @@ function DashboardCard({ projectId, dashboard }) {
   const { fetchDashboardQuery } = useContext(QueryContext);
   const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
-  const [thumbnailState, setThumbnailState] = useState('idle'); // idle, loading, generating, uploading, complete, error
   const [shouldStartThumbnail, setShouldStartThumbnail] = useState(false);
   const cardRef = useRef(null);
 
@@ -22,8 +21,6 @@ function DashboardCard({ projectId, dashboard }) {
 
   const onThumbnailGenerated = async blob => {
     try {
-      setThumbnailState('uploading');
-      
       const formData = new FormData();
       formData.append('file', blob, `${dashboard.name}.png`);
       const dashboardNameHash = md5(dashboard.name);
@@ -39,11 +36,9 @@ function DashboardCard({ projectId, dashboard }) {
       
       const json = await response.json();
       setImageUrl(json.signed_thumbnail_file_url);
-      setThumbnailState('complete');
       
     } catch (error) {
       console.error('Error uploading thumbnail:', error);
-      setThumbnailState('error');
     }
   };
 
@@ -57,52 +52,30 @@ function DashboardCard({ projectId, dashboard }) {
     }
   }, [dashboardData]);
 
-  // Defer thumbnail generation to avoid blocking initial navigation
+  // Simplified approach: Just start thumbnail generation after a short delay
+  // This ensures navigation isn't blocked but thumbnails still generate
   useEffect(() => {
-    // Capture the ref value to avoid stale closure issues
-    const currentCardRef = cardRef.current;
-    
-    // Use intersection observer to only generate thumbnails for visible cards
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && !shouldStartThumbnail) {
-            // Card is visible, start thumbnail generation with idle callback
-            if (typeof requestIdleCallback !== 'undefined') {
-              requestIdleCallback(() => {
-                setShouldStartThumbnail(true);
-              }, { timeout: 2000 }); // Fallback timeout after 2 seconds
-            } else {
-              // Fallback for browsers without requestIdleCallback
-              setTimeout(() => {
-                setShouldStartThumbnail(true);
-              }, 100);
-            }
-          }
-        });
-      },
-      {
-        rootMargin: '100px', // Start loading 100px before the card is visible
-        threshold: 0.1
+    if (!shouldStartThumbnail && dashboardData && !dashboardData.signed_thumbnail_file_url && !imageUrl && project) {
+      // Use requestIdleCallback to start thumbnail generation when the browser is idle
+      if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => {
+          setShouldStartThumbnail(true);
+        }, { timeout: 1000 }); // Start within 1 second if browser never goes idle
+      } else {
+        // Fallback for browsers without requestIdleCallback
+        setTimeout(() => {
+          setShouldStartThumbnail(true);
+        }, 500);
       }
-    );
-
-    if (currentCardRef) {
-      observer.observe(currentCardRef);
     }
-
-    return () => {
-      if (currentCardRef) {
-        observer.unobserve(currentCardRef);
-      }
-    };
-  }, [shouldStartThumbnail]);
+  }, [shouldStartThumbnail, dashboardData, imageUrl, project, dashboard.name]);
 
   const needThumbnail = shouldStartThumbnail && 
     !!dashboardData && 
     !dashboardData.signed_thumbnail_file_url && 
     !imageUrl && 
     !!project;
+
 
   const CardContent = () => (
     <div
@@ -120,22 +93,7 @@ function DashboardCard({ projectId, dashboard }) {
         ) : (
           <div className="w-full h-full flex items-center justify-center relative">
             <HiTemplate className="w-8 h-8 text-primary-300" />
-            {/* Progress indicator overlay */}
-            {(thumbnailState === 'loading' || thumbnailState === 'generating' || thumbnailState === 'uploading') && (
-              <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent mb-2"></div>
-                <span className="text-white text-xs font-medium">
-                  {thumbnailState === 'loading' && 'Loading charts...'}
-                  {thumbnailState === 'generating' && 'Generating...'}
-                  {thumbnailState === 'uploading' && 'Saving...'}
-                </span>
-              </div>
-            )}
-            {thumbnailState === 'error' && (
-              <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center">
-                <span className="text-red-600 text-xs font-medium">Preview failed</span>
-              </div>
-            )}
+            {/* No progress indicators shown - thumbnails generate silently in background */}
           </div>
         )}
         <div className="absolute top-0 left-0 right-0 p-1.5 bg-linear-to-b from-black/50 to-transparent">
@@ -186,7 +144,6 @@ function DashboardCard({ projectId, dashboard }) {
           dashboard={dashboard}
           project={project}
           onThumbnailGenerated={onThumbnailGenerated}
-          onStateChange={setThumbnailState}
         />
       )}
     </Link>

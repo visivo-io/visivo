@@ -2,10 +2,8 @@ import React, { useEffect, startTransition } from 'react';
 import html2canvas from 'html2canvas-pro';
 import Dashboard from './Dashboard';
 
-// Utility function to yield control back to the browser
 const yieldToMain = () => {
   return new Promise(resolve => {
-    // Use requestIdleCallback if available, otherwise setTimeout
     if (typeof requestIdleCallback !== 'undefined') {
       requestIdleCallback(resolve);
     } else {
@@ -14,16 +12,19 @@ const yieldToMain = () => {
   });
 };
 
-function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateChange }) {
+function DashboardThumbnail({ dashboard, project, onThumbnailGenerated }) {
   const containerRef = React.useRef();
   const ASPECT_RATIO = 16 / 10;
+  const hasStartedRef = React.useRef(false); // Prevent multiple simultaneous generations
 
   useEffect(() => {
+    if (hasStartedRef.current) {
+      return;
+    }
     const waitForChartsToLoad = async () => {
       const container = containerRef.current;
       if (!container) return;
 
-      // Yield control before starting heavy work
       await yieldToMain();
 
       // Wait for Plotly charts to finish rendering
@@ -87,24 +88,28 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
     };
 
     const generateThumbnail = async () => {
-      if (containerRef.current) {
-        try {
-          // Notify parent that we're starting chart loading
-          onStateChange?.('loading');
-          
-          // Wait for charts and images to be ready instead of hardcoded delay
-          await waitForChartsToLoad();
-          
-          // Yield before starting canvas generation
-          await yieldToMain();
-          
-          // Notify parent that we're generating the thumbnail
-          onStateChange?.('generating');
+      // Mark as started to prevent multiple simultaneous generations
+      hasStartedRef.current = true;
+      
+      const container = containerRef.current;
+      if (!container) {
+        console.error('No container found for thumbnail generation');
+        hasStartedRef.current = false;
+        return;
+      }
 
-          // Yield again to ensure state update is processed
-          await yieldToMain();
+      try {
+        await waitForChartsToLoad();
+        
+        await yieldToMain();
 
-          const canvas = await html2canvas(containerRef.current, {
+        if (!containerRef.current) {
+          console.error('Container became null during thumbnail generation');
+          hasStartedRef.current = false;
+          return;
+        }
+
+        const canvas = await html2canvas(containerRef.current, {
             scale: 1,
             logging: false,
             width: 1200,
@@ -170,21 +175,22 @@ function DashboardThumbnail({ dashboard, project, onThumbnailGenerated, onStateC
               onThumbnailGenerated(blob);
             } else {
               console.error('Failed to generate thumbnail blob');
-              onStateChange?.('error');
             }
+            // Reset the flag when done (success or failure)
+            hasStartedRef.current = false;
           });
         } catch (error) {
           console.error('Error generating thumbnail:', error);
-          onStateChange?.('error');
+          // Reset the flag on error
+          hasStartedRef.current = false;
         }
-      }
-    };
+      };
 
     // Use startTransition to mark thumbnail generation as non-urgent
     startTransition(() => {
       generateThumbnail();
     });
-  }, [dashboard, onThumbnailGenerated, onStateChange, ASPECT_RATIO]);
+  }, [dashboard, onThumbnailGenerated, ASPECT_RATIO]);
 
   return (
     <div
