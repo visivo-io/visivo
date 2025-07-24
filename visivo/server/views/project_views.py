@@ -7,6 +7,7 @@ from flask import jsonify, request
 from git import Repo
 import yaml
 from ruamel.yaml import YAML
+from visivo.commands.compile_phase import compile_phase
 from visivo.commands.utils import create_source
 from visivo.discovery.discover import Discover
 from visivo.logger.logger import Logger
@@ -72,12 +73,10 @@ def register_project_views(app, flask_app, output_dir):
             return jsonify({"message": "Project name is required"}), 400
 
         repo_url = f"https://github.com/visivo-io/{example_type}.git"
-        project_path = Path(project_dir).resolve()
+        project_path = Path(project_dir)
         env_path = project_path / ".env"
         gitignore_path = project_path / ".gitignore"
         temp_clone_path = project_path / GIT_TEMP_DIR
-
-        Logger.instance().info(f"Cloning to temp: {temp_clone_path}")
 
         try:
             # Backup existing .gitignore and .env
@@ -117,10 +116,13 @@ def register_project_views(app, flask_app, output_dir):
 
             # Initialize the project
             discover = Discover(working_dir=project_path, output_dir=None)
-            parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
 
             try:
+                parser = ParserFactory().build(
+                    project_file=discover.project_file, files=discover.files
+                )
                 project = parser.parse()
+
                 flask_app.project = project
             except yaml.YAMLError as e:
                 message = "\n"
@@ -128,6 +130,23 @@ def register_project_views(app, flask_app, output_dir):
                     mark = e.problem_mark
                     message = f"\n Error position: line:{mark.line+1} column:{mark.column+1}\n"
                 Logger.instance().error(f"Error parsing YAML file(s): {message} {e}")
+
+            from ruamel.yaml import YAML
+
+            yaml = YAML()
+            yaml.preserve_quotes = True
+            yaml.indent(mapping=2, sequence=4, offset=2)
+
+            Logger.instance().error(f"discover.project_file: {discover.project_file}")
+            with discover.project_file.open("r") as f:
+                data = yaml.load(f)
+                f.close()
+
+            if "name" in data:
+                data["name"] = project_name
+
+            with discover.project_file.open("w") as f:
+                yaml.dump(data, f)
 
             return jsonify({"message": "Project created successfully"}), 200
 
