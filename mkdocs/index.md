@@ -136,11 +136,13 @@ dashboards:
         items:
           - width: 5
             chart: ${ref(simple_chart)}
+            - width: 2
+              markdown: |
+                # Here is the first
+                1. Numbered
+                1. List
           - width: 2
-            markdown: |
-              # Here is the first
-              1. Numbered
-              1. List
+            iframe: https://example.com
 ```
 
 ### Set up a Source & store secrets safely
@@ -224,11 +226,11 @@ charts:
 ```
 
 ### Create a Dashboard
-Dashboards house `charts`, `tables` and `markdown`. They help you set up a highly flexible grid so that you can put all of your information exactly where you need it. 
+Dashboards house `charts`, `tables`, `markdown` and `iframes`. They help you set up a highly flexible grid so that you can put all of your information exactly where you need it.
 
 You can structure the grid by specifying rows that house many items. Items have a particular width that is evaluated relative to the other item widths in the row. So if for example you had 3 items in a row with widths of 5, 2 and 3. The first item would take up 50% of the row, the second 20% and the third 30%. 
 ```
-Dashboard --> row --> item --> chart/table/markdown
+Dashboard --> row --> item --> chart/table/markdown/iframe
                  |        |
                  |         --> width
                   --> height 
@@ -242,11 +244,13 @@ dashboards:
         items:
           - width: 5
             chart: ${ref(simple_chart)}
+            - width: 2
+              markdown: |
+                # Here is the first
+                1. Numbered
+                1. List
           - width: 2
-            markdown: |
-              # Here is the first
-              1. Numbered
-              1. List
+            iframe: https://example.com
 ```
 
 ### Set up Alerts - Optional
