@@ -22,14 +22,6 @@ console.error = (...args) => {
   ) {
     return;
   }
-  // Suppress XMLHttpRequest errors during tests
-  if (
-    args[0]?.message?.includes?.('XMLHttpRequest') ||
-    args[0]?.toString?.()?.includes?.('XMLHttpRequest') ||
-    args[0]?.type === 'XMLHttpRequest'
-  ) {
-    return;
-  }
   originalError(...args);
 };
 
@@ -52,6 +44,21 @@ const { Response, Headers, Request } = require('whatwg-fetch');
 global.Response = Response;
 global.Headers = Headers;
 global.Request = Request;
+
+// Mock React Query to prevent network requests in tests
+jest.mock('@tanstack/react-query', () => {
+  const actual = jest.requireActual('@tanstack/react-query');
+  return {
+    ...actual,
+    useQuery: jest.fn(() => ({
+      data: [],
+      isLoading: false,
+      error: null,
+      isError: false,
+      refetch: jest.fn(),
+    })),
+  };
+});
 
 beforeEach(() => {
   // Set up a test URL config
