@@ -1,41 +1,41 @@
-import React, { useState, useEffect } from "react";
-import logo from "../../images/logo.png";
-import ProjectModal from "./ProjectModal";
-import CreateObjectModal from "../editors/CreateObjectModal";
-import Loading from "../common/Loading";
-import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import useStore from "../../stores/store";
-import { Navigate } from "react-router-dom";
-import FeatureCard from "./FeatureCard";
-import { Toast } from "flowbite-react";
-import { HiExclamation, HiX } from "react-icons/hi";
+import React, { useState, useEffect } from 'react';
+import logo from '../../images/logo.png';
+import ProjectModal from './ProjectModal';
+import CreateObjectModal from '../editors/CreateObjectModal';
+import Loading from '../common/Loading';
+import { faArrowRight, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import useStore from '../../stores/store';
+import { Navigate } from 'react-router-dom';
+import FeatureCard from './FeatureCard';
+import { Toast } from 'flowbite-react';
+import { HiExclamation, HiX } from 'react-icons/hi';
 
 const ACTIONS = {
-  DATA_SOURCE: "Data Source",
-  GITHUB_RELEASE: "github-releases",
+  DATA_SOURCE: 'Data Source',
+  GITHUB_RELEASE: 'github-releases',
 };
 
 const Onboarding = () => {
-  const [projectName, setProjectName] = useState("");
+  const [projectName, setProjectName] = useState('');
   const [showNameModal, setShowNameModal] = useState(false);
-  const [tempProjectName, setTempProjectName] = useState("");
+  const [tempProjectName, setTempProjectName] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState("Creating project ...");
-  const [loadingAction, setLoadingAction] = useState("");
-  const [showErrorToast, setShowErrorToast] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("");
+  const [loadingText, setLoadingText] = useState('Creating project ...');
+  const [loadingAction, setLoadingAction] = useState('');
+  const [showErrorToast, setShowErrorToast] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const isNewProject = useStore((state) => state.isNewProject);
-  const isOnBoardingLoading = useStore((state) => state.isOnBoardingLoading);
-  const project = useStore((state) => state.project);
-  const projectDir = project?.project_json?.project_dir ?? "";
+  const isNewProject = useStore(state => state.isNewProject);
+  const isOnBoardingLoading = useStore(state => state.isOnBoardingLoading);
+  const project = useStore(state => state.project);
+  const projectDir = project?.project_json?.project_dir ?? '';
 
   useEffect(() => {
     if (!projectName) {
       setShowNameModal(true);
-      setTempProjectName("");
+      setTempProjectName('');
     }
   }, [projectName]);
 
@@ -47,8 +47,8 @@ const Onboarding = () => {
   }, [showErrorToast]);
 
   const closeLoading = () => {
-    setLoadingText("");
-    setLoadingAction("");
+    setLoadingText('');
+    setLoadingAction('');
     setIsLoading(false);
   };
 
@@ -61,70 +61,68 @@ const Onboarding = () => {
   };
 
   const handleToggleSourceModal = () => {
-    setIsCreateModalOpen((prev) => !prev);
+    setIsCreateModalOpen(prev => !prev);
   };
 
   const safeAppend = (key, value, formData) => {
-    formData.append(key, value ?? "");
+    formData.append(key, value ?? '');
   };
 
-  const createSource = async (config) => {
+  const createSource = async config => {
     const formData = new FormData();
-    safeAppend("project_name", projectName, formData);
-    safeAppend("source_name", config?.name, formData);
-    safeAppend("source_type", config?.type, formData);
-    safeAppend("port", config?.port, formData);
-    safeAppend("database", config?.database, formData);
-    safeAppend("host", config?.host, formData);
-    safeAppend("username", config?.username, formData);
-    safeAppend("password", config?.password, formData);
-    safeAppend("account", config?.account, formData);
-    safeAppend("warehouse", config?.warehouse, formData);
-    safeAppend("credentials_base64", config?.credentials_base64, formData);
-    safeAppend("project", config?.project, formData);
-    safeAppend("dataset", config?.dataset, formData);
-    safeAppend("project_dir", projectDir, formData);
+    safeAppend('project_name', projectName, formData);
+    safeAppend('source_name', config?.name, formData);
+    safeAppend('source_type', config?.type, formData);
+    safeAppend('port', config?.port, formData);
+    safeAppend('database', config?.database, formData);
+    safeAppend('host', config?.host, formData);
+    safeAppend('username', config?.username, formData);
+    safeAppend('password', config?.password, formData);
+    safeAppend('account', config?.account, formData);
+    safeAppend('warehouse', config?.warehouse, formData);
+    safeAppend('credentials_base64', config?.credentials_base64, formData);
+    safeAppend('project', config?.project, formData);
+    safeAppend('dataset', config?.dataset, formData);
+    safeAppend('project_dir', projectDir, formData);
 
-    const res = await fetch("/api/source/create", {
-      method: "POST",
+    const res = await fetch('/api/source/create', {
+      method: 'POST',
       body: formData,
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.message || "Failed to connect to the data source.");
+      throw new Error(data.message || 'Failed to connect to the data source.');
     }
 
-    return data.source; 
+    return data.source;
   };
 
-
-
-  const uploadSourceFile = async (config) => {
+  const uploadSourceFile = async config => {
     const formData = new FormData();
-    formData.append("file", config.file);
-    formData.append("project_dir", projectDir);
-    formData.append("source_type", config?.type);
+    formData.append('file', config.file);
+    formData.append('project_dir', projectDir);
+    formData.append('source_type', config?.type);
 
-    const res = await fetch("/api/source/upload", {
-      method: "POST",
+    const res = await fetch('/api/source/upload', {
+      method: 'POST',
       body: formData,
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.message || "Failed to upload the file.");
+      throw new Error(data.message || 'Failed to upload the file.');
     }
 
-    return data.dashboard; 
+    return data.dashboard;
   };
 
   const finalizeProject = async (config, source, dashboard) => {
-    const res = await fetch("/api/project/finalize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/project/finalize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         project_name: projectName,
         project_dir: projectDir,
@@ -137,48 +135,47 @@ const Onboarding = () => {
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.message || "Failed to finalize the project.");
+      throw new Error(data.message || 'Failed to finalize the project.');
     }
 
     return data;
   };
 
-  const handleAddDataSource = async (data) => {
+  const handleAddDataSource = async data => {
     const { config } = data;
     setLoadingAction(ACTIONS.DATA_SOURCE);
     setIsLoading(true);
 
     try {
-      setLoadingText("Connecting source...");
-      const source = await createSource(config); 
+      setLoadingText('Connecting source...');
+      const source = await createSource(config);
 
       let dashboard = null;
 
       if (config?.file) {
-        setLoadingText("Uploading file...");
-        dashboard = await uploadSourceFile(config); 
+        setLoadingText('Uploading file...');
+        dashboard = await uploadSourceFile(config);
       }
 
-      setLoadingText("Finalizing project...");
+      setLoadingText('Finalizing project...');
       await finalizeProject(config, source, dashboard);
       setIsLoading(true);
-      setLoadingText("Preparing dashboards...");
+      setLoadingText('Preparing dashboards...');
     } catch (err) {
-      const message = err?.message ?? "An unexpected error occurred.";
+      const message = err?.message ?? 'An unexpected error occurred.';
       setErrorMessage(message);
       setShowErrorToast(true);
-    } 
+    }
   };
-
 
   const handleLoadExample = async () => {
     setLoadingAction(ACTIONS.GITHUB_RELEASE);
-    setLoadingText("Importing example...");
+    setLoadingText('Importing example...');
     setIsLoading(true);
 
-    const response = await fetch("/api/project/load_example", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch('/api/project/load_example', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         project_name: projectName,
         example_type: ACTIONS.GITHUB_RELEASE,
@@ -188,14 +185,14 @@ const Onboarding = () => {
 
     if (!response.ok) {
       const data = await response.json();
-      const message = data.message
-      setErrorMessage(message ?? "Failed to import the example dashboard.")
-      setShowErrorToast(true)
-      closeLoading()
-    } else setLoadingText("Preparing project ...");
+      const message = data.message;
+      setErrorMessage(message ?? 'Failed to import the example dashboard.');
+      setShowErrorToast(true);
+      closeLoading();
+    } else setLoadingText('Preparing project ...');
   };
 
-  const isLoadingAction = (action) => isLoading && loadingAction === action;
+  const isLoadingAction = action => isLoading && loadingAction === action;
 
   if (isOnBoardingLoading) {
     return (
@@ -233,9 +230,7 @@ const Onboarding = () => {
       <div className="fixed top-4 left-4 z-10">
         <div className="inline-flex items-center px-6 py-3 bg-white rounded-full shadow-lg border border-gray-200">
           <div className="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse" />
-          <span className="text-lg font-semibold text-gray-700">
-            Project: {projectName}
-          </span>
+          <span className="text-lg font-semibold text-gray-700">Project: {projectName}</span>
         </div>
       </div>
 
@@ -253,7 +248,8 @@ const Onboarding = () => {
               Connect Your Data
             </h3>
             <p className="text-center text-gray-600 text-lg mb-6">
-              Start by adding your first data source. We support databases, APIs, CSV files, and more.
+              Start by adding your first data source. We support databases, APIs, CSV files, and
+              more.
             </p>
 
             <div className="flex justify-center">
@@ -282,7 +278,9 @@ const Onboarding = () => {
 
         {/* Example Dashboard */}
         <div className="bg-white rounded-2xl shadow-xl p-4 w-full">
-          <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">Or Try an Example</h3>
+          <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">
+            Or Try an Example
+          </h3>
           <p className="text-center text-gray-600 mb-6">
             Not sure where to start? Explore our sample dashboard to see what's possible.
           </p>
@@ -310,9 +308,12 @@ const Onboarding = () => {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">Import Example Dashboard</h4>
+                  <h4 className="text-xl font-semibold text-gray-800 mb-2">
+                    Import Example Dashboard
+                  </h4>
                   <p className="text-gray-600">
-                    Import the GitHub Releases dashboard example and explore release data with rich visualizations.
+                    Import the GitHub Releases dashboard example and explore release data with rich
+                    visualizations.
                   </p>
                 </div>
               </div>

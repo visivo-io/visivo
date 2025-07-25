@@ -22,11 +22,10 @@ const Home = () => {
       <div className="flex items-center justify-center h-screen w-screen">
         <Loading />
       </div>
-    )
+    );
   }
 
   if (isNewProject && isRoot) return <Navigate to="/onboarding" />;
-
 
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">

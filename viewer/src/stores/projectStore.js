@@ -22,7 +22,18 @@ const createProjectSlice = (set, get) => ({
   },
 
   setSelectedTags: selectedTags => {
-    set({ selectedTags });
+    // Handle functional updates (like React useState)
+    let newTags;
+    if (typeof selectedTags === 'function') {
+      const currentTags = get().selectedTags || [];
+      newTags = selectedTags(currentTags);
+    } else {
+      newTags = selectedTags;
+    }
+
+    // Ensure newTags is always an array
+    const tagsArray = Array.isArray(newTags) ? newTags : [];
+    set({ selectedTags: tagsArray });
     // Trigger filtering when tags change
     get().filterDashboards();
   },
@@ -56,8 +67,11 @@ const createProjectSlice = (set, get) => ({
         (dashboard.description &&
           dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesTags =
+        !selectedTags ||
         selectedTags.length === 0 ||
-        (dashboard.tags && selectedTags.every(tag => dashboard.tags.includes(tag)));
+        (dashboard.tags &&
+          Array.isArray(selectedTags) &&
+          selectedTags.every(tag => dashboard.tags.includes(tag)));
       return matchesSearch && matchesTags;
     });
 
