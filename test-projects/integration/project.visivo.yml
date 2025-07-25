@@ -68,6 +68,10 @@ charts:
       height: 500
 dashboards:
   - name: Table Name
+    level: 1
+    tags:
+      - "test"
+      - "test2"
     rows:
       - height: compact
         items:

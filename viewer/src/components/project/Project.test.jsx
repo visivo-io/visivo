@@ -1,14 +1,14 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import Project from "./Project";
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import Project from './Project';
 
 // Mock Dashboard component
-jest.mock("./Dashboard", () => ({ project, dashboardName }) => (
+jest.mock('./Dashboard', () => ({ project, dashboardName }) => (
   <div data-testid="dashboard-component">Dashboard: {dashboardName}</div>
 ));
-jest.mock("../../stores/store", () => {
-  const { create } = require("zustand");
+jest.mock('../../stores/store', () => {
+  const { create } = require('zustand');
 
   const useStore = create(() => ({
     setScrollPosition: jest.fn(),
@@ -17,14 +17,14 @@ jest.mock("../../stores/store", () => {
     dashboardsByLevel: {
       Unassigned: [
         {
-          name: "dashboard",
+          name: 'dashboard',
           rows: [
             {
-              height: "medium",
+              height: 'medium',
               items: [
                 {
                   width: 1,
-                  markdown: "First Markdown",
+                  markdown: 'First Markdown',
                 },
               ],
             },
@@ -43,20 +43,20 @@ jest.mock("../../stores/store", () => {
   };
 });
 
-describe("Project Component", () => {
+describe('Project Component', () => {
   const mockProject = {
     id: 1,
     project_json: {
       dashboards: [
         {
-          name: "dashboard",
+          name: 'dashboard',
           rows: [
             {
-              height: "medium",
+              height: 'medium',
               items: [
                 {
                   width: 1,
-                  markdown: "First Markdown",
+                  markdown: 'First Markdown',
                 },
               ],
             },
@@ -69,29 +69,21 @@ describe("Project Component", () => {
 
   const fetchTraces = jest.fn();
 
-  test("renders dashboard component when dashboardName is provided", () => {
+  test('renders dashboard component when dashboardName is provided', () => {
     render(
       <MemoryRouter>
-        <Project
-          project={mockProject}
-          dashboardName="dashboard"
-          fetchTraces={fetchTraces}
-        />
+        <Project project={mockProject} dashboardName="dashboard" fetchTraces={fetchTraces} />
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId("dashboard-component")).toBeInTheDocument();
-    expect(screen.getByText("Dashboard: dashboard")).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-component')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard: dashboard')).toBeInTheDocument();
   });
 
-  test("renders dashboard name through Dashboard component", () => {
+  test('renders dashboard name through Dashboard component', () => {
     render(
       <MemoryRouter>
-        <Project
-          project={mockProject}
-          dashboardName="dashboard"
-          fetchTraces={fetchTraces}
-        />
+        <Project project={mockProject} dashboardName="dashboard" fetchTraces={fetchTraces} />
       </MemoryRouter>
     );
 

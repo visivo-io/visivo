@@ -14,30 +14,30 @@ import { GrDocumentCsv, GrDocumentExcel } from 'react-icons/gr';
 
 export const TYPE_VALUE_MAP = {
   CSVFileSource: {
-    value: 'csv'
+    value: 'csv',
   },
   ExcelFileSource: {
-    value: 'xls'
+    value: 'xls',
   },
   BigQuerySource: {
-    value: 'bigquery'
+    value: 'bigquery',
   },
   SnowflakeSource: {
-    value: 'snowflake'
+    value: 'snowflake',
   },
   MysqlSource: {
-    value: 'mysql'
+    value: 'mysql',
   },
   PostgresqlSource: {
-    value: 'postgresql'
+    value: 'postgresql',
   },
   DuckdbSource: {
-    value: 'duckdb'
+    value: 'duckdb',
   },
   SqliteSource: {
-    value: 'sqlite'
-  }
-}
+    value: 'sqlite',
+  },
+};
 
 export const TYPE_STYLE_MAP = {
   Chart: {
