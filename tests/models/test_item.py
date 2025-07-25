@@ -17,7 +17,7 @@ def test_Item_both_chart_and_markdown():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == 'Value error, only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
+        == 'Value error, only one of the "markdown", "chart", "table", "selector", or "iframe" properties should be set on an item'
     )
     assert error["type"] == "value_error"
 
@@ -38,7 +38,7 @@ def test_Item_both_chart_and_table():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == 'Value error, only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
+        == 'Value error, only one of the "markdown", "chart", "table", "selector", or "iframe" properties should be set on an item'
     )
     assert error["type"] == "value_error"
 
@@ -50,8 +50,34 @@ def test_Item_both_chart_and_selector():
     error = exc_info.value.errors()[0]
     assert (
         error["msg"]
-        == 'Value error, only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
+        == 'Value error, only one of the "markdown", "chart", "table", "selector", or "iframe" properties should be set on an item'
     )
+    assert error["type"] == "value_error"
+
+
+def test_Item_iframe_simple():
+    item = Item(iframe="https://example.com")
+    assert item.iframe == "https://example.com"
+
+
+def test_Item_iframe_and_chart():
+    with pytest.raises(ValidationError) as exc_info:
+        Item(chart="ref(chart)", iframe="https://example.com")
+
+    error = exc_info.value.errors()[0]
+    assert (
+        error["msg"]
+        == 'Value error, only one of the "markdown", "chart", "table", "selector", or "iframe" properties should be set on an item'
+    )
+    assert error["type"] == "value_error"
+
+
+def test_Item_iframe_and_align():
+    with pytest.raises(ValidationError) as exc_info:
+        Item(iframe="https://example.com", align="right")
+
+    error = exc_info.value.errors()[0]
+    assert "property can only be set when" in error["msg"]
     assert error["type"] == "value_error"
 
 
