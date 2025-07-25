@@ -11,6 +11,11 @@ import Lineage from './components/lineage/Lineage';
 import Explorer from './components/explorer/Explorer';
 import Editor from './components/editors/Editor';
 import Onboarding from './components/onboarding/Onboarding';
+import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
+
+// Set global URL config early for router loaders
+export const localURLConfig = createURLConfig({ environment: 'server' });
+setGlobalURLConfig(localURLConfig);
 
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(

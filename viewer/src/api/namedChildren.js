@@ -1,5 +1,7 @@
+import { getUrl } from '../contexts/URLContext';
+
 export const fetchNamedChildren = async () => {
-  const response = await fetch('/api/project/named_children');
+  const response = await fetch(getUrl('namedChildren'));
   if (response.status === 200) {
     return await response.json();
   } else {
@@ -8,7 +10,7 @@ export const fetchNamedChildren = async () => {
 };
 
 export const writeNamedChildren = async namedChildren => {
-  const response = await fetch('/api/project/write_changes', {
+  const response = await fetch(getUrl('writeChanges'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

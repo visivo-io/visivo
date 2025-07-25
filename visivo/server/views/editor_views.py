@@ -5,7 +5,7 @@ from visivo.server.text_editors import get_editor_configs
 
 
 def register_editor_views(app, flask_app, output_dir):
-    @app.route("/api/editors/installed", methods=["GET"])
+    @app.route("/api/editors/installed/", methods=["GET"])
     def get_installed_editors():
         editors, platform = get_editor_configs()
 
@@ -24,7 +24,7 @@ def register_editor_views(app, flask_app, output_dir):
 
         return jsonify(installed_editors)
 
-    @app.route("/api/editors/open", methods=["POST"])
+    @app.route("/api/editors/open/", methods=["POST"])
     def open_in_editor():
         data = request.get_json()
         if not data or "editorId" not in data or "filePath" not in data:

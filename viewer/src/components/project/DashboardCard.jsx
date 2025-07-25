@@ -1,23 +1,25 @@
-import React, { useEffect, useState, useRef, useContext } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge } from 'flowbite-react';
 import { HiTemplate, HiExternalLink } from 'react-icons/hi';
-import QueryContext from '../../contexts/QueryContext';
 import { useQuery } from '@tanstack/react-query';
 import md5 from 'md5';
 import { useRouteLoaderData } from 'react-router-dom';
 import DashboardThumbnail from './DashboardThumbnail';
+import { fetchDashboard } from '../../api/dashboard';
 
 const GENERATING_THUMBNAIL_URL = 'GENERATING';
 
 function DashboardCard({ projectId, dashboard }) {
-  const { fetchDashboardQuery } = useContext(QueryContext);
   const project = useRouteLoaderData('project');
   const [imageUrl, setImageUrl] = useState(null);
   const [shouldStartThumbnail, setShouldStartThumbnail] = useState(false);
   const cardRef = useRef(null);
 
-  const { data: dashboardData } = useQuery(fetchDashboardQuery(projectId, dashboard.name));
+  const { data: dashboardData } = useQuery({
+    queryKey: ['dashboard', projectId, dashboard.name],
+    queryFn: () => fetchDashboard(projectId, dashboard.name),
+  });
 
   const onThumbnailGenerated = async blob => {
     try {

@@ -179,7 +179,16 @@ def new(function):
     function = click.argument(
         "project_dir",
         required=False,
-        type=click.Path(file_okay=False, dir_okay=True),
     )(function)
+    return function
 
+
+def deployment_root(function):
+    click.option(
+        "-dr",
+        "--deployment-root",
+        help="The root path to use for the dist. This is useful if you want to deploy to a subpath on a server.",
+        default=None,
+        required=False,
+    )(function)
     return function

@@ -59,7 +59,7 @@ def test_dist_creates_dist_folder(setup_project, output_dir, dist_dir):
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "error.json"))
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "project.json"))
     assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "dashboards"))
-    assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "trace"))
+    assert os.path.exists(os.path.join(os.getcwd(), dist_dir, "data", "traces"))
 
     # Verify project.json has created_at field
     with open(os.path.join(dist_dir, "data", "project.json")) as project_json:

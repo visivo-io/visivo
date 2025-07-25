@@ -8,11 +8,17 @@ import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
 import { loadError } from './loaders/error';
 import logo from './images/logo.png';
+import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
+// Set global URL config early for router loaders
+export const distURLConfig = createURLConfig({ environment: 'dist' });
+setGlobalURLConfig(distURLConfig);
+const root = distURLConfig.getRoute();
+  
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
     <Route
-      path="/"
+      path={root}
       element={<DistHome />}
       loader={loadError}
       handle={{
@@ -24,7 +30,7 @@ const DistRouter = createBrowserRouter(
       }}
     >
       <Route
-        path="/"
+        path={root}
         element={<ProjectContainer />}
         errorElement={<ErrorPage />}
         shouldRevalidate={() => false}

@@ -27,7 +27,7 @@ from visivo.server.views.utils import create_example_dashboard, load_csv, write_
 
 
 def register_project_views(app, flask_app, output_dir):
-    @app.route("/api/project/named_children", methods=["GET"])
+    @app.route("/api/project/named_children/", methods=["GET"])
     def named_children():
         named_children = flask_app._project.named_child_nodes()
         if named_children:
@@ -35,7 +35,7 @@ def register_project_views(app, flask_app, output_dir):
         else:
             return jsonify({})
 
-    @app.route("/api/project/project_file_path", methods=["GET"])
+    @app.route("/api/project/project_file_path/", methods=["GET"])
     def project_file_path():
         project_file_path = flask_app._project.project_file_path
         if project_file_path:
@@ -43,7 +43,7 @@ def register_project_views(app, flask_app, output_dir):
         else:
             return jsonify({})
 
-    @app.route("/api/project/write_changes", methods=["POST"])
+    @app.route("/api/project/write_changes/", methods=["POST"])
     def write_changes():
         data = request.get_json()
         if not data:

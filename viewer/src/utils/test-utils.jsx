@@ -1,6 +1,6 @@
 import { MemoryRouter } from 'react-router-dom';
 import { futureFlags } from '../router-config';
-import { QueryProvider } from '../contexts/QueryContext';
+import { URLProvider } from '../contexts/URLContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Routes, Route } from 'react-router-dom';
 
@@ -16,12 +16,7 @@ export const TestComponent = () => {
   return <div>TEST COMPONENT</div>;
 };
 
-export const withProviders = ({ children, initialPath = '/', traces = [] }) => {
-  const fetchTracesQuery = (projectId, name) => ({
-    queryKey: ['trace', projectId, name],
-    queryFn: () => traces,
-  });
-
+export const withProviders = ({ children, initialPath = '/', traces = [], environment = 'server' }) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -32,13 +27,13 @@ export const withProviders = ({ children, initialPath = '/', traces = [] }) => {
 
   return (
     <MemoryRouter initialEntries={[initialPath]} future={futureFlags}>
-      <QueryProvider value={{ fetchTracesQuery }}>
+      <URLProvider environment={environment}>
         <QueryClientProvider client={queryClient}>
           <Routes>
             <Route path={initialPath.split('?')[0]} element={children} />
           </Routes>
         </QueryClientProvider>
-      </QueryProvider>
+      </URLProvider>
     </MemoryRouter>
   );
 };

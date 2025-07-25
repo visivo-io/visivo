@@ -11,7 +11,7 @@ from visivo.server.source_metadata import (
 
 
 def register_source_views(app, flask_app, output_dir):
-    @app.route("/api/project/sources_metadata", methods=["GET"])
+    @app.route("/api/project/sources_metadata/", methods=["GET"])
     def sources_metadata():
         try:
             metadata = gather_source_metadata(flask_app._project.sources)
@@ -20,7 +20,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error gathering source metadata: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/project/sources/<source_name>/test-connection", methods=["GET"])
+    @app.route("/api/project/sources/<source_name>/test-connection/", methods=["GET"])
     def test_connection(source_name):
         """Test connection to a specific source."""
         try:
@@ -32,7 +32,7 @@ def register_source_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error testing connection for {source_name}: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/project/sources/<source_name>/databases", methods=["GET"])
+    @app.route("/api/project/sources/<source_name>/databases/", methods=["GET"])
     def list_source_databases(source_name):
         """List databases for a specific source."""
         try:
@@ -45,7 +45,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify({"message": str(e)}), 500
 
     @app.route(
-        "/api/project/sources/<source_name>/databases/<database_name>/schemas", methods=["GET"]
+        "/api/project/sources/<source_name>/databases/<database_name>/schemas/", methods=["GET"]
     )
     def list_database_schemas(source_name, database_name):
         """List schemas for a specific database."""
@@ -59,7 +59,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify({"message": str(e)}), 500
 
     @app.route(
-        "/api/project/sources/<source_name>/databases/<database_name>/tables", methods=["GET"]
+        "/api/project/sources/<source_name>/databases/<database_name>/tables/", methods=["GET"]
     )
     def list_database_tables(source_name, database_name):
         """List tables for a database (no schema)."""
@@ -73,7 +73,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify({"message": str(e)}), 500
 
     @app.route(
-        "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables",
+        "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables/",
         methods=["GET"],
     )
     def list_schema_tables(source_name, database_name, schema_name):
@@ -90,7 +90,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify({"message": str(e)}), 500
 
     @app.route(
-        "/api/project/sources/<source_name>/databases/<database_name>/tables/<table_name>/columns",
+        "/api/project/sources/<source_name>/databases/<database_name>/tables/<table_name>/columns/",
         methods=["GET"],
     )
     def list_table_columns(source_name, database_name, table_name):
@@ -107,7 +107,7 @@ def register_source_views(app, flask_app, output_dir):
             return jsonify({"message": str(e)}), 500
 
     @app.route(
-        "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables/<table_name>/columns",
+        "/api/project/sources/<source_name>/databases/<database_name>/schemas/<schema_name>/tables/<table_name>/columns/",
         methods=["GET"],
     )
     def list_schema_table_columns(source_name, database_name, schema_name, table_name):
