@@ -16,7 +16,7 @@ export const TestComponent = () => {
   return <div>TEST COMPONENT</div>;
 };
 
-export const withProviders = ({ children, initialPath = '/', traces = [], environment = 'local' }) => {
+export const withProviders = ({ children, initialPath = '/', traces = [], environment = 'server' }) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {

@@ -7,13 +7,13 @@ import { getUrl } from '../contexts/URLContext';
  * @returns {Promise<Object[]>} Array of trace objects with data URLs
  */
 export const fetchTraces = async (projectId, names) => {
-  // In local mode, this will call /api/traces/ with trace names as query params
+  // In server mode, this will call /api/traces/ with trace names as query params
   // In dist mode, this will fetch /data/traces.json
   
   let url = getUrl('tracesQuery');
   const params = [];
   
-  // Add trace names as query parameters for local mode
+  // Add trace names as query parameters for server mode
   if (names && names.length > 0) {
     names.forEach(name => params.push(`names=${encodeURIComponent(name)}`));
   }

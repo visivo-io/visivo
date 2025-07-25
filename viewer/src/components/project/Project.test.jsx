@@ -105,7 +105,7 @@ describe('Project Component', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <URLProvider environment="local">
+        <URLProvider environment="server">
           <RouterProvider router={router} future={futureFlags} />
         </URLProvider>
       </QueryClientProvider>
@@ -132,7 +132,7 @@ describe('Project Component', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <URLProvider environment="local">
+        <URLProvider environment="server">
           <RouterProvider router={router} future={futureFlags} />
         </URLProvider>
       </QueryClientProvider>

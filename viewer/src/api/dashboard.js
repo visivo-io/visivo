@@ -11,7 +11,7 @@ export const fetchDashboard = async (projectId, name) => {
   // Calculate hash from dashboard name for consistent URL generation
   const nameHash = md5(name);
   
-  // In local mode, this will call /api/dashboard/{hash}.json
+  // In server mode, this will call /api/dashboard/{hash}.json
   // In dist mode, this will fetch /data/dashboard/{hash}.json
   let url = getUrl('dashboardQuery', { hash: nameHash });
   

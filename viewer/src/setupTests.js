@@ -62,6 +62,6 @@ jest.mock('@tanstack/react-query', () => {
 
 beforeEach(() => {
   // Set up a test URL config
-  const testConfig = createURLConfig({ environment: 'local' });
+  const testConfig = createURLConfig({ environment: 'server' });
   setGlobalURLConfig(testConfig);
 });

@@ -190,7 +190,7 @@ jest.mock('../../contexts/WorksheetContext', () => ({
 const renderWithProviders = ui => {
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <URLProvider environment="local">
+      <URLProvider environment="server">
         <WorksheetProvider>{ui}</WorksheetProvider>
       </URLProvider>
     </BrowserRouter>

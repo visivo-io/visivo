@@ -13,7 +13,7 @@ jest.mock('../../api/worksheet');
 // Test wrapper component
 const TestWrapper = ({ children }) => (
   <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-    <URLProvider environment="local">
+    <URLProvider environment="server">
       <WorksheetProvider>{children}</WorksheetProvider>
     </URLProvider>
   </BrowserRouter>

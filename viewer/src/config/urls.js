@@ -1,12 +1,12 @@
 /**
  * Centralized URL configuration system for Visivo viewer
- * Supports different environments (local, dist) with configurable host and deployment root
+ * Supports different environments (server, dist) with configurable host and deployment root
  */
 
 // URL patterns for different environments
 const URL_PATTERNS = {
-  local: {
-    // Static data endpoints (work in both local and dist)
+  server: {
+    // Static data endpoints (work in both server and dist)
     project: '/api/project/',
     explorer: '/api/explorer/',
     dag: '/api/dag/',
@@ -19,7 +19,7 @@ const URL_PATTERNS = {
     tracesQuery: '/api/traces/',
     dashboardQuery: '/api/dashboards/{hash}/',
     
-    // Interactive endpoints (local only)
+    // Interactive endpoints (server only)
     worksheet: '/api/worksheet/',
     worksheetDetail: '/api/worksheet/{id}/',
     worksheetSession: '/api/worksheet/session/',
@@ -71,7 +71,7 @@ class URLConfig {
   constructor(options = {}) {
     this.host = options.host || '';
     this.deploymentRoot = options.deploymentRoot || '';
-    this.environment = options.environment || 'local';
+    this.environment = options.environment || 'server';
     
     // Normalize deployment root: should be '' for base or '/subfolder' for subfolders
     if (this.deploymentRoot) {
@@ -163,7 +163,7 @@ function getWindowDeploymentRoot() {
 /**
  * Create URLConfig instance with explicit settings
  * @param {object} options - Configuration options
- * @param {string} options.environment - Environment ('local' or 'dist') - required
+ * @param {string} options.environment - Environment ('server' or 'dist') - required
  * @param {string} options.host - Base host URL (optional)
  * @param {string} options.deploymentRoot - Deployment root path (optional)
  * @returns {URLConfig}

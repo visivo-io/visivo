@@ -39,7 +39,7 @@ export function getUrl(key, params = {}) {
  * @param {URLConfig} props.urlConfig - URLConfig instance to use (optional)
  * @param {string} props.host - Base host URL (optional, used if urlConfig not provided)
  * @param {string} props.deploymentRoot - Deployment root path (optional, used if urlConfig not provided)
- * @param {string} props.environment - Environment ('local' or 'dist') - required if urlConfig not provided
+ * @param {string} props.environment - Environment ('server' or 'dist') - required if urlConfig not provided
  * @param {React.ReactNode} props.children
  */
 export function URLProvider({ urlConfig, host, deploymentRoot, environment, children }) {
