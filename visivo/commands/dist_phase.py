@@ -67,7 +67,7 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                     {
                         "name": trace_name,
                         "id": trace_name,
-                        "signed_data_file_url": f"/data/traces/{trace_name_hash}.json",
+                        "signed_data_file_url": f"{deployment_root}/data/traces/{trace_name_hash}.json",
                     }
                 )
 
@@ -90,7 +90,9 @@ def dist_phase(output_dir, dist_dir, deployment_root: str = None):
                     "id": dashboard_name,
                     "name": dashboard_name,
                     "signed_thumbnail_file_url": (
-                        f"/data/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
+                        f"{deployment_root}/data/dashboards/{dashboard_name_hash}.png"
+                        if thumbnail_exists
+                        else None
                     ),
                 }
 

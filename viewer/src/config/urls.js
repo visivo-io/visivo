@@ -6,20 +6,16 @@
 // URL patterns for different environments
 const URL_PATTERNS = {
   server: {
-    // Static data endpoints (work in both server and dist)
     project: '/api/project/',
     explorer: '/api/explorer/',
     dag: '/api/dag/',
     schema: '/api/schema/',
     error: '/api/error/',
+    tracesQuery: '/api/traces/',
     traceData: '/api/traces/{hash}/',
+    dashboardQuery: '/api/dashboards/{hash}/',
     dashboardThumbnail: '/api/dashboards/{hash}.png',
     
-    // New query endpoints (replaces provider-based queries)
-    tracesQuery: '/api/traces/',
-    dashboardQuery: '/api/dashboards/{hash}/',
-    
-    // Interactive endpoints (server only)
     worksheet: '/api/worksheet/',
     worksheetDetail: '/api/worksheet/{id}/',
     worksheetSession: '/api/worksheet/session/',
@@ -30,7 +26,6 @@ const URL_PATTERNS = {
     queryExecution: '/api/query/{projectId}/',
     traceQuery: '/api/trace/{traceName}/query/',
     
-    // Editor endpoints
     editorsInstalled: '/api/editors/installed/',
     editorsOpen: '/api/editors/open/',
   },
@@ -42,12 +37,10 @@ const URL_PATTERNS = {
     dag: '/data/dag.json',
     schema: '/data/schema.json',
     error: '/data/error.json',
-    traceData: '/data/traces/{hash}.json',
-    dashboardThumbnail: '/data/dashboards/{hash}.png',
-    
-    // New query endpoints for dist mode
     tracesQuery: '/data/traces.json',
+    traceData: '/data/traces/{hash}.json',
     dashboardQuery: '/data/dashboards/{hash}.json',
+    dashboardThumbnail: '/data/dashboards/{hash}.png',
     
     // Interactive endpoints not available in dist
     worksheet: null,

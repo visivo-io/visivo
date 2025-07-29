@@ -24,7 +24,7 @@ const DistRouter = createBrowserRouter(
       handle={{
         crumb: () => (
           <a href="https://visivo.io">
-            <img src={logo} className="h-8" alt="Visivo Logo" />
+            <img src={root + logo} className="h-8" alt="Visivo Logo" />
           </a>
         ),
       }}
