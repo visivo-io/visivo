@@ -67,7 +67,10 @@ charts:
       width: 500
       height: 500
 dashboards:
-  - name: Table Name
+  - name: Table Dashboard
+    level: 1
+    tags:
+      - "tables"
     rows:
       - height: compact
         items:
@@ -141,6 +144,10 @@ dashboards:
                     markdown: markdown
 
   - name: Simple Dashboard
+    level: 0
+    tags:
+      - "charts"
+      - "simple"
     rows:
       - height: medium
         items:

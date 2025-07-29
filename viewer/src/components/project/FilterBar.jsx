@@ -39,12 +39,14 @@ function FilterBar() {
                     key={tag}
                     color={selectedTags.includes(tag) ? 'purple' : 'gray'}
                     className={`cursor-pointer transform transition-all duration-200 hover:scale-105 ${
-                      selectedTags.includes(tag) ? 'bg-primary-500' : 'bg-gray-100'
+                      selectedTags.includes(tag) ? 'bg-primary-500 !text-white' : 'bg-gray-100'
                     }`}
                     size="xs"
                     onClick={() => {
-                      setSelectedTags(prev =>
-                        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                      setSelectedTags(
+                        selectedTags.includes(tag) 
+                          ? selectedTags.filter(t => t !== tag) 
+                          : [...selectedTags, tag]
                       );
                     }}
                   >

@@ -6,9 +6,53 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Slack alert
-        uses: slackapi/slack-github-action@v2
-        with:
-          payload-delimiter: "_"
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: webhook-trigger
+      - name: Send webhook notification
+        run: |
+          # Get stargazer information
+          STARGAZER_NAME="${{ github.event.sender.login }}"
+          REPO_NAME="${{ github.repository }}"
+          
+          # Create JSON payload
+          JSON_PAYLOAD=$(cat <<EOF
+          {
+            "text": "⭐ New stargazer!",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*New stargazer for $REPO_NAME!* 🎉"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Stargazer:*\n$STARGAZER_NAME"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n$REPO_NAME"
+                  }
+                ]
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "Total stars: ${{ github.event.repository.stargazers_count }}"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+          )
+          
+          # Send to webhook
+          curl -X POST \
+            -H "Content-type: application/json" \
+            --data "$JSON_PAYLOAD" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"

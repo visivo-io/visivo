@@ -2,14 +2,6 @@ import os
 from flask import Flask, jsonify
 from visivo.models.project import Project
 from visivo.parsers.serializer import Serializer
-from visivo.server.source_metadata import (
-    check_source_connection,
-    gather_source_metadata,
-    get_database_schemas,
-    get_schema_tables,
-    get_source_databases,
-    get_table_columns,
-)
 from visivo.server.views import register_views
 from visivo.logger.logger import Logger
 from visivo.server.repositories.worksheet_repository import WorksheetRepository

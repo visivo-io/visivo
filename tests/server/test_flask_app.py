@@ -1,5 +1,7 @@
 import io
+from pathlib import Path
 import tempfile
+from unittest import mock
 from unittest.mock import MagicMock
 import pytest
 import json
@@ -371,3 +373,56 @@ def test_create_sqlite_project_source_only(client):
         )
         assert res.status_code == 200
         assert b"Source created" in res.data
+
+
+def test_load_example_project_success(client, monkeypatch):
+    """Test POST /api/project/load_example with a github release clone."""
+    # Mock request payload
+    payload = {
+        "project_name": "demo_project",
+        "example_type": "github-releases",
+        "project_dir": tempfile.mkdtemp(),
+    }
+
+    mock_repo = mock.MagicMock()
+    monkeypatch.setattr("visivo.server.views.project_views.Repo.clone_from", mock_repo)
+
+    monkeypatch.setattr("shutil.copy", lambda src, dst: None)
+    monkeypatch.setattr("shutil.copy2", lambda src, dst: None)
+    monkeypatch.setattr("shutil.copytree", lambda src, dst, dirs_exist_ok=True: None)
+    monkeypatch.setattr("shutil.rmtree", lambda path: None)
+    monkeypatch.setattr("shutil.move", lambda src, dst: None)
+
+    monkeypatch.setattr(Path, "iterdir", lambda self: iter([]))
+
+    class MockDiscover:
+        def __init__(self, **kwargs):
+            self.project_file = Path(tempfile.mkdtemp()) / "project.yaml"
+            self.project_file.write_text("name: test\n")
+            self.files = []
+
+    monkeypatch.setattr("visivo.server.views.project_views.Discover", MockDiscover)
+
+    mock_parser = mock.MagicMock()
+    mock_project = mock.MagicMock()
+    mock_project.model_copy.return_value = mock_project
+    mock_parser.parse.return_value = mock_project
+
+    class MockParserFactory:
+        def build(self, project_file, files):
+            return mock_parser
+
+    monkeypatch.setattr(
+        "visivo.server.views.project_views.ParserFactory", lambda: MockParserFactory()
+    )
+
+    # Make the API call
+    response = client.post(
+        "/api/project/load_example",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+
+    # Assert successful project load
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "Project created successfully"

@@ -41,7 +41,7 @@ def serve_phase(
             changed_dag_filter = project.dag().get_diff_dag_filter(
                 existing_project=app.project, existing_dag_filter=dag_filter
             )
-            if not changed_dag_filter:
+            if not changed_dag_filter and not new:
                 Logger.instance().info("No changes to the project.")
                 return
 
