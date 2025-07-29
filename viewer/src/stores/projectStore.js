@@ -22,7 +22,9 @@ const createProjectSlice = (set, get) => ({
   },
 
   setSelectedTags: selectedTags => {
-    set({ selectedTags });
+    // Ensure selectedTags is always an array
+    const tagsArray = Array.isArray(selectedTags) ? selectedTags : [];
+    set({ selectedTags: tagsArray });
     // Trigger filtering when tags change
     get().filterDashboards();
   },
@@ -56,8 +58,8 @@ const createProjectSlice = (set, get) => ({
         (dashboard.description &&
           dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesTags =
-        selectedTags.length === 0 ||
-        (dashboard.tags && selectedTags.every(tag => dashboard.tags.includes(tag)));
+        !selectedTags || selectedTags.length === 0 ||
+        (dashboard.tags && Array.isArray(selectedTags) && selectedTags.every(tag => dashboard.tags.includes(tag)));
       return matchesSearch && matchesTags;
     });
 
