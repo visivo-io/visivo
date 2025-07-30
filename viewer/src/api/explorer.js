@@ -1,5 +1,7 @@
+import { getUrl } from '../contexts/URLContext';
+
 export const fetchExplorer = async () => {
-  const response = await fetch('/data/explorer.json');
+  const response = await fetch(getUrl('explorer'));
   if (response.status === 200) {
     const data = await response.json();
     return data;

@@ -4,7 +4,7 @@ from visivo.logger.logger import Logger
 
 def register_worksheet_views(app, flask_app, output_dir):
 
-    @app.route("/api/worksheet", methods=["GET"])
+    @app.route("/api/worksheet/", methods=["GET"])
     def list_worksheets():
         """List all worksheets."""
         try:
@@ -14,7 +14,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error listing worksheets: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet/<worksheet_id>", methods=["GET"])
+    @app.route("/api/worksheet/<worksheet_id>/", methods=["GET"])
     def get_worksheet(worksheet_id):
         """Get a specific worksheet."""
         try:
@@ -26,7 +26,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting worksheet: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet", methods=["POST"])
+    @app.route("/api/worksheet/", methods=["POST"])
     def create_worksheet():
         """Create a new worksheet."""
         try:
@@ -44,7 +44,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error creating worksheet: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet/<worksheet_id>", methods=["PUT"])
+    @app.route("/api/worksheet/<worksheet_id>/", methods=["PUT"])
     def update_worksheet(worksheet_id):
         """Update a worksheet."""
         try:
@@ -61,7 +61,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error updating worksheet: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet/<worksheet_id>", methods=["DELETE"])
+    @app.route("/api/worksheet/<worksheet_id>/", methods=["DELETE"])
     def delete_worksheet(worksheet_id):
         """Delete a worksheet."""
         try:
@@ -73,7 +73,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error deleting worksheet: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet/session", methods=["GET"])
+    @app.route("/api/worksheet/session/", methods=["GET"])
     def get_session_state():
         """Get the current session state."""
         try:
@@ -83,7 +83,7 @@ def register_worksheet_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error getting session state: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/worksheet/session", methods=["PUT"])
+    @app.route("/api/worksheet/session/", methods=["PUT"])
     def update_session_state():
         """Update the session state."""
         try:

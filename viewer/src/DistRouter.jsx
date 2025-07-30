@@ -8,23 +8,29 @@ import ErrorPage from './components/common/ErrorPage';
 import DistHome from './components/DistHome';
 import { loadError } from './loaders/error';
 import logo from './images/logo.png';
+import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 
+// Set global URL config early for router loaders
+export const distURLConfig = createURLConfig({ environment: 'dist' });
+setGlobalURLConfig(distURLConfig);
+const root = distURLConfig.getRoute();
+  
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
     <Route
-      path="/"
+      path={root}
       element={<DistHome />}
       loader={loadError}
       handle={{
         crumb: () => (
           <a href="https://visivo.io">
-            <img src={logo} className="h-8" alt="Visivo Logo" />
+            <img src={root + logo} className="h-8" alt="Visivo Logo" />
           </a>
         ),
       }}
     >
       <Route
-        path="/"
+        path={root}
         element={<ProjectContainer />}
         errorElement={<ErrorPage />}
         shouldRevalidate={() => false}

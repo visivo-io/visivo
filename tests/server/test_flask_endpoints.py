@@ -56,7 +56,7 @@ class TestFlaskSourceEndpoints:
         with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
             mock_test.return_value = {"source": "test_source", "status": "connected"}
 
-            response = self.client.get("/api/project/sources/test_source/test-connection")
+            response = self.client.get("/api/project/sources/test_source/test-connection/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -68,7 +68,7 @@ class TestFlaskSourceEndpoints:
         with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
             mock_test.return_value = ({"error": "Source 'bad_source' not found"}, 404)
 
-            response = self.client.get("/api/project/sources/bad_source/test-connection")
+            response = self.client.get("/api/project/sources/bad_source/test-connection/")
 
             assert response.status_code == 404
             data = json.loads(response.data)
@@ -83,7 +83,7 @@ class TestFlaskSourceEndpoints:
                 "status": "connected",
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases")
+            response = self.client.get("/api/project/sources/test_source/databases/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -95,7 +95,7 @@ class TestFlaskSourceEndpoints:
         with patch("visivo.server.views.sources_views.get_source_databases") as mock_get_dbs:
             mock_get_dbs.side_effect = Exception("Connection failed")
 
-            response = self.client.get("/api/project/sources/test_source/databases")
+            response = self.client.get("/api/project/sources/test_source/databases/")
 
             assert response.status_code == 500
             data = json.loads(response.data)
@@ -111,7 +111,9 @@ class TestFlaskSourceEndpoints:
                 "has_schemas": True,
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases/test_db/schemas")
+            response = self.client.get(
+                "/api/project/sources/test_source/databases/test_db/schemas/"
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -128,7 +130,9 @@ class TestFlaskSourceEndpoints:
                 "has_schemas": False,
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases/test_db/schemas")
+            response = self.client.get(
+                "/api/project/sources/test_source/databases/test_db/schemas/"
+            )
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -145,7 +149,7 @@ class TestFlaskSourceEndpoints:
                 "tables": [{"name": "users"}, {"name": "orders"}],
             }
 
-            response = self.client.get("/api/project/sources/test_source/databases/test_db/tables")
+            response = self.client.get("/api/project/sources/test_source/databases/test_db/tables/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -166,7 +170,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/test_source/databases/test_db/schemas/public/tables"
+                "/api/project/sources/test_source/databases/test_db/schemas/public/tables/"
             )
 
             assert response.status_code == 200
@@ -192,7 +196,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/test_source/databases/test_db/tables/users/columns"
+                "/api/project/sources/test_source/databases/test_db/tables/users/columns/"
             )
 
             assert response.status_code == 200
@@ -219,7 +223,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/test_source/databases/test_db/schemas/public/tables/users/columns"
+                "/api/project/sources/test_source/databases/test_db/schemas/public/tables/users/columns/"
             )
 
             assert response.status_code == 200
@@ -250,7 +254,7 @@ class TestFlaskSourceEndpoints:
                 ]
             }
 
-            response = self.client.get("/api/project/sources_metadata")
+            response = self.client.get("/api/project/sources_metadata/")
 
             assert response.status_code == 200
             data = json.loads(response.data)
@@ -263,7 +267,7 @@ class TestFlaskSourceEndpoints:
         with patch("visivo.server.views.sources_views.gather_source_metadata") as mock_gather:
             mock_gather.side_effect = Exception("Introspection failed")
 
-            response = self.client.get("/api/project/sources_metadata")
+            response = self.client.get("/api/project/sources_metadata/")
 
             assert response.status_code == 500
             data = json.loads(response.data)
@@ -273,11 +277,11 @@ class TestFlaskSourceEndpoints:
         """Test that all endpoints handle tuple error responses correctly."""
         # Test each endpoint that checks for tuple responses
         endpoints_and_mocks = [
-            ("/api/project/sources/test/test-connection", "check_source_connection"),
-            ("/api/project/sources/test/databases", "get_source_databases"),
-            ("/api/project/sources/test/databases/db/schemas", "get_database_schemas"),
-            ("/api/project/sources/test/databases/db/tables", "get_schema_tables"),
-            ("/api/project/sources/test/databases/db/tables/tbl/columns", "get_table_columns"),
+            ("/api/project/sources/test/test-connection/", "check_source_connection"),
+            ("/api/project/sources/test/databases/", "get_source_databases"),
+            ("/api/project/sources/test/databases/db/schemas/", "get_database_schemas"),
+            ("/api/project/sources/test/databases/db/tables/", "get_schema_tables"),
+            ("/api/project/sources/test/databases/db/tables/tbl/columns/", "get_table_columns"),
         ]
 
         for endpoint, mock_name in endpoints_and_mocks:
@@ -302,7 +306,7 @@ class TestFlaskSourceEndpoints:
             with patch("visivo.server.views.sources_views.check_source_connection") as mock_test:
                 mock_test.return_value = {"source": source_name, "status": "connected"}
 
-                response = self.client.get(f"/api/project/sources/{source_name}/test-connection")
+                response = self.client.get(f"/api/project/sources/{source_name}/test-connection/")
 
                 assert response.status_code == 200
                 mock_test.assert_called_with(self.mock_project.sources, source_name)
@@ -318,7 +322,7 @@ class TestFlaskSourceEndpoints:
             }
 
             response = self.client.get(
-                "/api/project/sources/my_source/databases/my_db/schemas/my_schema/tables"
+                "/api/project/sources/my_source/databases/my_db/schemas/my_schema/tables/"
             )
 
             assert response.status_code == 200

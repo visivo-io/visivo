@@ -53,7 +53,7 @@ def worksheet_repo(app, output_dir):
 def test_create_worksheet(client):
     """Test POST /api/worksheet endpoint."""
     response = client.post(
-        "/api/worksheet",
+        "/api/worksheet/",
         json={
             "name": "Test Worksheet",
             "query": "SELECT * FROM test",
@@ -71,7 +71,7 @@ def test_create_worksheet(client):
 
 def test_create_worksheet_without_name(client):
     """Test POST /api/worksheet endpoint with missing name."""
-    response = client.post("/api/worksheet", json={"query": "SELECT * FROM test"})
+    response = client.post("/api/worksheet/", json={"query": "SELECT * FROM test"})
     assert response.status_code == 400
     data = json.loads(response.data)
     assert "Name is required" in data["message"]
@@ -84,7 +84,7 @@ def test_get_worksheet(client, worksheet_repo):
     worksheet_id = result["worksheet"]["id"]
 
     # Test retrieval
-    response = client.get(f"/api/worksheet/{worksheet_id}")
+    response = client.get(f"/api/worksheet/{worksheet_id}/")
     assert response.status_code == 200
     data = json.loads(response.data)
     assert data["worksheet"]["id"] == worksheet_id
@@ -94,7 +94,7 @@ def test_get_worksheet(client, worksheet_repo):
 
 def test_get_nonexistent_worksheet(client):
     """Test GET /api/worksheet/<id> with non-existent ID."""
-    response = client.get("/api/worksheet/nonexistent-id")
+    response = client.get("/api/worksheet/nonexistent-id/")
     assert response.status_code == 404
 
 
@@ -106,7 +106,7 @@ def test_list_worksheets(client, worksheet_repo):
     worksheet_repo.create_worksheet(name="Worksheet 3")
 
     # Test listing
-    response = client.get("/api/worksheet")
+    response = client.get("/api/worksheet/")
     assert response.status_code == 200
     data = json.loads(response.data)
     assert len(data) == 3
@@ -123,7 +123,7 @@ def test_update_worksheet(client, worksheet_repo):
 
     # Test update
     response = client.put(
-        f"/api/worksheet/{worksheet_id}",
+        f"/api/worksheet/{worksheet_id}/",
         json={"name": "Updated Name", "query": "SELECT * FROM updated"},
     )
     assert response.status_code == 200
@@ -136,7 +136,7 @@ def test_update_worksheet(client, worksheet_repo):
 
 def test_update_nonexistent_worksheet(client):
     """Test PUT /api/worksheet/<id> with non-existent ID."""
-    response = client.put("/api/worksheet/nonexistent-id", json={"name": "New Name"})
+    response = client.put("/api/worksheet/nonexistent-id/", json={"name": "New Name"})
     assert response.status_code == 404
 
 
@@ -147,7 +147,7 @@ def test_delete_worksheet(client, worksheet_repo):
     worksheet_id = result["worksheet"]["id"]
 
     # Test deletion
-    response = client.delete(f"/api/worksheet/{worksheet_id}")
+    response = client.delete(f"/api/worksheet/{worksheet_id}/")
     assert response.status_code == 200
 
     # Verify deletion
@@ -156,7 +156,7 @@ def test_delete_worksheet(client, worksheet_repo):
 
 def test_delete_nonexistent_worksheet(client):
     """Test DELETE /api/worksheet/<id> with non-existent ID."""
-    response = client.delete("/api/worksheet/nonexistent-id")
+    response = client.delete("/api/worksheet/nonexistent-id/")
     assert response.status_code == 404
 
 
@@ -167,7 +167,7 @@ def test_get_session_state(client, worksheet_repo):
     worksheet_repo.create_worksheet(name="Worksheet 2")
 
     # Test getting session states
-    response = client.get("/api/worksheet/session")
+    response = client.get("/api/worksheet/session/")
     assert response.status_code == 200
     data = json.loads(response.data)
     assert len(data) == 2
@@ -183,7 +183,7 @@ def test_update_session_state(client, worksheet_repo):
 
     # Test updating session states
     response = client.put(
-        "/api/worksheet/session",
+        "/api/worksheet/session/",
         json=[
             {"worksheet_id": w1["worksheet"]["id"], "tab_order": 2, "is_visible": False},
             {"worksheet_id": w2["worksheet"]["id"], "tab_order": 1, "is_visible": True},
@@ -201,7 +201,7 @@ def test_update_session_state(client, worksheet_repo):
 
 def test_update_session_state_invalid_data(client):
     """Test PUT /api/worksheet/session with invalid data."""
-    response = client.put("/api/worksheet/session", json={"not": "a list"})
+    response = client.put("/api/worksheet/session/", json={"not": "a list"})
     assert response.status_code == 400
     data = json.loads(response.data)
     assert "Expected array of session states" in data["message"]
@@ -219,7 +219,7 @@ def test_execute_query_with_worksheet(client, worksheet_repo, mocker):
 
     # Test query execution
     response = client.post(
-        "/api/query/test-project",
+        "/api/query/test-project/",
         json={
             "query": "SELECT * FROM test_table",
             "source": "source",
@@ -255,7 +255,7 @@ def test_execute_query_source_fallback(client, worksheet_repo):
 
     # Test query execution with non-existent source
     response = client.post(
-        "/api/query/test-project",
+        "/api/query/test-project/",
         json={
             "query": "SELECT * FROM test_table",
             "source": "nonexistent_source",
@@ -301,7 +301,7 @@ def test_execute_query_no_sources(client, worksheet_repo):
 
     # Test query execution with no available sources
     response = test_client.post(
-        "/api/query/test-project",
+        "/api/query/test-project/",
         json={"query": "SELECT * FROM test_table", "worksheet_id": worksheet_id},
     )
     assert response.status_code == 400
@@ -319,7 +319,7 @@ def test_execute_query_invalid_sql(client, worksheet_repo, capsys):
 
     # Test query execution with invalid SQL
     response = client.post(
-        "/api/query/test-project",
+        "/api/query/test-project/",
         json={"query": "INVALID SQL", "source": "source", "worksheet_id": worksheet_id},
     )
     assert response.status_code == 500

@@ -1,13 +1,60 @@
 import json
 import os
-from flask import jsonify, request
+import glob
+import hashlib
+from flask import jsonify, request, send_file
 
 from visivo.logger.logger import Logger
 from visivo.utils import get_utc_now
 
 
 def register_trace_views(app, flask_app, output_dir):
-    @app.route("/api/query/<project_id>", methods=["POST"])
+    @app.route("/api/traces/<hash>/")
+    def serve_trace_data_by_hash(hash):
+        """API endpoint to serve trace data by hash"""
+        try:
+            # Find trace name by hash
+            trace_dirs = glob.glob(f"{output_dir}/traces/*/")
+            for trace_dir in trace_dirs:
+                trace_name = os.path.basename(os.path.normpath(trace_dir))
+                trace_name_hash = hashlib.md5(trace_name.encode()).hexdigest()
+                if trace_name_hash == hash:
+                    data_file = os.path.join(trace_dir, "data.json")
+                    if os.path.exists(data_file):
+                        return send_file(data_file)
+                    break
+
+            return jsonify({"message": f"Trace data not found for hash: {hash}"}), 404
+        except Exception as e:
+            Logger.instance().error(f"Error serving trace data by hash: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/traces/", methods=["GET"])
+    def get_traces_api():
+        """API endpoint for traces data"""
+        try:
+            # Get trace names from query parameters
+            trace_names = request.args.getlist("names")
+            project_id = request.args.get("project_id")
+
+            # Return traces with hash-based data URLs
+            traces = []
+            for name in trace_names:
+                name_hash = hashlib.md5(name.encode()).hexdigest()
+                traces.append(
+                    {
+                        "name": name,
+                        "id": name,
+                        "signed_data_file_url": f"/api/traces/{name_hash}/",
+                    }
+                )
+
+            return jsonify(traces)
+        except Exception as e:
+            Logger.instance().error(f"Error fetching traces data: {str(e)}")
+            return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/query/<project_id>/", methods=["POST"])
     def execute_query(project_id):
         try:
             data = request.get_json()
@@ -80,7 +127,7 @@ def register_trace_views(app, flask_app, output_dir):
             Logger.instance().error(f"Query execution error: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/trace/<trace_name>/query", methods=["GET"])
+    @app.route("/api/trace/<trace_name>/query/", methods=["GET"])
     def get_trace_query(trace_name):
         try:
             query_file_path = f"{output_dir}/traces/{trace_name}/query.sql"

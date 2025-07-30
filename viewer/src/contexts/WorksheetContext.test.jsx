@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { WorksheetProvider, useWorksheets } from './WorksheetContext';
-import { QueryProvider } from '../contexts/QueryContext';
+import { URLProvider } from '../contexts/URLContext';
 import * as worksheetApi from '../api/worksheet';
 
 // Mock the API calls
@@ -89,16 +89,11 @@ const TestComponent = () => {
 
 // Wrap component with necessary providers
 const renderWithProviders = ui => {
-  const mockQueryContext = {
-    fetchTracesQuery: jest.fn(),
-    fetchDashboardQuery: jest.fn(),
-  };
-
   return render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <QueryProvider value={mockQueryContext}>
+      <URLProvider environment="server">
         <WorksheetProvider>{ui}</WorksheetProvider>
-      </QueryProvider>
+      </URLProvider>
     </BrowserRouter>
   );
 };
