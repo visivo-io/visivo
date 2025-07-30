@@ -74,12 +74,13 @@ describe('AddStageForm', () => {
 
     await waitFor(() => {
       expect(mockSetStages).toHaveBeenCalled();
-      const setStagesFn = mockSetStages.mock.calls[0][0];
-      const result = setStagesFn(mockStages);
-      expect(result).toEqual([...mockStages, newStage]);
-
-      expect(mockSetSelectedStage).toHaveBeenCalledWith('development');
     });
+
+    const setStagesFn = mockSetStages.mock.calls[0][0];
+    const result = setStagesFn(mockStages);
+    expect(result).toEqual([...mockStages, newStage]);
+
+    expect(mockSetSelectedStage).toHaveBeenCalledWith('development');
 
     global.fetch.mockRestore();
   });
@@ -106,7 +107,7 @@ describe('AddStageForm', () => {
 
     fireEvent.click(screen.getByText('Create Stage'));
 
-    await screen.findByText(/Failed to create stage/i);
+    expect(await screen.findByText(/Failed to create stage/i)).toBeInTheDocument();
 
     global.fetch.mockRestore();
   });
@@ -128,7 +129,7 @@ describe('AddStageForm', () => {
 
     fireEvent.click(screen.getByText('Create Stage'));
 
-    await screen.findByText(/Failed to create stage/i);
+    expect(await screen.findByText(/Failed to create stage/i)).toBeInTheDocument();
 
     global.fetch.mockRestore();
   });
