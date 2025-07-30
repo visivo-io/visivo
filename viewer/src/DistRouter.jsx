@@ -14,6 +14,8 @@ import { createURLConfig, setGlobalURLConfig } from './contexts/URLContext';
 export const distURLConfig = createURLConfig({ environment: 'dist' });
 setGlobalURLConfig(distURLConfig);
 const root = distURLConfig.getRoute();
+
+const logo_path = root === "/" ? logo : root + logo;
   
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
@@ -24,7 +26,7 @@ const DistRouter = createBrowserRouter(
       handle={{
         crumb: () => (
           <a href="https://visivo.io">
-            <img src={root + logo} className="h-8" alt="Visivo Logo" />
+            <img src={logo_path} className="h-8" alt="Visivo Logo" />
           </a>
         ),
       }}

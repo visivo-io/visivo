@@ -34,7 +34,7 @@ def register_trace_views(app, flask_app, output_dir):
         """API endpoint for traces data"""
         try:
             # Get trace names from query parameters
-            trace_names = request.args.getlist("names")
+            trace_names = request.args.getlist("trace_names")
             project_id = request.args.get("project_id")
 
             # Return traces with hash-based data URLs
