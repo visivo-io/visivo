@@ -15,7 +15,7 @@ export const fetchTraces = async (projectId, names) => {
   
   // Add trace names as query parameters for server mode
   if (names && names.length > 0) {
-    names.forEach(name => params.push(`names=${encodeURIComponent(name)}`));
+    names.forEach(name => params.push(`trace_names=${encodeURIComponent(name)}`));
   }
   
   if (projectId) {
