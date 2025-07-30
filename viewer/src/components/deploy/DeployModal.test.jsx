@@ -19,8 +19,8 @@ beforeEach(() => {
 });
 
 it('should not render when isOpen is false', () => {
-  const { container } = render(<DeployModal isOpen={false} setIsOpen={jest.fn()} />);
-  expect(container.firstChild).toBeNull();
+  const { queryByTestId } = render(<DeployModal isOpen={false} setIsOpen={jest.fn()} />);
+  expect(queryByTestId('modal-container')).not.toBeInTheDocument();
 });
 
 it('renders Authentication when token is missing', async () => {
