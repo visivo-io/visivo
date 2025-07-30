@@ -8,12 +8,16 @@ import { HiTemplate } from 'react-icons/hi';
 import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import useStore from '../stores/store';
 import Loading from './common/Loading';
+import DeployModal from './deploy/DeployModal';
+import { useState } from 'react';
 
 const Home = () => {
   const error = useLoaderData();
   const location = useLocation();
   const isRoot = location.pathname === '/';
   const isProject = location.pathname.startsWith('/project');
+  const [isDeployOpen, setIsDeployOpen] = useState(false)
+
 
   const isNewProject = useStore(state => state.isNewProject);
 
@@ -86,9 +90,14 @@ const Home = () => {
     </div>
   );
 
+  const onDeployClick = () => {
+    setIsDeployOpen(!isDeployOpen)
+  }
+
   return (
     <div className="visivo-home min-h-screen bg-gray-50">
-      <TopNav />
+      <TopNav onDeployClick={onDeployClick} />
+      <DeployModal isOpen={isDeployOpen} setIsOpen={setIsDeployOpen} />
       <div className={'pt-14'}>
         {isProject && (
           <div className="flex flex-row justify-between items-center whitespace-nowrap py-1">
