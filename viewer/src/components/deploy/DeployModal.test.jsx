@@ -10,9 +10,6 @@ jest.mock('./StageSelection', () => ({ status }) => (
   <div data-testid="stage-selection">StageSelection Component</div>
 ));
 jest.mock('./DeployLoader', () => () => <div data-testid="deploy-loader">Loading...</div>);
-jest.mock('../common/ModalContainer', () => ({ children }) => (
-  <div data-testid="modal-container">{children}</div>
-));
 
 beforeEach(() => {
   jest.clearAllMocks();

@@ -21,7 +21,7 @@ const TopNav = ({ onDeployClick }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#191D33] border-b border-gray-700">
       <div className="flex justify-between items-center h-12 px-4">
-        <div className="flex items-center gap-2 sm:gap-8">
+        <div className="flex items-center gap-1 sm:gap-8">
           <Link to="/" className="flex items-center">
             <img src={logo} alt="V" className="h-7" />
           </Link>
@@ -49,17 +49,17 @@ const TopNav = ({ onDeployClick }) => {
             to="/project"
             tooltip="View your project as it will look deployed"
           />
+        </div>
+        <div className="flex items-center gap-5 sm:gap-8">
           <button
             onClick={onDeployClick}
-            className="px-2 py-2 text-md font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] cursor-pointer"
+            className="px-2 py-2 sm:py-0.5 text-md font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] cursor-pointer"
           >
             <div className="flex items-center space-x-1">
               {!isMobile ? <span>Deploy</span> : null}
-              <FontAwesomeIcon icon={faCloudArrowUp} className="w-6 h-6 ml-1" />
+              <FontAwesomeIcon icon={faCloudArrowUp} className="w-5 h-5 ml-1" />
             </div>
           </button>
-        </div>
-        <div className="flex items-center gap-4 sm:gap-8">
           {!isMobile ? (
             <Tooltip content="Join the Community" placement="bottom" trigger="hover">
               <a

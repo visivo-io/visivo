@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock, faZap } from '@fortawesome/free-solid-svg-icons';
 import Loading from '../common/Loading';
+import { openOauthPopupWindow } from '../../utils/utils';
 
 const Authentication = ({ setStatus }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,10 +24,8 @@ const Authentication = ({ setStatus }) => {
 
       const data = await response.json();
 
-      if (data.full_url) {
-        setLoadingText('Redirecting ...');
-        window.open(data.full_url, '_blank');
-      }
+      setLoadingText('Redirecting ...');
+      openOauthPopupWindow(data.full_url);
 
       pollAuthStatus(data.auth_id);
     } catch (error) {

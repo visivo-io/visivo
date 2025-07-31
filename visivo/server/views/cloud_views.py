@@ -5,10 +5,9 @@ from uuid import uuid4
 from flask import copy_current_request_context, jsonify, request
 import requests
 from visivo.logger.logger import Logger
+from visivo.server.constants import VISIVO_HOST
 from visivo.tokens.token_functions import get_existing_token
 from visivo.server.store import background_jobs, background_jobs_lock
-
-VISIVO_HOST = "https://app.visivo.io"
 
 
 def register_cloud_views(app, flask_app, output_dir):

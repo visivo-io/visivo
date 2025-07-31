@@ -6,11 +6,10 @@ from uuid import uuid4
 from flask import jsonify, request
 
 from visivo.logger.logger import Logger
+from visivo.server.constants import VISIVO_HOST
 from visivo.tokens.token_functions import get_existing_token, validate_and_store_token
-from visivo.tokens.web_utils import generate_success_html_response, open_url
+from visivo.tokens.web_utils import generate_success_html_response
 from visivo.server.store import background_jobs, background_jobs_lock
-
-VISIVO_HOST = "https://app.visivo.io"
 
 FLASK_DEFAULT_PORT = 8000
 
@@ -44,22 +43,19 @@ def register_auth_views(app, flask_app, output_dir):
 
         full_url = f"{VISIVO_HOST}/authorize-device?{query_string}"
 
-        Logger.instance().info(f"Attempting to open URL: {full_url}")
-        webbrowser_opened = open_url(full_url)
-
         with background_jobs_lock:
             background_jobs[auth_id] = {
                 "status": 202,
                 "message": "Autheticating ...",
             }
 
-        if not webbrowser_opened:
-            """Handle redirect using browser"""
-            return jsonify(
-                {"message": "Authentication initiated successfully", "full_url": full_url}
-            )
-
-        return jsonify({"message": "Authentication initiated successfully", "auth_id": auth_id})
+        return jsonify(
+            {
+                "message": "Authentication initiated successfully",
+                "auth_id": auth_id,
+                "full_url": full_url,
+            }
+        )
 
     @app.route("/api/auth/authorize-device-token/callback/<auth_id>", methods=["GET", "POST"])
     def authorize_device_callback(auth_id):
@@ -73,7 +69,7 @@ def register_auth_views(app, flask_app, output_dir):
         Logger.instance().success("Received token via callback: " + token)
         validate_and_store_token(token)
 
-        html_content = generate_success_html_response(VISIVO_HOST, timeout=5)
+        html_content = generate_success_html_response(VISIVO_HOST, timeout=5, closePopUp=True)
 
         with background_jobs_lock:
             if auth_id in background_jobs:

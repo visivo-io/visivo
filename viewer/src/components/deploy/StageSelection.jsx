@@ -5,7 +5,7 @@ import AddStageForm from './AddStageForm';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCircleInfo,
-  faCloudArrowDown,
+  faCloudArrowUp,
   faTriangleExclamation,
   faPlus,
   faCheckCircle,
@@ -121,7 +121,7 @@ const StageSelection = ({ status }) => {
           }`}
         >
           <FontAwesomeIcon
-            icon={deploymentSuccess ? faCheckCircle : faCloudArrowDown}
+            icon={deploymentSuccess ? faCheckCircle : faCloudArrowUp}
             className="text-white text-2xl"
           />
         </div>
@@ -253,7 +253,7 @@ const StageSelection = ({ status }) => {
               </div>
             ) : (
               <div className="flex items-center justify-center">
-                <FontAwesomeIcon icon={faCloudArrowDown} className="w-5 h-5 mr-2" />
+                <FontAwesomeIcon icon={faCloudArrowUp} className="w-5 h-5 mr-2" />
                 Deploy to {selectedStage || 'Stage'}
               </div>
             )}

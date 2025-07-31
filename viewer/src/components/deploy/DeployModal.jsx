@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import ModalContainer from '../common/ModalContainer';
 import Authentication from './Authentication';
 import StageSelection from './StageSelection';
 import DeployLoader from './DeployLoader';
+import { ModalOverlay, ModalWrapper } from '../styled/Modal';
 
 const DeployModal = ({ isOpen, setIsOpen }) => {
   const [status, setStatus] = useState('login-required');
@@ -32,20 +32,22 @@ const DeployModal = ({ isOpen, setIsOpen }) => {
   if (!isOpen) return null;
 
   return (
-    <ModalContainer>
-      <div className="flex justify-between">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Project Deployment</h2>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="hover:text-gray-800 text-gray-500 text-2xl font-bold focus:outline-none cursor-pointer"
-        >
-          &times;
-        </button>
-      </div>
-      <div className="flex min-h-[50vh] justify-center items-center flex-col py-4">
-        {renderContent()}
-      </div>
-    </ModalContainer>
+    <ModalOverlay>
+      <ModalWrapper>
+        <div className="flex justify-between">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Project Deployment</h2>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="hover:text-gray-800 text-gray-500 text-2xl font-bold focus:outline-none cursor-pointer"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="flex min-h-[50vh] justify-center items-center flex-col py-4">
+          {renderContent()}
+        </div>
+      </ModalWrapper>
+    </ModalOverlay>
   );
 };
 

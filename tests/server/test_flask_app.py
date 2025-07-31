@@ -445,27 +445,14 @@ def test_authorize_device_token_does_not_exists(client):
         assert b"UnAuthenticated user access" in response.data
 
 
-def test_authorize_device_token_browser_open(client):
-    """Test POST /api/auth/authorize-device-token open browser url"""
-    with (
-        patch("visivo.server.views.auth_views.get_existing_token", return_value=None),
-        patch("visivo.server.views.auth_views.open_url", return_value=True),
-    ):
+def test_authorize_device_token_browser_full_response(client):
+    with (patch("visivo.server.views.auth_views.get_existing_token", return_value=None),):
         response = client.post("/api/auth/authorize-device-token", json={})
+        data = response.get_json()
         assert response.status_code == 200
-        assert response.get_json()["message"] == "Authentication initiated successfully"
-        assert "full_url" not in response.get_json()
-
-
-def test_authorize_device_token_browser_open_fail(client):
-    with (
-        patch("visivo.server.views.auth_views.get_existing_token", return_value=None),
-        patch("visivo.server.views.auth_views.open_url", return_value=False),
-    ):
-        response = client.post("/api/auth/authorize-device-token", json={})
-        assert response.status_code == 200
-        assert response.get_json()["message"] == "Authentication initiated successfully"
-        assert "full_url" in response.get_json()
+        assert data["message"] == "Authentication initiated successfully"
+        assert "full_url" in data
+        assert "auth_id" in data
 
 
 def test_authorize_device_token_callback_token_missing(client):
