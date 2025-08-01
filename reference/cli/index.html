@@ -7044,9 +7044,12 @@ This folder can be statically deployed to any web server, hosting service, or bu
 <div class="highlight"><pre><span></span><code>visivo dist [OPTIONS]
 </code></pre></div>
 <p><strong>Options:</strong></p>
-<div class="highlight"><pre><span></span><code>  -o, --output-dir TEXT  Directory to output results
-  -d, --dist-dir TEXT    Directory to output the distribution files
-  --help                 Show this message and exit.
+<div class="highlight"><pre><span></span><code>  -o, --output-dir TEXT        Directory to output results
+  -d, --dist-dir TEXT          Directory to output the distribution files
+  -dr, --deployment-root TEXT  The root path to use for the dist. This is
+                               useful if you want to deploy to a subpath on a
+                               server.
+  --help                       Show this message and exit.
 </code></pre></div>
 <h2 id="init">init</h2>
 <p>Enables a quick set up by writing your source &amp; api credentials to an env file.</p>
