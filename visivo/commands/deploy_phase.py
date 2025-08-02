@@ -19,6 +19,7 @@ from visivo.logger.logger import Logger
 from visivo.parsers.serializer import Serializer
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.utils import get_dashboards_dir, sanitize_filename
+from visivo.server.store import background_jobs, background_jobs_lock
 
 # Limit concurrent uploads to avoid overloading the API
 semaphore_3 = asyncio.Semaphore(3)
@@ -357,26 +358,38 @@ async def process_dashboards_async(
         raise click.ClickException("Failed to create dashboard records.")
 
 
-def deploy_phase(working_dir, user_dir, output_dir, stage, host):
+def deploy_phase(working_dir, user_dir, output_dir, stage, host, deploy_id=None):
     """
     Synchronous function to manage the deployment, including initiating asynchronous operations.
     """
+
+    def send_progress(message, level="info", status=200, project_url=None):
+        if deploy_id:
+            log = {"message": message, "level": level, "status": status, "project_url": project_url}
+
+            with background_jobs_lock:
+                if deploy_id in background_jobs:
+                    background_jobs[deploy_id] = log
+
+        getattr(Logger.instance(), level)(message)
+
     deploy_start_time = time()
     # Retrieve profile token for authentication
-    Logger.instance().debug("Retrieving profile token...")
+    send_progress("Retrieving profile token...", "debug", 202)
     profile_file = get_profile_file(home_dir=user_dir)
     profile_token = get_profile_token(profile_file)
-    Logger.instance().info(f"Found Profile token: {profile_file}")
+    send_progress(f"Found Profile token: {profile_file}", "info")
 
     # Discover and parse project details
-    Logger.instance().info("")
-    Logger.instance().debug("Compiling project details...")
+    Logger.instance().info(f"")
+    send_progress("Compiling project details...", "debug", 202)
+
     discover = Discover(working_dir=working_dir, home_dir=user_dir, output_dir=output_dir)
     parser = ParserFactory().build(project_file=discover.project_file, files=discover.files)
     project = parser.parse()
     serializer = Serializer(project=project)
     project_json = json.loads(serializer.dereference().model_dump_json(exclude_none=True))
-    Logger.instance().success(f"Project Compiled in {time() - deploy_start_time:.2f} seconds")
+    send_progress(f"Project Compiled in {time() - deploy_start_time:.2f} seconds", "success")
 
     # Prepare request payloads and headers
     body = {
@@ -394,7 +407,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
     }
 
     # Upload the project information (synchronous)
-    Logger.instance().info("Uploading project information...")
+    send_progress("Uploading project information...", "info")
     upload_project_start_time = time()
     url = f"{host}/api/projects/"
     response = requests.post(url, data=json.dumps(body), headers=json_headers)
@@ -412,7 +425,7 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
 
         # Process traces
         Logger.instance().info(f"")
-        Logger.instance().info("Processing trace uploads and record creations...")
+        send_progress("Processing trace uploads and record creations...", "info")
         process_traces_start_time = time()
 
         traces = []
@@ -431,12 +444,12 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
                 host=host,
             )
         )
-        Logger.instance().info(
-            f"Trace uploads and record creations completed in {time() - process_traces_start_time:.2f} seconds"
+        send_progress(
+            f"Trace uploads completed in {time() - process_traces_start_time:.2f} seconds", "info"
         )
 
         # Process thumbnails
-        Logger.instance().info("Processing dashboard uploads...")
+        send_progress("Processing dashboard uploads...", "info")
         process_thumbnails_start_time = time()
         dashboards = project.descendants_of_type(type=Dashboard)
 
@@ -450,8 +463,9 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
                 host=host,
             )
         )
-        Logger.instance().info(
-            f"Thumbnail uploads completed in {time() - process_thumbnails_start_time:.2f} seconds"
+        send_progress(
+            f"Thumbnail uploads completed in {time() - process_thumbnails_start_time:.2f} seconds",
+            "info",
         )
 
         # Deploy the project
@@ -460,13 +474,19 @@ def deploy_phase(working_dir, user_dir, output_dir, stage, host):
             url, data=json.dumps({"deploy_finished_at": "now"}), headers=json_headers
         )
         if response.status_code == 200:
-            Logger.instance().success(
-                f"Deployment completed in {time() - deploy_start_time:.2f} seconds"
+            send_progress(
+                f"Deployment completed in {time() - deploy_start_time:.2f} seconds",
+                "success",
+                201,
+                project_url,
             )
+
         else:
-            Logger.instance().info(f"Deployment failed in {time() - deploy_start_time:.2f} seconds")
+            send_progress(
+                f"Deployment failed in {time() - deploy_start_time:.2f} seconds", "info", 400
+            )
             sys.exit(1)
         return project_url
     else:
-        Logger.instance().info(f"Deployment failed in {time() - deploy_start_time:.2f} seconds")
+        send_progress(f"Deployment failed in {time() - deploy_start_time:.2f} seconds", "info", 400)
         raise click.ClickException(f"There was an unexpected error: {response.content}")

@@ -9,14 +9,19 @@ import { PiTreeStructure, PiMagnifyingGlass, PiPencil } from 'react-icons/pi';
 import { HiTemplate } from 'react-icons/hi';
 import { FiAlertCircle } from 'react-icons/fi';
 import TumblerNavItem from './TumblerNavItem';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCloudArrowUp } from '@fortawesome/free-solid-svg-icons';
+import { useMediaQuery, useTheme } from '@mui/material';
 
-const TopNav = () => {
+const TopNav = ({ onDeployClick }) => {
   const [profileOpen, setProfileOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#191D33] border-b border-gray-700">
       <div className="flex justify-between items-center h-12 px-4">
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-1 sm:gap-8">
           <Link to="/" className="flex items-center">
             <img src={logo} alt="V" className="h-7" />
           </Link>
@@ -45,18 +50,29 @@ const TopNav = () => {
             tooltip="View your project as it will look deployed"
           />
         </div>
-        <div className="flex items-center gap-8">
-          <Tooltip content="Join the Community" placement="bottom" trigger="hover">
-            <a
-              href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white hover:text-gray-300 flex items-center"
-              aria-label="Join the Community"
-            >
-              <SiSlack className="w-5 h-5" />
-            </a>
-          </Tooltip>
+        <div className="flex items-center gap-5 sm:gap-8">
+          <button
+            onClick={onDeployClick}
+            className="px-2 py-2 sm:py-0.5 text-md font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] cursor-pointer"
+          >
+            <div className="flex items-center space-x-1">
+              {!isMobile ? <span>Deploy</span> : null}
+              <FontAwesomeIcon icon={faCloudArrowUp} className="w-5 h-5 ml-1" />
+            </div>
+          </button>
+          {!isMobile ? (
+            <Tooltip content="Join the Community" placement="bottom" trigger="hover">
+              <a
+                href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white hover:text-gray-300 flex items-center"
+                aria-label="Join the Community"
+              >
+                <SiSlack className="w-5 h-5" />
+              </a>
+            </Tooltip>
+          ) : null}
           <Tooltip content="Documentation" placement="bottom" trigger="hover">
             <a
               href="https://docs.visivo.io"

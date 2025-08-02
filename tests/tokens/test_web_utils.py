@@ -46,18 +46,31 @@ def test_open_url_encodes_query(mock_webbrowser_open):
     mock_open.assert_called_once()
 
 
-def test_generate_success_html_response():
+def test_generate_success_html_response_redirect():
     """
-    Checks that the returned HTML includes a meta refresh tag pointing to {base_url}/profile
-    and that the timeout is set properly.
+    When closePopUp=False, ensure the response contains redirect JS to profile page and correct timeout.
     """
     base_url = "http://mytestsite.com"
     timeout = 10
-    html = generate_success_html_response(base_url, timeout=timeout)
-
-    expected_meta = f'<meta http-equiv="refresh" content="{timeout};url={base_url}/profile" />'
-    assert expected_meta in html
+    html = generate_success_html_response(base_url, timeout=timeout, closePopUp=False)
 
     assert "<title>Authorization Successful</title>" in html
-    assert "A token has been written to your development machine" in html
-    assert "You'll now be redirected to your profile page" in html
+    assert "~/.visivo/profile.yml" in html
+    assert f"window.location.href = '{base_url}/profile';" in html
+    assert f"animation: loadProgress {timeout}s linear forwards;" in html
+    assert "Redirecting to your profile page..." in html
+
+
+def test_generate_success_html_response_closes_popup():
+    """
+    When closePopUp=True, ensure the response contains window.close() and relevant messaging.
+    """
+    base_url = "http://mytestsite.com"
+    timeout = 5
+    html = generate_success_html_response(base_url, timeout=timeout, closePopUp=True)
+
+    assert "<title>Authorization Successful</title>" in html
+    assert "~/.visivo/profile.yml" in html
+    assert "window.close();" in html
+    assert f"animation: loadProgress {timeout}s linear forwards;" in html
+    assert "Redirecting to local server please wait..." in html
