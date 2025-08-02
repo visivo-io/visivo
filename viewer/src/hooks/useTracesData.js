@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTracesData } from '../queries/tracesData';
-import { fetchTraces } from '../api/traces';
+import { useFetchTraces } from '../contexts/QueryContext';
 
 function filterObject(obj, keys) {
   return Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
@@ -9,6 +9,7 @@ function filterObject(obj, keys) {
 
 export const useTracesData = (projectId, traceNames) => {
   const [traceData, setTraceData] = useState(null);
+  const fetchTraces = useFetchTraces();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(',')]);
