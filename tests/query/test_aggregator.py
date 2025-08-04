@@ -212,16 +212,9 @@ def test_json_aggregation_basic():
     ]"""
 
     expected_output = {
-        "2023-Q1": {
-            "columns.x_data": [["A", "B"], ["A", "B"]],
-            "columns.y_data": [[10, 20], [15, 25]],
-            "props.text": [["10", "20"], ["15", "25"]],
-        },
-        "2023-Q2": {
-            "columns.x_data": ["A", "B"],
-            "columns.y_data": [30, 40],
-            "props.text": ["30", "40"],
-        },
+        "columns.x_data": [["A", "B"], ["A", "B"], ["A", "B"]],
+        "columns.y_data": [[10, 20], [15, 25], [30, 40]],
+        "props.text": [["10", "20"], ["15", "25"], ["30", "40"]],
     }
 
     input_path = temp_file("simple_input.json", simple_input, output_dir=output_dir)
@@ -274,26 +267,25 @@ def test_python_aggregation_with_binary_data():
     assert "text_data" in result["test_cohort"], "Should have text_data column"
     assert "numeric_data" in result["test_cohort"], "Should have numeric_data column"
 
-    # Verify the data was aggregated into lists (since we have 2 rows with same cohort)
-    cohort_data = result["test_cohort"]
-
+    # Verify the data was aggregated into lists (flat structure, no cohorts)
+    
     # Text data should be aggregated into a list
-    assert isinstance(cohort_data["text_data"], list), "text_data should be aggregated into a list"
-    assert len(cohort_data["text_data"]) == 2, "Should have 2 text values"
-    assert cohort_data["text_data"] == ["value1", "value2"], "Text values should be correct"
+    assert isinstance(result["text_data"], list), "text_data should be aggregated into a list"
+    assert len(result["text_data"]) == 2, "Should have 2 text values"
+    assert result["text_data"] == ["value1", "value2"], "Text values should be correct"
 
     # Numeric data should be aggregated into a list
     assert isinstance(
-        cohort_data["numeric_data"], list
+        result["numeric_data"], list
     ), "numeric_data should be aggregated into a list"
-    assert len(cohort_data["numeric_data"]) == 2, "Should have 2 numeric values"
-    assert cohort_data["numeric_data"] == [42, 84], "Numeric values should be correct"
+    assert len(result["numeric_data"]) == 2, "Should have 2 numeric values"
+    assert result["numeric_data"] == [42, 84], "Numeric values should be correct"
 
     # Binary data should be converted to base64 strings for JSON serialization
     assert isinstance(
-        cohort_data["binary_data"], list
+        result["binary_data"], list
     ), "binary_data should be aggregated into a list"
-    assert len(cohort_data["binary_data"]) == 2, "Should have 2 binary values"
+    assert len(result["binary_data"]) == 2, "Should have 2 binary values"
 
     # Verify the binary data was converted to base64 strings
     import base64
@@ -302,10 +294,10 @@ def test_python_aggregation_with_binary_data():
     expected_binary_2 = base64.b64encode(b"\xaa\xbb\xcc\xdd\xee\xff\x00\x11").decode("utf-8")
 
     assert (
-        cohort_data["binary_data"][0] == expected_binary_1
+        result["binary_data"][0] == expected_binary_1
     ), "First binary value should be base64 encoded"
     assert (
-        cohort_data["binary_data"][1] == expected_binary_2
+        result["binary_data"][1] == expected_binary_2
     ), "Second binary value should be base64 encoded"
 
 

@@ -21,6 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Lint**: `yarn lint`
 - **Format**: `yarn format`
 - **Always run yarn test when making JS changes to ensure that components are not breaking**
+- **Test file placement**: Place test files next to the source file (e.g., `service.js` and `service.test.js`), not in `__tests__` folders
 
 ### Combined Development
 - **Deploy viewer to CLI**: `yarn deploy` (builds both local and dist versions)
