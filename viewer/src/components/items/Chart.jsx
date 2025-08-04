@@ -4,7 +4,7 @@ import Plot from 'react-plotly.js';
 import React, { useState, useMemo, useImperativeHandle } from 'react';
 import CohortSelect from '../select/CohortSelect';
 import { traceNamesInData, chartDataFromCohortData } from '../../models/Trace';
-import { useTracesData } from '../../hooks/useTracesData';
+import { useCohortedTracesData } from '../../hooks/useCohortedTracesData';
 import MenuItem from '../styled/MenuItem';
 import { ItemContainer } from './ItemContainer';
 import { itemNameToSlug } from './utils';
@@ -26,8 +26,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
     [isLoading]
   );
 
-  const traceNames = chart.traces.map(trace => trace.name);
-  const tracesData = useTracesData(project.id, traceNames);
+  const { data: tracesData, isLoading: isTracesLoading } = useCohortedTracesData(chart.traces);
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
 
@@ -52,7 +51,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       .flat();
   }, [selectedCohortData, chart.traces]);
 
-  if (!tracesData) {
+  if (isTracesLoading || !tracesData) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 

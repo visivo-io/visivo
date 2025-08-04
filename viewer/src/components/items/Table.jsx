@@ -17,7 +17,7 @@ import {
   TextField,
   InputAdornment,
 } from '@mui/material';
-import { useTracesData } from '../../hooks/useTracesData';
+import { useCohortedTracesData } from '../../hooks/useCohortedTracesData';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
 import SearchIcon from '@mui/icons-material/Search';
@@ -51,9 +51,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Always call the hook, but with empty array if it's a direct query
-  const tracesData = useTracesData(
-    project.id,
-    isDirectQueryResult ? [] : table.traces.map(trace => trace.name)
+  const { data: tracesData, isLoading: isTracesLoading } = useCohortedTracesData(
+    isDirectQueryResult ? [] : table.traces
   );
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
@@ -182,7 +181,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   });
 
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!isDirectQueryResult && !tracesData) {
+  if (!isDirectQueryResult && (isTracesLoading || !tracesData)) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
