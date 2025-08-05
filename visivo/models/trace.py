@@ -122,6 +122,33 @@ class Trace(NamedModel, ParentModel):
             children += self.tests
         return children
 
+    def model_dump(self, **kwargs):
+        """Override model_dump to properly serialize columns with QueryString objects."""
+        result = super().model_dump(**kwargs)
+        # If columns exist and have the custom model_dump method, use it
+        if self.columns is not None and hasattr(self.columns, "model_dump"):
+            # Get the mode parameter
+            mode = kwargs.get("mode", None)
+            # Pass the same kwargs to columns model_dump
+            columns_dict = self.columns.model_dump(**kwargs)
+            # If mode is 'json', ensure all values are JSON serializable
+            if mode == "json":
+                for key, value in columns_dict.items():
+                    if hasattr(value, "__class__") and "QueryString" in str(value.__class__):
+                        columns_dict[key] = str(value)
+            result["columns"] = columns_dict
+        return result
+
+    def model_dump_json(self, **kwargs):
+        """Override model_dump_json to properly serialize columns with QueryString objects."""
+        # Get the dict with QueryString objects properly converted
+        data = self.model_dump(**kwargs)
+        # Use Pydantic's JSON encoder
+        import json
+        from pydantic.json import pydantic_encoder
+
+        return json.dumps(data, default=pydantic_encoder, **kwargs)
+
     @model_validator(mode="before")
     @classmethod
     def validate_column_refs(cls, data: Any):
