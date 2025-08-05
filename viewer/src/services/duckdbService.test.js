@@ -116,61 +116,6 @@ describe('DuckDBService', () => {
     });
   });
 
-  describe('cohort creation', () => {
-    beforeEach(async () => {
-      await service.initialize();
-    });
-
-    it('should create cohorts from data', async () => {
-      const testData = {
-        'columns.x_data': [['Jan', 'Feb'], ['Mar', 'Apr']],
-        'columns.y_data': [[100, 150], [200, 250]]
-      };
-
-      const result = await service.createCohorts(testData, '"product"');
-
-      expect(result).toEqual({
-        'Product A': {
-          'columns.x_data': [['Jan', 'Feb']], 
-          'columns.y_data': [[100, 150]]
-        },
-        'Product B': {
-          'columns.x_data': [['Mar', 'Apr']],
-          'columns.y_data': [[200, 250]]
-        }
-      });
-    });
-
-    it('should return values structure when no cohort specified', async () => {
-      const testData = {
-        'columns.x_data': [['Jan', 'Feb']],
-        'columns.y_data': [[100, 150]]
-      };
-
-      const result = await service.createCohorts(testData, null);
-
-      expect(result).toEqual({
-        values: testData
-      });
-    });
-
-    it('should clean up temporary tables on error', async () => {
-      const testData = {
-        'columns.x_data': [['Jan', 'Feb']]
-      };
-
-      // Mock query to throw error
-      service.conn.query.mockRejectedValueOnce(new Error('Query failed'));
-
-      await expect(service.createCohorts(testData, '"product"'))
-        .rejects.toThrow('Query failed');
-
-      // Verify cleanup was attempted
-      expect(service.conn.query).toHaveBeenCalledWith(
-        expect.stringContaining('DROP TABLE IF EXISTS')
-      );
-    });
-  });
 
   describe('query execution', () => {
     beforeEach(async () => {

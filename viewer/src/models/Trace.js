@@ -17,7 +17,7 @@ export const cohortNamesInData = tracesData => {
     .sort();
 };
 
-const convertDotKeysToNestedObject = flatObject => {
+export const convertDotKeysToNestedObject = flatObject => {
   const nestedObject = {};
   for (let key in flatObject) {
     if (key.includes('.')) {

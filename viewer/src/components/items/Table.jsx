@@ -17,7 +17,8 @@ import {
   TextField,
   InputAdornment,
 } from '@mui/material';
-import { useCohortedTracesData } from '../../hooks/useCohortedTracesData';
+import { useTracesData } from '../../hooks/useTracesData';
+import useStore from '../../stores/store';
 import { ItemContainer } from './ItemContainer';
 import CohortSelect from '../select/CohortSelect';
 import SearchIcon from '@mui/icons-material/Search';
@@ -50,11 +51,21 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  // Always call the hook, but with empty array if it's a direct query
-  const { data: tracesData, isLoading: isTracesLoading } = useCohortedTracesData(
+  // Get raw traces data (only if not direct query)
+  const { data: rawTracesData, isLoading: isRawDataLoading } = useTracesData(
     isDirectQueryResult ? [] : table.traces
   );
-  const [selectedTableCohort, setSelectedTableCohort] = useState(null);
+
+  // Get store methods for trace processing
+  const {
+    processTraces,
+    areTracesReady,
+    areAnyTracesLoading,
+    getAllCohortNames,
+    filterTraceObjectsByCohorts
+  } = useStore();
+
+  const [selectedCohorts, setSelectedCohorts] = useState([]);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [searchIsVisible, setSearchIsVisible] = useState(false);
@@ -67,11 +78,36 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     useKeysAsHeaders: true,
   });
 
+  // Process traces when raw data is available
   useEffect(() => {
-    if (selectedTableCohort && tracesData) {
-      // Handle trace-based queries
+    if (!isDirectQueryResult && rawTracesData && Object.keys(rawTracesData).length > 0) {
+      processTraces(table.traces, rawTracesData);
+    }
+  }, [rawTracesData, table.traces, processTraces, isDirectQueryResult]);
+
+  // Get trace names for processing
+  const traceNames = table.traces.map(trace => trace.name);
+
+  // Check processing status
+  const isTracesReady = areTracesReady(traceNames);
+  const isProcessing = areAnyTracesLoading(traceNames);
+  
+  // Compute loading state
+  const isLoading = isRawDataLoading || isProcessing || !isTracesReady;
+
+  // Get all available cohort names
+  const allCohortNames = getAllCohortNames(traceNames);
+
+  // Get filtered trace objects based on selected cohorts
+  const filteredTraceObjects = filterTraceObjectsByCohorts(traceNames, selectedCohorts);
+
+  useEffect(() => {
+    if (!isDirectQueryResult && isTracesReady && filteredTraceObjects.length > 0) {
+      // Handle trace-based queries with new data structure
+      // Use first filtered trace object to determine columns
+      const firstTraceObject = filteredTraceObjects[0];
       setColumns(
-        tableColumnsWithDot(table, selectedTableCohort.data, selectedTableCohort.traceName)
+        tableColumnsWithDot(table, firstTraceObject, firstTraceObject.name || 'trace')
       );
     } else if (isDirectQueryResult) {
       // Handle direct query results
@@ -84,12 +120,16 @@ const Table = ({ table, project, itemWidth, height, width }) => {
       }));
       setColumns(directQueryColumns);
     }
-  }, [selectedTableCohort, tracesData, table, isDirectQueryResult]);
+  }, [filteredTraceObjects, table, isDirectQueryResult, isTracesReady]);
 
   useEffect(() => {
-    if (selectedTableCohort && columns) {
-      // Handle trace-based queries
-      setTableData(tableDataFromCohortData(selectedTableCohort.data, columns));
+    if (!isDirectQueryResult && isTracesReady && filteredTraceObjects.length > 0 && columns.length > 0) {
+      // Handle trace-based queries with new data structure
+      // Combine data from all filtered trace objects
+      const combinedData = filteredTraceObjects.flatMap(traceObject => 
+        tableDataFromCohortData(traceObject, columns)
+      );
+      setTableData(combinedData);
     } else if (isDirectQueryResult) {
       // Handle direct query results
       setTableData(
@@ -106,7 +146,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         })
       );
     }
-  }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
+  }, [filteredTraceObjects, columns, table.traces, isDirectQueryResult, isTracesReady]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -115,8 +155,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     const link = document.createElement('a');
     link.href = url;
 
-    const cohortName = selectedTableCohort?.cohortName || 'cohort';
-    const traceName = selectedTableCohort?.traceName || 'trace';
+    const cohortName = selectedCohorts.length > 0 ? selectedCohorts.join('_') : 'all_cohorts';
+    const traceName = traceNames.length > 0 ? traceNames.join('_') : 'trace';
 
     link.setAttribute('download', `${table.name}_${traceName}_${cohortName}.csv`);
 
@@ -181,7 +221,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   });
 
   // Only show loading state if we're waiting for trace data and this isn't a direct query result
-  if (!isDirectQueryResult && (isTracesLoading || !tracesData)) {
+  if (!isDirectQueryResult && isLoading) {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
@@ -192,16 +232,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     },
   });
 
-  const onSelectedCohortChange = changedSelectedTracesData => {
-    const traceName = Object.keys(changedSelectedTracesData)[0];
-    if (traceName) {
-      const cohortName = Object.keys(changedSelectedTracesData[traceName])[0];
-      setSelectedTableCohort({
-        traceName,
-        data: changedSelectedTracesData[traceName][cohortName],
-        cohortName,
-      });
-    }
+  const onSelectedCohortChange = (newSelectedCohorts) => {
+    setSelectedCohorts(newSelectedCohorts);
   };
 
   /* eslint-disable react/jsx-pascal-case */
@@ -302,9 +334,10 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 </Tooltip>
               </Button>
 
-              {!isDirectQueryResult && tracesData && (
+              {!isDirectQueryResult && isTracesReady && (
                 <CohortSelect
-                  tracesData={tracesData}
+                  cohortNames={allCohortNames}
+                  selectedCohorts={selectedCohorts}
                   onChange={onSelectedCohortChange}
                   selector={table.selector}
                   parentName={table.name}

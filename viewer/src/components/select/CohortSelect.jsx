@@ -1,6 +1,7 @@
 import { cohortNamesInData } from '../../models/Trace';
 import NameSelect from './NameSelect';
 
+// Legacy function - kept for backward compatibility
 export const generateNewTraceDataFromSelection = (tracesData, selectedCohortNames) => {
   const newTraceData = {};
   if (!selectedCohortNames) {
@@ -21,7 +22,11 @@ export const generateNewTraceDataFromSelection = (tracesData, selectedCohortName
 
 const CohortSelect = ({
   onChange,
+  // Legacy prop - for backward compatibility
   tracesData,
+  // New props for updated data flow
+  cohortNames,
+  selectedCohorts,
   showLabel,
   selector,
   parentName,
@@ -30,13 +35,24 @@ const CohortSelect = ({
   onVisible = () => {},
 }) => {
   const onNameSelectChange = selectedNames => {
-    onChange(generateNewTraceDataFromSelection(tracesData, selectedNames));
+    if (cohortNames && selectedCohorts !== undefined) {
+      // New data flow: pass selected cohort names directly
+      onChange(selectedNames);
+    } else if (tracesData) {
+      // Legacy data flow: generate trace data from selection
+      onChange(generateNewTraceDataFromSelection(tracesData, selectedNames));
+    }
   };
+
+  // Determine which names to use based on available props
+  const availableNames = cohortNames || (tracesData ? cohortNamesInData(tracesData) : []);
+  const currentSelection = selectedCohorts || [];
 
   return (
     <>
       <NameSelect
-        names={cohortNamesInData(tracesData)}
+        names={availableNames}
+        selectedNames={currentSelection}
         selector={selector}
         parentName={parentName}
         parentType={parentType}

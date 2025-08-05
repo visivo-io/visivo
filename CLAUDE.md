@@ -83,6 +83,26 @@ Each CLI command follows a consistent pattern:
 3. **Pydantic models**: Strong typing throughout the Python codebase
 4. **Plugin architecture**: Extensible source and destination connectors
 5. **Dual deployment**: Local development mode vs distribution mode
+6. **Client-side data processing**: Cohort processing uses DuckDB WASM for efficient client-side transformations
+
+#### Cohort Processing Architecture (Phase 2)
+
+The cohort processing system follows a clean pipeline design:
+
+**Data Flow**: Raw Trace Data → DuckDB WASM → Trace Objects List → Zustand Store → Chart/Table → Selector Filtering
+
+**Key Components**:
+- `duckdbService.js` - Pure query engine for SQL execution using DuckDB WASM
+- `dataProcessor.js` - End-to-end data transformation handling cohort grouping and trace object creation
+- `dataStore.js` - Zustand store containing final trace objects ready for rendering
+- Components consume standard trace object lists from the store
+
+**Benefits**:
+- Simplified data flow with clear separation of concerns
+- DuckDB WASM provides efficient client-side SQL processing
+- Trace objects are ready-to-render Plotly.js format
+- Better performance through reduced data transformation layers
+- Maintainable architecture with single responsibility per component
 
 ## Project Structure
 
