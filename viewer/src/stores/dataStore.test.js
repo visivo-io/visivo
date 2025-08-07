@@ -8,9 +8,11 @@ import createDataSlice from './dataStore';
 // Mock the data processor
 jest.mock('../services/dataProcessor', () => ({
   dataProcessor: {
-    processTraces: jest.fn(),
     processTrace: jest.fn(),
-    createTraceObject: jest.fn()
+    createTraceObject: jest.fn(),
+    duckdb: {
+      initialize: jest.fn()
+    }
   }
 }));
 
@@ -36,17 +38,21 @@ describe('DataStore', () => {
         trace2: { 'props.x': ['C', 'D'], 'props.y': [3, 4] }
       };
 
-      const mockResults = {
-        trace1: [{ name: 'values', type: 'bar', x: ['A', 'B'], y: [1, 2] }],
-        trace2: [{ name: 'values', type: 'line', x: ['C', 'D'], y: [3, 4] }]
-      };
+      const mockTraceObjects1 = [{ name: 'values', type: 'bar', x: ['A', 'B'], y: [1, 2] }];
+      const mockTraceObjects2 = [{ name: 'values', type: 'line', x: ['C', 'D'], y: [3, 4] }];
 
-      dataProcessor.processTraces.mockResolvedValueOnce(mockResults);
+      dataProcessor.processTrace
+        .mockResolvedValueOnce(mockTraceObjects1)
+        .mockResolvedValueOnce(mockTraceObjects2);
 
       await store.getState().processTraces(tracesConfig, rawTracesData);
 
-      expect(dataProcessor.processTraces).toHaveBeenCalledWith(tracesConfig, rawTracesData);
-      expect(store.getState().processedTraces).toEqual(mockResults);
+      expect(dataProcessor.duckdb.initialize).toHaveBeenCalled();
+      expect(dataProcessor.processTrace).toHaveBeenCalledWith(tracesConfig[0], rawTracesData.trace1);
+      expect(dataProcessor.processTrace).toHaveBeenCalledWith(tracesConfig[1], rawTracesData.trace2);
+      
+      expect(store.getState().processedTraces.trace1).toEqual(mockTraceObjects1);
+      expect(store.getState().processedTraces.trace2).toEqual(mockTraceObjects2);
       expect(store.getState().processingStatus.trace1).toBe('completed');
       expect(store.getState().processingStatus.trace2).toBe('completed');
     });
@@ -56,12 +62,15 @@ describe('DataStore', () => {
       const rawTracesData = { trace1: { 'props.x': ['A'], 'props.y': [1] } };
 
       const error = new Error('Processing failed');
-      dataProcessor.processTraces.mockRejectedValueOnce(error);
+      dataProcessor.processTrace.mockRejectedValueOnce(error);
+      
+      const fallbackTrace = { name: 'values', type: 'bar' };
+      dataProcessor.createTraceObject.mockReturnValueOnce(fallbackTrace);
 
       await store.getState().processTraces(tracesConfig, rawTracesData);
 
-      expect(store.getState().processingStatus.trace1).toBe('error');
-      expect(store.getState().processingErrors.trace1).toBe('Processing failed');
+      expect(store.getState().processingStatus.trace1).toBe('completed'); // Should complete with fallback
+      expect(store.getState().processedTraces.trace1).toEqual([fallbackTrace]);
     });
 
     it('should set loading status initially', async () => {
@@ -73,7 +82,7 @@ describe('DataStore', () => {
       const processorPromise = new Promise(resolve => {
         resolveProcessor = resolve;
       });
-      dataProcessor.processTraces.mockReturnValueOnce(processorPromise);
+      dataProcessor.processTrace.mockReturnValueOnce(processorPromise);
 
       const processPromise = store.getState().processTraces(tracesConfig, rawTracesData);
 
@@ -82,7 +91,7 @@ describe('DataStore', () => {
       expect(store.getState().processingErrors.trace1).toBe(null);
 
       // Resolve the processing
-      resolveProcessor({ trace1: [] });
+      resolveProcessor([]);
       await processPromise;
 
       expect(store.getState().processingStatus.trace1).toBe('completed');
@@ -91,44 +100,12 @@ describe('DataStore', () => {
     it('should handle empty inputs gracefully', async () => {
       await store.getState().processTraces(null, null);
       
-      expect(dataProcessor.processTraces).not.toHaveBeenCalled();
+      expect(dataProcessor.processTrace).not.toHaveBeenCalled();
     });
   });
 
-  describe('processSingleTrace', () => {
-    it('should process single trace and update store', async () => {
-      const traceConfig = { name: 'trace1', props: { type: 'bar' } };
-      const rawTraceData = { 'props.x': ['A', 'B'], 'props.y': [1, 2] };
-
-      const mockTraceObjects = [
-        { name: 'values', type: 'bar', x: ['A', 'B'], y: [1, 2] }
-      ];
-
-      dataProcessor.processTrace.mockResolvedValueOnce(mockTraceObjects);
-
-      const result = await store.getState().processSingleTrace(traceConfig, rawTraceData);
-
-      expect(dataProcessor.processTrace).toHaveBeenCalledWith(traceConfig, rawTraceData);
-      expect(result).toEqual(mockTraceObjects);
-      expect(store.getState().processedTraces.trace1).toEqual(mockTraceObjects);
-      expect(store.getState().processingStatus.trace1).toBe('completed');
-    });
-
-    it('should handle single trace processing error', async () => {
-      const traceConfig = { name: 'trace1', props: { type: 'bar' } };
-      const rawTraceData = { 'props.x': ['A'], 'props.y': [1] };
-
-      const fallbackTrace = { name: 'values', type: 'bar' };
-      dataProcessor.processTrace.mockRejectedValueOnce(new Error('Process error'));
-      dataProcessor.createTraceObject.mockReturnValueOnce(fallbackTrace);
-
-      const result = await store.getState().processSingleTrace(traceConfig, rawTraceData);
-
-      expect(store.getState().processingStatus.trace1).toBe('error');
-      expect(store.getState().processingErrors.trace1).toBe('Process error');
-      expect(result).toEqual([fallbackTrace]);
-    });
-  });
+  // Removed processSingleTrace tests - method removed to eliminate duplication
+  // Use processTraces with single-item array instead
 
   describe('getters', () => {
     beforeEach(() => {

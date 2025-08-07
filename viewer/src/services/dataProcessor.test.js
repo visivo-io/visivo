@@ -35,65 +35,7 @@ describe('DataProcessor', () => {
     jest.clearAllMocks();
   });
 
-  describe('processTraces', () => {
-    it('should process multiple traces with configurations', async () => {
-      const tracesConfig = [
-        { name: 'trace1', cohort_on: 'product', props: { type: 'bar' } },
-        { name: 'trace2', props: { type: 'line' } }
-      ];
-      
-      const rawTracesData = {
-        trace1: { 'props.x': ['A', 'B'], 'props.y': [1, 2] },
-        trace2: { 'props.x': ['C', 'D'], 'props.y': [3, 4] }
-      };
-
-      duckdbService.executeQuery.mockResolvedValueOnce([
-        { cohort_value: 'Product A', 'props.x': 'A', 'props.y': 1 },
-        { cohort_value: 'Product B', 'props.x': 'B', 'props.y': 2 }
-      ]);
-
-      const result = await processor.processTraces(tracesConfig, rawTracesData);
-
-      expect(duckdbService.initialize).toHaveBeenCalled();
-      expect(result).toHaveProperty('trace1');
-      expect(result).toHaveProperty('trace2');
-      expect(Array.isArray(result.trace1)).toBe(true);
-      expect(Array.isArray(result.trace2)).toBe(true);
-    });
-
-    it('should handle missing raw data gracefully', async () => {
-      const tracesConfig = [
-        { name: 'trace1', props: { type: 'bar' } }
-      ];
-      
-      const rawTracesData = {}; // No data for trace1
-
-      const result = await processor.processTraces(tracesConfig, rawTracesData);
-
-      expect(result.trace1).toEqual([]);
-    });
-
-    it('should handle processing errors gracefully', async () => {
-      const tracesConfig = [
-        { name: 'trace1', cohort_on: 'invalid', props: { type: 'bar' } }
-      ];
-      
-      const rawTracesData = {
-        trace1: { 'props.x': ['A'], 'props.y': [1] }
-      };
-
-      duckdbService.loadData.mockRejectedValueOnce(new Error('Load failed'));
-
-      const result = await processor.processTraces(tracesConfig, rawTracesData);
-
-      expect(result.trace1).toHaveLength(1);
-      expect(mergeStaticPropertiesAndData).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.any(Object),
-        'values'
-      );
-    });
-  });
+  // Removed processTraces tests - method moved to DataStore for better separation of concerns
 
   describe('processTrace', () => {
     it('should process trace without cohort configuration', async () => {

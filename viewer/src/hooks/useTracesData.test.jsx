@@ -7,34 +7,58 @@ import * as tracesApi from '../api/traces';
 // Mock the API
 jest.mock('../api/traces');
 
-describe('useTraceDate', () => {
-  test('should return empty object when no traces', async () => {
-    // Mock the API function to return empty array
-    tracesApi.fetchTraces.mockResolvedValue([]);
-    
-    const { result } = renderHook(() => useTracesData('projectId', []), { wrapper: withProviders });
+describe('useTracesData', () => {
+  test('should return loading state and null data when no traces', async () => {
+    const { result } = renderHook(() => useTracesData([]), { wrapper: withProviders });
 
-    await waitFor(() => {
-      expect(result.current).toStrictEqual({});
+    // Should return the expected interface immediately
+    expect(result.current).toEqual({
+      data: null,
+      isLoading: false // No traces means no loading
     });
   });
 
-  test('should return trace data', async () => {
+  test('should return correct interface with traces', async () => {
     // Mock the API function
-    tracesApi.fetchTraces.mockResolvedValue([{ name: 'traceName' }]);
+    tracesApi.fetchTraces.mockResolvedValue([{ name: 'traceName', signed_data_file_url: 'http://example.com/data.json' }]);
 
     jest
       .spyOn(fetchTracesData, 'fetchTracesData')
-      .mockImplementation((projectId, traceNames) => ({ traceName: { data: 'data' } }));
+      .mockImplementation(() => Promise.resolve({ traceName: { data: 'data' } }));
     
-    const { result } = renderHook(() => useTracesData('projectId', ['traceName']), {
+    const traces = [{ name: 'traceName' }];
+    const { result } = renderHook(() => useTracesData(traces, 'projectId'), {
       wrapper: ({ children }) => {
         return withProviders({ children });
       },
     });
     
+    // Should have the correct interface structure
+    expect(result.current).toHaveProperty('data');
+    expect(result.current).toHaveProperty('isLoading');
+    expect(typeof result.current.isLoading).toBe('boolean');
+    
+    // Should eventually return data (don't worry about loading state timing for now)
     await waitFor(() => {
-      expect(result.current).toStrictEqual({ traceName: { data: 'data' } });
+      expect(result.current.data).toEqual({ traceName: { data: 'data' } });
+    });
+  });
+
+  test('should handle empty traces array', async () => {
+    const { result } = renderHook(() => useTracesData([], 'projectId'), { wrapper: withProviders });
+
+    expect(result.current).toEqual({
+      data: null,
+      isLoading: false
+    });
+  });
+
+  test('should handle null traces parameter', async () => {
+    const { result } = renderHook(() => useTracesData(null), { wrapper: withProviders });
+
+    expect(result.current).toEqual({
+      data: null,
+      isLoading: false
     });
   });
 });

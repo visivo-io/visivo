@@ -10,37 +10,8 @@ class DataProcessor {
     this.duckdb = duckdbService;
   }
 
-  /**
-   * Process multiple traces with their configurations
-   * @param {Array} tracesConfig - Array of trace configurations
-   * @param {Object} rawTracesData - Raw trace data mapping
-   * @returns {Promise<Object>} Object mapping trace names to arrays of trace objects
-   */
-  async processTraces(tracesConfig, rawTracesData) {
-    await this.duckdb.initialize();
-    
-    const results = {};
-    
-    // Process each trace
-    for (const traceConfig of tracesConfig) {
-      const rawData = rawTracesData[traceConfig.name];
-      if (!rawData) {
-        console.warn(`No raw data available for trace: ${traceConfig.name}`);
-        results[traceConfig.name] = [];
-        continue;
-      }
-      
-      try {
-        results[traceConfig.name] = await this.processTrace(traceConfig, rawData);
-      } catch (error) {
-        console.error(`Failed to process trace ${traceConfig.name}:`, error);
-        // Fallback to single trace object with raw data
-        results[traceConfig.name] = [this.createTraceObject(rawData, traceConfig, 'values')];
-      }
-    }
-    
-    return results;
-  }
+  // Removed processTraces() method - this logic now handled directly in DataStore
+  // to eliminate duplication and provide consistent error handling
 
   /**
    * Process a single trace with its configuration

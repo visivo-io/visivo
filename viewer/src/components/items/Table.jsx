@@ -1,5 +1,5 @@
 import Loading from '../common/Loading';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useId, useMemo } from 'react';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -50,22 +50,26 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Generate unique component ID for this table instance
+  const componentId = useId();
 
   // Get raw traces data (only if not direct query)
   const { data: rawTracesData, isLoading: isRawDataLoading } = useTracesData(
-    isDirectQueryResult ? [] : table.traces
+    isDirectQueryResult ? [] : table.traces,
+    project?.id
   );
 
-  // Get store methods for trace processing
+  // Get store methods for trace processing and filtering
   const {
     processTraces,
     areTracesReady,
     areAnyTracesLoading,
-    getAllCohortNames,
-    filterTraceObjectsByCohorts
+    setComponentSelector,
+    getComponentSelector,
+    getFilteredTraces,
+    clearComponentSelector
   } = useStore();
-
-  const [selectedCohorts, setSelectedCohorts] = useState([]);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [searchIsVisible, setSearchIsVisible] = useState(false);
@@ -86,7 +90,31 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   }, [rawTracesData, table.traces, processTraces, isDirectQueryResult]);
 
   // Get trace names for processing
-  const traceNames = table.traces.map(trace => trace.name);
+  const traceNames = useMemo(() => 
+    table.traces.map(trace => trace.name), 
+    [table.traces]
+  );
+
+  // Initialize component selector when traces are ready (only for non-direct queries)
+  useEffect(() => {
+    if (!isDirectQueryResult) {
+      const isReady = areTracesReady(traceNames);
+      if (isReady && traceNames.length > 0) {
+        // Initialize selector state for this component if not already done
+        const currentSelector = getComponentSelector(componentId);
+        if (currentSelector.traceNames.length === 0) {
+          setComponentSelector(componentId, [], traceNames);
+        }
+      }
+    }
+  }, [isDirectQueryResult, areTracesReady, traceNames, componentId, setComponentSelector, getComponentSelector]);
+
+  // Cleanup selector state when component unmounts
+  useEffect(() => {
+    return () => {
+      clearComponentSelector(componentId);
+    };
+  }, [componentId, clearComponentSelector]);
 
   // Check processing status
   const isTracesReady = areTracesReady(traceNames);
@@ -95,11 +123,16 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   // Compute loading state
   const isLoading = isRawDataLoading || isProcessing || !isTracesReady;
 
-  // Get all available cohort names
-  const allCohortNames = getAllCohortNames(traceNames);
+  // Get component selector state
+  const selectorState = getComponentSelector(componentId);
+  const { selectedCohorts, availableCohorts } = selectorState;
 
-  // Get filtered trace objects based on selected cohorts
-  const filteredTraceObjects = filterTraceObjectsByCohorts(traceNames, selectedCohorts);
+  // Get pre-filtered trace objects from store
+  const filteredTraceObjects = useMemo(() => {
+    if (isDirectQueryResult || !isTracesReady) return [];
+    
+    return getFilteredTraces(componentId);
+  }, [isDirectQueryResult, getFilteredTraces, componentId, isTracesReady]);
 
   useEffect(() => {
     if (!isDirectQueryResult && isTracesReady && filteredTraceObjects.length > 0) {
@@ -233,7 +266,8 @@ const Table = ({ table, project, itemWidth, height, width }) => {
   });
 
   const onSelectedCohortChange = (newSelectedCohorts) => {
-    setSelectedCohorts(newSelectedCohorts);
+    // Update selector state in store for this component
+    setComponentSelector(componentId, newSelectedCohorts, traceNames);
   };
 
   /* eslint-disable react/jsx-pascal-case */
@@ -336,7 +370,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
 
               {!isDirectQueryResult && isTracesReady && (
                 <CohortSelect
-                  cohortNames={allCohortNames}
+                  cohortNames={availableCohorts}
                   selectedCohorts={selectedCohorts}
                   onChange={onSelectedCohortChange}
                   selector={table.selector}

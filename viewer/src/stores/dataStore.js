@@ -17,6 +17,14 @@ const createDataSlice = (set, get) => ({
   // Error messages for failed processing
   processingErrors: {},
 
+  // Component-scoped selector states
+  // Structure: { [componentId]: { selectedCohorts: [], availableCohorts: [] } }
+  selectorStates: {},
+
+  // Filtered trace objects cache per component
+  // Structure: { [componentId]: { traceObjects: [], lastUpdated: timestamp, traceNames: [] } }
+  filteredTraces: {},
+
   /**
    * Process multiple traces with their configurations
    * Main entry point for trace processing
@@ -43,8 +51,28 @@ const createDataSlice = (set, get) => ({
     }));
 
     try {
-      // Process all traces using DataProcessor
-      const processedResults = await dataProcessor.processTraces(tracesConfig, rawTracesData);
+      // Initialize DuckDB once for all traces
+      await dataProcessor.duckdb.initialize();
+      
+      // Process each trace directly (removed duplicate processTraces wrapper)
+      const processedResults = {};
+      
+      for (const traceConfig of tracesConfig) {
+        const rawData = rawTracesData[traceConfig.name];
+        if (!rawData) {
+          console.warn(`No raw data available for trace: ${traceConfig.name}`);
+          processedResults[traceConfig.name] = [];
+          continue;
+        }
+        
+        try {
+          processedResults[traceConfig.name] = await dataProcessor.processTrace(traceConfig, rawData);
+        } catch (error) {
+          console.error(`Failed to process trace ${traceConfig.name}:`, error);
+          // Fallback to single trace object with raw data
+          processedResults[traceConfig.name] = [dataProcessor.createTraceObject(rawData, traceConfig, 'values')];
+        }
+      }
 
       // Update store with results
       const completedStatus = {};
@@ -58,6 +86,18 @@ const createDataSlice = (set, get) => ({
         processedTraces: { ...state.processedTraces, ...processedResults },
         processingStatus: { ...state.processingStatus, ...completedStatus }
       }));
+
+      // Invalidate filtered caches for any components using these traces
+      const { selectorStates } = get();
+      Object.keys(selectorStates).forEach(componentId => {
+        const selectorState = selectorStates[componentId];
+        const hasAffectedTraces = selectorState.traceNames.some(traceName => 
+          processedResults && processedResults.hasOwnProperty(traceName)
+        );
+        if (hasAffectedTraces) {
+          get().updateFilteredCache(componentId);
+        }
+      });
 
     } catch (error) {
       console.error('Failed to process traces:', error);
@@ -77,52 +117,8 @@ const createDataSlice = (set, get) => ({
     }
   },
 
-  /**
-   * Process a single trace with its configuration
-   * @param {Object} traceConfig - Single trace configuration
-   * @param {Object} rawTraceData - Raw trace data
-   * @returns {Promise<Array>} Array of trace objects
-   */
-  processSingleTrace: async (traceConfig, rawTraceData) => {
-    const traceName = traceConfig.name;
-
-    // Mark as loading
-    set(state => ({
-      processingStatus: { ...state.processingStatus, [traceName]: 'loading' },
-      processingErrors: { ...state.processingErrors, [traceName]: null }
-    }));
-
-    try {
-      const traceObjects = await dataProcessor.processTrace(traceConfig, rawTraceData);
-
-      // Update store
-      set(state => ({
-        processedTraces: { ...state.processedTraces, [traceName]: traceObjects },
-        processingStatus: { ...state.processingStatus, [traceName]: 'completed' }
-      }));
-
-      return traceObjects;
-
-    } catch (error) {
-      console.error(`Failed to process trace ${traceName}:`, error);
-
-      // Set error state
-      set(state => ({
-        processingStatus: { ...state.processingStatus, [traceName]: 'error' },
-        processingErrors: { ...state.processingErrors, [traceName]: error.message }
-      }));
-
-      // Return fallback trace object
-      const fallbackTrace = dataProcessor.createTraceObject(rawTraceData, traceConfig, 'values');
-      const fallbackArray = [fallbackTrace];
-
-      set(state => ({
-        processedTraces: { ...state.processedTraces, [traceName]: fallbackArray }
-      }));
-
-      return fallbackArray;
-    }
-  },
+  // Removed processSingleTrace() method - use processTraces() with single-item array instead
+  // This eliminates code duplication and ensures consistent error handling
 
   /**
    * Get processed trace objects for a specific trace
@@ -326,6 +322,175 @@ const createDataSlice = (set, get) => ({
     });
 
     return stats;
+  },
+
+  // ========================================
+  // Component-Scoped Selector Management
+  // ========================================
+
+  /**
+   * Set selector state for a component
+   * @param {string} componentId - Unique identifier for the component
+   * @param {Array} selectedCohorts - Array of selected cohort names
+   * @param {Array} traceNames - Array of trace names for this component
+   */
+  setComponentSelector: (componentId, selectedCohorts, traceNames) => {
+    const { processedTraces } = get();
+
+    // Get available cohorts for these traces
+    const availableCohorts = traceNames.flatMap(traceName => {
+      const traceObjects = processedTraces[traceName] || [];
+      return traceObjects.map(traceObj => traceObj.name || 'values');
+    });
+    const uniqueAvailableCohorts = [...new Set(availableCohorts)].sort();
+
+    set(state => ({
+      selectorStates: {
+        ...state.selectorStates,
+        [componentId]: {
+          selectedCohorts: selectedCohorts || [],
+          availableCohorts: uniqueAvailableCohorts,
+          traceNames: traceNames || []
+        }
+      }
+    }));
+
+    // Update filtered cache for this component
+    get().updateFilteredCache(componentId);
+  },
+
+  /**
+   * Get selector state for a component
+   * @param {string} componentId - Unique identifier for the component
+   * @returns {Object} Selector state or default values
+   */
+  getComponentSelector: (componentId) => {
+    const { selectorStates } = get();
+    return selectorStates[componentId] || {
+      selectedCohorts: [],
+      availableCohorts: [],
+      traceNames: []
+    };
+  },
+
+  /**
+   * Get filtered trace objects for a component
+   * @param {string} componentId - Unique identifier for the component
+   * @returns {Array} Filtered array of trace objects
+   */
+  getFilteredTraces: (componentId) => {
+    const { filteredTraces, selectorStates, processedTraces } = get();
+
+    // Check if we have cached filtered traces
+    const cached = filteredTraces[componentId];
+    const selectorState = selectorStates[componentId];
+
+    if (!selectorState) {
+      return [];
+    }
+
+    // If cache is valid, return it
+    if (cached && cached.lastUpdated && 
+        JSON.stringify(cached.traceNames) === JSON.stringify(selectorState.traceNames)) {
+      return cached.traceObjects;
+    }
+
+    // Otherwise, generate filtered traces
+    const { selectedCohorts, traceNames } = selectorState;
+    
+    if (!selectedCohorts || selectedCohorts.length === 0) {
+      // No filter - return all trace objects for these traces
+      const allTraceObjects = traceNames.flatMap(traceName => processedTraces[traceName] || []);
+      get().updateFilteredCache(componentId, allTraceObjects);
+      return allTraceObjects;
+    }
+
+    // Filter by selected cohorts
+    const filteredTraceObjects = traceNames.flatMap(traceName => {
+      const traceObjects = processedTraces[traceName] || [];
+      return traceObjects.filter(traceObj => 
+        selectedCohorts.includes(traceObj.name || 'values')
+      );
+    });
+
+    get().updateFilteredCache(componentId, filteredTraceObjects);
+    return filteredTraceObjects;
+  },
+
+  /**
+   * Update filtered cache for a component
+   * @param {string} componentId - Unique identifier for the component
+   * @param {Array} traceObjects - Optional pre-computed trace objects
+   */
+  updateFilteredCache: (componentId, traceObjects = null) => {
+    const { selectorStates } = get();
+    const selectorState = selectorStates[componentId];
+
+    if (!selectorState) {
+      return;
+    }
+
+    let filteredObjects = traceObjects;
+    if (!filteredObjects) {
+      // Compute filtered objects if not provided
+      const { selectedCohorts, traceNames } = selectorState;
+      const { processedTraces } = get();
+      
+      if (!selectedCohorts || selectedCohorts.length === 0) {
+        filteredObjects = traceNames.flatMap(traceName => processedTraces[traceName] || []);
+      } else {
+        filteredObjects = traceNames.flatMap(traceName => {
+          const traceObjs = processedTraces[traceName] || [];
+          return traceObjs.filter(traceObj => 
+            selectedCohorts.includes(traceObj.name || 'values')
+          );
+        });
+      }
+    }
+
+    set(state => ({
+      filteredTraces: {
+        ...state.filteredTraces,
+        [componentId]: {
+          traceObjects: filteredObjects,
+          lastUpdated: Date.now(),
+          traceNames: selectorState.traceNames
+        }
+      }
+    }));
+  },
+
+  /**
+   * Clear selector state for a component
+   * @param {string} componentId - Unique identifier for the component
+   */
+  clearComponentSelector: (componentId) => {
+    set(state => {
+      const newSelectorStates = { ...state.selectorStates };
+      const newFilteredTraces = { ...state.filteredTraces };
+      
+      delete newSelectorStates[componentId];
+      delete newFilteredTraces[componentId];
+      
+      return {
+        selectorStates: newSelectorStates,
+        filteredTraces: newFilteredTraces
+      };
+    });
+  },
+
+  /**
+   * Get all unique cohort names for specific traces (for component selectors)
+   * @param {Array} traceNames - Array of trace names
+   * @returns {Array} Array of unique cohort names
+   */
+  getAvailableCohortsForTraces: (traceNames) => {
+    const { processedTraces } = get();
+    const allCohortNames = traceNames.flatMap(traceName => {
+      const traceObjects = processedTraces[traceName] || [];
+      return traceObjects.map(traceObj => traceObj.name || 'values');
+    });
+    return [...new Set(allCohortNames)].sort();
   }
 });
 

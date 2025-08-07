@@ -1,7 +1,7 @@
 import Loading from '../common/Loading';
 import Menu from './Menu';
 import Plot from 'react-plotly.js';
-import React, { useState, useMemo, useEffect, useImperativeHandle } from 'react';
+import React, { useState, useMemo, useEffect, useImperativeHandle, useId } from 'react';
 import CohortSelect from '../select/CohortSelect';
 import { useTracesData } from '../../hooks/useTracesData';
 import useStore from '../../stores/store';
@@ -17,18 +17,22 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const { toolTip, copyText, resetToolTip } = useCopyToClipboard();
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
-  const [selectedCohorts, setSelectedCohorts] = useState([]);
+  
+  // Generate unique component ID for this chart instance
+  const componentId = useId();
 
   // Get raw traces data
-  const { data: rawTracesData, isLoading: isRawDataLoading } = useTracesData(chart.traces);
+  const { data: rawTracesData, isLoading: isRawDataLoading } = useTracesData(chart.traces, project?.id);
 
-  // Get store methods for trace processing
+  // Get store methods for trace processing and filtering
   const {
     processTraces,
     areTracesReady,
     areAnyTracesLoading,
-    getAllCohortNames,
-    filterTraceObjectsByCohorts
+    setComponentSelector,
+    getComponentSelector,
+    getFilteredTraces,
+    clearComponentSelector
   } = useStore();
 
   // Process traces when raw data is available
@@ -60,25 +64,42 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
     [isLoading]
   );
 
-  // Get all available cohort names
-  const allCohortNames = useMemo(() => 
-    getAllCohortNames(traceNames), 
-    [getAllCohortNames, traceNames]
-  );
+  // Initialize component selector when traces are ready
+  useEffect(() => {
+    if (isTracesReady && traceNames.length > 0) {
+      // Initialize selector state for this component if not already done
+      const currentSelector = getComponentSelector(componentId);
+      if (currentSelector.traceNames.length === 0) {
+        setComponentSelector(componentId, [], traceNames);
+      }
+    }
+  }, [isTracesReady, traceNames, componentId, setComponentSelector, getComponentSelector]);
 
-  // Get filtered trace objects based on selected cohorts
+  // Cleanup selector state when component unmounts
+  useEffect(() => {
+    return () => {
+      clearComponentSelector(componentId);
+    };
+  }, [componentId, clearComponentSelector]);
+
+  // Get component selector state
+  const selectorState = getComponentSelector(componentId);
+  const { selectedCohorts, availableCohorts } = selectorState;
+
+  // Get pre-filtered trace objects from store
   const plotData = useMemo(() => {
     if (!isTracesReady) return [];
     
-    return filterTraceObjectsByCohorts(traceNames, selectedCohorts);
-  }, [filterTraceObjectsByCohorts, traceNames, selectedCohorts, isTracesReady]);
+    return getFilteredTraces(componentId);
+  }, [getFilteredTraces, componentId, isTracesReady]);
 
   if (isLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 
   const onSelectedCohortChange = (newSelectedCohorts) => {
-    setSelectedCohorts(newSelectedCohorts);
+    // Update selector state in store for this component
+    setComponentSelector(componentId, newSelectedCohorts, traceNames);
   };
 
   const layout = structuredClone(chart.layout ? chart.layout : {});
@@ -93,7 +114,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
         <Menu hovering={hovering && cohortSelectVisible}>
           <MenuItem>
             <CohortSelect
-              cohortNames={allCohortNames}
+              cohortNames={availableCohorts}
               selectedCohorts={selectedCohorts}
               onChange={onSelectedCohortChange}
               selector={chart.selector}

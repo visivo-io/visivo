@@ -7,31 +7,56 @@ function filterObject(obj, keys) {
   return Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
 }
 
-export const useTracesData = (projectId, traceNames) => {
+export const useTracesData = (traces, projectId = null) => {
   const [traceData, setTraceData] = useState(null);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const fetchTraces = useFetchTraces();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const memoizedTraceNames = useMemo(() => traceNames, [traceNames?.join(',')]);
+  // Extract trace names from traces array
+  const memoizedTraceNames = useMemo(() => {
+    if (!traces || !Array.isArray(traces)) return [];
+    return traces.map(trace => trace.name);
+  }, [traces]);
 
-  const { data: traces, isLoading } = useQuery({
+  // projectId is now passed as parameter with default null
+
+  const { data: traceObjects, isLoading: isQueryLoading } = useQuery({
     queryKey: ['trace', projectId, memoizedTraceNames],
     queryFn: () => fetchTraces(projectId, memoizedTraceNames),
+    enabled: Boolean(traces && traces.length > 0 && memoizedTraceNames.length > 0),
   });
 
   useEffect(() => {
     const waitForData = async () => {
-      const fetchedTracesData = await fetchTracesData(traces);
-      const orderedTracesData = memoizedTraceNames.reduce((orderedJson, traceName) => {
-        orderedJson[traceName] = fetchedTracesData[traceName];
-        return orderedJson;
-      }, {});
-      setTraceData(filterObject(orderedTracesData, memoizedTraceNames));
+      if (!traceObjects || !Array.isArray(traceObjects)) return;
+      
+      setIsDataLoading(true);
+      try {
+        const fetchedTracesData = await fetchTracesData(traceObjects);
+        const orderedTracesData = memoizedTraceNames.reduce((orderedJson, traceName) => {
+          orderedJson[traceName] = fetchedTracesData[traceName];
+          return orderedJson;
+        }, {});
+        setTraceData(filterObject(orderedTracesData, memoizedTraceNames));
+      } catch (error) {
+        console.error('Failed to fetch traces data:', error);
+        setTraceData(null);
+      } finally {
+        setIsDataLoading(false);
+      }
     };
-    if (traces) {
+
+    if (traceObjects && !isQueryLoading) {
       waitForData();
     }
-  }, [isLoading, traces, memoizedTraceNames]);
+  }, [traceObjects, isQueryLoading, memoizedTraceNames]);
 
-  return traceData;
+  // Return the expected interface: { data, isLoading }
+  // If there are no traces, we shouldn't be loading
+  const hasTraces = Boolean(traces && traces.length > 0);
+  
+  return {
+    data: traceData,
+    isLoading: hasTraces ? (isQueryLoading || isDataLoading) : false
+  };
 };
