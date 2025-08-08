@@ -1,6 +1,6 @@
 import re
 from typing import Any
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator, field_serializer
 from visivo.models.base.query_string import QUERY_STRING_VALUE_REGEX, QueryString
 
 
@@ -145,3 +145,25 @@ class TraceColumns(BaseModel):
             if isinstance(field_value, str) and re.match(QUERY_STRING_VALUE_REGEX, field_value):
                 data[field_name] = QueryString(field_value)
         return data
+
+    def model_dump(self, **kwargs):
+        """Override model_dump to properly serialize QueryString objects in extra fields."""
+        # Always use the parent method first to get all fields
+        result = super().model_dump(**kwargs)
+
+        # Convert QueryString objects to strings in the result
+        for key, value in result.items():
+            if isinstance(value, QueryString):
+                result[key] = str(value)
+
+        return result
+
+    def model_dump_json(self, **kwargs):
+        """Override model_dump_json to properly serialize QueryString objects in extra fields."""
+        # Use model_dump to get the dict with QueryString objects converted to strings
+        data = self.model_dump(**kwargs)
+        # Then use Pydantic's JSON encoder
+        import json
+        from pydantic.json import pydantic_encoder
+
+        return json.dumps(data, default=pydantic_encoder, **kwargs)

@@ -42,5 +42,7 @@ class QueryString:
         return core_schema.no_info_after_validator_function(
             validate_and_create,
             core_schema.str_schema(),
-            serialization=core_schema.plain_serializer_function_ser_schema(str),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                lambda x: str(x), return_schema=core_schema.str_schema()
+            ),
         )
