@@ -6,6 +6,7 @@ import { throwError } from '../../api/utils';
 import { useSearchParams } from 'react-router-dom';
 import { getSelectorByOptionName } from '../../models/Project';
 import Markdown from '../items/Markdown';
+import Iframe from '../items/Iframe';
 
 const Dashboard = ({ project, dashboardName }) => {
   const [searchParams] = useSearchParams();
@@ -105,7 +106,7 @@ const Dashboard = ({ project, dashboardName }) => {
       >
         {visibleItems.map((item, itemIndex) => (
           <div
-            key={`item-${rowIndex}-${itemIndex}-${item.chart?.path || item.table?.path || item.selector?.path}`}
+            key={`item-${rowIndex}-${itemIndex}-${item.chart?.path || item.table?.path || item.selector?.path || item.iframe}`}
             className={isColumn ? 'w-full max-w-full' : ''}
             style={{
               gridColumn: isColumn ? undefined : `span ${item.width || 1}`,
@@ -156,6 +157,14 @@ const Dashboard = ({ project, dashboardName }) => {
           itemWidth={item.width}
           key={`dashboardRow${rowIndex}Item${itemIndex}`}
         ></Selector>
+      );
+    } else if (item.iframe) {
+      return (
+        <Iframe
+          key={`dashboardRow${rowIndex}Item${itemIndex}`}
+          url={item.iframe}
+          height={getHeight(row.height)}
+        />
       );
     } else if (item.markdown) {
       return (
