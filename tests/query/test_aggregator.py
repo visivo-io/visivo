@@ -182,7 +182,163 @@ def test_polars_aggregator_matches_pandas():
     Aggregator.aggregate(str(input_path), output_dir)
     with open(f"{output_dir}/data.json") as f:
         result = json.load(f)
-    assert result == PANDAS_OUTPUT
+
+    # Expected flat structure output
+    expected_flat_output = {
+        "columns.x_data": [
+            [
+                "Revenues",
+                "Other Revenues",
+                "Total Revenues",
+                "Cost Of Revenues",
+                "Gross Profit",
+                "Selling General & Admin Expenses",
+                "R&D Expenses",
+                "Total Operating Expenses",
+                "Operating Income",
+                "Interest Expense",
+                "Interest And Investment Income",
+                "Net Interest Expenses",
+                "Other Non Operating Income (Expenses)",
+                "EBT, Incl. Unusual Items",
+                "Income Tax Expense",
+                "Net Income",
+            ],
+            [
+                "Revenues",
+                "Other Revenues",
+                "Total Revenues",
+                "Cost Of Revenues",
+                "Gross Profit",
+                "Selling General & Admin Expenses",
+                "R&D Expenses",
+                "Total Operating Expenses",
+                "Operating Income",
+                "Interest Expense",
+                "Interest And Investment Income",
+                "Net Interest Expenses",
+                "Other Non Operating Income (Expenses)",
+                "EBT, Incl. Unusual Items",
+                "Income Tax Expense",
+                "Net Income",
+            ],
+        ],
+        "columns.y_data": [
+            [
+                383285.0,
+                None,
+                383285.0,
+                -214137.0,
+                169148.0,
+                -24932.0,
+                -29915.0,
+                -54847.0,
+                114301.0,
+                -3933.0,
+                3750.0,
+                -183.0,
+                -382.0,
+                113736.0,
+                -16741.0,
+                96995.0,
+            ],
+            [
+                394328.0,
+                None,
+                394328.0,
+                -223546.0,
+                170782.0,
+                -25094.0,
+                -26251.0,
+                -51345.0,
+                119437.0,
+                -2931.0,
+                2825.0,
+                -106.0,
+                -228.0,
+                119103.0,
+                -19300.0,
+                99803.0,
+            ],
+        ],
+        "columns.measure": [
+            [
+                "relative",
+                "relative",
+                "total",
+                "relative",
+                "total",
+                "relative",
+                "relative",
+                "relative",
+                "total",
+                "relative",
+                "relative",
+                "relative",
+                "relative",
+                "total",
+                "relative ",
+                "total",
+            ],
+            [
+                "relative",
+                "relative",
+                "total",
+                "relative",
+                "total",
+                "relative",
+                "relative",
+                "relative",
+                "total",
+                "relative",
+                "relative",
+                "relative",
+                "relative",
+                "total",
+                "relative ",
+                "total",
+            ],
+        ],
+        "props.text": [
+            [
+                "383,285.00",
+                "-",
+                "383,285.00",
+                "214,137.00",
+                "169,148.00",
+                "24,932.00",
+                "29,915.00",
+                "54,847.00",
+                "114,301.00",
+                "-3,933.00",
+                "3,750.00",
+                "-183",
+                "-382",
+                "113,736.00",
+                "16,741.00",
+                "96,995.00",
+            ],
+            [
+                "394,328.00",
+                "-",
+                "394,328.00",
+                "223,546.00",
+                "170,782.00",
+                "25,094.00",
+                "26,251.00",
+                "51,345.00",
+                "119,437.00",
+                "-2,931.00",
+                "2,825.00",
+                "-106",
+                "-228",
+                "119,103.00",
+                "19,300.00",
+                "99,803.00",
+            ],
+        ],
+    }
+    assert result == expected_flat_output
 
 
 def test_json_aggregation_basic():
@@ -261,30 +417,23 @@ def test_python_aggregation_with_binary_data():
     with open(output_file, "r") as f:
         result = json.load(f)
 
-    # Verify the structure is correct
-    assert "test_cohort" in result, "Should have the test cohort"
-    assert "binary_data" in result["test_cohort"], "Should have binary_data column"
-    assert "text_data" in result["test_cohort"], "Should have text_data column"
-    assert "numeric_data" in result["test_cohort"], "Should have numeric_data column"
+    # Verify the flat structure (no cohort grouping)
+    assert "binary_data" in result, "Should have binary_data column"
+    assert "text_data" in result, "Should have text_data column"
+    assert "numeric_data" in result, "Should have numeric_data column"
 
-    # Verify the data was aggregated into lists (flat structure, no cohorts)
-    
     # Text data should be aggregated into a list
     assert isinstance(result["text_data"], list), "text_data should be aggregated into a list"
     assert len(result["text_data"]) == 2, "Should have 2 text values"
     assert result["text_data"] == ["value1", "value2"], "Text values should be correct"
 
     # Numeric data should be aggregated into a list
-    assert isinstance(
-        result["numeric_data"], list
-    ), "numeric_data should be aggregated into a list"
+    assert isinstance(result["numeric_data"], list), "numeric_data should be aggregated into a list"
     assert len(result["numeric_data"]) == 2, "Should have 2 numeric values"
     assert result["numeric_data"] == [42, 84], "Numeric values should be correct"
 
     # Binary data should be converted to base64 strings for JSON serialization
-    assert isinstance(
-        result["binary_data"], list
-    ), "binary_data should be aggregated into a list"
+    assert isinstance(result["binary_data"], list), "binary_data should be aggregated into a list"
     assert len(result["binary_data"]) == 2, "Should have 2 binary values"
 
     # Verify the binary data was converted to base64 strings
@@ -303,8 +452,8 @@ def test_python_aggregation_with_binary_data():
 
 def test_pure_python_aggregation_compatibility():
     """
-    Test that the pure Python aggregation produces the same results as the original Polars version
-    for normal data (ensuring we maintain backward compatibility).
+    Test that the pure Python aggregation produces flat structure output
+    for normal data (consistent with new aggregator behavior).
     """
 
     output_dir = temp_folder()
@@ -331,17 +480,11 @@ def test_pure_python_aggregation_compatibility():
         },
     ]
 
+    # Expected flat structure output
     expected_output = {
-        "2023-Q1": {
-            "columns.x_data": [["A", "B"], ["A", "B"]],
-            "columns.y_data": [[10, 20], [15, 25]],
-            "props.text": [["10", "20"], ["15", "25"]],
-        },
-        "2023-Q2": {
-            "columns.x_data": ["A", "B"],
-            "columns.y_data": [30, 40],
-            "props.text": ["30", "40"],
-        },
+        "columns.x_data": [["A", "B"], ["A", "B"], ["A", "B"]],
+        "columns.y_data": [[10, 20], [15, 25], [30, 40]],
+        "props.text": [["10", "20"], ["15", "25"], ["30", "40"]],
     }
 
     # Test with direct data
@@ -388,22 +531,23 @@ def test_decimal_data_handling():
     with open(output_file, "r") as f:
         result = json.load(f)
 
-    # Verify the structure is correct
-    assert "financial_data" in result, "Should have the financial_data cohort"
-    cohort_data = result["financial_data"]
+    # Verify the flat structure (no cohort grouping)
+    assert "price" in result, "Should have price column"
+    assert "quantity" in result, "Should have quantity column"
+    assert "total" in result, "Should have total column"
 
     # Verify Decimal values were converted to floats and aggregated properly
-    assert isinstance(cohort_data["price"], list), "price should be aggregated into a list"
-    assert len(cohort_data["price"]) == 2, "Should have 2 price values"
-    assert cohort_data["price"] == [123.45, 67.89], "Price values should be converted to float"
+    assert isinstance(result["price"], list), "price should be aggregated into a list"
+    assert len(result["price"]) == 2, "Should have 2 price values"
+    assert result["price"] == [123.45, 67.89], "Price values should be converted to float"
 
-    assert isinstance(cohort_data["quantity"], list), "quantity should be aggregated into a list"
-    assert len(cohort_data["quantity"]) == 2, "Should have 2 quantity values"
-    assert cohort_data["quantity"] == [10.5, 5.25], "Quantity values should be converted to float"
+    assert isinstance(result["quantity"], list), "quantity should be aggregated into a list"
+    assert len(result["quantity"]) == 2, "Should have 2 quantity values"
+    assert result["quantity"] == [10.5, 5.25], "Quantity values should be converted to float"
 
-    assert isinstance(cohort_data["total"], list), "total should be aggregated into a list"
-    assert len(cohort_data["total"]) == 2, "Should have 2 total values"
-    assert cohort_data["total"] == [1296.225, 356.4225], "Total values should be converted to float"
+    assert isinstance(result["total"], list), "total should be aggregated into a list"
+    assert len(result["total"]) == 2, "Should have 2 total values"
+    assert result["total"] == [1296.225, 356.4225], "Total values should be converted to float"
 
 
 def test_datetime_data_handling():
@@ -443,34 +587,144 @@ def test_datetime_data_handling():
     with open(output_file, "r") as f:
         result = json.load(f)
 
-    # Verify the structure is correct
-    assert "temporal_data" in result, "Should have the temporal_data cohort"
-    cohort_data = result["temporal_data"]
+    # Verify the flat structure (no cohort grouping)
+    assert "created_at" in result, "Should have created_at column"
+    assert "event_date" in result, "Should have event_date column"
+    assert "event_time" in result, "Should have event_time column"
 
     # Verify datetime values were converted to ISO strings and aggregated properly
-    assert isinstance(
-        cohort_data["created_at"], list
-    ), "created_at should be aggregated into a list"
-    assert len(cohort_data["created_at"]) == 2, "Should have 2 created_at values"
-    assert cohort_data["created_at"] == [
+    assert isinstance(result["created_at"], list), "created_at should be aggregated into a list"
+    assert len(result["created_at"]) == 2, "Should have 2 created_at values"
+    assert result["created_at"] == [
         "2023-12-25T15:30:45",
         "2023-12-26T10:15:30",
     ], "Datetime values should be ISO strings"
 
-    assert isinstance(
-        cohort_data["event_date"], list
-    ), "event_date should be aggregated into a list"
-    assert len(cohort_data["event_date"]) == 2, "Should have 2 event_date values"
-    assert cohort_data["event_date"] == [
+    assert isinstance(result["event_date"], list), "event_date should be aggregated into a list"
+    assert len(result["event_date"]) == 2, "Should have 2 event_date values"
+    assert result["event_date"] == [
         "2023-12-25",
         "2023-12-26",
     ], "Date values should be ISO strings"
 
-    assert isinstance(
-        cohort_data["event_time"], list
-    ), "event_time should be aggregated into a list"
-    assert len(cohort_data["event_time"]) == 2, "Should have 2 event_time values"
-    assert cohort_data["event_time"] == [
+    assert isinstance(result["event_time"], list), "event_time should be aggregated into a list"
+    assert len(result["event_time"]) == 2, "Should have 2 event_time values"
+    assert result["event_time"] == [
         "15:30:45",
         "10:15:30",
     ], "Time values should be ISO strings"
+
+
+def test_new_flat_aggregator_structure():
+    """Test that the new aggregator outputs flat data structure without cohort grouping"""
+    output_dir = temp_folder()
+
+    # Test data with cohort_on values that should be ignored in output
+    test_input = """[
+        {
+            "cohort_on": "Product A",
+            "columns.x_data": ["Jan", "Feb"],
+            "columns.y_data": [100, 150],
+            "props.text": ["100", "150"]
+        },
+        {
+            "cohort_on": "Product B", 
+            "columns.x_data": ["Jan", "Feb"],
+            "columns.y_data": [200, 250],
+            "props.text": ["200", "250"]
+        }
+    ]"""
+
+    # Expected flat output structure (no cohort_on field, no grouping)
+    expected_output = {
+        "columns.x_data": [["Jan", "Feb"], ["Jan", "Feb"]],
+        "columns.y_data": [[100, 150], [200, 250]],
+        "props.text": [["100", "150"], ["200", "250"]],
+    }
+
+    input_path = temp_file("test_input.json", test_input, output_dir=output_dir)
+    Aggregator.aggregate(str(input_path), output_dir)
+
+    with open(f"{output_dir}/data.json") as f:
+        result = json.load(f)
+
+    # Verify flat structure with no cohort_on field
+    assert result == expected_output
+    assert "cohort_on" not in result, "cohort_on should not appear in output data"
+
+
+def test_aggregator_with_mixed_data_types():
+    """Test that the aggregator handles different data types correctly in flat structure"""
+    output_dir = temp_folder()
+
+    test_input = """[
+        {
+            "cohort_on": "group1",
+            "text_col": "value1",
+            "number_col": 42,
+            "array_col": [1, 2, 3],
+            "null_col": null
+        },
+        {
+            "cohort_on": "group2",
+            "text_col": "value2", 
+            "number_col": 84,
+            "array_col": [4, 5, 6],
+            "null_col": "not_null"
+        }
+    ]"""
+
+    expected_output = {
+        "text_col": ["value1", "value2"],
+        "number_col": [42, 84],
+        "array_col": [[1, 2, 3], [4, 5, 6]],
+        "null_col": [None, "not_null"],
+    }
+
+    input_path = temp_file("mixed_data.json", test_input, output_dir=output_dir)
+    Aggregator.aggregate(str(input_path), output_dir)
+
+    with open(f"{output_dir}/data.json") as f:
+        result = json.load(f)
+
+    assert result == expected_output
+    assert "cohort_on" not in result
+
+
+def test_aggregator_empty_data():
+    """Test aggregator behavior with empty input"""
+    output_dir = temp_folder()
+
+    test_input = "[]"
+
+    input_path = temp_file("empty.json", test_input, output_dir=output_dir)
+    Aggregator.aggregate(str(input_path), output_dir)
+
+    with open(f"{output_dir}/data.json") as f:
+        result = json.load(f)
+
+    assert result == {}
+
+
+def test_aggregator_single_row():
+    """Test aggregator with single row of data"""
+    output_dir = temp_folder()
+
+    test_input = """[
+        {
+            "cohort_on": "single",
+            "columns.x": ["A", "B", "C"],
+            "columns.y": [10, 20, 30]
+        }
+    ]"""
+
+    expected_output = {"columns.x": ["A", "B", "C"], "columns.y": [10, 20, 30]}
+
+    input_path = temp_file("single_row.json", test_input, output_dir=output_dir)
+    Aggregator.aggregate(str(input_path), output_dir)
+
+    with open(f"{output_dir}/data.json") as f:
+        result = json.load(f)
+
+    assert result == expected_output
+    assert "cohort_on" not in result

@@ -15,7 +15,6 @@ import warnings
 import re
 
 
-
 class TraceTokenizer:
     def __init__(self, trace: Trace, model: Model, source: Source):
         self.trace = trace
@@ -49,7 +48,6 @@ class TraceTokenizer:
         if hasattr(self, "filter_by"):
             data.update({"filter_by": self.filter_by})
         return TokenizedTrace(**data)
-
 
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
