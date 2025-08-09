@@ -33,9 +33,9 @@ class Trace(NamedModel, ParentModel):
     * **Testable**: You can write  general & fast tests to ensure that trace data is correct.
 
     ## Cohorts
-    To easily cut a trace into multiple cohorts you can use the `cohort_on` attribute.
+    To easily cut a trace into multiple cohorts you can use the `cohort_on` attribute. This grouping is performed client-side using DuckDB WASM for dynamic and interactive data processing.
     !!! example
-        To represent `Revenue Per Week by Account Executive`. You can use the `cohort_on` attribute to split out data into different series within a single trace.
+        To represent `Revenue Per Week by Account Executive`. You can use the `cohort_on` attribute to configure how the frontend should split data into different series within a single trace.
         ``` yaml
         traces:
           - name: rev-per-week-by-account-executive
@@ -93,7 +93,7 @@ class Trace(NamedModel, ParentModel):
     )
     cohort_on: Optional[QueryOrStringField] = Field(
         None,
-        description="`cohort_on` enables splitting the trace out into different series or cohorts. The column or query referenced here will be used to cut the resulting trace.",
+        description="`cohort_on` enables splitting the trace out into different series or cohorts on the client-side. The column or query referenced here will be used by the frontend to group data dynamically.",
     )
     order_by: Optional[List[QueryOrStringField]] = Field(
         None,

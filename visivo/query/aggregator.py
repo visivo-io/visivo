@@ -66,42 +66,33 @@ class Aggregator:
     @classmethod
     def aggregate_data(cls, data: list, trace_dir: str):
         """
-        Pure Python aggregation that groups by cohort_on and aggregates other columns into lists
+        Simplified aggregation that outputs all data under "values" key
         """
-        # Group data by cohort_on
-        grouped = defaultdict(list)
+        aggregated_row = {}
+
+        # Get all column names except cohort_on (that's configuration, not data)
+        all_columns = set()
         for row in data:
-            cohort_on = row.get("cohort_on")
-            if cohort_on is not None:
-                grouped[cohort_on].append(row)
+            all_columns.update(row.keys())
+        all_columns.discard("cohort_on")
 
-        # Aggregate each group
-        result = {}
-        for cohort, rows in grouped.items():
-            aggregated_row = {}
+        # Aggregate each column
+        for col in all_columns:
+            values = []
+            for row in data:
+                if col in row:
+                    values.append(row[col])
 
-            # Get all column names except cohort_on
-            all_columns = set()
-            for row in rows:
-                all_columns.update(row.keys())
-            all_columns.discard("cohort_on")
+            # Only process columns that have values
+            if values:
+                # If there's only one value and it is a list, unwrap it from the list
+                if len(values) == 1 and isinstance(values[0], list):
+                    aggregated_row[col] = values[0]
+                else:
+                    aggregated_row[col] = values
 
-            # Aggregate each column
-            for col in all_columns:
-                values = []
-                for row in rows:
-                    if col in row:
-                        values.append(row[col])
-
-                # Only process columns that have values
-                if values:
-                    # If there's only one value and it is a list, unwrap it from the list
-                    if len(values) == 1 and isinstance(values[0], list):
-                        aggregated_row[col] = values[0]
-                    else:
-                        aggregated_row[col] = values
-
-            result[cohort] = aggregated_row
+        # Output flat structure without wrapper
+        result = aggregated_row
 
         # Make result JSON-serializable (handles bytes, etc.)
         json_safe_result = cls._make_json_serializable(result)

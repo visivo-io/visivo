@@ -9,16 +9,13 @@ from visivo.telemetry.middleware import init_telemetry_middleware
 
 
 class FlaskApp:
-
-    def __init__(self, output_dir, project: Project, working_dir=None):
+    def __init__(self, output_dir, project: Project):
         self.app = Flask(__name__, static_folder=output_dir, static_url_path="/data")
 
         self._project_json = (
             Serializer(project=project).dereference().model_dump_json(exclude_none=True)
         )
         self._project = project
-
-        self._working_dir = working_dir
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))

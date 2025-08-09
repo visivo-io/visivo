@@ -4,7 +4,6 @@ from typing import List, Optional, Dict
 
 class TokenizedTrace(BaseModel):
     sql: str
-    cohort_on: str
     source: str
     source_type: str
     groupby_statements: Optional[List[str]] = None

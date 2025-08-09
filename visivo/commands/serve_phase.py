@@ -22,7 +22,10 @@ def serve_phase(
     new=False,
 ):
 
-    app = FlaskApp(output_dir=output_dir, project=project, working_dir=working_dir)
+    app = FlaskApp(
+        output_dir=output_dir,
+        project=project,
+    )
 
     def on_project_change(one_shot=False):
         try:
