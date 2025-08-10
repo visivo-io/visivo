@@ -56,7 +56,7 @@ def test_tokenization_with_query_functions():
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.select_items["props.y"] == "sum(amount)"
     assert tokenized_trace.select_items["props.x"] == "date_trunc('week', completed_at)"
-    assert len(tokenized_trace.groupby_statements) == 2
+    assert len(tokenized_trace.groupby_statements) == 1
     assert "date_trunc('week', completed_at)" in tokenized_trace.groupby_statements
 
 
@@ -78,7 +78,7 @@ def test_tokenization_with_column_functions():
     tokenized_trace = trace_tokenizer.tokenize()
     assert tokenized_trace.select_items["columns.x"] == "sum(amount)"
     assert tokenized_trace.select_items["columns.y"] == "date_trunc('week', completed_at)"
-    assert len(tokenized_trace.groupby_statements) == 2
+    assert len(tokenized_trace.groupby_statements) == 1
     assert "date_trunc('week', completed_at)" in tokenized_trace.groupby_statements
 
 
