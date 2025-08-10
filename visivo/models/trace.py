@@ -91,9 +91,9 @@ class Trace(NamedModel, ParentModel):
         ...,
         description="The model or model ref that Visivo should use to build the trace.",
     )
-    cohort_on: Optional[QueryOrStringField] = Field(
+    actions: Optional[List[QueryOrStringField]] = Field(
         None,
-        description="`cohort_on` enables splitting the trace out into different series or cohorts on the client-side. The column or query referenced here will be used by the frontend to group data dynamically.",
+        description="A list of `column()` or `?{}` functions that evaluate to `true` or `false`. Can include aggregations in the sql statement.",
     )
     order_by: Optional[List[QueryOrStringField]] = Field(
         None,

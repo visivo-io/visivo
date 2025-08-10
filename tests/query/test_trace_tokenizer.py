@@ -13,7 +13,6 @@ def test_TraceTonkenizer():
     tokenized_trace = trace_tokenizer.tokenize()
     trace_dict = tokenized_trace.model_dump(exclude_none=True)
     assert trace_dict["sql"] == "select * from test_table"
-    assert trace_dict["cohort_on"] == f"'{trace.name}'"
     assert trace_dict["select_items"] == {"props.x": "x", "props.y": "y"}
     assert trace_dict["source"] == "source"
 
@@ -25,7 +24,6 @@ def test_TraceTonkenizer_surface():
     tokenized_trace = trace_tokenizer.tokenize()
     trace_dict = tokenized_trace.model_dump(exclude_none=True)
     assert trace_dict["sql"] == "select * from test_table"
-    assert trace_dict["cohort_on"] == f"'{trace.name}'"
     assert trace_dict["select_items"] == {"props.z.0": "x+10", "props.z.1": "y+15"}
     assert trace_dict["source"] == "source"
 
@@ -38,7 +36,6 @@ def test_TraceTonkenizer_without_name():
     tokenized_trace = trace_tokenizer.tokenize()
     trace_dict = tokenized_trace.model_dump(exclude_none=True)
     assert trace_dict["sql"] == "select * from test_table"
-    assert trace_dict["cohort_on"] == "'values'"
     assert trace_dict["select_items"] == {"props.x": "x", "props.y": "y"}
     assert trace_dict["source"] == "source"
 
@@ -47,7 +44,6 @@ def test_tokenization_with_query_functions():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "widget",
         "props": {
             "type": "scatter",
             "x": "?{ date_trunc('week', completed_at) }",
@@ -58,7 +54,6 @@ def test_tokenization_with_query_functions():
     source = SnowflakeSourceFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
-    assert tokenized_trace.cohort_on == "widget"
     assert tokenized_trace.select_items["props.y"] == "sum(amount)"
     assert tokenized_trace.select_items["props.x"] == "date_trunc('week', completed_at)"
     assert len(tokenized_trace.groupby_statements) == 2
@@ -69,7 +64,6 @@ def test_tokenization_with_column_functions():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "widget",
         "columns": {"x": "?{sum(amount)}", "y": "?{date_trunc('week', completed_at)}"},
         "props": {
             "type": "scatter",
@@ -82,53 +76,16 @@ def test_tokenization_with_column_functions():
     source = SnowflakeSourceFactory()
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
-    assert tokenized_trace.cohort_on == "widget"
     assert tokenized_trace.select_items["columns.x"] == "sum(amount)"
     assert tokenized_trace.select_items["columns.y"] == "date_trunc('week', completed_at)"
     assert len(tokenized_trace.groupby_statements) == 2
     assert "date_trunc('week', completed_at)" in tokenized_trace.groupby_statements
 
 
-def test_tokenization_cohort_on():
-    data = {
-        "name": "query_trace",
-        "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "?{widget}",
-        "props": {
-            "type": "scatter",
-            "x": "?{ date_trunc('week', completed_at) }",
-            "y": "?{ sum(amount) }",
-        },
-    }
-    trace = Trace(**data)
-    source = SnowflakeSourceFactory()
-    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
-    tokenized_trace = trace_tokenizer.tokenize()
-    assert tokenized_trace.cohort_on == "widget"
-    assert "cohort_on" not in tokenized_trace.select_items.keys()
-
-    data = {
-        "name": "query_trace",
-        "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "widget",
-        "props": {
-            "type": "scatter",
-            "x": "?{ date_trunc('week', completed_at) }",
-            "y": "?{ sum(amount) }",
-        },
-    }
-    trace = Trace(**data)
-    source = SnowflakeSourceFactory()
-    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
-    tokenized_trace = trace_tokenizer.tokenize()
-    assert tokenized_trace.cohort_on == "widget"
-
-
 def test_tokenization_order_by():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
             "x": "?{ date_trunc('week', completed_at) }",
@@ -214,7 +171,6 @@ def test_tokenization_of_nested_inputs():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
             "x": "?{ date_trunc('week', completed_at) }",
