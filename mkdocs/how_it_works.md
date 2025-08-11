@@ -23,7 +23,6 @@ You can write a trace in any yml file directly your project. The trace can be ju
     traces:
       - name: simple_trace
         model: ${ref(widget_sales)}
-        cohort_on: widget
         props:
           x: ?{ date_trunc('week', completed_at) }
           y: ?{ sum(amount) }
@@ -44,7 +43,6 @@ You can write a trace in any yml file directly your project. The trace can be ju
     traces:
       - name: simple_trace
         model: ${ref(widget_sales)}
-        cohort_on: ?{ widget }
         props:
           x: ?{ date_trunc('week', completed_at) }
           y: ?{ sum(amount) }
@@ -85,13 +83,11 @@ sql as (
 select * from widget_sales --context set to target.database & target.schema
 )
 select 
-  widget as "cohort_on",
   date_trunc('week', completed_at) as "x", 
   sum(amount) as "y", 
   case sum(amount) > 300 then 'green' else 'blue' end as "marker.color"
 from sql 
 GROUP BY 
-  "cohort_on",
   "x"
 ```
 After small transformations on the output of the query you get this `data.json` which is stored in the target directly next to the query to enable debugging:

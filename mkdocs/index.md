@@ -114,7 +114,6 @@ models:
 traces:
   - name: simple_trace
     model: ${ref(widget_sales)}
-    cohort_on: widget
     props:
       x: ?{ date_trunc('week', completed_at) }
       y: ?{ sum(amount) }
@@ -191,7 +190,6 @@ Here's a simple example of a trace:
 traces:
   - name: simple_trace
     model: ${ref(widget_sales)}
-    cohort_on: widget
     props:
       type: scatter
       x: ?{ date_trunc('week', completed_at) }
@@ -204,7 +202,6 @@ traces:
 We won't go into all of the details of the trace here, but a few things to note: 
 
 * **`type`** tells Visivo how to plot the data. Visivo utilizes plotly.js and you can use most plotly trace types for this attribute. 
-* **`cohort_on`** let's Visivo know that you would like cut your chart by the `widget` column from the `widget_sales` table. Thus you will get as many lines as you have distinct `widget` types in the table from this trace. 
 * **`?{ }`** is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. 
 * When **`?{}`** is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. 
 
