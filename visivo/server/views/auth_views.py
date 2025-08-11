@@ -15,7 +15,7 @@ FLASK_DEFAULT_PORT = 8000
 
 
 def register_auth_views(app, flask_app, output_dir):
-    @app.route("/api/auth/status", methods=["POST"])
+    @app.route("/api/auth/status/", methods=["POST"])
     def authorize_status():
         existing_token = get_existing_token()
         if existing_token:
@@ -31,11 +31,11 @@ def register_auth_views(app, flask_app, output_dir):
 
         return jsonify({"message": "UnAuthenticated user access"})
 
-    @app.route("/api/auth/authorize-device-token", methods=["POST"])
+    @app.route("/api/auth/authorize-device-token/", methods=["POST"])
     def authorize_device_token():
         auth_id = str(uuid4())
         device_name = platform.node()
-        redirect_url = f"http://localhost:{FLASK_DEFAULT_PORT}/api/auth/authorize-device-token/callback/{auth_id}"
+        redirect_url = f"http://localhost:{FLASK_DEFAULT_PORT}/api/auth/authorize-device-token/callback/{auth_id}/"
 
         params = {"redirect_url": redirect_url, "name": device_name}
 
@@ -57,7 +57,7 @@ def register_auth_views(app, flask_app, output_dir):
             }
         )
 
-    @app.route("/api/auth/authorize-device-token/callback/<auth_id>", methods=["GET", "POST"])
+    @app.route("/api/auth/authorize-device-token/callback/<auth_id>/", methods=["GET", "POST"])
     def authorize_device_callback(auth_id):
         token = request.args.get("token") if request.method == "GET" else None
         if not token:

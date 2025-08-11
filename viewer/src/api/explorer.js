@@ -12,7 +12,7 @@ export const fetchExplorer = async () => {
 };
 
 export const fetchSourceMetadata = async () => {
-  const response = await fetch('/api/project/sources_metadata');
+  const response = await fetch('/api/project/sources_metadata/');
   if (response.status === 200) {
     const data = await response.json();
     return data;
@@ -37,7 +37,7 @@ export const fetchDatabases = async sourceName => {
 
 export const fetchSchemas = async (sourceName, databaseName) => {
   const response = await fetch(
-    `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas`
+    `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(databaseName)}/schemas/`
   );
   if (response.status === 200) {
     const data = await response.json();

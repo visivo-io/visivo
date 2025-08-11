@@ -57,7 +57,7 @@ describe('explorer API functions', () => {
 
       const result = await fetchSourceMetadata();
 
-      expect(fetch).toHaveBeenCalledWith('/api/project/sources_metadata');
+      expect(fetch).toHaveBeenCalledWith('/api/project/sources_metadata/');
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
     });

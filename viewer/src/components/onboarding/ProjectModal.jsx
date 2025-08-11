@@ -18,7 +18,7 @@ const ProjectModal = ({ handleSetProjectName, tempProjectName, setTempProjectNam
     setIsLoading(true)
 
     try {
-      const res = await fetch("/api/project/init", {
+      const res = await fetch("/api/project/init/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

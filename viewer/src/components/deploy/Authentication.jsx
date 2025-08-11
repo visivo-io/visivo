@@ -12,7 +12,7 @@ const Authentication = ({ setStatus }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/authorize-device-token', {
+      const response = await fetch('/api/auth/authorize-device-token/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -45,7 +45,7 @@ const Authentication = ({ setStatus }) => {
       }
 
       try {
-        const res = await fetch(`/api/cloud/job/status/${authId}`);
+        const res = await fetch(`/api/cloud/job/status/${authId}/`);
         const data = await res.json();
         retries++;
 

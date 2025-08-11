@@ -20,7 +20,7 @@ def register_dashboard_views(app, flask_app, output_dir):
                     "id": dashboard_name,
                     "name": dashboard_name,
                     "signed_thumbnail_file_url": (
-                        f"/api/dashboards/{dashboard_name_hash}.png" if thumbnail_exists else None
+                        f"/api/dashboards/{dashboard_name_hash}.png/" if thumbnail_exists else None
                     ),
                 }
             )
@@ -28,7 +28,7 @@ def register_dashboard_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error fetching dashboard data: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/dashboards/<dashboard_name_hash>.png", methods=["GET"])
+    @app.route("/api/dashboards/<dashboard_name_hash>.png/", methods=["GET"])
     def get_thumbnail_api(dashboard_name_hash):
         try:
             thumbnail_path = os.path.join("dashboards", f"{dashboard_name_hash}.png")
@@ -41,7 +41,7 @@ def register_dashboard_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error retrieving thumbnail: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/dashboards/<dashboard_name_hash>.png", methods=["POST"])
+    @app.route("/api/dashboards/<dashboard_name_hash>.png/", methods=["POST"])
     def create_thumbnail_api(dashboard_name_hash):
         try:
             if "file" not in request.files:
@@ -60,7 +60,7 @@ def register_dashboard_views(app, flask_app, output_dir):
 
             return jsonify(
                 {
-                    "signed_thumbnail_file_url": f"/api/dashboards/{dashboard_name_hash}.png",
+                    "signed_thumbnail_file_url": f"/api/dashboards/{dashboard_name_hash}.png/",
                 }
             )
 

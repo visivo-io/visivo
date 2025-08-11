@@ -32,7 +32,7 @@ const AddStageForm = ({ stages, setStages, setSelectedStage, onClose }) => {
     setError('');
 
     try {
-      const response = await fetch('/api/cloud/stages', {
+      const response = await fetch('/api/cloud/stages/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmedName }),

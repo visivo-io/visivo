@@ -54,7 +54,7 @@ def register_project_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error writing changes: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/project/load_example", methods=["POST"])
+    @app.route("/api/project/load_example/", methods=["POST"])
     def load_example_project():
         """Load example project from GitHub"""
         from visivo.commands.init_phase import load_example_project as load_example
@@ -90,7 +90,7 @@ def register_project_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error loading example project: {str(e)}")
             return jsonify({"message": f"Failed to load example project: {str(e)}"}), 500
 
-    @app.route("/api/project/init", methods=["POST"])
+    @app.route("/api/project/init/", methods=["POST"])
     def init_project():
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
@@ -105,7 +105,7 @@ def register_project_views(app, flask_app, output_dir):
 
         return jsonify({"message": "Project initialized", "project_file_path": project_path})
 
-    @app.route("/api/source/create", methods=["POST"])
+    @app.route("/api/source/create/", methods=["POST"])
     def create_source_api():
         form = request.form
         data = CreateSourceRequest(
@@ -131,7 +131,7 @@ def register_project_views(app, flask_app, output_dir):
 
         return jsonify({"message": "Source created", "source": source.model_dump()})
 
-    @app.route("/api/source/upload", methods=["POST"])
+    @app.route("/api/source/upload/", methods=["POST"])
     def upload_file():
         file = request.files.get("file")
         source_type = request.form.get("source_type")
@@ -191,7 +191,7 @@ def register_project_views(app, flask_app, output_dir):
 
             return jsonify({"message": "File uploaded", "dashboard": dashboard.model_dump()})
 
-    @app.route("/api/project/finalize", methods=["POST"])
+    @app.route("/api/project/finalize/", methods=["POST"])
     def finalize_project():
         data = request.get_json()
         project_name = data.get("project_name")

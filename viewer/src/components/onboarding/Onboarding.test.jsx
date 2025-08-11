@@ -71,7 +71,7 @@ test("handles 'Import Example' click", async () => {
   fireEvent.click(importButton);
 
   await waitFor(() => {
-    expect(global.fetch).toHaveBeenCalledWith("/api/project/load_example", expect.anything());
+    expect(global.fetch).toHaveBeenCalledWith("/api/project/load_example/", expect.anything());
   });
 });
 
