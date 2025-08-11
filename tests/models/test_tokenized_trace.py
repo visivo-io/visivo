@@ -6,14 +6,13 @@ import pytest
 def test_TokenizedTrace_simple_data():
     data = {
         "sql": "select * from table",
-        "cohort_on": "?{x}",
         "source": "name",
         "source_type": "bigquery",
     }
     trace = TokenizedTrace(**data)
     assert trace.sql == "select * from table"
-    assert trace.cohort_on == "?{x}"
     assert trace.source == "name"
+    assert trace.source_type == "bigquery"
 
 
 def test_TokenizedTrace_missing_data():
@@ -28,7 +27,6 @@ def test_TokenizedTrace_missing_data():
 def test_TokenizedTrace_invalid_order_by_input():
     data = {
         "sql": "select * from table",
-        "cohort_on": "widget",
         "groupby_statements": ["widget", "completed_at"],
         "select_items": {"y": "sum(amount)", "x": "completed_at"},
         "order_by": {"no": "dicts allowed!"},

@@ -10,7 +10,6 @@ from tests.factories.model_factories import SnowflakeSourceFactory
 def test_QueryStringBuilder_with_only_base_query():
     tokenized_trace = TokenizedTrace(
         sql="select * from table",
-        cohort_on="'value'",
         source="name",
         source_type="snowflake",
     )
@@ -19,19 +18,10 @@ def test_QueryStringBuilder_with_only_base_query():
         """WITH 
         base_query as (
             select * from table
-        ),
-        columnize_cohort_on as (
-            SELECT 
-                *,
-                'value' as "cohort_on"
-            FROM base_query
         )
         SELECT
-                *,
-            "cohort_on"
-        FROM columnize_cohort_on
-            GROUP BY
-            "cohort_on" 
+                *
+        FROM base_query
         -- source: name"""
     )
 
@@ -40,7 +30,6 @@ def test_tokenization_query_string_order_by():
     data = {
         "name": "query_trace",
         "model": {"sql": "SELECT * FROM widget_sales"},
-        "cohort_on": "?{widget}",
         "props": {
             "type": "scatter",
             "x": "?{ date_trunc('week', completed_at) }",

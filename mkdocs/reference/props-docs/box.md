@@ -89,7 +89,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
         traces:
           - name: Rewards Distribution by Quest
             model: ${ref(monty-python-quest-data-unique)}
-            cohort_on: "person"
             props:
               type: box
               y: ?{person}
@@ -127,7 +126,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Box/#attributes) for 
         traces:
           - name: Proclamations Box Plot
             model: ${ref(monty-python-quest-proclamations)}
-            cohort_on: "person"
             props:
               type: box
               y: ?{proclamations_made}

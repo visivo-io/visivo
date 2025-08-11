@@ -14,8 +14,6 @@ from visivo.utils import extract_value_from_function
 import warnings
 import re
 
-DEFAULT_COHORT_ON = "'values'"
-
 
 class TraceTokenizer:
     def __init__(self, trace: Trace, model: Model, source: Source):
@@ -31,7 +29,6 @@ class TraceTokenizer:
         self._set_filter()
 
     def tokenize(self):
-        cohort_on = self._get_cohort_on()
         if isinstance(self.model, LocalMergeModel):
             source_type = "duckdb"
         elif self.source.type:
@@ -40,7 +37,6 @@ class TraceTokenizer:
             source_type = None
         data = {
             "sql": self.model.sql,
-            "cohort_on": cohort_on,
             "select_items": self.select_items,
             "source": self.source.name,
             "source_type": source_type,
@@ -52,16 +48,6 @@ class TraceTokenizer:
         if hasattr(self, "filter_by"):
             data.update({"filter_by": self.filter_by})
         return TokenizedTrace(**data)
-
-    def _get_cohort_on(self):
-        """Enables passing query tag to cohort on or just passing the column name as is"""
-        cohort_on = self.trace.cohort_on
-        if self.trace.name:
-            cohort_on = cohort_on or f"'{self.trace.name}'"
-        cohort_on = cohort_on or DEFAULT_COHORT_ON
-        # TODO Replace with query string
-        de_query = extract_value_from_function(cohort_on, "query")
-        return de_query if de_query else cohort_on
 
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:
@@ -112,7 +98,7 @@ class TraceTokenizer:
                 order_by.append(statement_clean)
         else:
             order_by = []
-        query_statements = list(self.select_items.values()) + order_by + [self._get_cohort_on()]
+        query_statements = list(self.select_items.values()) + order_by
         groupby = []
         for statement in query_statements:
             if re.findall(r"^\s*'.*'\s*$", statement):
