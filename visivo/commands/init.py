@@ -8,12 +8,12 @@ from visivo.commands.options import project_dir
     "--example",
     type=str,
     help="Load an example project from GitHub (e.g., 'github-releases')",
-    default=None
+    default=None,
 )
 def init(project_dir, example):
     """
     Initialize a new Visivo project.
-    
+
     By default, creates a simple project.visivo.yml file with a project name.
     Use --example to load an example project from GitHub.
     """
@@ -22,6 +22,7 @@ def init(project_dir, example):
     Logger.instance().debug("Init")
 
     from visivo.commands.init_phase import init_phase
+
     init_phase(project_dir, example)
-    
+
     Logger.instance().success("Done")

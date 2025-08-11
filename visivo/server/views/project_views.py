@@ -58,7 +58,7 @@ def register_project_views(app, flask_app, output_dir):
     def load_example_project():
         """Load example project from GitHub"""
         from visivo.commands.init_phase import load_example_project as load_example
-        
+
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
         example_type = data.get("example_type", "github-releases")
@@ -69,12 +69,12 @@ def register_project_views(app, flask_app, output_dir):
 
         try:
             project_file_path = load_example(project_name, example_type, project_dir)
-            
+
             # Initialize the project in Flask app
             if project_file_path:
                 project_path = Path(project_dir)
                 discover = Discover(working_dir=project_path, output_dir=None)
-                
+
                 try:
                     parser = ParserFactory().build(
                         project_file=discover.project_file, files=discover.files
@@ -83,7 +83,7 @@ def register_project_views(app, flask_app, output_dir):
                     flask_app.project = project
                 except Exception as e:
                     Logger.instance().error(f"Error parsing project: {str(e)}")
-            
+
             return jsonify({"message": "Project created successfully"}), 200
 
         except Exception as e:

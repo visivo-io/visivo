@@ -13,11 +13,25 @@ jest.mock('./DeployLoader', () => () => <div data-testid="deploy-loader">Loading
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Mock fetch globally to prevent network requests
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ token: null }),
+    })
+  );
+});
+
+afterEach(() => {
+  // Clean up fetch mock
+  global.fetch.mockRestore();
 });
 
 it('should not render when isOpen is false', () => {
   render(<DeployModal isOpen={false} setIsOpen={jest.fn()} />);
   expect(screen.queryByTestId('modal-container')).not.toBeInTheDocument();
+  // Verify fetch was NOT called when modal is closed
+  expect(global.fetch).not.toHaveBeenCalled();
 });
 
 it('renders Authentication when token is missing', async () => {

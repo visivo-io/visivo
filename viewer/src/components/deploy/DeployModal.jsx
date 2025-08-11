@@ -20,8 +20,10 @@ const DeployModal = ({ isOpen, setIsOpen }) => {
   };
 
   useEffect(() => {
-    fetchAuthStatus();
-  }, []);
+    if (isOpen) {
+      fetchAuthStatus();
+    }
+  }, [isOpen]);
 
   const renderContent = () => {
     if (status === 'loading') return <DeployLoader />;

@@ -34,43 +34,45 @@ from visivo.version import VISIVO_VERSION
 def create_basic_project(project_name: str, project_dir: str = "."):
     """Create a basic empty project with just name and structure."""
     Logger.instance().success(f"Initializing project '{project_name}' in {project_dir}")
-    
+
     # Create basic project structure
     project = Project(name=project_name)
-    
+
     # Write project file
     project_file_path = os.path.join(project_dir, "project.visivo.yml")
     with open(project_file_path, "w") as fp:
         fp.write(yaml.dump(json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False))
-    
+
     Logger.instance().success(f"Created project file: {project_file_path}")
     return project_file_path
 
 
-def load_example_project(project_name: str, example_type: str = "github-releases", project_dir: str = "."):
+def load_example_project(
+    project_name: str, example_type: str = "github-releases", project_dir: str = "."
+):
     """Load example project from GitHub repository."""
     GIT_TEMP_DIR = "tempgit"
-    
+
     repo_url = f"https://github.com/visivo-io/{example_type}.git"
     project_path = Path(project_dir)
     env_path = project_path / ".env"
     gitignore_path = project_path / ".gitignore"
     temp_clone_path = project_path / GIT_TEMP_DIR
-    
+
     Logger.instance().info(f"Loading example project '{example_type}' for '{project_name}'")
-    
+
     try:
         # Backup existing .gitignore and .env
         if gitignore_path.exists():
             shutil.copy(gitignore_path, project_path / ".gitignore.bak")
         if env_path.exists():
             shutil.copy(env_path, project_path / ".env.bak")
-        
+
         # Clean up any existing temp folder and clone
         if temp_clone_path.exists():
             shutil.rmtree(temp_clone_path)
         Repo.clone_from(repo_url, temp_clone_path)
-        
+
         # Move files from temp into the main project path, skipping .gitignore and .env
         for item in temp_clone_path.iterdir():
             if item.name in [".git", ".gitignore", ".env", "README.md", "LICENSE"]:
@@ -80,46 +82,46 @@ def load_example_project(project_name: str, example_type: str = "github-releases
                 shutil.copytree(item, dest, dirs_exist_ok=True)
             else:
                 shutil.copy2(item, dest)
-        
+
         # Remove the temporary directory
         shutil.rmtree(temp_clone_path)
-        
+
         # Restore .gitignore and .env if needed
         if (project_path / ".gitignore.bak").exists():
             shutil.move(project_path / ".gitignore.bak", gitignore_path)
         if (project_path / ".env.bak").exists():
             shutil.move(project_path / ".env.bak", env_path)
-        
+
         # If .env doesn't exist, create it
         if not env_path.exists():
             with open(env_path, "w") as fp:
                 fp.write("REPO_NAME=visivo\nREPO_COMPANY=visivo-io")
-        
+
         # Update project name in the YAML file
         discover = Discover(working_dir=project_path, output_dir=None)
-        
+
         from ruamel.yaml import YAML
+
         yaml_parser = YAML()
         yaml_parser.preserve_quotes = True
         yaml_parser.indent(mapping=2, sequence=4, offset=2)
-        
+
         if discover.project_file.exists():
             with discover.project_file.open("r") as f:
                 data = yaml_parser.load(f)
-            
+
             if "name" in data:
                 data["name"] = project_name
-            
+
             with discover.project_file.open("w") as f:
                 yaml_parser.dump(data, f)
-        
+
         Logger.instance().success(f"Successfully loaded example project '{example_type}'")
         return str(discover.project_file) if discover.project_file.exists() else None
-        
+
     except Exception as e:
         Logger.instance().error(f"Error loading example project: {str(e)}")
         raise
-
 
 
 def init_phase(project_dir, example_type=None):
@@ -129,7 +131,7 @@ def init_phase(project_dir, example_type=None):
     else:
         project_dir = "."
         project_name = os.path.basename(os.path.abspath("."))
-    
+
     if example_type:
         # Load example project
         return load_example_project(project_name, example_type, project_dir)
