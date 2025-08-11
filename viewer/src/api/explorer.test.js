@@ -86,7 +86,7 @@ describe('explorer API functions', () => {
       const result = await fetchDatabases(sourceName);
 
       expect(fetch).toHaveBeenCalledWith(
-        `/api/project/sources/${encodeURIComponent(sourceName)}/databases`
+        `/api/project/sources/${encodeURIComponent(sourceName)}/databases/`
       );
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe('explorer API functions', () => {
       const result = await fetchDatabases(sourceName);
 
       expect(fetch).toHaveBeenCalledWith(
-        `/api/project/sources/source%20with%20spaces%2Fspecial%40chars/databases`
+        `/api/project/sources/source%20with%20spaces%2Fspecial%40chars/databases/`
       );
       expect(result).toEqual(mockData);
     });
@@ -138,7 +138,7 @@ describe('explorer API functions', () => {
       expect(fetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
-        )}/schemas`
+        )}/schemas/`
       );
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ describe('explorer API functions', () => {
       const result = await fetchSchemas(sourceName, databaseName);
 
       expect(fetch).toHaveBeenCalledWith(
-        `/api/project/sources/source%40123/databases/db%20with%20spaces/schemas`
+        `/api/project/sources/source%40123/databases/db%20with%20spaces/schemas/`
       );
       expect(result).toEqual(mockData);
     });
@@ -193,7 +193,7 @@ describe('explorer API functions', () => {
       expect(fetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
-        )}/schemas/${encodeURIComponent(schemaName)}/tables`
+        )}/schemas/${encodeURIComponent(schemaName)}/tables/`
       );
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
@@ -213,7 +213,7 @@ describe('explorer API functions', () => {
       expect(fetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
-        )}/tables`
+        )}/tables/`
       );
       expect(result).toEqual(mockData);
     });
@@ -233,7 +233,7 @@ describe('explorer API functions', () => {
       expect(fetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
-        )}/tables`
+        )}/tables/`
       );
       expect(result).toEqual(mockData);
     });
@@ -267,7 +267,7 @@ describe('explorer API functions', () => {
       const result = await testSourceConnection(sourceName);
 
       expect(fetch).toHaveBeenCalledWith(
-        `/api/project/sources/${encodeURIComponent(sourceName)}/test-connection`
+        `/api/project/sources/${encodeURIComponent(sourceName)}/test-connection/`
       );
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
@@ -284,7 +284,7 @@ describe('explorer API functions', () => {
       const result = await testSourceConnection(sourceName);
 
       expect(fetch).toHaveBeenCalledWith(
-        `/api/project/sources/source%2Fwith%2Fslashes/test-connection`
+        `/api/project/sources/source%2Fwith%2Fslashes/test-connection/`
       );
       expect(result).toEqual(mockData);
     });
@@ -323,7 +323,7 @@ describe('explorer API functions', () => {
           databaseName
         )}/schemas/${encodeURIComponent(schemaName)}/tables/${encodeURIComponent(
           tableName
-        )}/columns`
+        )}/columns/`
       );
       expect(result).toEqual(mockData);
       expect(console.error).not.toHaveBeenCalled();
@@ -344,7 +344,7 @@ describe('explorer API functions', () => {
       expect(fetch).toHaveBeenCalledWith(
         `/api/project/sources/${encodeURIComponent(sourceName)}/databases/${encodeURIComponent(
           databaseName
-        )}/tables/${encodeURIComponent(tableName)}/columns`
+        )}/tables/${encodeURIComponent(tableName)}/columns/`
       );
       expect(result).toEqual(mockData);
     });
@@ -363,7 +363,7 @@ describe('explorer API functions', () => {
       const result = await fetchColumns(sourceName, databaseName, tableName, schemaName);
 
       expect(fetch).toHaveBeenCalledWith(
-        `/api/project/sources/source%40123/databases/db%20with%20spaces/schemas/schema.name/tables/table%2Fspecial/columns`
+        `/api/project/sources/source%40123/databases/db%20with%20spaces/schemas/schema.name/tables/table%2Fspecial/columns/`
       );
       expect(result).toEqual(mockData);
     });
