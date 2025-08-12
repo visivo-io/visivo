@@ -1,208 +1,141 @@
-![PyPI](https://img.shields.io/pypi/v/visivo?label=pypi%20package)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/visivo)
+<p align="center">
+  <img src="viewer/src/images/logo.png" alt="Visivo" width="300" />
+</p>
 
-<img src="viewer/src/images/logo.png" alt="Visivo Logo" style="width:25%;">
+<h1 align="center">AI native business intelligence. Build visually, in code+cli or through ai tools.</h1>
 
-# Introduction
+<p align="center">
+  <a href="https://visivo.io">Website</a> •
+  <a href="https://docs.visivo.io">Documentation</a> •
+  <a href="https://visivo.io/examples">Live Examples</a> •
+  <a href="https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ">Join Slack</a> •
+  <a href="https://www.linkedin.com/company/visivo-io">LinkedIn</a>
+</p>
 
-Visivo is an open-source, fully code-based, data-visualization tool that enables users to create interactive and customizable dashboards for their data.
+<p align="center">
+  <img src="https://img.shields.io/pypi/v/visivo?label=pypi%20package" alt="PyPI Version" />
+  <img src="https://img.shields.io/pypi/dm/visivo" alt="PyPI Downloads" />
+  <img src="https://img.shields.io/github/license/visivo-io/visivo" alt="License" />
+  <img src="https://img.shields.io/github/stars/visivo-io/visivo?style=social" alt="GitHub Stars" />
+</p>
 
-It provides a simple and intuitive way to connect to various data sources, reuse queries and charts, and share insights with others.
+<p align="center">
+  <img src="[PLACEHOLDER: Dashboard Preview GIF - showing an interactive dashboard with filtering, drill-downs, and chart interactions]" alt="Visivo Dashboard Preview" width="80%" />
+</p>
 
-Here are some examples
+## 🚀 Why Visivo?
 
-# Usage
+Build reliable, testable dashboards that your team will actually trust. Here's what makes Visivo different:
 
-Please refer to https://docs.visivo.io for detailed instructions on how to use this package.
+- ✅ **Code-First Dashboard Development** – Define everything in YAML files, enabling version control, code reviews, and CI/CD for your analytics
+- ✅ **Built-in Testing Framework** – Write Python tests for your data visualizations. Never ship broken charts to production again
+- ✅ **50+ Interactive Chart Types** – From basic bar charts to advanced 3D visualizations and geospatial maps, powered by Plotly.js
+- ✅ **Multi-Source Data Integration** – Join data from PostgreSQL, Snowflake, BigQuery, MySQL, SQLite, DuckDB, CSV, and Excel in a single dashboard
+- ✅ **Local Development with Hot Reload** – See changes instantly with `visivo serve`. No more waiting for deployments to test changes
+- ✅ **dbt Integration** – Reference your dbt models directly in visualizations. Your analytics stack, unified
+- ✅ **Jinja2 Templates & Macros** – Use loops and variables to generate dynamic configurations. Write once, use everywhere
+- ✅ **Interactive Components** – Add filters, selectors, and drill-downs without losing the benefits of code-based configuration
+- ✅ **Push-Based Security** – You control data flow. No need to share database credentials with another SaaS tool
+- ✅ **Single Binary Installation** – One executable, no Python required. Deploy anywhere from your laptop to production servers
 
-## Install
+## 📊 See Visivo in Action
 
-We have an install script for a self contained binary.
+<p align="center">
+  <img src="[PLACEHOLDER: Sales Dashboard Screenshot - showing a multi-chart dashboard with KPIs, line charts, bar charts, and filters]" alt="Sales Dashboard Example" width="45%" />
+  <img src="[PLACEHOLDER: Analytics Dashboard Screenshot - showing advanced visualizations like heatmaps, 3D charts, and cohort analysis]" alt="Analytics Dashboard Example" width="45%" />
+</p>
 
-### Install Latest Version
+<p align="center">
+  <em>Build dashboards that are beautiful, interactive, and maintainable. <a href="https://visivo.io/examples">View more examples →</a></em>
+</p>
+
+## 🎯 Getting Started
+
+Get your first dashboard running in under 5 minutes:
+
+### Quick Install
 
 ```bash
+# Install Visivo (works on Mac, Linux, and Windows)
 curl -fsSL https://visivo.sh | bash
+
+# Create your first project
+visivo init my-dashboard
+
+# Start the development server
+cd my-dashboard && visivo serve
+
+# Open http://localhost:8000 in your browser 🎉
 ```
 
-### Install Specific Version
+### Alternative: UI-Guided Setup
 
-To install a specific version, you can pass the version as a parameter:
+Prefer a visual approach? Start the server and let Visivo guide you:
 
 ```bash
-# Install version 1.0.64
-curl -fsSL https://visivo.sh | bash -s -- --version 1.0.64
+# Install and start in one go
+curl -fsSL https://visivo.sh | bash
+visivo serve --project-dir my-dashboard
 
-# Or with the 'v' prefix
-curl -fsSL https://visivo.sh | bash -s -- --version v1.0.64
-
-# Short form
-curl -fsSL https://visivo.sh | bash -s -- -v 1.0.64
+# Follow the setup wizard in your browser at http://localhost:8000
 ```
 
-### Installation Help
+### Other Installation Options
 
-To see all available installation options:
-
-```bash
-curl -fsSL https://visivo.sh | bash -s -- --help
-```
-
-> **Note**: To find available versions, check the [releases page](https://github.com/visivo-io/visivo/releases) or the [tags on this repository](https://github.com/visivo-io/visivo/tags).
-
-### Python Installation
-
-If you have Python setup and want to use it through pip install:
+<details>
+<summary>Install via pip</summary>
 
 ```bash
 pip install visivo
 ```
 
-If you want to install a preview version you can install from a beta tag:
+</details>
+
+<details>
+<summary>Install specific version</summary>
 
 ```bash
-python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1 --force-reinstall
+# Install version 1.0.64
+curl -fsSL https://visivo.sh | bash -s -- --version 1.0.64
+
+# Or install beta version via pip
+python -m pip install git+https://github.com/visivo-io/visivo.git@v1.1.0-beta-1
 ```
 
-## Quickstart
+</details>
 
-To get started with Visivo, follow these steps:
+## 💬 Community & Support
 
-### **Option 1: CLI-Guided Setup with `init`**
+<p align="center">
+  <strong>Join our growing community of data practitioners!</strong>
+</p>
 
-This approach is ideal if you prefer setting things up through the command line with control over source selection.
+- 💬 **[Join our Slack](https://join.slack.com/t/visivo-community/shared_invite/zt-38shh3jmq-1Vl3YkxHlGpD~GlalfiKsQ)** – Get help, share dashboards, and chat with the team
+- 📚 **[Browse Documentation](https://docs.visivo.io)** – Comprehensive guides and API reference
+- 🐛 **[Report Issues](https://github.com/visivo-io/visivo/issues)** – Found a bug or have a feature request? Let us know!
+- 💼 **[Follow on LinkedIn](https://www.linkedin.com/company/visivo-io)** – Stay updated with the latest news
+- 📧 **[Email Us](mailto:info@visivo.io)** – For partnership or enterprise inquiries
 
-1. **Install Visivo**
+## 🛠️ Contributing
 
-   ```bash
-   curl -fsSL https://visivo.sh | bash
-   ```
+We welcome contributions! Whether it's fixing bugs, adding features, or improving documentation, we'd love your help.
 
-2. **Initialize a new project**
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
-   ```bash
-   visivo init --project-dir quick_start
-   ```
+## 📊 Telemetry
 
-3. **Choose a data source**
-   Select `sqlite` for the fastest setup during initialization.
+Visivo collects anonymous usage data to help improve the product. No personal information, queries, or sensitive data is collected.
 
-4. **Navigate to your project directory**
+To opt out: set `VISIVO_TELEMETRY_DISABLED=true` or add `telemetry_enabled: false` to your config. [Learn more →](TELEMETRY.md)
 
-   ```bash
-   cd quick_start
-   ```
+## 🏢 About
 
-5. **Start the development server**
+Built with ❤️ by [Visivo](https://visivo.io/) – a team that's experienced scaling analytics at companies like Intuit, Boeing, and Root Insurance.
 
-   ```bash
-   visivo serve
-   ```
-
-6. **Open your browser**
-   Go to [http://localhost:8000](http://localhost:8000) to start building charts.
+We believe data tools should be as reliable as the rest of your tech stack. That's why we built Visivo to bring software engineering best practices to business intelligence.
 
 ---
 
-### **Option 2: UI-Guided Setup with `serve`**
-
-If you prefer a more visual and guided setup without manually initializing the project, you can start directly:
-
-1. **Install Visivo**
-
-   ```bash
-   curl -fsSL https://visivo.sh | bash
-   ```
-
-2. **Start the server in any empty directory**
-
-   ```bash
-      visivo serve --project-dir quick_start
-   ```
-
-3. **Configure everything through the UI**
-   Once running, Visivo will walk you through data source selection and setup via your browser.
-
-# Telemetry
-
-Visivo collects anonymous usage telemetry to help improve the tool. This data helps us understand which features are used most and identify areas for improvement.
-
-**Privacy First**: We do not collect any personal information, file contents, queries, or sensitive data.
-
-To opt out of telemetry, you can:
-
-- Set the environment variable: `export VISIVO_TELEMETRY_DISABLED=true`
-- Or add to your project configuration: `telemetry_enabled: false`
-
-For more details, see [TELEMETRY.md](TELEMETRY.md).
-
-# Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/visivo-io/visivo/tags).
-
-# Contributing
-
-There are two pieces to the local Visivo deployment, the python CLI and the javascript viewer. When packaged, the viewer is contained in the CLI, but it is needed to be able to develop them separately locally.
-
-## CLI
-
-The development of the python CLI is straight forward. The code is contained within the `visivo` folder in this repo, and we use `poetry` as its package manager.
-
-### Prerequisites
-
-1. Python 3.10+
-2. Poetry: `pip install poetry`
-3. Dependencies: `poetry install`
-
-After this, you can install the visivo package from the files in the repo. This keeps the `visivo ...` commands in sync with your github repo because it reads those commands from the files on your computer.
-
-```
-pip install -e .
-```
-
-### Commands
-
-- Test: `poetry run pytest`
-- Server: `visivo serve`
-
-## Viewer
-
-The local development environment is a basic vite app. It uses `yarn` as its package manager and commands can be found in the `package.json`.
-
-### Prerequisites
-
-1. Node 20+
-2. Yarn: `npm install -g yarn`
-3. Dependencies: `yarn install`
-
-### Commands
-
-- Test: `yarn test`
-- Start: `yarn start`
-
-If you need to run it locally as an app, you need a API for it to proxy to. You can do this be running visivo on a local project by:
-
-1. Install Visivo from above. Either the development or `pip` install.
-2. Start `visivo serve` on a project. You can do this in on `test-projects` in this repo. This acts as the server for your changes.
-3. In another terminal start the react app.
-   a. `cd viewer`
-   b. `yarn start`
-   c. Navigate to localhost:3000 this will proxy any data requests to the running `visivo serve` command
-
-## Generating a Release
-
-A release is created by running the action `Create Release`. This will create a tag and trigger the deployment of the viewer. The input is without the `v` prefix. Example: `1.3.4`.
-
-# Authors
-
-- Visivo LLC - [visivo.io](https://visivo.io/)
-
-Our team has experienced building analytics at fast growing companies and scaling systems at household names like Intuit, Boeing and Root Insurance.
-
-See also the list of [contributors](https://github.com/visivo-io/visivo/contributors) who participated in this project.
-
-# Join Our Community
-
-- File a GitHub [issue](https://github.com/visivo-io/visivo/issues).
-- Send us an email [info@visivo.io](mailto:info@visivo.io).
-- Read our [blog](https://visivo.io/blog).
+<p align="center">
+  <sub>⭐ Star us on GitHub to support the project!</sub>
+</p>
