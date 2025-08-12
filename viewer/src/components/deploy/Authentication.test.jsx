@@ -42,7 +42,7 @@ it('calls authentication endpoint and opens auth URL', async () => {
 
   // Wait for the first fetch
   await waitFor(() =>
-    expect(fetch).toHaveBeenCalledWith('/api/auth/authorize-device-token', expect.anything())
+    expect(fetch).toHaveBeenCalledWith('/api/auth/authorize-device-token/', expect.anything())
   );
   expect(window.open).toHaveBeenCalledWith('https://auth.url', '_blank');
 
@@ -63,7 +63,7 @@ it('handles failed authentication', async () => {
   fireEvent.click(screen.getByRole('button', { name: /login/i }));
 
   await waitFor(() => {
-    expect(fetch).toHaveBeenCalledWith('/api/auth/authorize-device-token', expect.anything());
+    expect(fetch).toHaveBeenCalledWith('/api/auth/authorize-device-token/', expect.anything());
   });
 
   expect(setStatusMock).not.toHaveBeenCalled();

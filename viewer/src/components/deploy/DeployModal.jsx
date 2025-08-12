@@ -10,7 +10,7 @@ const DeployModal = ({ isOpen, setIsOpen }) => {
   const fetchAuthStatus = async () => {
     try {
       setStatus('loading');
-      const response = await fetch('/api/auth/status', { method: 'POST' });
+      const response = await fetch('/api/auth/status/', { method: 'POST' });
       if (!response.ok) throw new Error('Auth status check failed');
       const data = await response.json();
       setStatus(data?.token ? 'stage' : 'login-required');
@@ -20,8 +20,10 @@ const DeployModal = ({ isOpen, setIsOpen }) => {
   };
 
   useEffect(() => {
-    fetchAuthStatus();
-  }, []);
+    if (isOpen) {
+      fetchAuthStatus();
+    }
+  }, [isOpen]);
 
   const renderContent = () => {
     if (status === 'loading') return <DeployLoader />;

@@ -29,7 +29,7 @@ const StageSelection = ({ status }) => {
     const fetchStages = async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/cloud/stages');
+        const res = await fetch('/api/cloud/stages/');
         const data = await res.json();
         setStages(data.stages || []);
       } catch (err) {
@@ -61,7 +61,7 @@ const StageSelection = ({ status }) => {
       }
 
       try {
-        const res = await fetch(`/api/cloud/job/status/${deployId}`);
+        const res = await fetch(`/api/cloud/job/status/${deployId}/`);
         const data = await res.json();
         retries++;
 
@@ -93,7 +93,7 @@ const StageSelection = ({ status }) => {
 
     setDeploying(true);
     try {
-      const res = await fetch('/api/cloud/deploy', {
+      const res = await fetch('/api/cloud/deploy/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: selectedStage }),

@@ -331,7 +331,7 @@ def test_execute_query_invalid_sql(client, worksheet_repo, capsys):
 
 def test_missing_project_name(client):
     """Test POST /api/project/init when project name is missing."""
-    res = client.post("/api/project/init", json={"project_dir": "/tmp/somepath"})
+    res = client.post("/api/project/init/", json={"project_dir": "/tmp/somepath"})
     assert res.status_code == 400
     assert b"Project name is required" in res.data
 
@@ -343,7 +343,7 @@ def test_create_project_with_file_upload(client):
         dummy_csv.filename = "test.csv"
 
         res = client.post(
-            "/api/source/upload",
+            "/api/source/upload/",
             data={
                 "source_type": "csv",
                 "source_name": "Uploaded Source",
@@ -363,7 +363,7 @@ def test_create_sqlite_project_source_only(client):
     """Test POST /api/source/create with SQLite source."""
     with tempfile.TemporaryDirectory() as tmpdir:
         res = client.post(
-            "/api/source/create",
+            "/api/source/create/",
             data={
                 "project_name": "SQLite Project",
                 "source_type": "sqlite",
@@ -418,7 +418,7 @@ def test_load_example_project_success(client, monkeypatch):
 
     # Make the API call
     response = client.post(
-        "/api/project/load_example",
+        "/api/project/load_example/",
         data=json.dumps(payload),
         content_type="application/json",
     )
@@ -431,7 +431,7 @@ def test_load_example_project_success(client, monkeypatch):
 def test_authorize_device_token_exists(client):
     """Test POST /api/auth/status check auth status"""
     with patch("visivo.server.views.auth_views.get_existing_token", return_value="test123"):
-        response = client.post("/api/auth/status", json={})
+        response = client.post("/api/auth/status/", json={})
         assert response.status_code == 200
         assert response.get_json()["token"] == "test123"
         assert b"A token already exists in your profile" in response.data
@@ -440,14 +440,14 @@ def test_authorize_device_token_exists(client):
 def test_authorize_device_token_does_not_exists(client):
     """Test POST /api/auth/status check auth status"""
     with patch("visivo.server.views.auth_views.get_existing_token", return_value=None):
-        response = client.post("/api/auth/status", json={})
+        response = client.post("/api/auth/status/", json={})
         assert response.status_code == 200
         assert b"UnAuthenticated user access" in response.data
 
 
 def test_authorize_device_token_browser_full_response(client):
     with (patch("visivo.server.views.auth_views.get_existing_token", return_value=None),):
-        response = client.post("/api/auth/authorize-device-token", json={})
+        response = client.post("/api/auth/authorize-device-token/", json={})
         data = response.get_json()
         assert response.status_code == 200
         assert data["message"] == "Authentication initiated successfully"
@@ -458,7 +458,7 @@ def test_authorize_device_token_browser_full_response(client):
 def test_authorize_device_token_callback_token_missing(client):
     """Test GET /api/auth/authorize-device-token/callback/<auth_id> with missing token"""
     auth_id = "test123"
-    response = client.get(f"/api/auth/authorize-device-token/callback/{auth_id}")
+    response = client.get(f"/api/auth/authorize-device-token/callback/{auth_id}/")
 
     assert response.status_code == 400
     assert response.get_json()["error"] == "Token not provided"
@@ -477,7 +477,7 @@ def test_authorize_device_token_callback_token_valid_token(client):
     ):
 
         auth_id = "test123"
-        response = client.get(f"/api/auth/authorize-device-token/callback/{auth_id}?token=test123")
+        response = client.get(f"/api/auth/authorize-device-token/callback/{auth_id}/?token=test123")
 
         mock_store.assert_called_once_with("test123")
         mock_html.assert_called_once()
@@ -498,7 +498,7 @@ def test_get_cloud_stages_success(client):
         mock_req.return_value.status_code = 200
         mock_req.return_value.json.return_value = mock_res_data
 
-        response = client.get("/api/cloud/stages")
+        response = client.get("/api/cloud/stages/")
         data = response.get_json()
 
         assert response.status_code == 200
@@ -518,7 +518,7 @@ def test_get_cloud_stages_unauthorized(client):
 
         mock_req.return_value = mock_response
 
-        response = client.get("/api/cloud/stages")
+        response = client.get("/api/cloud/stages/")
         data = response.get_json()
 
         assert response.status_code == 401
@@ -537,7 +537,7 @@ def test_create_cloud_stages_success(client):
         mock_post.return_value.json.return_value = mock_response_data
 
         headers = {"Authorization": f"Api-Key {mock_token}"}
-        response = client.post("/api/cloud/stages", json=payload, headers=headers)
+        response = client.post("/api/cloud/stages/", json=payload, headers=headers)
 
         data = response.get_json()
 
@@ -547,7 +547,7 @@ def test_create_cloud_stages_success(client):
 
 
 def test_create_cloud_stages_missing_name(client):
-    res = client.post("/api/cloud/stages", json={})
+    res = client.post("/api/cloud/stages/", json={})
     data = res.get_json()
 
     assert res.status_code == 400
@@ -556,7 +556,7 @@ def test_create_cloud_stages_missing_name(client):
 
 def test_cloud_deploy_success(client):
     with patch("visivo.commands.deploy_phase.deploy_phase") as mock_deploy_phase:
-        response = client.post("/api/cloud/deploy", json={"name": "pre-test"})
+        response = client.post("/api/cloud/deploy/", json={"name": "pre-test"})
 
         data = response.get_json()
         assert response.status_code == 200
@@ -573,7 +573,7 @@ def test_get_job_status_valid_id(client):
         patch("visivo.server.views.cloud_views.background_jobs", {deploy_id: job_data}),
         patch("visivo.server.views.cloud_views.background_jobs_lock"),
     ):
-        response = client.get(f"/api/cloud/job/status/{deploy_id}")
+        response = client.get(f"/api/cloud/job/status/{deploy_id}/")
 
     assert response.status_code == 200
     assert response.get_json() == job_data
@@ -587,7 +587,7 @@ def test_get_job_status_invalid_id(client):
         patch("visivo.server.views.cloud_views.background_jobs", {}),
         patch("visivo.server.views.cloud_views.background_jobs_lock"),
     ):
-        response = client.get(f"/api/cloud/job/status/{deploy_id}")
+        response = client.get(f"/api/cloud/job/status/{deploy_id}/")
 
     assert response.status_code == 404
     assert response.get_json()["error"] == "Invalid deploy ID"

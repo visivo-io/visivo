@@ -1,13 +1,9 @@
-import json
 import os
 from pathlib import Path
 import re
 import shutil
 from flask import jsonify, request
 from git import Repo
-import yaml
-from ruamel.yaml import YAML
-from visivo.commands.compile_phase import compile_phase
 from visivo.commands.utils import create_source
 from visivo.discovery.discover import Discover
 from visivo.logger.logger import Logger
@@ -58,13 +54,12 @@ def register_project_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error writing changes: {str(e)}")
             return jsonify({"message": str(e)}), 500
 
-    @app.route("/api/project/load_example", methods=["POST"])
+    @app.route("/api/project/load_example/", methods=["POST"])
     def load_example_project():
         """Load example project from GitHub"""
+        from visivo.commands.init_phase import load_example_project as load_example
+
         data = request.get_json()
-
-        GIT_TEMP_DIR = "tempgit"
-
         project_name = data.get("project_name", "").strip()
         example_type = data.get("example_type", "github-releases")
         project_dir = data.get("project_dir", ".")
@@ -72,89 +67,30 @@ def register_project_views(app, flask_app, output_dir):
         if not project_name:
             return jsonify({"message": "Project name is required"}), 400
 
-        repo_url = f"https://github.com/visivo-io/{example_type}.git"
-        project_path = Path(project_dir)
-        env_path = project_path / ".env"
-        gitignore_path = project_path / ".gitignore"
-        temp_clone_path = project_path / GIT_TEMP_DIR
-
         try:
-            # Backup existing .gitignore and .env
-            if gitignore_path.exists():
-                shutil.copy(gitignore_path, project_path / ".gitignore.bak")
-            if env_path.exists():
-                shutil.copy(env_path, project_path / ".env.bak")
+            project_file_path = load_example(project_name, example_type, project_dir)
 
-            # Clean up any existing temp folder and clone
-            if temp_clone_path.exists():
-                shutil.rmtree(temp_clone_path)
-            Repo.clone_from(repo_url, temp_clone_path)
+            # Initialize the project in Flask app
+            if project_file_path:
+                project_path = Path(project_dir)
+                discover = Discover(working_dir=project_path, output_dir=None)
 
-            # Move files from temp into the main project path, skipping .gitignore and .env
-            for item in temp_clone_path.iterdir():
-                if item.name in [".git", ".gitignore", ".env", "README.md", "LICENSE"]:
-                    continue
-                dest = project_path / item.name
-                if item.is_dir():
-                    shutil.copytree(item, dest, dirs_exist_ok=True)
-                else:
-                    shutil.copy2(item, dest)
-
-            # Remove the temporary directory
-            shutil.rmtree(temp_clone_path)
-
-            # Restore .gitignore and .env if needed
-            if (project_path / ".gitignore.bak").exists():
-                shutil.move(project_path / ".gitignore.bak", gitignore_path)
-            if (project_path / ".env.bak").exists():
-                shutil.move(project_path / ".env.bak", env_path)
-
-            # If .env doesn't exist, create it
-            if not env_path.exists():
-                with open(env_path, "w") as fp:
-                    fp.write("REPO_NAME=visivo\nREPO_COMPANY=visivo-io")
-
-            # Initialize the project
-            discover = Discover(working_dir=project_path, output_dir=None)
-
-            try:
-                parser = ParserFactory().build(
-                    project_file=discover.project_file, files=discover.files
-                )
-                project = parser.parse()
-
-                flask_app.project = project
-            except yaml.YAMLError as e:
-                message = "\n"
-                if hasattr(e, "problem_mark"):
-                    mark = e.problem_mark
-                    message = f"\n Error position: line:{mark.line+1} column:{mark.column+1}\n"
-                Logger.instance().error(f"Error parsing YAML file(s): {message} {e}")
-
-            from ruamel.yaml import YAML
-
-            yaml = YAML()
-            yaml.preserve_quotes = True
-            yaml.indent(mapping=2, sequence=4, offset=2)
-
-            Logger.instance().error(f"discover.project_file: {discover.project_file}")
-            with discover.project_file.open("r") as f:
-                data = yaml.load(f)
-                f.close()
-
-            if "name" in data:
-                data["name"] = project_name
-
-            with discover.project_file.open("w") as f:
-                yaml.dump(data, f)
+                try:
+                    parser = ParserFactory().build(
+                        project_file=discover.project_file, files=discover.files
+                    )
+                    project = parser.parse()
+                    flask_app.project = project
+                except Exception as e:
+                    Logger.instance().error(f"Error parsing project: {str(e)}")
 
             return jsonify({"message": "Project created successfully"}), 200
 
         except Exception as e:
-            Logger.instance().error(f"Error cloning releases: {str(e)}")
-            return jsonify({"message": f"Failed to clone GitHub repository"}), 500
+            Logger.instance().error(f"Error loading example project: {str(e)}")
+            return jsonify({"message": f"Failed to load example project: {str(e)}"}), 500
 
-    @app.route("/api/project/init", methods=["POST"])
+    @app.route("/api/project/init/", methods=["POST"])
     def init_project():
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
@@ -169,7 +105,7 @@ def register_project_views(app, flask_app, output_dir):
 
         return jsonify({"message": "Project initialized", "project_file_path": project_path})
 
-    @app.route("/api/source/create", methods=["POST"])
+    @app.route("/api/source/create/", methods=["POST"])
     def create_source_api():
         form = request.form
         data = CreateSourceRequest(
@@ -195,7 +131,7 @@ def register_project_views(app, flask_app, output_dir):
 
         return jsonify({"message": "Source created", "source": source.model_dump()})
 
-    @app.route("/api/source/upload", methods=["POST"])
+    @app.route("/api/source/upload/", methods=["POST"])
     def upload_file():
         file = request.files.get("file")
         source_type = request.form.get("source_type")
@@ -255,7 +191,7 @@ def register_project_views(app, flask_app, output_dir):
 
             return jsonify({"message": "File uploaded", "dashboard": dashboard.model_dump()})
 
-    @app.route("/api/project/finalize", methods=["POST"])
+    @app.route("/api/project/finalize/", methods=["POST"])
     def finalize_project():
         data = request.get_json()
         project_name = data.get("project_name")

@@ -106,7 +106,7 @@ it('triggers deployment when clicking Deploy', async () => {
   fireEvent.click(deployButton);
 
   await waitFor(() => {
-    expect(fetch).toHaveBeenCalledWith('/api/cloud/deploy', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith('/api/cloud/deploy/', expect.any(Object));
   });
 
   jest.useRealTimers();

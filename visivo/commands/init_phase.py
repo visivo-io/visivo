@@ -3,7 +3,9 @@ import click
 import yaml
 import json
 import os
+import shutil
 from pathlib import Path
+from git import Repo
 from visivo.logger.logger import Logger
 from visivo.models.include import Include
 from visivo.models.models.sql_model import SqlModel
@@ -24,181 +26,115 @@ from visivo.commands.utils import create_file_database
 from visivo.parsers.file_names import PROFILE_FILE_NAME
 from visivo.commands.utils import get_source_types
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
+from visivo.parsers.parser_factory import ParserFactory
+from visivo.discovery.discover import Discover
 from visivo.version import VISIVO_VERSION
 
 
-def init_phase(project_dir):
-    """Enables a quick set up by writing your source & api credentials to an env file."""
-    user_home = os.path.expanduser("~")
+def create_basic_project(project_name: str, project_dir: str = "."):
+    """Create a basic empty project with just name and structure."""
+    Logger.instance().success(f"Initializing project '{project_name}' in {project_dir}")
 
+    # Create basic project structure
+    project = Project(name=project_name)
+
+    # Write project file
+    project_file_path = os.path.join(project_dir, "project.visivo.yml")
+    with open(project_file_path, "w") as fp:
+        fp.write(yaml.dump(json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False))
+
+    Logger.instance().success(f"Created project file: {project_file_path}")
+    return project_file_path
+
+
+def load_example_project(
+    project_name: str, example_type: str = "github-releases", project_dir: str = "."
+):
+    """Load example project from GitHub repository."""
+    GIT_TEMP_DIR = "tempgit"
+
+    repo_url = f"https://github.com/visivo-io/{example_type}.git"
+    project_path = Path(project_dir)
+    env_path = project_path / ".env"
+    gitignore_path = project_path / ".gitignore"
+    temp_clone_path = project_path / GIT_TEMP_DIR
+
+    Logger.instance().info(f"Loading example project '{example_type}' for '{project_name}'")
+
+    try:
+        # Backup existing .gitignore and .env
+        if gitignore_path.exists():
+            shutil.copy(gitignore_path, project_path / ".gitignore.bak")
+        if env_path.exists():
+            shutil.copy(env_path, project_path / ".env.bak")
+
+        # Clean up any existing temp folder and clone
+        if temp_clone_path.exists():
+            shutil.rmtree(temp_clone_path)
+        Repo.clone_from(repo_url, temp_clone_path)
+
+        # Move files from temp into the main project path, skipping .gitignore and .env
+        for item in temp_clone_path.iterdir():
+            if item.name in [".git", ".gitignore", ".env", "README.md", "LICENSE"]:
+                continue
+            dest = project_path / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, dest)
+
+        # Remove the temporary directory
+        shutil.rmtree(temp_clone_path)
+
+        # Restore .gitignore and .env if needed
+        if (project_path / ".gitignore.bak").exists():
+            shutil.move(project_path / ".gitignore.bak", gitignore_path)
+        if (project_path / ".env.bak").exists():
+            shutil.move(project_path / ".env.bak", env_path)
+
+        # If .env doesn't exist, create it
+        if not env_path.exists():
+            with open(env_path, "w") as fp:
+                fp.write("REPO_NAME=visivo\nREPO_COMPANY=visivo-io")
+
+        # Update project name in the YAML file
+        discover = Discover(working_dir=project_path, output_dir=None)
+
+        from ruamel.yaml import YAML
+
+        yaml_parser = YAML()
+        yaml_parser.preserve_quotes = True
+        yaml_parser.indent(mapping=2, sequence=4, offset=2)
+
+        if discover.project_file.exists():
+            with discover.project_file.open("r") as f:
+                data = yaml_parser.load(f)
+
+            if "name" in data:
+                data["name"] = project_name
+
+            with discover.project_file.open("w") as f:
+                yaml_parser.dump(data, f)
+
+        Logger.instance().success(f"Successfully loaded example project '{example_type}'")
+        return str(discover.project_file) if discover.project_file.exists() else None
+
+    except Exception as e:
+        Logger.instance().error(f"Error loading example project: {str(e)}")
+        raise
+
+
+def init_phase(project_dir, example_type=None):
+    """Main init phase function that handles both simple and example project creation."""
     if project_dir:
-        project_name = project_dir
+        project_name = os.path.basename(os.path.abspath(project_dir))
     else:
         project_dir = "."
         project_name = os.path.basename(os.path.abspath("."))
 
-    Logger.instance().success(f"Initializing in {project_dir}")
-    sqlite_type = get_args(SqliteType)[0]
-    postgresql_type = get_args(PostgresqlType)[0]
-    mysql_type = get_args(MysqlType)[0]
-    snowflake_type = get_args(SnowflakeType)[0]
-    bigquery_type = get_args(BigQueryType)[0]
-    duckdb_type = get_args(DuckdbType)[0]
-    types = get_source_types()
-
-    source_type = click.prompt("? Database type", type=click.Choice(types))
-    if source_type == sqlite_type:
-        source = SqliteSource(
-            name="Example Source",
-            database=f"{project_dir}/local.db",
-            type=source_type,
-        )
-        create_file_database(source.url(), project_dir)
-        source.database = "local.db"
-        fp = open(f"{project_dir}/.env", "w+")
-        fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
-        fp.close()
-
-    if source_type == postgresql_type:
-        host = click.prompt("? Database host", type=str)
-        database = click.prompt("? Database name", type=str)
-        username = click.prompt("? Database username", type=str)
-        password = click.prompt(
-            "? Database password", type=str, hide_input=True, confirmation_prompt=True
-        )
-        fp = open(f"{project_dir}/.env", "w+")
-        fp.write(f"DB_PASSWORD={password}")
-        fp.close()
-        source = PostgresqlSource(
-            name="Example Source",
-            host=host,
-            database=database,
-            type=source_type,
-            password=password,
-            username=username,
-        )
-    if source_type == mysql_type:
-        host = click.prompt("? Database host", type=str)
-        database = click.prompt("? Database name", type=str)
-        username = click.prompt("? Database username", type=str)
-        password = click.prompt(
-            "? Database password", type=str, hide_input=True, confirmation_prompt=True
-        )
-        fp = open(f"{project_dir}/.env", "w+")
-        fp.write(f"DB_PASSWORD={password}")
-        fp.close()
-        source = MysqlSource(
-            name="Example Source",
-            host=host,
-            database=database,
-            type=source_type,
-            password=password,
-            username=username,
-        )
-
-    if source_type == snowflake_type:
-        database = click.prompt("? Database name", type=str)
-        account = click.prompt("? Snowflake account", type=str)
-        warehouse = click.prompt("? Snowflake warehouse", type=str)
-        username = click.prompt("? Database username", type=str)
-        password = click.prompt(
-            "? Database password", type=str, hide_input=True, confirmation_prompt=True
-        )
-        fp = open(f"{project_dir}/.env", "w+")
-        fp.write(f"DB_PASSWORD={password}")
-        fp.close()
-        source = SnowflakeSource(
-            name="Example Source",
-            database=database,
-            type=source_type,
-            password=password,
-            username=username,
-            account=account,
-            warehouse=warehouse,
-        )
-    if source_type == bigquery_type:
-        project = click.prompt("? BigQuery project", type=str)
-        dataset = click.prompt("? BigQuery dataset", type=str)
-        credentials_base64 = click.prompt(
-            "? base64 encoded credentials",
-            type=str,
-            hide_input=True,
-            confirmation_prompt=True,
-        )
-        fp = open(f"{project_dir}/.env", "w+")
-        fp.write(f"DB_PASSWORD={credentials_base64}")
-        fp.close()
-        source = BigQuerySource(
-            name="Example Source",
-            project=project,
-            database=dataset,
-            type=source_type,
-            credentials_base64=credentials_base64,
-        )
-    if source_type == duckdb_type:
-        database = click.prompt("? Database file path", type=str, default=f"{project_dir}/local.db")
-        source = DuckdbSource(
-            name="Example Source",
-            database=database,
-            type=source_type,
-        )
-        create_file_database(source.url(), project_dir)
-        source.database = "local.db"
-        fp = open(f"{project_dir}/.env", "w+")
-        fp.write("DB_PASSWORD=EXAMPLE_password_l0cation")
-        fp.close()
-    Logger.instance().debug("Generating project, gitignore & env files")
-
-    model = SqlModel(name="Example Model", sql="select * from test_table")
-    props = {"type": "scatter", "x": "?{x}", "y": "?{y}"}
-    trace = Trace(name="Example Trace", model=model, props=props)
-    chart = Chart(name="Example Chart", traces=[trace])
-    item = Item(chart=chart)
-    row = Row(items=[item])
-    dashboard = Dashboard(name="Example Dashboard", rows=[row])
-    defaults = Defaults(source_name=source.name)
-
-    current_version = VISIVO_VERSION
-    includes = Include(
-        path=f"visivo-io/visivo.git@v{current_version} -- test-projects/demo/dashboards/welcome.visivo.yml"
-    )
-    project = Project(
-        name=project_name,
-        includes=[includes],
-        defaults=defaults,
-        sources=[source],
-        dashboards=[dashboard],
-    )
-
-    fp = open(f"{project_dir}/project.visivo.yml", "w")
-    fp.write(
-        yaml.dump(json.loads(project.model_dump_json(exclude_none=True)), sort_keys=False).replace(
-            "'**********'", "\"{{ env_var('DB_PASSWORD') }}\""
-        )
-    )
-    fp.close()
-
-    fp = open(f"{project_dir}/.gitignore", "w")
-    fp.write(".env\ntarget\n.visivo_cache")
-    fp.close()
-
-    Logger.instance().success("Generated project, gitignore & env files")
-
-    profile_path = f"{user_home}/.visivo/{PROFILE_FILE_NAME}"
-    if not os.path.exists(profile_path):
-        Logger.instance().info(
-            f"> Visit 'https://app.visivo.io/profile' and create a new token if you don't already have one."
-        )
-        Logger.instance().info(
-            f"> You may need to register or get added to an account before visiting your profile."
-        )
-        token = click.prompt("? Personal token", type=str)
-        os.makedirs(f"{user_home}/.visivo", exist_ok=True)
-        fp = open(profile_path, "w")
-        fp.write(f"token: {token}")
-        fp.close()
-        Logger.instance().info(f"> Created profile in '~/.visivo/profile.yml'")
+    if example_type:
+        # Load example project
+        return load_example_project(project_name, example_type, project_dir)
     else:
-        message = "Found profile at location: " + profile_path
-        Logger.instance().info(message)
-    Logger.instance().info(f"> Created project in '{project_name}'")
+        # Create basic project
+        return create_basic_project(project_name, project_dir)

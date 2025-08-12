@@ -85,7 +85,7 @@ const Onboarding = () => {
     safeAppend("dataset", config?.dataset, formData);
     safeAppend("project_dir", projectDir, formData);
 
-    const res = await fetch("/api/source/create", {
+    const res = await fetch("/api/source/create/", {
       method: "POST",
       body: formData,
     });
@@ -107,7 +107,7 @@ const Onboarding = () => {
     formData.append("project_dir", projectDir);
     formData.append("source_type", config?.type);
 
-    const res = await fetch("/api/source/upload", {
+    const res = await fetch("/api/source/upload/", {
       method: "POST",
       body: formData,
     });
@@ -122,7 +122,7 @@ const Onboarding = () => {
   };
 
   const finalizeProject = async (config, source, dashboard) => {
-    const res = await fetch("/api/project/finalize", {
+    const res = await fetch("/api/project/finalize/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -176,7 +176,7 @@ const Onboarding = () => {
     setLoadingText("Importing example...");
     setIsLoading(true);
 
-    const response = await fetch("/api/project/load_example", {
+    const response = await fetch("/api/project/load_example/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

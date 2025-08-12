@@ -4,9 +4,18 @@ from visivo.commands.options import project_dir
 
 @click.command()
 @project_dir
-def init(project_dir):
+@click.option(
+    "--example",
+    type=str,
+    help="Load an example project from GitHub (e.g., 'github-releases')",
+    default=None,
+)
+def init(project_dir, example):
     """
-    Enables a quick set up by writing your source & api credentials to an env file.
+    Initialize a new Visivo project.
+
+    By default, creates a simple project.visivo.yml file with a project name.
+    Use --example to load an example project from GitHub.
     """
     from visivo.logger.logger import Logger
 
@@ -14,5 +23,6 @@ def init(project_dir):
 
     from visivo.commands.init_phase import init_phase
 
-    init_phase(project_dir)
+    init_phase(project_dir, example)
+
     Logger.instance().success("Done")

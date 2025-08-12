@@ -6,6 +6,9 @@ import click
 from sqlalchemy import create_engine, event
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
+from threading import Lock
+
+attach_function_lock = Lock()
 
 DuckdbType = Literal["duckdb"]
 
@@ -84,6 +87,23 @@ class DuckdbSource(SqlalchemySource):
 
             return self._engine
 
+    def safe_attach(self, connection, db_path, alias):
+        with attach_function_lock:
+            result = connection.execute(
+                """
+                SELECT count(*) as cnt
+                FROM pragma_database_list
+                WHERE name = ?
+            """,
+                [alias],
+            ).fetchone()
+
+            if result[0] == 0:
+                connection.execute(f"ATTACH '{db_path}' AS {alias};")
+                return True
+            return False
+
+    # Usage
     def get_connection(self, read_only: bool = False):
         """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
         try:
@@ -113,9 +133,14 @@ class DuckdbSource(SqlalchemySource):
 
             if self.attach:
                 for attachment in self.attach:
-                    connection.execute(
-                        f"ATTACH DATABASE '{attachment.source.database}' AS {attachment.schema_name} (READ_ONLY)"
-                    )
+                    if self.safe_attach(
+                        connection, attachment.source.database, attachment.schema_name
+                    ):
+                        Logger.instance().debug(f"Database {attachment.schema_name} attached")
+                    else:
+                        Logger.instance().debug(
+                            f"Database {attachment.schema_name} already attached"
+                        )
             return connection
         except Exception as err:
             raise click.ClickException(

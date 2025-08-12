@@ -11,7 +11,7 @@ from visivo.server.store import background_jobs, background_jobs_lock
 
 
 def register_cloud_views(app, flask_app, output_dir):
-    @app.route("/api/cloud/stages", methods=["GET"])
+    @app.route("/api/cloud/stages/", methods=["GET"])
     def cloud_stages():
         token = get_existing_token()
 
@@ -30,7 +30,7 @@ def register_cloud_views(app, flask_app, output_dir):
 
         return jsonify({"message": "Something went wrong!", "stage": response.json()}), 500
 
-    @app.route("/api/cloud/stages", methods=["POST"])
+    @app.route("/api/cloud/stages/", methods=["POST"])
     def create_cloud_stages():
         data = request.get_json()
         name = data.get("name", "")
@@ -73,7 +73,7 @@ def register_cloud_views(app, flask_app, output_dir):
             deploy_id=deploy_id,
         )
 
-    @app.route("/api/cloud/deploy", methods=["POST"])
+    @app.route("/api/cloud/deploy/", methods=["POST"])
     def cloud_deploy():
         data = request.get_json()
         stage = data.get("name")
@@ -97,7 +97,7 @@ def register_cloud_views(app, flask_app, output_dir):
 
         return jsonify({"message": "Deployment initiated successfully", "deploy_id": deploy_id})
 
-    @app.route("/api/cloud/job/status/<deploy_id>", methods=["GET"])
+    @app.route("/api/cloud/job/status/<deploy_id>/", methods=["GET"])
     def get_job_status(deploy_id):
         with background_jobs_lock:
             job = background_jobs.get(deploy_id)
