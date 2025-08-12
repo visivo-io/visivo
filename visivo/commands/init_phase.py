@@ -29,6 +29,18 @@ from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.discovery.discover import Discover
 from visivo.version import VISIVO_VERSION
+from visivo.models.example_type import ExampleTypeEnum
+
+
+def get_env_content_for_example_type(example_type: str) -> str:
+    """Generate .env content based on example type."""
+    match example_type:
+        case ExampleTypeEnum.github_releases:
+            return "REPO_NAME=visivo\nREPO_COMPANY=visivo-io"
+        case ExampleTypeEnum.ev_sales:
+            return "# EV Sales Data Configuration\n# Add any required environment variables here"
+        case _:
+            return "REPO_NAME=visivo\nREPO_COMPANY=visivo-io"
 
 
 def create_basic_project(project_name: str, project_dir: str = "."):
@@ -48,7 +60,7 @@ def create_basic_project(project_name: str, project_dir: str = "."):
 
 
 def load_example_project(
-    project_name: str, example_type: str = "github-releases", project_dir: str = "."
+    project_name: str, example_type: str = ExampleTypeEnum.github_releases, project_dir: str = "."
 ):
     """Load example project from GitHub repository."""
     GIT_TEMP_DIR = "tempgit"
@@ -92,10 +104,11 @@ def load_example_project(
         if (project_path / ".env.bak").exists():
             shutil.move(project_path / ".env.bak", env_path)
 
-        # If .env doesn't exist, create it
+        # If .env doesn't exist, create it with content based on example type
         if not env_path.exists():
+            env_content = get_env_content_for_example_type(example_type)
             with open(env_path, "w") as fp:
-                fp.write("REPO_NAME=visivo\nREPO_COMPANY=visivo-io")
+                fp.write(env_content)
 
         # Update project name in the YAML file
         discover = Discover(working_dir=project_path, output_dir=None)

@@ -20,6 +20,7 @@ from visivo.models.trace import Trace
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.views.utils import create_example_dashboard, load_csv, write_project_file
+from visivo.models.example_type import ExampleTypeEnum
 
 
 def register_project_views(app, flask_app, output_dir):
@@ -61,7 +62,7 @@ def register_project_views(app, flask_app, output_dir):
 
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
-        example_type = data.get("example_type", "github-releases")
+        example_type = data.get("example_type", ExampleTypeEnum.github_releases.value)
         project_dir = data.get("project_dir", ".")
 
         if not project_name:
