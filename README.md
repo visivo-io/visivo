@@ -19,9 +19,6 @@
   <img src="https://img.shields.io/github/stars/visivo-io/visivo?style=social" alt="GitHub Stars" />
 </p>
 
-<p align="center">
-  <img src="[PLACEHOLDER: Dashboard Preview GIF - showing an interactive dashboard with filtering, drill-downs, and chart interactions]" alt="Visivo Dashboard Preview" width="80%" />
-</p>
 
 ## 🚀 Why Visivo?
 
@@ -41,8 +38,13 @@ Build reliable, testable dashboards that your team will actually trust. Here's w
 ## 📊 See Visivo in Action
 
 <p align="center">
-  <img src="[PLACEHOLDER: Sales Dashboard Screenshot - showing a multi-chart dashboard with KPIs, line charts, bar charts, and filters]" alt="Sales Dashboard Example" width="45%" />
-  <img src="[PLACEHOLDER: Analytics Dashboard Screenshot - showing advanced visualizations like heatmaps, 3D charts, and cohort analysis]" alt="Analytics Dashboard Example" width="45%" />
+  <a href="https://www.youtube.com/watch?v=EXnw-m1G4Vc">
+    <img src="https://img.youtube.com/vi/EXnw-m1G4Vc/maxresdefault.jpg" alt="Visivo Demo Video" width="60%" />
+  </a>
+</p>
+
+<p align="center">
+  <em>🎥 <strong><a href="https://www.youtube.com/watch?v=EXnw-m1G4Vc">Watch the Demo Video</a></strong> – See how to build dashboards with Visivo in just a few minutes</em>
 </p>
 
 <p align="center">
@@ -122,7 +124,7 @@ We welcome contributions! Whether it's fixing bugs, adding features, or improvin
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
-## 📊 Telemetry
+## 📈 Telemetry
 
 Visivo collects anonymous usage data to help improve the product. No personal information, queries, or sensitive data is collected.
 
