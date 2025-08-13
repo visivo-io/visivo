@@ -11,7 +11,7 @@ from pydantic import model_validator
 
 class Item(NamedModel, ParentModel):
     """
-    The Item houses a single chart, table, selector or markdown object.
+    The Item houses a single chart, table, selector, markdown or iframe object.
 
     It also informs the width that the chart, table or markdown should occupy within a row. Widths are evaluated for each item in a row relative to all of the other items in the row.
 
@@ -139,20 +139,22 @@ class Item(NamedModel, ParentModel):
     selector: Optional[generate_ref_field(Selector)] = Field(
         None, description="A Selector object defined inline or a ref() to a selector"
     )
+    iframe: Optional[str] = Field(None, description="URL to embed as an iframe.")
 
     @model_validator(mode="before")
     @classmethod
     def validate_unique_item_types(cls, data: any):
-        markdown, chart, table, selector = (
+        markdown, chart, table, selector, iframe = (
             data.get("markdown"),
             data.get("chart"),
             data.get("table"),
             data.get("selector"),
+            data.get("iframe"),
         )
-        items_set = [i for i in [markdown, chart, table, selector] if i is not None]
+        items_set = [i for i in [markdown, chart, table, selector, iframe] if i is not None]
         if len(items_set) > 1:
             raise ValueError(
-                'only one of the "markdown", "chart", "table", or "selector" properties should be set on an item'
+                'only one of the "markdown", "chart", "table", "selector", or "iframe" properties should be set on an item'
             )
         return data
 
