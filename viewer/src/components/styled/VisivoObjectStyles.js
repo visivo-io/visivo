@@ -8,7 +8,7 @@ import {
 import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 import { FaGear } from 'react-icons/fa6';
-import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery, SiAmazonaws } from 'react-icons/si';
+import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery, SiAmazonredshift } from 'react-icons/si';
 import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
 import { GrDocumentCsv, GrDocumentExcel } from 'react-icons/gr';
 
@@ -138,7 +138,7 @@ export const TYPE_STYLE_MAP = {
     bg: 'bg-red-100',
     text: 'text-red-800',
     border: 'border-red-200',
-    icon: SiAmazonaws,
+    icon: SiAmazonredshift,
   },
   SnowflakeSource: {
     bg: 'bg-cyan-100',
