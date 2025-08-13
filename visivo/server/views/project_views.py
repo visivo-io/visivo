@@ -125,7 +125,18 @@ def register_project_views(app, flask_app, output_dir):
             project_dir=form.get("project_dir", ""),
         )
 
-        source = create_source(**data.model_dump())
+        # Add Redshift-specific parameters if they exist
+        extra_params = {}
+        if form.get("cluster_identifier"):
+            extra_params["cluster_identifier"] = form.get("cluster_identifier", "")
+        if form.get("region"):
+            extra_params["region"] = form.get("region", "")
+        if form.get("iam") is not None:
+            extra_params["iam"] = form.get("iam", "false").lower() == "true"
+        if form.get("ssl") is not None:
+            extra_params["ssl"] = form.get("ssl", "true").lower() == "true"
+
+        source = create_source(**data.model_dump(), **extra_params)
         if isinstance(source, str):
             return jsonify({"message": source}), 400
 

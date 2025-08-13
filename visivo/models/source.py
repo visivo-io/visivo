@@ -10,6 +10,7 @@ class SourceTypeEnum(str, Enum):
     snowflake = "snowflake"
     bigquery = "bigquery"
     duckdb = "duckdb"
+    redshift = "redshift"
     excel = "xls"
     csv = "csv"
 
