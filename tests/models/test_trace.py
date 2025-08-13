@@ -135,3 +135,40 @@ def test_Trace_with_columns_and_props_as_query_string_props():
     trace = Trace(**data)
     assert trace.name == "development"
     assert isinstance(trace.columns.x_data, QueryString)
+
+
+def test_Trace_with_query_string_columns_serialization():
+    """Test that traces with QueryString columns can be serialized to JSON"""
+    data = {
+        "name": "test-trace-with-query-columns",
+        "columns": {
+            "x_data": "?{x}",
+            "y_data": "?{y}",
+            "color": "?{ case when x >= 5 then '#713B57' else 'grey' end }",
+        },
+        "props": {
+            "type": "scatter",
+            "x": "column(x_data)",
+            "y": "column(y_data)",
+            "marker": {"color": "column(color)"},
+        },
+        "model": {"sql": "select * from table"},
+    }
+    trace = Trace(**data)
+
+    # Test that model_dump works
+    dumped = trace.model_dump()
+    assert dumped["columns"]["x_data"] == "?{x}"
+    assert dumped["columns"]["y_data"] == "?{y}"
+    assert dumped["columns"]["color"] == "?{ case when x >= 5 then '#713B57' else 'grey' end }"
+
+    # Test that model_dump_json works without raising errors
+    json_str = trace.model_dump_json()
+    assert "?{x}" in json_str
+    assert "?{y}" in json_str
+    assert "#713B57" in json_str
+
+    # Test that the trace can be reconstructed from the dumped data
+    trace_from_dump = Trace(**dumped)
+    assert trace_from_dump.name == "test-trace-with-query-columns"
+    assert isinstance(trace_from_dump.columns.x_data, QueryString)
