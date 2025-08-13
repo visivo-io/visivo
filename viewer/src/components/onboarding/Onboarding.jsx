@@ -313,9 +313,9 @@ const Onboarding = () => {
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">GitHub Releases</h4>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Visivo's GitHub Releases</h4>
                   <p className="text-gray-600 text-sm">
-                    Explore GitHub release data with rich visualizations and metrics.
+                    Explore Visivo's GitHub release data with rich visualizations and metrics.
                   </p>
                 </div>
               </div>
