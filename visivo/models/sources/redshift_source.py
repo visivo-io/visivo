@@ -64,7 +64,10 @@ class RedshiftSource(SqlalchemySource):
 
     def get_dialect(self):
         """Return the SQLAlchemy dialect for Redshift."""
-        return "redshift+redshift_connector"
+        return "postgresql+psycopg2"
+
+    def connect_options(self):
+        return {"server_side_cursors": False, "pool_pre_ping": True}
 
     def connect_args(self):
         """Return additional connection arguments for Redshift."""

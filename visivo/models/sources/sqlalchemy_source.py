@@ -68,7 +68,7 @@ class SqlalchemySource(Source, ABC):
 
             Logger.instance().debug(f"Creating engine for Source: {self.name}")
             self._engine = create_engine(
-                self.url(), poolclass=NullPool, connect_args=self.connect_args()
+                self.url(), poolclass=NullPool, connect_args=self.connect_args(), **self.connect_options()
             )
 
             @event.listens_for(self._engine, "connect")
@@ -89,6 +89,9 @@ class SqlalchemySource(Source, ABC):
         return copied
 
     def connect_args(self):
+        return {}
+
+    def connect_options(self):
         return {}
 
     def list_databases(self):

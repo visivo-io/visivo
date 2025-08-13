@@ -134,7 +134,7 @@ version = "4.13.4"
 description = "Screen-scraping library"
 optional = false
 python-versions = ">=3.7.0"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "beautifulsoup4-4.13.4-py3-none-any.whl", hash = "sha256:9bbbb14bfde9d79f38b8cd5f8c7c85f4b8f2523190ebed90e950a8dea4cb1c4b"},
     {file = "beautifulsoup4-4.13.4.tar.gz", hash = "sha256:dbb3c4e1ceae6aefebdaf2423247260cd062430a410e38c66f2baa50a8437195"},
@@ -1684,7 +1684,7 @@ version = "5.4.0"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
 optional = false
 python-versions = ">=3.6"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "lxml-5.4.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:e7bc6df34d42322c5289e37e9971d6ed114e3776b45fa879f734bded9d1fea9c"},
     {file = "lxml-5.4.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:6854f8bd8a1536f8a1d9a3655e6354faa6406621cf857dc27b681b69860645c7"},
@@ -3413,31 +3413,6 @@ files = [
 pyyaml = "*"
 
 [[package]]
-name = "redshift-connector"
-version = "2.1.8"
-description = "Redshift interface library"
-optional = false
-python-versions = ">=3.6"
-groups = ["main"]
-files = [
-    {file = "redshift_connector-2.1.8-py3-none-any.whl", hash = "sha256:160dff3720e8facb5f50f9585f3f68dd5565dd0d986e4e6a879371313da1b36e"},
-]
-
-[package.dependencies]
-beautifulsoup4 = ">=4.7.0,<5.0.0"
-boto3 = ">=1.9.201,<2.0.0"
-botocore = ">=1.12.201,<2.0.0"
-lxml = ">=4.6.5,<6.0.0"
-packaging = "*"
-pytz = ">=2020.1"
-requests = ">=2.23.0,<3.0.0"
-scramp = ">=1.2.0,<1.5.0"
-setuptools = "*"
-
-[package.extras]
-full = ["numpy", "pandas"]
-
-[[package]]
 name = "requests"
 version = "2.32.4"
 description = "Python HTTP for Humans."
@@ -3582,27 +3557,12 @@ botocore = ">=1.37.4,<2.0a.0"
 crt = ["botocore[crt] (>=1.37.4,<2.0a.0)"]
 
 [[package]]
-name = "scramp"
-version = "1.4.6"
-description = "An implementation of the SCRAM protocol."
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-files = [
-    {file = "scramp-1.4.6-py3-none-any.whl", hash = "sha256:a0cf9d2b4624b69bac5432dd69fecfc55a542384fe73c3a23ed9b138cda484e1"},
-    {file = "scramp-1.4.6.tar.gz", hash = "sha256:fe055ebbebf4397b9cb323fcc4b299f219cd1b03fd673ca40c97db04ac7d107e"},
-]
-
-[package.dependencies]
-asn1crypto = ">=1.5.1"
-
-[[package]]
 name = "setuptools"
 version = "80.9.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922"},
     {file = "setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c"},
@@ -3770,7 +3730,7 @@ version = "2.7"
 description = "A modern CSS selector implementation for Beautiful Soup."
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "dev"]
+groups = ["dev"]
 files = [
     {file = "soupsieve-2.7-py3-none-any.whl", hash = "sha256:6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4"},
     {file = "soupsieve-2.7.tar.gz", hash = "sha256:ad282f9b6926286d2ead4750552c8a6142bc4c783fd66b0293547c8fe6ae126a"},
@@ -4171,4 +4131,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = " >=3.12,<3.13"
-content-hash = "c6e4765012a7617d3f7990761a7c4fe28aa2d9209f1a1cb898b09a6b94568419"
+content-hash = "cac1ed82b4ad3b37f5214669502fe9d8d167a055af13d4480679516b8d97e5b4"
