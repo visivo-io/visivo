@@ -45,7 +45,7 @@ test("renders onboarding content", async () => {
   render(<Onboarding />);
   expect(screen.getByText(/welcome to visivo/i)).toBeInTheDocument();
   expect(screen.getByText(/connect your data/i)).toBeInTheDocument();
-  expect(screen.getByText(/import example dashboard/i)).toBeInTheDocument();
+  expect(screen.getByText(/or try an example/i)).toBeInTheDocument();
   expect(screen.getByTestId("feature-card")).toBeInTheDocument();
 });
 
@@ -62,18 +62,29 @@ test("opens CreateObjectModal on 'Add Data Source' click", async () => {
 });
 
 test("handles 'Import Example' click", async () => {
+  jest.setTimeout(10000); // Increase test timeout
+  
   global.fetch = jest.fn(() =>
     Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
   );
+  
+  // Mock window.location.reload
+  delete window.location;
+  window.location = { reload: jest.fn() };
 
   render(<Onboarding />);
-  const importButton = screen.getByRole("button", { name: /import/i });
-  fireEvent.click(importButton);
+  const importButtons = screen.getAllByRole("button", { name: /import/i });
+  fireEvent.click(importButtons[0]); // Click the first Import button
 
   await waitFor(() => {
     expect(global.fetch).toHaveBeenCalledWith("/api/project/load_example/", expect.anything());
   });
-});
+  
+  // Wait for the reload to be called after timeout
+  await waitFor(() => {
+    expect(window.location.reload).toHaveBeenCalled();
+  }, { timeout: 6000 });
+}, 10000);
 
 test("redirects if not a new project", () => {
   // Override the mock for this specific test

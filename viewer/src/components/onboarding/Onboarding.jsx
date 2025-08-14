@@ -194,7 +194,13 @@ const Onboarding = () => {
       setErrorMessage(message ?? "Failed to import the example dashboard.")
       setShowErrorToast(true)
       closeLoading()
-    } else setLoadingText("Preparing project ...");
+    } else {
+      setLoadingText("Preparing project ...");
+      // Wait for the backend to finish processing and run the project, then reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000); // Increased timeout to allow for full project run
+    }
   };
 
   const isLoadingAction = (action) => isLoading && loadingAction === action;
