@@ -6,3 +6,4 @@ class ExampleTypeEnum(str, Enum):
 
     github_releases = "github-releases"
     ev_sales = "ev-sales"
+    college_football = "college-football"

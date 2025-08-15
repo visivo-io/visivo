@@ -39,6 +39,10 @@ def get_env_content_for_example_type(example_type: str) -> str:
             return "REPO_NAME=visivo\nREPO_COMPANY=visivo-io"
         case ExampleTypeEnum.ev_sales:
             return "# EV Sales Data Configuration\n# Add any required environment variables here"
+        case ExampleTypeEnum.college_football:
+            return (
+                "# College Football 2024 Dashboard\n# Add any required environment variables here"
+            )
         case _:
             return "REPO_NAME=visivo\nREPO_COMPANY=visivo-io"
 
@@ -65,7 +69,15 @@ def load_example_project(
     """Load example project from GitHub repository."""
     GIT_TEMP_DIR = "tempgit"
 
-    repo_url = f"https://github.com/visivo-io/{example_type}.git"
+    # Map example type to actual repo name
+    repo_name_map = {
+        ExampleTypeEnum.github_releases: "github-releases",
+        ExampleTypeEnum.ev_sales: "ev-sales",
+        ExampleTypeEnum.college_football: "2024-college-football-dashboards",
+    }
+
+    repo_name = repo_name_map.get(example_type, example_type)
+    repo_url = f"https://github.com/visivo-io/{repo_name}.git"
     project_path = Path(project_dir)
     env_path = project_path / ".env"
     gitignore_path = project_path / ".gitignore"
