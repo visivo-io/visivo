@@ -16,7 +16,7 @@ jest.mock("./ProjectModal", () => ({ handleSetProjectName, tempProjectName, setT
 jest.mock("../editors/CreateObjectModal", () => (props) =>
   props.isOpen ? <div data-testid="create-object-modal">Create Object Modal</div> : null
 );
-jest.mock("../common/Loading", () => () => <div data-testid="loading">Loading...</div>);
+jest.mock("../common/Loading", () => ({ text }) => <div data-testid="loading">{text || "Loading..."}</div>);
 jest.mock("./FeatureCard", () => () => <div data-testid="feature-card">FeatureCard</div>);
 
 // Mock the store values that the component uses
@@ -62,15 +62,9 @@ test("opens CreateObjectModal on 'Add Data Source' click", async () => {
 });
 
 test("handles 'Import Example' click", async () => {
-  jest.setTimeout(10000); // Increase test timeout
-  
   global.fetch = jest.fn(() =>
     Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
   );
-  
-  // Mock window.location.reload
-  delete window.location;
-  window.location = { reload: jest.fn() };
 
   render(<Onboarding />);
   const importButtons = screen.getAllByRole("button", { name: /import/i });
@@ -80,11 +74,11 @@ test("handles 'Import Example' click", async () => {
     expect(global.fetch).toHaveBeenCalledWith("/api/project/load_example/", expect.anything());
   });
   
-  // Wait for the reload to be called after timeout
+  // Verify the loading text changes to "Preparing project ..."
   await waitFor(() => {
-    expect(window.location.reload).toHaveBeenCalled();
-  }, { timeout: 6000 });
-}, 10000);
+    expect(screen.getByText(/Preparing project/i)).toBeInTheDocument();
+  });
+});
 
 test("redirects if not a new project", () => {
   // Override the mock for this specific test
