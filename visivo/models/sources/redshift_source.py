@@ -62,7 +62,7 @@ class RedshiftSource(Source):
     connection_pool_size: Optional[int] = Field(
         1, description="The pool size that is used for this connection."
     )
-    
+
     _connection: Any = PrivateAttr(default=None)
 
     def get_connection(self):
@@ -74,33 +74,33 @@ class RedshiftSource(Source):
                 "redshift-connector is required for Redshift sources. "
                 "Install it with: pip install redshift-connector"
             )
-        
+
         connection_params = {
-            'host': self.host,
-            'port': self.port or 5439,
-            'database': self.database,
-            'user': self.username,
+            "host": self.host,
+            "port": self.port or 5439,
+            "database": self.database,
+            "user": self.username,
         }
-        
+
         # Add password if not using IAM
         if not self.iam and self.password:
-            connection_params['password'] = self.get_password()
-        
+            connection_params["password"] = self.get_password()
+
         # Add IAM-specific parameters
         if self.iam:
-            connection_params['is_iam'] = True
+            connection_params["is_iam"] = True
             if self.cluster_identifier:
-                connection_params['cluster_identifier'] = self.cluster_identifier
+                connection_params["cluster_identifier"] = self.cluster_identifier
             if self.region:
-                connection_params['region'] = self.region
-        
+                connection_params["region"] = self.region
+
         # Add SSL configuration
         if self.ssl:
-            connection_params['ssl'] = True
-            connection_params['sslmode'] = 'require'
-        
+            connection_params["ssl"] = True
+            connection_params["sslmode"] = "require"
+
         return redshift_connector.connect(**connection_params)
-    
+
     def connect(self):
         """Context manager for database connections."""
         return RedshiftConnection(source=self)
@@ -113,7 +113,7 @@ class RedshiftSource(Source):
                 cursor.execute(query)
                 columns = [desc[0] for desc in cursor.description]
                 rows = cursor.fetchall()
-                
+
                 # Convert to list of dictionaries
                 result_data = []
                 for row in rows:
@@ -125,11 +125,11 @@ class RedshiftSource(Source):
                             value = json.dumps(value)
                         row_dict[col] = value
                     result_data.append(row_dict)
-                
+
                 return result_data
             finally:
                 cursor.close()
-    
+
     def list_databases(self):
         """Return list of databases for Redshift cluster."""
         try:
@@ -144,7 +144,7 @@ class RedshiftSource(Source):
                     AND datallowconn = true
                     ORDER BY datname
                     """
-                    
+
                     cursor.execute(query)
                     rows = cursor.fetchall()
                     return [r[0] for r in rows]
@@ -156,15 +156,15 @@ class RedshiftSource(Source):
             )
             # Re-raise to allow proper error handling in UI
             raise e
-    
+
     def introspect(self):
         """Introspect the Redshift database to get schema information."""
         schemas_dict = {}
-        
+
         try:
             with self.connect() as connection:
                 cursor = connection.cursor()
-                
+
                 # Get all schemas
                 schema_query = """
                 SELECT schema_name 
@@ -172,13 +172,13 @@ class RedshiftSource(Source):
                 WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
                 ORDER BY schema_name
                 """
-                
+
                 cursor.execute(schema_query)
                 schemas = [row[0] for row in cursor.fetchall()]
-                
+
                 for schema in schemas:
                     tables_dict = {}
-                    
+
                     # Get tables for this schema
                     table_query = """
                     SELECT table_name 
@@ -186,10 +186,10 @@ class RedshiftSource(Source):
                     WHERE table_schema = %s AND table_type = 'BASE TABLE'
                     ORDER BY table_name
                     """
-                    
+
                     cursor.execute(table_query, (schema,))
                     tables = [row[0] for row in cursor.fetchall()]
-                    
+
                     for table in tables:
                         # Get columns for this table
                         column_query = """
@@ -198,43 +198,37 @@ class RedshiftSource(Source):
                         WHERE table_schema = %s AND table_name = %s
                         ORDER BY ordinal_position
                         """
-                        
+
                         cursor.execute(column_query, (schema, table))
                         columns = [
-                            {
-                                "name": row[0],
-                                "type": row[1],
-                                "nullable": row[2] == "YES"
-                            }
+                            {"name": row[0], "type": row[1], "nullable": row[2] == "YES"}
                             for row in cursor.fetchall()
                         ]
-                        
+
                         tables_dict[table] = columns
-                    
+
                     schemas_dict[schema] = tables_dict
-                
+
                 cursor.close()
-                
+
         except Exception as e:
-            Logger.instance().error(
-                f"Error introspecting Redshift source '{self.name}': {str(e)}"
-            )
+            Logger.instance().error(f"Error introspecting Redshift source '{self.name}': {str(e)}")
             raise e
-        
+
         return schemas_dict
 
 
 class RedshiftConnection:
     """Context manager for Redshift connections using redshift-connector."""
-    
+
     def __init__(self, source):
         self.source = source
         self.connection = None
-    
+
     def __enter__(self):
         self.connection = self.source.get_connection()
         return self.connection
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.connection:
             self.connection.close()
