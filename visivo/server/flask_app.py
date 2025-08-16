@@ -19,6 +19,7 @@ class FlaskApp:
         self._project = project
 
         self._working_dir = working_dir
+        self.hot_reload_server = None  # Will be set by serve_phase
 
         self.app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
         self.worksheet_repo = WorksheetRepository(os.path.join(output_dir, "worksheets.db"))

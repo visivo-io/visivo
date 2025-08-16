@@ -20,6 +20,7 @@ from visivo.models.trace import Trace
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.server.project_writer import ProjectWriter
 from visivo.server.views.utils import create_example_dashboard, load_csv, write_project_file
+from visivo.models.example_type import ExampleTypeEnum
 
 
 def register_project_views(app, flask_app, output_dir):
@@ -61,11 +62,15 @@ def register_project_views(app, flask_app, output_dir):
 
         data = request.get_json()
         project_name = data.get("project_name", "").strip()
-        example_type = data.get("example_type", "github-releases")
+        example_type = data.get("example_type", ExampleTypeEnum.github_releases.value)
         project_dir = data.get("project_dir", ".")
 
         if not project_name:
             return jsonify({"message": "Project name is required"}), 400
+
+        # Pause the file watcher during cloning
+        if flask_app.hot_reload_server:
+            flask_app.hot_reload_server.pause_file_watcher()
 
         try:
             project_file_path = load_example(project_name, example_type, project_dir)
@@ -89,6 +94,14 @@ def register_project_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error loading example project: {str(e)}")
             return jsonify({"message": f"Failed to load example project: {str(e)}"}), 500
+        finally:
+            if flask_app.hot_reload_server:
+                Logger.instance().debug("Resuming file watcher after example load")
+                flask_app.app.project = Project()
+                flask_app.hot_reload_server.resume_file_watcher()
+                flask_app.hot_reload_server.on_project_change()
+                Logger.instance().debug("Resumed file watcher after example load")
+                flask_app.hot_reload_server.socketio.emit("reload")
 
     @app.route("/api/project/init/", methods=["POST"])
     def init_project():

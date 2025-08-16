@@ -10,10 +10,13 @@ import { Navigate } from "react-router-dom";
 import FeatureCard from "./FeatureCard";
 import { Toast } from "flowbite-react";
 import { HiExclamation, HiX } from "react-icons/hi";
+import { GiAmericanFootballBall } from "react-icons/gi";
 
 const ACTIONS = {
   DATA_SOURCE: "Data Source",
   GITHUB_RELEASE: "github-releases",
+  EV_SALES: "ev-sales",
+  COLLEGE_FOOTBALL: "college-football",
 };
 
 const Onboarding = () => {
@@ -26,6 +29,7 @@ const Onboarding = () => {
   const [loadingAction, setLoadingAction] = useState("");
   const [showErrorToast, setShowErrorToast] = useState(false)
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedExample] = useState(ACTIONS.GITHUB_RELEASE);
 
   const isNewProject = useStore((state) => state.isNewProject);
   const isOnBoardingLoading = useStore((state) => state.isOnBoardingLoading);
@@ -171,8 +175,8 @@ const Onboarding = () => {
   };
 
 
-  const handleLoadExample = async () => {
-    setLoadingAction(ACTIONS.GITHUB_RELEASE);
+  const handleLoadExample = async (exampleType = selectedExample) => {
+    setLoadingAction(exampleType);
     setLoadingText("Importing example...");
     setIsLoading(true);
 
@@ -181,7 +185,7 @@ const Onboarding = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         project_name: projectName,
-        example_type: ACTIONS.GITHUB_RELEASE,
+        example_type: exampleType,
         project_dir: projectDir,
       }),
     });
@@ -192,7 +196,9 @@ const Onboarding = () => {
       setErrorMessage(message ?? "Failed to import the example dashboard.")
       setShowErrorToast(true)
       closeLoading()
-    } else setLoadingText("Preparing project ...");
+    } else {
+      setLoadingText("Preparing project ...");
+    }
   };
 
   const isLoadingAction = (action) => isLoading && loadingAction === action;
@@ -280,17 +286,18 @@ const Onboarding = () => {
         {/* Feature Cards */}
         <FeatureCard />
 
-        {/* Example Dashboard */}
+        {/* Example Dashboards */}
         <div className="bg-white rounded-2xl shadow-xl p-4 w-full">
           <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">Or Try an Example</h3>
           <p className="text-center text-gray-600 mb-6">
-            Not sure where to start? Explore our sample dashboard to see what's possible.
+            Not sure where to start? Explore our sample dashboards to see what's possible.
           </p>
 
-          <div className="p-6 border-2 border-gray-200 rounded-xl hover:border-blue-300 bg-gradient-to-r from-gray-50 to-blue-50 hover:from-blue-50 hover:to-indigo-50 transition-all">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center">
+          <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* GitHub Releases Example */}
+            <div className="p-4 border-2 border-gray-200 rounded-xl hover:border-blue-300 bg-gradient-to-r from-gray-50 to-blue-50 hover:from-blue-50 hover:to-indigo-50 transition-all">
+              <div className="flex flex-col items-center text-center mb-4">
+                <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center mb-3">
                   <svg
                     className="w-8 h-8 text-white"
                     fill="currentColor"
@@ -306,33 +313,107 @@ const Onboarding = () => {
                         0-1.31.467-2.381 1.235-3.221-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 0 1 3-.404c1.02.005 2.045.138 3
                         .404 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.911 1.23 3.221 0 4.61-2.807 5.625-5.48 5.921
                         .42.36.81 1.096.81 2.21 0 1.595-.015 2.88-.015 3.275 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.627-5.373-12-12-12z"
-                    />
+                      />
                   </svg>
                 </div>
                 <div>
-                  <h4 className="text-xl font-semibold text-gray-800 mb-2">Import Example Dashboard</h4>
-                  <p className="text-gray-600">
-                    Import the GitHub Releases dashboard example and explore release data with rich visualizations.
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">GitHub Releases</h4>
+                  <p className="text-gray-600 text-sm">
+                    Explore Visivo's GitHub release data with visualizations and metrics.
                   </p>
                 </div>
               </div>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleLoadExample(ACTIONS.GITHUB_RELEASE)}
+                  className="px-6 py-2 text-sm font-medium bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46]"
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center space-x-2">
+                    {isLoadingAction(ACTIONS.GITHUB_RELEASE) ? (
+                      <Loading text={loadingText} width={16} />
+                    ) : (
+                      <>
+                        <span>Import</span>
+                        <FontAwesomeIcon icon={faArrowRight} />
+                      </>
+                    )}
+                  </div>
+                </button>
+              </div>
             </div>
-            <div className="flex justify-center md:justify-end mt-4">
-              <button
-                onClick={handleLoadExample}
-                className="px-12 py-3 text-lg font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46] mt-2"
-              >
-                <div className="flex items-center space-x-3">
-                  {isLoadingAction(ACTIONS.GITHUB_RELEASE) ? (
-                    <Loading text={loadingText} width={16} />
-                  ) : (
-                    <>
-                      <span>Import</span>
-                      <FontAwesomeIcon icon={faArrowRight} />
-                    </>
-                  )}
+
+            {/* EV Sales Example */}
+            <div className="p-4 border-2 border-gray-200 rounded-xl hover:border-green-300 bg-gradient-to-r from-gray-50 to-green-50 hover:from-green-50 hover:to-emerald-50 transition-all">
+              <div className="flex flex-col items-center text-center mb-4">
+                <div className="w-16 h-16 bg-green-600 rounded-lg flex items-center justify-center mb-3">
+                  <svg
+                    className="w-8 h-8 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                  </svg>
                 </div>
-              </button>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">EV Sales Data</h4>
+                  <p className="text-gray-600 text-sm">
+                    Analyze electric vehicle sales trends and market insights.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleLoadExample(ACTIONS.EV_SALES)}
+                  className="px-6 py-2 text-sm font-medium bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46]"
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center space-x-2">
+                    {isLoadingAction(ACTIONS.EV_SALES) ? (
+                      <Loading text={loadingText} width={16} />
+                    ) : (
+                      <>
+                        <span>Import</span>
+                        <FontAwesomeIcon icon={faArrowRight} />
+                      </>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* College Football Example */}
+            <div className="p-4 border-2 border-gray-200 rounded-xl hover:border-orange-300 bg-gradient-to-r from-gray-50 to-orange-50 hover:from-orange-50 hover:to-amber-50 transition-all">
+              <div className="flex flex-col items-center text-center mb-4">
+                <div className="w-16 h-16 bg-orange-600 rounded-lg flex items-center justify-center mb-3">
+                  <GiAmericanFootballBall className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">College Football</h4>
+                  <p className="text-gray-600 text-sm">
+                    Analyze 2024 season statistics and team performance data.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleLoadExample(ACTIONS.COLLEGE_FOOTBALL)}
+                  className="px-6 py-2 text-sm font-medium bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46]"
+                  disabled={isLoading}
+                >
+                  <div className="flex items-center space-x-2">
+                    {isLoadingAction(ACTIONS.COLLEGE_FOOTBALL) ? (
+                      <Loading text={loadingText} width={16} />
+                    ) : (
+                      <>
+                        <span>Import</span>
+                        <FontAwesomeIcon icon={faArrowRight} />
+                      </>
+                    )}
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
         </div>

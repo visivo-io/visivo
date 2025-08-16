@@ -1,7 +1,7 @@
 from flask import Flask
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import time
 from visivo.logger.logger import Logger
 import os
@@ -11,11 +11,12 @@ import socket
 
 
 class ProjectChangeHandler(FileSystemEventHandler):
-    def __init__(self, callback, ignore_patterns=None):
+    def __init__(self, callback, ignore_patterns=None, pause_lock=None):
         self.callback = callback
         self.ignore_patterns = ignore_patterns or []
         self.last_event_time = 0
         self.debounce_seconds = 0.5  # Debounce events within 500ms
+        self.pause_lock = pause_lock or Lock()
 
     def on_modified(self, event):
         if event.is_directory:
@@ -29,11 +30,19 @@ class ProjectChangeHandler(FileSystemEventHandler):
         if any(pattern in event.src_path for pattern in self.ignore_patterns):
             return
 
-        current_time = time.time()
-        if current_time - self.last_event_time > self.debounce_seconds:
-            Logger.instance().debug(f"Triggering file modified: {event.src_path}")
-            self.last_event_time = current_time
-            self.callback()
+        # Check if we're paused (e.g., during cloning)
+        if not self.pause_lock.acquire(blocking=False):
+            Logger.instance().debug(f"File watcher paused, ignoring change: {event.src_path}")
+            return
+
+        try:
+            current_time = time.time()
+            if current_time - self.last_event_time > self.debounce_seconds:
+                Logger.instance().debug(f"Triggering file modified: {event.src_path}")
+                self.last_event_time = current_time
+                self.callback()
+        finally:
+            self.pause_lock.release()
 
 
 class HotReloadServer:
@@ -49,14 +58,16 @@ class HotReloadServer:
                 continue
         raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
 
-    def __init__(self, app: Flask, watch_path: str, ignore_patterns=None):
+    def __init__(self, app: Flask, on_project_change, watch_path: str, ignore_patterns=None):
         self.app = app
         self.watch_path = watch_path
         self.ignore_patterns = ignore_patterns or []
         self.observer = None
         self.server_thread = None
+        self.on_project_change = on_project_change
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading")
+        self.pause_lock = Lock()  # Lock for pausing file watcher during operations
 
         if not os.environ.get("DEBUG"):
             # Suppress Flask logging
@@ -78,11 +89,27 @@ class HotReloadServer:
             # Notify clients to refresh after callback completes
             self.socketio.emit("reload")
 
-        event_handler = ProjectChangeHandler(wrapped_callback, self.ignore_patterns)
+        event_handler = ProjectChangeHandler(
+            wrapped_callback, self.ignore_patterns, self.pause_lock
+        )
         self.observer = Observer()
         self.observer.schedule(event_handler, self.watch_path, recursive=True)
         self.observer.start()
         Logger.instance().debug(f"Started file watcher for YML files on {self.watch_path}")
+
+    def pause_file_watcher(self):
+        """Pause the file watcher (e.g., during cloning operations)"""
+        Logger.instance().debug("Pausing file watcher")
+        self.pause_lock.acquire()
+
+    def resume_file_watcher(self):
+        """Resume the file watcher after pausing"""
+        Logger.instance().debug("Resuming file watcher")
+        try:
+            self.pause_lock.release()
+        except RuntimeError:
+            # Lock was not acquired, ignore
+            pass
 
     def run_server(self, host: str, port: int):
         """Run the Flask server in a separate thread"""

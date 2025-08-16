@@ -30,7 +30,8 @@ def run_phase(
     from visivo.jobs.filtered_runner import FilteredRunner
     from time import time
 
-    # Replace compile phase with parse project phase if skip_compile is True. Injects the project if it's available.
+    # Replace compile phase with parse project phase if skip_compile is True.
+    # Injects the project if it's available.
     if project and skip_compile:
         Logger.instance().debug(
             f"Using provided project {project.name}. skip_compile is {skip_compile}"
@@ -59,7 +60,7 @@ def run_phase(
             dbt_target=dbt_target,
         )
 
-    if not dag_filter:
+    if not dag_filter or dag_filter == "":
         dag_filter = ",".join(
             map(
                 lambda x: f"+{x.name}+",

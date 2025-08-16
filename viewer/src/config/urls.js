@@ -14,7 +14,7 @@ const URL_PATTERNS = {
     tracesQuery: '/api/traces/',
     traceData: '/api/traces/{hash}/',
     dashboardQuery: '/api/dashboards/{hash}/',
-    dashboardThumbnail: '/api/dashboards/{hash}.png',
+    dashboardThumbnail: '/api/dashboards/{hash}.png/',
     
     worksheet: '/api/worksheet/',
     worksheetDetail: '/api/worksheet/{id}/',
