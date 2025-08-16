@@ -2,12 +2,12 @@ import os
 import click
 import fnmatch
 import re
-import glob
 from pathlib import Path
 from typing import List
 from visivo.parsers.file_names import PROJECT_FILE_NAME
 from visivo.commands.utils import get_profile_file
 from visivo.utils import load_yaml_file
+from visivo.logger.logger import Logger
 
 
 class Discover:

@@ -7,6 +7,7 @@ import md5 from 'md5';
 import { useRouteLoaderData } from 'react-router-dom';
 import DashboardThumbnail from './DashboardThumbnail';
 import { useFetchDashboard } from '../../contexts/QueryContext';
+import { getUrl } from '../../contexts/URLContext';
 
 const GENERATING_THUMBNAIL_URL = 'GENERATING';
 
@@ -28,7 +29,8 @@ function DashboardCard({ projectId, dashboard }) {
       formData.append('file', blob, `${dashboard.name}.png`);
       const dashboardNameHash = md5(dashboard.name);
       
-      const response = await fetch(`/data/dashboards/${dashboardNameHash}.png`, {
+      let url = getUrl('dashboardThumbnail', { hash: dashboardNameHash });
+      const response = await fetch(url, {
         method: 'POST',
         body: formData,
       });

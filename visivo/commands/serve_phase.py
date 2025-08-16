@@ -23,6 +23,7 @@ def serve_phase(
 ):
 
     app = FlaskApp(output_dir=output_dir, project=project, working_dir=working_dir)
+    server = None  # Will be set later
 
     def on_project_change(one_shot=False):
         try:
@@ -114,6 +115,14 @@ def serve_phase(
             ignore_patterns.append(dbt_file)
 
     # Create and return the hot reload server
-    server = HotReloadServer(app=app.app, watch_path=working_dir, ignore_patterns=ignore_patterns)
+    server = HotReloadServer(
+        app=app.app,
+        on_project_change=on_project_change,
+        watch_path=working_dir,
+        ignore_patterns=ignore_patterns,
+    )
+
+    # Pass the server reference to the Flask app so it can control the file watcher
+    app.hot_reload_server = server
 
     return server, on_project_change, on_server_ready

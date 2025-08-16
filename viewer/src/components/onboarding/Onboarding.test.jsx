@@ -16,7 +16,7 @@ jest.mock("./ProjectModal", () => ({ handleSetProjectName, tempProjectName, setT
 jest.mock("../editors/CreateObjectModal", () => (props) =>
   props.isOpen ? <div data-testid="create-object-modal">Create Object Modal</div> : null
 );
-jest.mock("../common/Loading", () => () => <div data-testid="loading">Loading...</div>);
+jest.mock("../common/Loading", () => ({ text }) => <div data-testid="loading">{text || "Loading..."}</div>);
 jest.mock("./FeatureCard", () => () => <div data-testid="feature-card">FeatureCard</div>);
 
 // Mock the store values that the component uses
@@ -45,7 +45,7 @@ test("renders onboarding content", async () => {
   render(<Onboarding />);
   expect(screen.getByText(/welcome to visivo/i)).toBeInTheDocument();
   expect(screen.getByText(/connect your data/i)).toBeInTheDocument();
-  expect(screen.getByText(/import example dashboard/i)).toBeInTheDocument();
+  expect(screen.getByText(/or try an example/i)).toBeInTheDocument();
   expect(screen.getByTestId("feature-card")).toBeInTheDocument();
 });
 
@@ -67,11 +67,16 @@ test("handles 'Import Example' click", async () => {
   );
 
   render(<Onboarding />);
-  const importButton = screen.getByRole("button", { name: /import/i });
-  fireEvent.click(importButton);
+  const importButtons = screen.getAllByRole("button", { name: /import/i });
+  fireEvent.click(importButtons[0]); // Click the first Import button
 
   await waitFor(() => {
     expect(global.fetch).toHaveBeenCalledWith("/api/project/load_example/", expect.anything());
+  });
+  
+  // Verify the loading text changes to "Preparing project ..."
+  await waitFor(() => {
+    expect(screen.getByText(/Preparing project/i)).toBeInTheDocument();
   });
 });
 

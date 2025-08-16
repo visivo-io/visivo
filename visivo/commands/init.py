@@ -1,13 +1,14 @@
 import click
 from visivo.commands.options import project_dir
+from visivo.models.example_type import ExampleTypeEnum
 
 
 @click.command()
 @project_dir
 @click.option(
     "--example",
-    type=str,
-    help="Load an example project from GitHub (e.g., 'github-releases')",
+    type=click.Choice([e.value for e in ExampleTypeEnum]),
+    help="Load an example project from GitHub",
     default=None,
 )
 def init(project_dir, example):
