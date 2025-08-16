@@ -88,7 +88,7 @@ def test_redshift_source_connection_params():
         "password": "testpass",
     }
     source = RedshiftSource(**data)
-    
+
     # Just verify the source has the expected attributes
     assert source.host == "my-cluster.abcdefghij.us-east-1.redshift.amazonaws.com"
     assert source.port == 5439
@@ -110,7 +110,7 @@ def test_redshift_source_iam_params():
         "region": "us-east-1",
     }
     source = RedshiftSource(**data)
-    
+
     # Verify IAM configuration
     assert source.iam is True
     assert source.cluster_identifier == "my-cluster"

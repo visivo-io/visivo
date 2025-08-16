@@ -13,7 +13,7 @@ This directory contains logo images for various data sources supported by Visivo
 - `duckdb.png` - DuckDB logo  
 - `mysql.png` - MySQL logo
 - `postgres.png` - PostgreSQL logo
-- `redshift.png` - **PLACEHOLDER** - Currently using PostgreSQL logo as placeholder. Should be replaced with official Amazon Redshift logo from AWS Architecture Icons (https://aws.amazon.com/architecture/icons/) or AWS Icons (https://aws-icons.com/icons/redshift)
+- `redshift.png` - Amazon Redshift logo (from AWS Architecture Icons v07312025)
 - `snowflake.png` - Snowflake logo
 - `sqlite.png` - SQLite logo
 
