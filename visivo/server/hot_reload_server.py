@@ -58,12 +58,13 @@ class HotReloadServer:
                 continue
         raise RuntimeError(f"Could not find an available port after {max_attempts} attempts")
 
-    def __init__(self, app: Flask, watch_path: str, ignore_patterns=None):
+    def __init__(self, app: Flask, on_project_change, watch_path: str, ignore_patterns=None):
         self.app = app
         self.watch_path = watch_path
         self.ignore_patterns = ignore_patterns or []
         self.observer = None
         self.server_thread = None
+        self.on_project_change = on_project_change
         self.stop_event = Event()
         self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading")
         self.pause_lock = Lock()  # Lock for pausing file watcher during operations

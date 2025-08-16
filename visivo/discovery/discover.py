@@ -156,8 +156,6 @@ class Discover:
         data = load_yaml_file(file)
         base_path = os.path.dirname(file)
 
-        Logger.instance().info(f"Adding includes for {file}")
-
         output_file = self.__add_dbt(data=data)
         if output_file and os.path.exists(output_file):
             files.append(Path(output_file))

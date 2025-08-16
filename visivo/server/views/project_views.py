@@ -95,57 +95,13 @@ def register_project_views(app, flask_app, output_dir):
             Logger.instance().error(f"Error loading example project: {str(e)}")
             return jsonify({"message": f"Failed to load example project: {str(e)}"}), 500
         finally:
-            # Resume the file watcher after cloning completes (with a small delay)
             if flask_app.hot_reload_server:
-                import threading
-
-                def resume_and_run_project():
-                    import time
-                    from visivo.commands.compile_phase import compile_phase
-                    from visivo.commands.run_phase import run_phase
-
-                    time.sleep(0.5)  # Give filesystem time to settle
-
-                    # Resume the file watcher
-                    flask_app.hot_reload_server.resume_file_watcher()
-
-                    try:
-                        # Compile the project
-                        Logger.instance().info("Compiling example project after load...")
-                        compiled_project = compile_phase(
-                            default_source=None,
-                            working_dir=project_dir,
-                            output_dir=output_dir,
-                        )
-
-                        # Run the entire project without any filter
-                        Logger.instance().info("Running full example project...")
-                        runner = run_phase(
-                            output_dir=output_dir,
-                            working_dir=project_dir,
-                            default_source=None,
-                            dag_filter=None,  # No filter - run everything
-                            threads=1,
-                            soft_failure=True,
-                            skip_compile=True,
-                            project=compiled_project,
-                            server_url=f"http://localhost:8000",  # Default server URL
-                        )
-
-                        # Update the Flask app's project
-                        flask_app.project = runner.project
-
-                        Logger.instance().success(
-                            "Example project loaded and data generated successfully"
-                        )
-                    except Exception as e:
-                        Logger.instance().error(f"Error running example project: {str(e)}")
-
-                    # Trigger a reload event for the UI
-                    Logger.instance().debug("Emitting reload event after example load")
-                    flask_app.hot_reload_server.socketio.emit("reload")
-
-                threading.Thread(target=resume_and_run_project, daemon=True).start()
+                Logger.instance().debug("Resuming file watcher after example load")
+                flask_app.app.project = Project()
+                flask_app.hot_reload_server.resume_file_watcher()
+                flask_app.hot_reload_server.on_project_change()
+                Logger.instance().debug("Resumed file watcher after example load")
+                flask_app.hot_reload_server.socketio.emit("reload")
 
     @app.route("/api/project/init/", methods=["POST"])
     def init_project():

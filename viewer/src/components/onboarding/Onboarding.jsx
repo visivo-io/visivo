@@ -198,10 +198,6 @@ const Onboarding = () => {
       closeLoading()
     } else {
       setLoadingText("Preparing project ...");
-      // Wait for the backend to finish processing and run the project, then reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 5000); // Increased timeout to allow for full project run
     }
   };
 

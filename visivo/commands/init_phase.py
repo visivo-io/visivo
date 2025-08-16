@@ -44,7 +44,7 @@ def get_env_content_for_example_type(example_type: str) -> str:
                 "# College Football 2024 Dashboard\n# Add any required environment variables here"
             )
         case _:
-            return "REPO_NAME=visivo\nREPO_COMPANY=visivo-io"
+            return "# Add any required environment variables here"
 
 
 def create_basic_project(project_name: str, project_dir: str = "."):
