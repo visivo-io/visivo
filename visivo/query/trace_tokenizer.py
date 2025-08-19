@@ -29,6 +29,34 @@ class TraceTokenizer:
         self._set_order_by()
         self._set_groupby()
         self._set_filter()
+    
+    def _resolve_metric_reference(self, query_statement: str) -> str:
+        """
+        Resolve metric references in query statements.
+        Converts ${ref(model).metric_name} to the actual metric expression.
+        """
+        # Pattern to match ${ref(model_name).metric_name}
+        metric_ref_pattern = r'\$\{\s*ref\(\s*([^)]+)\s*\)\s*\.\s*([^}]+)\s*\}'
+        
+        def replace_metric(match):
+            model_name = match.group(1).strip().strip("'\"")
+            metric_name = match.group(2).strip()
+            
+            # Check if the referenced model is the current model
+            if model_name == self.model.name:
+                # Look for the metric in the model's metrics
+                if hasattr(self.model, 'metrics') and self.model.metrics:
+                    for metric in self.model.metrics:
+                        if metric.name == metric_name:
+                            # Return the metric expression wrapped in parentheses for safety
+                            return f"({metric.expression})"
+            
+            # If metric not found, return original reference (will likely cause an error later)
+            return match.group(0)
+        
+        # Replace all metric references
+        resolved = re.sub(metric_ref_pattern, replace_metric, query_statement)
+        return resolved
 
     def tokenize(self):
         cohort_on = self._get_cohort_on()
@@ -101,7 +129,9 @@ class TraceTokenizer:
                     query_statement = str(obj)
 
             if query_statement and query_id not in ("cohort_on", "filter", "order_by"):
-                self.select_items.update({query_id: query_statement})
+                # Resolve any metric references in the query statement
+                resolved_statement = self._resolve_metric_reference(query_statement)
+                self.select_items.update({query_id: resolved_statement})
 
     def _set_groupby(self):
         if hasattr(self, "order_by"):
@@ -134,14 +164,16 @@ class TraceTokenizer:
             filter_by = {"aggregate": [], "window": [], "vanilla": []}
             for filter in filters:
                 argument = extract_value_from_function(filter, "query")
-                classification = self.statement_classifier.classify(argument)
+                # Resolve metric references in filters
+                resolved_argument = self._resolve_metric_reference(argument)
+                classification = self.statement_classifier.classify(resolved_argument)
                 match classification:
                     case StatementEnum.window:
-                        filter_by["window"].append(argument)
+                        filter_by["window"].append(resolved_argument)
                     case StatementEnum.vanilla:
-                        filter_by["vanilla"].append(argument)
+                        filter_by["vanilla"].append(resolved_argument)
                     case StatementEnum.aggregate:
-                        filter_by["aggregate"].append(argument)
+                        filter_by["aggregate"].append(resolved_argument)
             if str(self.dialect.type) != "snowflake":
                 if filter_by["window"] != []:
                     warnings.warn(
@@ -159,6 +191,8 @@ class TraceTokenizer:
             for statement in order_by:
                 argument = extract_value_from_function(statement, "query")
                 if argument:
-                    parsed_order_by.append(argument)
+                    # Resolve metric references in order_by
+                    resolved_argument = self._resolve_metric_reference(argument)
+                    parsed_order_by.append(resolved_argument)
             if parsed_order_by:
                 self.order_by = parsed_order_by

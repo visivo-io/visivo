@@ -140,7 +140,7 @@ class DagRunner:
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item)
-        # SqlModel dimension extraction still needs to be handled separately
         elif isinstance(item, SqlModel):
-            return extract_dimensions_job(model=item, dag=self.project_dag)
+            # Extract dimensions from SqlModel during run phase
+            return extract_dimensions_job(model=item, dag=self.project_dag, output_dir=self.output_dir)
         return None
