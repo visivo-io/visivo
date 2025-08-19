@@ -204,3 +204,60 @@ metrics:
 
         finally:
             os.unlink(yaml_file)
+    
+    def test_parse_project_level_dimensions(self):
+        """Test parsing project-level dimensions from YAML."""
+        yaml_content = """
+name: test_project
+
+sources:
+  - name: test_db
+    type: sqlite
+    database: ":memory:"
+
+models:
+  - name: orders
+    sql: SELECT * FROM orders
+    source: ${ref(test_db)}
+    dimensions:
+      - name: order_month
+        expression: "DATE_TRUNC('month', order_date)"
+        description: "Order month"
+
+dimensions:
+  - name: fiscal_year
+    expression: "YEAR(date) + CASE WHEN MONTH(date) >= 7 THEN 1 ELSE 0 END"
+    description: "Fiscal year (July-June)"
+  - name: is_holiday
+    expression: "date IN ('2024-01-01', '2024-07-04', '2024-12-25')"
+    description: "Whether the date is a holiday"
+
+traces:
+  - name: test_trace
+    model: ${ref(orders)}
+    props:
+      type: bar
+      x: ?{ fiscal_year }
+      y: ?{ count(*) }
+"""
+        
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
+            f.write(yaml_content)
+            yaml_file = f.name
+        
+        try:
+            parser = CoreParser(project_file=Path(yaml_file), files=[Path(yaml_file)])
+            project = parser.parse()
+            
+            # Check project-level dimensions
+            assert len(project.dimensions) == 2
+            assert project.dimensions[0].name == "fiscal_year"
+            assert "YEAR(date)" in project.dimensions[0].expression
+            assert project.dimensions[1].name == "is_holiday"
+            
+            # Check model-level dimensions
+            assert len(project.models[0].dimensions) == 1
+            assert project.models[0].dimensions[0].name == "order_month"
+            
+        finally:
+            os.unlink(yaml_file)

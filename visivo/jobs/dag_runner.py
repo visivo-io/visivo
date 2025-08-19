@@ -4,6 +4,7 @@ import warnings
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
+from visivo.models.models.sql_model import SqlModel
 from visivo.models.dashboard import Dashboard
 from visivo.models.project import Project
 from visivo.logger.logger import Logger
@@ -19,6 +20,7 @@ from visivo.jobs.run_csv_script_job import job as csv_script_job
 from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
 from visivo.jobs.run_source_connection_job import job as source_connection_job
+from visivo.jobs.extract_dimensions_job import job as extract_dimensions_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
@@ -138,4 +140,7 @@ class DagRunner:
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item)
+        # SqlModel dimension extraction still needs to be handled separately
+        elif isinstance(item, SqlModel):
+            return extract_dimensions_job(model=item, dag=self.project_dag)
         return None

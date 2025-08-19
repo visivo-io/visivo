@@ -34,6 +34,12 @@ class Dimension(NamedModel):
         "Can reference any field from the parent model.",
     )
 
+    data_type: Optional[str] = Field(
+        None,
+        description="SQL data type of the dimension (e.g., VARCHAR, INTEGER, DATE). "
+        "Automatically detected for implicit dimensions extracted from model columns.",
+    )
+
     description: Optional[str] = Field(
         None, description="Human-readable description of what this dimension represents."
     )
