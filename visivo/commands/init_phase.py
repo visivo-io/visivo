@@ -6,6 +6,7 @@ import os
 import shutil
 from pathlib import Path
 from git import Repo
+from visivo.command_line import load_env
 from visivo.logger.logger import Logger
 from visivo.models.include import Include
 from visivo.models.models.sql_model import SqlModel
@@ -121,6 +122,8 @@ def load_example_project(
             env_content = get_env_content_for_example_type(example_type)
             with open(env_path, "w") as fp:
                 fp.write(env_content)
+
+            load_env(env_path)
 
         # Update project name in the YAML file
         discover = Discover(working_dir=project_path, output_dir=None)

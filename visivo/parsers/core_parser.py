@@ -34,7 +34,7 @@ class CoreParser:
 
     def __merged_project_data(self):
         project_data = self.project_file_data()
-
+        self.__recursively_add_file_path(project_data, self.project_file)
         data_files = {}
         for file in self.files:
             if file == self.project_file:
@@ -61,9 +61,29 @@ class CoreParser:
         """
         Modifies the input object by adding the file path to the named model objects.
         """
+        parent_dir = file_path.parent
+
         if isinstance(obj, dict):
             if obj.get("name") is not None:
-                obj["file_path"] = str(file_path)
+                if obj.get("name") in PROJECT_CHILDREN:
+                    obj["file_path"] = str(file_path)
+
+            if obj.get("type", "").lower() in {"duckdb", "sqlite"}:
+                db_path = obj.get("database")
+                if isinstance(db_path, str):
+                    obj["database"] = self.__resolve_path_if_relative(db_path, parent_dir)
+
+            if "args" in obj and isinstance(obj["args"], list):
+                new_args = []
+                for arg in obj["args"]:
+                    if (
+                        isinstance(arg, str)
+                        and arg.endswith(".py")
+                    ):
+                        arg = self.__resolve_path_if_relative(arg, parent_dir)
+                    new_args.append(arg)
+                obj["args"] = new_args
+
             for value in obj.values():
                 self.__recursively_add_file_path(value, file_path)
         elif isinstance(obj, list):
@@ -71,3 +91,23 @@ class CoreParser:
                 self.__recursively_add_file_path(item, file_path)
         else:
             pass
+
+
+    def __resolve_path_if_relative(self, path: str, parent_dir: Path) -> str:
+        """
+        Resolve path relative to parent_dir if it's a likely filesystem path.
+        """
+        p = Path(path)
+
+        if p.is_absolute():
+            return str(p)
+
+        # Only rewrite if it looks like a real filesystem file        
+        if path.lower().startswith("tmp"):
+            return path
+
+        if any(path.lower().endswith(ext) for ext in [".db", ".sqlite", ".duckdb", ".py", ".yaml", ".yml"]):
+            return str(parent_dir / p)
+
+        return path
+    
