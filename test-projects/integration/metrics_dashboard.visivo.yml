@@ -1,0 +1,353 @@
+# Metrics Dashboard - Showcasing the Metrics Layer
+# This dashboard demonstrates using metrics in charts and visualizations
+
+dashboards:
+  - name: Metrics Showcase
+    level: 0
+    tags:
+      - "metrics"
+      - "analytics"
+      - "phase1"
+    rows:
+      # Header row
+      - height: compact
+        items:
+          - markdown: |
+              # 📊 Metrics Layer Demonstration
+              This dashboard showcases **Phase 1** of the Visivo Metrics Layer, featuring:
+              - Model-scoped metrics with various aggregations
+              - Metric references using `${ref(model).metric}` syntax
+              - Dimensions for row-level calculations
+              - Mixed usage of metrics and traditional SQL expressions
+            align: center
+            justify: center
+      
+      # Financial Metrics Section
+      - height: compact
+        items:
+          - markdown: |
+              ## 💰 Financial Metrics
+              Key financial indicators using metrics from the waterfall model
+            align: left
+      
+      - height: medium
+        items:
+          - width: 2
+            chart:
+              name: Revenue Indicator Chart
+              traces:
+                - ${ref(Revenue Indicator)}
+              layout:
+                title:
+                  text: "Total Revenue (TTM)"
+                  font:
+                    size: 14
+                margin:
+                  t: 40
+          
+          - width: 2
+            chart:
+              name: Expense Indicator Chart
+              traces:
+                - ${ref(Expense Indicator)}
+              layout:
+                title:
+                  text: "Total Expenses (TTM)"
+                  font:
+                    size: 14
+                margin:
+                  t: 40
+          
+          - width: 4
+            chart:
+              name: Financial Overview Chart
+              traces:
+                - ${ref(Financial Overview)}
+                - name: Operating Income Line
+                  model: ${ref(waterfall_model)}
+                  props:
+                    type: scatter
+                    x: ?{ "YEAR" }
+                    y: ?{ ${ref(waterfall_model).operating_income} }
+                    mode: "lines+markers"
+                    line:
+                      color: "#D25946"
+                      width: 2
+                    marker:
+                      size: 8
+                  order_by:
+                    - ?{ year ASC }
+              layout:
+                title:
+                  text: "Profit Trends"
+                showlegend: true
+                legend:
+                  orientation: "h"
+                  yanchor: "bottom"
+                  y: -0.2
+                  xanchor: "center"
+                  x: 0.5
+                barmode: "group"
+                yaxis:
+                  title:
+                    text: "Amount ($K)"
+                xaxis:
+                  title:
+                    text: "Period"
+      
+      - height: medium
+        items:
+          - width: 3
+            chart:
+              name: Revenue Breakdown
+              traces:
+                - name: Revenue Components
+                  model: ${ref(waterfall_model)}
+                  props:
+                    type: pie
+                    labels: ?{ category }
+                    values: ?{ ABS(TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT)) }
+                    hole: 0.3
+                    marker:
+                      colors: ["#713B57", "#4F494C", "#D25946", "#191D33", "#ECEFCB"]
+                  filters:
+                    - ?{ section = 'Revenues' }
+                    - ?{ year = 'TTM' }
+                    - ?{ thousands_dollars != '-' }
+              layout:
+                title:
+                  text: "Revenue Breakdown"
+          
+          - width: 3
+            table:
+              name: financial-metrics-table
+              traces:
+                - name: Financial Metrics Summary
+                  model: ${ref(waterfall_model)}
+                  columns:
+                    period: "YEAR"
+                    revenue: ${ref(waterfall_model).total_revenue}
+                    expenses: ${ref(waterfall_model).total_expenses}
+                    net_income: ${ref(waterfall_model).net_income}
+                    line_items: ${ref(waterfall_model).line_item_count}
+              column_defs:
+                - trace_name: Financial Metrics Summary
+                  columns:
+                    - key: "columns.period"
+                      header: "Period"
+                    - key: "columns.revenue"
+                      header: "Revenue ($K)"
+                      aggregation: "sum"
+                    - key: "columns.expenses"
+                      header: "Expenses ($K)"
+                      aggregation: "sum"
+                    - key: "columns.net_income"
+                      header: "Net Income ($K)"
+                      aggregation: "sum"
+                    - key: "columns.line_items"
+                      header: "# Line Items"
+              rows_per_page: 15
+      
+      # Test Data Analytics Section
+      - height: compact
+        items:
+          - markdown: |
+              ## 📈 Data Analytics
+              Statistical analysis using test table metrics
+            align: left
+      
+      - height: medium
+        items:
+          - width: 4
+            chart:
+              name: X Analysis Chart
+              traces:
+                - ${ref(X Analysis with Metrics)}
+              layout:
+                title:
+                  text: "Data Distribution with Metrics"
+                xaxis:
+                  title:
+                    text: "X Value"
+                yaxis:
+                  title:
+                    text: "Y Value"
+          
+          - width: 2
+            chart:
+              name: Category Summary Chart
+              traces:
+                - ${ref(Category Summary)}
+              layout:
+                title:
+                  text: "Aggregated by Category"
+                xaxis:
+                  title:
+                    text: "Category"
+                yaxis:
+                  title:
+                    text: "Total Y"
+          
+          - width: 2
+            chart:
+              name: Statistics Gauge
+              traces:
+                - ${ref(Statistical Overview)}
+              layout:
+                title:
+                  text: "Y Standard Deviation"
+                margin:
+                  t: 60
+                  b: 40
+      
+      - height: small
+        items:
+          - width: 6
+            chart:
+              name: Hybrid Analysis Chart
+              traces:
+                - ${ref(Hybrid Analysis)}
+                - name: Baseline Average
+                  model: ${ref(test_table_with_metrics)}
+                  props:
+                    type: scatter
+                    x: ?{ x }
+                    y: ?{ ${ref(test_table_with_metrics).avg_y} }
+                    mode: "lines"
+                    line:
+                      color: "rgba(128, 128, 128, 0.5)"
+                      dash: "dash"
+                  order_by:
+                    - ?{ x ASC }
+              layout:
+                title:
+                  text: "Mixed Metrics and SQL Expressions"
+                showlegend: true
+                xaxis:
+                  title:
+                    text: "X"
+                yaxis:
+                  title:
+                    text: "Transformed Y"
+      # Metrics Comparison Section
+      - height: compact
+        items:
+          - markdown: |
+              ## 🔄 Metrics Comparison
+              Side-by-side comparison of traditional SQL vs Metrics approach
+            align: left
+      
+      - height: large
+        items:
+          - width: 3
+            chart:
+              name: Traditional SQL Approach
+              traces:
+                - name: Traditional Aggregation
+                  model: ${ref(local_test_table)}
+                  props:
+                    type: bar
+                    x: ?{ CASE WHEN x <= 3 THEN 'Low' ELSE 'High' END }
+                    y: ?{ AVG(y) }
+                    text: ?{ ROUND(AVG(y), 2) }
+                    textposition: "outside"
+                    marker:
+                      color: "#4F494C"
+              layout:
+                title:
+                  text: "Traditional: Raw SQL Aggregation"
+                  font:
+                    size: 14
+                annotations:
+                  - text: "?{ AVG(y) }"
+                    showarrow: false
+                    x: 0.5
+                    y: -0.15
+                    xref: "paper"
+                    yref: "paper"
+                    font:
+                      family: "monospace"
+                      size: 10
+                      color: "#666"
+          
+          - width: 3
+            chart:
+              name: Metrics Approach
+              traces:
+                - name: Metric-based Aggregation
+                  model: ${ref(test_table_with_metrics)}
+                  props:
+                    type: bar
+                    x: ?{ CASE WHEN x <= 3 THEN 'Low' ELSE 'High' END }
+                    y: ?{ ${ref(test_table_with_metrics).avg_y} }
+                    text: ?{ ROUND(${ref(test_table_with_metrics).avg_y}, 2) }
+                    textposition: "outside"
+                    marker:
+                      color: "#713B57"
+              layout:
+                title:
+                  text: "Metrics: Centralized Definition"
+                  font:
+                    size: 14
+                annotations:
+                  - text: "${ref(model).avg_y}"
+                    showarrow: false
+                    x: 0.5
+                    y: -0.15
+                    xref: "paper"
+                    yref: "paper"
+                    font:
+                      family: "monospace"
+                      size: 10
+                      color: "#666"
+      
+      # Summary Statistics
+      - height: compact
+        items:
+          - markdown: |
+              ## 📊 Summary Statistics
+            align: left
+      
+      - height: small
+        items:
+          - width: 6
+            table:
+              name: metrics-summary-table
+              traces:
+                - name: Test Data Summary
+                  model: ${ref(test_table_with_metrics)}
+                  columns:
+                    metric: "'Test Table Metrics'"
+                    total_x: ${ref(test_table_with_metrics).total_x}
+                    total_y: ${ref(test_table_with_metrics).total_y}
+                    avg_x: ROUND(${ref(test_table_with_metrics).avg_x}, 2)
+                    avg_y: ROUND(${ref(test_table_with_metrics).avg_y}, 2)
+                    max_y: ${ref(test_table_with_metrics).max_y}
+                    min_y: ${ref(test_table_with_metrics).min_y}
+                    records: ${ref(test_table_with_metrics).record_count}
+                    distinct_x: ${ref(test_table_with_metrics).distinct_x_count}
+                    y_stddev: ROUND(${ref(test_table_with_metrics).y_stddev}, 2)
+              column_defs:
+                - trace_name: Test Data Summary
+                  columns:
+                    - key: "columns.metric"
+                      header: "Dataset"
+                    - key: "columns.total_x"
+                      header: "Sum(X)"
+                    - key: "columns.total_y"
+                      header: "Sum(Y)"
+                    - key: "columns.avg_x"
+                      header: "Avg(X)"
+                    - key: "columns.avg_y"
+                      header: "Avg(Y)"
+                    - key: "columns.max_y"
+                      header: "Max(Y)"
+                    - key: "columns.min_y"
+                      header: "Min(Y)"
+                    - key: "columns.records"
+                      header: "Count"
+                    - key: "columns.distinct_x"
+                      header: "Unique X"
+                    - key: "columns.y_stddev"
+                      header: "StdDev(Y)"
+              rows_per_page: 5

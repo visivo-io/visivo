@@ -204,7 +204,7 @@ metrics:
 
         finally:
             os.unlink(yaml_file)
-    
+
     def test_parse_project_level_dimensions(self):
         """Test parsing project-level dimensions from YAML."""
         yaml_content = """
@@ -240,24 +240,24 @@ traces:
       x: ?{ fiscal_year }
       y: ?{ count(*) }
 """
-        
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as f:
             f.write(yaml_content)
             yaml_file = f.name
-        
+
         try:
             parser = CoreParser(project_file=Path(yaml_file), files=[Path(yaml_file)])
             project = parser.parse()
-            
+
             # Check project-level dimensions
             assert len(project.dimensions) == 2
             assert project.dimensions[0].name == "fiscal_year"
             assert "YEAR(date)" in project.dimensions[0].expression
             assert project.dimensions[1].name == "is_holiday"
-            
+
             # Check model-level dimensions
             assert len(project.models[0].dimensions) == 1
             assert project.models[0].dimensions[0].name == "order_month"
-            
+
         finally:
             os.unlink(yaml_file)

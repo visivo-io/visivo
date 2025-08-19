@@ -1,0 +1,266 @@
+# Metrics Configuration - Demonstrating Phase 1 Metrics Layer
+# This file showcases model-scoped metrics and dimensions
+
+models:
+  # Enhance waterfall_model with financial metrics
+  - name: waterfall_model_duckdb
+    sql: SELECT * FROM read_csv('data/aapl_pl.csv')
+    source: ${ref(local-duckdb)}
+    
+    # Model-scoped dimensions (row-level calculated fields)
+    dimensions:
+      - name: year_quarter
+        expression: "CONCAT(year, ' Q', CASE 
+          WHEN category LIKE '%Q1%' THEN '1'
+          WHEN category LIKE '%Q2%' THEN '2'  
+          WHEN category LIKE '%Q3%' THEN '3'
+          WHEN category LIKE '%Q4%' THEN '4'
+          ELSE '4' END)"
+        description: "Year and quarter extracted from data"
+      
+      - name: is_revenue
+        expression: "CASE WHEN section = 'Revenues' THEN 1 ELSE 0 END"
+        description: "Binary flag for revenue items"
+      
+      - name: expense_category
+        expression: "CASE 
+          WHEN section = 'Operating Expenses & Income' THEN 'Operating'
+          WHEN section = 'Earnings from Continuing Operations' THEN 'Non-Operating'
+          ELSE 'Other' END"
+        description: "Categorized expense types"
+    
+    # Model-scoped metrics (aggregations)
+    metrics:
+      - name: total_revenue
+        expression: "SUM(CASE WHEN section = 'Revenues' AND sign = 1 THEN 
+          TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT) ELSE 0 END)"
+        description: "Total revenue in thousands"
+      
+      - name: total_expenses
+        expression: "SUM(CASE WHEN sign = -1 THEN 
+          ABS(TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT)) ELSE 0 END)"
+        description: "Total expenses in thousands"
+      
+      - name: net_income
+        expression: "SUM(CASE WHEN category = 'Net Income' THEN 
+          TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT) * sign ELSE 0 END)"
+        description: "Net income in thousands"
+      
+      - name: operating_income
+        expression: "SUM(CASE WHEN category = 'Operating Income' THEN 
+          TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT) ELSE 0 END)"
+        description: "Operating income in thousands"
+      
+      - name: gross_profit
+        expression: "SUM(CASE WHEN category = 'Gross Profit' THEN 
+          TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT) ELSE 0 END)"
+        description: "Gross profit in thousands"
+      
+      - name: line_item_count
+        expression: "COUNT(DISTINCT category)"
+        description: "Number of unique line items"
+      
+      - name: avg_line_value
+        expression: "AVG(TRY_CAST(REPLACE(thousands_dollars, ',', '') AS FLOAT))"
+        description: "Average line item value"
+
+  # Enhance local_test_table with analytical metrics
+  - name: test_table_with_metrics
+    sql: SELECT * FROM test_table
+    
+    dimensions:
+      - name: x_category
+        expression: "CASE 
+          WHEN x <= 2 THEN 'Low'
+          WHEN x <= 4 THEN 'Medium'
+          ELSE 'High' END"
+        description: "Categorized X values"
+      
+      - name: y_squared
+        expression: "y * y"
+        description: "Y value squared"
+      
+      - name: xy_product
+        expression: "x * y"
+        description: "Product of X and Y"
+    
+    metrics:
+      - name: total_x
+        expression: "SUM(x)"
+        description: "Sum of all X values"
+      
+      - name: total_y
+        expression: "SUM(y)"
+        description: "Sum of all Y values"
+      
+      - name: avg_x
+        expression: "AVG(x)"
+        description: "Average X value"
+      
+      - name: avg_y
+        expression: "AVG(y)"
+        description: "Average Y value"
+      
+      - name: max_y
+        expression: "MAX(y)"
+        description: "Maximum Y value"
+      
+      - name: min_y
+        expression: "MIN(y)"
+        description: "Minimum Y value"
+      
+      - name: record_count
+        expression: "COUNT(*)"
+        description: "Total number of records"
+      
+      - name: distinct_x_count
+        expression: "COUNT(DISTINCT x)"
+        description: "Number of unique X values"
+      
+      - name: y_variance
+        expression: "VAR_POP(y)"
+        description: "Population variance of Y"
+      
+      - name: y_stddev
+        expression: "STDDEV_POP(y)"
+        description: "Population standard deviation of Y"
+
+
+# Traces that use the new metrics
+traces:
+  # Financial metrics traces
+  - name: Revenue Indicator
+    model: ${ref(waterfall_model_duckdb)}
+    props:
+      type: indicator
+      mode: "number+delta"
+      value: ?{ ${ref(waterfall_model_duckdb).total_revenue} }
+      number:
+        prefix: "$"
+        suffix: "K"
+      delta:
+        reference: 350000
+        position: "bottom"
+    filters:
+      - ?{ year = 'TTM' }
+  
+  - name: Expense Indicator
+    model: ${ref(waterfall_model_duckdb)}
+    props:
+      type: indicator
+      mode: "number+delta"
+      value: ?{ ${ref(waterfall_model_duckdb).total_expenses} }
+      number:
+        prefix: "$"
+        suffix: "K"
+      delta:
+        reference: 250000
+        position: "bottom"
+        increasing:
+          color: "red"
+        decreasing:
+          color: "green"
+    filters:
+      - ?{ year = 'TTM' }
+  
+  - name: Financial Overview
+    model: ${ref(waterfall_model_duckdb)}
+    props:
+      type: bar
+      x: ?{ year }
+      y: ?{ ${ref(waterfall_model_duckdb).gross_profit} }
+      marker:
+        color: "#713B57"
+    order_by:
+      - ?{ year ASC }
+  
+  - name: Revenue vs Expenses
+    model: ${ref(waterfall_model)}
+    cohort_on: ?{ CASE 
+      WHEN ${ref(waterfall_model_duckdb).total_revenue} > 0 THEN 'Revenue'
+      WHEN ${ref(waterfall_model).total_expenses} > 0 THEN 'Expenses'
+      ELSE 'Other' END }
+    props:
+      type: bar
+      x: ?{ year }
+      y: ?{ COALESCE(${ref(waterfall_model_duckdb).total_revenue}, 0) + 
+           COALESCE(${ref(waterfall_model_duckdb).total_expenses}, 0) }
+      marker:
+        color: ?{ CASE 
+          WHEN ${ref(waterfall_model_duckdb).total_revenue} > 0 THEN '#713B57'
+          ELSE '#D25946' END }
+  
+  # Test table metrics traces  
+  - name: X Analysis with Metrics
+    model: ${ref(test_table_with_metrics)}
+    props:
+      type: scatter
+      x: ?{ x }
+      y: ?{ y }
+      mode: "markers+text"
+      text: "?{ 'Avg: ' || ROUND(${ref(test_table_with_metrics).avg_y}, 2) }"
+      textposition: "top center"
+      marker:
+        size: ?{ 10 + (y / ${ref(test_table_with_metrics).max_y}) * 20 }
+        color: ?{ CASE 
+          WHEN y > ${ref(test_table_with_metrics).avg_y} THEN '#713B57'
+          ELSE '#4F494C' END }
+  
+  - name: Category Summary
+    model: ${ref(test_table_with_metrics)}
+    props:
+      type: bar
+      x: ?{ case when x > 3 then 'group' else 'other group' end }
+      y: ?{ ${ref(test_table_with_metrics).total_y} }
+      text: "?{ 'Count: ' || ${ref(test_table_with_metrics).record_count} }"
+      textposition: "outside"
+      marker:
+        color: ["#713B57", "#4F494C", "#D25946"]
+    order_by:
+      - ?{ case when x > 3 then 'group' else 'other group' end ASC }
+  
+  - name: Statistical Overview
+    model: ${ref(test_table_with_metrics)}
+    columns:
+      metric_value: ${ref(test_table_with_metrics).y_stddev}
+    props:
+      type: indicator
+      mode: "gauge+number"
+      value: column(metric_value)[0]
+      gauge:
+        axis:
+          range: [0, 5]
+        bar:
+          color: "#713B57"
+        steps:
+          - range: [0, 2]
+            color: "lightgray"
+          - range: [2, 4]
+            color: "gray"
+        threshold:
+          line:
+            color: "red"
+            width: 4
+          thickness: 0.75
+          value: 3
+  
+  # Mixed metric and traditional trace
+  - name: Hybrid Analysis
+    model: ${ref(test_table_with_metrics)}
+    props:
+      type: scatter
+      x: ?{ x }
+      # Mix metric reference with raw SQL
+      y: ?{ y * 2 + ${ref(test_table_with_metrics).avg_y} }
+      mode: "lines+markers"
+      line:
+        shape: "spline"
+        color: "#713B57"
+      marker:
+        size: 8
+    filters:
+      # Use metric in filter
+      - ?{ y > ${ref(test_table_with_metrics).min_y} + 1 }
+    order_by:
+      # Use metric in order_by
+      - ?{ ABS(y - ${ref(test_table_with_metrics).avg_y}) ASC }

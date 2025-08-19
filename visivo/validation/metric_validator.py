@@ -205,43 +205,10 @@ class MetricValidator:
             """Check if a node is inside an aggregate function."""
             parent = n.parent
             while parent:
-                # Check for standard aggregate functions available in SQLGlot
-                if isinstance(parent, (exp.Sum, exp.Count, exp.Avg, exp.Min, exp.Max)):
-                    return True
-                # Check for additional aggregate functions that might exist
-                try:
-                    if hasattr(exp, "Stddev") and isinstance(parent, exp.Stddev):
-                        return True
-                    if hasattr(exp, "StdDev") and isinstance(parent, exp.StdDev):
-                        return True
-                    if hasattr(exp, "Variance") and isinstance(parent, exp.Variance):
-                        return True
-                    if hasattr(exp, "ArrayAgg") and isinstance(parent, exp.ArrayAgg):
-                        return True
-                except:
-                    pass
-                # Also check for common aggregate function calls
-                if (
-                    isinstance(parent, exp.Anonymous)
-                    and parent.this
-                    and str(parent.this).upper()
-                    in [
-                        "SUM",
-                        "COUNT",
-                        "AVG",
-                        "MIN",
-                        "MAX",
-                        "STDDEV",
-                        "STDDEV_POP",
-                        "STDDEV_SAMP",
-                        "VARIANCE",
-                        "VAR_POP",
-                        "VAR_SAMP",
-                        "ARRAY_AGG",
-                        "STRING_AGG",
-                        "LISTAGG",
-                    ]
-                ):
+                # Check if parent is any aggregate function
+                # This covers ALL SQLGlot aggregate types including:
+                # Sum, Count, Avg, Min, Max, StddevPop, StddevSamp, VariancePop, etc.
+                if isinstance(parent, exp.AggFunc):
                     return True
                 parent = parent.parent
             return False
@@ -258,39 +225,5 @@ class MetricValidator:
         """
         Checks if the expression contains any aggregate functions.
         """
-        # Check for standard aggregate functions that are definitely available
-        basic_aggregate_types = [exp.Sum, exp.Count, exp.Avg, exp.Min, exp.Max]
-
-        for agg_type in basic_aggregate_types:
-            if node.find(agg_type):
-                return True
-
-        # Check for additional aggregate types if they exist
-        additional_types = ["Stddev", "StdDev", "Variance", "ArrayAgg", "StringAgg"]
-        for type_name in additional_types:
-            if hasattr(exp, type_name):
-                agg_type = getattr(exp, type_name)
-                if node.find(agg_type):
-                    return True
-
-        # Also check for function calls with aggregate names
-        for func in node.find_all(exp.Anonymous):
-            if func.this and str(func.this).upper() in [
-                "SUM",
-                "COUNT",
-                "AVG",
-                "MIN",
-                "MAX",
-                "STDDEV",
-                "STDDEV_POP",
-                "STDDEV_SAMP",
-                "VARIANCE",
-                "VAR_POP",
-                "VAR_SAMP",
-                "ARRAY_AGG",
-                "STRING_AGG",
-                "LISTAGG",
-            ]:
-                return True
-
-        return False
+        # Check for any AggFunc type (covers all aggregate functions)
+        return node.find(exp.AggFunc) is not None

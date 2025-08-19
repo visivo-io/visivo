@@ -29,31 +29,31 @@ class TraceTokenizer:
         self._set_order_by()
         self._set_groupby()
         self._set_filter()
-    
+
     def _resolve_metric_reference(self, query_statement: str) -> str:
         """
         Resolve metric references in query statements.
         Converts ${ref(model).metric_name} to the actual metric expression.
         """
         # Pattern to match ${ref(model_name).metric_name}
-        metric_ref_pattern = r'\$\{\s*ref\(\s*([^)]+)\s*\)\s*\.\s*([^}]+)\s*\}'
-        
+        metric_ref_pattern = r"\$\{\s*ref\(\s*([^)]+)\s*\)\s*\.\s*([^}]+)\s*\}"
+
         def replace_metric(match):
             model_name = match.group(1).strip().strip("'\"")
             metric_name = match.group(2).strip()
-            
+
             # Check if the referenced model is the current model
             if model_name == self.model.name:
                 # Look for the metric in the model's metrics
-                if hasattr(self.model, 'metrics') and self.model.metrics:
+                if hasattr(self.model, "metrics") and self.model.metrics:
                     for metric in self.model.metrics:
                         if metric.name == metric_name:
                             # Return the metric expression wrapped in parentheses for safety
                             return f"({metric.expression})"
-            
+
             # If metric not found, return original reference (will likely cause an error later)
             return match.group(0)
-        
+
         # Replace all metric references
         resolved = re.sub(metric_ref_pattern, replace_metric, query_statement)
         return resolved

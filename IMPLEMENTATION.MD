@@ -2,7 +2,7 @@
 
 ## **Implementation Progress**
 
-### **Phase 1 Status: 90% Complete**
+### **Phase 1 Status: 92% Complete**
 
 #### ✅ **Completed Items:**
 
@@ -54,7 +54,13 @@
    - **✅ Real database tests for dimension extraction**
    - YAML parsing tests with metrics, relations, and dimensions
    - Backward compatibility tests
-   - 681 of 683 tests passing (99.7% pass rate)
+   - 683 of 683 tests passing (100% pass rate)
+
+8. **Code Quality Improvements**
+   - **✅ Refactored source resolution logic into common utility** (`visivo/jobs/utils.py`)
+   - Eliminated code duplication between `run_trace_job.py` and `extract_dimensions_job.py`
+   - Handles ref strings and actual Source objects correctly
+   - Clean separation of concerns for model-specific source acquisition
 
 #### ⏳ **In Progress:**
 
@@ -104,6 +110,7 @@
 5. **100% Test Pass Rate** - All 683 tests passing with comprehensive coverage of new features
 6. **Backward Compatibility** - Existing projects continue to work unchanged
 7. **Robust Error Handling** - Graceful skipping when sources unavailable, clear validation messages
+8. **Clean Code Architecture** - Refactored common patterns into reusable utilities, reducing duplication
 
 ### **Key Implementation Decisions:**
 

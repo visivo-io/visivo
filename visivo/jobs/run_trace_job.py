@@ -1,9 +1,6 @@
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
-from visivo.models.models.csv_script_model import CsvScriptModel
-from visivo.models.project import Project
 from visivo.models.sources.source import Source
 from visivo.models.trace import Trace
 from visivo.query.aggregator import Aggregator
@@ -14,6 +11,7 @@ from visivo.jobs.job import (
     format_message_success,
     start_message,
 )
+from visivo.jobs.utils import get_source_for_model
 from time import time
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.query_string_factory import QueryStringFactory
@@ -22,13 +20,7 @@ from visivo.query.query_string_factory import QueryStringFactory
 def action(trace, dag, output_dir):
     Logger.instance().info(start_message("Trace", trace))
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-
-    if isinstance(model, CsvScriptModel):
-        source = model.get_duckdb_source(output_dir=output_dir)
-    elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-    else:
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
+    source = get_source_for_model(model=model, dag=dag, output_dir=output_dir)
 
     trace_directory = f"{output_dir}/traces/{trace.name}"
     query_string = _get_query_string(trace, dag, output_dir)
@@ -58,12 +50,7 @@ def action(trace, dag, output_dir):
 
 def _get_query_string(trace, dag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-    if isinstance(model, CsvScriptModel):
-        source = model.get_duckdb_source(output_dir=output_dir)
-    elif isinstance(model, LocalMergeModel):
-        source = model.get_duckdb_source(output_dir=output_dir, dag=dag)
-    else:
-        source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
+    source = get_source_for_model(model=model, dag=dag, output_dir=output_dir)
     tokenized_trace = TraceTokenizer(trace=trace, model=model, source=source).tokenize()
     return QueryStringFactory(tokenized_trace=tokenized_trace).build()
 
@@ -74,12 +61,7 @@ def _get_source(trace, dag, output_dir):
         return sources[0]
 
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
-    if isinstance(model, CsvScriptModel):
-        return model.get_duckdb_source(output_dir)
-    elif isinstance(model, LocalMergeModel):
-        return model.get_duckdb_source(output_dir, dag)
-    else:
-        return model.source
+    return get_source_for_model(model=model, dag=dag, output_dir=output_dir)
 
 
 def job(dag, output_dir: str, trace: Trace):

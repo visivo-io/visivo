@@ -28,49 +28,55 @@ def _collect_compile_telemetry(project):
 def _validate_metrics_and_relations(project):
     """Validate all metrics and relations in the project using SQLGlot."""
     validation_errors = []
-    
+
     # Validate global metrics
-    if hasattr(project, 'metrics') and project.metrics:
+    if hasattr(project, "metrics") and project.metrics:
         for metric in project.metrics:
             is_valid, error = MetricValidator.validate_aggregate_expression(metric.expression)
             if not is_valid:
                 validation_errors.append(f"Invalid metric '{metric.name}': {error}")
-    
-    # Validate model-level metrics and dimensions  
-    if hasattr(project, 'models') and project.models:
+
+    # Validate model-level metrics and dimensions
+    if hasattr(project, "models") and project.models:
         for model in project.models:
             # Validate model metrics
-            if hasattr(model, 'metrics') and model.metrics:
+            if hasattr(model, "metrics") and model.metrics:
                 for metric in model.metrics:
-                    is_valid, error = MetricValidator.validate_aggregate_expression(metric.expression)
+                    is_valid, error = MetricValidator.validate_aggregate_expression(
+                        metric.expression
+                    )
                     if not is_valid:
-                        validation_errors.append(f"Invalid metric '{metric.name}' in model '{model.name}': {error}")
-            
+                        validation_errors.append(
+                            f"Invalid metric '{metric.name}' in model '{model.name}': {error}"
+                        )
+
             # Validate model dimensions
-            if hasattr(model, 'dimensions') and model.dimensions:
+            if hasattr(model, "dimensions") and model.dimensions:
                 for dimension in model.dimensions:
-                    is_valid, error = MetricValidator.validate_dimension_expression(dimension.expression)
+                    is_valid, error = MetricValidator.validate_dimension_expression(
+                        dimension.expression
+                    )
                     if not is_valid:
-                        validation_errors.append(f"Invalid dimension '{dimension.name}' in model '{model.name}': {error}")
-    
+                        validation_errors.append(
+                            f"Invalid dimension '{dimension.name}' in model '{model.name}': {error}"
+                        )
+
     # Validate project-level dimensions
-    if hasattr(project, 'dimensions') and project.dimensions:
+    if hasattr(project, "dimensions") and project.dimensions:
         for dimension in project.dimensions:
             is_valid, error = MetricValidator.validate_dimension_expression(dimension.expression)
             if not is_valid:
                 validation_errors.append(f"Invalid dimension '{dimension.name}': {error}")
-    
+
     # Validate relations
-    if hasattr(project, 'relations') and project.relations:
+    if hasattr(project, "relations") and project.relations:
         for relation in project.relations:
             is_valid, error = MetricValidator.validate_join_condition(
-                relation.condition, 
-                relation.left_model, 
-                relation.right_model
+                relation.condition, relation.left_model, relation.right_model
             )
             if not is_valid:
                 validation_errors.append(f"Invalid relation '{relation.name}': {error}")
-    
+
     return validation_errors
 
 
@@ -94,15 +100,17 @@ def compile_phase(
     validation_errors = _validate_metrics_and_relations(project)
     validation_duration = round(time() - validation_start, 2)
     Logger.instance().debug(f"Validation completed in {validation_duration}s")
-    
+
     if validation_errors:
-        error_message = "Compilation failed due to validation errors:\n" + "\n".join(validation_errors)
+        error_message = "Compilation failed due to validation errors:\n" + "\n".join(
+            validation_errors
+        )
         Logger.instance().error(error_message)
-        
+
         # Write validation errors to error.json
         with open(f"{output_dir}/error.json", "w") as error_file:
             error_file.write(json.dumps({"errors": validation_errors}))
-        
+
         raise ValueError(error_message)
 
     # Collect project metrics for telemetry

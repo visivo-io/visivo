@@ -7,7 +7,7 @@ from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.dimension import Dimension
 from visivo.logger.logger import Logger
-from visivo.models.sources.source import Source
+from visivo.jobs.utils import get_source_for_model
 from sqlalchemy import text
 from datetime import datetime, date, time
 from decimal import Decimal
@@ -50,7 +50,7 @@ def extract_dimensions_for_model(model: Any, source: Any) -> None:
                     column_info[column_name] = column_type
 
                 result.close()
-                
+
                 # Check if we need to infer types (if any are None)
                 if any(t is None for t in column_info.values()):
                     raise Exception("Need type inference")
@@ -118,7 +118,9 @@ def extract_dimensions_for_model(model: Any, source: Any) -> None:
         if not column_info:
             # If we can't extract columns, just skip dimension extraction
             # This can happen with test fixtures or when the source is unavailable
-            Logger.instance().debug(f"Could not extract columns from model {model.name}, skipping dimension extraction")
+            Logger.instance().debug(
+                f"Could not extract columns from model {model.name}, skipping dimension extraction"
+            )
             return
 
         # Get explicitly defined dimension names
@@ -168,42 +170,19 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
                     message=f"Skipping dimension extraction for non-SQL model {model.name}",
                 )
 
-            # Get the source for the model
-            source = None
-            if isinstance(model, SqlModel):
-                # Try to get source directly from model first
-                source = model.source
-                if not source:
-                    # If model.source is None, try to find it through the DAG
-                    # The source is an ancestor (parent) of the model in the DAG
-                    try:
-                        from networkx import ancestors
-                        # Get all ancestors of the model
-                        model_ancestors = ancestors(dag, model)
-                        # Find Source nodes among the ancestors
-                        source_ancestors = [node for node in model_ancestors if isinstance(node, Source)]
-                        if source_ancestors:
-                            source = source_ancestors[0]
-                    except (IndexError, Exception):
-                        # If we can't find a source through the DAG, skip dimension extraction
-                        source = None
-            elif isinstance(model, CsvScriptModel):
-                # CsvScriptModel has a get_duckdb_source method
-                if not output_dir:
-                    import tempfile
-                    output_dir = tempfile.gettempdir()
-                source = model.get_duckdb_source(output_dir)
-            elif isinstance(model, LocalMergeModel):
-                # LocalMergeModel has a get_duckdb_source method that needs dag
-                if not output_dir:
-                    import tempfile
-                    output_dir = tempfile.gettempdir()
-                source = model.get_duckdb_source(output_dir, dag)
+            # Get the source for the model using common utility
+            if not output_dir:
+                import tempfile
+
+                output_dir = tempfile.gettempdir()
+            source = get_source_for_model(model=model, dag=dag, output_dir=output_dir)
 
             if not source:
                 # Skip dimension extraction if source is not available
                 # This can happen when model.source is None and no default source is found
-                Logger.instance().debug(f"No source found for model {model.name}, skipping dimension extraction")
+                Logger.instance().debug(
+                    f"No source found for model {model.name}, skipping dimension extraction"
+                )
                 return JobResult(
                     item=model,
                     success=True,  # Don't fail the job, just skip dimension extraction
@@ -240,7 +219,7 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
                         column_info[column_name] = column_type
 
                     result.close()
-                    
+
                     # Check if we need to infer types (if any are None)
                     if any(t is None for t in column_info.values()):
                         raise Exception("Need type inference")
@@ -308,7 +287,9 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
             if not column_info:
                 # If we can't extract columns, just skip dimension extraction
                 # This can happen with test fixtures or when the source is unavailable
-                Logger.instance().debug(f"Could not extract columns from model {model.name}, skipping dimension extraction")
+                Logger.instance().debug(
+                    f"Could not extract columns from model {model.name}, skipping dimension extraction"
+                )
                 return JobResult(
                     item=model,
                     success=True,  # Don't fail the job, just skip dimension extraction
