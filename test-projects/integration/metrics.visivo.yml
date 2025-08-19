@@ -67,6 +67,7 @@ models:
   # Enhance local_test_table with analytical metrics
   - name: test_table_with_metrics
     sql: SELECT * FROM test_table
+    source: ${ref(local-duckdb)}
     
     dimensions:
       - name: x_category
