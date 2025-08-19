@@ -10,6 +10,7 @@ from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.test import Test
 from visivo.models.trace import Trace
+from visivo.models.insight import Insight
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
@@ -132,6 +133,18 @@ class TraceFactory(factory.Factory):
             ]
         )
         surface_props = factory.Trait(props=factory.SubFactory(SurfaceTracePropsFactory))
+
+
+class InsightFactory(factory.Factory):
+    class Meta:
+        model = Insight
+
+    name = "insight"
+    model = factory.SubFactory(SqlModelFactory)
+    props = factory.SubFactory(ScatterTracePropsFactory)
+
+    class Params:
+        model_ref = factory.Trait(model="ref(model_name)")
 
 
 class JobFactory(factory.Factory):

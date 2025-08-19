@@ -6,7 +6,7 @@ from visivo.models.trace import Trace
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.base.base_model import REF_REGEX, generate_ref_field
+from visivo.models.base.base_model import REF_REGEX, generate_ref_field, generate_trace_or_insight_ref_field
 from pydantic import model_validator
 from enum import IntEnum
 
@@ -85,9 +85,9 @@ class Table(SelectorModel, NamedModel, ParentModel):
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
-    traces: List[generate_ref_field(Trace)] = Field(
+    traces: List[generate_trace_or_insight_ref_field()] = Field(
         [],
-        description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
+        description="A ref() to a trace or insight, or trace/insight defined in line. Data for the table will come from the trace or insight.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(
