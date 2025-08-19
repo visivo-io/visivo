@@ -76,10 +76,7 @@ class CoreParser:
             if "args" in obj and isinstance(obj["args"], list):
                 new_args = []
                 for arg in obj["args"]:
-                    if (
-                        isinstance(arg, str)
-                        and arg.endswith(".py")
-                    ):
+                    if isinstance(arg, str) and arg.endswith(".py"):
                         arg = self.__resolve_path_if_relative(arg, parent_dir)
                     new_args.append(arg)
                 obj["args"] = new_args
@@ -92,7 +89,6 @@ class CoreParser:
         else:
             pass
 
-
     def __resolve_path_if_relative(self, path: str, parent_dir: Path) -> str:
         """
         Resolve path relative to parent_dir if it's a likely filesystem path.
@@ -102,12 +98,14 @@ class CoreParser:
         if p.is_absolute():
             return str(p)
 
-        # Only rewrite if it looks like a real filesystem file        
+        # Only rewrite if it looks like a real filesystem file
         if path.lower().startswith("tmp"):
             return path
 
-        if any(path.lower().endswith(ext) for ext in [".db", ".sqlite", ".duckdb", ".py", ".yaml", ".yml"]):
+        if any(
+            path.lower().endswith(ext)
+            for ext in [".db", ".sqlite", ".duckdb", ".py", ".yaml", ".yml"]
+        ):
             return str(parent_dir / p)
 
         return path
-    
