@@ -9,6 +9,8 @@ from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
+from visivo.models.metric import Metric
+from visivo.models.relation import Relation
 
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import REF_REGEX
@@ -53,6 +55,12 @@ class Project(NamedModel, ParentModel):
     charts: List[Chart] = []
     selectors: List[Selector] = []
     dashboards: List[DashboardField] = []
+    metrics: List[Metric] = Field(
+        [], description="A list of global metric objects that can reference multiple models."
+    )
+    relations: List[Relation] = Field(
+        [], description="A list of relation objects defining how models can be joined."
+    )
 
     def child_items(self) -> List:
         project_children = PROJECT_CHILDREN.copy()
