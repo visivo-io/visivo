@@ -251,7 +251,7 @@ traces:
       type: scatter
       x: ?{ x }
       # Mix metric reference with raw SQL
-      y: ?{ y * 2 + ${ref(test_table_with_metrics).avg_y} }
+      y: ?{ 2 + ${ref(test_table_with_metrics).avg_y} }
       mode: "lines+markers"
       line:
         shape: "spline"
@@ -260,7 +260,7 @@ traces:
         size: 8
     filters:
       # Use metric in filter
-      - ?{ y > ${ref(test_table_with_metrics).min_y} + 1 }
+      - ?{ 4 > ${ref(test_table_with_metrics).min_y} + 1 }
     order_by:
       # Use metric in order_by
-      - ?{ ABS(y - ${ref(test_table_with_metrics).avg_y}) ASC }
+      - ?{ ABS(any_value(y) - ${ref(test_table_with_metrics).avg_y}) ASC }

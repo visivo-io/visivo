@@ -64,11 +64,11 @@ dashboards:
               traces:
                 - ${ref(Financial Overview)}
                 - name: Operating Income Line
-                  model: ${ref(waterfall_model)}
+                  model: ${ref(waterfall_model_duckdb)}
                   props:
                     type: scatter
                     x: ?{ "YEAR" }
-                    y: ?{ ${ref(waterfall_model).operating_income} }
+                    y: ?{ ${ref(waterfall_model_duckdb).operating_income} }
                     mode: "lines+markers"
                     line:
                       color: "#D25946"
@@ -123,13 +123,13 @@ dashboards:
               name: financial-metrics-table
               traces:
                 - name: Financial Metrics Summary
-                  model: ${ref(waterfall_model)}
+                  model: ${ref(waterfall_model_duckdb)}
                   columns:
                     period: "YEAR"
-                    revenue: ${ref(waterfall_model).total_revenue}
-                    expenses: ${ref(waterfall_model).total_expenses}
-                    net_income: ${ref(waterfall_model).net_income}
-                    line_items: ${ref(waterfall_model).line_item_count}
+                    revenue: ${ref(waterfall_model_duckdb).total_revenue}
+                    expenses: ${ref(waterfall_model_duckdb).total_expenses}
+                    net_income: ${ref(waterfall_model_duckdb).net_income}
+                    line_items: ${ref(waterfall_model_duckdb).line_item_count}
               column_defs:
                 - trace_name: Financial Metrics Summary
                   columns:

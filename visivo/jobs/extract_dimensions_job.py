@@ -33,27 +33,43 @@ def extract_dimensions_for_model(model: Any, source: Any) -> None:
         # Execute the query to get column metadata
         column_info = {}
         try:
-            with source.connect() as connection:
-                result = connection.execute(text(schema_query))
+            # Use read_only for DuckDB sources to avoid connection conflicts
+            if hasattr(source, "type") and source.type == "duckdb":
+                with source.connect(read_only=True) as connection:
+                    result = connection.execute(text(schema_query))
+                    # Get column names and types from result metadata
+                    for column in result.cursor.description:
+                        column_name = column[0]
+                        # Try to get the type information
+                        # The exact format depends on the database driver
+                        # We'll store the type as a string representation
+                        # SQLite cursor.description often has None for type
+                        if len(column) > 1 and column[1] is not None:
+                            column_type = str(column[1])
+                        else:
+                            column_type = None  # Will trigger type inference
+                        column_info[column_name] = column_type
+                    result.close()
+            else:
+                with source.connect() as connection:
+                    result = connection.execute(text(schema_query))
+                    # Get column names and types from result metadata
+                    for column in result.cursor.description:
+                        column_name = column[0]
+                        # Try to get the type information
+                        # The exact format depends on the database driver
+                        # We'll store the type as a string representation
+                        # SQLite cursor.description often has None for type
+                        if len(column) > 1 and column[1] is not None:
+                            column_type = str(column[1])
+                        else:
+                            column_type = None  # Will trigger type inference
+                        column_info[column_name] = column_type
+                    result.close()
 
-                # Get column names and types from result metadata
-                for column in result.cursor.description:
-                    column_name = column[0]
-                    # Try to get the type information
-                    # The exact format depends on the database driver
-                    # We'll store the type as a string representation
-                    # SQLite cursor.description often has None for type
-                    if len(column) > 1 and column[1] is not None:
-                        column_type = str(column[1])
-                    else:
-                        column_type = None  # Will trigger type inference
-                    column_info[column_name] = column_type
-
-                result.close()
-
-                # Check if we need to infer types (if any are None)
-                if any(t is None for t in column_info.values()):
-                    raise Exception("Need type inference")
+            # Check if we need to infer types (if any are None)
+            if any(t is None for t in column_info.values()):
+                raise Exception("Need type inference")
         except Exception as e:
             # If LIMIT 0 doesn't work or types are None, try with LIMIT 10 to infer types from data
             try:
@@ -63,50 +79,58 @@ def extract_dimensions_for_model(model: Any, source: Any) -> None:
                     table_name = getattr(model, "table_name", model.name)
                     schema_query_with_data = f"SELECT * FROM {table_name} LIMIT 10"
 
-                with source.connect() as connection:
-                    result = connection.execute(text(schema_query_with_data))
+                # Use read_only for DuckDB sources to avoid connection conflicts
+                if hasattr(source, "type") and source.type == "duckdb":
+                    with source.connect(read_only=True) as connection:
+                        result = connection.execute(text(schema_query_with_data))
+                        # Get column names from result
+                        columns = list(result.keys())
+                        rows = result.fetchall()
+                        result.close()
+                else:
+                    with source.connect() as connection:
+                        result = connection.execute(text(schema_query_with_data))
+                        # Get column names from result
+                        columns = list(result.keys())
+                        rows = result.fetchall()
+                        result.close()
 
-                    # Get column names from result
-                    columns = list(result.keys())
-                    rows = result.fetchall()
-                    result.close()
+                # Infer types from the data
+                for col_idx, col_name in enumerate(columns):
+                    # Sample values from the column
+                    values = [row[col_idx] for row in rows if row[col_idx] is not None]
 
-                    # Infer types from the data
-                    for col_idx, col_name in enumerate(columns):
-                        # Sample values from the column
-                        values = [row[col_idx] for row in rows if row[col_idx] is not None]
+                    if not values:
+                        column_info[col_name] = "UNKNOWN"
+                        continue
 
-                        if not values:
-                            column_info[col_name] = "UNKNOWN"
-                            continue
+                    # Infer type from non-null values using Python types
+                    # SQLAlchemy converts SQL types to appropriate Python types
+                    sample_value = values[0]
 
-                        # Infer type from non-null values using Python types
-                        # SQLAlchemy converts SQL types to appropriate Python types
-                        sample_value = values[0]
-
-                        # Check Python types in order of specificity
-                        # Note: bool must be checked before int since bool is a subclass of int in Python
-                        if isinstance(sample_value, bool):
-                            column_info[col_name] = "BOOLEAN"
-                        elif isinstance(sample_value, datetime):
-                            column_info[col_name] = "TIMESTAMP"
-                        elif isinstance(sample_value, date):
-                            column_info[col_name] = "DATE"
-                        elif isinstance(sample_value, time):
-                            column_info[col_name] = "TIME"
-                        elif isinstance(sample_value, Decimal):
-                            column_info[col_name] = "DECIMAL"
-                        elif isinstance(sample_value, int):
-                            column_info[col_name] = "INTEGER"
-                        elif isinstance(sample_value, float):
-                            column_info[col_name] = "NUMERIC"
-                        elif isinstance(sample_value, str):
-                            column_info[col_name] = "VARCHAR"
-                        elif isinstance(sample_value, bytes):
-                            column_info[col_name] = "BINARY"
-                        else:
-                            # Fallback for unknown types
-                            column_info[col_name] = str(type(sample_value).__name__).upper()
+                    # Check Python types in order of specificity
+                    # Note: bool must be checked before int since bool is a subclass of int in Python
+                    if isinstance(sample_value, bool):
+                        column_info[col_name] = "BOOLEAN"
+                    elif isinstance(sample_value, datetime):
+                        column_info[col_name] = "TIMESTAMP"
+                    elif isinstance(sample_value, date):
+                        column_info[col_name] = "DATE"
+                    elif isinstance(sample_value, time):
+                        column_info[col_name] = "TIME"
+                    elif isinstance(sample_value, Decimal):
+                        column_info[col_name] = "DECIMAL"
+                    elif isinstance(sample_value, int):
+                        column_info[col_name] = "INTEGER"
+                    elif isinstance(sample_value, float):
+                        column_info[col_name] = "NUMERIC"
+                    elif isinstance(sample_value, str):
+                        column_info[col_name] = "VARCHAR"
+                    elif isinstance(sample_value, bytes):
+                        column_info[col_name] = "BINARY"
+                    else:
+                        # Fallback for unknown types
+                        column_info[col_name] = str(type(sample_value).__name__).upper()
 
             except Exception as e2:
                 Logger.instance().debug(
@@ -202,27 +226,43 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
             # Execute the query to get column metadata
             column_info = {}
             try:
-                with source.connect() as connection:
-                    result = connection.execute(text(schema_query))
+                # Use read_only for DuckDB sources to avoid connection conflicts
+                if hasattr(source, "type") and source.type == "duckdb":
+                    with source.connect(read_only=True) as connection:
+                        result = connection.execute(text(schema_query))
+                        # Get column names and types from result metadata
+                        for column in result.cursor.description:
+                            column_name = column[0]
+                            # Try to get the type information
+                            # The exact format depends on the database driver
+                            # We'll store the type as a string representation
+                            # SQLite cursor.description often has None for type
+                            if len(column) > 1 and column[1] is not None:
+                                column_type = str(column[1])
+                            else:
+                                column_type = None  # Will trigger type inference
+                            column_info[column_name] = column_type
+                        result.close()
+                else:
+                    with source.connect() as connection:
+                        result = connection.execute(text(schema_query))
+                        # Get column names and types from result metadata
+                        for column in result.cursor.description:
+                            column_name = column[0]
+                            # Try to get the type information
+                            # The exact format depends on the database driver
+                            # We'll store the type as a string representation
+                            # SQLite cursor.description often has None for type
+                            if len(column) > 1 and column[1] is not None:
+                                column_type = str(column[1])
+                            else:
+                                column_type = None  # Will trigger type inference
+                            column_info[column_name] = column_type
+                        result.close()
 
-                    # Get column names and types from result metadata
-                    for column in result.cursor.description:
-                        column_name = column[0]
-                        # Try to get the type information
-                        # The exact format depends on the database driver
-                        # We'll store the type as a string representation
-                        # SQLite cursor.description often has None for type
-                        if len(column) > 1 and column[1] is not None:
-                            column_type = str(column[1])
-                        else:
-                            column_type = None  # Will trigger type inference
-                        column_info[column_name] = column_type
-
-                    result.close()
-
-                    # Check if we need to infer types (if any are None)
-                    if any(t is None for t in column_info.values()):
-                        raise Exception("Need type inference")
+                # Check if we need to infer types (if any are None)
+                if any(t is None for t in column_info.values()):
+                    raise Exception("Need type inference")
             except Exception as e:
                 # If LIMIT 0 doesn't work or types are None, try with LIMIT 10 to infer types from data
                 try:
@@ -232,50 +272,58 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
                         table_name = getattr(model, "table_name", model.name)
                         schema_query_with_data = f"SELECT * FROM {table_name} LIMIT 10"
 
-                    with source.connect() as connection:
-                        result = connection.execute(text(schema_query_with_data))
+                    # Use read_only for DuckDB sources to avoid connection conflicts
+                    if hasattr(source, "type") and source.type == "duckdb":
+                        with source.connect(read_only=True) as connection:
+                            result = connection.execute(text(schema_query_with_data))
+                            # Get column names from result
+                            columns = list(result.keys())
+                            rows = result.fetchall()
+                            result.close()
+                    else:
+                        with source.connect() as connection:
+                            result = connection.execute(text(schema_query_with_data))
+                            # Get column names from result
+                            columns = list(result.keys())
+                            rows = result.fetchall()
+                            result.close()
 
-                        # Get column names from result
-                        columns = list(result.keys())
-                        rows = result.fetchall()
-                        result.close()
+                    # Infer types from the data
+                    for col_idx, col_name in enumerate(columns):
+                        # Sample values from the column
+                        values = [row[col_idx] for row in rows if row[col_idx] is not None]
 
-                        # Infer types from the data
-                        for col_idx, col_name in enumerate(columns):
-                            # Sample values from the column
-                            values = [row[col_idx] for row in rows if row[col_idx] is not None]
+                        if not values:
+                            column_info[col_name] = "UNKNOWN"
+                            continue
 
-                            if not values:
-                                column_info[col_name] = "UNKNOWN"
-                                continue
+                        # Infer type from non-null values using Python types
+                        # SQLAlchemy converts SQL types to appropriate Python types
+                        sample_value = values[0]
 
-                            # Infer type from non-null values using Python types
-                            # SQLAlchemy converts SQL types to appropriate Python types
-                            sample_value = values[0]
-
-                            # Check Python types in order of specificity
-                            # Note: bool must be checked before int since bool is a subclass of int in Python
-                            if isinstance(sample_value, bool):
-                                column_info[col_name] = "BOOLEAN"
-                            elif isinstance(sample_value, datetime):
-                                column_info[col_name] = "TIMESTAMP"
-                            elif isinstance(sample_value, date):
-                                column_info[col_name] = "DATE"
-                            elif isinstance(sample_value, time):
-                                column_info[col_name] = "TIME"
-                            elif isinstance(sample_value, Decimal):
-                                column_info[col_name] = "DECIMAL"
-                            elif isinstance(sample_value, int):
-                                column_info[col_name] = "INTEGER"
-                            elif isinstance(sample_value, float):
-                                column_info[col_name] = "NUMERIC"
-                            elif isinstance(sample_value, str):
-                                column_info[col_name] = "VARCHAR"
-                            elif isinstance(sample_value, bytes):
-                                column_info[col_name] = "BINARY"
-                            else:
-                                # Fallback for unknown types
-                                column_info[col_name] = str(type(sample_value).__name__).upper()
+                        # Check Python types in order of specificity
+                        # Note: bool must be checked before int since bool is a subclass of int in Python
+                        if isinstance(sample_value, bool):
+                            column_info[col_name] = "BOOLEAN"
+                        elif isinstance(sample_value, datetime):
+                            column_info[col_name] = "TIMESTAMP"
+                        elif isinstance(sample_value, date):
+                            column_info[col_name] = "DATE"
+                        elif isinstance(sample_value, time):
+                            column_info[col_name] = "TIME"
+                        elif isinstance(sample_value, Decimal):
+                            column_info[col_name] = "DECIMAL"
+                        elif isinstance(sample_value, int):
+                            column_info[col_name] = "INTEGER"
+                        elif isinstance(sample_value, float):
+                            column_info[col_name] = "NUMERIC"
+                        elif isinstance(sample_value, str):
+                            column_info[col_name] = "VARCHAR"
+                        elif isinstance(sample_value, bytes):
+                            column_info[col_name] = "BINARY"
+                        else:
+                            # Fallback for unknown types
+                            column_info[col_name] = str(type(sample_value).__name__).upper()
 
                 except Exception as e2:
                     Logger.instance().debug(
