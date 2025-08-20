@@ -11,6 +11,7 @@ class FilteredRunner:
         soft_failure: bool = False,
         dag_filter: str = None,
         server_url: str = None,
+        working_dir: str = None,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -18,6 +19,7 @@ class FilteredRunner:
         self.soft_failure = soft_failure
         self.dag_filter = dag_filter
         self.server_url = server_url
+        self.working_dir = working_dir
         self.project_dag = project.dag()
 
     def run(self):
@@ -29,5 +31,6 @@ class FilteredRunner:
                 soft_failure=self.soft_failure,
                 server_url=self.server_url,
                 job_dag=job_dag,
+                working_dir=self.working_dir,
             )
             dag_runner.run()

@@ -201,3 +201,20 @@ def merge_dicts(dict1, dict2):
         else:
             merged[key] = value
     return merged
+
+
+def resolve_path_if_relative(path: str, parent_dir: Path) -> str:
+    """
+    Resolve path relative to parent_dir if it's a likely filesystem path.
+    """
+    p = Path(path)
+
+    if p.is_absolute():
+        return str(p)
+
+    if any(
+        path.lower().endswith(ext) for ext in [".db", ".sqlite", ".duckdb", ".py", ".yaml", ".yml"]
+    ):
+        return str(parent_dir / p)
+
+    return path
