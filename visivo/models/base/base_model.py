@@ -45,6 +45,28 @@ def generate_ref_field(class_to_discriminate):
     )
 
 
+def generate_trace_or_insight_ref_field():
+    """
+    Generate a union type that accepts references to either Trace or Insight objects.
+    This supports the transition from traces to insights in Interactivity 2.0.
+    """
+    from visivo.models.trace import Trace
+    from visivo.models.insight import Insight
+    
+    return NewType(
+        "TraceOrInsightRef",
+        Annotated[
+            Union[
+                RefStringType,
+                ContextStringType,
+                Annotated[Trace, Tag("Trace")],
+                Annotated[Insight, Tag("Insight")],
+            ],
+            Discriminator(TraceOrInsightDiscriminator()),
+        ],
+    )
+
+
 class ModelStrDiscriminator:
     def __init__(self, class_to_discriminate):
         self.class_name = class_to_discriminate.__name__
@@ -59,6 +81,37 @@ class ModelStrDiscriminator:
             return "Ref"
         elif isinstance(value, (dict, BaseModel)):
             return self.class_name
+        else:
+            return None
+
+
+class TraceOrInsightDiscriminator:
+    """
+    Discriminator for union types that can be either Trace or Insight objects.
+    """
+    
+    def __name__(self):
+        return "TraceOrInsightDiscriminator"
+
+    def __call__(self, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+            return "Context"
+        elif isinstance(value, str):
+            return "Ref"
+        elif isinstance(value, dict):
+            # Check if this looks like an insight (has interactions field) or trace
+            if "interactions" in value:
+                return "Insight"
+            else:
+                return "Trace"
+        elif hasattr(value, "__class__"):
+            class_name = value.__class__.__name__
+            if class_name == "Insight":
+                return "Insight"
+            elif class_name == "Trace":
+                return "Trace"
+            else:
+                return None
         else:
             return None
 
