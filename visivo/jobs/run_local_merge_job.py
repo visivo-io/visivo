@@ -6,6 +6,7 @@ from visivo.jobs.job import (
     format_message_success,
     start_message,
 )
+from visivo.jobs.extract_dimensions_job import extract_dimensions_for_model
 from time import time
 from visivo.logger.logger import Logger
 
@@ -15,10 +16,15 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
     try:
         start_time = time()
         local_merge_model.insert_duckdb_data(output_dir=output_dir, dag=dag)
+
+        # Extract dimensions after successful data insertion
+        duckdb_source = local_merge_model.get_duckdb_source(output_dir=output_dir, dag=dag)
+        extract_dimensions_for_model(local_merge_model, duckdb_source)
+
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,
-            full_path=local_merge_model.get_duckdb_source(output_dir=output_dir, dag=dag).database,
+            full_path=duckdb_source.database,
         )
         return JobResult(item=local_merge_model, success=True, message=success_message)
     except Exception as e:

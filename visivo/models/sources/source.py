@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 from visivo.models.base.named_model import NamedModel
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
@@ -17,6 +17,20 @@ class BaseSource(ABC, NamedModel):
     @abstractmethod
     def read_sql(self, query: str):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
+
+    @abstractmethod
+    def get_model_schema(self, model_sql: str = None, table_name: str = None) -> Dict[str, str]:
+        """Extract column metadata from a model's SQL or table.
+
+        Args:
+            model_sql: SQL query defining the model (for SQL models)
+            table_name: Table name to query (for CSV/table models)
+
+        Returns:
+            Dictionary mapping column names to their data types
+            Example: {'id': 'INTEGER', 'name': 'VARCHAR', 'amount': 'NUMERIC'}
+        """
+        raise NotImplementedError(f"No get_model_schema method implemented for {self.type}")
 
     def connect(self):
         return Connection(source=self)
