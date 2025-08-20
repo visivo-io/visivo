@@ -1,4 +1,5 @@
 from visivo.logger.logger import Logger
+from visivo.models.source import SourceTypeEnum
 from visivo.models.sources.source import Source
 from visivo.jobs.job import (
     Job,
@@ -10,11 +11,14 @@ from visivo.jobs.job import (
 from time import time
 
 
-def action(source_to_test: Source):
+def action(source_to_test: Source, working_dir=None):
     Logger.instance().info(start_message("Source", source_to_test))
     try:
         start_time = time()
-        source_to_test.read_sql("select 1")
+        if source_to_test.type == SourceTypeEnum.duckdb.value and working_dir:
+            source_to_test.read_sql("select 1", working_dir=working_dir)
+        else:
+            source_to_test.read_sql("select 1")
         success_message = format_message_success(
             details=f"Successful connection for source \033[4m{source_to_test.name}\033[0m",
             start_time=start_time,
@@ -31,10 +35,7 @@ def action(source_to_test: Source):
         return JobResult(item=source_to_test, success=False, message=failure_message)
 
 
-def job(source):
+def job(source, working_dir=None):
     return Job(
-        item=source,
-        source=source,
-        action=action,
-        source_to_test=source,
+        item=source, source=source, action=action, source_to_test=source, working_dir=working_dir
     )

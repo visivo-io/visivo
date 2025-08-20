@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 
 import pydantic
@@ -9,6 +10,8 @@ import click
 import os
 import polars as pl
 import csv
+
+from visivo.utils import resolve_path_if_relative
 
 
 class CsvScriptModel(Model):
@@ -166,7 +169,7 @@ class CsvScriptModel(Model):
         finally:
             stream.seek(0)
 
-    def insert_csv_to_duckdb(self, output_dir):
+    def insert_csv_to_duckdb(self, output_dir, working_dir=None):
         import subprocess
         from visivo.logger.logger import Logger
 
@@ -175,6 +178,16 @@ class CsvScriptModel(Model):
 
             # Execute subprocess and wait for completion BEFORE opening database connection
             Logger.instance().debug(f"CSV script model {self.name}: Executing subprocess")
+
+            # Add workdir
+            if working_dir:
+                new_args = []
+                for arg in self.args:
+                    if isinstance(arg, str) and arg.endswith(".py"):
+                        arg = resolve_path_if_relative(arg, working_dir)
+                    new_args.append(arg)
+                self.args = new_args
+
             process = subprocess.Popen(self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             stdout, stderr = process.communicate()  # Wait for subprocess to complete
 
