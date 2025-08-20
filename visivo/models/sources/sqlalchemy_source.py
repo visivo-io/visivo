@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 import click
 from pydantic import PrivateAttr
 from visivo.models.sources.source import Source
@@ -10,6 +10,8 @@ import polars as pl
 from copy import deepcopy
 import pyarrow as pa
 import json
+from datetime import datetime, date, time
+from decimal import Decimal
 
 
 class SqlalchemySource(Source, ABC):
@@ -240,3 +242,95 @@ class SqlalchemySource(Source, ABC):
             db_entry["tables"] = table_entries
 
         return db_entry
+
+    def get_model_schema(self, model_sql: str = None, table_name: str = None) -> Dict[str, str]:
+        """Extract column metadata from a model's SQL or table using SQLAlchemy.
+
+        This default implementation works for all SQLAlchemy-based sources.
+        """
+        if not model_sql and not table_name:
+            raise ValueError("Either model_sql or table_name must be provided")
+
+        # Build the query to get schema
+        if model_sql:
+            schema_query = f"SELECT * FROM ({model_sql}) AS subquery LIMIT 0"
+        else:
+            schema_query = f"SELECT * FROM {table_name} LIMIT 0"
+
+        column_info = {}
+
+        try:
+            # First try with LIMIT 0 to get schema without data
+            with self.connect() as connection:
+                result = connection.execute(text(schema_query))
+
+                # Get column names and types from result metadata
+                for column in result.cursor.description:
+                    column_name = column[0]
+                    # Try to get the type information
+                    if len(column) > 1 and column[1] is not None:
+                        column_info[column_name] = str(column[1])
+                    else:
+                        column_info[column_name] = None  # Will need type inference
+
+                result.close()
+
+            # Check if we need to infer types (if any are None)
+            if any(t is None for t in column_info.values()):
+                raise Exception("Need type inference")
+
+        except Exception:
+            # If LIMIT 0 doesn't work or types are None, try with LIMIT 10 to infer types
+            try:
+                if model_sql:
+                    schema_query_with_data = f"SELECT * FROM ({model_sql}) AS subquery LIMIT 10"
+                else:
+                    schema_query_with_data = f"SELECT * FROM {table_name} LIMIT 10"
+
+                with self.connect() as connection:
+                    result = connection.execute(text(schema_query_with_data))
+                    columns = list(result.keys())
+                    rows = result.fetchall()
+                    result.close()
+
+                # Infer types from the data
+                for col_idx, col_name in enumerate(columns):
+                    # Sample values from the column
+                    values = [row[col_idx] for row in rows if row[col_idx] is not None]
+
+                    if not values:
+                        column_info[col_name] = "UNKNOWN"
+                        continue
+
+                    # Infer type from non-null values using Python types
+                    sample_value = values[0]
+
+                    # Check Python types in order of specificity
+                    # Note: bool must be checked before int since bool is a subclass of int
+                    if isinstance(sample_value, bool):
+                        column_info[col_name] = "BOOLEAN"
+                    elif isinstance(sample_value, datetime):
+                        column_info[col_name] = "TIMESTAMP"
+                    elif isinstance(sample_value, date):
+                        column_info[col_name] = "DATE"
+                    elif isinstance(sample_value, time):
+                        column_info[col_name] = "TIME"
+                    elif isinstance(sample_value, Decimal):
+                        column_info[col_name] = "DECIMAL"
+                    elif isinstance(sample_value, int):
+                        column_info[col_name] = "INTEGER"
+                    elif isinstance(sample_value, float):
+                        column_info[col_name] = "NUMERIC"
+                    elif isinstance(sample_value, str):
+                        column_info[col_name] = "VARCHAR"
+                    elif isinstance(sample_value, bytes):
+                        column_info[col_name] = "BINARY"
+                    else:
+                        # Fallback for unknown types
+                        column_info[col_name] = str(type(sample_value).__name__).upper()
+
+            except Exception as e:
+                Logger.instance().debug(f"Could not extract schema: {str(e)}")
+                column_info = {}
+
+        return column_info

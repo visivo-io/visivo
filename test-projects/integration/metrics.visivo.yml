@@ -95,7 +95,7 @@ models:
         description: "Sum of all Y values"
       
       - name: avg_x
-        expression: "AVG(x)"
+        expression: "median(x)"
         description: "Average X value"
       
       - name: avg_y
