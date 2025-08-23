@@ -185,7 +185,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Funnel/#attributes) f
         traces:
           - name: Cohort Funnel Chart
             model: ${ref(funnel-data-cohorts)}
-            cohort_on: product
             props:
               type: funnel
               y: ?{stage}

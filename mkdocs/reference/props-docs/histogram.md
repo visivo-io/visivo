@@ -162,7 +162,6 @@ _**Check out the [Attributes](../configuration/Trace/Props/Histogram/#attributes
         traces:
           - name: Histogram Groups
             model: ${ref(histogram-data-stacked)}
-            cohort_on: '"group"'
             columns: 
               color: |
                 case 

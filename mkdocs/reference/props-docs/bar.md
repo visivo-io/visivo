@@ -36,7 +36,6 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         traces:
           - name: Count Enemies Encountered by Knight
             model: ${ref(monty-python-quest-data)}
-            cohort_on: "person"
             props:
               type: bar 
               x: ?{enemy_encountered}
@@ -67,7 +66,6 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         traces:
           - name: Count Enemies Encountered by Knight
             model: ${ref(monty-python-quest-data)}
-            cohort_on: "person"
             props:
               type: bar 
               x: ?{enemy_encountered}
@@ -101,7 +99,6 @@ _**Checkout the [Attributes](../configuration/Trace/Props/Bar/#attributes) for t
         traces:
           - name: Count Enemies Encountered by Knight H
             model: ${ref(monty-python-quest-data-h)}
-            cohort_on: "person"
             props:
               type: bar 
               y: ?{enemy_encountered}
