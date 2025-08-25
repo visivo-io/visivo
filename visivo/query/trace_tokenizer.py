@@ -11,6 +11,7 @@ from visivo.models.trace_props.trace_props import TraceProps
 from visivo.query.dialect import Dialect
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
 from visivo.utils import extract_value_from_function
+from typing import Optional
 import warnings
 import re
 
@@ -18,44 +19,159 @@ DEFAULT_COHORT_ON = "'values'"
 
 
 class TraceTokenizer:
-    def __init__(self, trace: Trace, model: Model, source: Source):
+    def __init__(self, trace: Trace, model: Model, source: Source, project=None):
         self.trace = trace
         self.source = source
         self.model = model
+        self.project = project  # Optional project for metric resolution
         self.dialect = Dialect(type=source.type)
         self.statement_classifier = StatementClassifier(dialect=self.dialect)
         self.select_items = {}
+        self._metric_resolver = None  # Will be initialized lazily if needed
+        self.referenced_models = set()  # Track models referenced via ${ref(model).field}
         self._set_select_items()
         self._set_order_by()
         self._set_groupby()
         self._set_filter()
 
+    def _get_metric_resolver(self):
+        """Lazily initialize and return the MetricResolver."""
+        if self._metric_resolver is None and self.project is not None:
+            from visivo.query.metric_resolver import MetricResolver
+
+            self._metric_resolver = MetricResolver(self.project)
+        return self._metric_resolver
+
     def _resolve_metric_reference(self, query_statement: str) -> str:
         """
         Resolve metric references in query statements.
-        Converts ${ref(model).metric_name} to the actual metric expression.
+        Converts ${ref(model).metric_name} or ${ref(metric_name)} to the actual metric expression.
+        Also handles ${ref(model).field} for cross-model field references.
+        Supports both single-model metrics and metric compositions.
         """
-        # Pattern to match ${ref(model_name).metric_name}
-        metric_ref_pattern = r"\$\{\s*ref\(\s*([^)]+)\s*\)\s*\.\s*([^}]+)\s*\}"
+        # First try to use MetricResolver if project is available
+        if self.project is not None:
+            resolver = self._get_metric_resolver()
+            if resolver:
+                # Pattern to match ${ref(metric_name)} for metric-to-metric references
+                # Note: This is intentionally different from METRIC_REF_PATTERN as it only
+                # matches simple metric references WITHOUT a dot/field (e.g., ${ref(revenue)})
+                # to distinguish from model.field references (e.g., ${ref(orders).revenue})
+                simple_metric_pattern = r"\$\{\s*ref\(\s*([^.)]+)\s*\)\s*\}"
 
-        def replace_metric(match):
+                def replace_simple_metric(match):
+                    metric_name = match.group(1).strip().strip("'\"")
+
+                    # Check if this is actually a metric (not a model)
+                    if metric_name in resolver.metrics_by_name:
+                        try:
+                            # Resolve the metric expression (handles compositions)
+                            resolved_expr = resolver.resolve_metric_expression(metric_name)
+
+                            # Track models used in this metric (excluding current model)
+                            metric_models = resolver.get_models_from_metric(metric_name)
+                            # Only add models that are not the current model
+                            other_models = metric_models - {self.model.name}
+                            self.referenced_models.update(other_models)
+
+                            return f"({resolved_expr})"
+                        except Exception:
+                            # If resolution fails, fall back to original
+                            pass
+
+                    # Not a metric reference, return original
+                    return match.group(0)
+
+                # First resolve simple metric references
+                query_statement = re.sub(
+                    simple_metric_pattern, replace_simple_metric, query_statement
+                )
+
+        # Pattern to match ${ref(model_name).field_or_metric_name}
+        from visivo.models.base.context_string import METRIC_REF_PATTERN
+
+        def replace_ref(match):
             model_name = match.group(1).strip().strip("'\"")
-            metric_name = match.group(2).strip()
+            field_or_metric_name = match.group(2).strip() if match.group(2) else None
 
-            # Check if the referenced model is the current model
+            # If there's no field_or_metric_name, this matches ${ref(something)}
+            # which should already be handled by the simple_metric_pattern above
+            # So we return the original match unchanged
+            if field_or_metric_name is None:
+                return match.group(0)
+
+            # Try to resolve as a metric first
+            if self.project is not None:
+                resolver = self._get_metric_resolver()
+                if resolver:
+                    # Try to find the metric in the resolver's index
+                    full_metric_name = f"{model_name}.{field_or_metric_name}"
+                    if full_metric_name in resolver.metrics_by_name:
+                        try:
+                            resolved_expr = resolver.resolve_metric_expression(full_metric_name)
+
+                            # Track models used in this metric (excluding current model)
+                            metric_models = resolver.get_models_from_metric(full_metric_name)
+                            # Only add models that are not the current model
+                            other_models = metric_models - {self.model.name}
+                            self.referenced_models.update(other_models)
+
+                            return f"({resolved_expr})"
+                        except Exception:
+                            pass
+
+                    # Try just the metric name
+                    if field_or_metric_name in resolver.metrics_by_name:
+                        try:
+                            resolved_expr = resolver.resolve_metric_expression(field_or_metric_name)
+
+                            # Track models used in this metric (excluding current model)
+                            metric_models = resolver.get_models_from_metric(field_or_metric_name)
+                            # Only add models that are not the current model
+                            other_models = metric_models - {self.model.name}
+                            self.referenced_models.update(other_models)
+
+                            return f"({resolved_expr})"
+                        except Exception:
+                            pass
+
+            # Check if it's a metric in the current model (backward compatibility)
             if model_name == self.model.name:
                 # Look for the metric in the model's metrics
                 if hasattr(self.model, "metrics") and self.model.metrics:
                     for metric in self.model.metrics:
-                        if metric.name == metric_name:
+                        if metric.name == field_or_metric_name:
+                            # For backward compatibility, resolve the metric here too
+                            # and track any models it references
+                            if self.project is not None and resolver:
+                                try:
+                                    # Track models used in this metric (excluding current model)
+                                    metric_models = resolver.get_models_from_metric(
+                                        field_or_metric_name
+                                    )
+                                    # Only add models that are not the current model
+                                    other_models = metric_models - {self.model.name}
+                                    self.referenced_models.update(other_models)
+                                except Exception:
+                                    pass
+
                             # Return the metric expression wrapped in parentheses for safety
                             return f"({metric.expression})"
 
-            # If metric not found, return original reference (will likely cause an error later)
-            return match.group(0)
+                # If it's the current model and not a metric, leave it unchanged
+                # This preserves backward compatibility and error messages
+                return match.group(0)
 
-        # Replace all metric references
-        resolved = re.sub(metric_ref_pattern, replace_metric, query_statement)
+            # If it's a different model, this is a cross-model field reference
+            # Track that we're referencing this model
+            self.referenced_models.add(model_name)
+
+            # For cross-model fields, we need to qualify with the model name
+            # This will be used later for join generation
+            return f"{model_name}.{field_or_metric_name}"
+
+        # Replace all references
+        resolved = re.sub(METRIC_REF_PATTERN, replace_ref, query_statement)
         return resolved
 
     def tokenize(self):
@@ -79,6 +195,8 @@ class TraceTokenizer:
             data.update({"order_by": self.order_by})
         if hasattr(self, "filter_by"):
             data.update({"filter_by": self.filter_by})
+        if self.referenced_models:
+            data.update({"referenced_models": list(self.referenced_models)})
         return TokenizedTrace(**data)
 
     def _get_cohort_on(self):

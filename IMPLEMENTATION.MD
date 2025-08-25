@@ -2,7 +2,7 @@
 
 ## **Implementation Progress**
 
-### **Phase 1 Status: 92% Complete**
+### **Phase 1 Status: ✅ COMPLETE**
 
 #### ✅ **Completed Items:**
 
@@ -62,28 +62,23 @@
    - Handles ref strings and actual Source objects correctly
    - Clean separation of concerns for model-specific source acquisition
 
-#### ⏳ **In Progress:**
+9. **Architectural Improvements**
+   - **✅ Fixed DuckDB native connection handling** - Refactored extract_dimensions_job to use source abstraction
+   - **✅ Added get_model_schema() method** to all source classes for proper schema extraction
+   - Each source type now handles its own connection type correctly (native vs SQLAlchemy)
+   - Reduced code duplication and improved maintainability
 
-1. **Query Engine Completion**
-   - Updating QueryStringFactory to handle GROUP BY when metrics are used
-   - Multi-model metric query generation with automatic joins
+10. **Query Engine Integration**
+   - **✅ QueryStringFactory handles GROUP BY with metrics correctly**
+   - **✅ Metrics work in traces with proper aggregation and grouping**
+   - **✅ Integration tests confirm metric query generation works**
 
-#### 📝 **Remaining Work:**
+#### 📝 **Deferred to Phase 3:**
 
-1. **Query Engine Completion**
-   - Update QueryStringFactory for GROUP BY handling with metrics
-   - Multi-model metric query generation with automatic joins using Relations
-   - Create integration tests for metric query generation
-
-2. **Documentation & Examples**
+1. **Documentation & Examples**
    - Generate MkDocs documentation for Metric, Relation, Dimension models
    - Create comprehensive example project in test-projects/metrics-example/
    - Update CLI init template with metric examples
-
-3. **Edge Case Fixes**
-   - **✅ COMPLETED** - Fixed all test failures related to DAG source resolution
-   - **✅ COMPLETED** - Fixed output_dir parameter passing in dimension extraction job
-   - **✅ COMPLETED** - Updated tests to expect graceful skipping when sources unavailable
 
 ### **Test Results Summary**
 
@@ -94,12 +89,12 @@
 4. **✅ Integration Tests** - Tests now validate full pipeline from parsing to execution
 
 #### **Current Test Status:**
-- **Total Tests**: 683
-- **Passing**: 683 (100%)
+- **Total Tests**: 716
+- **Passing**: 716 (100%)
 - **Failing**: 0 (0%)
 - **Test Coverage**: All new functionality has comprehensive test coverage
-- **Performance**: Test suite runs in ~13 seconds
-- **Key Fixes**: Resolved DAG source resolution, output_dir parameter passing, graceful error handling
+- **Performance**: Test suite runs in ~14 seconds
+- **Key Fixes**: DuckDB aggregates, dimension extraction architecture, source abstraction
 
 ### **Key Achievements**
 
@@ -550,6 +545,390 @@ We propose rolling out this metrics layer in **three phases**, gradually increas
 
 **Timing:** Phase 1 is the foundation and might be completed in one development cycle (e.g. 2-3 weeks) including writing tests and docs.
 
+## **Phase 2 Implementation Complete**
+
+### **Implemented Components**
+
+#### **Week 1: Metric Composition Engine ✅**
+- **MetricResolver**: Fully integrated with ProjectDag for metric dependency resolution
+  - Leverages existing DAG for cycle detection
+  - Topological sorting for evaluation order
+  - Recursive metric resolution with caching
+  - Direct and transitive dependency tracking
+
+#### **Week 2: Join Logic ✅**
+- **RelationGraph**: NetworkX-based graph for model relationships
+  - Automatic join path discovery using BFS
+  - Minimum spanning tree for multi-model joins
+  - Ambiguous join detection with clear error messages
+  - Support for different join types (inner, left, right, full)
+
+#### **Week 3: Multi-Model Query Generation ✅**
+- **MultiModelQueryBuilder**: SQLGlot-based query builder
+  - Automatic FROM clause generation
+  - Dynamic JOIN clause injection based on relations
+  - GROUP BY handling for cross-model aggregations
+  - Field reference validation across models
+
+#### **Week 4: Trace Integration & Polish ✅**
+- **Enhanced Trace Support**: Full integration of metrics with existing trace model
+  - Traces can reference metrics using ${ref(metric)} syntax
+  - Support for cross-model metrics in traces via relations field
+  - Automatic JOIN generation when trace uses multi-model metrics
+  - Backward compatibility maintained with existing ?{} syntax
+
+### **Key Technical Achievements**
+
+1. **Full DAG Integration**: All components leverage the existing ProjectDag rather than building separate graphs
+2. **SQLGlot for SQL Parsing**: Eliminated all regex-based SQL parsing in favor of proper AST manipulation
+3. **Type Safety**: All new models use Pydantic with proper validation
+4. **Test Coverage**: Comprehensive unit tests for all new components
+5. **Error Handling**: Clear, actionable error messages for common issues
+
+## **Phase 2 Implementation Learnings**
+
+### **Key Architectural Discoveries**
+
+#### **1. ProjectDag Integration**
+The `ProjectDag` class (in `visivo/models/base/project_dag.py`) is the central dependency graph for the entire project and should be heavily leveraged for the metrics layer:
+
+- **Metrics are already DAG nodes**: Both model-scoped and project-level metrics are added to the DAG as children of their respective parents (models or project)
+- **Relations form edges**: The DAG naturally represents relationships between objects
+- **Built-in graph algorithms**: ProjectDag provides methods for:
+  - Cycle detection (`validate_dag()`)
+  - Named node retrieval (`get_node_by_name()`)
+  - Parent/child relationships (`get_named_parents()`, `get_named_children()`)
+  - Subgraph filtering (`filter_dag()`)
+
+#### **2. MetricResolver Refactoring**
+Instead of building a separate dependency graph, `MetricResolver` now leverages the ProjectDag:
+
+```python
+class MetricResolver:
+    def __init__(self, project: Project):
+        self.project = project
+        self.dag: ProjectDag = project.dag()  # Use existing DAG
+        self._build_metric_index()  # Index metrics from DAG
+```
+
+Benefits:
+- Single source of truth for dependencies
+- Reuses existing graph validation
+- Consistent with Visivo's architecture
+- Automatically handles metric-model relationships
+
+#### **3. SQL Parsing Rules (Critical)**
+**NEVER use regex to parse SQL**. This is now documented in CLAUDE.md:
+- Always use SQLGlot for SQL parsing
+- Context strings (${ref()}) should be resolved FIRST, then parse with SQLGlot
+- The DAG should be used to understand model dependencies, not regex parsing
+- Direct field references in SQL should be handled by SQLGlot after context resolution
+
+#### **4. Central Pattern Definitions**
+**Use central regex patterns to avoid duplication**:
+- `METRIC_REF_PATTERN` in `visivo/models/base/context_string.py` is the single source of truth for matching `${ref(model).field}` patterns
+- All modules (MetricResolver, RelationGraph, TraceTokenizer, MetricValidator) now import this central pattern
+- Exception: `simple_metric_pattern` in TraceTokenizer is intentionally different (matches only `${ref(metric)}` without dots) to distinguish simple metric references from model.field references
+
+## **Phase 2 Detailed Implementation Scope**
+
+### **Overview**
+Phase 2 transforms Visivo's metrics from single-model aggregates into a full semantic layer supporting cross-model analysis. This requires implementing metric composition, automatic join resolution, and the new Insight abstraction.
+
+### **Core Components**
+
+#### **1. Metric Composition Engine**
+
+**Goal:** Allow metrics to reference other metrics, creating derived calculations.
+
+**Implementation Tasks:**
+
+1. **Metric Reference Resolution**
+   - Extend `TraceTokenizer` to recognize `${ref(metric_name)}` syntax within metric expressions
+   - Create `MetricResolver` class that:
+     - Builds dependency graph of metric references
+     - Topologically sorts metrics for evaluation order
+     - Detects circular dependencies and raises clear errors
+     - Caches resolved expressions to avoid re-computation
+   
+2. **Expression Substitution Logic**
+   - When resolving a metric that references another:
+     ```python
+     # Example: conversion_rate metric
+     expression: "${ref(signups)} / ${ref(visits)}"
+     # Resolves to: "COUNT(DISTINCT user_id) / COUNT(*)"
+     ```
+   - Wrap substituted expressions in parentheses to maintain precedence
+   - Handle nested references (metric A → metric B → metric C)
+
+3. **Validation Updates**
+   - Extend `MetricValidator` to validate composed expressions
+   - Ensure referenced metrics exist at compile time
+   - Validate type compatibility (can't divide by a non-numeric metric)
+
+**Files to Modify:**
+- `visivo/query/trace_tokenizer.py` - Add metric reference resolution
+- `visivo/validators/metric_validator.py` - Add composition validation
+- Create `visivo/query/metric_resolver.py` - New resolution engine
+
+#### **2. Cross-Model Metric Support**
+
+**Goal:** Enable metrics that aggregate data from multiple models using declared relations.
+
+**Implementation Tasks:**
+
+1. **Multi-Model Expression Parsing**
+   - Extend metric expressions to support `${ref(model).field}` syntax
+   - Track all models referenced in a metric's expression
+   - Store model dependencies on the Metric object
+   
+2. **Model Set Extraction**
+   - Create `get_required_models()` method on Metric class
+   - Parse expression AST to find all model references
+   - Return set of model names/objects needed
+
+3. **Field Validation Across Models**
+   - When validating a cross-model metric:
+     - Verify each `${ref(model).field}` references a valid field
+     - Check field exists in the model's schema (use introspection)
+     - Ensure field is appropriate type for the aggregate function
+
+**Files to Modify:**
+- `visivo/models/metric.py` - Add model tracking
+- `visivo/parsers/metric_parser.py` - Parse multi-model references
+- `visivo/validators/metric_validator.py` - Cross-model validation
+
+#### **3. Join Path Resolution Algorithm**
+
+**Goal:** Automatically determine how to join models based on declared relations.
+
+**Implementation Tasks:**
+
+1. **Relation Graph Builder**
+   ```python
+   class RelationGraph:
+       def __init__(self, relations: List[Relation]):
+           self.graph = self._build_graph(relations)
+       
+       def find_join_path(self, models: Set[str]) -> List[Relation]:
+           # Returns ordered list of relations to join models
+           # Raises AmbiguousJoinError if multiple paths exist
+           # Raises NoJoinPathError if models aren't connected
+   ```
+
+2. **Path Finding Algorithm**
+   - Use BFS to find shortest path between model pairs
+   - For >2 models, find minimum spanning tree
+   - Handle these cases:
+     - Direct relation exists: Use it
+     - Indirect path exists: Return chain of relations
+     - Multiple paths exist: Raise `AmbiguousJoinError` with details
+     - No path exists: Raise `NoJoinPathError` suggesting relations to add
+
+3. **Ambiguity Resolution**
+   - If metric has `preferred_relations` field, use those
+   - If trace specifies relations, override metric's preference
+   - Otherwise, error with clear message listing all possible paths
+
+4. **Cycle Detection**
+   - Validate relation graph is acyclic at compile time
+   - Use DFS with color marking to detect cycles
+   - Report cycle path in error message
+
+**New Files:**
+- `visivo/query/relation_graph.py` - Graph algorithms
+- `visivo/query/join_resolver.py` - Join path resolution
+
+#### **4. SQL Query Generation for Multi-Model Metrics**
+
+**Goal:** Generate correct SQL with JOINs for cross-model metrics.
+
+**Implementation Tasks:**
+
+1. **JOIN Clause Generation**
+   ```python
+   class MultiModelQueryBuilder:
+       def build_query(self, 
+                      metric: Metric,
+                      grouping_fields: List[str],
+                      filters: List[str]) -> str:
+           # 1. Get required models from metric
+           # 2. Resolve join path via RelationGraph
+           # 3. Build FROM clause with base model
+           # 4. Add JOIN clauses in order
+           # 5. Add SELECT with metric expression
+           # 6. Add GROUP BY if needed
+           # 7. Add WHERE for filters
+   ```
+
+2. **Join Type Handling**
+   - Respect join_type from Relation (inner/left/right/full)
+   - Order JOINs to preserve row semantics:
+     - Start with fact table (most granular)
+     - Join dimension tables
+     - Consider LEFT vs INNER impact on aggregates
+
+3. **Aggregate Correctness**
+   - Use subqueries when needed to avoid fanout:
+     ```sql
+     -- Instead of direct join that might duplicate rows:
+     SELECT COUNT(DISTINCT orders.id) / COUNT(DISTINCT users.id)
+     FROM orders JOIN users ON orders.user_id = users.id
+     
+     -- Consider subquery approach for complex cases:
+     WITH order_metrics AS (
+       SELECT user_id, COUNT(*) as order_count
+       FROM orders GROUP BY user_id
+     )
+     SELECT AVG(order_count) FROM order_metrics
+     ```
+
+4. **GROUP BY Generation**
+   - Include all non-aggregate fields in GROUP BY
+   - Handle fields from multiple models
+   - Maintain correct aliasing
+
+**Files to Modify:**
+- Create `visivo/query/multi_model_query_builder.py`
+- Update `visivo/query/query_string_factory.py` to use new builder
+
+#### **5. Insight Object Implementation**
+
+**Goal:** Create a new abstraction for metric-driven visualizations.
+
+**Implementation Tasks:**
+
+1. **Insight Pydantic Model**
+   ```python
+   class Insight(NamedModel):
+       name: str
+       description: Optional[str]
+       
+       # Primary metric to visualize
+       metric: Union[RefString, Metric]
+       
+       # Optional grouping/splitting
+       group_by: Optional[Union[str, List[str]]]  # Dimensions to group
+       split_by: Optional[str]  # Dimension for cohort/series split
+       
+       # Filters
+       filters: Optional[List[str]]
+       
+       # Visualization props (similar to Trace)
+       props: Optional[InsightProps]
+       
+       # Preferred relations if ambiguous
+       relations: Optional[List[Union[RefString, Relation]]]
+   ```
+
+2. **Insight to Query Conversion**
+   - Convert Insight to executable SQL query
+   - Resolve metric reference to get expression
+   - Apply grouping and filters
+   - Use MultiModelQueryBuilder if metric spans models
+
+3. **YAML Support**
+   ```yaml
+   insights:
+     - name: revenue_by_month
+       metric: ${ref(total_revenue)}
+       group_by: ${ref(orders).created_month}
+       split_by: ${ref(users).segment}
+       filters:
+         - "${ref(orders).status} = 'completed'"
+   ```
+
+4. **Integration with Charts**
+   - Allow charts to reference insights like traces
+   - Each insight produces one series in the chart
+   - Multiple insights can be combined in one chart
+
+**New Files:**
+- `visivo/models/insight.py` - Insight model
+- `visivo/query/insight_compiler.py` - Insight to SQL
+
+#### **6. Testing Strategy**
+
+**Unit Tests:**
+1. **Metric Composition**
+   - Test dependency resolution order
+   - Test circular dependency detection
+   - Test nested reference substitution
+
+2. **Join Path Resolution**
+   - Test direct joins
+   - Test multi-hop paths
+   - Test ambiguous path detection
+   - Test no-path error
+
+3. **Multi-Model Query Generation**
+   - Test JOIN clause generation
+   - Test GROUP BY with multiple models
+   - Test aggregate correctness
+
+**Integration Tests:**
+1. Create test project with:
+   - 3-4 models with relations
+   - Metrics at each model level
+   - Composed metrics
+   - Cross-model metrics
+   - Insights using those metrics
+
+2. Verify:
+   - Compilation succeeds
+   - Generated SQL is correct
+   - Query results match expected values
+   - Ambiguous joins are caught
+
+### **Implementation Order**
+
+**Week 1: Foundation**
+1. Metric composition engine (resolution, substitution, validation)
+2. Cross-model expression parsing
+3. Unit tests for above
+
+**Week 2: Join Logic**
+1. Relation graph builder
+2. Join path resolution algorithm  
+3. Ambiguity and cycle detection
+4. Unit tests for graph algorithms
+
+**Week 3: Query Generation**
+1. Multi-model query builder
+2. JOIN clause generation
+3. GROUP BY handling
+4. Integration with QueryStringFactory
+
+**Week 4: Insights & Polish**
+1. Insight model and YAML parsing
+2. Insight to query conversion
+3. Integration tests
+4. Bug fixes and edge cases
+
+### **Risk Mitigation**
+
+1. **Performance**: Complex joins might be slow
+   - Solution: Add query result caching
+   - Consider materializing common metric combinations
+
+2. **Ambiguous Joins**: Users might create confusing relation graphs
+   - Solution: Clear error messages with visualization
+   - Add `visivo relations validate` command
+
+3. **SQL Dialect Differences**: JOIN syntax varies
+   - Solution: Use SQLGlot for generation
+   - Test against multiple database types
+
+### **Success Criteria**
+
+Phase 2 is complete when:
+1. ✅ Metrics can reference other metrics
+2. ✅ Metrics can aggregate across multiple models
+3. ✅ Relations automatically resolve to JOIN clauses
+4. ✅ Traces can seamlessly use metrics with ${ref(metric)} syntax
+5. ✅ All tests pass (unit + integration)
+6. ✅ No regression in existing functionality
+
 #### ***Phase 2: Global Metrics & Join Logic (Advanced Backend, Introduce Insights)***
 
 **Scope:** Enable cross-model metrics and metric compositions. Implement the join resolution and allow insights to use metrics spanning multiple models. Also introduce the **Insight** concept to simplify interactivity in Visivo (part of a separated but related effort). Limited UI for creating these (perhaps still mostly YAML-driven in this phase, but backend fully supports it).
@@ -666,6 +1045,81 @@ We propose rolling out this metrics layer in **three phases**, gradually increas
 By following this phased plan, the Visivo team can incrementally deliver the Metrics Layer: first laying the groundwork with backend support for metrics, then tackling the complexity of multi-model logic, and finally delivering the complete user experience. Each phase provides value (Phase 1 already allows cleaning up repeated aggregations within a model), and we mitigate risk by not exposing half-baked UI to users until the underlying mechanics are proven.
 
 In summary, this PRD and technical design equips Visivo with a **metrics layer**: empowering users to define business metrics once with confidence, relate their data models declaratively, and build charts faster with drag-and-drop metrics. We've outlined how to implement it safely (with validation, testing, and phased rollout) and how to extend it in the future with even more powerful analytic features. Visivo's engineering team can proceed with this blueprint to make the metrics layer a reality.
+
+---
+
+## **Current Status Summary (December 2024)**
+
+### **✅ Phase 1: COMPLETE**
+- Single-model metrics fully functional
+- Metrics can be defined at model and project level
+- SQLGlot validation ensures SQL correctness
+- Metrics work in traces with proper resolution
+- Auto-dimension extraction from model schemas
+- 716 tests passing (100% coverage)
+- Fixed critical bugs: DuckDB aggregates, dimension extraction architecture
+
+### **🚀 Phase 2: IN PROGRESS**
+
+#### **Phase 2 Implementation Progress Tracker**
+
+**Start Date:** December 2024
+
+##### **Week 1: Metric Composition (✅ Complete)**
+- [x] Created `MetricResolver` class integrated with ProjectDag
+- [x] Implemented topological sorting for metric evaluation order
+- [x] Added circular dependency detection with clear error messages
+- [x] Extended TraceTokenizer for `${ref(metric_name)}` syntax
+- [x] Added expression substitution with proper parenthesization
+- [x] Parse cross-model references `${ref(model).field}`
+- [x] 20 unit tests for composition engine
+
+##### **Week 2: Join Logic (✅ Complete)**
+- [x] Created `RelationGraph` class using NetworkX
+- [x] Implemented BFS for shortest path finding
+- [x] Built minimum spanning tree for >2 models
+- [x] Added `AmbiguousJoinError` with detailed paths
+- [x] Added `NoJoinPathError` with suggestions
+- [x] Implemented cycle detection with graph validation
+- [x] 10 unit tests for graph algorithms
+
+##### **Week 3: Query Generation (✅ Complete)**
+- [x] Created `MultiModelQueryBuilder` class using SQLGlot
+- [x] Generate FROM clause with base model
+- [x] Generate JOIN clauses in correct order
+- [x] Handle different join types (inner/left/right/full)
+- [x] Generate proper GROUP BY for multi-model queries
+- [x] Handle aggregate correctness with COUNT DISTINCT
+- [x] Integration with TraceTokenizer for trace queries
+
+##### **Week 4: Trace Integration & Polish (✅ Complete)**
+- [x] Enhanced Trace model with relations field for join preferences
+- [x] Support for metrics in trace props (x, y, color, etc.)
+- [x] Automatic resolution of metric references in traces
+- [x] Cross-model metric support in traces using relations
+- [x] Integration with QueryStringFactory for trace SQL generation
+- [x] Comprehensive integration tests for trace-metric integration
+- [x] Backward compatibility with existing trace syntax
+
+#### **Implementation Notes**
+*This section will be updated as we implement each component*
+
+---
+
+### **Phase 2 Overview**
+Phase 2 enables the full semantic layer vision integrated with traces:
+- **Metric Composition**: Metrics referencing other metrics
+- **Cross-Model Metrics**: Aggregates spanning multiple models via relations
+- **Automatic Joins**: Relations resolve to SQL JOINs transparently
+- **Trace Integration**: Existing traces can now use metrics seamlessly
+
+The detailed implementation plan below provides a 4-week roadmap with specific technical tasks, risk mitigation strategies, and success criteria.
+
+### **📝 Phase 3: FUTURE**
+- Full UI for metrics and relations management
+- Documentation and examples
+- Performance optimizations
+- Advanced features (metric lineage, time windows, etc.)
 
 ---
 

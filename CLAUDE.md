@@ -51,6 +51,12 @@ Visivo is a data visualization tool with two main components:
 - **Job system**: `jobs/` - DAG-based job runner for executing data transformations
 - **Query engine**: `query/` - SQL query building and execution
 
+#### SQL Parsing Rules
+- **ALWAYS use sqlglot for SQL parsing** - Never use regex to parse SQL statements
+- **Context resolution first**: When injecting context strings (e.g., `${ref(...)}`), resolve the context FIRST, then use sqlglot to parse the resulting SQL
+- **DAG for dependencies**: Use the DAG to understand model dependencies, not regex pattern matching
+- **No regex for SQL**: Regular expressions should NEVER be used to extract SQL components like table names, column names, or references
+
 #### CLI Command Structure
 Each CLI command follows a consistent pattern:
 - `commands/{command}.py` - Click command definition with options/arguments

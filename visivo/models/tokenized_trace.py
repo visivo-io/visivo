@@ -11,3 +11,6 @@ class TokenizedTrace(BaseModel):
     select_items: Optional[Dict] = None
     filter_by: Optional[Dict[str, List[Optional[str]]]] = None
     order_by: Optional[List[str]] = None
+    referenced_models: Optional[List[str]] = (
+        None  # All models referenced in trace (from fields and resolved metrics)
+    )

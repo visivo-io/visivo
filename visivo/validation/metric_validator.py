@@ -120,8 +120,20 @@ class MetricValidator:
 
         # First, replace ${ref(model).field} with model.field for SQLGlot parsing
         import re
+        from visivo.models.base.context_string import METRIC_REF_PATTERN
 
-        sql_condition = re.sub(r"\$\{ref\(([^)]+)\)\.([^}]+)\}", r"\1.\2", condition)
+        # Replace ${ref(model).field} patterns with model.field for SQLGlot
+        # Note: METRIC_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
+        def replace_for_sql(match):
+            ref_content = match.group(1)
+            field = match.group(2) if match.lastindex >= 2 else None
+            if field:
+                return f"{ref_content}.{field}"
+            else:
+                # For ${ref(metric)} without field, keep as is for now
+                return ref_content
+
+        sql_condition = re.sub(METRIC_REF_PATTERN, replace_for_sql, condition)
 
         try:
             # Parse the condition as a WHERE clause expression

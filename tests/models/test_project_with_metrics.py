@@ -124,7 +124,7 @@ class TestProjectWithMetrics:
         assert "dim1" in dimension_names
 
     def test_project_child_items_include_models(self):
-        """Test that project.child_items() includes models but not configuration items."""
+        """Test that project.child_items() includes all semantic layer components."""
         from visivo.models.sources.sqlite_source import SqliteSource
 
         project = Project(
@@ -144,11 +144,20 @@ class TestProjectWithMetrics:
 
         child_items = project.child_items()
 
-        # Metrics and relations are configuration, not executable items in the DAG
-        # Only models and other executable items should be in child_items
-        assert not any(isinstance(item, Metric) for item in child_items)
-        assert not any(isinstance(item, Relation) for item in child_items)
+        # In Phase 2, metrics and relations are part of child_items for dependency tracking
+        # This enables proper resolution and composition in the semantic layer
+        assert any(isinstance(item, Metric) for item in child_items)
+        assert any(isinstance(item, Relation) for item in child_items)
         assert any(isinstance(item, SqlModel) for item in child_items)
+
+        # Verify the expected items are present
+        metric_items = [item for item in child_items if isinstance(item, Metric)]
+        assert len(metric_items) == 1
+        assert metric_items[0].name == "global_metric"
+
+        relation_items = [item for item in child_items if isinstance(item, Relation)]
+        assert len(relation_items) == 1
+        assert relation_items[0].name == "test_relation"
 
     def test_complex_project_structure(self):
         """Test a complete project with all metrics layer features."""

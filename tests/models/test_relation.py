@@ -1,161 +1,104 @@
-"""Tests for the Relation model."""
+"""
+Tests for the Relation model with new validation rules.
+"""
 
 import pytest
-from pydantic import ValidationError
 from visivo.models.relation import Relation
+from pydantic import ValidationError
 
 
 class TestRelation:
-    """Test suite for Relation model."""
+    """Test the Relation model and its validations."""
 
-    def test_create_basic_relation(self):
-        """Test creating a basic relation between two models."""
+    def test_valid_relation(self):
+        """Test creating a valid relation."""
         relation = Relation(
             name="orders_to_users",
-            left_model="orders",
-            right_model="users",
-            join_type="inner",
             condition="${ref(orders).user_id} = ${ref(users).id}",
+            join_type="inner",
         )
 
         assert relation.name == "orders_to_users"
-        assert relation.left_model == "orders"
-        assert relation.right_model == "users"
         assert relation.join_type == "inner"
-        assert relation.condition == "${ref(orders).user_id} = ${ref(users).id}"
-        assert relation.is_default is False  # Default value
+        assert relation.is_default == False
 
-    def test_create_relation_with_default_flag(self):
-        """Test creating a relation marked as default."""
+        # Check that models are extracted correctly
+        models = relation.get_referenced_models()
+        assert models == {"orders", "users"}
+
+    def test_relation_without_explicit_models(self):
+        """Test that relations work without left_model and right_model."""
         relation = Relation(
-            name="default_join",
-            left_model="accounts",
-            right_model="stages",
-            condition="${ref(accounts).id} = ${ref(stages).account_id}",
-            is_default=True,
+            name="product_orders",
+            condition="${ref(products).id} = ${ref(order_items).product_id}",
+            join_type="left",
         )
 
-        assert relation.is_default is True
+        models = relation.get_referenced_models()
+        assert models == {"products", "order_items"}
 
-    def test_relation_with_different_join_types(self):
-        """Test all valid join types."""
-        for join_type in ["inner", "left", "right", "full"]:
-            relation = Relation(
-                name=f"{join_type}_join",
-                left_model="a",
-                right_model="b",
-                join_type=join_type,
-                condition="${ref(a).id} = ${ref(b).a_id}",
-            )
-            assert relation.join_type == join_type
-
-    def test_invalid_join_type(self):
-        """Test that invalid join types are rejected."""
+    def test_relation_requires_two_models(self):
+        """Test that relation condition must reference at least two models."""
         with pytest.raises(ValidationError) as exc_info:
-            Relation(
-                name="bad_join",
-                left_model="a",
-                right_model="b",
-                join_type="invalid",  # Invalid join type
-                condition="${ref(a).id} = ${ref(b).a_id}",
-            )
+            Relation(name="invalid", condition="${ref(orders).id} = ${ref(orders).parent_id}")
 
-        assert "join_type" in str(exc_info.value).lower()
+        error = str(exc_info.value)
+        assert "at least two different models" in error
 
-    def test_relation_with_complex_condition(self):
+    def test_relation_with_no_models(self):
+        """Test that relation fails with no model references."""
+        with pytest.raises(ValidationError) as exc_info:
+            Relation(name="invalid", condition="1 = 1")
+
+        error = str(exc_info.value)
+        assert "at least two different models" in error
+
+    def test_relation_with_one_model(self):
+        """Test that relation fails with only one model reference."""
+        with pytest.raises(ValidationError) as exc_info:
+            Relation(name="invalid", condition="${ref(orders).status} = 'active'")
+
+        error = str(exc_info.value)
+        assert "at least two different models" in error
+
+    def test_complex_join_condition(self):
         """Test relation with complex join condition."""
         relation = Relation(
             name="complex_join",
-            left_model="orders",
-            right_model="products",
-            join_type="left",
-            condition="${ref(orders).product_id} = ${ref(products).id} AND ${ref(orders).status} = 'active'",
+            condition="${ref(orders).user_id} = ${ref(users).id} AND ${ref(orders).status} = ${ref(users).default_status}",
+            join_type="inner",
         )
 
-        assert "AND" in relation.condition
-        assert "${ref(orders).status}" in relation.condition
+        models = relation.get_referenced_models()
+        assert models == {"orders", "users"}
 
-    def test_relation_requires_all_fields(self):
-        """Test that required fields are enforced."""
-        # Missing condition
-        with pytest.raises(ValidationError) as exc_info:
-            Relation(name="incomplete", left_model="a", right_model="b")
-        assert "condition" in str(exc_info.value)
-
-        # Missing left_model
-        with pytest.raises(ValidationError) as exc_info:
-            Relation(name="incomplete", right_model="b", condition="test")
-        assert "left_model" in str(exc_info.value)
-
-        # Missing right_model
-        with pytest.raises(ValidationError) as exc_info:
-            Relation(name="incomplete", left_model="a", condition="test")
-        assert "right_model" in str(exc_info.value)
-
-    def test_relation_defaults_to_inner_join(self):
-        """Test that join_type defaults to 'inner' when not specified."""
+    def test_multiple_field_references_same_models(self):
+        """Test that multiple field references from same models work."""
         relation = Relation(
-            name="default_type",
-            left_model="a",
-            right_model="b",
-            condition="${ref(a).id} = ${ref(b).a_id}",
+            name="multi_field",
+            condition="${ref(table_a).id} = ${ref(table_b).a_id} AND ${ref(table_a).type} = ${ref(table_b).type}",
+            join_type="inner",
         )
 
-        assert relation.join_type == "inner"
+        models = relation.get_referenced_models()
+        assert models == {"table_a", "table_b"}
 
-    def test_relation_forbids_extra_fields(self):
-        """Test that extra fields are not allowed."""
-        with pytest.raises(ValidationError) as exc_info:
-            Relation(
-                name="test_relation",
-                left_model="a",
-                right_model="b",
-                condition="test",
-                extra_field="not_allowed",
-            )
-
-        assert "extra_field" in str(exc_info.value)
-
-    def test_relation_inherits_from_named_model(self):
-        """Test that Relation properly inherits from NamedModel."""
-        relation = Relation(name="test_relation", left_model="a", right_model="b", condition="test")
-
-        # Should have NamedModel methods
-        assert hasattr(relation, "id")
-        assert relation.id() == "test_relation"
-        assert str(relation) == "test_relation"
-
-    def test_relation_file_path(self):
-        """Test that Relation can have file_path from NamedModel."""
+    def test_is_default_flag(self):
+        """Test the is_default flag."""
         relation = Relation(
-            name="test_relation",
-            left_model="a",
-            right_model="b",
-            condition="test",
-            file_path="/path/to/config.yml",
-        )
-
-        assert relation.file_path == "/path/to/config.yml"
-
-    def test_multiple_relations_between_same_models(self):
-        """Test that we can create multiple relations between the same pair of models."""
-        relation1 = Relation(
-            name="join_by_id",
-            left_model="users",
-            right_model="accounts",
-            condition="${ref(users).account_id} = ${ref(accounts).id}",
+            name="default_relation",
+            condition="${ref(orders).user_id} = ${ref(users).id}",
             is_default=True,
         )
 
-        relation2 = Relation(
-            name="join_by_email",
-            left_model="users",
-            right_model="accounts",
-            condition="${ref(users).email} = ${ref(accounts).owner_email}",
-            is_default=False,
-        )
+        assert relation.is_default == True
 
-        assert relation1.name != relation2.name
-        assert relation1.condition != relation2.condition
-        assert relation1.is_default is True
-        assert relation2.is_default is False
+    def test_all_join_types(self):
+        """Test all supported join types."""
+        for join_type in ["inner", "left", "right", "full"]:
+            relation = Relation(
+                name=f"{join_type}_join",
+                condition="${ref(a).id} = ${ref(b).id}",
+                join_type=join_type,
+            )
+            assert relation.join_type == join_type

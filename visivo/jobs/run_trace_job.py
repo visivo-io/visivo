@@ -51,7 +51,23 @@ def action(trace, dag, output_dir):
 def _get_query_string(trace, dag, output_dir):
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
     source = get_source_for_model(model=model, dag=dag, output_dir=output_dir)
-    tokenized_trace = TraceTokenizer(trace=trace, model=model, source=source).tokenize()
+
+    # Get the project from the DAG (it's the root node)
+    project = None
+    if hasattr(dag, "get_root_nodes"):
+        root_nodes = dag.get_root_nodes()
+        if root_nodes and len(root_nodes) > 0:
+            # The project is typically the root node
+            from visivo.models.project import Project
+
+            for node in root_nodes:
+                if isinstance(node, Project):
+                    project = node
+                    break
+
+    tokenized_trace = TraceTokenizer(
+        trace=trace, model=model, source=source, project=project
+    ).tokenize()
     return QueryStringFactory(tokenized_trace=tokenized_trace).build()
 
 

@@ -78,9 +78,12 @@ class TestProjectDimensions:
             name="test_project", dimensions=[Dimension(name="test_dim", expression="'test'")]
         )
 
-        # Dimensions should not be in child_items as they're configuration, not executable
+        # Dimensions are now part of child_items for dependency tracking in Phase 2
         children = project.child_items()
 
-        # Dimensions are not executable items, so they shouldn't be in child_items
-        # Only items that need to be processed in the DAG should be there
-        assert not any(isinstance(item, Dimension) for item in children)
+        # Dimensions are now included in child_items for the semantic layer
+        # This enables proper dependency tracking and resolution
+        assert any(isinstance(item, Dimension) for item in children)
+        dimension_items = [item for item in children if isinstance(item, Dimension)]
+        assert len(dimension_items) == 1
+        assert dimension_items[0].name == "test_dim"

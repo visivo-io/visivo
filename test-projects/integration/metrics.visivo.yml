@@ -126,8 +126,15 @@ models:
         expression: "STDDEV_POP(y)"
         description: "Population standard deviation of Y"
 
+relations: 
+  - name: test-table-to-waterfall
+    condition: "${ref(test_table_with_metrics).x} = ${ref(waterfall_model_duckdb).row}"
 
-# Traces that use the new metrics
+metrics: 
+  - name: test-metric-test-one
+    expression: ${ref(min_y)} / ${ref(total_y)}
+  - name: cross-model-metric
+    expression: ${ref(y_variance)} + ${ref(net_income)}
 traces:
   # Financial metrics traces
   - name: Revenue Indicator
@@ -197,14 +204,14 @@ traces:
     props:
       type: scatter
       x: ?{ x }
-      y: ?{ y }
+      y: ?{ ${ref(cross-model-metric)} }
       mode: "markers+text"
       text: "?{ 'Avg: ' || ROUND(${ref(test_table_with_metrics).avg_y}, 2) }"
       textposition: "top center"
       marker:
-        size: ?{ 10 + (y / ${ref(test_table_with_metrics).max_y}) * 20 }
+        size: ?{ 10 + (any_value(y) / ${ref(test_table_with_metrics).max_y}) * 20 }
         color: ?{ CASE 
-          WHEN y > ${ref(test_table_with_metrics).avg_y} THEN '#713B57'
+          WHEN any_value(y) > ${ref(test_table_with_metrics).avg_y} THEN '#713B57'
           ELSE '#4F494C' END }
   
   - name: Category Summary
