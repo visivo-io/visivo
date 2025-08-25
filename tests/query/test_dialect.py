@@ -21,6 +21,12 @@ def test_dialect():
     mysql_aggregates = mysql_dialect.aggregates
     assert "count" in mysql_aggregates and "json_arrayagg" in mysql_aggregates
 
+    redshift_dialect = Dialect(**{"type": "redshift"})
+    redshift_aggregates = redshift_dialect.aggregates
+    assert "sum" in redshift_aggregates and "median" in redshift_aggregates
+    assert "approximate_count" in redshift_aggregates and "percentile_cont" in redshift_aggregates
+    assert "ilike" in redshift_dialect.comparisons
+
 
 def test_dialect_from_source():
     source = SourceFactory()

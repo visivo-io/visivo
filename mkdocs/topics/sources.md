@@ -2,7 +2,7 @@
 Sources are connections to your data warehouses or databases. This page describes some best practices around setting up sources. 
 
 !!! tip
-    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/Sources/PostgresqlSource/))
+    There is specific documentation on how to connect to a variety of databases in the Configuration documentation ([ie. PostgresSQL](/../reference/configuration/Sources/PostgresqlSource/), [Amazon Redshift](/../reference/configuration/Sources/RedshiftSource/))
 
 ## Supported Connectors 
 Sources are typically OLAP or OLTP SQL based data warehouses and databases. 
@@ -15,6 +15,7 @@ We have pre-built connectors for the most popular databases; however, you can al
 - ![](../assets/source-logos/snowflake.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/SnowflakeSource/)
 - ![](../assets/source-logos/mysql.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/MysqlSource/)
 - ![](../assets/source-logos/bigquery.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/BigQuerySource/)
+- ![](../assets/source-logos/redshift.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/RedshiftSource/)
 - ![](../assets/source-logos/duckdb.png) [:octicons-arrow-right-24: Docs](/../reference/configuration/Sources/DuckdbSource/)
 </div>
 

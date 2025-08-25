@@ -119,6 +119,34 @@ KEYWORDS = {
             "string_agg",
             "sum",
         },
+        "redshift": {
+            # PostgreSQL-compatible aggregates
+            "array_agg",
+            "bit_and",
+            "bit_or",
+            "bool_and",
+            "bool_or",
+            "every",
+            "string_agg",
+            # Redshift-specific aggregates
+            "approximate_count",
+            "approximate_percentile_disc",
+            "median",
+            "percentile_cont",
+            "percentile_disc",
+            "stddev_pop",
+            "stddev_samp",
+            "var_pop",
+            "var_samp",
+            "variance",
+            # Window function aggregates commonly used in Redshift
+            "listagg",
+            "any_value",
+            "corr",
+            "covar_pop",
+            "covar_samp",
+            "stddev",
+        },
     },
     "comparison": {
         "all": {">", "<", "=", ">=", "<=", "<>", "!=", "like", "in", "is"},
@@ -128,6 +156,7 @@ KEYWORDS = {
         "mysql": {},
         "sqlite": {},
         "duckdb": {"ilike"},
+        "redshift": {"ilike"},
     },
 }
 
