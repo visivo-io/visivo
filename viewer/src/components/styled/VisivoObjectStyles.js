@@ -8,7 +8,7 @@ import {
 import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 import { FaGear } from 'react-icons/fa6';
-import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery } from 'react-icons/si';
+import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery, SiAmazonredshift } from 'react-icons/si';
 import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
 import { GrDocumentCsv, GrDocumentExcel } from 'react-icons/gr';
 
@@ -30,6 +30,9 @@ export const TYPE_VALUE_MAP = {
   },
   PostgresqlSource: {
     value: 'postgresql'
+  },
+  RedshiftSource: {
+    value: 'redshift'
   },
   DuckdbSource: {
     value: 'duckdb'
@@ -100,7 +103,6 @@ export const TYPE_STYLE_MAP = {
     border: 'border-red-200',
     icon: TbAlertCircle,
   },
-
   DuckdbSource: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
@@ -130,6 +132,12 @@ export const TYPE_STYLE_MAP = {
     text: 'text-blue-800',
     border: 'border-blue-200',
     icon: SiPostgresql,
+  },
+  RedshiftSource: {
+    bg: 'bg-red-100',
+    text: 'text-red-800',
+    border: 'border-red-200',
+    icon: SiAmazonredshift,
   },
   SnowflakeSource: {
     bg: 'bg-cyan-100',

@@ -141,10 +141,16 @@ nav:
                   - reference/configuration/Sources/SnowflakeSource/index.md
               - BigQuerySource:
                   - reference/configuration/Sources/BigQuerySource/index.md
+              - RedshiftSource:
+                  - reference/configuration/Sources/RedshiftSource/index.md
               - DuckdbSource:
                   - reference/configuration/Sources/DuckdbSource/index.md
                   - DuckdbAttachment:
                       - reference/configuration/Sources/DuckdbSource/DuckdbAttachment/index.md
+              - CSVFileSource:
+                  - reference/configuration/Sources/CSVFileSource/index.md
+              - ExcelFileSource:
+                  - reference/configuration/Sources/ExcelFileSource/index.md
           - Table:
               - reference/configuration/Table/index.md
               - TableColumnDefinition:

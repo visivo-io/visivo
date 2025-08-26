@@ -66,7 +66,15 @@ class TraceTokenizer:
         cohort_on = cohort_on or DEFAULT_COHORT_ON
         # TODO Replace with query string
         de_query = extract_value_from_function(cohort_on, "query")
-        return de_query if de_query else cohort_on
+        cohort_on_value = de_query if de_query else cohort_on
+
+        # For Redshift, cast string literals to VARCHAR(128) to avoid type conversion issues
+        if self.source.type == "redshift":
+            # Check if it's a string literal (starts and ends with single quotes)
+            if re.match(r"^'.*'$", cohort_on_value.strip()):
+                cohort_on_value = f"CAST({cohort_on_value} AS VARCHAR(128))"
+
+        return cohort_on_value
 
     def _set_select_items(self, obj=None, path=[]):
         if obj == None:

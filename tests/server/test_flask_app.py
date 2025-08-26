@@ -384,9 +384,6 @@ def test_load_example_project_success(client, monkeypatch):
         "project_dir": tempfile.mkdtemp(),
     }
 
-    mock_repo = mock.MagicMock()
-    monkeypatch.setattr("visivo.server.views.project_views.Repo.clone_from", mock_repo)
-
     monkeypatch.setattr("shutil.copy", lambda src, dst: None)
     monkeypatch.setattr("shutil.copy2", lambda src, dst: None)
     monkeypatch.setattr("shutil.copytree", lambda src, dst, dirs_exist_ok=True: None)
