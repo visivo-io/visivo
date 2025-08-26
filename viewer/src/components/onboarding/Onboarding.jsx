@@ -134,7 +134,6 @@ const Onboarding = () => {
         project_dir: projectDir,
         sources: [source],
         dashboards: dashboard ? [dashboard] : [],
-        include_example_dashboard: !dashboard,
       }),
     });
 
@@ -248,49 +247,13 @@ const Onboarding = () => {
       <div className="min-h-screen flex flex-col items-center justify-center max-w-5xl mx-auto px-4 pb-2 pt-2">
         <div className="text-center mb-4">
           <img src={logo} alt="Visivo" className="w-32 mx-auto mt-4 mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Visivo</h1>
-          <p className="text-gray-600 text-lg">Ready to build your data visualization dashboard</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">Welcome to Visivo</h1>
         </div>
-
-        {/* Add Data Source */}
-        <div className="w-full max-w-4xl mb-2">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">
-              Connect Your Data
-            </h3>
-            <p className="text-center text-gray-600 text-lg mb-6">
-              Start by adding your first data source. We support databases, APIs, CSV files, and more.
-            </p>
-
-            <div className="flex justify-center">
-              <button
-                onClick={handleToggleSourceModal}
-                className="px-12 py-3 text-lg font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46]"
-                disabled={isLoading}
-              >
-                <div className="flex items-center space-x-2">
-                  {isLoadingAction(ACTIONS.DATA_SOURCE) ? (
-                    <Loading text={loadingText} />
-                  ) : (
-                    <>
-                      <FontAwesomeIcon icon={faPlus} className="w-6 h-6 ml-1" />
-                      <span>Add Data Source</span>
-                    </>
-                  )}
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Feature Cards */}
-        <FeatureCard />
-
         {/* Example Dashboards */}
-        <div className="bg-white rounded-2xl shadow-xl p-4 w-full">
-          <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">Or Try an Example</h3>
+        <div className="bg-white rounded-2xl shadow-xl p-4 mb-8 w-full">
+          <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">Jump right in and try an example</h3>
           <p className="text-center text-gray-600 mb-6">
-            Not sure where to start? Explore our sample dashboards to see what's possible.
+            A very easy way to get started and explore what is possible is to try one of our sample dashboards.
           </p>
 
           <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4">
@@ -417,6 +380,40 @@ const Onboarding = () => {
             </div>
           </div>
         </div>
+        {/* Add Data Source */}
+        <div className="w-full max-w-4xl mb-8">
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">
+              Or connect your data
+            </h3>
+            <p className="text-center text-gray-600 mb-6">
+              Start by adding your first data source. We support databases, APIs, CSV files, and more.
+            </p>
+
+            <div className="flex justify-center">
+              <button
+                onClick={handleToggleSourceModal}
+                className="px-12 py-3 text-lg font-semibold bg-[#713B57] text-white rounded-md hover:bg-[#5A2F46]"
+                disabled={isLoading}
+              >
+                <div className="flex items-center space-x-2">
+                  {isLoadingAction(ACTIONS.DATA_SOURCE) ? (
+                    <Loading text={loadingText} />
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faPlus} className="w-6 h-6 ml-1" />
+                      <span>Add Data Source</span>
+                    </>
+                  )}
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature Cards */}
+        <FeatureCard />
+
       </div>
 
       {showNameModal && (

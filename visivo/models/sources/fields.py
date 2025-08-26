@@ -7,6 +7,7 @@ from visivo.models.sources.csv_source import CSVFileSource
 from visivo.models.sources.excel_source import ExcelFileSource
 from visivo.models.sources.mysql_source import MysqlSource
 from visivo.models.sources.postgresql_source import PostgresqlSource
+from visivo.models.sources.redshift_source import RedshiftSource
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.sources.bigquery_source import BigQuerySource
@@ -34,6 +35,7 @@ SourceField = Annotated[
         Annotated[MysqlSource, Tag("mysql")],
         Annotated[SnowflakeSource, Tag("snowflake")],
         Annotated[BigQuerySource, Tag("bigquery")],
+        Annotated[RedshiftSource, Tag("redshift")],
         Annotated[DuckdbSource, Tag("duckdb")],
         Annotated[CSVFileSource, Tag("csv")],
         Annotated[ExcelFileSource, Tag("xls")],
@@ -50,6 +52,8 @@ SourceRefField = Annotated[
         Annotated[MysqlSource, Tag("mysql")],
         Annotated[SnowflakeSource, Tag("snowflake")],
         Annotated[BigQuerySource, Tag("bigquery")],
+        Annotated[RedshiftSource, Tag("redshift")],
+        Annotated[DuckdbSource, Tag("duckdb")],
         Annotated[CSVFileSource, Tag("csv")],
         Annotated[ExcelFileSource, Tag("xls")],
     ],

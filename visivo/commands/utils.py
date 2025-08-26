@@ -8,6 +8,7 @@ from visivo.models.sources.bigquery_source import BigQuerySource, BigQueryType
 from visivo.models.sources.duckdb_source import DuckdbSource, DuckdbType
 from visivo.models.sources.mysql_source import MysqlSource, MysqlType
 from visivo.models.sources.postgresql_source import PostgresqlSource, PostgresqlType
+from visivo.models.sources.redshift_source import RedshiftSource, RedshiftType
 from visivo.models.sources.snowflake_source import SnowflakeSource, SnowflakeType
 from visivo.models.sources.sqlite_source import SqliteSource, SqliteType
 from visivo.parsers.file_names import PROFILE_FILE_NAME
@@ -22,6 +23,7 @@ def get_source_types():
     from visivo.models.sources.snowflake_source import SnowflakeType
     from visivo.models.sources.bigquery_source import BigQueryType
     from visivo.models.sources.duckdb_source import DuckdbType
+    from visivo.models.sources.redshift_source import RedshiftType
 
     sqlite_type = get_args(SqliteType)[0]
     postgresql_type = get_args(PostgresqlType)[0]
@@ -29,7 +31,16 @@ def get_source_types():
     snowflake_type = get_args(SnowflakeType)[0]
     bigquery_type = get_args(BigQueryType)[0]
     duckdb_type = get_args(DuckdbType)[0]
-    return [postgresql_type, mysql_type, sqlite_type, snowflake_type, bigquery_type, duckdb_type]
+    redshift_type = get_args(RedshiftType)[0]
+    return [
+        postgresql_type,
+        mysql_type,
+        sqlite_type,
+        snowflake_type,
+        bigquery_type,
+        duckdb_type,
+        redshift_type,
+    ]
 
 
 def get_profile_token(profile_file):
@@ -96,7 +107,7 @@ def create_source(
     project_dir: str = "",
     database: str = "",
     source_type: Union[
-        SqliteType, PostgresqlType, MysqlType, SnowflakeType, BigQueryType, DuckdbType
+        SqliteType, PostgresqlType, MysqlType, SnowflakeType, BigQueryType, DuckdbType, RedshiftType
     ] = None,
     host: str = "",
     port: int = None,
@@ -107,6 +118,10 @@ def create_source(
     credentials_base64: str = "",
     project: str = "",
     dataset: str = "",
+    cluster_identifier: str = "",
+    region: str = "",
+    iam: bool = False,
+    ssl: bool = True,
 ) -> Union[
     SqliteSource,
     PostgresqlSource,
@@ -114,6 +129,7 @@ def create_source(
     SnowflakeSource,
     BigQuerySource,
     DuckdbSource,
+    RedshiftSource,
     str,
     None,
 ]:
@@ -191,6 +207,22 @@ def create_source(
             database=dataset,
             type=source_type,
             credentials_base64=credentials_base64,
+        )
+
+    if source_type == SourceTypeEnum.redshift:
+        write_env("DB_PASSWORD", password)
+        return RedshiftSource(
+            name=source_name,
+            host=host,
+            port=port or 5439,  # Redshift default port
+            database=database,
+            type=source_type,
+            password=password,
+            username=username,
+            cluster_identifier=cluster_identifier if cluster_identifier else None,
+            region=region if region else None,
+            iam=iam,
+            ssl=ssl,
         )
 
     return None

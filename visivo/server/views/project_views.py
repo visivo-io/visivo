@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
 import re
-import shutil
 from flask import jsonify, request
-from git import Repo
+import json
 from visivo.commands.utils import create_source
 from visivo.discovery.discover import Discover
 from visivo.logger.logger import Logger
@@ -19,7 +18,7 @@ from visivo.models.table import Table
 from visivo.models.trace import Trace
 from visivo.parsers.parser_factory import ParserFactory
 from visivo.server.project_writer import ProjectWriter
-from visivo.server.views.utils import create_example_dashboard, load_csv, write_project_file
+from visivo.server.views.utils import create_source_dashboard, load_csv, write_project_file
 from visivo.models.example_type import ExampleTypeEnum
 
 
@@ -138,11 +137,23 @@ def register_project_views(app, flask_app, output_dir):
             project_dir=form.get("project_dir", ""),
         )
 
-        source = create_source(**data.model_dump())
+        # Add Redshift-specific parameters if they exist
+        extra_params = {}
+        if form.get("cluster_identifier"):
+            extra_params["cluster_identifier"] = form.get("cluster_identifier", "")
+        if form.get("region"):
+            extra_params["region"] = form.get("region", "")
+        if form.get("iam") is not None:
+            extra_params["iam"] = form.get("iam", "false").lower() == "true"
+        if form.get("ssl") is not None:
+            extra_params["ssl"] = form.get("ssl", "true").lower() == "true"
+
+        source = create_source(**data.model_dump(exclude_none=True), **extra_params)
         if isinstance(source, str):
             return jsonify({"message": source}), 400
 
-        return jsonify({"message": "Source created", "source": source.model_dump()})
+        json_dump = source.model_dump_json(exclude_none=True)
+        return jsonify({"message": "Source created", "source": json.loads(json_dump)})
 
     @app.route("/api/source/upload/", methods=["POST"])
     def upload_file():
@@ -211,19 +222,8 @@ def register_project_views(app, flask_app, output_dir):
         project_dir = data.get("project_dir")
         sources = data.get("sources", [])
         dashboards = data.get("dashboards", [])
-        include_example_dashboard = data.get("include_example_dashboard", True)
 
         includes = []
-
-        if include_example_dashboard:
-            includes.append(
-                Include(
-                    path="visivo-io/visivo.git@v0.0.1 -- test-projects/demo/dashboards/welcome.visivo.yml"
-                )
-            )
-
-        if include_example_dashboard:
-            dashboards.append(create_example_dashboard())
 
         project = Project(
             name=project_name,
