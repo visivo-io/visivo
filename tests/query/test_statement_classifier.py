@@ -1,10 +1,8 @@
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
-from visivo.query.dialect import Dialect
 
 
 def test_statement_classifier():
-    dialect = Dialect(type="postgresql")
-    statement_classifier = StatementClassifier(dialect=dialect)
+    statement_classifier = StatementClassifier(source_type="postgresql")
 
     statement = "SUM(column_a) OVER(PARTIITON BY column_b)"
     assert statement_classifier.classify(statement) == StatementEnum.window
@@ -27,8 +25,7 @@ def test_statement_classifier():
 
 
 def test_statement_classifier_snowflake():
-    dialect = Dialect(type="snowflake")
-    statement_classifier = StatementClassifier(dialect=dialect)
+    statement_classifier = StatementClassifier(source_type="snowflake")
 
     statement = "SUM(column_a) OVER(PARTIITON BY column_b)"
     assert statement_classifier.classify(statement) == StatementEnum.window

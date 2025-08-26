@@ -60,6 +60,7 @@ watchdog = ">=6.0.0"
 polars = "^1.31.0"
 pyarrow = ">=20.0.0"
 posthog = "^6.1.0"
+sqlglot = "^25.32.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=25.1.0"
