@@ -233,6 +233,7 @@ const Onboarding = () => {
         objSelectedProperty="sources"
         objStep="type"
         onSubmitCallback={handleAddDataSource}
+        hideFileOption={true}
       />
 
       <div className="fixed top-4 left-4 z-10">
