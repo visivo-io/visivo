@@ -11,26 +11,20 @@ class QueryStringFactory:
     def build(self) -> str:
         """Build the trace query using SQLGlot instead of Jinja template."""
 
-        # Determine column quotation based on dialect
-        if self.tokenized_trace.source_type == "bigquery":
-            column_quotation = "`"
-        else:
-            column_quotation = '"'
-
         # Build the base CTE from the model SQL
         base_cte = sqlglot.parse_one(self.tokenized_trace.sql, dialect=self.dialect)
 
         # Build the columnize_cohort_on CTE
-        cohort_on_select = (
-            sqlglot.select("*")
-            .select(
-                f"{self.tokenized_trace.cohort_on} AS {column_quotation}cohort_on{column_quotation}"
-            )
-            .from_("base_query")
+        # Parse the cohort_on expression and create an alias properly
+        cohort_on_expr = sqlglot.parse_one(self.tokenized_trace.cohort_on, dialect=self.dialect)
+        cohort_on_alias = sqlglot.exp.Alias(
+            this=cohort_on_expr, alias=sqlglot.exp.Identifier(this="cohort_on", quoted=True)
         )
 
+        cohort_on_select = sqlglot.select("*").select(cohort_on_alias).from_("base_query")
+
         # Build the main SELECT
-        main_query = self._build_main_query(column_quotation)
+        main_query = self._build_main_query()
 
         # Add CTEs
         final_query = main_query.with_("base_query", base_cte).with_(
@@ -45,7 +39,7 @@ class QueryStringFactory:
 
         return sql
 
-    def _build_main_query(self, column_quotation: str):
+    def _build_main_query(self):
         """Build the main SELECT query."""
 
         # Start with SELECT
@@ -54,20 +48,29 @@ class QueryStringFactory:
         # Add select items
         if self.tokenized_trace.select_items:
             for key, value in self.tokenized_trace.select_items.items():
+                # Parse the value expression
+                value_expr = sqlglot.parse_one(value, dialect=self.dialect)
+
                 # Format column alias
                 if self.tokenized_trace.source_type == "bigquery":
                     # BigQuery uses backticks and replaces dots with pipes
-                    alias = f"`{key.replace('.', '|')}`"
+                    alias_name = key.replace(".", "|")
                 else:
-                    alias = f'"{key}"'
+                    alias_name = key
+
+                # Create the aliased expression properly
+                aliased_expr = sqlglot.exp.Alias(
+                    this=value_expr, alias=sqlglot.exp.Identifier(this=alias_name, quoted=True)
+                )
 
                 # Add the select expression with alias
-                query = query.select(f"{value} AS {alias}")
+                query = query.select(aliased_expr)
         else:
             query = query.select("*")
 
-        # Always add cohort_on
-        query = query.select(f"{column_quotation}cohort_on{column_quotation}")
+        # Always add cohort_on - use proper identifier
+        cohort_on_identifier = sqlglot.exp.Identifier(this="cohort_on", quoted=True)
+        query = query.select(cohort_on_identifier)
 
         # FROM clause
         query = query.from_("columnize_cohort_on")
@@ -83,8 +86,9 @@ class QueryStringFactory:
             if self.tokenized_trace.groupby_statements:
                 for statement in self.tokenized_trace.groupby_statements:
                     query = query.group_by(statement)
-            # Always group by cohort_on
-            query = query.group_by(f"{column_quotation}cohort_on{column_quotation}")
+            # Always group by cohort_on - use proper identifier
+            cohort_on_identifier = sqlglot.exp.Identifier(this="cohort_on", quoted=True)
+            query = query.group_by(cohort_on_identifier)
 
         # HAVING clause (aggregate filters)
         if self.tokenized_trace.filter_by and self.tokenized_trace.filter_by.get("aggregate"):

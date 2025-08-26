@@ -3,7 +3,7 @@ from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.trace import Trace
 from visivo.models.tokenized_trace import TokenizedTrace
 from sql_formatter.core import format_sql
-from tests.factories.model_factories import SnowflakeSourceFactory
+from tests.factories.model_factories import SnowflakeSourceFactory, BigQuerySourceFactory
 
 
 def test_QueryStringBuilder_with_only_base_query():
@@ -61,3 +61,25 @@ def test_tokenization_query_string_order_by():
         in format_sql(query_string).lower()
     )
     assert f"-- source: {source.name}" in format_sql(query_string)
+
+
+def test_bigquery_cohort_on_with_spaces():
+    """Test that BigQuery properly handles cohort_on with spaces using proper identifiers."""
+    data = {
+        "name": "Surface Trace",
+        "model": {"sql": "SELECT * FROM widget_sales"},
+        "props": {"type": "scatter", "x": "?{date}", "y": "?{amount}"},
+    }
+    trace = Trace(**data)
+    # Create a BigQuery source
+    source = BigQuerySourceFactory()
+    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
+    tokenized_trace = trace_tokenizer.tokenize()
+
+    # This should not raise an error
+    query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
+
+    # Check that the query was built successfully and contains expected elements
+    assert "cohort_on" in query_string.lower()
+    assert "'surface trace'" in query_string.lower()
+    assert f"-- source: {source.name}" in query_string
