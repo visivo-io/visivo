@@ -3,12 +3,9 @@ import os
 
 import yaml
 from visivo.logger.logger import Logger
-from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.item import Item
-from visivo.models.models.sql_model import SqlModel
 from visivo.models.row import Row
-from visivo.models.trace import Trace
 
 
 def load_csv(conn, file_path, table_name):
@@ -39,15 +36,17 @@ def load_csv(conn, file_path, table_name):
             Logger.instance().warning(f"Loaded {os.path.basename(file_path)} with encoding errors.")
 
 
-def create_example_dashboard():
-    model = SqlModel(name="Example Model", sql="SELECT * FROM test_table")
-    trace = Trace(
-        name="Example Trace",
-        model=model,
-        props={"type": "scatter", "x": "?{x}", "y": "?{y}"},
-    )
-    chart = Chart(name="Example Chart", traces=[trace])
-    return Dashboard(name="Example Dashboard", rows=[Row(items=[Item(chart=chart)])])
+def create_source_dashboard(source):
+    text = f"""
+    # Example Source Configuration
+
+    Based on your we have created a source configuration in the project.visivo.yml file.
+
+    ``` yaml
+    {yaml.dump(json.loads(source.model_dump_json(exclude_none=True)), sort_keys=False)}
+    ```
+    """
+    return Dashboard(name="Example Dashboard", rows=[Row(items=[Item(markdown=text)])])
 
 
 def write_project_file(project, project_dir):

@@ -103,7 +103,6 @@ export const TYPE_STYLE_MAP = {
     border: 'border-red-200',
     icon: TbAlertCircle,
   },
-
   DuckdbSource: {
     bg: 'bg-yellow-100',
     text: 'text-yellow-800',
