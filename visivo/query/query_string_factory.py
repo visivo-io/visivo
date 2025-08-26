@@ -1,7 +1,6 @@
 from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
 import sqlglot
-from sqlglot import exp
 
 
 class QueryStringFactory:

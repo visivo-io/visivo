@@ -62,60 +62,10 @@ def has_aggregate_function(expr: exp.Expression) -> bool:
         return False
 
     # Check for any aggregate function nodes in the AST
-    # SQLGlot has various aggregate function types
-    aggregate_types = [
-        exp.Sum,
-        exp.Count,
-        exp.Avg,
-        exp.Max,
-        exp.Min,
-        exp.AggFunc,  # Generic aggregate function
-    ]
-
-    # Add optional types that might exist
-    for attr_name in ["GroupConcat", "ArrayAgg", "StandardDeviation", "Variance", "StdDev"]:
-        if hasattr(exp, attr_name):
-            aggregate_types.append(getattr(exp, attr_name))
-
-    aggregate_types = tuple(aggregate_types)
-
+    # All aggregate functions in SQLGlot inherit from exp.AggFunc
     for node in expr.walk():
-        if isinstance(node, aggregate_types):
+        if isinstance(node, exp.AggFunc):
             return True
-        # Also check for functions that might be aggregates by name
-        if isinstance(node, exp.Anonymous) and node.this:
-            func_name = str(node.this).upper()
-            # Common aggregate function names
-            if func_name in {
-                "SUM",
-                "COUNT",
-                "AVG",
-                "MAX",
-                "MIN",
-                "STDDEV",
-                "VARIANCE",
-                "GROUP_CONCAT",
-                "STRING_AGG",
-                "ARRAY_AGG",
-                "LISTAGG",
-                "MEDIAN",
-                "MODE",
-                "CORR",
-                "COVAR_POP",
-                "COVAR_SAMP",
-                "ANY_VALUE",
-                "BIT_AND",
-                "BIT_OR",
-                "BIT_XOR",
-                "BOOL_AND",
-                "BOOL_OR",
-                "JSON_AGG",
-                "JSONB_AGG",
-                "TOTAL",
-                "PRODUCT",
-                "HISTOGRAM",
-            }:
-                return True
 
     return False
 
@@ -152,9 +102,6 @@ def find_non_aggregated_columns(expr: exp.Expression) -> List[str]:
     Returns:
         List of column expressions that are not aggregated
     """
-    if not expr:
-        return []
-
     non_aggregated = set()
 
     # Find all column references
@@ -164,33 +111,10 @@ def find_non_aggregated_columns(expr: exp.Expression) -> List[str]:
         parent = column.parent
 
         while parent:
-            # Check if parent is an aggregate function
-            aggregate_parent_types = [exp.Sum, exp.Count, exp.Avg, exp.Max, exp.Min, exp.AggFunc]
-            for attr_name in ["GroupConcat", "ArrayAgg", "StandardDeviation", "Variance", "StdDev"]:
-                if hasattr(exp, attr_name):
-                    aggregate_parent_types.append(getattr(exp, attr_name))
-
-            if isinstance(parent, tuple(aggregate_parent_types)):
+            # Check if parent is an aggregate function (all inherit from exp.AggFunc)
+            if isinstance(parent, exp.AggFunc):
                 is_aggregated = True
                 break
-            # Also check for anonymous functions that might be aggregates
-            if isinstance(parent, exp.Anonymous) and parent.this:
-                func_name = str(parent.this).upper()
-                if func_name in {
-                    "SUM",
-                    "COUNT",
-                    "AVG",
-                    "MAX",
-                    "MIN",
-                    "STDDEV",
-                    "VARIANCE",
-                    "GROUP_CONCAT",
-                    "STRING_AGG",
-                    "ARRAY_AGG",
-                    "LISTAGG",
-                }:
-                    is_aggregated = True
-                    break
             parent = parent.parent
 
         if not is_aggregated:
@@ -244,60 +168,27 @@ def classify_statement(statement: str, dialect: str = None) -> str:
 
     Returns:
         Classification: 'aggregate', 'vanilla', or 'window'
+
+    Raises:
+        ValueError: If the statement cannot be parsed as valid SQL
     """
-    # First try to parse with SQLGlot
     expr = parse_expression(statement, dialect)
-    if expr:
-        if has_window_function(expr):
-            return "window"
-        elif has_aggregate_function(expr):
-            # SQLGlot recognized it as an aggregate
-            # But we need to check if it's valid for the dialect
-            if dialect and not _is_valid_aggregate_for_dialect(expr, dialect):
-                return "vanilla"
-            return "aggregate"
-        else:
-            return "vanilla"
+    if not expr:
+        # If SQLGlot can't parse it, it's likely invalid SQL
+        # We should fail fast with a clear error rather than guessing
+        raise ValueError(
+            f"Unable to parse SQL statement: '{statement}'. "
+            f"Please check for syntax errors or unsupported SQL constructs."
+        )
 
-    # If SQLGlot can't parse it, fall back to simple string matching
-    # This handles cases where the SQL might have typos but we still want to classify it
-    import re
-
-    # Check for window functions (OVER clause with proper closing)
-    # Need to ensure the OVER clause is complete
-    if re.search(r"\bover\s*\([^)]*\)", statement, re.IGNORECASE):
+    if has_window_function(expr):
         return "window"
-
-    # Check for common aggregate functions based on dialect
-    if dialect == "postgres":
-        # PostgreSQL doesn't have group_concat
-        aggregate_pattern = r"\b(sum|count|avg|max|min|stddev|variance|string_agg|array_agg)\s*\("
-    elif dialect == "mysql":
-        aggregate_pattern = r"\b(sum|count|avg|max|min|stddev|variance|group_concat)\s*\("
-    else:
-        # Generic pattern for other dialects
-        aggregate_pattern = r"\b(sum|count|avg|max|min|stddev|variance|group_concat|string_agg|array_agg|listagg)\s*\("
-
-    if re.search(aggregate_pattern, statement, re.IGNORECASE):
+    elif has_aggregate_function(expr):
+        # SQLGlot recognized it as an aggregate
+        # Trust SQLGlot to transpile it correctly for the target dialect
         return "aggregate"
-
-    return "vanilla"
-
-
-def _is_valid_aggregate_for_dialect(expr: exp.Expression, dialect: str) -> bool:
-    """Check if an aggregate function is valid for the given dialect."""
-    # GROUP_CONCAT is only valid for SQLite and MySQL
-    if dialect not in ("sqlite", "mysql"):
-        for node in expr.walk():
-            # Check for GroupConcat expression type
-            if hasattr(exp, "GroupConcat") and isinstance(node, exp.GroupConcat):
-                return False
-            # Also check for Anonymous functions
-            if isinstance(node, exp.Anonymous) and node.this:
-                func_name = str(node.this).upper()
-                if func_name == "GROUP_CONCAT":
-                    return False
-    return True
+    else:
+        return "vanilla"
 
 
 def get_expression_for_groupby(expr: exp.Expression) -> str:

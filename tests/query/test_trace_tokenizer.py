@@ -219,7 +219,7 @@ def test_tokenization_of_nested_inputs():
             "x": "?{ date_trunc('week', completed_at) }",
             "y": "?{ sum(amount) }",
             "marker": {
-                "color": "?{ case sum(amount) > 200 then 'green' else 'blue' end }",
+                "color": "?{ case when sum(amount) > 200 then 'green' else 'blue' end }",
             },
         },
     }
@@ -229,7 +229,7 @@ def test_tokenization_of_nested_inputs():
     tokenized_trace = trace_tokenizer.tokenize()
     assert (
         tokenized_trace.select_items["props.marker.color"]
-        == "case sum(amount) > 200 then 'green' else 'blue' end"
+        == "case when sum(amount) > 200 then 'green' else 'blue' end"
     )
     assert tokenized_trace.select_items["props.x"] == "date_trunc('week', completed_at)"
     assert tokenized_trace.select_items["props.y"] == "sum(amount)"

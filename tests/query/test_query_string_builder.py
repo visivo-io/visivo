@@ -1,5 +1,4 @@
 from visivo.query.query_string_factory import QueryStringFactory
-from visivo.query.dialect import Dialect
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.models.trace import Trace
 from visivo.models.tokenized_trace import TokenizedTrace
@@ -56,5 +55,9 @@ def test_tokenization_query_string_order_by():
     trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
     tokenized_trace = trace_tokenizer.tokenize()
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
-    assert "ORDER BY a_different_column desc, count(amount) desc" in format_sql(query_string)
+    # SQLGlot adds NULLS LAST for clarity, which is good
+    assert (
+        "order by a_different_column desc nulls last, count(amount) desc nulls last"
+        in format_sql(query_string).lower()
+    )
     assert f"-- source: {source.name}" in format_sql(query_string)
