@@ -15,6 +15,7 @@ VISIVO_TO_SQLGLOT_DIALECT = {
     "bigquery": "bigquery",
     "sqlite": "sqlite",
     "duckdb": "duckdb",
+    "redshift": "redshift",
 }
 
 

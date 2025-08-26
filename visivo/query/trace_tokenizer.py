@@ -14,6 +14,7 @@ from visivo.query.sqlglot_utils import (
     find_non_aggregated_columns,
     get_sqlglot_dialect,
 )
+import re
 import sqlglot
 from visivo.utils import extract_value_from_function
 import warnings
