@@ -1,15 +1,14 @@
 from typing import List, Optional, TYPE_CHECKING
 from pydantic import Field
 
+from visivo.logger.logger import Logger
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import generate_ref_field, generate_trace_or_insight_ref_field
 from visivo.models.trace import Trace
 from visivo.models.trace_props.layout import Layout
-
-if TYPE_CHECKING:
-    from visivo.models.insight import Insight
+from visivo.models.insight import Insight
 
 
 class Chart(SelectorModel, NamedModel, ParentModel):
@@ -205,9 +204,21 @@ class Chart(SelectorModel, NamedModel, ParentModel):
     """
 
     def child_items(self):
-        return self.traces + [self.selector]
+        """Return child items for DAG construction"""
+        all_items = []
+        if hasattr(self, 'traces'):
+            all_items.extend(self.traces)
+        if hasattr(self, 'insights'):
+            all_items.extend(self.insights)
+        if hasattr(self, 'selector'):
+            all_items.append(self.selector)
+        return all_items
 
-    traces: List[generate_trace_or_insight_ref_field()] = Field(
+    traces: List[generate_ref_field(Trace)] = Field(
+        [],
+        description="A list of traces or insights either written in line in the chart or called using the ref() function. Supports both for backward compatibility and future interactivity features.",
+    )
+    insights: List[generate_ref_field(Insight)] = Field(
         [],
         description="A list of traces or insights either written in line in the chart or called using the ref() function. Supports both for backward compatibility and future interactivity features.",
     )

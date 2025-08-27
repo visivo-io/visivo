@@ -1,6 +1,7 @@
 from typing import Any, List, Optional
 
 from visivo.models.base.selector_model import SelectorModel
+from visivo.models.insight import Insight
 from visivo.models.table_column_definition import TableColumnDefinition
 from visivo.models.trace import Trace
 from pydantic import Field
@@ -85,7 +86,11 @@ class Table(SelectorModel, NamedModel, ParentModel):
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
-    traces: List[generate_trace_or_insight_ref_field()] = Field(
+    traces: List[generate_ref_field(Trace)] = Field(
+        [],
+        description="A ref() to a trace or insight, or trace/insight defined in line. Data for the table will come from the trace or insight.",
+    )
+    insights: List[generate_ref_field(Insight)] = Field(
         [],
         description="A ref() to a trace or insight, or trace/insight defined in line. Data for the table will come from the trace or insight.",
     )

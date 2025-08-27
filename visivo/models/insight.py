@@ -1,12 +1,11 @@
 from typing import Any, Dict, Literal, Optional, List
 from pydantic import BaseModel, Field
 from visivo.models.fields import QueryOrStringField
+from visivo.models.insight_columns import InsightColumns
 from visivo.models.models.fields import ModelRefField
 from visivo.models.trace_props.trace_props import TraceProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.trace_columns import TraceColumns
-
 
 class InsightInteraction(BaseModel):
     """
@@ -63,7 +62,7 @@ class Insight(NamedModel, ParentModel):
         None, description="Optional description of what this insight represents."
     )
 
-    columns: Optional[TraceColumns] = Field(
+    columns: Optional[InsightColumns] = Field(
         None,
         description="Additional data columns to include that can be used for client-side interactions.",
     )
