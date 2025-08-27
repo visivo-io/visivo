@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TypeAlias
 
 from visivo.models.base.selector_model import SelectorModel
 from visivo.models.insight import Insight
@@ -7,9 +7,16 @@ from visivo.models.trace import Trace
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.base.base_model import REF_REGEX, generate_ref_field, generate_trace_or_insight_ref_field
+from visivo.models.base.base_model import (
+    REF_REGEX,
+    generate_ref_field,
+    generate_trace_or_insight_ref_field,
+)
 from pydantic import model_validator
 from enum import IntEnum
+
+TraceRef: TypeAlias = generate_ref_field(Trace)
+InsightRef: TypeAlias = generate_ref_field(Insight)
 
 
 class RowsPerPageEnum(IntEnum):
@@ -86,13 +93,13 @@ class Table(SelectorModel, NamedModel, ParentModel):
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
-    traces: List[generate_ref_field(Trace)] = Field(
+    traces: List[TraceRef] = Field(
         [],
-        description="A ref() to a trace or insight, or trace/insight defined in line. Data for the table will come from the trace or insight.",
+        description="A ref() to a trace or trace defined in line. Data for the table will come from the trace.",
     )
-    insights: List[generate_ref_field(Insight)] = Field(
+    insights: List[InsightRef] = Field(
         [],
-        description="A ref() to a trace or insight, or trace/insight defined in line. Data for the table will come from the trace or insight.",
+        description="A ref() to a insight or insight defined in line. Data for the table will come from the insight.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(
@@ -105,21 +112,41 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        return self.traces + [self.selector]
+        """Return child items for DAG construction"""
+        all_items = []
+        if hasattr(self, "traces"):
+            all_items.extend(self.traces)
+        if hasattr(self, "insights"):
+            all_items.extend(self.insights)
+        if hasattr(self, "selector"):
+            all_items.append(self.selector)
+        return all_items
 
     @model_validator(mode="before")
     @classmethod
-    def validate_column_defs(cls, data: any):
-        traces, column_defs = (data.get("traces"), data.get("column_defs"))
+    def validate_column_defs(cls, data: Any):
+        traces, insights, column_defs = (
+            data.get("traces", []),
+            data.get("insights", []),
+            data.get("column_defs"),
+        )
 
         if not column_defs:
             return data
 
-        column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
-        traces_trace_names = list(map(lambda t: NamedModel.get_name(t), traces))
+        # Collect all possible names from traces + insights
+        valid_names = []
+        if traces:
+            valid_names.extend([NamedModel.get_name(t) for t in traces])
+        if insights:
+            valid_names.extend([NamedModel.get_name(i) for i in insights])
+
+        column_defs_trace_names = [cd["trace_name"] for cd in column_defs]
+
         for column_defs_trace_name in column_defs_trace_names:
-            if not column_defs_trace_name in traces_trace_names:
+            if column_defs_trace_name not in valid_names:
                 raise ValueError(
-                    f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
+                    f"Column def trace/insight name '{column_defs_trace_name}' "
+                    f"is not present in traces/insights list on table."
                 )
         return data

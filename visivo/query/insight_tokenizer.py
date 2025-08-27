@@ -4,13 +4,13 @@ import sqlglot
 from sqlglot import exp
 
 from visivo.models.insight import Insight, InsightInteraction
+from visivo.models.props.layout import Layout
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_insight import TokenizedInsight
 from visivo.models.trace_columns import TraceColumns
-from visivo.models.trace_props.layout import Layout
-from visivo.models.trace_props.trace_props import TraceProps
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
 from visivo.query.dialect import Dialect

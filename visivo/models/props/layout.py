@@ -3,7 +3,7 @@ import json
 from jsonschema_rs import ValidationError, validator_for
 from pydantic import model_validator
 from visivo.models.color_palette import ColorPalette
-from visivo.models.trace_props.json_schema_base import JsonSchemaBase, get_message_from_error
+from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_from_error
 
 
 class Layout(JsonSchemaBase):

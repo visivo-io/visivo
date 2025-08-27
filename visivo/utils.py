@@ -30,6 +30,20 @@ PROJECT_CHILDREN = [
     "dashboards",
     "destinations",
 ]
+"""Valid child entity types within a project DAG.
+
+Contents:
+- alerts
+- selectors
+- sources
+- models
+- traces
+- insights
+- tables
+- charts
+- dashboards
+- destinations
+"""
 
 
 def get_utc_now():

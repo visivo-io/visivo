@@ -130,7 +130,6 @@ class DagRunner:
             return len(self.job_tracking_dag.nodes()) == 1
 
     def create_jobs_from_item(self, item: ParentModel):
-        Logger.instance().error(f"item: {item}")
         if isinstance(item, Trace):
             return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, Insight):

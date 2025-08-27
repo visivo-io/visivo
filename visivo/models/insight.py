@@ -1,11 +1,14 @@
+import re
 from typing import Any, Dict, Literal, Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from visivo.models.fields import QueryOrStringField
 from visivo.models.insight_columns import InsightColumns
 from visivo.models.models.fields import ModelRefField
-from visivo.models.trace_props.trace_props import TraceProps
+from visivo.models.props.insight_props import InsightProps
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
+
 
 class InsightInteraction(BaseModel):
     """
@@ -67,8 +70,9 @@ class Insight(NamedModel, ParentModel):
         description="Additional data columns to include that can be used for client-side interactions.",
     )
 
-    props: TraceProps = Field(
-        description="Visualization properties that define how the insight should be displayed."
+    props: InsightProps = Field(
+        None,
+        description="Visualization properties that define how the insight should be displayed.",
     )
 
     interactions: Optional[List[InsightInteraction]] = Field(
@@ -79,3 +83,25 @@ class Insight(NamedModel, ParentModel):
         """Return child items for DAG construction"""
         children = [self.model]
         return children
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_column_refs(cls, data: Any):
+        if isinstance(data, str):
+            return data
+        columns, props = (data.get("columns"), data.get("props"))
+        if columns is None or props is None:
+            return data
+
+        columnKeys = list(columns.keys())
+        pattern = r"column\(([^\)]+)\)"
+        for value in props.values():
+            match = re.search(pattern, str(value))
+            if match:
+                value = match.group(1)
+                if value not in columnKeys:
+                    raise ValueError(
+                        f"referenced column name '{value}' is not in columns definition"
+                    )
+
+        return data
