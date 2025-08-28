@@ -34,6 +34,7 @@ class DagRunner:
         soft_failure: bool,
         server_url: str,
         job_dag: Any,
+        working_dir: str,
     ):
         self.project = project
         self.output_dir = output_dir
@@ -41,6 +42,7 @@ class DagRunner:
         self.soft_failure = soft_failure
         self.server_url = server_url
         self.job_dag = job_dag
+        self.working_dir = working_dir
         self.job_tracking_dag = job_dag.copy()
         self.project_dag = project.dag()
         self.failed_job_results = []
@@ -131,11 +133,13 @@ class DagRunner:
         if isinstance(item, Trace):
             return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, CsvScriptModel):
-            return csv_script_job(csv_script_model=item, output_dir=self.output_dir)
+            return csv_script_job(
+                csv_script_model=item, output_dir=self.output_dir, working_dir=self.working_dir
+            )
         elif isinstance(item, LocalMergeModel):
             return local_merge_job(
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
         elif isinstance(item, Source):
-            return source_connection_job(source=item)
+            return source_connection_job(source=item, working_dir=self.working_dir)
         return None
