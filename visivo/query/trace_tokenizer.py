@@ -8,11 +8,16 @@ from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.trace_columns import TraceColumns
 from visivo.models.trace_props.layout import Layout
 from visivo.models.trace_props.trace_props import TraceProps
-from visivo.query.dialect import Dialect
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
+from visivo.query.sqlglot_utils import (
+    parse_expression,
+    find_non_aggregated_columns,
+    get_sqlglot_dialect,
+)
+import re
+import sqlglot
 from visivo.utils import extract_value_from_function
 import warnings
-import re
 
 DEFAULT_COHORT_ON = "'values'"
 
@@ -22,8 +27,9 @@ class TraceTokenizer:
         self.trace = trace
         self.source = source
         self.model = model
-        self.dialect = Dialect(type=source.type)
-        self.statement_classifier = StatementClassifier(dialect=self.dialect)
+        self.source_type = source.type
+        self.sqlglot_dialect = get_sqlglot_dialect(source.type) if source.type else None
+        self.statement_classifier = StatementClassifier(source_type=source.type)
         self.select_items = {}
         self._set_select_items()
         self._set_order_by()
@@ -115,25 +121,52 @@ class TraceTokenizer:
         if hasattr(self, "order_by"):
             order_by = []
             for statement in self.order_by:
-                statement_lower = statement.lower()
-                statement_clean = statement_lower.replace("asc", "").replace("desc", "").strip()
-                order_by.append(statement_clean)
+                # Remove ASC/DESC from order by statements for groupby
+                expr = parse_expression(statement, self.sqlglot_dialect)
+                if expr:
+                    # Remove order direction if present
+                    if isinstance(expr, sqlglot.exp.Ordered):
+                        order_by.append(expr.this.sql())
+                    else:
+                        statement_clean = (
+                            statement.lower().replace("asc", "").replace("desc", "").strip()
+                        )
+                        order_by.append(statement_clean)
+                else:
+                    statement_clean = (
+                        statement.lower().replace("asc", "").replace("desc", "").strip()
+                    )
+                    order_by.append(statement_clean)
         else:
             order_by = []
+
         query_statements = list(self.select_items.values()) + order_by + [self._get_cohort_on()]
-        groupby = []
+        groupby = set()
+
         for statement in query_statements:
-            if re.findall(r"^\s*'.*'\s*$", statement):
+            # Skip literal strings
+            if statement.strip().startswith("'") and statement.strip().endswith("'"):
                 continue
-            classification = self.statement_classifier.classify(statement)
-            match classification:
-                case StatementEnum.window:
-                    groupby.append(statement)
-                case StatementEnum.vanilla:
-                    groupby.append(statement)
+
+            # Parse and find non-aggregated columns
+            expr = parse_expression(statement, self.sqlglot_dialect)
+            if expr:
+                # Get all non-aggregated columns from this expression
+                non_agg_columns = find_non_aggregated_columns(expr)
+                if non_agg_columns:
+                    # Add the entire expression if it contains non-aggregated columns
+                    # and is not itself an aggregate
+                    classification = self.statement_classifier.classify(statement)
+                    if classification != StatementEnum.aggregate:
+                        groupby.add(statement)
+            else:
+                # Fallback to classification-based approach
+                classification = self.statement_classifier.classify(statement)
+                if classification in [StatementEnum.window, StatementEnum.vanilla]:
+                    groupby.add(statement)
 
         if groupby:
-            self.groupby_statements = list(set(groupby))
+            self.groupby_statements = list(groupby)
 
     def _set_filter(self):
         trace_dict = self.trace.model_dump()
@@ -143,14 +176,13 @@ class TraceTokenizer:
             for filter in filters:
                 argument = extract_value_from_function(filter, "query")
                 classification = self.statement_classifier.classify(argument)
-                match classification:
-                    case StatementEnum.window:
-                        filter_by["window"].append(argument)
-                    case StatementEnum.vanilla:
-                        filter_by["vanilla"].append(argument)
-                    case StatementEnum.aggregate:
-                        filter_by["aggregate"].append(argument)
-            if str(self.dialect.type) != "snowflake":
+                if classification == StatementEnum.window:
+                    filter_by["window"].append(argument)
+                elif classification == StatementEnum.vanilla:
+                    filter_by["vanilla"].append(argument)
+                elif classification == StatementEnum.aggregate:
+                    filter_by["aggregate"].append(argument)
+            if self.source_type != "snowflake":
                 if filter_by["window"] != []:
                     warnings.warn(
                         "Window function filtering is only supported on snowflake sources",

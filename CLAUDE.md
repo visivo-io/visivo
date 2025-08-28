@@ -176,3 +176,4 @@ The CLI execution path is introspection-free to maintain performance:
   - For configuration: Update model docstrings, then regenerate with `python mkdocs/src/write_mkdocs_markdown_files.py`
   - For topics/guides: Edit files in `mkdocs/topics/` or `mkdocs/background/`
   - For CLI: Update Click command help text, docs auto-generate
+- Never run python based integration tests. If you need to run an integration test, ask the user for help and they will run the test and paste the output into the chat.
