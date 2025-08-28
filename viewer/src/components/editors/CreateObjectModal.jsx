@@ -311,6 +311,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                     <option value="mysql">MySQL</option>
                     <option value="snowflake">Snowflake</option>
                     <option value="bigquery">BigQuery</option>
+                    <option value="redshift">Redshift</option>
                     <option value="csv">CSV File</option>
                     <option value="xls">Excel File</option>
                   </select>
