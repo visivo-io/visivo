@@ -1,229 +1,257 @@
-from pydantic import BaseModel
-import sqlglot
-from sqlglot import expressions as exp, parse_one
-from typing import Dict, List, Optional, Tuple
-from enum import Enum
-
-from visivo.logger.logger import Logger
+from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
+from visivo.query.dialect import Dialect
 from visivo.models.insight import Insight
 from visivo.models.insight_columns import InsightColumns
-from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
 from visivo.models.props.insight_props import InsightProps
 from visivo.models.sources.source import Source
 from visivo.models.tokenized_insight import Interaction, InteractionType, TokenizedInsight
-from visivo.query.dialect import Dialect
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
-from visivo.utils import extract_value_from_function
-
-
-class QueryPart(Enum):
-    PRE = "pre"
-    POST = "post"
+from visivo.query.sqlglot_utils import (
+    parse_expression,
+    find_non_aggregated_columns,
+    get_sqlglot_dialect,
+)
+import sqlglot
+from typing import Dict, List, Set
+import re
 
 
 class InsightQueryParser:
-    def __init__(self, insight: Insight, model: Model, source: Source):
+    def __init__(self, insight: Insight, source: Source, model: Model):
         self.insight = insight
         self.source = source
         self.model = model
+        self.source_type = source.type
         self.dialect = Dialect(type=source.type)
+        self.sqlglot_dialect = get_sqlglot_dialect(source.type) if source.type else None
         self.statement_classifier = StatementClassifier(dialect=self.dialect)
-        self.select_items = self._extract_select_items()
-        self.interactions = self._extract_interactions()
-
+        self.select_items = {}
+        self.interaction_items = {}
+        
     def tokenize(self) -> TokenizedInsight:
+        self._extract_select_items()
+        self._extract_interaction_items()
+        
         pre_query = self._generate_pre_query()
         post_query = self._generate_post_query()
-
-        # Optimize query split based on expression analysis
-        pre_query, post_query = self._optimize_query_split(pre_query, post_query)
-
-        source_type = self._determine_source_type()
-
+        interactions = self._process_interactions()
+        
         return TokenizedInsight(
             name=self.insight.name,
             pre_query=pre_query,
             post_query=post_query,
-            interactions=self.interactions,
+            interactions=interactions,
             source=self.source.name,
-            source_type=source_type,
+            source_type=self.source_type
         )
 
-    def _extract_select_items(self) -> Dict[str, str]:
-        """Extract all expressions from props and columns"""
-        select_items = {}
+    def _extract_select_items(self, obj=None, path=None):
+        if path is None:
+            path = []
+        if obj is None:
+            obj = self.insight
+        
+        if isinstance(obj, (InsightProps, InsightColumns)):
+            props_dict = obj.model_dump()
+            for key, value in props_dict.items():
+                if value is not None:
+                    self._extract_select_items(value, path + [key])
+        elif isinstance(obj, BaseModel):
+            for field_name in obj.model_fields:
+                field_value = getattr(obj, field_name, None)
+                if field_value is not None:
+                    self._extract_select_items(field_value, path + [field_name])
+        elif isinstance(obj, list):
+            for i, item in enumerate(obj):
+                self._extract_select_items(item, path + [str(i)])
+        elif isinstance(obj, dict):
+            for key, value in obj.items():
+                self._extract_select_items(value, path + [key])
+        else:
+            query_id = ".".join(path)
+            if isinstance(obj, QueryString):
+                self.select_items[query_id] = obj.get_value()
+            elif isinstance(obj, str) and re.match(r"^\?\{.*\}$", obj.strip()):
+                self.select_items[query_id] = obj.strip()[2:-1].strip()
 
-        # Extract from props (x, y, and any other expression-based properties)
-        props_dict = self.insight.props.dict(exclude_unset=True)
-        for prop_name, prop_value in props_dict.items():
-            if isinstance(prop_value, str) and prop_value.startswith("?{"):
-                select_items[prop_name] = extract_value_from_function(prop_value, "query")
-
-        # Extract from columns
-        columns_dict = (
-            self.insight.columns.model_dump(exclude_unset=True)
-            if self.insight.columns is not None
-            else {}
-        )
-
-        for column_name, column_expr in columns_dict.items():
-            if isinstance(column_expr, str) and column_expr.startswith("?{"):
-                select_items[column_name] = extract_value_from_function(column_expr, "query")
-
-        return select_items
-
-    def _extract_interactions(self) -> List[Interaction]:
-        """Extract and validate interactions"""
-        interactions = []
-
+    def _extract_interaction_items(self):
         if not self.insight.interactions:
-            return interactions
-
-        for interaction in self.insight.interactions:
+            return
+            
+        for i, interaction in enumerate(self.insight.interactions):
             if interaction.filter:
-                expr = extract_value_from_function(interaction.filter, "query")
-                interactions.append(Interaction(type=InteractionType.FILTER, expression=expr))
-
+                # Extract the value if it's a QueryString
+                filter_expr = interaction.filter
+                if isinstance(filter_expr, QueryString):
+                    filter_expr = filter_expr.get_value()
+                self._add_interaction_item(filter_expr, "filter", i)
+            
             if interaction.split:
-                expr = extract_value_from_function(interaction.split, "query")
-                interactions.append(Interaction(type=InteractionType.SPLIT, expression=expr))
-
+                # Extract the value if it's a QueryString
+                split_expr = interaction.split
+                if isinstance(split_expr, QueryString):
+                    split_expr = split_expr.get_value()
+                self._add_interaction_item(split_expr, "split", i)
+            
             if interaction.sort:
-                expr = extract_value_from_function(interaction.sort, "query")
-                interactions.append(Interaction(type=InteractionType.SORT, expression=expr))
+                # Extract the value if it's a QueryString
+                sort_expr = interaction.sort
+                if isinstance(sort_expr, QueryString):
+                    sort_expr = sort_expr.get_value()
+                self._add_interaction_item(sort_expr, "sort", i)
 
-        return interactions
+    def _add_interaction_item(self, expression: str, interaction_type: str, index: int):
+        # Extract the actual SQL string if it's a QueryString object
+        if isinstance(expression, QueryString):
+            expression = expression.get_value()
+        
+        parsed = parse_expression(expression, self.sqlglot_dialect)
+        classification = self.statement_classifier.classify(expression)
+        
+        self.interaction_items[f"{interaction_type}_{index}"] = {
+            "expression": expression,
+            "type": interaction_type,
+            "classification": classification,
+            "parsed": parsed
+        }
 
     def _generate_pre_query(self) -> str:
-        base_query = self.model.sql
+        """
+        Build the pre-query using sqlglot AST transformations
+        """
+        base_sql = self.model.sql
+        base_ast = sqlglot.parse_one(base_sql, dialect=self.sqlglot_dialect)
 
-        select_exprs = []
-        derived_exprs = []
-        aliases_defined = set()
+        required_columns = self._analyze_required_columns()
 
-        all_aliases = set(self.select_items.keys())
+        # Build select expressions with resolved aliases
+        select_expressions = []
+        column_map = {alias.split(".")[-1]: expr for alias, expr in self.select_items.items() if alias.startswith("columns.")}
+        
+        for alias, expression in self.select_items.items():
+            resolved_expr = self._resolve_aliases(expression, column_map)
+            parsed_expr = sqlglot.parse_one(resolved_expr, dialect=self.sqlglot_dialect)
+            select_expressions.append(parsed_expr.as_(alias))
 
-        for alias, expr in self.select_items.items():
-            parsed = parse_one(expr, read=self.dialect.type)
+        # Add missing required columns
+        for column in required_columns:
+            if column not in self.select_items.values():
+                select_expressions.append(sqlglot.parse_one(column, dialect=self.sqlglot_dialect))
 
-            refs_alias = any(
-                isinstance(node, exp.Column) and node.name in all_aliases
-                for node in parsed.find_all(exp.Column)
-            )
+        # Wrap base SQL in subquery
+        subquery = base_ast.subquery("base")
 
-            alias_expr = exp.alias_(parsed, alias)
+        # Build SELECT ... FROM (base)
+        query = sqlglot.exp.select(*select_expressions).from_(subquery)
 
-            if refs_alias and alias not in aliases_defined:
-                # Needs to go to outer query
-                derived_exprs.append(alias_expr)
-            else:
-                select_exprs.append(alias_expr)
-                aliases_defined.add(alias)
+        # Add WHERE (server-side filters)
+        server_filters = self._build_server_side_filters()
+        if server_filters:
+            filter_expr = sqlglot.parse_one(server_filters, dialect=self.sqlglot_dialect)
+            query = query.where(filter_expr)
 
-        if derived_exprs:
-            inner_select = exp.select(*select_exprs).from_(
-                exp.Subquery(this=parse_one(base_query), alias="base")
-            )
+        return query.sql(dialect=self.sqlglot_dialect)
 
-            cte_alias = "cte_inner"
-
-            # outer select should include *all* expressions
-            outer_select = exp.select(*(select_exprs + derived_exprs)).from_(
-                exp.to_table(cte_alias)
-            )
-
-            query = exp.With(
-                expressions=[exp.CTE(this=inner_select, alias=exp.to_table(cte_alias))],
-                this=outer_select,
-            )
-
-            return query.sql(dialect=self.dialect.type)
-
-        return (
-            exp.select(*select_exprs)
-            .from_(f"({base_query}) AS base")
-            .sql(dialect=self.dialect.type)
-        )
 
     def _generate_post_query(self) -> str:
-        """Generate initial client-side query"""
-        columns = list(self.select_items.keys())
-        return f"SELECT {', '.join(columns)} FROM {self.insight.name}"
-
-    def _optimize_query_split(self, pre_query: str, post_query: str) -> Tuple[str, str]:
         """
-        Analyze expressions and move appropriate ones to client-side processing
+        Build the post-query using sqlglot for filters/sorts
         """
-        try:
-            parsed_pre = parse_one(pre_query, read=self.dialect.type)
+        query = sqlglot.exp.select("*").from_("pre_query_result")
 
-            # Extract and classify all expressions
-            pre_expressions = []
-            post_expressions = []
+        # Apply window filters
+        filter_expressions = [
+            sqlglot.parse_one(item["expression"], dialect=self.sqlglot_dialect)
+            for item in self.interaction_items.values()
+            if item["type"] == "filter" and item["classification"] == StatementEnum.window
+        ]
+        if filter_expressions:
+            combined_filter = sqlglot.exp.and_(*filter_expressions)
+            query = query.where(combined_filter)
 
-            for select_expr in parsed_pre.find_all(exp.Select):
-                for expr in select_expr.expressions:
-                    expr_str = expr.sql()
-                    classification = self.statement_classifier.classify(expr_str)
+        # Apply sorting
+        sort_expressions = [
+            sqlglot.parse_one(item["expression"], dialect=self.sqlglot_dialect)
+            for item in self.interaction_items.values()
+            if item["type"] == "sort"
+        ]
+        if sort_expressions:
+            query = query.order_by(*sort_expressions)
 
-                    if self._should_be_pre_query(expr_str, classification):
-                        pre_expressions.append(expr)
-                    else:
-                        post_expressions.append(expr)
+        return query.sql(dialect=self.sqlglot_dialect)
 
-            # Rebuild queries
-            new_pre_query = self._rebuild_pre_query(pre_expressions)
-            new_post_query = self._rebuild_post_query(post_expressions)
 
-            return new_pre_query, new_post_query
+    def _analyze_required_columns(self) -> Set[str]:
+        all_expressions = list(self.select_items.values()) + [
+            item["expression"] for item in self.interaction_items.values()
+        ]
+        
+        required_columns = set()
+        for expr in all_expressions:
+            parsed = parse_expression(expr, self.sqlglot_dialect)
+            if parsed:
+                columns = self._extract_column_references(parsed)
+                required_columns.update(columns)
+        
+        return required_columns
 
-        except Exception as e:
-            Logger.instance().error(f"Query optimization failed: {e}")
-            return pre_query, post_query
-
-    def _should_be_pre_query(self, expression: str, classification: StatementEnum) -> bool:
+    def _extract_column_references(self, parsed_expression) -> List[str]:
+        columns = []
+        for node in parsed_expression.walk():
+            if isinstance(node, sqlglot.exp.Column):
+                columns.append(node.sql())
+        return columns
+    
+    def _resolve_aliases(self, expression: str, column_map: Dict[str, str]) -> str:
         """
-        Determine if expression should be processed server-side
+        If the expression is just a column alias, replace it with the underlying SQL.
+        Otherwise, return it unchanged.
         """
-        # Always keep aggregates and window functions server-side
-        if classification in [StatementEnum.aggregate, StatementEnum.window]:
-            return True
+        expr = expression.strip()
+        if expr in column_map:
+            return column_map[expr]
+        return expr
 
-        # Keep complex expressions and unsupported functions server-side
-        unsupported_functions = {"try_cast", "replace", "cast"}
-        parsed_expr = parse_one(expression)
 
-        if any(str(func) in unsupported_functions for func in parsed_expr.find_all(exp.Func)):
-            return True
+    def _build_select_clause(self, required_columns: Set[str]) -> str:
+        select_parts = []
 
-        # Simple column references can move to client
-        if classification == StatementEnum.vanilla and isinstance(
-            parsed_expr, (exp.Column, exp.Identifier)
-        ):
-            return False
+        # First build a map of columns.* → expression
+        column_map = {}
+        for alias, expression in self.select_items.items():
+            if alias.startswith("columns."):
+                column_name = alias.split(".")[-1]
+                column_map[column_name] = expression
 
-        return True
+        for alias, expression in self.select_items.items():
+            resolved_expr = self._resolve_aliases(expression, column_map)
+            select_parts.append(f"{resolved_expr} AS \"{alias}\"")
 
-    def _rebuild_pre_query(self, expressions: List[exp.Expression]) -> str:
-        """Rebuild pre-query with specified expressions"""
-        if not expressions:
-            return f"SELECT 1 FROM ({self.model.sql}) AS base LIMIT 0"
+        # Add any extra required columns not explicitly selected
+        for column in required_columns:
+            if column not in self.select_items.values():
+                select_parts.append(column)
 
-        select_clauses = [expr.sql() for expr in expressions]
-        return f"SELECT {', '.join(select_clauses)} FROM ({self.model.sql}) AS base"
+        return ", ".join(select_parts)
 
-    def _rebuild_post_query(self, expressions: List[exp.Expression]) -> str:
-        """Rebuild post-query with specified expressions"""
-        if not expressions:
-            return f"SELECT * FROM {self.insight.name}"
+    def _build_server_side_filters(self) -> str:
+        server_side_filters = []
+        
+        for item in self.interaction_items.values():
+            if item["type"] == "filter" and item["classification"] != StatementEnum.window:
+                server_side_filters.append(item["expression"])
+        
+        return " AND ".join(server_side_filters) if server_side_filters else ""
 
-        select_clauses = [expr.sql() for expr in expressions]
-        return f"SELECT {', '.join(select_clauses)} FROM {self.insight.name}"
-
-    def _determine_source_type(self) -> Optional[str]:
-        """Determine appropriate source type for the query"""
-        if isinstance(self.model, LocalMergeModel):
-            return "duckdb"
-        return self.source.type if self.source.type else None
+    def _process_interactions(self) -> List[Interaction]:
+        interactions = []
+        
+        for item in self.interaction_items.values():
+            interactions.append(Interaction(
+                type=InteractionType(item["type"]),
+                expression=item["expression"]
+            ))
+        
+        return interactions

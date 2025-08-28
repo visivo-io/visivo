@@ -20,7 +20,6 @@ from visivo.query.query_string_factory import QueryStringFactory
 
 
 def action(trace, dag, output_dir):
-    Logger.instance().info(start_message("Trace", trace))
     model = all_descendants_of_type(type=Model, dag=dag, from_node=trace)[0]
 
     if isinstance(model, CsvScriptModel):

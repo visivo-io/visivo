@@ -43,7 +43,7 @@ def action(insight, dag, output_dir):
         Logger.instance().error(f"PREQUERY: {tokenized_query.pre_query}")
         Logger.instance().error(f"POSTQUERYL: {tokenized_query.post_query}")
         data = source.read_sql(tokenized_query.pre_query)
-        Logger.instance().error(f"POST: {str(tokenized_query)}")
+        Logger.instance().error(f"POST: {str(tokenized_query.model_dump())}")
         # Aggregate data into flat structure and generate insight.json
         # InsightAggregator.aggregate_insight_data(
         #     data=data,
@@ -83,7 +83,7 @@ def _get_tokenized_insight(insight, dag, output_dir):
     else:
         source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
 
-    return InsightQueryParser(insight=insight, model=model, source=source).tokenize()
+    return InsightQueryParser(insight=insight, source=source, model=model).tokenize()
 
 
 def _get_source(insight, dag, output_dir):
