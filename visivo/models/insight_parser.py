@@ -1,10 +1,10 @@
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
-from visivo.query.dialect import Dialect
 from visivo.models.insight import Insight
 from visivo.models.insight_columns import InsightColumns
 from visivo.models.models.model import Model
 from visivo.models.props.insight_props import InsightProps
+from visivo.models.props.layout import Layout
 from visivo.models.sources.source import Source
 from visivo.models.tokenized_insight import Interaction, InteractionType, TokenizedInsight
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
@@ -24,9 +24,8 @@ class InsightQueryParser:
         self.source = source
         self.model = model
         self.source_type = source.type
-        self.dialect = Dialect(type=source.type)
         self.sqlglot_dialect = get_sqlglot_dialect(source.type) if source.type else None
-        self.statement_classifier = StatementClassifier(dialect=self.dialect)
+        self.statement_classifier = StatementClassifier(source_type=source.type)
         self.select_items = {}
         self.interaction_items = {}
         
@@ -53,16 +52,22 @@ class InsightQueryParser:
         if obj is None:
             obj = self.insight
         
-        if isinstance(obj, (InsightProps, InsightColumns)):
-            props_dict = obj.model_dump()
-            for key, value in props_dict.items():
+        if isinstance(obj, InsightProps) or isinstance(obj, Layout):
+            # Get all fields including extra ones from the model dump
+            trace_props_dict = obj.model_dump()
+            for key, value in trace_props_dict.items():
                 if value is not None:
                     self._extract_select_items(value, path + [key])
         elif isinstance(obj, BaseModel):
-            for field_name in obj.model_fields:
+            for field_name in obj.__class__.model_fields.keys():
                 field_value = getattr(obj, field_name, None)
                 if field_value is not None:
                     self._extract_select_items(field_value, path + [field_name])
+        elif isinstance(obj, InsightColumns):
+            for key in obj.model_dump().keys():
+                prop_value = getattr(obj, key, None)
+                if prop_value != None:
+                    self._extract_select_items(prop_value, path + [key])
         elif isinstance(obj, list):
             for i, item in enumerate(obj):
                 self._extract_select_items(item, path + [str(i)])
@@ -99,7 +104,7 @@ class InsightQueryParser:
                 # Extract the value if it's a QueryString
                 sort_expr = interaction.sort
                 if isinstance(sort_expr, QueryString):
-                    sort_expr = sort_expr.get_value()
+                    sort_expr = sort_expr.get_value() 
                 self._add_interaction_item(sort_expr, "sort", i)
 
     def _add_interaction_item(self, expression: str, interaction_type: str, index: int):

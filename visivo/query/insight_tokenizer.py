@@ -13,7 +13,6 @@ from visivo.models.trace_columns import TraceColumns
 from visivo.models.props.trace_props import TraceProps
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
-from visivo.query.dialect import Dialect
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
 from visivo.utils import extract_value_from_function
 from visivo.logger.logger import Logger
@@ -29,8 +28,7 @@ class InsightTokenizer:
         self.insight = insight
         self.source = source
         self.model = model
-        self.dialect = Dialect(type=source.type)
-        self.statement_classifier = StatementClassifier(dialect=self.dialect)
+        self.statement_classifier = StatementClassifier(source_type=source.type)
 
         # Analysis results
         self.select_items = {}  # prop_path -> sql_expression
