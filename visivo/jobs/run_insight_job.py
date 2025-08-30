@@ -83,7 +83,7 @@ def _get_tokenized_insight(insight, dag, output_dir):
     else:
         source = all_descendants_of_type(type=Source, dag=dag, from_node=model)[0]
 
-    return InsightQueryParser(insight=insight, source=source, model=model).tokenize()
+    return InsightTokenizer(insight=insight, source=source, model=model).tokenize()
 
 
 def _get_source(insight, dag, output_dir):

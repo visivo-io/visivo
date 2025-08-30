@@ -1,19 +1,25 @@
 import re
 from typing import Dict, List, Set, Any, Optional
-import sqlglot
 from sqlglot import exp
 
-from visivo.models.insight import Insight, InsightInteraction
+from visivo.models.insight import Insight
+from visivo.models.insight_columns import InsightColumns
+from visivo.models.props.insight_props import InsightProps
 from visivo.models.props.layout import Layout
 from visivo.models.sources.source import Source
 from visivo.models.models.model import Model
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_insight import TokenizedInsight
-from visivo.models.trace_columns import TraceColumns
-from visivo.models.props.trace_props import TraceProps
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
-from visivo.query.statement_classifier import StatementClassifier, StatementEnum
+from visivo.query.sqlglot_utils import (
+    extract_column_references,
+    find_non_aggregated_columns,
+    get_sqlglot_dialect,
+    has_aggregate_function,
+    parse_expression,
+)
+from visivo.query.statement_classifier import StatementClassifier
 from visivo.utils import extract_value_from_function
 from visivo.logger.logger import Logger
 
@@ -28,7 +34,9 @@ class InsightTokenizer:
         self.insight = insight
         self.source = source
         self.model = model
-        self.statement_classifier = StatementClassifier(source_type=source.type)
+        self.source_type = source.type
+        self.sqlglot_dialect = get_sqlglot_dialect(source.type) if source.type else None
+        self.statement_classifier = StatementClassifier(source_type=self.source_type)
 
         # Analysis results
         self.select_items = {}  # prop_path -> sql_expression
@@ -38,7 +46,6 @@ class InsightTokenizer:
         self.required_columns = set()  # Columns needed in pre-query
         self.groupby_statements = set()  # GROUP BY expressions needed
 
-        # Initialize analysis
         self._analyze_insight()
 
     def tokenize(self) -> TokenizedInsight:
@@ -92,7 +99,7 @@ class InsightTokenizer:
         if obj is None:
             return
 
-        if isinstance(obj, (TraceProps, Layout)):
+        if isinstance(obj, (InsightProps, Layout)):
             # Get all fields including extra ones from the model dump
             props_dict = obj.model_dump()
             for key, value in props_dict.items():
@@ -105,7 +112,7 @@ class InsightTokenizer:
                 if prop_value is not None:
                     self._extract_select_items(prop_value, path + [prop])
 
-        elif isinstance(obj, TraceColumns):
+        elif isinstance(obj, InsightColumns):
             for key in obj.model_dump().keys():
                 prop_value = getattr(obj, key, None)
                 if prop_value is not None:
@@ -122,20 +129,17 @@ class InsightTokenizer:
         else:
             # This is a leaf value - extract SQL if it's a query
             query_id = ".".join(path)
-            sql_expression = None
 
-            if path[0] == "props":
-                sql_expression = extract_value_from_function(obj, "query")
-            elif path[0] == "columns":
-                if isinstance(obj, QueryString):
-                    sql_expression = obj.get_value()
-                else:
-                    sql_expression = str(obj)
+            sql_expression = None
+            if path[0] in ("props", "columns"):
+                sql_expression = self._unwrap_braced_sql(
+                    extract_value_from_function(obj, "query") if path[0] == "props" else obj
+                )
 
             if sql_expression and query_id not in ("filter", "order_by"):
                 if path[0] == "props":
                     self.select_items[query_id] = sql_expression
-                elif path[0] == "columns":
+                else:
                     self.column_items[query_id] = sql_expression
 
                 # Analyze the SQL expression
@@ -178,17 +182,13 @@ class InsightTokenizer:
     def _analyze_sql_expression(self, sql_expr: str):
         """Use SQLglot to analyze a SQL expression for aggregations and dependencies"""
         try:
-            # Parse the expression
-            parsed = sqlglot.parse_one(sql_expr, dialect=self._get_sqlglot_dialect())
+            parsed = parse_expression(sql_expr, dialect=self.sqlglot_dialect)
 
-            # Check for aggregation functions
-            if self._has_aggregation(parsed):
-                # Add columns used in aggregation to groupby requirements
-                columns = self._extract_non_aggregated_columns(parsed)
-                self.groupby_statements.update(columns)
+            if has_aggregate_function(parsed):
+                non_aggregated_cols = find_non_aggregated_columns(parsed)
+                self.groupby_statements.update(non_aggregated_cols)
 
         except Exception as e:
-            # If SQLglot parsing fails, fall back to simple analysis
             Logger.instance().debug(f"SQLglot parsing failed for '{sql_expr}': {e}")
             self._fallback_aggregation_analysis(sql_expr)
 
@@ -209,15 +209,12 @@ class InsightTokenizer:
         sql_lower = sql_expr.lower()
 
         if any(agg in sql_lower for agg in agg_functions):
-            # This expression has aggregation - we need to find non-aggregated columns
-            # For now, add any column-like patterns that aren't inside the aggregation
             import re
 
             # Simple pattern to find potential column names not inside parentheses
             column_pattern = r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b"
             matches = re.findall(column_pattern, sql_expr)
 
-            # Filter out SQL keywords and function names
             sql_keywords = {
                 "select",
                 "from",
@@ -244,31 +241,19 @@ class InsightTokenizer:
 
     def _is_inside_function(self, sql_expr: str, column: str) -> bool:
         """Check if a column reference is inside a function call"""
-        # Simple check to see if column appears inside parentheses after a function name
         import re
 
         pattern = rf"\w+\([^)]*\b{re.escape(column)}\b[^)]*\)"
         return bool(re.search(pattern, sql_expr, re.IGNORECASE))
 
-    def _has_aggregation(self, parsed_expr) -> bool:
-        """Check if parsed expression contains aggregation functions"""
-        agg_functions = list(parsed_expr.find_all(exp.AggFunc))
-        return len(agg_functions) > 0
-
     def _extract_column_dependencies(self, sql_expr: str) -> List[str]:
         """Get list of columns referenced in expression"""
         try:
-            parsed = sqlglot.parse_one(sql_expr, dialect=self._get_sqlglot_dialect())
-            columns = []
-            for column in parsed.find_all(exp.Column):
-                if column.name:
-                    columns.append(column.name)
-            return columns
+            parsed = parse_expression(sql_expr, dialect=self.sqlglot_dialect)
+            return extract_column_references(parsed)
         except Exception:
-            # Fallback to regex-based extraction
             column_pattern = r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b"
             matches = re.findall(column_pattern, sql_expr)
-            # Filter out SQL keywords
             sql_keywords = {
                 "select",
                 "from",
@@ -283,27 +268,6 @@ class InsightTokenizer:
             }
             return [match for match in matches if match.lower() not in sql_keywords]
 
-    def _extract_non_aggregated_columns(self, parsed_expr) -> Set[str]:
-        """Extract column names that are not inside aggregation functions"""
-        columns = set()
-
-        # Find all column references
-        for column in parsed_expr.find_all(exp.Column):
-            if column.name:
-                # Check if this column is inside an aggregation function
-                parent = column.parent
-                inside_agg = False
-                while parent:
-                    if isinstance(parent, exp.AggFunc):
-                        inside_agg = True
-                        break
-                    parent = parent.parent
-
-                if not inside_agg:
-                    columns.add(column.name)
-
-        return columns
-
     def _find_input_references(self, text: str) -> Set[str]:
         """Find ${ref(...)} patterns in text"""
         pattern = r"\$\{ref\(([^)]+)\)"
@@ -312,60 +276,47 @@ class InsightTokenizer:
 
     def _determine_groupby_requirements(self):
         """Determine final GROUP BY requirements"""
-        # If we have any aggregation functions, we need to add all non-aggregated columns to GROUP BY
+
         has_any_aggregation = False
         all_referenced_columns = set()
 
-        # Check all select items for aggregations and collect all columns
         for expr in list(self.select_items.values()) + list(self.column_items.values()):
-            if self._has_aggregation_simple(expr):
+            try:
+                parsed = parse_expression(expr, dialect=self.sqlglot_dialect)
+            except Exception:
+                parsed = None
+
+            if parsed and has_aggregate_function(parsed):
                 has_any_aggregation = True
-            # Collect all columns referenced in this expression
-            columns = self._extract_column_dependencies(expr)
-            all_referenced_columns.update(columns)
+                all_referenced_columns.update(find_non_aggregated_columns(parsed))
+            else:
+                all_referenced_columns.update(self._extract_column_dependencies(expr))
 
-        # If we have aggregations, add all non-aggregated columns to GROUP BY
         if has_any_aggregation:
-            for column in all_referenced_columns:
-                if not self._is_column_inside_aggregation(column):
+            derived_targets = set()
+            for expr in self.column_items.values():
+                try:
+                    parsed = parse_expression(expr, dialect=self.sqlglot_dialect)
+                except Exception:
+                    parsed = None
+                if parsed:
+                    for col in parsed.find_all(exp.Column):
+                        derived_targets.add(col.name)
+
+            for column in all_referenced_columns.union(self.required_columns):
+                if column not in derived_targets and not self._is_column_inside_aggregation(column):
                     self.groupby_statements.add(column)
-
-        # Include columns from interactions that need to be grouped
-        for column in self.required_columns:
-            # Only add non-aggregated columns to GROUP BY
-            if not self._is_column_aggregated(column):
-                self.groupby_statements.add(column)
-
-    def _has_aggregation_simple(self, sql_expr: str) -> bool:
-        """Simple check for aggregation functions in an expression"""
-        agg_functions = [
-            "sum(",
-            "count(",
-            "avg(",
-            "min(",
-            "max(",
-            "sum (",
-            "count (",
-            "avg (",
-            "min (",
-            "max (",
-        ]
-        sql_lower = sql_expr.lower()
-        return any(agg in sql_lower for agg in agg_functions)
 
     def _is_column_inside_aggregation(self, column: str) -> bool:
         """Check if a column is used only inside aggregation functions across all expressions"""
-        # Check all expressions to see if this column appears outside of aggregation functions
         for expr in list(self.select_items.values()) + list(self.column_items.values()):
             if column.lower() in expr.lower():
-                # If column appears in expression but not inside a function, it needs GROUP BY
                 if not self._is_inside_function(expr, column):
                     return False
         return True
 
     def _is_column_aggregated(self, column: str) -> bool:
         """Check if a column is used in an aggregated context"""
-        # This is a simplified check - in practice might need more sophisticated analysis
         for expr in list(self.select_items.values()) + list(self.column_items.values()):
             if column in expr and any(
                 agg in expr.lower() for agg in ["sum(", "count(", "avg(", "min(", "max("]
@@ -374,65 +325,185 @@ class InsightTokenizer:
         return False
 
     def _generate_pre_query(self) -> str:
-        """Generate server-side SQL query"""
-        # Start with base model SQL
+        """
+        Generate server-side SQL query with a precomputed CTE for duplicated expressions.
+        Detects duplicate expressions across columns.* and props.* and hoists them into a CTE.
+        """
         base_sql = self.model.sql
 
-        # Build SELECT clause
-        select_parts = []
+        occurrences = {}
 
-        # Add all prop expressions
-        for prop_path, sql_expr in self.select_items.items():
-            select_parts.append(f'{sql_expr} as "{prop_path}"')
+        def register(expr_sql: str, kind: str, target: str, preferred_alias: Optional[str] = None):
+            if expr_sql is None:
+                return
+            norm = self._normalize_expr_sql(expr_sql)
+            if not norm:
+                return
+            occ = occurrences.setdefault(
+                norm, {"orig": expr_sql, "count": 0, "targets": [], "preferred_aliases": set()}
+            )
+            occ["count"] += 1
+            occ["targets"].append({"kind": kind, "target": target, "expr": expr_sql})
+            if preferred_alias:
+                occ["preferred_aliases"].add(preferred_alias)
 
-        # Add all column expressions
         for column_path, sql_expr in self.column_items.items():
-            select_parts.append(f'{sql_expr} as "{column_path}"')
+            short = column_path.split(".", 1)[1]
+            register(sql_expr, "column", column_path, preferred_alias=short)
 
-        # Add required columns for interactions
-        for column in self.required_columns:
-            if column not in [expr for expr in self.column_items.values()]:
-                select_parts.append(f"{column}")
+        for prop_path, sql_expr in self.select_items.items():
+            short_prop = prop_path.split(".", 1)[1]
+            if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
+                col_key = sql_expr
+                col_expr = self.column_items.get(col_key)
+                if col_expr:
+                    register(col_expr, "prop", prop_path, preferred_alias=col_key.split(".", 1)[1])
+                else:
+                    register(short_prop, "prop", prop_path, preferred_alias=short_prop)
+            else:
+                register(sql_expr, "prop", prop_path, preferred_alias=short_prop)
 
-        # Build the query
-        if select_parts:
-            select_clause = "SELECT " + ",\n  ".join(select_parts)
+        for req in list(self.required_columns or []):
+            register(req, "required", req, preferred_alias=req)
+
+        alias_map = {}
+        used_aliases = set()
+        for norm, info in occurrences.items():
+            if info["count"] > 1:
+                preferred_alias = None
+                if info["preferred_aliases"]:
+                    preferred_alias = sorted(info["preferred_aliases"], key=len)[0]
+                alias = self._make_alias_name(preferred_alias, used_aliases, prefix="dedup")
+                alias_map[norm] = alias
+
+        cte_lines = []
+        if alias_map:
+            for norm, alias in alias_map.items():
+                original = occurrences[norm]["orig"]
+                cte_lines.append(f"{original} as {alias}")
+
+            cte_sql = (
+                "WITH precomputed AS (\n  SELECT *,\n    "
+                + ",\n    ".join(cte_lines)
+                + f"\n  FROM ({base_sql}) as base_model\n)"
+            )
         else:
-            select_clause = "SELECT *"
+            cte_sql = None
 
-        query = f"{select_clause}\nFROM ({base_sql}) as base_model"
+        outer_parts = []
+        for column_path, sql_expr in self.column_items.items():
+            norm = self._normalize_expr_sql(sql_expr)
+            if norm in alias_map:
+                outer_parts.append(f'{alias_map[norm]} as "{column_path}"')
+            else:
+                outer_parts.append(f'{sql_expr} as "{column_path}"')
 
-        # Add GROUP BY if needed
+        for prop_path, sql_expr in self.select_items.items():
+            norm = None
+            if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
+                col_expr = self.column_items.get(sql_expr)
+                if col_expr:
+                    norm = self._normalize_expr_sql(col_expr)
+                    if norm in alias_map:
+                        outer_parts.append(f'{alias_map[norm]} as "{prop_path}"')
+                        continue
+                    else:
+                        outer_parts.append(f'{col_expr} as "{prop_path}"')
+                        continue
+                else:
+                    short_prop = prop_path.split(".", 1)[1]
+                    outer_parts.append(f'{short_prop} as "{prop_path}"')
+                    continue
+            else:
+                norm = self._normalize_expr_sql(sql_expr)
+                if norm in alias_map:
+                    outer_parts.append(f'{alias_map[norm]} as "{prop_path}"')
+                else:
+                    outer_parts.append(f'{sql_expr} as "{prop_path}"')
+
+        if self.required_columns:
+            existing_alias_targets = {p.split(" as ")[0].strip() for p in outer_parts}
+            for col in self.required_columns:
+                if col not in existing_alias_targets:
+                    # if we have a CTE we can rely on SELECT *; otherwise add the column explicitly
+                    if not cte_sql:
+                        outer_parts.append(col)
+                    else:
+                        # outer projection can include the raw column (it is available via SELECT * in CTE)
+                        outer_parts.append(col)
+
+        outer_select = "SELECT " + ",\n  ".join(outer_parts)
+        from_clause = "FROM precomputed" if cte_sql else f"FROM ({base_sql}) as base_model"
+
+        query = (
+            f"{cte_sql}\n{outer_select}\n{from_clause}"
+            if cte_sql
+            else f"{outer_select}\n{from_clause}"
+        )
+
+        # static filters
+        static_filters = []
+        for interaction in self.insight.interactions or []:
+            if interaction.filter:
+                filter_expr = extract_value_from_function(interaction.filter, "query")
+                if filter_expr and not self._is_dynamic(filter_expr):
+                    static_filters.append(filter_expr)
+
+        if static_filters:
+            query += "\nWHERE " + " AND ".join(static_filters)
+
+        # map groupby statements to aliases when possible
         if self.groupby_statements:
-            groupby_clause = "GROUP BY " + ", ".join(self.groupby_statements)
+            mapped_groupbys = []
+            for g in self.groupby_statements:
+                norm_g = self._normalize_expr_sql(g)
+                if norm_g in alias_map:
+                    mapped_groupbys.append(alias_map[norm_g])
+                else:
+                    mapped_groupbys.append(g)
+            groupby_clause = "GROUP BY " + ", ".join(mapped_groupbys)
             query += f"\n{groupby_clause}"
+
+        # static sorts
+        static_sorts = []
+        for interaction in self.insight.interactions or []:
+            if interaction.sort:
+                sort_expr = extract_value_from_function(interaction.sort, "query")
+                if sort_expr and not self._is_dynamic(sort_expr):
+                    static_sorts.append(sort_expr)
+        if static_sorts:
+            query += "\nORDER BY " + ", ".join(static_sorts)
 
         return query
 
     def _generate_post_query(self) -> str:
-        """Generate client-side DuckDB query template"""
-        # Start with basic SELECT
+        """Generate client-side query with dynamic filters/sorts"""
         query = "SELECT * FROM insight_data"
 
-        # Add WHERE clauses for filters with input variables
         filter_conditions = []
-        if self.insight.interactions:
-            for interaction in self.insight.interactions:
-                if interaction.filter:
-                    filter_expr = extract_value_from_function(interaction.filter, "query")
-                    if filter_expr and self._find_input_references(filter_expr):
-                        # Replace input references with parameter placeholders
-                        parameterized = self._parameterize_input_references(filter_expr)
-                        filter_conditions.append(parameterized)
+        for interaction in self.insight.interactions or []:
+            if interaction.filter:
+                filter_expr = extract_value_from_function(interaction.filter, "query")
+                if filter_expr and self._is_dynamic(filter_expr):
+                    filter_conditions.append(self._parameterize_input_references(filter_expr))
 
         if filter_conditions:
             query += "\nWHERE " + " AND ".join(filter_conditions)
+
+        sort_exprs = []
+        for interaction in self.insight.interactions or []:
+            if interaction.sort:
+                sort_expr = extract_value_from_function(interaction.sort, "query")
+                if sort_expr and self._is_dynamic(sort_expr):
+                    sort_exprs.append(sort_expr)
+
+        if sort_exprs:
+            query += "\nORDER BY " + ", ".join(sort_exprs)
 
         return query
 
     def _parameterize_input_references(self, expr: str) -> str:
         """Replace ${ref(input).value} with parameter placeholders"""
-        # For now, return as-is - client will handle substitution
         return expr
 
     def _serialize_interactions(self) -> List[Dict[str, Any]]:
@@ -483,15 +554,75 @@ class InsightTokenizer:
                         sort_exprs.append(sort_expr)
         return sort_exprs if sort_exprs else None
 
-    def _get_sqlglot_dialect(self) -> str:
-        """Map Visivo dialect to SQLglot dialect"""
-        dialect_mapping = {
-            "snowflake": "snowflake",
-            "bigquery": "bigquery",
-            "postgres": "postgres",
-            "redshift": "postgres",  # Redshift is based on Postgres
-            "mysql": "mysql",
-            "sqlite": "sqlite",
-            "duckdb": "duckdb",
-        }
-        return dialect_mapping.get(self.source.type, "")
+    def _unwrap_braced_sql(self, value: Any) -> Optional[str]:
+        """
+        Turns '?{ expr }' -> 'expr'
+            '${ expr }' -> 'expr'
+        Also normalizes column references so that `${ columns.foo }` -> 'columns.foo'
+        """
+        if value is None:
+            return None
+
+        if isinstance(value, QueryString):
+            return value.get_value()
+
+        s = str(value).strip()
+
+        # ?{ ... }  → inner
+        m = re.match(r"^\?\{\s*(.*?)\s*\}$", s, flags=re.DOTALL)
+        if m:
+            s = m.group(1).strip()
+
+        # ${ ... }  → inner
+        m = re.match(r"^\$\{\s*(.*?)\s*\}$", s, flags=re.DOTALL)
+        if m:
+            s = m.group(1).strip()
+
+        # Normalize column refs: columns.<name>
+        col_m = re.match(r"^columns\.([a-zA-Z_][a-zA-Z0-9_]*)$", s)
+        if col_m:
+            return f"columns.{col_m.group(1)}"
+
+        return s
+
+    def _normalize_expr_sql(self, sql_expr: str) -> str:
+        """
+        Return a canonical form of an expression using sqlglot.
+        If parsing fails, fall back to the stripped original.
+        """
+        if sql_expr is None:
+            return ""
+        s = str(sql_expr).strip()
+        try:
+            parsed = parse_expression(s, dialect=self.sqlglot_dialect)
+            return parsed.sql(dialect=self.sqlglot_dialect, normalize=True)
+        except Exception:
+            return re.sub(r"\s+", " ", s).strip()
+
+    def _make_alias_name(
+        self, preferred: Optional[str], used: Set[str], prefix: str = "expr"
+    ) -> str:
+        """
+        Create a safe alias name (no collisions with used).
+        If preferred is given and not used, choose that (sanitized).
+        """
+
+        def sanitize(name: str) -> str:
+            return re.sub(r"[^\w]", "_", name)
+
+        if preferred:
+            cand = sanitize(preferred)
+            if cand not in used and not cand.isdigit():
+                used.add(cand)
+                return cand
+
+        i = 0
+        while True:
+            cand = f"{prefix}_{i}"
+            if cand not in used:
+                used.add(cand)
+                return cand
+            i += 1
+
+    def _is_dynamic(self, expr: str) -> bool:
+        return "${inputs." in expr
