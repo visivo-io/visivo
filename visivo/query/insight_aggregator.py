@@ -1,10 +1,11 @@
 import os
 import json
 import base64
-from collections import defaultdict
 from decimal import Decimal
 from datetime import datetime, date, time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from visivo.models.tokenized_insight import TokenizedInsight
 from visivo.logger.logger import Logger
@@ -44,6 +45,19 @@ class InsightAggregator:
             return obj
         else:
             return str(obj)
+        
+    @classmethod
+    def save_insight_data(csl, data: List, insight_dir: str, tokenized_insight: TokenizedInsight):
+        # Ensure directory exists
+        insight_dir = os.path.join(insight_dir, "data")
+        os.makedirs(insight_dir, exist_ok=True)
+        safe_name = tokenized_insight.name
+        # Convert list of dicts -> Arrow table
+        table = pa.Table.from_pylist(data)
+        # Save to parquet
+        file_path = os.path.join(insight_dir, f"{safe_name}.parquet")
+        pq.write_table(table, file_path)
+
     
     @classmethod
     def aggregate_insight_data(
@@ -58,21 +72,22 @@ class InsightAggregator:
             tokenized_insight: Tokenized insight with metadata
         """
         try:
-            # Convert column names (replace | with . for consistency with traces)
-            normalized_data = cls._normalize_column_names(data)
-            
-            # Generate flat data structure
-            flat_data = cls.generate_flat_structure(normalized_data, tokenized_insight)
-            
             # Create complete insight JSON with query template and metadata
             insight_json = cls.generate_insight_json(
-                flat_data=flat_data,
+                flat_data=data,
                 tokenized_insight=tokenized_insight
             )
+
+            cls.save_insight_data(insight_json.get("data", []), insight_dir, tokenized_insight)
             
             # Make result JSON-serializable
             json_safe_result = cls._make_json_serializable(insight_json)
             
+            # try:
+            #     del json_safe_result['data']
+            # except:
+            #     pass
+
             # Write result to insight.json file
             os.makedirs(insight_dir, exist_ok=True)
             with open(f"{insight_dir}/insight.json", "w") as fp:
@@ -159,7 +174,7 @@ class InsightAggregator:
     
     @classmethod 
     def generate_insight_json(
-        cls, flat_data: Dict[str, List], tokenized_insight: TokenizedInsight
+        cls, flat_data: List, tokenized_insight: TokenizedInsight
     ) -> Dict[str, Any]:
         """
         Generate complete insight.json structure with data and metadata.
@@ -173,7 +188,8 @@ class InsightAggregator:
         """
         insight_json = {
             "data": flat_data,
-            "query": tokenized_insight.post_query,
+            "pre_query": tokenized_insight.pre_query,
+            "post_query": tokenized_insight.post_query,
             "interactions": tokenized_insight.interactions,
             "metadata": {
                 "name": tokenized_insight.name,

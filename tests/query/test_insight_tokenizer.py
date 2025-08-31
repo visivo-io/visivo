@@ -1,6 +1,6 @@
 from visivo.query.insight_tokenizer import InsightTokenizer
 from visivo.models.insight import Insight, InsightInteraction
-from visivo.models.trace_props.trace_props import TraceProps
+
 from tests.factories.model_factories import SnowflakeSourceFactory, SqlModelFactory
 import pytest
 

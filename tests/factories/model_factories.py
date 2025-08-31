@@ -5,6 +5,7 @@ from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
@@ -22,7 +23,6 @@ from visivo.models.table import Table
 from visivo.models.row import Row, HeightEnum
 from visivo.jobs.job import Job
 from visivo.models.dbt import Dbt
-from visivo.models.trace_props.trace_props import TraceProps
 
 
 class DestinationFactory(factory.Factory):

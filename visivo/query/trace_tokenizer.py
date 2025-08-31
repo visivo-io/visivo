@@ -58,7 +58,6 @@ class TraceTokenizer:
             data.update({"order_by": self.order_by})
         if hasattr(self, "filter_by"):
             data.update({"filter_by": self.filter_by})
-        Logger.instance().error(f"{str(data)}")
         return TokenizedTrace(**data)
 
     def _get_cohort_on(self):

@@ -1,6 +1,5 @@
 from visivo.logger.logger import Logger
 from visivo.models.dag import all_descendants_of_type
-from visivo.models.insight_parser import InsightQueryParser
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.model import Model
 from visivo.models.models.csv_script_model import CsvScriptModel
@@ -21,7 +20,6 @@ from visivo.query.insight_tokenizer import InsightTokenizer
 
 def action(insight, dag, output_dir):
     """Execute insight job - tokenize insight and generate insight.json file"""
-    Logger.instance().info(start_message("Insight", insight))
     model = all_descendants_of_type(type=Model, dag=dag, from_node=insight)[0]
 
     # Get appropriate source for the model type
@@ -34,22 +32,19 @@ def action(insight, dag, output_dir):
 
     insight_directory = f"{output_dir}/insights/{insight.name}"
     # Tokenize the insight to get pre-query and metadata
-    tokenized_query = _get_tokenized_insight(insight, dag, output_dir)
+    tokenized_insight = _get_tokenized_insight(insight, dag, output_dir)
 
     try:
         start_time = time()
 
         # Execute the pre-query to get raw data
-        Logger.instance().error(f"PREQUERY: {tokenized_query.pre_query}")
-        Logger.instance().error(f"POSTQUERYL: {tokenized_query.post_query}")
-        data = source.read_sql(tokenized_query.pre_query)
-        Logger.instance().error(f"POST: {str(tokenized_query.model_dump())}")
+        flat_data = source.read_sql(tokenized_insight.pre_query)
         # Aggregate data into flat structure and generate insight.json
-        # InsightAggregator.aggregate_insight_data(
-        #     data=data,
-        #     insight_dir=insight_directory,
-        #     tokenized_insight=tokenized_insight
-        # )
+        InsightAggregator.aggregate_insight_data(
+            data=flat_data,
+            insight_dir=insight_directory,
+            tokenized_insight=tokenized_insight
+        )
 
         success_message = format_message_success(
             details=f"Updated data for insight \033[4m{insight.name}\033[0m",

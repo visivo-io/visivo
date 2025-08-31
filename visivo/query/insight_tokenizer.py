@@ -45,6 +45,7 @@ class InsightTokenizer:
         self.input_dependencies = set()  # All input names referenced
         self.required_columns = set()  # Columns needed in pre-query
         self.groupby_statements = set()  # GROUP BY expressions needed
+        self.is_dynamic_interactions = False
 
         self._analyze_insight()
 
@@ -52,6 +53,9 @@ class InsightTokenizer:
         """Main entry point - returns tokenized insight with pre/post queries"""
         pre_query = self._generate_pre_query()
         post_query = self._generate_post_query()
+
+        if self.is_dynamic_interactions:
+            pre_query, post_query = post_query, pre_query
 
         # Determine source type
         if isinstance(self.model, LocalMergeModel):
@@ -329,7 +333,8 @@ class InsightTokenizer:
         Generate server-side SQL query with a precomputed CTE for duplicated expressions.
         Detects duplicate expressions across columns.* and props.* and hoists them into a CTE.
         """
-        base_sql = self.model.sql
+        #base_sql = self.model.sql
+        base_sql = "SELECT * FROM insight_data"
 
         occurrences = {}
 
@@ -448,6 +453,8 @@ class InsightTokenizer:
                 filter_expr = extract_value_from_function(interaction.filter, "query")
                 if filter_expr and not self._is_dynamic(filter_expr):
                     static_filters.append(filter_expr)
+                else:
+                    self.is_dynamic_interactions = True
 
         if static_filters:
             query += "\nWHERE " + " AND ".join(static_filters)
@@ -478,7 +485,7 @@ class InsightTokenizer:
 
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""
-        query = "SELECT * FROM insight_data"
+        query = self.model.sql
 
         filter_conditions = []
         for interaction in self.insight.interactions or []:
@@ -625,4 +632,9 @@ class InsightTokenizer:
             i += 1
 
     def _is_dynamic(self, expr: str) -> bool:
-        return "${inputs." in expr
+        """
+        Checks if an interaction uses dynamic inputs via ref(...).
+            Example: {"filter": "?{ sales_amount > 1000 AND region = ${ref(sales-region)} }"}
+        """
+        DYNAMIC_PATTERN = re.compile(r"\$\{\s*ref\([^)]+\)\s*\}", re.IGNORECASE)
+        return bool(DYNAMIC_PATTERN.search(expr))

@@ -1,7 +1,8 @@
 import json
 from visivo.models.project import Project
-from visivo.models.trace_props.trace_props import TraceType
 from importlib.resources import files
+
+from visivo.models.props.trace_props import TraceType
 
 
 def generate_project_schema():
