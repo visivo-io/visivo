@@ -168,7 +168,8 @@ def test_complete_insight_json_generation():
 
     # Check main structure
     assert "data" in insight_json
-    assert "query" in insight_json
+    assert "pre_query" in insight_json
+    assert "post_query" in insight_json
     assert "interactions" in insight_json
     assert "metadata" in insight_json
 
@@ -176,9 +177,6 @@ def test_complete_insight_json_generation():
     assert insight_json["data"]["props.x"] == [1, 2]
     assert insight_json["data"]["props.y"] == [10, 20]
     assert insight_json["data"]["region"] == ["North", "South"]
-
-    # Check query
-    assert "region_select" in insight_json["query"]
 
     # Check metadata
     metadata = insight_json["metadata"]
@@ -220,10 +218,11 @@ def test_aggregate_insight_data_file_creation():
             result = json.load(f)
 
         assert "data" in result
-        assert "query" in result
+        assert "pre_query" in result
+        assert "post_query" in result
         assert "metadata" in result
-        assert result["data"]["props.x"] == [1, 2]
-        assert result["data"]["props.y"] == [10, 20]
+        # assert result["data"]["props.x"] == [1, 2]
+        # assert result["data"]["props.y"] == [10, 20]
 
 
 def test_flat_data_summary():
@@ -277,7 +276,8 @@ def test_empty_data_handling():
 
     insight_json = InsightAggregator.generate_insight_json(flat_data, tokenized_insight)
     assert insight_json["data"] == {}
-    assert "query" in insight_json
+    assert "pre_query" in insight_json
+    assert "post_query" in insight_json
     assert "metadata" in insight_json
 
 

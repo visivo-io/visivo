@@ -4,8 +4,6 @@ import base64
 from decimal import Decimal
 from datetime import datetime, date, time
 from typing import List, Dict, Any
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 from visivo.models.tokenized_insight import TokenizedInsight
 from visivo.logger.logger import Logger
@@ -14,12 +12,12 @@ from visivo.logger.logger import Logger
 class InsightAggregator:
     """
     Aggregates insight data into flat JSON structures for client-side processing.
-    
+
     Unlike the traditional Aggregator which creates cohort-based nested structures,
     InsightAggregator creates flat arrays that are optimized for DuckDB WASM queries
     and client-side interactivity.
     """
-    
+
     @staticmethod
     def _make_json_serializable(obj):
         """Convert objects to JSON-serializable format (shared with Aggregator)"""
@@ -34,7 +32,9 @@ class InsightAggregator:
         elif isinstance(obj, list):
             return [InsightAggregator._make_json_serializable(item) for item in obj]
         elif isinstance(obj, dict):
-            return {key: InsightAggregator._make_json_serializable(value) for key, value in obj.items()}
+            return {
+                key: InsightAggregator._make_json_serializable(value) for key, value in obj.items()
+            }
         elif (
             isinstance(obj, bool)
             or isinstance(obj, int)
@@ -45,27 +45,14 @@ class InsightAggregator:
             return obj
         else:
             return str(obj)
-        
-    @classmethod
-    def save_insight_data(csl, data: List, insight_dir: str, tokenized_insight: TokenizedInsight):
-        # Ensure directory exists
-        insight_dir = os.path.join(insight_dir, "data")
-        os.makedirs(insight_dir, exist_ok=True)
-        safe_name = tokenized_insight.name
-        # Convert list of dicts -> Arrow table
-        table = pa.Table.from_pylist(data)
-        # Save to parquet
-        file_path = os.path.join(insight_dir, f"{safe_name}.parquet")
-        pq.write_table(table, file_path)
 
-    
     @classmethod
     def aggregate_insight_data(
         cls, data: List[dict], insight_dir: str, tokenized_insight: TokenizedInsight
     ):
         """
         Main entry point for insight data aggregation.
-        
+
         Args:
             data: Raw SQL query results (list of dictionaries)
             insight_dir: Directory to write insight.json file
@@ -74,31 +61,23 @@ class InsightAggregator:
         try:
             # Create complete insight JSON with query template and metadata
             insight_json = cls.generate_insight_json(
-                flat_data=data,
-                tokenized_insight=tokenized_insight
+                flat_data=data, tokenized_insight=tokenized_insight
             )
 
-            cls.save_insight_data(insight_json.get("data", []), insight_dir, tokenized_insight)
-            
             # Make result JSON-serializable
             json_safe_result = cls._make_json_serializable(insight_json)
-            
-            # try:
-            #     del json_safe_result['data']
-            # except:
-            #     pass
 
             # Write result to insight.json file
             os.makedirs(insight_dir, exist_ok=True)
             with open(f"{insight_dir}/insight.json", "w") as fp:
                 json.dump(json_safe_result, fp, indent=4)
-                
+
             Logger.instance().debug(f"Generated insight.json for {tokenized_insight.name}")
-            
+
         except Exception as e:
             Logger.instance().error(f"Failed to aggregate insight data: {e}")
             raise
-    
+
     @classmethod
     def _normalize_column_names(cls, data: List[dict]) -> List[dict]:
         """Normalize column names by replacing | with . for BigQuery compatibility"""
@@ -110,58 +89,58 @@ class InsightAggregator:
                 normalized_row[new_key] = value
             normalized_data.append(normalized_row)
         return normalized_data
-    
+
     @classmethod
     def generate_flat_structure(
         cls, data: List[dict], tokenized_insight: TokenizedInsight
     ) -> Dict[str, List[Any]]:
         """
         Convert raw query results to flat JSON structure.
-        
+
         Args:
             data: Normalized query results
             tokenized_insight: Tokenized insight with column metadata
-            
+
         Returns:
             Dictionary with column names as keys and arrays as values
         """
         if not data:
             return {}
-        
+
         # Get all unique column names across all rows
         all_columns = set()
         for row in data:
             all_columns.update(row.keys())
-        
+
         # Initialize flat structure with empty arrays
         flat_data = {col: [] for col in all_columns}
-        
+
         # Fill arrays with data, using null for missing values
         for row in data:
             for col in all_columns:
                 value = row.get(col)
                 flat_data[col].append(value)
-        
+
         # Add split column if we have a split interaction
         if tokenized_insight.split_column:
             cls._add_split_column_data(flat_data, tokenized_insight.split_column, data)
-        
+
         return flat_data
-    
+
     @classmethod
     def _add_split_column_data(
         cls, flat_data: Dict[str, List], split_column: str, original_data: List[dict]
     ):
         """
         Add split column information to flat data structure.
-        
+
         The split column contains the values that would be used to create
         multiple traces on the client side.
         """
         # If split column is already in the data, we're good
         if split_column in flat_data:
             return
-            
+
         # Otherwise, try to derive it from the original data
         # This handles cases where the split column wasn't explicitly selected
         split_values = []
@@ -169,20 +148,20 @@ class InsightAggregator:
             # Try to get the split value from the row
             split_value = row.get(split_column, "default")
             split_values.append(split_value)
-        
+
         flat_data[f"_split_{split_column}"] = split_values
-    
-    @classmethod 
+
+    @classmethod
     def generate_insight_json(
         cls, flat_data: List, tokenized_insight: TokenizedInsight
     ) -> Dict[str, Any]:
         """
         Generate complete insight.json structure with data and metadata.
-        
+
         Args:
             flat_data: Flat data structure (column -> array)
             tokenized_insight: Tokenized insight with query templates and metadata
-            
+
         Returns:
             Complete insight JSON structure ready for serialization
         """
@@ -198,24 +177,26 @@ class InsightAggregator:
                 "split_column": tokenized_insight.split_column,
                 "input_dependencies": tokenized_insight.input_dependencies,
                 "requires_groupby": tokenized_insight.requires_groupby,
-                "sort_expressions": tokenized_insight.sort_expressions
-            }
+                "sort_expressions": tokenized_insight.sort_expressions,
+            },
         }
-        
+
         # Add select and column item mappings for reference
         if tokenized_insight.select_items:
             insight_json["metadata"]["select_items"] = tokenized_insight.select_items
-        
+
         if tokenized_insight.column_items:
             insight_json["metadata"]["column_items"] = tokenized_insight.column_items
-            
+
         return insight_json
-    
+
     @classmethod
-    def aggregate_from_json_file(cls, json_file: str, insight_dir: str, tokenized_insight: TokenizedInsight):
+    def aggregate_from_json_file(
+        cls, json_file: str, insight_dir: str, tokenized_insight: TokenizedInsight
+    ):
         """
         Aggregate insight data from a JSON file (for compatibility with existing patterns).
-        
+
         Args:
             json_file: Path to JSON file containing query results
             insight_dir: Directory to write insight.json
@@ -223,26 +204,26 @@ class InsightAggregator:
         """
         with open(json_file, "r") as f:
             data = json.load(f)
-        
+
         cls.aggregate_insight_data(data, insight_dir, tokenized_insight)
-    
+
     @classmethod
     def get_flat_data_summary(cls, flat_data: Dict[str, List]) -> Dict[str, Any]:
         """
         Generate summary statistics for flat data structure (useful for debugging).
-        
+
         Args:
             flat_data: Flat data structure
-            
+
         Returns:
             Summary with row count, column info, and data types
         """
         if not flat_data:
             return {"rows": 0, "columns": 0, "column_info": {}}
-        
+
         # Get row count from first column
         row_count = len(next(iter(flat_data.values())))
-        
+
         column_info = {}
         for col, values in flat_data.items():
             # Basic stats about each column
@@ -251,11 +232,7 @@ class InsightAggregator:
                 "length": len(values),
                 "non_null_count": len(non_null_values),
                 "null_count": len(values) - len(non_null_values),
-                "data_type": type(non_null_values[0]).__name__ if non_null_values else "unknown"
+                "data_type": type(non_null_values[0]).__name__ if non_null_values else "unknown",
             }
-        
-        return {
-            "rows": row_count,
-            "columns": len(flat_data),
-            "column_info": column_info
-        }
+
+        return {"rows": row_count, "columns": len(flat_data), "column_info": column_info}

@@ -124,29 +124,17 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_column_defs(cls, data: Any):
-        traces, insights, column_defs = (
-            data.get("traces", []),
-            data.get("insights", []),
-            data.get("column_defs"),
-        )
+    def validate_column_defs(cls, data: any):
+        traces, column_defs = (data.get("traces"), data.get("column_defs"))
 
         if not column_defs:
             return data
 
-        # Collect all possible names from traces + insights
-        valid_names = []
-        if traces:
-            valid_names.extend([NamedModel.get_name(t) for t in traces])
-        if insights:
-            valid_names.extend([NamedModel.get_name(i) for i in insights])
-
-        column_defs_trace_names = [cd["trace_name"] for cd in column_defs]
-
+        column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
+        traces_trace_names = list(map(lambda t: NamedModel.get_name(t), traces))
         for column_defs_trace_name in column_defs_trace_names:
-            if column_defs_trace_name not in valid_names:
+            if not column_defs_trace_name in traces_trace_names:
                 raise ValueError(
-                    f"Column def trace/insight name '{column_defs_trace_name}' "
-                    f"is not present in traces/insights list on table."
+                    f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
                 )
         return data

@@ -333,8 +333,7 @@ class InsightTokenizer:
         Generate server-side SQL query with a precomputed CTE for duplicated expressions.
         Detects duplicate expressions across columns.* and props.* and hoists them into a CTE.
         """
-        #base_sql = self.model.sql
-        base_sql = "SELECT * FROM insight_data"
+        base_sql = self.model.sql
 
         occurrences = {}
 
