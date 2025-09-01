@@ -484,7 +484,8 @@ class InsightTokenizer:
 
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""
-        query = self.model.sql
+        # query = self.model.sql
+        query = "SELECT * FROM insight_data"
 
         filter_conditions = []
         for interaction in self.insight.interactions or []:

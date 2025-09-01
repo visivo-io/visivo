@@ -26,7 +26,7 @@ def parse_project_phase(
             models=[],
             traces=[],
             insights=[],
-            inputs=[],
+            # inputs=[],
             charts=[],
             dashboards=[],
         )
