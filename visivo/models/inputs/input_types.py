@@ -7,34 +7,36 @@ from visivo.models.input import InputBase
 
 
 class DropdownInput(InputBase):
-    type: Literal["dropdown"]
+    type: Literal["dropdown"] = "dropdown"
     options: Optional[Union[List[str], str]] = Field(
-        None,
-        description="Static list of options OR a dynamic SQL query (string with ${ref(...)})"
+        None, description="Static list of options OR a dynamic SQL query (string with ${ref(...)})"
     )
     multi: bool = Field(False, description="Allow multi-select")
 
+
 class TabsInput(InputBase):
-    type: Literal["tabs"]
-    options: List[str]
+    type: Literal["tabs"] = "tabs"
+    options: List[str] = Field(description="List of tab options")
+
 
 class TextInput(InputBase):
-    type: Literal["text"]
-    regex: Optional[constr(regex=r".*")] = Field(
-        None, description="Optional regex validation"
-    )
+    type: Literal["text"] = "text"
+    regex: Optional[constr(regex=r".*")] = Field(None, description="Optional regex validation")
+
 
 class SliderInput(InputBase):
-    type: Literal["slider"]
-    min: float
-    max: float
-    step: Optional[float] = 1.0
+    type: Literal["slider"] = "slider"
+    min: float = Field(description="Minimum value")
+    max: float = Field(description="Maximum value")
+    step: Optional[float] = Field(1.0, description="Step increment")
+
 
 class ToggleInput(InputBase):
-    type: Literal["toggle"]
-    default: Optional[bool] = False
+    type: Literal["toggle"] = "toggle"
+    default: Optional[bool] = Field(False, description="Default toggle state")
+
 
 class DateInput(InputBase):
-    type: Literal["date"]
-    min: Optional[date] = None
-    max: Optional[date] = None
+    type: Literal["date"] = "date"
+    min: Optional[date] = Field(None, description="Minimum selectable date")
+    max: Optional[date] = Field(None, description="Maximum selectable date")

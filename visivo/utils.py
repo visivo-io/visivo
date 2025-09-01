@@ -25,6 +25,7 @@ PROJECT_CHILDREN = [
     "models",
     "traces",
     "insights",
+    "inputs",
     "tables",
     "charts",
     "dashboards",
@@ -39,6 +40,7 @@ Contents:
 - models
 - traces
 - insights
+- inputs
 - tables
 - charts
 - dashboards

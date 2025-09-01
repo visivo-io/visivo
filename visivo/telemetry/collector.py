@@ -24,9 +24,11 @@ def collect_project_metrics(project: Project) -> Dict[str, int]:
         "models": len(project.models) if project.models else 0,
         "traces": len(project.traces) if project.traces else 0,
         "tables": len(project.tables) if project.tables else 0,
+        "insights": len(project.insights) if project.insights else 0,
         "charts": len(project.charts) if project.charts else 0,
         "dashboards": len(project.dashboards) if project.dashboards else 0,
         "alerts": len(project.alerts) if project.alerts else 0,
+        "inputs": len(project.inputs) if project.inputs else 0,
         "selectors": len(project.selectors) if project.selectors else 0,
         "destinations": len(project.destinations) if project.destinations else 0,
     }
