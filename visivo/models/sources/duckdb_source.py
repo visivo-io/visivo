@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
@@ -7,8 +8,6 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
 from threading import Lock
-
-from visivo.utils import resolve_path_if_relative
 
 attach_function_lock = Lock()
 
@@ -115,7 +114,8 @@ class DuckdbSource(SqlalchemySource):
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
 
             if working_dir:
-                self.database = resolve_path_if_relative(self.database, working_dir)
+                self.database = str(working_dir / Path(self.database))
+
 
             # Ensure database file exists for write operations
             if not read_only and not os.path.exists(self.database):

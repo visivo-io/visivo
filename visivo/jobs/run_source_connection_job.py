@@ -15,10 +15,8 @@ def action(source_to_test: Source, working_dir=None):
     Logger.instance().info(start_message("Source", source_to_test))
     try:
         start_time = time()
-        if source_to_test.type == SourceTypeEnum.duckdb.value and working_dir:
-            source_to_test.read_sql("select 1", working_dir=working_dir)
-        else:
-            source_to_test.read_sql("select 1")
+        source_to_test.read_sql("select 1", working_dir=working_dir)
+        
         success_message = format_message_success(
             details=f"Successful connection for source \033[4m{source_to_test.name}\033[0m",
             start_time=start_time,

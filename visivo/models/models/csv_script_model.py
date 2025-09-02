@@ -11,9 +11,6 @@ import os
 import polars as pl
 import csv
 
-from visivo.utils import resolve_path_if_relative
-
-
 class CsvScriptModel(Model):
     """
     CSV Script Models are a type of model that executes a command with a given set of args.
@@ -178,17 +175,7 @@ class CsvScriptModel(Model):
 
             # Execute subprocess and wait for completion BEFORE opening database connection
             Logger.instance().debug(f"CSV script model {self.name}: Executing subprocess")
-
-            # Add workdir
-            if working_dir:
-                new_args = []
-                for arg in self.args:
-                    if isinstance(arg, str) and arg.endswith(".py"):
-                        arg = resolve_path_if_relative(arg, working_dir)
-                    new_args.append(arg)
-                self.args = new_args
-
-            process = subprocess.Popen(self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir)
             stdout, stderr = process.communicate()  # Wait for subprocess to complete
 
             if process.returncode != 0:
