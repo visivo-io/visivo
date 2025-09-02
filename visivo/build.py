@@ -23,8 +23,6 @@ def build():
             "--add-data",
             "visivo/schema/*.json:visivo/schema",
             "--add-data",
-            "visivo/templates/queries/*:visivo/templates/queries",
-            "--add-data",
             "visivo/templates/charts/*:visivo/templates/charts",
             "--add-data",
             "visivo/viewers/*:visivo/viewers",
