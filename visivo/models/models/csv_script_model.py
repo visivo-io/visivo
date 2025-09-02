@@ -11,6 +11,7 @@ import os
 import polars as pl
 import csv
 
+
 class CsvScriptModel(Model):
     """
     CSV Script Models are a type of model that executes a command with a given set of args.
@@ -175,7 +176,9 @@ class CsvScriptModel(Model):
 
             # Execute subprocess and wait for completion BEFORE opening database connection
             Logger.instance().debug(f"CSV script model {self.name}: Executing subprocess")
-            process = subprocess.Popen(self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir)
+            process = subprocess.Popen(
+                self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=working_dir
+            )
             stdout, stderr = process.communicate()  # Wait for subprocess to complete
 
             if process.returncode != 0:

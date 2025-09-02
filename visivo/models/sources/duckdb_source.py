@@ -116,7 +116,6 @@ class DuckdbSource(SqlalchemySource):
             if working_dir:
                 self.database = str(working_dir / Path(self.database))
 
-
             # Ensure database file exists for write operations
             if not read_only and not os.path.exists(self.database):
                 Logger.instance().debug(

@@ -16,7 +16,7 @@ def action(source_to_test: Source, working_dir=None):
     try:
         start_time = time()
         source_to_test.read_sql("select 1", working_dir=working_dir)
-        
+
         success_message = format_message_success(
             details=f"Successful connection for source \033[4m{source_to_test.name}\033[0m",
             start_time=start_time,
