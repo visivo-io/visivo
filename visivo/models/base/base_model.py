@@ -45,28 +45,6 @@ def generate_ref_field(class_to_discriminate):
     )
 
 
-def generate_trace_or_insight_ref_field():
-    """
-    Generate a union type that accepts references to either Trace or Insight objects.
-    This supports the transition from traces to insights in Interactivity 2.0.
-    """
-    from visivo.models.trace import Trace
-    from visivo.models.insight import Insight
-    
-    return NewType(
-        "TraceOrInsightRef",
-        Annotated[
-            Union[
-                RefStringType,
-                ContextStringType,
-                Annotated[Trace, Tag("Trace")],
-                Annotated[Insight, Tag("Insight")],
-            ],
-            Discriminator(TraceOrInsightDiscriminator()),
-        ],
-    )
-
-
 class ModelStrDiscriminator:
     def __init__(self, class_to_discriminate):
         self.class_name = class_to_discriminate.__name__
@@ -89,7 +67,7 @@ class TraceOrInsightDiscriminator:
     """
     Discriminator for union types that can be either Trace or Insight objects.
     """
-    
+
     def __name__(self):
         return "TraceOrInsightDiscriminator"
 

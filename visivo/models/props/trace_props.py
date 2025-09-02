@@ -8,6 +8,7 @@ from jsonschema_rs import ValidationError
 from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_from_error
 from visivo.models.props.types import PropType
 
+
 class TraceType(str, Enum):
     BAR = "bar"
     BARPOLAR = "barpolar"
@@ -57,6 +58,7 @@ class TraceType(str, Enum):
     VIOLIN = "violin"
     VOLUME = "volume"
     WATERFALL = "waterfall"
+
 
 class TraceProps(JsonSchemaBase):
 

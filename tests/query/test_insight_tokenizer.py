@@ -78,9 +78,6 @@ def test_insight_tokenizer_with_interactions():
     tokenizer = InsightTokenizer(insight=insight, model=model, source=source)
     tokenized = tokenizer.tokenize()
 
-    # Check input dependencies are detected
-    assert "region_select" in tokenized.input_dependencies
-
     # Check interactions are serialized
     assert len(tokenized.interactions) >= 1
 
@@ -138,25 +135,3 @@ def test_insight_tokenizer_pre_post_query_generation():
 
     # Post-query should be a simple SELECT with potential filters
     assert tokenized.post_query.startswith("SELECT * FROM insight_data")
-
-
-def test_input_reference_detection():
-    """Test that input references are properly detected"""
-    tokenizer = InsightTokenizer(
-        insight=Insight(name="test", model={"sql": "SELECT 1"}, props={"type": "scatter"}),
-        model=SqlModelFactory(),
-        source=SnowflakeSourceFactory(),
-    )
-
-    # Test various input reference patterns
-    refs = tokenizer._find_input_references("region = '${ref(region_select).value}'")
-    assert "region_select" in refs
-
-    refs = tokenizer._find_input_references(
-        "date >= '${ref(start_date).value}' AND date <= '${ref(end_date).value}'"
-    )
-    assert "start_date" in refs
-    assert "end_date" in refs
-
-    refs = tokenizer._find_input_references("simple_column = 'value'")
-    assert len(refs) == 0

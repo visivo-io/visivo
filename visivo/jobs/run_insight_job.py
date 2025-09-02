@@ -41,9 +41,7 @@ def action(insight, dag, output_dir):
         flat_data = source.read_sql(tokenized_insight.pre_query)
         # Aggregate data into flat structure and generate insight.json
         InsightAggregator.aggregate_insight_data(
-            data=flat_data,
-            insight_dir=insight_directory,
-            tokenized_insight=tokenized_insight
+            data=flat_data, insight_dir=insight_directory, tokenized_insight=tokenized_insight
         )
 
         success_message = format_message_success(

@@ -20,7 +20,6 @@ from visivo.query.sqlglot_utils import (
     parse_expression,
 )
 from visivo.query.statement_classifier import StatementClassifier
-from visivo.utils import extract_value_from_function
 from visivo.logger.logger import Logger
 
 
@@ -136,9 +135,9 @@ class InsightTokenizer:
 
             sql_expression = None
             if path[0] in ("props", "columns"):
-                sql_expression = self._unwrap_braced_sql(
-                    extract_value_from_function(obj, "query") if path[0] == "props" else obj
-                )
+                expression = QueryString(obj).get_value()
+                if expression:
+                    sql_expression = expression
 
             if sql_expression and query_id not in ("filter", "order_by"):
                 if path[0] == "props":
@@ -159,11 +158,10 @@ class InsightTokenizer:
 
             # Analyze filter interactions
             if interaction.filter:
-                filter_expr = extract_value_from_function(interaction.filter, "query")
+                filter_expr = interaction.filter.get_value()
                 if filter_expr:
-                    input_refs = self._find_input_references(filter_expr)
-                    interaction_deps.update(input_refs)
-                    self.input_dependencies.update(input_refs)
+                    interaction_deps.update(filter_expr)
+                    self.input_dependencies.update(filter_expr)
 
                     # Add columns referenced in filter to required columns
                     columns = self._extract_column_dependencies(filter_expr)
@@ -171,14 +169,14 @@ class InsightTokenizer:
 
             # Analyze split interactions
             if interaction.split:
-                split_expr = extract_value_from_function(interaction.split, "query")
+                split_expr = interaction.split.get_value()
                 if split_expr:
                     columns = self._extract_column_dependencies(split_expr)
                     self.required_columns.update(columns)
 
             # Analyze sort interactions
             if interaction.sort:
-                sort_expr = extract_value_from_function(interaction.sort, "query")
+                sort_expr = interaction.sort.get_value()
                 if sort_expr:
                     columns = self._extract_column_dependencies(sort_expr)
                     self.required_columns.update(columns)
@@ -271,12 +269,6 @@ class InsightTokenizer:
                 "not",
             }
             return [match for match in matches if match.lower() not in sql_keywords]
-
-    def _find_input_references(self, text: str) -> Set[str]:
-        """Find ${ref(...)} patterns in text"""
-        pattern = r"\$\{ref\(([^)]+)\)"
-        matches = re.findall(pattern, text)
-        return set(match.strip("'\"") for match in matches)
 
     def _determine_groupby_requirements(self):
         """Determine final GROUP BY requirements"""
@@ -449,10 +441,11 @@ class InsightTokenizer:
         static_filters = []
         for interaction in self.insight.interactions or []:
             if interaction.filter:
-                filter_expr = extract_value_from_function(interaction.filter, "query")
-                if filter_expr and not self._is_dynamic(filter_expr):
+                filter_expr = interaction.filter.get_value()
+                if filter_expr:
                     static_filters.append(filter_expr)
-                else:
+
+                if self._is_dynamic(filter_expr):
                     self.is_dynamic_interactions = True
 
         if static_filters:
@@ -474,9 +467,12 @@ class InsightTokenizer:
         static_sorts = []
         for interaction in self.insight.interactions or []:
             if interaction.sort:
-                sort_expr = extract_value_from_function(interaction.sort, "query")
-                if sort_expr and not self._is_dynamic(sort_expr):
+                sort_expr = interaction.sort.get_value()
+                if sort_expr:
                     static_sorts.append(sort_expr)
+
+                if self._is_dynamic(sort_expr):
+                    self.is_dynamic_interactions = True
         if static_sorts:
             query += "\nORDER BY " + ", ".join(static_sorts)
 
@@ -484,30 +480,8 @@ class InsightTokenizer:
 
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""
-        # query = self.model.sql
-        query = "SELECT * FROM insight_data"
 
-        filter_conditions = []
-        for interaction in self.insight.interactions or []:
-            if interaction.filter:
-                filter_expr = extract_value_from_function(interaction.filter, "query")
-                if filter_expr and self._is_dynamic(filter_expr):
-                    filter_conditions.append(self._parameterize_input_references(filter_expr))
-
-        if filter_conditions:
-            query += "\nWHERE " + " AND ".join(filter_conditions)
-
-        sort_exprs = []
-        for interaction in self.insight.interactions or []:
-            if interaction.sort:
-                sort_expr = extract_value_from_function(interaction.sort, "query")
-                if sort_expr and self._is_dynamic(sort_expr):
-                    sort_exprs.append(sort_expr)
-
-        if sort_exprs:
-            query += "\nORDER BY " + ", ".join(sort_exprs)
-
-        return query
+        return "SELECT * FROM insight_data"
 
     def _parameterize_input_references(self, expr: str) -> str:
         """Replace ${ref(input).value} with parameter placeholders"""
@@ -523,17 +497,17 @@ class InsightTokenizer:
             interaction_dict = {}
 
             if interaction.filter:
-                filter_expr = extract_value_from_function(interaction.filter, "query")
+                filter_expr = interaction.filter.get_value()
                 if filter_expr:
                     interaction_dict["filter"] = filter_expr
 
             if interaction.split:
-                split_expr = extract_value_from_function(interaction.split, "query")
+                split_expr = interaction.split.get_value()
                 if split_expr:
                     interaction_dict["split"] = split_expr
 
             if interaction.sort:
-                sort_expr = extract_value_from_function(interaction.sort, "query")
+                sort_expr = interaction.sort.get_value()
                 if sort_expr:
                     interaction_dict["sort"] = sort_expr
 
@@ -547,7 +521,7 @@ class InsightTokenizer:
         if self.insight.interactions:
             for interaction in self.insight.interactions:
                 if interaction.split:
-                    return extract_value_from_function(interaction.split, "query")
+                    return interaction.split.get_value()
         return None
 
     def _get_sort_expressions(self) -> Optional[List[str]]:
@@ -556,41 +530,10 @@ class InsightTokenizer:
         if self.insight.interactions:
             for interaction in self.insight.interactions:
                 if interaction.sort:
-                    sort_expr = extract_value_from_function(interaction.sort, "query")
+                    sort_expr = interaction.sort.get_value()
                     if sort_expr:
                         sort_exprs.append(sort_expr)
         return sort_exprs if sort_exprs else None
-
-    def _unwrap_braced_sql(self, value: Any) -> Optional[str]:
-        """
-        Turns '?{ expr }' -> 'expr'
-            '${ expr }' -> 'expr'
-        Also normalizes column references so that `${ columns.foo }` -> 'columns.foo'
-        """
-        if value is None:
-            return None
-
-        if isinstance(value, QueryString):
-            return value.get_value()
-
-        s = str(value).strip()
-
-        # ?{ ... }  → inner
-        m = re.match(r"^\?\{\s*(.*?)\s*\}$", s, flags=re.DOTALL)
-        if m:
-            s = m.group(1).strip()
-
-        # ${ ... }  → inner
-        m = re.match(r"^\$\{\s*(.*?)\s*\}$", s, flags=re.DOTALL)
-        if m:
-            s = m.group(1).strip()
-
-        # Normalize column refs: columns.<name>
-        col_m = re.match(r"^columns\.([a-zA-Z_][a-zA-Z0-9_]*)$", s)
-        if col_m:
-            return f"columns.{col_m.group(1)}"
-
-        return s
 
     def _normalize_expr_sql(self, sql_expr: str) -> str:
         """
