@@ -1,29 +1,12 @@
 import re
-from typing import Any, Dict, Literal, Optional, List
-from pydantic import BaseModel, Field, model_validator
-from visivo.models.fields import QueryOrStringField
+from typing import Any, Optional, List
+from pydantic import Field, model_validator
 from visivo.models.insight_columns import InsightColumns
+from visivo.models.interaction import InsightInteraction
 from visivo.models.models.fields import ModelRefField
 from visivo.models.props.insight_props import InsightProps
-from visivo.models.props.trace_props import TraceProps
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-
-
-class InsightInteraction(BaseModel):
-    """
-    Represents a client-side interaction that can be applied to insight data.
-    """
-
-    filter: Optional[QueryOrStringField] = Field(
-        None, description="Filter expression to apply to the data on the client side"
-    )
-    split: Optional[QueryOrStringField] = Field(
-        None, description="Column or expression to split data into multiple traces"
-    )
-    sort: Optional[QueryOrStringField] = Field(
-        None, description="Column or expression to sort data by"
-    )
 
 
 class Insight(NamedModel, ParentModel):

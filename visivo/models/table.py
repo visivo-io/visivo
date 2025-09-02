@@ -112,14 +112,7 @@ class Table(SelectorModel, NamedModel, ParentModel):
 
     def child_items(self):
         """Return child items for DAG construction"""
-        all_items = []
-        if hasattr(self, "traces"):
-            all_items.extend(self.traces)
-        if hasattr(self, "insights"):
-            all_items.extend(self.insights)
-        if hasattr(self, "selector"):
-            all_items.append(self.selector)
-        return all_items
+        return self.traces + self.insights + [self.selector]
 
     @model_validator(mode="before")
     @classmethod
