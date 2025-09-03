@@ -4,6 +4,7 @@ from visivo.models.dag import all_descendants_of_type
 
 from visivo.models.destinations.fields import DestinationField
 from visivo.models.include import Include
+from visivo.models.input import InputField
 from visivo.models.models.model import Model
 from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
@@ -54,6 +55,7 @@ class Project(NamedModel, ParentModel):
     tables: List[Table] = []
     charts: List[Chart] = []
     selectors: List[Selector] = []
+    inputs: List[InputField] = []
     dashboards: List[DashboardField] = []
 
     def child_items(self) -> List:

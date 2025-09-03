@@ -1,46 +1,13 @@
-from datetime import date
-from enum import Enum
-from typing import Annotated, List, Optional, Union
+from typing import Annotated, Union
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
-from visivo.models.base.base_model import BaseModel
-from visivo.models.base.named_model import NamedModel
-from visivo.models.base.parent_model import ParentModel
-from visivo.models.inputs.input_types import (
-    DateInput,
-    DropdownInput,
-    SliderInput,
-    TabsInput,
-    TextInput,
-    ToggleInput,
-)
+from visivo.models.inputs.dropdown import DropdownInput
 
-
-class InputTypes(str, Enum):
-    date = "date"
-    dropdown = "dropdown"
-    text = "text"
-    slider = "slider"
-    toggle = "toggle"
-    tabs = "tabs"
-
-
-class InputBase(ParentModel, NamedModel):
-    model_config = ConfigDict(extra="ignore")
-    type: InputTypes = Field(
-        InputTypes.dropdown,
-        description="Type of input component (dropdown, date, text, slider, etc.)",
-    )
-    label: Optional[str] = Field(None, description="Label shown to the user")
-    default: Optional[Union[str, int, float, bool, date, List[str]]] = None
-
-
-Input = Annotated[
-    Union[DropdownInput, TabsInput, TextInput, SliderInput, ToggleInput, DateInput],
+InputField = Annotated[
+    Union[DropdownInput],
     Field(discriminator="type"),
 ]
-
 """
 Inputs serve as generic value injectors that other components can react to,
 rather than pushing changes themselves.

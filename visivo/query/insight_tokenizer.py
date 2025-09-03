@@ -311,15 +311,6 @@ class InsightTokenizer:
                     return False
         return True
 
-    def _is_column_aggregated(self, column: str) -> bool:
-        """Check if a column is used in an aggregated context"""
-        for expr in list(self.select_items.values()) + list(self.column_items.values()):
-            if column in expr and any(
-                agg in expr.lower() for agg in ["sum(", "count(", "avg(", "min(", "max("]
-            ):
-                return True
-        return False
-
     def _generate_pre_query(self) -> str:
         """
         Generate server-side SQL query with a precomputed CTE for duplicated expressions.

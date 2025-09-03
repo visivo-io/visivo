@@ -25,7 +25,7 @@ PROJECT_CHILDREN = [
     "models",
     "traces",
     "insights",
-    # "inputs",
+    "inputs",
     "tables",
     "charts",
     "dashboards",
