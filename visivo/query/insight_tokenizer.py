@@ -161,8 +161,6 @@ class InsightTokenizer:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
                     interaction_deps.update(filter_expr)
-                    self.input_dependencies.update(filter_expr)
-
                     # Add columns referenced in filter to required columns
                     columns = self._extract_column_dependencies(filter_expr)
                     self.required_columns.update(columns)
@@ -472,7 +470,8 @@ class InsightTokenizer:
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""
 
-        return "SELECT * FROM insight_data"
+        # return "SELECT * FROM insight_data"
+        return self.model.sql
 
     def _parameterize_input_references(self, expr: str) -> str:
         """Replace ${ref(input).value} with parameter placeholders"""

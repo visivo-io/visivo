@@ -31,7 +31,6 @@ def action(trace, dag, output_dir):
 
     trace_directory = f"{output_dir}/traces/{trace.name}"
     query_string = _get_query_string(trace, dag, output_dir)
-    Logger.instance().debug(f"Query string: {query_string}")
     try:
         start_time = time()
         data = source.read_sql(query_string)
