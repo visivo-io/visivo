@@ -8,7 +8,6 @@ from visivo.models.fields import QueryOrStringField
 class DropdownInput(Input):
     type: Literal["dropdown"] = "dropdown"
     options: Optional[Union[List[str], QueryOrStringField, str]] = Field(
-        None,
-        description="Static list of options OR a dynamic SQL string '${ref(insight)}'"
+        None, description="Static list of options OR a dynamic SQL string '${ref(insight)}'"
     )
     multi: bool = Field(False, description="Allow multi-select")

@@ -27,6 +27,7 @@ class Input(NamedModel):
 
     def _resolve_query_references(self, query_value: str, dag) -> str:
         """Resolve all ${ref(...)} patterns in query string using DAG lookup."""
+
         def resolve_match(match: re.Match) -> str:
             ref_name = match.group(1)
             try:
@@ -42,9 +43,9 @@ class Input(NamedModel):
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer, info):
         model = serializer(self)
-        
+
         # Handle options field if present
-        if hasattr(self, 'options'):
+        if hasattr(self, "options"):
             dag = info.context.get("dag") if info and info.context else None
 
             if isinstance(self.options, list):
@@ -52,5 +53,5 @@ class Input(NamedModel):
             elif isinstance(self.options, QueryString):
                 query_value = self.options.get_value()
                 model["options"] = self._resolve_query_references(query_value, dag)
-        
+
         return model
