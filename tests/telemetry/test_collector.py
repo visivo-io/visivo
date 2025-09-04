@@ -41,6 +41,7 @@ class TestTelemetryCollector:
             "alerts": 0,
             "selectors": 0,
             "destinations": 0,
+            "inputs": 0,
         }
 
     def test_collect_project_metrics_with_objects(self):
@@ -59,6 +60,7 @@ class TestTelemetryCollector:
         project.selectors = [mock.MagicMock(), mock.MagicMock()]
         project.destinations = [mock.MagicMock()]
         project.insights = [mock.MagicMock()]
+        project.inputs = [mock.MagicMock(), mock.MagicMock()]
 
         metrics = collect_project_metrics(project)
 
@@ -73,6 +75,7 @@ class TestTelemetryCollector:
             "selectors": 2,
             "destinations": 1,
             "insights": 1,
+            "inputs": 2,
         }
 
     def test_collect_project_metrics_none_lists(self):

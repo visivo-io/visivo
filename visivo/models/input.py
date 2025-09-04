@@ -41,6 +41,6 @@ inputs:
     - name: product-categories
     type: dropdown
     label: "Product Category"
-    options: ${ select distinct(category) from ${ref(products_insight)} }
+    options: ?{ select distinct(category) from ${ref(Insight Name)} }
 
 """

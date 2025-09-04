@@ -1,5 +1,5 @@
 from visivo.query.insight_tokenizer import InsightTokenizer
-from visivo.models.insight import Insight, InsightInteraction
+from visivo.models.insight import Insight
 
 from tests.factories.model_factories import SnowflakeSourceFactory, SqlModelFactory
 import pytest
@@ -134,4 +134,4 @@ def test_insight_tokenizer_pre_post_query_generation():
     assert "FROM (SELECT * FROM test_table) as base_model" in tokenized.pre_query
 
     # Post-query should be a simple SELECT with potential filters
-    assert tokenized.post_query.startswith("SELECT * FROM insight_data")
+    assert tokenized.post_query.startswith("SELECT * FROM test_table")
