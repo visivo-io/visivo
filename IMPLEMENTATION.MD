@@ -206,7 +206,7 @@ Visivo’s project YAML will be extended to support **metrics definitions and mo
 
 We will enforce that any cross-model field reference in a metric’s expression is qualified with a model ref (${ref(model\_name).field}) so it’s clear which model’s field is being used[\[7\]](file://file-GZbse5HsbwC43Dmq3vtYf2#:~:text=match%20at%20L161%20globally%20and,For). If a metric references fields from multiple models, the compile process will require an appropriate relation (or chain of relations) to exist to join those models. In the above example, stage\_to\_account relation connects **accounts** and **stages**, so days\_account\_open\_to\_stage\_creation is valid. If a required relationship is missing, the metric can be defined in YAML (the project can still load), but any attempt to *use* that metric in a query will result in a run-time error with a clear message (e.g. “No relationship defined between users and accounts for metric users\_per\_account”)[\[8\]](file://file-T8ujy5dpcGi2rNrrFoRJG3#:~:text=,ref%28accounts%29.id). This encourages users to declare all needed joins in the relations section.
 
-* **Relations (Declarative Joins):** We introduce a top-level relations: list in YAML to declare how models join to each other. Each relation includes:
+**Relations (Declarative Joins):** We introduce a top-level relations: list in YAML to declare how models join to each other. Each relation includes:
 
 * A **name** (unique identifier for the relationship).
 
