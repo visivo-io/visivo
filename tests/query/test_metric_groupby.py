@@ -7,7 +7,6 @@ from visivo.models.trace import Trace
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.models.metric import Metric
-from visivo.query.dialect import Dialect
 from visivo.query.statement_classifier import StatementClassifier, StatementEnum
 
 
