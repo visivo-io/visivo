@@ -15,7 +15,7 @@ class BaseSource(ABC, NamedModel):
         raise NotImplementedError(f"No get_connection method implemented for {self.type}")
 
     @abstractmethod
-    def read_sql(self, query: str):
+    def read_sql(self, query: str, **kwargs):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
 
     @abstractmethod

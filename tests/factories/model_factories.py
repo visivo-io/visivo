@@ -8,6 +8,8 @@ from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
+from visivo.models.sources.redshift_source import RedshiftSource
+from visivo.models.sources.bigquery_source import BigQuerySource
 from visivo.models.test import Test
 from visivo.models.trace import Trace
 from visivo.models.chart import Chart
@@ -55,6 +57,29 @@ class SnowflakeSourceFactory(factory.Factory):
     name = "source"
     database = "tmp/test.db"
     type = "snowflake"
+
+
+class RedshiftSourceFactory(factory.Factory):
+    class Meta:
+        model = RedshiftSource
+
+    name = "source"
+    database = "test_db"
+    host = "test-cluster.example.amazonaws.com"
+    port = 5439
+    username = "test_user"
+    password = "test_pass"
+    type = "redshift"
+
+
+class BigQuerySourceFactory(factory.Factory):
+    class Meta:
+        model = BigQuerySource
+
+    name = "source"
+    project = "test-project"
+    database = "test_dataset"
+    type = "bigquery"
 
 
 class SourceFactory(factory.Factory):

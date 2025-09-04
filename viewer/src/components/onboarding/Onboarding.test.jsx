@@ -43,9 +43,8 @@ afterEach(() => {
 
 test("renders onboarding content", async () => {
   render(<Onboarding />);
-  expect(screen.getByText(/welcome to visivo/i)).toBeInTheDocument();
-  expect(screen.getByText(/connect your data/i)).toBeInTheDocument();
-  expect(screen.getByText(/or try an example/i)).toBeInTheDocument();
+  expect(screen.getByText(/or connect your data/i)).toBeInTheDocument();
+  expect(screen.getByText(/jump right in and try an example/i)).toBeInTheDocument();
   expect(screen.getByTestId("feature-card")).toBeInTheDocument();
 });
 

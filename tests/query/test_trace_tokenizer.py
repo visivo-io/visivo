@@ -1,6 +1,9 @@
 from visivo.query.trace_tokenizer import TraceTokenizer
-from visivo.query.dialect import Dialect
-from tests.factories.model_factories import SnowflakeSourceFactory, TraceFactory
+from tests.factories.model_factories import (
+    SnowflakeSourceFactory,
+    TraceFactory,
+    RedshiftSourceFactory,
+)
 from tests.factories.model_factories import SourceFactory
 from visivo.models.trace import Trace
 import pytest
@@ -220,7 +223,7 @@ def test_tokenization_of_nested_inputs():
             "x": "?{ date_trunc('week', completed_at) }",
             "y": "?{ sum(amount) }",
             "marker": {
-                "color": "?{ case sum(amount) > 200 then 'green' else 'blue' end }",
+                "color": "?{ case when sum(amount) > 200 then 'green' else 'blue' end }",
             },
         },
     }
@@ -230,8 +233,78 @@ def test_tokenization_of_nested_inputs():
     tokenized_trace = trace_tokenizer.tokenize()
     assert (
         tokenized_trace.select_items["props.marker.color"]
-        == "case sum(amount) > 200 then 'green' else 'blue' end"
+        == "case when sum(amount) > 200 then 'green' else 'blue' end"
     )
     assert tokenized_trace.select_items["props.x"] == "date_trunc('week', completed_at)"
     assert tokenized_trace.select_items["props.y"] == "sum(amount)"
     assert "sum(amount)" not in tokenized_trace.groupby_statements
+
+
+def test_redshift_varchar_casting_for_string_cohort_on():
+    """Test that string literals in cohort_on are cast to VARCHAR(128) for Redshift sources"""
+    # Test with trace name (should be cast)
+    data = {
+        "name": "test_trace",
+        "model": {"sql": "SELECT * FROM test_table"},
+        "props": {"type": "scatter"},
+    }
+    trace = Trace(**data)
+    source = RedshiftSourceFactory()
+    trace_tokenizer = TraceTokenizer(trace=trace, model=trace.model, source=source)
+    tokenized_trace = trace_tokenizer.tokenize()
+
+    # When trace has a name, cohort_on defaults to 'trace_name' which should be cast
+    assert tokenized_trace.cohort_on == "CAST('test_trace' AS VARCHAR(128))"
+
+    # Test with no trace name (should cast default 'values')
+    trace_no_name = TraceFactory()
+    trace_no_name.name = None
+    trace_tokenizer_no_name = TraceTokenizer(
+        trace=trace_no_name, model=trace_no_name.model, source=source
+    )
+    tokenized_trace_no_name = trace_tokenizer_no_name.tokenize()
+
+    # Should cast the default 'values'
+    assert tokenized_trace_no_name.cohort_on == "CAST('values' AS VARCHAR(128))"
+
+    # Test with explicit string cohort_on
+    data_explicit = {
+        "name": "test_trace",
+        "model": {"sql": "SELECT * FROM test_table"},
+        "cohort_on": "'custom_value'",
+        "props": {"type": "scatter"},
+    }
+    trace_explicit = Trace(**data_explicit)
+    trace_tokenizer_explicit = TraceTokenizer(
+        trace=trace_explicit, model=trace_explicit.model, source=source
+    )
+    tokenized_trace_explicit = trace_tokenizer_explicit.tokenize()
+
+    # Should cast the explicit string value
+    assert tokenized_trace_explicit.cohort_on == "CAST('custom_value' AS VARCHAR(128))"
+
+    # Test with column name (should NOT be cast)
+    data_column = {
+        "name": "test_trace",
+        "model": {"sql": "SELECT * FROM test_table"},
+        "cohort_on": "column_name",
+        "props": {"type": "scatter"},
+    }
+    trace_column = Trace(**data_column)
+    trace_tokenizer_column = TraceTokenizer(
+        trace=trace_column, model=trace_column.model, source=source
+    )
+    tokenized_trace_column = trace_tokenizer_column.tokenize()
+
+    # Should NOT be cast since it's not a string literal
+    assert tokenized_trace_column.cohort_on == "column_name"
+
+    # Test that non-Redshift sources are not affected
+    non_redshift_source = SnowflakeSourceFactory()
+    trace_tokenizer_snowflake = TraceTokenizer(
+        trace=trace, model=trace.model, source=non_redshift_source
+    )
+    tokenized_trace_snowflake = trace_tokenizer_snowflake.tokenize()
+
+    # Should NOT be cast for non-Redshift sources
+    assert tokenized_trace_snowflake.cohort_on == "'test_trace'"

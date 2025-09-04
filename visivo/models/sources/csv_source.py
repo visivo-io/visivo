@@ -30,7 +30,7 @@ class CSVFileSource(BaseSource):
                 f"Error connecting to CSV source '{self.name}'. Full Error: {str(err)}"
             )
 
-    def read_sql(self, query: str):
+    def read_sql(self, query: str, **kwargs):
         try:
             with self.connect(read_only=True) as connection:
                 result = connection.execute(query)

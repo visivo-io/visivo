@@ -23,7 +23,7 @@ class SqlalchemySource(Source, ABC):
     def get_dialect(self):
         raise NotImplementedError(f"No dialect method implemented for {self.type}")
 
-    def read_sql(self, query: str):
+    def read_sql(self, query: str, **kwargs):
         with self.connect() as connection:
             query = text(query)
             results = connection.execute(query)
