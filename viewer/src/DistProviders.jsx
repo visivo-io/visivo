@@ -8,15 +8,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
 
-export default function DistProviders({ fetchTraces, fetchDashboard }) {
+export default function DistProviders({ fetchTraces, fetchInsights, fetchDashboard }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <QueryProvider fetchTraces={fetchTraces} fetchDashboard={fetchDashboard}>
+      <QueryProvider
+        fetchTraces={fetchTraces}
+        fetchInsights={fetchInsights}
+        fetchDashboard={fetchDashboard}
+      >
         <URLProvider urlConfig={distURLConfig}>
-          <RouterProvider
-            router={DistRouter}
-            future={futureFlags}
-          />
+          <RouterProvider router={DistRouter} future={futureFlags} />
         </URLProvider>
       </QueryProvider>
     </QueryClientProvider>

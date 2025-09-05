@@ -1,8 +1,7 @@
 import glob
 import hashlib
 import os
-from flask import jsonify, send_file
-from requests import request
+from flask import jsonify, request, send_file
 
 from visivo.logger.logger import Logger
 
