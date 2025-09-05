@@ -1,7 +1,8 @@
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.logger.logger import Logger
 from sqlalchemy import text
-from typing import Optional, Tuple, Any, List
+from typing import Optional, Tuple, Any, List, Dict
+from visivo.commands.utils import create_source
 
 
 # Helper functions to reduce duplication
@@ -257,3 +258,65 @@ def gather_source_metadata(sources):
                 }
                 data["sources"].append(failed_metadata)
     return data
+
+
+def test_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
+    """Test a source connection from configuration without adding to project."""
+    try:
+        # Extract source configuration
+        source_name = source_config.get("name", "test_source")
+        source_type = source_config.get("type")
+        
+        if not source_type:
+            return {"status": "connection_failed", "error": "Source type is required"}
+        
+        # Build kwargs for create_source function
+        create_kwargs = {
+            "source_name": source_name,
+            "source_type": source_type,
+        }
+        
+        # Map common fields
+        field_mapping = {
+            "database": "database",
+            "host": "host", 
+            "port": "port",
+            "username": "username",
+            "password": "password",
+            "account": "account",
+            "warehouse": "warehouse",
+            "credentials_base64": "credentials_base64",
+            "project": "project",
+            "dataset": "dataset",
+            "cluster_identifier": "cluster_identifier",
+            "region": "region",
+            "iam": "iam",
+            "ssl": "ssl",
+        }
+        
+        for config_key, create_key in field_mapping.items():
+            if config_key in source_config:
+                create_kwargs[create_key] = source_config[config_key]
+        
+        # Create temporary source instance
+        Logger.instance().info(f"Creating temporary source for connection test: {source_name}")
+        source = create_source(**create_kwargs)
+        
+        if isinstance(source, str):
+            # Error message returned as string
+            return {"status": "connection_failed", "error": source}
+        
+        if not isinstance(source, SqlalchemySource):
+            return {"status": "connection_failed", "error": "Source type does not support connection testing"}
+        
+        # Test the connection
+        engine = _get_engine_with_read_only(source)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        
+        Logger.instance().info(f"Connection test successful for {source_name}")
+        return {"status": "connected", "source": source_name}
+        
+    except Exception as e:
+        Logger.instance().debug(f"Connection test failed: {e}")
+        return {"status": "connection_failed", "error": str(e)}
