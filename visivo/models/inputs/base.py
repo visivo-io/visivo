@@ -28,7 +28,6 @@ class Input(NamedModel):
     def _resolve_query_references(self, query_value: str, dag) -> str:
         """Resolve all ${ref(...)} patterns in query string using DAG lookup."""
 
-
         def resolve_match(match: re.Match) -> str:
             ref_name = match.group(1)
             try:
