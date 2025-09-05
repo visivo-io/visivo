@@ -1,4 +1,5 @@
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import BaseSource
 from visivo.logger.logger import Logger
 from sqlalchemy import text
 from typing import Optional, Tuple, Any, List, Dict
@@ -55,15 +56,28 @@ def _source_not_found_error(source_name: str) -> Tuple[dict, int]:
 # Main functions refactored
 
 
-def _test_source_connection(source: SqlalchemySource, source_name: str) -> Dict[str, Any]:
+def _test_source_connection(source: BaseSource, source_name: str) -> Dict[str, Any]:
     """Common logic for testing a source connection."""
     try:
         Logger.instance().info(f"Testing connection for source: {source_name}")
-        engine = _get_engine_with_read_only(source)
-
-        # Test connection with a simple query - all dialects support SELECT 1
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        
+        # Use different testing approaches based on source type
+        if isinstance(source, SqlalchemySource):
+            # SQLAlchemy-based sources: use SQLAlchemy engine for testing
+            engine = _get_engine_with_read_only(source)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        else:
+            # Non-SQLAlchemy sources (Redshift, CSV, Excel): use read_sql method
+            # All BaseSource implementations have read_sql method
+            try:
+                # Use a simple query that should work across all SQL dialects
+                source.read_sql("SELECT 1 as test_column LIMIT 1")
+            except AttributeError:
+                # Fallback: if read_sql is not available, try get_connection
+                with source.connect() as conn:
+                    # Test that we can get a connection
+                    pass
 
         Logger.instance().info(f"Connection test successful for {source_name}")
         return {"source": source_name, "status": "connected"}
@@ -280,7 +294,7 @@ def test_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
         source_adapter = TypeAdapter(SourceField)
         source = source_adapter.validate_python(source_config)
         
-        if not isinstance(source, SqlalchemySource):
+        if not isinstance(source, BaseSource):
             return {"status": "connection_failed", "error": "Source type does not support connection testing"}
         
         # Use common connection testing logic
