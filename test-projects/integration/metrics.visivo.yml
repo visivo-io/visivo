@@ -129,6 +129,10 @@ models:
 relations: 
   - name: test-table-to-waterfall
     condition: "${ref(test_table_with_metrics).x} = ${ref(waterfall_model_duckdb).row}"
+  - name: local-test-table-to-waterfall
+    condition: "${ref(local_test_table).x} = ${ref(waterfall_model_duckdb).row}"
+  - name: test-table-to-waterfall-two
+    condition: "${ref(test table).x} = ${ref(waterfall_model_duckdb).row}"
 
 metrics: 
   - name: test-metric-test-one

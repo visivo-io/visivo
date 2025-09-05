@@ -6,6 +6,7 @@ from typing import Optional, Set, Tuple
 import sqlglot
 from sqlglot import expressions as exp
 from sqlglot.errors import ParseError
+from visivo.query.model_name_utils import ModelNameSanitizer
 
 
 class MetricValidator:
@@ -118,20 +119,31 @@ class MetricValidator:
 
         dialect = MetricValidator._get_sqlglot_dialect(source_type)
 
-        # First, replace ${ref(model).field} with model.field for SQLGlot parsing
+        # Create sanitizer for consistent model name handling
+        sanitizer = ModelNameSanitizer()
+
+        # First, replace ${ref(model).field} with sanitized_model.field for SQLGlot parsing
         import re
         from visivo.models.base.context_string import METRIC_REF_PATTERN
 
-        # Replace ${ref(model).field} patterns with model.field for SQLGlot
+        # Replace ${ref(model).field} patterns with sanitized_model.field for SQLGlot
         # Note: METRIC_REF_PATTERN also matches ${ref(metric)} without field, so we handle both cases
         def replace_for_sql(match):
             ref_content = match.group(1)
             field = match.group(2) if match.lastindex >= 2 else None
+
+            # Remove quotes if present
+            if ref_content.startswith(("'", '"')) and ref_content.endswith(("'", '"')):
+                ref_content = ref_content[1:-1]
+
+            # Sanitize the model name for SQL
+            sanitized_ref = sanitizer.sanitize(ref_content)
+
             if field:
-                return f"{ref_content}.{field}"
+                return f"{sanitized_ref}.{field}"
             else:
-                # For ${ref(metric)} without field, keep as is for now
-                return ref_content
+                # For ${ref(metric)} without field, keep sanitized name
+                return sanitized_ref
 
         sql_condition = re.sub(METRIC_REF_PATTERN, replace_for_sql, condition)
 
@@ -152,10 +164,14 @@ class MetricValidator:
                 if column.table:
                     referenced_tables.add(column.table)
 
-            # Check that both models are referenced
-            if left_model not in referenced_tables:
+            # Sanitize model names for comparison
+            sanitized_left = sanitizer.sanitize(left_model)
+            sanitized_right = sanitizer.sanitize(right_model)
+
+            # Check that both models are referenced (using sanitized names)
+            if sanitized_left not in referenced_tables:
                 return False, f"Join condition must reference left model '{left_model}'"
-            if right_model not in referenced_tables:
+            if sanitized_right not in referenced_tables:
                 return False, f"Join condition must reference right model '{right_model}'"
 
             # Check for aggregate functions (not allowed in join conditions)

@@ -39,15 +39,11 @@ class TestTraceWithRelations:
             relations=[
                 Relation(
                     name="orders_to_users",
-                    left_model="orders",
-                    right_model="users",
                     condition="${ref(orders).user_id} = ${ref(users).id}",
                     join_type="inner",
                 ),
                 Relation(
                     name="users_to_accounts",
-                    left_model="users",
-                    right_model="accounts",
                     condition="${ref(users).account_id} = ${ref(accounts).id}",
                     join_type="left",
                 ),
@@ -56,8 +52,9 @@ class TestTraceWithRelations:
 
         assert trace.name == "test_trace"
         assert len(trace.relations) == 2
-        assert trace.relations[0].left_model == "orders"
-        assert trace.relations[0].right_model == "users"
+        # Check that relations correctly extract model references from condition
+        assert "orders" in trace.relations[0].get_referenced_models()
+        assert "users" in trace.relations[0].get_referenced_models()
         assert trace.relations[1].join_type == "left"
 
     def test_trace_with_context_string_relations(self):
@@ -95,8 +92,6 @@ class TestTraceWithRelations:
                 "ref(orders_to_users)",
                 Relation(
                     name="users_to_accounts",
-                    left_model="users",
-                    right_model="accounts",
                     condition="${ref(users).account_id} = ${ref(accounts).id}",
                 ),
             ],
@@ -106,7 +101,7 @@ class TestTraceWithRelations:
         assert len(trace.relations) == 2
         assert trace.relations[0] == "ref(orders_to_users)"
         assert isinstance(trace.relations[1], Relation)
-        assert trace.relations[1].left_model == "users"
+        assert "users" in trace.relations[1].get_referenced_models()
 
     def test_trace_without_relations(self):
         """Test that traces without relations still work (backward compatibility)."""

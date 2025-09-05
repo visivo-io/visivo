@@ -66,15 +66,17 @@ class RelationGraph:
 
         # Add relations as edges
         for relation in relations:
-            # Relations already have left_model and right_model fields
-            left_model = relation.left_model
-            right_model = relation.right_model
+            # Extract models from the condition using the Relation's method
+            models = relation.get_referenced_models()
 
-            if left_model and right_model:
-                # Add edge with relation details
+            # A relation should reference exactly 2 models
+            if len(models) == 2:
+                # Convert set to list to access models
+                model_list = list(models)
+                # Add edge with relation details (undirected, so order doesn't matter)
                 self.graph.add_edge(
-                    left_model,
-                    right_model,
+                    model_list[0],
+                    model_list[1],
                     relation=relation,
                     condition=relation.condition,
                     join_type=relation.join_type,

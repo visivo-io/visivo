@@ -4,7 +4,7 @@ Tests the complete flow of metric composition and cross-model field references.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import patch
 from visivo.query.trace_tokenizer import TraceTokenizer
 from visivo.query.metric_resolver import MetricResolver, CircularDependencyError
 from visivo.models.trace import Trace
@@ -24,52 +24,37 @@ class TestWeek1Integration:
 
     def test_end_to_end_metric_composition_with_dimensions(self):
         """Test metric composition working with dimensions in the same model."""
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
         # Create a model with metrics and dimensions
-        model = Mock(spec=SqlModel)
-        model.name = "sales"
-        model.sql = "SELECT * FROM sales_table"
-
-        # Add a dimension
-        dimension = Mock(spec=Dimension)
-        dimension.name = "revenue_category"
-        dimension.sql = "CASE WHEN amount > 1000 THEN 'high' ELSE 'low' END"
-
-        # Add metrics (dimensions are not resolved as metrics currently)
-        base_metric = Mock(spec=Metric)
-        base_metric.name = "total_revenue"
-        base_metric.expression = "SUM(amount)"
-
-        category_metric = Mock(spec=Metric)
-        category_metric.name = "high_revenue_ratio"
-        category_metric.expression = (
-            "SUM(CASE WHEN amount > 1000 THEN amount ELSE 0 END) / ${ref(total_revenue)}"
+        model = SqlModel(
+            name="sales",
+            sql="SELECT * FROM sales_table",
+            source="ref(main_db)",
+            dimensions=[
+                Dimension(
+                    name="revenue_category",
+                    expression="CASE WHEN amount > 1000 THEN 'high' ELSE 'low' END",
+                )
+            ],
+            metrics=[
+                Metric(name="total_revenue", expression="SUM(amount)"),
+                Metric(
+                    name="high_revenue_ratio",
+                    expression="SUM(CASE WHEN amount > 1000 THEN amount ELSE 0 END) / ${ref(total_revenue)}",
+                ),
+            ],
         )
-
-        model.metrics = [base_metric, category_metric]
-        model.dimensions = [dimension]
 
         # Create project
-        project = Mock(spec=Project)
-        project.models = [model]
-        project.metrics = []
+        project = Project(name="test_project", sources=[source], models=[model], metrics=[])
 
         # Create a trace using the composed metric
-        trace = Mock(spec=Trace)
-        trace.name = "revenue_analysis"
-        trace.cohort_on = None
-        trace.props = Mock(spec=TraceProps)
-        trace.props.x = "?{date}"
-        trace.props.y = "?{${ref(high_revenue_ratio)}}"
-        trace.props.model_dump = Mock(
-            return_value={"x": "?{date}", "y": "?{${ref(high_revenue_ratio)}}"}
+        trace = Trace(
+            name="revenue_analysis",
+            model=model,
+            props={"type": "scatter", "x": "?{date}", "y": "?{${ref(high_revenue_ratio)}}"},
         )
-        trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
 
         # Create tokenizer
         tokenizer = TraceTokenizer(trace=trace, model=model, source=source, project=project)
@@ -84,62 +69,56 @@ class TestWeek1Integration:
 
     def test_cross_model_metrics_with_multiple_dependencies(self):
         """Test metrics that depend on fields and metrics from multiple models."""
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
         # Create multiple models
-        orders_model = Mock(spec=SqlModel)
-        orders_model.name = "orders"
-        orders_model.sql = "SELECT * FROM orders"
-        orders_model.metrics = [Mock(spec=Metric, name="order_count", expression="COUNT(*)")]
-        orders_model.metrics[0].name = "order_count"
-        orders_model.metrics[0].expression = "COUNT(*)"
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders",
+            source="ref(main_db)",
+            metrics=[Metric(name="order_count", expression="COUNT(*)")],
+        )
 
-        customers_model = Mock(spec=SqlModel)
-        customers_model.name = "customers"
-        customers_model.sql = "SELECT * FROM customers"
-        customers_model.metrics = [
-            Mock(
-                spec=Metric,
-                name="customer_count",
-                expression="COUNT(DISTINCT customers.customer_id)",
-            )
-        ]
-        customers_model.metrics[0].name = "customer_count"
-        customers_model.metrics[0].expression = "COUNT(DISTINCT customers.customer_id)"
+        customers_model = SqlModel(
+            name="customers",
+            sql="SELECT * FROM customers",
+            source="ref(main_db)",
+            metrics=[
+                Metric(name="customer_count", expression="COUNT(DISTINCT customers.customer_id)")
+            ],
+        )
 
-        products_model = Mock(spec=SqlModel)
-        products_model.name = "products"
-        products_model.sql = "SELECT * FROM products"
-        products_model.metrics = [
-            Mock(spec=Metric, name="category_weight", expression="AVG(weight)")
-        ]
-        products_model.metrics[0].name = "category_weight"
-        products_model.metrics[0].expression = "AVG(weight)"
+        products_model = SqlModel(
+            name="products",
+            sql="SELECT * FROM products",
+            source="ref(main_db)",
+            metrics=[Metric(name="category_weight", expression="AVG(weight)")],
+        )
 
         # Create a complex cross-model metric
-        complex_metric = Mock(spec=Metric)
-        complex_metric.name = "orders_per_customer_by_category"
-        complex_metric.expression = "${ref(orders).order_count} / ${ref(customers).customer_count} * ${ref(products).category_weight}"
+        complex_metric = Metric(
+            name="orders_per_customer_by_category",
+            expression="${ref(orders).order_count} / ${ref(customers).customer_count} * ${ref(products).category_weight}",
+        )
 
         # Create project
-        project = Mock(spec=Project)
-        project.models = [orders_model, customers_model, products_model]
-        project.metrics = [complex_metric]
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model, customers_model, products_model],
+            metrics=[complex_metric],
+        )
 
         # Create a trace using the complex metric
-        trace = Mock(spec=Trace)
-        trace.name = "complex_analysis"
-        trace.cohort_on = None
-        trace.props = Mock(spec=TraceProps)
-        trace.props.y = "?{${ref(orders_per_customer_by_category)}}"
-        trace.props.model_dump = Mock(
-            return_value={"y": "?{${ref(orders_per_customer_by_category)}}"}
+        trace = Trace(
+            name="complex_analysis",
+            model=orders_model,
+            props={
+                "type": "scatter",
+                "x": "?{x}",
+                "y": "?{${ref(orders_per_customer_by_category)}}",
+            },
         )
-        trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
 
         # Create tokenizer from orders model perspective
         tokenizer = TraceTokenizer(trace=trace, model=orders_model, source=source, project=project)
@@ -212,12 +191,12 @@ class TestWeek1Integration:
         assert "revenue_per_customer" in resolver.metrics_by_name
         assert "complex_metric" in resolver.metrics_by_name
 
-        # Test dependency graph
-        deps = resolver.build_dependency_graph()
-        assert "avg_revenue" in deps
-        assert "revenue" in deps["avg_revenue"]
-        assert "complex_metric" in deps
-        assert "revenue_per_customer" in deps["complex_metric"]
+        # Test dependency resolution
+        deps = resolver.get_metric_dependencies("avg_revenue")
+        assert "revenue" in deps
+
+        deps = resolver.get_metric_dependencies("complex_metric")
+        assert "revenue_per_customer" in deps
 
         # Test resolution
         resolved = resolver.resolve_metric_expression("complex_metric")
@@ -257,29 +236,17 @@ class TestWeek1Integration:
 
     def test_run_trace_job_with_project_integration(self):
         """Test that tokenizer can accept project parameter."""
-        project = Mock(spec=Project)
-        project.models = []
-        project.metrics = []
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
-        # Create trace and model
-        trace = Mock(spec=Trace)
-        trace.name = "test_trace"
-        trace.cohort_on = None
-        trace.props = Mock(spec=TraceProps)
-        trace.props.y = "?{amount}"
-        trace.props.model_dump = Mock(return_value={"y": "?{amount}"})
-        trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        model = SqlModel(
+            name="orders", sql="SELECT * FROM orders", source="ref(main_db)", metrics=[]
+        )
 
-        model = Mock(spec=SqlModel)
-        model.name = "orders"
-        model.sql = "SELECT * FROM orders"
-        model.metrics = []
+        project = Project(name="test_project", sources=[source], models=[model], metrics=[])
 
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        trace = Trace(
+            name="test_trace", model=model, props={"type": "scatter", "x": "?{x}", "y": "?{amount}"}
+        )
 
         # Test that tokenizer accepts and stores project parameter
         tokenizer = TraceTokenizer(trace=trace, model=model, source=source, project=project)
@@ -288,38 +255,27 @@ class TestWeek1Integration:
 
     def test_circular_dependency_detection_in_trace(self):
         """Test that circular dependencies are properly detected when used in traces."""
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
-        model = Mock(spec=SqlModel)
-        model.name = "orders"
-        model.sql = "SELECT * FROM orders"
-        model.metrics = []
+        model = SqlModel(
+            name="orders", sql="SELECT * FROM orders", source="ref(main_db)", metrics=[]
+        )
 
         # Create circular metrics
-        metric_a = Mock(spec=Metric)
-        metric_a.name = "metric_a"
-        metric_a.expression = "${ref(metric_b)} + 1"
+        metric_a = Metric(name="metric_a", expression="${ref(metric_b)} + 1")
 
-        metric_b = Mock(spec=Metric)
-        metric_b.name = "metric_b"
-        metric_b.expression = "${ref(metric_a)} * 2"
+        metric_b = Metric(name="metric_b", expression="${ref(metric_a)} * 2")
 
-        project = Mock(spec=Project)
-        project.models = [model]
-        project.metrics = [metric_a, metric_b]
+        project = Project(
+            name="test_project", sources=[source], models=[model], metrics=[metric_a, metric_b]
+        )
 
         # Create a trace using a circular metric
-        trace = Mock(spec=Trace)
-        trace.name = "circular_trace"
-        trace.cohort_on = None
-        trace.props = Mock(spec=TraceProps)
-        trace.props.y = "?{${ref(metric_a)}}"
-        trace.props.model_dump = Mock(return_value={"y": "?{${ref(metric_a)}}"})
-        trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace = Trace(
+            name="circular_trace",
+            model=model,
+            props={"type": "scatter", "x": "?{x}", "y": "?{${ref(metric_a)}}"},
+        )
 
         # Create tokenizer - it should handle the error gracefully
         tokenizer = TraceTokenizer(trace=trace, model=model, source=source, project=project)
@@ -330,45 +286,41 @@ class TestWeek1Integration:
 
     def test_mixed_ref_syntax_handling(self):
         """Test handling of mixed reference syntaxes in the same expression."""
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
-        orders_model = Mock(spec=SqlModel)
-        orders_model.name = "orders"
-        orders_model.sql = "SELECT * FROM orders"
+        orders_model = SqlModel(
+            name="orders",
+            sql="SELECT * FROM orders",
+            source="ref(main_db)",
+            metrics=[Metric(name="total", expression="SUM(amount)")],
+        )
 
-        order_metric = Mock(spec=Metric)
-        order_metric.name = "total"
-        order_metric.expression = "SUM(amount)"
-        orders_model.metrics = [order_metric]
+        customers_model = SqlModel(
+            name="customers", sql="SELECT * FROM customers", source="ref(main_db)", metrics=[]
+        )
 
-        customers_model = Mock(spec=SqlModel)
-        customers_model.name = "customers"
-        customers_model.sql = "SELECT * FROM customers"
-        customers_model.metrics = []
+        # Create a metric with mixed syntax
+        mixed_metric = Metric(
+            name="complex", expression="${ref(orders).total} / ${ref(customers).count}"
+        )
 
-        # Create a metric with mixed syntax (using ${ref()} syntax for all references)
-        mixed_metric = Mock(spec=Metric)
-        mixed_metric.name = "complex"
-        mixed_metric.expression = "${ref(orders).total} / ${ref(customers).count}"
-
-        project = Mock(spec=Project)
-        project.models = [orders_model, customers_model]
-        project.metrics = [mixed_metric]
+        project = Project(
+            name="test_project",
+            sources=[source],
+            models=[orders_model, customers_model],
+            metrics=[mixed_metric],
+        )
 
         # Create trace
-        trace = Mock(spec=Trace)
-        trace.name = "mixed_trace"
-        trace.cohort_on = None
-        trace.props = Mock(spec=TraceProps)
-        trace.props.y = "?{${ref(complex)} + ${ref(customers).region}}"
-        trace.props.model_dump = Mock(
-            return_value={"y": "?{${ref(complex)} + ${ref(customers).region}}"}
+        trace = Trace(
+            name="mixed_trace",
+            model=orders_model,
+            props={
+                "type": "scatter",
+                "x": "?{x}",
+                "y": "?{${ref(complex)} + ${ref(customers).region}}",
+            },
         )
-        trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
 
         # Create tokenizer
         tokenizer = TraceTokenizer(trace=trace, model=orders_model, source=source, project=project)
@@ -382,40 +334,33 @@ class TestWeek1Integration:
 
         # Check resolution
         y_value = tokenized.select_items.get("props.y", "")
-        assert (
-            "(SUM(amount)) / ${ref(customers).count}" in y_value or "complex" in y_value
-        )  # Metric resolved or fallback
+        # Verify the metric was resolved and contains expected components
+        assert "SUM(amount)" in y_value  # orders.total resolved
+        assert "customers.count" in y_value  # customers.count reference
         assert "customers.region" in y_value  # Direct field reference preserved
 
     def test_empty_and_null_handling(self):
         """Test handling of empty/null values in various scenarios."""
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
         # Model with empty metrics list
-        model = Mock(spec=SqlModel)
-        model.name = "orders"
-        model.sql = "SELECT * FROM orders"
-        model.metrics = []
+        model = SqlModel(
+            name="orders", sql="SELECT * FROM orders", source="ref(main_db)", metrics=[]
+        )
 
-        # Project with None metrics
-        project = Mock(spec=Project)
-        project.models = [model]
-        project.metrics = None
+        # Project with empty metrics
+        project = Project(name="test_project", sources=[source], models=[model], metrics=[])
 
         # Trace with various edge cases
-        trace = Mock(spec=Trace)
-        trace.name = "edge_case_trace"
-        trace.cohort_on = None
-        trace.props = Mock(spec=TraceProps)
-        trace.props.y = "?{${ref(nonexistent)} + ${ref(orders).missing}}"
-        trace.props.model_dump = Mock(
-            return_value={"y": "?{${ref(nonexistent)} + ${ref(orders).missing}}"}
+        trace = Trace(
+            name="edge_case_trace",
+            model=model,
+            props={
+                "type": "scatter",
+                "x": "?{x}",
+                "y": "?{${ref(nonexistent)} + ${ref(orders).missing}}",
+            },
         )
-        trace.order_by = None
-        trace.filter_by = None
-        trace.model_dump = Mock(return_value={"order_by": None, "filter_by": None})
 
         # Should not crash
         tokenizer = TraceTokenizer(trace=trace, model=model, source=source, project=project)
@@ -430,29 +375,24 @@ class TestWeek1Integration:
 
     def test_performance_with_many_metrics(self):
         """Test performance and correctness with a large number of metrics."""
-        source = Mock(spec=Source)
-        source.type = "postgresql"
-        source.name = "main_db"
+        source = SqliteSource(name="main_db", type="sqlite", database=":memory:")
 
-        model = Mock(spec=SqlModel)
-        model.name = "orders"
-        model.sql = "SELECT * FROM orders"
-        model.metrics = []
+        model = SqlModel(
+            name="orders", sql="SELECT * FROM orders", source="ref(main_db)", metrics=[]
+        )
 
         # Create a chain of 50 metrics
         metrics = []
         for i in range(50):
-            metric = Mock(spec=Metric)
-            metric.name = f"metric_{i}"
             if i == 0:
-                metric.expression = "SUM(amount)"
+                expression = "SUM(amount)"
             else:
-                metric.expression = f"${{ref(metric_{i-1})}} + {i}"
+                expression = f"${{ref(metric_{i-1})}} + {i}"
+
+            metric = Metric(name=f"metric_{i}", expression=expression)
             metrics.append(metric)
 
-        project = Mock(spec=Project)
-        project.models = [model]
-        project.metrics = metrics
+        project = Project(name="test_project", sources=[source], models=[model], metrics=metrics)
 
         # Create resolver
         resolver = MetricResolver(project)
@@ -461,9 +401,9 @@ class TestWeek1Integration:
         resolved = resolver.resolve_metric_expression("metric_49")
         assert "SUM(amount)" in resolved
 
-        # Check that it builds proper dependency graph
-        deps = resolver.build_dependency_graph()
-        assert len(deps) == 50
+        # Check dependencies are properly tracked
+        deps = resolver.get_metric_dependencies("metric_49")
+        assert "metric_48" in deps
 
         # Topological sort should order them correctly
         sorted_metrics = resolver.topological_sort()

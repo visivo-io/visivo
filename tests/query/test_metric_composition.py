@@ -40,7 +40,7 @@ class TestMetricComposition:
         mock_dag.nodes = Mock(return_value=[])
         self.project.dag = Mock(return_value=mock_dag)
 
-    def test_simple_metric_to_metric_reference(self):
+    def test_simple_metric_to_metric_reference(self, mocker):
         """Test resolving a simple metric that references another metric."""
         # Create base metric
         base_metric = Mock(spec=Metric)
@@ -54,6 +54,15 @@ class TestMetricComposition:
 
         self.project.metrics = [base_metric, derived_metric]
 
+        # Mock all_descendants_of_type to return our metrics
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[base_metric, derived_metric],
+        )
+
+        # Mock DAG predecessors to return empty list (metrics have no model parent in this test)
+        self.project.dag.return_value.predecessors = Mock(return_value=[])
+
         # Create a trace that uses the derived metric
         trace = Mock(spec=Trace)
         trace.name = "revenue_trace"
@@ -62,9 +71,8 @@ class TestMetricComposition:
         trace.props.y = "?{${ref(average_revenue)}}"
         trace.props.model_dump = Mock(return_value={"y": "?{${ref(average_revenue)}}"})
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer with project
         tokenizer = TraceTokenizer(
@@ -79,7 +87,7 @@ class TestMetricComposition:
         assert "(SUM(amount))" in tokenized.select_items["props.y"]
         assert "COUNT(DISTINCT customer_id)" in tokenized.select_items["props.y"]
 
-    def test_nested_metric_composition(self):
+    def test_nested_metric_composition(self, mocker):
         """Test resolving nested metric compositions (A -> B -> C)."""
         # Create metrics with dependencies
         metric_a = Mock(spec=Metric)
@@ -96,6 +104,15 @@ class TestMetricComposition:
 
         self.project.metrics = [metric_a, metric_b, metric_c]
 
+        # Mock all_descendants_of_type to return our metrics
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[metric_a, metric_b, metric_c],
+        )
+
+        # Mock DAG predecessors to return empty list
+        self.project.dag.return_value.predecessors = Mock(return_value=[])
+
         # Create a trace that uses the final metric
         trace = Mock(spec=Trace)
         trace.name = "nested_trace"
@@ -105,8 +122,8 @@ class TestMetricComposition:
         trace.props.y = "?{${ref(final_metric)}}"
         trace.props.model_dump = Mock(return_value={"x": "?{date}", "y": "?{${ref(final_metric)}}"})
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer with project
         tokenizer = TraceTokenizer(
@@ -121,7 +138,7 @@ class TestMetricComposition:
         assert "* 2" in y_value
         assert "+ 100" in y_value
 
-    def test_model_qualified_metric_with_composition(self):
+    def test_model_qualified_metric_with_composition(self, mocker):
         """Test resolving model-qualified metrics that use composition."""
         # Create a metric on the model
         model_metric = Mock(spec=Metric)
@@ -137,6 +154,20 @@ class TestMetricComposition:
         self.project.metrics = [project_metric]
         self.project.models = [self.model]
 
+        # Mock all_descendants_of_type to return our metrics
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[model_metric, project_metric],
+        )
+
+        # Mock DAG predecessors - model_metric has model as parent
+        def mock_predecessors(node):
+            if node == model_metric:
+                return [self.model]
+            return []
+
+        self.project.dag.return_value.predecessors = mock_predecessors
+
         # Create a trace that uses the project metric
         trace = Mock(spec=Trace)
         trace.name = "adjusted_trace"
@@ -145,8 +176,8 @@ class TestMetricComposition:
         trace.props.y = "?{${ref(adjusted_total)}}"
         trace.props.model_dump = Mock(return_value={"y": "?{${ref(adjusted_total)}}"})
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer with project
         tokenizer = TraceTokenizer(
@@ -159,7 +190,7 @@ class TestMetricComposition:
         assert "(SUM(amount))" in tokenized.select_items.get("props.y", "")
         assert "* 1.1" in tokenized.select_items.get("props.y", "")
 
-    def test_multiple_metric_references_in_expression(self):
+    def test_multiple_metric_references_in_expression(self, mocker):
         """Test resolving multiple metric references in a single expression."""
         # Create base metrics
         metric1 = Mock(spec=Metric)
@@ -177,6 +208,15 @@ class TestMetricComposition:
 
         self.project.metrics = [metric1, metric2, profit_metric]
 
+        # Mock all_descendants_of_type to return our metrics
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[metric1, metric2, profit_metric],
+        )
+
+        # Mock DAG predecessors to return empty list
+        self.project.dag.return_value.predecessors = Mock(return_value=[])
+
         # Create a trace that calculates profit margin
         trace = Mock(spec=Trace)
         trace.name = "profit_margin_trace"
@@ -188,8 +228,8 @@ class TestMetricComposition:
             return_value={"y": "?{${ref(profit)} / ${ref(revenue)} * 100}"}
         )
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer with project
         tokenizer = TraceTokenizer(
@@ -206,7 +246,7 @@ class TestMetricComposition:
         assert "SUM(costs)" in y_value
         assert "* 100" in y_value
 
-    def test_metric_composition_in_filter(self):
+    def test_metric_composition_in_filter(self, mocker):
         """Test using composed metrics in filter expressions."""
         # Create metrics
         base_metric = Mock(spec=Metric)
@@ -218,6 +258,15 @@ class TestMetricComposition:
         threshold_metric.expression = "${ref(average_order_value)} * 2"
 
         self.project.metrics = [base_metric, threshold_metric]
+
+        # Mock all_descendants_of_type to return our metrics
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[base_metric, threshold_metric],
+        )
+
+        # Mock DAG predecessors
+        self.project.dag.return_value.predecessors = Mock(return_value=[])
 
         # Create a trace with a filter using the composed metric
         trace = Mock(spec=Trace)
@@ -264,8 +313,8 @@ class TestMetricComposition:
         trace.props.y = "?{${ref(orders).total}}"
         trace.props.model_dump = Mock(return_value={"y": "?{${ref(orders).total}}"})
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer WITHOUT project (backward compatibility)
         tokenizer = TraceTokenizer(trace=trace, model=self.model, source=self.source)
@@ -274,7 +323,7 @@ class TestMetricComposition:
         tokenized = tokenizer.tokenize()
         assert "(SUM(amount))" in tokenized.select_items.get("props.y", "")
 
-    def test_circular_dependency_handling(self):
+    def test_circular_dependency_handling(self, mocker):
         """Test that circular dependencies in metrics are handled gracefully."""
         # Create metrics with circular dependency
         metric_a = Mock(spec=Metric)
@@ -287,6 +336,15 @@ class TestMetricComposition:
 
         self.project.metrics = [metric_a, metric_b]
 
+        # Mock all_descendants_of_type to return our metrics
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[metric_a, metric_b],
+        )
+
+        # Mock DAG predecessors
+        self.project.dag.return_value.predecessors = Mock(return_value=[])
+
         # Create a trace that tries to use a circular metric
         trace = Mock(spec=Trace)
         trace.name = "circular_trace"
@@ -295,8 +353,8 @@ class TestMetricComposition:
         trace.props.y = "?{${ref(metric_a)}}"
         trace.props.model_dump = Mock(return_value={"y": "?{${ref(metric_a)}}"})
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer with project
         tokenizer = TraceTokenizer(
@@ -310,7 +368,7 @@ class TestMetricComposition:
             "props.y", ""
         ) or "${ref(metric_b)}" in tokenized.select_items.get("props.y", "")
 
-    def test_nonexistent_metric_in_composition(self):
+    def test_nonexistent_metric_in_composition(self, mocker):
         """Test that references to non-existent metrics in compositions are handled."""
         # Create a metric that references a non-existent metric
         broken_metric = Mock(spec=Metric)
@@ -318,6 +376,15 @@ class TestMetricComposition:
         broken_metric.expression = "${ref(nonexistent)} * 2"
 
         self.project.metrics = [broken_metric]
+
+        # Mock all_descendants_of_type to return only the broken metric
+        mocker.patch(
+            "visivo.models.dag.all_descendants_of_type",
+            return_value=[broken_metric],
+        )
+
+        # Mock DAG predecessors
+        self.project.dag.return_value.predecessors = Mock(return_value=[])
 
         # Create a trace that uses the broken metric
         trace = Mock(spec=Trace)
@@ -327,8 +394,8 @@ class TestMetricComposition:
         trace.props.y = "?{${ref(broken)}}"
         trace.props.model_dump = Mock(return_value={"y": "?{${ref(broken)}}"})
         trace.order_by = []
-        trace.filter_by = []
-        trace.model_dump = Mock(return_value={"order_by": [], "filter_by": []})
+        trace.filters = []
+        trace.model_dump = Mock(return_value={"order_by": [], "filters": []})
 
         # Create tokenizer with project
         tokenizer = TraceTokenizer(
@@ -337,5 +404,7 @@ class TestMetricComposition:
 
         # Should not fully resolve due to missing reference
         tokenized = tokenizer.tokenize()
-        # The broken metric reference should remain unresolved since it can't be resolved
-        assert "${ref(broken)}" in tokenized.select_items.get("props.y", "")
+        # The broken metric should try to resolve but ${ref(nonexistent)} should remain unresolved
+        y_value = tokenized.select_items.get("props.y", "")
+        # Should contain the unresolved reference to 'nonexistent'
+        assert "${ref(nonexistent)}" in y_value or "(${ref(nonexistent)} * 2)" in y_value

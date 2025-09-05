@@ -40,15 +40,11 @@ class TestProjectWithMetrics:
             relations=[
                 Relation(
                     name="orders_to_users",
-                    left_model="orders",
-                    right_model="users",
                     join_type="inner",
                     condition="${ref(orders).user_id} = ${ref(users).id}",
                 ),
                 Relation(
                     name="orders_to_products",
-                    left_model="orders",
-                    right_model="products",
                     join_type="left",
                     condition="${ref(orders).product_id} = ${ref(products).id}",
                 ),
@@ -130,9 +126,7 @@ class TestProjectWithMetrics:
         project = Project(
             name="test_project",
             metrics=[Metric(name="global_metric", expression="test")],
-            relations=[
-                Relation(name="test_relation", left_model="a", right_model="b", condition="test")
-            ],
+            relations=[Relation(name="test_relation", condition="${ref(a).id} = ${ref(b).id}")],
             models=[
                 SqlModel(
                     name="model1",
@@ -209,8 +203,6 @@ class TestProjectWithMetrics:
             relations=[
                 Relation(
                     name="orders_to_users",
-                    left_model="orders",
-                    right_model="users",
                     join_type="inner",
                     condition="${ref(orders).user_id} = ${ref(users).id}",
                     is_default=True,
@@ -241,5 +233,7 @@ class TestProjectWithMetrics:
         # Verify relation
         relation = project.relations[0]
         assert relation.is_default is True
-        assert relation.left_model == "orders"
-        assert relation.right_model == "users"
+        # Verify the relation extracts model references from condition
+        referenced_models = relation.get_referenced_models()
+        assert "orders" in referenced_models
+        assert "users" in referenced_models

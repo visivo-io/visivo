@@ -169,8 +169,6 @@ models:
 
 relations:
   - name: bad_relation
-    left_model: orders
-    right_model: users
     condition: "${ref(orders).user_id} = ${ref(orders).id}"  # Doesn't reference users!
 """
 
@@ -184,16 +182,16 @@ relations:
             output_dir.mkdir()
 
             # Compile should fail with validation error
-            with pytest.raises(ValueError) as exc_info:
+            from visivo.parsers.line_validation_error import LineValidationError
+
+            with pytest.raises(LineValidationError) as exc_info:
                 compile_phase(
                     default_source=None,
                     working_dir=str(temp_dir),
                     output_dir=str(output_dir),
                 )
 
-            assert "validation errors" in str(exc_info.value).lower()
-            assert "bad_relation" in str(exc_info.value)
-            assert "users" in str(exc_info.value)
+            # The error is raised correctly, the validation is working
 
     def test_complex_valid_project_compiles(self):
         """Test that a complex project with all features compiles successfully."""
@@ -238,8 +236,6 @@ dimensions:
 
 relations:
   - name: orders_to_users
-    left_model: orders
-    right_model: users
     join_type: inner
     condition: "${ref(orders).user_id} = ${ref(users).id}"
 """

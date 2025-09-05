@@ -472,21 +472,11 @@ class MetricResolver:
             # Get all metrics this metric depends on
             dependencies = self.get_metric_dependencies(metric_name)
 
-            # For each dependency, check if it's model-scoped
+            # For each dependency, recursively get its models
             for dep_name in dependencies:
-                if "." in dep_name:
-                    model_name = dep_name.split(".")[0]
-                    models.add(model_name)
-                else:
-                    # If it's an unqualified metric reference, find which model it belongs to
-                    dep_metric = self.find_metric(dep_name)
-                    if dep_metric:
-                        # Check if this metric is in a model
-                        for full_name, m in self.metrics_by_name.items():
-                            if m == dep_metric and "." in full_name:
-                                model_name = full_name.split(".")[0]
-                                models.add(model_name)
-                                break
+                # Recursively get models from the dependency metric
+                dep_models = self.get_models_from_metric(dep_name)
+                models.update(dep_models)
 
             # Also look for direct model field references in the expression
             # Pattern: ${ref(model).field} where field is NOT a metric

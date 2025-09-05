@@ -18,7 +18,7 @@ After reviewing the recent refactoring to use SQLGlot for query building and the
 
 ### 3. DAG-Driven Dependencies
 - **Use ProjectDag for all dependency tracking**, not SQL parsing
-- Metrics, models, and relations are all DAG nodes with explicit edges
+- Metrics, dimensions, models, and relations are all DAG nodes with explicit edges
 - Never use regex to extract dependencies from SQL
 
 ### 4. Incremental Query Building
@@ -46,7 +46,7 @@ After reviewing the recent refactoring to use SQLGlot for query building and the
 
 ### What Needs Revision
 1. **QueryStringFactory** still uses Jinja templates - needs SQLGlot rewrite
-2. **MultiModelQueryBuilder** modifies SQL after parsing - should build from scratch
+2. **MultiModelQueryBuilder** modifies SQL after parsing - should build from scratch probably shouldnt even exist. Might make more sense to move this logic into a single unified query builder
 3. **Template-based approach** limits flexibility and dialect handling
 
 ## Revised Phase 2 Architecture

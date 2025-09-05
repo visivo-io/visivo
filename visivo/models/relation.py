@@ -50,10 +50,13 @@ class Relation(NamedModel):
         """
         models = set()
         # Pattern to match ${ref(model).field} or ${ref(model)}
-        pattern = r"\$\{ref\(([^)]+)\)(?:\.([^}]+))?\}"
+        # Handle both quoted and unquoted model names
+        pattern = r"\$\{ref\((?:(['\"])([^'\"]+)\1|([^)]+))\)(?:\.([^}]+))?\}"
 
         for match in re.finditer(pattern, self.condition):
-            model_name = match.group(1)
+            # Either group 2 (quoted) or group 3 (unquoted) has the model name
+            model_name = match.group(2) if match.group(2) else match.group(3)
+            model_name = model_name.strip()
             models.add(model_name)
 
         return models
@@ -74,11 +77,14 @@ class Relation(NamedModel):
             ValueError: If the condition doesn't reference at least two models
         """
         # Pattern to match ${ref(model).field} or ${ref(model)}
-        pattern = r"\$\{ref\(([^)]+)\)(?:\.([^}]+))?\}"
+        # Handle both quoted and unquoted model names
+        pattern = r"\$\{ref\((?:(['\"])([^'\"]+)\1|([^)]+))\)(?:\.([^}]+))?\}"
 
         models = set()
         for match in re.finditer(pattern, v):
-            model_name = match.group(1)
+            # Either group 2 (quoted) or group 3 (unquoted) has the model name
+            model_name = match.group(2) if match.group(2) else match.group(3)
+            model_name = model_name.strip()
             models.add(model_name)
 
         if len(models) < 2:

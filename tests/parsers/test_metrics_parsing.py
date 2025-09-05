@@ -51,8 +51,6 @@ metrics:
 
 relations:
   - name: orders_to_users
-    left_model: orders
-    right_model: users
     join_type: inner
     condition: "${ref(orders).user_id} = ${ref(users).id}"
     is_default: true
@@ -94,8 +92,10 @@ relations:
             # Check relations
             assert len(project.relations) == 1
             assert project.relations[0].name == "orders_to_users"
-            assert project.relations[0].left_model == "orders"
-            assert project.relations[0].right_model == "users"
+            # Check that the condition references both models
+            referenced_models = project.relations[0].get_referenced_models()
+            assert "orders" in referenced_models
+            assert "users" in referenced_models
             assert project.relations[0].is_default is True
 
         finally:

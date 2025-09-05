@@ -37,9 +37,7 @@ class TestRelationGraph:
         # Create a relation between orders and customers
         relation = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
-            condition="orders.customer_id = customers.id",
+            condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
         project = Project(
@@ -70,9 +68,7 @@ class TestRelationGraph:
 
         relation = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
-            condition="orders.customer_id = customers.id",
+            condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
         project = Project(
@@ -90,7 +86,7 @@ class TestRelationGraph:
         assert len(path) == 1
         assert path[0][0] == "orders"
         assert path[0][1] == "customers"
-        assert "orders.customer_id = customers.id" in path[0][2]
+        assert "${ref(orders).customer_id} = ${ref(customers).id}" in path[0][2]
 
     def test_find_indirect_join_path(self):
         """Test finding join path through intermediate model."""
@@ -109,16 +105,12 @@ class TestRelationGraph:
         # Create relations forming a chain: customers -> orders -> products
         relation1 = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
-            condition="orders.customer_id = customers.id",
+            condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
         relation2 = Relation(
             name="orders_products",
-            left_model="orders",
-            right_model="products",
-            condition="orders.product_id = products.id",
+            condition="${ref(orders).product_id} = ${ref(products).id}",
         )
 
         project = Project(
@@ -177,16 +169,12 @@ class TestRelationGraph:
         # Create relations forming a triangle
         relation1 = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
-            condition="orders.customer_id = customers.id",
+            condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
         relation2 = Relation(
             name="orders_products",
-            left_model="orders",
-            right_model="products",
-            condition="orders.product_id = products.id",
+            condition="${ref(orders).product_id} = ${ref(products).id}",
         )
 
         project = Project(
@@ -226,21 +214,15 @@ class TestRelationGraph:
         relations = [
             Relation(
                 name="r1",
-                left_model="orders",
-                right_model="customers",
-                condition="orders.customer_id = customers.id",
+                condition="${ref(orders).customer_id} = ${ref(customers).id}",
             ),
             Relation(
                 name="r2",
-                left_model="orders",
-                right_model="products",
-                condition="orders.product_id = products.id",
+                condition="${ref(orders).product_id} = ${ref(products).id}",
             ),
             Relation(
                 name="r3",
-                left_model="orders",
-                right_model="shipping",
-                condition="orders.shipping_id = shipping.id",
+                condition="${ref(orders).shipping_id} = ${ref(shipping).id}",
             ),
         ]
 
@@ -282,9 +264,7 @@ class TestRelationGraph:
         # Only connect orders and customers
         relation = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
-            condition="orders.customer_id = customers.id",
+            condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
         project = Project(
@@ -313,8 +293,6 @@ class TestRelationGraph:
         # Use ${ref()} syntax in relation
         relation = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
             condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
@@ -342,9 +320,7 @@ class TestRelationGraph:
 
         relation = Relation(
             name="orders_customers",
-            left_model="orders",
-            right_model="customers",
-            condition="orders.customer_id = customers.id",
+            condition="${ref(orders).customer_id} = ${ref(customers).id}",
         )
 
         project = Project(
@@ -358,7 +334,7 @@ class TestRelationGraph:
 
         # Get direct condition
         condition = graph.get_join_condition("orders", "customers")
-        assert condition == "orders.customer_id = customers.id"
+        assert condition == "${ref(orders).customer_id} = ${ref(customers).id}"
 
         # No direct relation
         condition = graph.get_join_condition("orders", "orders")

@@ -116,7 +116,9 @@ class TestMetricValidationResolution:
         # Try to resolve - it should leave the reference as-is if metric not found
         # (or could raise an error - depends on implementation)
         try:
-            resolved_expr, involved_models = resolver.resolve_metric_for_validation("missing_metric")
+            resolved_expr, involved_models = resolver.resolve_metric_for_validation(
+                "missing_metric"
+            )
             # If it doesn't raise, check that the reference wasn't resolved
             assert "${ref(non_existent)}" in resolved_expr
         except Exception as e:
