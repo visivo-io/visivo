@@ -69,7 +69,7 @@ class Relation(NamedModel):
         is_valid, error = validate_ref_syntax(v)
         if not is_valid:
             raise ValueError(error)
-        
+
         # Check we have at least 2 models
         models = extract_model_names(v)
         if len(models) < 2:
