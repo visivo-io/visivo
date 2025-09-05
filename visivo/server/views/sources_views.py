@@ -123,7 +123,7 @@ def register_source_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error listing columns: {str(e)}")
             return jsonify({"message": str(e)}), 500
-    
+
     @app.route("/api/sources/test-connection/", methods=["POST"])
     def test_source_connection():
         """Test a source connection from configuration without adding to project."""
@@ -131,7 +131,7 @@ def register_source_views(app, flask_app, output_dir):
             source_config = request.json
             if not source_config:
                 return jsonify({"error": "Source configuration is required"}), 400
-            
+
             result = test_source_from_config(source_config)
             return jsonify(result)
         except Exception as e:

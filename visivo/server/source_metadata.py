@@ -60,7 +60,7 @@ def _test_source_connection(source: BaseSource, source_name: str) -> Dict[str, A
     """Common logic for testing a source connection."""
     try:
         Logger.instance().info(f"Testing connection for source: {source_name}")
-        
+
         # Use different testing approaches based on source type
         if isinstance(source, SqlalchemySource):
             # SQLAlchemy-based sources: use SQLAlchemy engine for testing
@@ -286,21 +286,24 @@ def test_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
     """Test a source connection from configuration using Pydantic models."""
     try:
         source_name = source_config.get("name", "test_source")
-        
+
         # Use Pydantic discriminated union to create the correct source model
         Logger.instance().info(f"Creating source from config for connection test: {source_name}")
-        
+
         # Parse the config using the discriminated union with TypeAdapter
         source_adapter = TypeAdapter(SourceField)
         source = source_adapter.validate_python(source_config)
-        
+
         if not isinstance(source, BaseSource):
-            return {"status": "connection_failed", "error": "Source type does not support connection testing"}
-        
+            return {
+                "status": "connection_failed",
+                "error": "Source type does not support connection testing",
+            }
+
         # Use common connection testing logic
         result = _test_source_connection(source, source_name)
         return result
-        
+
     except ValidationError as e:
         Logger.instance().debug(f"Source configuration validation failed: {e}")
         return {"status": "connection_failed", "error": f"Invalid source configuration: {str(e)}"}

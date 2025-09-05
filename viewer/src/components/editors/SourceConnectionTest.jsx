@@ -11,7 +11,8 @@ const SourceConnectionTest = ({
   const [connectionTestResult, setConnectionTestResult] = useState(null);
   const [lastTestedConfig, setLastTestedConfig] = useState(null);
 
-  // Check if current config matches last tested config
+  const isFileBased = selectedSource?.value === 'csv' || selectedSource?.value === 'xls';
+
   const configHasChanged = useCallback(() => {
     if (!lastTestedConfig) return true;
     
@@ -38,7 +39,6 @@ const SourceConnectionTest = ({
     setConnectionTestResult(null);
     
     try {
-      // Create a source configuration object for testing
       const sourceConfig = {
         name: objectName,
         type: selectedSource?.value,
@@ -62,7 +62,7 @@ const SourceConnectionTest = ({
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || isFileBased) return null;
 
   return (
     <div className="border-t pt-4 mt-4">
@@ -71,7 +71,7 @@ const SourceConnectionTest = ({
         <button
           onClick={handleTestConnection}
           disabled={isTestingConnection || !objectName}
-          className="px-4 py-1 text-sm bg-highlight text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1 text-sm bg-highlight text-white rounded-md hover:bg-highlight-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isTestingConnection ? 'Testing...' : 'Test Connection'}
         </button>
