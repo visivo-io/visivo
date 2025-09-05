@@ -86,7 +86,8 @@ class TestRelationGraph:
         assert len(path) == 1
         assert path[0][0] == "orders"
         assert path[0][1] == "customers"
-        assert "${ref(orders).customer_id} = ${ref(customers).id}" in path[0][2]
+        # The condition should now be resolved (context strings replaced with SQL references)
+        assert "orders_cte.customer_id = customers_cte.id" in path[0][2]
 
     def test_find_indirect_join_path(self):
         """Test finding join path through intermediate model."""

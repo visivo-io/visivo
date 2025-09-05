@@ -45,8 +45,15 @@ class SqlglotQueryBuilder:
         self.project = project
         self.dag: ProjectDag = project.dag()
         self.dialect = get_sqlglot_dialect(tokenized_trace.source_type)
-        self.relation_graph = RelationGraph(project) if project.relations else None
         self.model_sanitizer = ModelNameSanitizer()  # Create instance for this query
+        
+        # Build model alias map for relation resolution
+        self.model_alias_map = self._build_model_alias_map()
+        
+        # Pass the alias map to RelationGraph for proper resolution
+        self.relation_graph = (
+            RelationGraph(project, self.model_alias_map) if project.relations else None
+        )
 
     def build(self) -> str:
         """
@@ -478,14 +485,41 @@ class SqlglotQueryBuilder:
         has_group_by = select_expr.find(exp.Group)
 
         # Build a mapping of expressions to their aliases for lookup
+        # Also build a mapping of base columns to their transformed expressions
         alias_mapping = {}
+        base_column_mapping = {}  # Maps base column names to their aliases
+
         if has_group_by and self.tokenized_trace.select_items:
             for alias, expression in self.tokenized_trace.select_items.items():
+                sanitized_alias = self._sanitize_alias(alias)
                 # Store both the original expression and any column references
-                alias_mapping[expression] = self._sanitize_alias(alias)
+                alias_mapping[expression] = sanitized_alias
                 # Also check for simple column names
                 if "(" not in expression and "." not in expression:
-                    alias_mapping[expression.lower()] = self._sanitize_alias(alias)
+                    alias_mapping[expression.lower()] = sanitized_alias
+
+                # Check if this is a transformed column (e.g., "year::varchar" or "CAST(year AS ...)")
+                # Use SQLGlot to parse the expression and extract the base column
+                parsed_expr = parse_expression(expression, dialect=self.dialect)
+                if parsed_expr:
+                    # Check if it's a Cast expression
+                    if isinstance(parsed_expr, exp.Cast):
+                        # Extract the base column from the Cast
+                        if isinstance(parsed_expr.this, exp.Column):
+                            base_column = parsed_expr.this.name.lower()
+                            base_column_mapping[base_column] = sanitized_alias
+                    # Check if it's a DataType cast (PostgreSQL :: syntax)
+                    elif isinstance(parsed_expr, exp.DataType):
+                        # For :: casts, SQLGlot may parse differently
+                        # Try to extract the column name from the expression string
+                        # Actually, let's re-parse with different approach
+                        pass
+                    # Also check for PostgreSQL-style casts parsed as binary operations
+                    elif hasattr(parsed_expr, 'this') and hasattr(parsed_expr, 'expression'):
+                        # Sometimes year::varchar is parsed as a binary operation
+                        if isinstance(parsed_expr.this, exp.Column):
+                            base_column = parsed_expr.this.name.lower()
+                            base_column_mapping[base_column] = sanitized_alias
 
         for order_item in self.tokenized_trace.order_by:
             # Handle DESC/ASC modifiers explicitly
@@ -499,15 +533,28 @@ class SqlglotQueryBuilder:
             else:
                 column = order_item.strip()
 
-            # If GROUP BY is present and this column is an alias, use the alias
-            if has_group_by and column.lower() in alias_mapping:
-                # Use the alias instead of the column
-                order_column = exp.Identifier(this=alias_mapping[column.lower()], quoted=True)
-            elif has_group_by and column in alias_mapping:
-                # Check exact match too
-                order_column = exp.Identifier(this=alias_mapping[column], quoted=True)
+            # If GROUP BY is present, check various mappings
+            if has_group_by:
+                column_lower = column.lower()
+
+                # First check if this column has been transformed (e.g., year -> year::varchar)
+                if column_lower in base_column_mapping:
+                    # Use the alias of the transformed column
+                    order_column = exp.Identifier(
+                        this=base_column_mapping[column_lower], quoted=True
+                    )
+                # Then check if this column is directly in alias mapping
+                elif column_lower in alias_mapping:
+                    # Use the alias instead of the column
+                    order_column = exp.Identifier(this=alias_mapping[column_lower], quoted=True)
+                elif column in alias_mapping:
+                    # Check exact match too
+                    order_column = exp.Identifier(this=alias_mapping[column], quoted=True)
+                else:
+                    # Use the column as-is
+                    order_column = exp.Column(this=column)
             else:
-                # Use the column as-is
+                # No GROUP BY, use the column as-is
                 order_column = exp.Column(this=column)
 
             if desc:
@@ -595,6 +642,25 @@ class SqlglotQueryBuilder:
             SQL-safe alias for CTEs and table references
         """
         return self.model_sanitizer.sanitize(model_name)
+    
+    def _build_model_alias_map(self) -> Dict[str, str]:
+        """
+        Build a mapping of model names to their SQL aliases.
+        
+        Returns:
+            Dictionary mapping model names to sanitized aliases
+        """
+        alias_map = {}
+        
+        # Get all models from the project
+        from visivo.models.dag import all_descendants_of_type
+        from visivo.models.models.model import Model
+        
+        models = all_descendants_of_type(type=Model, dag=self.dag)
+        for model in models:
+            alias_map[model.name] = self._get_model_alias(model.name)
+        
+        return alias_map
 
     def _sanitize_alias(self, alias: str) -> str:
         """
@@ -841,33 +907,30 @@ class SqlglotQueryBuilder:
     def _qualify_join_condition(self, condition: str, model_names: List[str]) -> exp.Expression:
         """
         Parse and qualify a join condition.
+        
+        This method expects the condition to be resolved SQL without any context strings.
+        All ${ref(...)} patterns must be resolved by RelationResolver before reaching here.
 
         Args:
-            condition: Join condition like "${ref(orders).user_id} = ${ref(users).id}"
+            condition: Resolved SQL join condition (e.g., "orders_cte.user_id = users_cte.id")
             model_names: List of available model names
 
         Returns:
             Parsed and qualified expression
+            
+        Raises:
+            ValueError: If unresolved context strings are detected
         """
-        import re
-
-        # Replace ${ref(model).field} with sanitized_model_cte.field
-        # Handle both quoted and unquoted model names
-        pattern = r'\$\{ref\((?:([\'"])([^\'\"]+)\1|([^)]+))\)\.([^}]+)\}'
-
-        def replace_ref(match):
-            # Either group 2 (quoted) or group 3 (unquoted) has the model name
-            model_name = match.group(2) if match.group(2) else match.group(3)
-            model_name = model_name.strip()
-            field_name = match.group(4).strip()
-            # Use sanitized model name for SQL
-            sanitized_model = self._get_model_alias(model_name)
-            return f"{sanitized_model}_cte.{field_name}"
-
-        qualified_condition = re.sub(pattern, replace_ref, condition)
-
-        # Parse the qualified condition
-        return parse_expression(qualified_condition, dialect=self.dialect)
+        # Validate that no unresolved context strings are present
+        if "${" in condition and "}" in condition:
+            raise ValueError(
+                f"Unresolved context strings found in join condition: {condition}. "
+                "Context strings must be resolved by RelationResolver before reaching the query builder."
+            )
+        
+        # The condition should already be resolved SQL at this point
+        # Parse it directly with SQLGlot
+        return parse_expression(condition, dialect=self.dialect)
 
     def _qualify_expression(self, expression: str, model_names: List[str]) -> exp.Expression:
         """
