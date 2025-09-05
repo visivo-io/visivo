@@ -443,20 +443,20 @@ class TestSqlglotQueryBuilder:
     def test_schema_building_from_dimensions(self):
         """Test that schema is correctly built from model dimensions."""
         source = SourceFactory(name="test_db")
-        
+
         # Create model with explicit dimensions
         model = SqlModelFactory(
             name="test_model",
             sql="SELECT id, name, amount FROM test_table",
             source="ref(test_db)",
         )
-        
+
         # Add explicit dimensions to the model
         model.dimensions = [
             Dimension(name="id", expression="id", data_type="INTEGER"),
             Dimension(name="name", expression="name", data_type="VARCHAR"),
         ]
-        
+
         # Add implicit dimensions (simulating what extract_dimensions_job would do)
         model._implicit_dimensions = [
             Dimension(name="amount", expression="amount", data_type="DECIMAL"),
@@ -480,10 +480,10 @@ class TestSqlglotQueryBuilder:
         )
 
         builder = SqlglotQueryBuilder(tokenized, project)
-        
+
         # Test the schema building method
         schema = builder._build_schema_from_dimensions()
-        
+
         assert schema is not None
         assert "base_model" in schema
         assert "id" in schema["base_model"]
@@ -532,7 +532,7 @@ class TestSqlglotQueryBuilder:
         # The aliases should have pipes instead of dots
         assert "props|device|type" in sql
         assert "props|user|id" in sql
-        
+
         # Original field references in expressions should remain unchanged
         assert "props.device.type" in sql
         assert "props.user.id" in sql
@@ -582,17 +582,17 @@ class TestSqlglotQueryBuilder:
         # The qualify step should ensure proper quoting
         assert sql is not None
         assert "SELECT" in sql.upper()
-        
+
     def test_multi_model_query_with_sanitized_aliases(self):
         """Test multi-model queries with alias sanitization."""
         source = SourceFactory(name="test_db")
-        
+
         model1 = SqlModelFactory(
             name="users",
             sql="SELECT id, name, metadata FROM users_table",
             source="ref(test_db)",
         )
-        
+
         model2 = SqlModelFactory(
             name="events",
             sql="SELECT user_id, event_type, props FROM events_table",
@@ -668,11 +668,15 @@ class TestSqlglotQueryBuilder:
 
         # Verify GROUP BY is present
         assert "GROUP BY" in sql
-        
+
         # Verify ORDER BY uses appropriate references
         assert "ORDER BY" in sql
-        order_by_clause = sql.split("ORDER BY")[1].split("LIMIT")[0] if "LIMIT" in sql else sql.split("ORDER BY")[1]
-        
+        order_by_clause = (
+            sql.split("ORDER BY")[1].split("LIMIT")[0]
+            if "LIMIT" in sql
+            else sql.split("ORDER BY")[1]
+        )
+
         # When GROUP BY is present, ORDER BY should use aliases or grouped columns
         # Should not reference base_model columns directly
         assert "base_model.year" not in order_by_clause.lower()

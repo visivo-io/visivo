@@ -94,7 +94,17 @@ class MetricValidator:
             return True, None
 
         except ParseError as e:
-            return False, f"SQL parsing error: {str(e)}"
+            # Simplify parse errors - they're usually about invalid SQL syntax
+            error_msg = str(e)
+            if "Required keyword" in error_msg or "missing for" in error_msg:
+                return (
+                    False,
+                    "Invalid SQL syntax. Check for unresolved references like ${ref(...)}.",
+                )
+            return (
+                False,
+                f"Invalid SQL syntax: {error_msg.split('.')[0] if '.' in error_msg else error_msg}",
+            )
         except Exception as e:
             return False, f"Validation error: {str(e)}"
 
@@ -181,7 +191,17 @@ class MetricValidator:
             return True, None
 
         except ParseError as e:
-            return False, f"SQL parsing error: {str(e)}"
+            # Simplify parse errors - they're usually about invalid SQL syntax
+            error_msg = str(e)
+            if "Required keyword" in error_msg or "missing for" in error_msg:
+                return (
+                    False,
+                    "Invalid SQL syntax. Check for unresolved references like ${ref(...)}.",
+                )
+            return (
+                False,
+                f"Invalid SQL syntax: {error_msg.split('.')[0] if '.' in error_msg else error_msg}",
+            )
         except Exception as e:
             return False, f"Validation error: {str(e)}"
 
@@ -218,7 +238,17 @@ class MetricValidator:
             return True, None
 
         except ParseError as e:
-            return False, f"SQL parsing error: {str(e)}"
+            # Simplify parse errors - they're usually about invalid SQL syntax
+            error_msg = str(e)
+            if "Required keyword" in error_msg or "missing for" in error_msg:
+                return (
+                    False,
+                    "Invalid SQL syntax. Check for unresolved references like ${ref(...)}.",
+                )
+            return (
+                False,
+                f"Invalid SQL syntax: {error_msg.split('.')[0] if '.' in error_msg else error_msg}",
+            )
         except Exception as e:
             return False, f"Validation error: {str(e)}"
 

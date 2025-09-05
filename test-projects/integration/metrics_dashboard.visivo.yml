@@ -29,7 +29,12 @@ dashboards:
               ## 💰 Financial Metrics
               Key financial indicators using metrics from the waterfall model
             align: left
-      
+      - height: medium 
+        items: 
+          - chart:
+              name: Cross Model Chart
+              traces:
+                - ${ref(cross-model-dimension-metrics)}
       - height: medium
         items:
           - width: 2

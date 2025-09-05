@@ -24,7 +24,7 @@ class TestProjectLevelDimensions:
             sql="SELECT id, amount, tax FROM sales_table",
             source="ref(test_db)",
         )
-        
+
         # Create project with project-level dimensions
         project = Project(
             name="test_project",
@@ -34,14 +34,14 @@ class TestProjectLevelDimensions:
                 Dimension(
                     name="total_with_tax",
                     expression="amount + tax",
-                    description="Total amount including tax"
+                    description="Total amount including tax",
                 )
             ],
             dashboards=[],
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Should be able to find the project-level dimension
         result = resolver.find_dimension("total_with_tax")
         assert result is not None
@@ -53,7 +53,7 @@ class TestProjectLevelDimensions:
     def test_project_dimension_referencing_model_dimensions(self):
         """Test project-level dimension that references model-level dimensions."""
         source = SourceFactory(name="test_db")
-        
+
         # First model with dimensions
         users_model = SqlModelFactory(
             name="users",
@@ -62,12 +62,10 @@ class TestProjectLevelDimensions:
         )
         users_model.dimensions = [
             Dimension(
-                name="full_name",
-                expression="first_name || ' ' || last_name",
-                data_type="VARCHAR"
+                name="full_name", expression="first_name || ' ' || last_name", data_type="VARCHAR"
             ),
         ]
-        
+
         # Second model with dimensions
         orders_model = SqlModelFactory(
             name="orders",
@@ -75,13 +73,9 @@ class TestProjectLevelDimensions:
             source="ref(test_db)",
         )
         orders_model.dimensions = [
-            Dimension(
-                name="final_amount",
-                expression="amount - discount",
-                data_type="DECIMAL"
-            ),
+            Dimension(name="final_amount", expression="amount - discount", data_type="DECIMAL"),
         ]
-        
+
         # Create project with cross-model dimension
         project = Project(
             name="test_project",
@@ -91,20 +85,20 @@ class TestProjectLevelDimensions:
                 Dimension(
                     name="customer_order_summary",
                     expression="${ref(users).full_name} || ' - $' || ${ref(orders).final_amount}",
-                    description="Combined customer and order information"
+                    description="Combined customer and order information",
                 )
             ],
             dashboards=[],
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Resolve the project-level dimension
         expression = resolver.resolve_dimension_expression("customer_order_summary")
         # Should resolve nested dimension references
         assert "(first_name || ' ' || last_name)" in expression
         assert "(amount - discount)" in expression
-        
+
         # Check that it identifies the referenced models
         models = resolver.get_models_from_dimension("customer_order_summary")
         assert models == {"users", "orders"}
@@ -112,7 +106,7 @@ class TestProjectLevelDimensions:
     def test_project_dimension_with_nested_references(self):
         """Test project dimension with multiple levels of nesting."""
         source = SourceFactory(name="test_db")
-        
+
         model = SqlModelFactory(
             name="data",
             sql="SELECT value, multiplier FROM data_table",
@@ -121,7 +115,7 @@ class TestProjectLevelDimensions:
         model.dimensions = [
             Dimension(name="base_calc", expression="value * multiplier"),
         ]
-        
+
         # Project with dimensions that reference other dimensions
         project = Project(
             name="test_project",
@@ -139,9 +133,9 @@ class TestProjectLevelDimensions:
             ],
             dashboards=[],
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Resolve the nested dimension
         expression = resolver.resolve_dimension_expression("final_calc")
         # Should have resolved all the way down
@@ -152,7 +146,7 @@ class TestProjectLevelDimensions:
     def test_project_dimension_overrides_model_dimension(self):
         """Test that project-level dimensions take precedence over model-level."""
         source = SourceFactory(name="test_db")
-        
+
         model = SqlModelFactory(
             name="data",
             sql="SELECT amount FROM data_table",
@@ -161,7 +155,7 @@ class TestProjectLevelDimensions:
         model.dimensions = [
             Dimension(name="model_tax_rate", expression="0.08"),
         ]
-        
+
         # Use ProjectFactory to avoid validation issues
         project = ProjectFactory(
             name="test_project",
@@ -172,22 +166,22 @@ class TestProjectLevelDimensions:
             ],
             dashboards=[],
         )
-        
+
         # Also add a dimension with same name as model dimension to test precedence
         project.dimensions.append(
             Dimension(name="model_tax_rate", expression="0.12")  # Override model's dimension
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Project-level dimension should override model-level with same name
         expression = resolver.resolve_dimension_expression("model_tax_rate")
         assert expression == "0.12"  # Project level takes precedence
-        
+
         # Can still access model-level with qualification
         expression = resolver.resolve_dimension_expression("data.model_tax_rate")
         assert expression == "0.08"
-        
+
         # Project-only dimension
         expression = resolver.resolve_dimension_expression("project_tax_rate")
         assert expression == "0.10"
@@ -195,7 +189,7 @@ class TestProjectLevelDimensions:
     def test_cross_model_dimension_composition(self):
         """Test composing dimensions across multiple models."""
         source = SourceFactory(name="test_db")
-        
+
         # Products model
         products_model = SqlModelFactory(
             name="products",
@@ -212,7 +206,7 @@ class TestProjectLevelDimensions:
                 expression="base_price * ${ref(products).markup}",
             ),
         ]
-        
+
         # Inventory model
         inventory_model = SqlModelFactory(
             name="inventory",
@@ -225,7 +219,7 @@ class TestProjectLevelDimensions:
                 expression="quantity < 10",
             ),
         ]
-        
+
         # Project-level dimension combining both
         project = Project(
             name="test_project",
@@ -235,7 +229,7 @@ class TestProjectLevelDimensions:
                 Dimension(
                     name="inventory_value",
                     expression="${ref(products).retail_price} * ${ref(inventory).quantity}",
-                    description="Total value of inventory for a product"
+                    description="Total value of inventory for a product",
                 ),
                 Dimension(
                     name="reorder_urgency",
@@ -253,21 +247,21 @@ class TestProjectLevelDimensions:
             ],
             dashboards=[],
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Test inventory_value resolution
         expression = resolver.resolve_dimension_expression("inventory_value")
         assert "base_price" in expression
         assert "markup" in expression or "1.5" in expression or "1.2" in expression
         assert "quantity" in expression
-        
+
         # Test reorder_urgency resolution
         expression = resolver.resolve_dimension_expression("reorder_urgency")
         assert "quantity < 10" in expression
         assert "URGENT" in expression
         assert "category" in expression
-        
+
         # Check models involved
         models = resolver.get_models_from_dimension("inventory_value")
         assert models == {"products", "inventory"}
@@ -280,7 +274,7 @@ class TestProjectLevelDimensions:
             sql="SELECT value FROM data_table",
             source="ref(test_db)",
         )
-        
+
         # Create circular reference
         project = Project(
             name="test_project",
@@ -292,9 +286,9 @@ class TestProjectLevelDimensions:
             ],
             dashboards=[],
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Should handle circular reference gracefully
         # (might return original reference or raise an error depending on implementation)
         try:
@@ -308,9 +302,9 @@ class TestProjectLevelDimensions:
     def test_project_dimension_in_trace(self):
         """Test that project dimensions can be used in traces."""
         from visivo.models.trace import Trace
-        
+
         source = SourceFactory(name="test_db")
-        
+
         model = SqlModelFactory(
             name="sales",
             sql="SELECT product_id, quantity, price FROM sales",
@@ -319,7 +313,7 @@ class TestProjectLevelDimensions:
         model.dimensions = [
             Dimension(name="revenue", expression="quantity * price"),
         ]
-        
+
         project = Project(
             name="test_project",
             sources=[source],
@@ -343,9 +337,9 @@ class TestProjectLevelDimensions:
             ],
             dashboards=[],
         )
-        
+
         resolver = DimensionResolver(project)
-        
+
         # Should be able to resolve the project dimension
         expression = resolver.resolve_dimension_expression("revenue_with_tax")
         assert "quantity * price" in expression

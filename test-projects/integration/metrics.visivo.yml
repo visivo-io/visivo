@@ -138,9 +138,18 @@ metrics:
   - name: test-metric-test-one
     expression: ${ref(min_y)} / ${ref(total_y)}
   - name: cross-model-metric
-    expression: ${ref(y_variance)} + ${ref(net_income)}
+    expression: ${ref(y_variance)} + ${ref(waterfall_model_duckdb).net_income}
+dimensions:
+  - name: multi-model-dimension
+    expression: concat(${ref(test_table_with_metrics).x_category}, ${ref(waterfall_model_duckdb).year_quarter} )
 traces:
   # Financial metrics traces
+  - name: cross-model-dimension-metrics
+    model: ${ref(test_table_with_metrics)}
+    props: 
+      type: bar
+      x: ?{ ${ref(multi-model-dimension)} }
+      y: ?{ ${ref(cross-model-metric)} }
   - name: Revenue Indicator
     model: ${ref(waterfall_model_duckdb)}
     props:

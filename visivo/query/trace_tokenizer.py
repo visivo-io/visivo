@@ -34,6 +34,7 @@ class TraceTokenizer:
         self.statement_classifier = StatementClassifier(source_type=source.type)
         self.select_items = {}
         self._metric_resolver = None  # Will be initialized lazily if needed
+        self._dimension_resolver = None  # Will be initialized lazily if needed
         self.referenced_models = set()  # Track models referenced via ${ref(model).field}
         self._set_select_items()
         self._set_order_by()
@@ -48,12 +49,21 @@ class TraceTokenizer:
             self._metric_resolver = MetricResolver(self.project)
         return self._metric_resolver
 
+    def _get_dimension_resolver(self):
+        """Lazily initialize and return the DimensionResolver."""
+        if self._dimension_resolver is None and self.project is not None:
+            from visivo.query.dimension_resolver import DimensionResolver
+
+            self._dimension_resolver = DimensionResolver(self.project)
+        return self._dimension_resolver
+
     def _resolve_metric_reference(self, query_statement: str) -> str:
         """
-        Resolve metric references in query statements.
+        Resolve metric and dimension references in query statements.
         Converts ${ref(model).metric_name} or ${ref(metric_name)} to the actual metric expression.
+        Converts ${ref(model).dimension_name} or ${ref(dimension_name)} to the actual dimension expression.
         Also handles ${ref(model).field} for cross-model field references.
-        Supports both single-model metrics and metric compositions.
+        Supports both single-model metrics/dimensions and compositions.
         """
         # First try to use MetricResolver if project is available
         if self.project is not None:
@@ -91,6 +101,44 @@ class TraceTokenizer:
                 # First resolve simple metric references
                 query_statement = re.sub(
                     simple_metric_pattern, replace_simple_metric, query_statement
+                )
+
+            # Now try dimension resolution
+            dimension_resolver = self._get_dimension_resolver()
+            if dimension_resolver:
+                # Pattern to match ${ref(dimension_name)} for dimension references
+                # Same pattern as metrics but we'll check dimensions
+                simple_dimension_pattern = r"\$\{\s*ref\(\s*([^.)]+)\s*\)\s*\}"
+
+                def replace_simple_dimension(match):
+                    dimension_name = match.group(1).strip().strip("'\"")
+
+                    # Skip if this was already handled as a metric
+                    if resolver and dimension_name in resolver.metrics_by_name:
+                        return match.group(0)
+
+                    # Try to resolve as a dimension
+                    try:
+                        resolved_expr = dimension_resolver.resolve_dimension_expression(
+                            dimension_name, current_model=self.model.name
+                        )
+
+                        # Track models used in this dimension
+                        dimension_models = dimension_resolver.get_models_from_dimension(
+                            dimension_name
+                        )
+                        # Only add models that are not the current model
+                        other_models = dimension_models - {self.model.name}
+                        self.referenced_models.update(other_models)
+
+                        return f"({resolved_expr})"
+                    except Exception:
+                        # Not a dimension, return original
+                        return match.group(0)
+
+                # Resolve simple dimension references
+                query_statement = re.sub(
+                    simple_dimension_pattern, replace_simple_dimension, query_statement
                 )
 
         # Pattern to match ${ref(model_name).field_or_metric_name}
@@ -141,6 +189,46 @@ class TraceTokenizer:
                         except Exception:
                             pass
 
+                # Try to resolve as a dimension if metric resolution failed
+                dimension_resolver = self._get_dimension_resolver()
+                if dimension_resolver:
+                    # Try qualified dimension name
+                    full_dimension_name = f"{model_name}.{field_or_metric_name}"
+                    try:
+                        resolved_expr = dimension_resolver.resolve_dimension_expression(
+                            full_dimension_name, current_model=self.model.name
+                        )
+
+                        # Track models used in this dimension
+                        dimension_models = dimension_resolver.get_models_from_dimension(
+                            full_dimension_name
+                        )
+                        # Only add models that are not the current model
+                        other_models = dimension_models - {self.model.name}
+                        self.referenced_models.update(other_models)
+
+                        return f"({resolved_expr})"
+                    except Exception:
+                        pass
+
+                    # Try just the dimension name
+                    try:
+                        resolved_expr = dimension_resolver.resolve_dimension_expression(
+                            field_or_metric_name, current_model=self.model.name
+                        )
+
+                        # Track models used in this dimension
+                        dimension_models = dimension_resolver.get_models_from_dimension(
+                            field_or_metric_name
+                        )
+                        # Only add models that are not the current model
+                        other_models = dimension_models - {self.model.name}
+                        self.referenced_models.update(other_models)
+
+                        return f"({resolved_expr})"
+                    except Exception:
+                        pass
+
             # Check if it's a metric in the current model (backward compatibility)
             if model_name == self.model.name:
                 # Look for the metric in the model's metrics
@@ -164,7 +252,31 @@ class TraceTokenizer:
                             # Return the metric expression wrapped in parentheses for safety
                             return f"({metric.expression})"
 
-                # If it's the current model and not a metric, leave it unchanged
+                # Look for the dimension in the model's dimensions
+                if hasattr(self.model, "dimensions") and self.model.dimensions:
+                    for dimension in self.model.dimensions:
+                        if dimension.name == field_or_metric_name:
+                            # For backward compatibility, resolve the dimension here too
+                            dimension_resolver = self._get_dimension_resolver()
+                            if self.project is not None and dimension_resolver:
+                                try:
+                                    # Track models used in this dimension
+                                    dimension_models = dimension_resolver.get_models_from_dimension(
+                                        field_or_metric_name
+                                    )
+                                    # Only add models that are not the current model
+                                    other_models = dimension_models - {self.model.name}
+                                    self.referenced_models.update(other_models)
+                                except Exception:
+                                    pass
+
+                            # Return the dimension expression wrapped in parentheses for safety
+                            expression = (
+                                dimension.expression if dimension.expression else dimension.name
+                            )
+                            return f"({expression})"
+
+                # If it's the current model and not a metric or dimension, leave it unchanged
                 # This preserves backward compatibility and error messages
                 return match.group(0)
 
@@ -214,6 +326,9 @@ class TraceTokenizer:
         # TODO Replace with query string
         de_query = extract_value_from_function(cohort_on, "query")
         cohort_on_value = de_query if de_query else cohort_on
+
+        # Resolve any metric or dimension references in cohort_on
+        cohort_on_value = self._resolve_metric_reference(cohort_on_value)
 
         # For Redshift, cast string literals to VARCHAR(128) to avoid type conversion issues
         if self.source.type == "redshift":

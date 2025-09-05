@@ -10,6 +10,7 @@ from visivo.parsers.serializer import Serializer
 from visivo.commands.parse_project_phase import parse_project_phase
 from visivo.validation.metric_validator import MetricValidator
 from visivo.query.metric_resolver import MetricResolver
+from visivo.query.dimension_resolver import DimensionResolver
 
 import_duration = round(time() - compile_import_start, 2)
 Logger.instance().debug(f"Compile Import completed in {import_duration}s")
@@ -27,7 +28,7 @@ def _collect_compile_telemetry(project):
 
 
 def _resolve_and_validate_metrics(project):
-    """Resolve and validate all metrics in the project."""
+    """Resolve and validate all metrics and dimensions in the project."""
     validation_errors = []
 
     # Initialize metric resolver
@@ -36,6 +37,13 @@ def _resolve_and_validate_metrics(project):
     except Exception as e:
         Logger.instance().debug(f"MetricResolver initialization failed: {e}")
         resolver = None
+
+    # Initialize dimension resolver
+    try:
+        dimension_resolver = DimensionResolver(project)
+    except Exception as e:
+        Logger.instance().debug(f"DimensionResolver initialization failed: {e}")
+        dimension_resolver = None
 
     # Resolve and validate global metrics
     if hasattr(project, "metrics") and project.metrics:
@@ -108,8 +116,28 @@ def _resolve_and_validate_metrics(project):
             # Validate model dimensions
             if hasattr(model, "dimensions") and model.dimensions:
                 for dimension in model.dimensions:
+                    # Try to resolve dimension references first
+                    resolved_expression = dimension.expression
+
+                    if dimension_resolver and "${ref(" in dimension.expression:
+                        try:
+                            # Resolve references within model dimension
+                            resolved_expression = (
+                                dimension_resolver._resolve_nested_dimension_references(
+                                    dimension.expression
+                                )
+                            )
+                            Logger.instance().debug(
+                                f"Resolved model dimension '{model.name}.{dimension.name}': {resolved_expression}"
+                            )
+                        except Exception as e:
+                            validation_errors.append(
+                                f"Failed to resolve dimension '{dimension.name}' in model '{model.name}': {str(e)}"
+                            )
+                            continue
+
                     is_valid, error = MetricValidator.validate_dimension_expression(
-                        dimension.expression
+                        resolved_expression
                     )
                     if not is_valid:
                         validation_errors.append(
@@ -119,7 +147,25 @@ def _resolve_and_validate_metrics(project):
     # Validate project-level dimensions
     if hasattr(project, "dimensions") and project.dimensions:
         for dimension in project.dimensions:
-            is_valid, error = MetricValidator.validate_dimension_expression(dimension.expression)
+            # Try to resolve dimension references first
+            resolved_expression = dimension.expression
+
+            if dimension_resolver and "${ref(" in dimension.expression:
+                try:
+                    # Resolve all references to pure SQL
+                    resolved_expression = dimension_resolver._resolve_nested_dimension_references(
+                        dimension.expression
+                    )
+                    Logger.instance().debug(
+                        f"Resolved dimension '{dimension.name}': {resolved_expression}"
+                    )
+                except Exception as e:
+                    validation_errors.append(
+                        f"Failed to resolve dimension '{dimension.name}': {str(e)}"
+                    )
+                    continue
+
+            is_valid, error = MetricValidator.validate_dimension_expression(resolved_expression)
             if not is_valid:
                 validation_errors.append(f"Invalid dimension '{dimension.name}': {error}")
 
