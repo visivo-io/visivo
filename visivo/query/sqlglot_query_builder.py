@@ -22,6 +22,13 @@ from visivo.query.sqlglot_utils import (
     parse_expression,
 )
 from visivo.query.model_name_utils import ModelNameSanitizer
+from visivo.query.builder.components import (
+    WhereClauseBuilder,
+    HavingClauseBuilder,
+    GroupByBuilder,
+    OrderByBuilder,
+    CTEBuilder,
+)
 
 
 class SqlglotQueryBuilder:
@@ -46,14 +53,21 @@ class SqlglotQueryBuilder:
         self.dag: ProjectDag = project.dag()
         self.dialect = get_sqlglot_dialect(tokenized_trace.source_type)
         self.model_sanitizer = ModelNameSanitizer()  # Create instance for this query
-        
+
         # Build model alias map for relation resolution
         self.model_alias_map = self._build_model_alias_map()
-        
+
         # Pass the alias map to RelationGraph for proper resolution
         self.relation_graph = (
             RelationGraph(project, self.model_alias_map) if project.relations else None
         )
+
+        # Initialize query components
+        self.where_builder = WhereClauseBuilder(self.dialect)
+        self.having_builder = HavingClauseBuilder(self.dialect)
+        self.group_by_builder = GroupByBuilder(self.dialect)
+        self.order_by_builder = OrderByBuilder(self.dialect)
+        self.cte_builder = CTEBuilder(self.dialect, self.project)
 
     def build(self) -> str:
         """
@@ -140,11 +154,8 @@ class SqlglotQueryBuilder:
             select_expr = self._add_limit(select_expr)
 
         # Combine CTE and main query
-        if base_cte:
-            # Add the CTE to the select expression using with_
-            query = select_expr.with_(base_cte.alias, as_=base_cte.this)
-        else:
-            query = select_expr
+        ctes = [base_cte] if base_cte else []
+        query = self.cte_builder.build_with_clause(ctes, select_expr)
 
         # Generate SQL for the specific dialect
         return query.sql(dialect=self.dialect, pretty=True)
@@ -204,10 +215,7 @@ class SqlglotQueryBuilder:
             select_expr = self._add_limit(select_expr)
 
         # Combine CTEs and main query
-        if ctes:
-            # Add all CTEs to the select expression
-            for cte in ctes:
-                select_expr = select_expr.with_(cte.alias, as_=cte.this)
+        select_expr = self.cte_builder.build_with_clause(ctes, select_expr)
 
         # Generate SQL for the specific dialect
         return select_expr.sql(dialect=self.dialect, pretty=True)
@@ -219,29 +227,11 @@ class SqlglotQueryBuilder:
         Returns:
             A CTE expression or None if not needed
         """
-        # Get the model SQL from tokenized_trace.sql
         if not self.tokenized_trace.sql:
             return None
 
-        model_sql = self.tokenized_trace.sql
-
-        # Parse the model SQL using utility function
-        parsed_sql = parse_expression(model_sql, dialect=self.dialect)
-        if not parsed_sql:
-            # If parsing fails, log warning and return None
-            Logger.instance().debug(f"Failed to parse model SQL: {model_sql[:100]}...")
-            return None
-
-        Logger.instance().debug(
-            f"Parsed SQL type: {type(parsed_sql)}, SQL: {parsed_sql.sql(dialect=self.dialect) if parsed_sql else 'None'}"
-        )
-
-        # Extract model name from SQL or use default
-        # For now, use a default name - in future this should come from the DAG
-        model_name = "base_model"
-        cte = exp.CTE(alias=exp.Identifier(this=model_name), this=parsed_sql)
-
-        return cte
+        model_name = getattr(self.tokenized_trace, "model_name", "base_model")
+        return self.cte_builder.build_base_cte(self.tokenized_trace.sql, model_name)
 
     def _build_select_expression(self) -> exp.Select:
         """
@@ -305,34 +295,7 @@ class SqlglotQueryBuilder:
         Returns:
             True if GROUP BY is required
         """
-        # Check if there are both aggregates and non-aggregates
-        has_aggregates = False
-        has_non_aggregates = False
-
-        # If no select_items, no GROUP BY needed
-        if not self.tokenized_trace.select_items:
-            return False
-
-        for expression in self.tokenized_trace.select_items.values():
-            # Parse the expression using utility function
-            parsed = parse_expression(expression, dialect=self.dialect)
-            if not parsed:
-                continue
-
-            # Skip window functions - they don't require GROUP BY
-            if has_window_function(parsed):
-                continue
-
-            # Check for aggregates using utility function (excluding window functions)
-            if has_aggregate_function(parsed) and not has_window_function(parsed):
-                has_aggregates = True
-
-            # Check for non-aggregated columns using utility function
-            non_agg_cols = find_non_aggregated_columns(parsed)
-            if non_agg_cols:
-                has_non_aggregates = True
-
-        return has_aggregates and has_non_aggregates
+        return self.group_by_builder.needs_group_by(self.tokenized_trace.select_items)
 
     def _add_group_by(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -344,49 +307,10 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with GROUP BY
         """
-        group_by_items = []
-
-        # If no select_items, return unchanged
-        if not self.tokenized_trace.select_items:
-            return select_expr
-
-        # Get non-aggregate columns from select items
-        for alias, expression in self.tokenized_trace.select_items.items():
-            parsed = parse_expression(expression, dialect=self.dialect)
-            if not parsed:
-                continue
-
-            # Skip window functions - they don't go in GROUP BY
-            if has_window_function(parsed):
-                continue
-
-            # Check if this is a non-aggregate expression using utility function
-            if not has_aggregate_function(parsed):
-                # Use the sanitized quoted alias for GROUP BY to match SELECT
-                sanitized_alias = self._sanitize_alias(alias)
-                group_by_items.append(exp.Identifier(this=sanitized_alias, quoted=True))
-
-        # Always add cohort_on to GROUP BY if it exists and we have GROUP BY items
-        if (
-            group_by_items
-            and hasattr(self.tokenized_trace, "cohort_on")
-            and self.tokenized_trace.cohort_on
-        ):
-            # Check if cohort_on is not a literal string (which shouldn't be grouped by)
-            cohort_on_value = self.tokenized_trace.cohort_on.strip()
-            if not (cohort_on_value.startswith("'") and cohort_on_value.endswith("'")):
-                # It's a column reference, add to GROUP BY
-                group_by_items.append(exp.Identifier(this="cohort_on", quoted=True))
-            elif group_by_items:
-                # Even for literal cohort_on values, we need to include it in GROUP BY
-                # since it's in the SELECT clause
-                group_by_items.append(exp.Identifier(this="cohort_on", quoted=True))
-
-        # Add GROUP BY clause if there are items
-        if group_by_items:
-            select_expr = select_expr.group_by(*group_by_items)
-
-        return select_expr
+        cohort_on = getattr(self.tokenized_trace, "cohort_on", None)
+        return self.group_by_builder.build(
+            select_expr, self.tokenized_trace.select_items, cohort_on, self._sanitize_alias
+        )
 
     def _add_where_clause(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -398,34 +322,7 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with WHERE clause
         """
-        # Only add vanilla filters to WHERE
-        conditions = []
-
-        # Handle different filter types
-        filter_by = self.tokenized_trace.filter_by
-        if isinstance(filter_by, dict):
-            # Only get vanilla filters for WHERE clause
-            if "vanilla" in filter_by and filter_by["vanilla"]:
-                for filter_expr in filter_by["vanilla"]:
-                    parsed = parse_expression(filter_expr, dialect=self.dialect)
-                    if parsed:
-                        conditions.append(parsed)
-        elif isinstance(filter_by, list):
-            # For list format, we need to check if each filter contains aggregates
-            for filter_expr in filter_by:
-                parsed = parse_expression(filter_expr, dialect=self.dialect)
-                if parsed and not has_aggregate_function(parsed):
-                    conditions.append(parsed)
-
-        # Combine conditions with AND
-        if conditions:
-            where_clause = conditions[0]
-            for condition in conditions[1:]:
-                where_clause = exp.And(this=where_clause, expression=condition)
-
-            select_expr = select_expr.where(where_clause)
-
-        return select_expr
+        return self.where_builder.build(select_expr, self.tokenized_trace.filter_by)
 
     def _add_having_clause(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -437,34 +334,7 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with HAVING clause
         """
-        # Only add aggregate filters to HAVING
-        conditions = []
-
-        # Handle different filter types
-        filter_by = self.tokenized_trace.filter_by
-        if isinstance(filter_by, dict):
-            # Get aggregate filters for HAVING clause
-            if "aggregate" in filter_by and filter_by["aggregate"]:
-                for filter_expr in filter_by["aggregate"]:
-                    parsed = parse_expression(filter_expr, dialect=self.dialect)
-                    if parsed:
-                        conditions.append(parsed)
-        elif isinstance(filter_by, list):
-            # For list format, check if each filter contains aggregates
-            for filter_expr in filter_by:
-                parsed = parse_expression(filter_expr, dialect=self.dialect)
-                if parsed and has_aggregate_function(parsed):
-                    conditions.append(parsed)
-
-        # Combine conditions with AND
-        if conditions:
-            having_clause = conditions[0]
-            for condition in conditions[1:]:
-                having_clause = exp.And(this=having_clause, expression=condition)
-
-            select_expr = select_expr.having(having_clause)
-
-        return select_expr
+        return self.having_builder.build(select_expr, self.tokenized_trace.filter_by)
 
     def _add_order_by(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -479,99 +349,12 @@ class SqlglotQueryBuilder:
         Returns:
             The modified SELECT expression with ORDER BY
         """
-        order_by_items = []
-
-        # Check if GROUP BY is present
-        has_group_by = select_expr.find(exp.Group)
-
-        # Build a mapping of expressions to their aliases for lookup
-        # Also build a mapping of base columns to their transformed expressions
-        alias_mapping = {}
-        base_column_mapping = {}  # Maps base column names to their aliases
-
-        if has_group_by and self.tokenized_trace.select_items:
-            for alias, expression in self.tokenized_trace.select_items.items():
-                sanitized_alias = self._sanitize_alias(alias)
-                # Store both the original expression and any column references
-                alias_mapping[expression] = sanitized_alias
-                # Also check for simple column names
-                if "(" not in expression and "." not in expression:
-                    alias_mapping[expression.lower()] = sanitized_alias
-
-                # Check if this is a transformed column (e.g., "year::varchar" or "CAST(year AS ...)")
-                # Use SQLGlot to parse the expression and extract the base column
-                parsed_expr = parse_expression(expression, dialect=self.dialect)
-                if parsed_expr:
-                    # Check if it's a Cast expression
-                    if isinstance(parsed_expr, exp.Cast):
-                        # Extract the base column from the Cast
-                        if isinstance(parsed_expr.this, exp.Column):
-                            base_column = parsed_expr.this.name.lower()
-                            base_column_mapping[base_column] = sanitized_alias
-                    # Check if it's a DataType cast (PostgreSQL :: syntax)
-                    elif isinstance(parsed_expr, exp.DataType):
-                        # For :: casts, SQLGlot may parse differently
-                        # Try to extract the column name from the expression string
-                        # Actually, let's re-parse with different approach
-                        pass
-                    # Also check for PostgreSQL-style casts parsed as binary operations
-                    elif hasattr(parsed_expr, 'this') and hasattr(parsed_expr, 'expression'):
-                        # Sometimes year::varchar is parsed as a binary operation
-                        if isinstance(parsed_expr.this, exp.Column):
-                            base_column = parsed_expr.this.name.lower()
-                            base_column_mapping[base_column] = sanitized_alias
-
-        for order_item in self.tokenized_trace.order_by:
-            # Handle DESC/ASC modifiers explicitly
-            desc = False
-            if order_item.upper().endswith(" DESC"):
-                column = order_item[:-5].strip()
-                desc = True
-            elif order_item.upper().endswith(" ASC"):
-                column = order_item[:-4].strip()
-                desc = False
-            else:
-                column = order_item.strip()
-
-            # If GROUP BY is present, check various mappings
-            if has_group_by:
-                column_lower = column.lower()
-
-                # First check if this column has been transformed (e.g., year -> year::varchar)
-                if column_lower in base_column_mapping:
-                    # Use the alias of the transformed column
-                    order_column = exp.Identifier(
-                        this=base_column_mapping[column_lower], quoted=True
-                    )
-                # Then check if this column is directly in alias mapping
-                elif column_lower in alias_mapping:
-                    # Use the alias instead of the column
-                    order_column = exp.Identifier(this=alias_mapping[column_lower], quoted=True)
-                elif column in alias_mapping:
-                    # Check exact match too
-                    order_column = exp.Identifier(this=alias_mapping[column], quoted=True)
-                else:
-                    # Use the column as-is
-                    order_column = exp.Column(this=column)
-            else:
-                # No GROUP BY, use the column as-is
-                order_column = exp.Column(this=column)
-
-            if desc:
-                parsed = exp.Ordered(this=order_column, desc=True)
-            else:
-                parsed = (
-                    exp.Ordered(this=order_column, desc=False)
-                    if order_item.upper().endswith(" ASC")
-                    else order_column
-                )
-
-            order_by_items.append(parsed)
-
-        if order_by_items:
-            select_expr = select_expr.order_by(*order_by_items)
-
-        return select_expr
+        return self.order_by_builder.build(
+            select_expr,
+            self.tokenized_trace.order_by,
+            self.tokenized_trace.select_items,
+            self._sanitize_alias,
+        )
 
     def _add_limit(self, select_expr: exp.Select) -> exp.Select:
         """
@@ -642,24 +425,24 @@ class SqlglotQueryBuilder:
             SQL-safe alias for CTEs and table references
         """
         return self.model_sanitizer.sanitize(model_name)
-    
+
     def _build_model_alias_map(self) -> Dict[str, str]:
         """
         Build a mapping of model names to their SQL aliases.
-        
+
         Returns:
             Dictionary mapping model names to sanitized aliases
         """
         alias_map = {}
-        
+
         # Get all models from the project
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.models.model import Model
-        
+
         models = all_descendants_of_type(type=Model, dag=self.dag)
         for model in models:
             alias_map[model.name] = self._get_model_alias(model.name)
-        
+
         return alias_map
 
     def _sanitize_alias(self, alias: str) -> str:
@@ -774,14 +557,12 @@ class SqlglotQueryBuilder:
         Returns:
             List of CTE expressions
         """
-        ctes = []
-
         if not self.project:
             # If no project, we can only build CTE for base model
             base_cte = self._build_base_cte()
             if base_cte:
-                ctes.append(base_cte)
-            return ctes
+                return [base_cte]
+            return []
 
         from visivo.models.dag import all_descendants_of_type
         from visivo.models.models.model import Model
@@ -790,20 +571,7 @@ class SqlglotQueryBuilder:
         all_models = all_descendants_of_type(type=Model, dag=dag)
         models_by_name = {model.name: model for model in all_models}
 
-        for model_name in model_names:
-            model = models_by_name.get(model_name)
-            if model and hasattr(model, "sql") and model.sql:
-                # Parse the model SQL
-                parsed_sql = parse_expression(model.sql, dialect=self.dialect)
-                if parsed_sql:
-                    # Create CTE with sanitized name
-                    cte_name = f"{self._get_model_alias(model_name)}_cte"
-                    cte = exp.CTE(alias=exp.Identifier(this=cte_name), this=parsed_sql)
-                    ctes.append(cte)
-                else:
-                    Logger.instance().debug(f"Failed to parse SQL for model {model_name}")
-
-        return ctes
+        return self.cte_builder.build_model_ctes(model_names, self._get_model_alias, models_by_name)
 
     def _find_join_paths(self, model_names: List[str]) -> List[Tuple[str, str, str]]:
         """
@@ -907,7 +675,7 @@ class SqlglotQueryBuilder:
     def _qualify_join_condition(self, condition: str, model_names: List[str]) -> exp.Expression:
         """
         Parse and qualify a join condition.
-        
+
         This method expects the condition to be resolved SQL without any context strings.
         All ${ref(...)} patterns must be resolved by RelationResolver before reaching here.
 
@@ -917,7 +685,7 @@ class SqlglotQueryBuilder:
 
         Returns:
             Parsed and qualified expression
-            
+
         Raises:
             ValueError: If unresolved context strings are detected
         """
@@ -927,7 +695,7 @@ class SqlglotQueryBuilder:
                 f"Unresolved context strings found in join condition: {condition}. "
                 "Context strings must be resolved by RelationResolver before reaching the query builder."
             )
-        
+
         # The condition should already be resolved SQL at this point
         # Parse it directly with SQLGlot
         return parse_expression(condition, dialect=self.dialect)

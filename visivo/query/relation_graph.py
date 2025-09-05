@@ -80,7 +80,7 @@ class RelationGraph:
                 # Resolve the condition immediately and cache it
                 resolved_condition = self.relation_resolver.resolve_condition(relation.condition)
                 self._resolved_conditions[relation.condition] = resolved_condition
-                
+
                 # Add edge with relation details (undirected, so order doesn't matter)
                 self.graph.add_edge(
                     model_list[0],
@@ -92,31 +92,7 @@ class RelationGraph:
                     is_default=relation.is_default,
                 )
 
-    def _parse_relation_side(self, expression: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Parse a relation side to extract model and field names.
-
-        Args:
-            expression: Expression like "model.field" or "${ref(model).field}"
-
-        Returns:
-            Tuple of (model_name, field_name)
-        """
-        import re
-        from visivo.models.base.context_string import METRIC_REF_PATTERN
-
-        # Check for ${ref(model).field} pattern
-        ref_match = re.match(METRIC_REF_PATTERN, expression.strip())
-        if ref_match:
-            return ref_match.group(1), ref_match.group(2)
-
-        # Check for direct model.field pattern
-        direct_pattern = r"^([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)$"
-        direct_match = re.match(direct_pattern, expression.strip())
-        if direct_match:
-            return direct_match.group(1), direct_match.group(2)
-
-        return None, None
+    # Removed unused _parse_relation_side method - not called anywhere in the codebase
 
     def find_join_path(self, models: List[str]) -> List[Tuple[str, str, str]]:
         """
@@ -185,13 +161,8 @@ class RelationGraph:
                 edge_data = self.graph.get_edge_data(from_model, to_model)
 
                 if edge_data:
-                    # Use the resolved condition instead of the raw one
+                    # Use the resolved condition (always available since resolution happens during graph building)
                     resolved_condition = edge_data.get("resolved_condition")
-                    if not resolved_condition:
-                        # Fallback to resolving on the fly if not cached
-                        resolved_condition = self.relation_resolver.resolve_condition(
-                            edge_data["condition"]
-                        )
                     joins.append((from_model, to_model, resolved_condition))
 
             return joins

@@ -11,6 +11,7 @@ dashboards:
    
 defaults:
   source_name: Example Source
+  threads: 16
   levels:
     - title: Chart Configuration
       description: Visuals that illustrate chart based configuration.

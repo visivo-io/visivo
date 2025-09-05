@@ -7,7 +7,6 @@ from visivo.jobs.job import (
     format_message_success,
     start_message,
 )
-from visivo.jobs.extract_dimensions_job import extract_dimensions_for_model
 from time import time
 
 
@@ -17,14 +16,10 @@ def action(csv_script_model: CsvScriptModel, output_dir, working_dir=None):
         start_time = time()
         csv_script_model.insert_csv_to_duckdb(output_dir=output_dir, working_dir=working_dir)
 
-        # Extract dimensions after successful data insertion
-        duckdb_source = csv_script_model.get_duckdb_source(output_dir=output_dir)
-        extract_dimensions_for_model(csv_script_model, duckdb_source)
-
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{csv_script_model.name}\033[0m",
             start_time=start_time,
-            full_path=duckdb_source.database,
+            full_path=csv_script_model.get_duckdb_source(output_dir=output_dir).database,
         )
         return JobResult(item=csv_script_model, success=True, message=success_message)
     except Exception as e:

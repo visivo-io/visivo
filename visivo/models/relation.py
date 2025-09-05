@@ -1,7 +1,7 @@
 from typing import Optional, Literal, Set
 from pydantic import Field, ConfigDict, field_validator
 from visivo.models.base.named_model import NamedModel
-import re
+from visivo.query.patterns import extract_model_names, validate_ref_syntax, count_model_references
 
 
 class Relation(NamedModel):
@@ -48,18 +48,7 @@ class Relation(NamedModel):
         Returns:
             Set of model names found in the condition
         """
-        models = set()
-        # Pattern to match ${ref(model).field} or ${ref(model)}
-        # Handle both quoted and unquoted model names
-        pattern = r"\$\{ref\((?:(['\"])([^'\"]+)\1|([^)]+))\)(?:\.([^}]+))?\}"
-
-        for match in re.finditer(pattern, self.condition):
-            # Either group 2 (quoted) or group 3 (unquoted) has the model name
-            model_name = match.group(2) if match.group(2) else match.group(3)
-            model_name = model_name.strip()
-            models.add(model_name)
-
-        return models
+        return extract_model_names(self.condition)
 
     @field_validator("condition")
     @classmethod
@@ -76,17 +65,13 @@ class Relation(NamedModel):
         Raises:
             ValueError: If the condition doesn't reference at least two models
         """
-        # Pattern to match ${ref(model).field} or ${ref(model)}
-        # Handle both quoted and unquoted model names
-        pattern = r"\$\{ref\((?:(['\"])([^'\"]+)\1|([^)]+))\)(?:\.([^}]+))?\}"
-
-        models = set()
-        for match in re.finditer(pattern, v):
-            # Either group 2 (quoted) or group 3 (unquoted) has the model name
-            model_name = match.group(2) if match.group(2) else match.group(3)
-            model_name = model_name.strip()
-            models.add(model_name)
-
+        # Validate syntax first
+        is_valid, error = validate_ref_syntax(v)
+        if not is_valid:
+            raise ValueError(error)
+        
+        # Check we have at least 2 models
+        models = extract_model_names(v)
         if len(models) < 2:
             raise ValueError(
                 f"Relation condition must reference at least two different models. "
