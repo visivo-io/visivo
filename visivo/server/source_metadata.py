@@ -2,7 +2,9 @@ from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.logger.logger import Logger
 from sqlalchemy import text
 from typing import Optional, Tuple, Any, List, Dict
-from visivo.commands.utils import create_source
+from visivo.models.sources.fields import SourceField
+from pydantic import ValidationError, TypeAdapter
+import json
 
 
 # Helper functions to reduce duplication
@@ -53,25 +55,31 @@ def _source_not_found_error(source_name: str) -> Tuple[dict, int]:
 # Main functions refactored
 
 
+def _test_source_connection(source: SqlalchemySource, source_name: str) -> Dict[str, Any]:
+    """Common logic for testing a source connection."""
+    try:
+        Logger.instance().info(f"Testing connection for source: {source_name}")
+        engine = _get_engine_with_read_only(source)
+
+        # Test connection with a simple query - all dialects support SELECT 1
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+
+        Logger.instance().info(f"Connection test successful for {source_name}")
+        return {"source": source_name, "status": "connected"}
+
+    except Exception as e:
+        Logger.instance().debug(f"Connection test failed for {source_name}: {e}")
+        return {"source": source_name, "status": "connection_failed", "error": str(e)}
+
+
 def check_source_connection(sources, source_name):
     """Test connection to a specific source."""
     src = _find_source(sources, source_name)
     if not src:
         return _source_not_found_error(source_name)
 
-    try:
-        Logger.instance().info(f"Testing connection for source: {source_name}")
-        engine = _get_engine_with_read_only(src)
-
-        # Test connection with a simple query - all dialects support SELECT 1
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-
-        return {"source": source_name, "status": "connected"}
-
-    except Exception as e:
-        Logger.instance().debug(f"Connection test failed for {source_name}: {e}")
-        return {"source": source_name, "status": "connection_failed", "error": str(e)}
+    return _test_source_connection(src, source_name)
 
 
 def get_source_databases(sources, source_name):
@@ -261,62 +269,27 @@ def gather_source_metadata(sources):
 
 
 def test_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
-    """Test a source connection from configuration without adding to project."""
+    """Test a source connection from configuration using Pydantic models."""
     try:
-        # Extract source configuration
         source_name = source_config.get("name", "test_source")
-        source_type = source_config.get("type")
         
-        if not source_type:
-            return {"status": "connection_failed", "error": "Source type is required"}
+        # Use Pydantic discriminated union to create the correct source model
+        Logger.instance().info(f"Creating source from config for connection test: {source_name}")
         
-        # Build kwargs for create_source function
-        create_kwargs = {
-            "source_name": source_name,
-            "source_type": source_type,
-        }
-        
-        # Map common fields
-        field_mapping = {
-            "database": "database",
-            "host": "host", 
-            "port": "port",
-            "username": "username",
-            "password": "password",
-            "account": "account",
-            "warehouse": "warehouse",
-            "credentials_base64": "credentials_base64",
-            "project": "project",
-            "dataset": "dataset",
-            "cluster_identifier": "cluster_identifier",
-            "region": "region",
-            "iam": "iam",
-            "ssl": "ssl",
-        }
-        
-        for config_key, create_key in field_mapping.items():
-            if config_key in source_config:
-                create_kwargs[create_key] = source_config[config_key]
-        
-        # Create temporary source instance
-        Logger.instance().info(f"Creating temporary source for connection test: {source_name}")
-        source = create_source(**create_kwargs)
-        
-        if isinstance(source, str):
-            # Error message returned as string
-            return {"status": "connection_failed", "error": source}
+        # Parse the config using the discriminated union with TypeAdapter
+        source_adapter = TypeAdapter(SourceField)
+        source = source_adapter.validate_python(source_config)
         
         if not isinstance(source, SqlalchemySource):
             return {"status": "connection_failed", "error": "Source type does not support connection testing"}
         
-        # Test the connection
-        engine = _get_engine_with_read_only(source)
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        # Use common connection testing logic
+        result = _test_source_connection(source, source_name)
+        return result
         
-        Logger.instance().info(f"Connection test successful for {source_name}")
-        return {"status": "connected", "source": source_name}
-        
+    except ValidationError as e:
+        Logger.instance().debug(f"Source configuration validation failed: {e}")
+        return {"status": "connection_failed", "error": f"Invalid source configuration: {str(e)}"}
     except Exception as e:
         Logger.instance().debug(f"Connection test failed: {e}")
         return {"status": "connection_failed", "error": str(e)}
