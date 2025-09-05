@@ -1,6 +1,5 @@
-import re
-from visivo.query.dialect import Dialect
 from enum import Enum
+from visivo.query.sqlglot_utils import classify_statement, get_sqlglot_dialect
 
 
 class StatementEnum(Enum):
@@ -10,20 +9,12 @@ class StatementEnum(Enum):
 
 
 class StatementClassifier:
-    def __init__(self, dialect: Dialect):
-        self.dialect = dialect
+    def __init__(self, source_type: str = None):
+        """Initialize with source type instead of Dialect object."""
+        self.source_type = source_type
+        self.dialect = get_sqlglot_dialect(source_type) if source_type else None
 
-    def classify(self, statement):
-        has_aggregates = bool(
-            re.search(self.dialect.aggregates_regex_pattern, statement, re.IGNORECASE)
-        )
-        window_pattern = r"over\s*\(.*\)"
-        has_windows = bool(re.search(window_pattern, statement, re.IGNORECASE))
-        if has_windows:
-            type = StatementEnum.window
-        elif has_aggregates:
-            type = StatementEnum.aggregate
-        else:
-            type = StatementEnum.vanilla
-
-        return type
+    def classify(self, statement: str) -> StatementEnum:
+        """Classify a SQL statement using SQLGlot AST analysis."""
+        classification = classify_statement(statement, self.dialect)
+        return StatementEnum(classification)

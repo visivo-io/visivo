@@ -52,6 +52,7 @@ jobs:
           poetry run write-schema-json
           poetry run copy-install-script
           poetry version ${{ inputs.version }}
+          ls 
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > ${{ matrix.version_file }}
 
       - name: Build Artifact
@@ -89,7 +90,6 @@ jobs:
           poetry run write-schema-json
           poetry run copy-install-script
           poetry version ${{ inputs.version }}
-          ls -la
           echo "VISIVO_VERSION = \"${{ inputs.version }}\"" > visivo/version.py
 
       - name: Commit changes
