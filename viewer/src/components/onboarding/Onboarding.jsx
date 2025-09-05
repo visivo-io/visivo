@@ -34,6 +34,7 @@ const Onboarding = () => {
   const isNewProject = useStore((state) => state.isNewProject);
   const isOnBoardingLoading = useStore((state) => state.isOnBoardingLoading);
   const project = useStore((state) => state.project);
+  const fetchProject = useStore((state) => state.fetchProject);
   const projectDir = project?.project_json?.project_dir ?? "";
 
   useEffect(() => {
@@ -164,12 +165,18 @@ const Onboarding = () => {
 
       setLoadingText("Finalizing project...");
       await finalizeProject(config, source, dashboard);
-      setIsLoading(true);
+      
       setLoadingText("Preparing dashboards...");
+      // Refresh the project state to update isNewProject which will trigger navigation
+      await fetchProject();
+      
+      // Loading will be hidden by the navigation that happens when isNewProject becomes false
+      setIsLoading(false);
     } catch (err) {
       const message = err?.message ?? "An unexpected error occurred.";
       setErrorMessage(message);
       setShowErrorToast(true);
+      setIsLoading(false);
     } 
   };
 
