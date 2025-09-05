@@ -7,7 +7,8 @@ providing better dialect handling and type safety.
 """
 
 from sqlglot import exp
-from typing import Optional, List, Tuple
+import sqlglot
+from typing import Optional, List, Tuple, Dict
 from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.project import Project
 from visivo.models.base.project_dag import ProjectDag
@@ -56,9 +57,35 @@ class SqlglotQueryBuilder:
         """
         # Check if this is a multi-model query
         if self._is_multi_model_query():
-            return self._build_multi_model_query()
+            sql = self._build_multi_model_query()
         else:
-            return self._build_single_model_query()
+            sql = self._build_single_model_query()
+        
+        # Parse the generated SQL back to apply qualify
+        query = sqlglot.parse_one(sql, read=self.dialect)
+        
+        # Build schema from dimensions
+        schema = self._build_schema_from_dimensions()
+        
+        # Apply qualify to properly quote identifiers and resolve columns
+        # Only apply if we have schema and it's not causing issues
+        if schema:
+            try:
+                query = sqlglot.optimizer.qualify.qualify(
+                    query,
+                    schema=schema,
+                    quote_identifiers=True,  # Ensure all identifiers are quoted
+                    identify=True,           # Quote all identifiers, not just necessary ones
+                    dialect=self.dialect
+                )
+            except Exception as e:
+                # If qualify fails, just use the query as-is
+                # This can happen with already-quoted identifiers
+                Logger.instance().debug(f"SQLGlot qualify failed, using unqualified query: {e}")
+                pass
+        
+        # Generate final SQL
+        return query.sql(dialect=self.dialect, pretty=True)
 
     def _is_multi_model_query(self) -> bool:
         """
@@ -233,9 +260,12 @@ class SqlglotQueryBuilder:
                         )
                     parsed_expr = exp.Column(this=expression)
 
-                # Add to SELECT with alias - use quoted identifier for aliases with special characters
+                # Sanitize the alias (replace dots with pipes)
+                sanitized_alias = self._sanitize_alias(alias)
+                
+                # Add to SELECT with sanitized alias - use quoted identifier
                 select = select.select(
-                    exp.Alias(this=parsed_expr, alias=exp.Identifier(this=alias, quoted=True))
+                    exp.Alias(this=parsed_expr, alias=exp.Identifier(this=sanitized_alias, quoted=True))
                 )
         else:
             # If no select items, select all columns
@@ -323,8 +353,9 @@ class SqlglotQueryBuilder:
 
             # Check if this is a non-aggregate expression using utility function
             if not has_aggregate_function(parsed):
-                # Use the quoted alias for GROUP BY to match SELECT
-                group_by_items.append(exp.Identifier(this=alias, quoted=True))
+                # Use the sanitized quoted alias for GROUP BY to match SELECT
+                sanitized_alias = self._sanitize_alias(alias)
+                group_by_items.append(exp.Identifier(this=sanitized_alias, quoted=True))
 
         # Always add cohort_on to GROUP BY if it exists and we have GROUP BY items
         if (
@@ -429,6 +460,9 @@ class SqlglotQueryBuilder:
     def _add_order_by(self, select_expr: exp.Select) -> exp.Select:
         """
         Add ORDER BY clause.
+        
+        When GROUP BY is present, we need to check if the ORDER BY column
+        is actually an alias in the SELECT clause and use that instead.
 
         Args:
             select_expr: The SELECT expression to modify
@@ -437,19 +471,48 @@ class SqlglotQueryBuilder:
             The modified SELECT expression with ORDER BY
         """
         order_by_items = []
+        
+        # Check if GROUP BY is present
+        has_group_by = select_expr.find(exp.Group)
+        
+        # Build a mapping of expressions to their aliases for lookup
+        alias_mapping = {}
+        if has_group_by and self.tokenized_trace.select_items:
+            for alias, expression in self.tokenized_trace.select_items.items():
+                # Store both the original expression and any column references
+                alias_mapping[expression] = self._sanitize_alias(alias)
+                # Also check for simple column names
+                if '(' not in expression and '.' not in expression:
+                    alias_mapping[expression.lower()] = self._sanitize_alias(alias)
 
         for order_item in self.tokenized_trace.order_by:
             # Handle DESC/ASC modifiers explicitly
+            desc = False
             if order_item.upper().endswith(" DESC"):
                 column = order_item[:-5].strip()
-                parsed = exp.Ordered(this=exp.Column(this=column), desc=True)
+                desc = True
             elif order_item.upper().endswith(" ASC"):
                 column = order_item[:-4].strip()
-                parsed = exp.Ordered(this=exp.Column(this=column), desc=False)
+                desc = False
             else:
-                # Default to ascending order
-                parsed = exp.Column(this=order_item)
-
+                column = order_item.strip()
+            
+            # If GROUP BY is present and this column is an alias, use the alias
+            if has_group_by and column.lower() in alias_mapping:
+                # Use the alias instead of the column
+                order_column = exp.Identifier(this=alias_mapping[column.lower()], quoted=True)
+            elif has_group_by and column in alias_mapping:
+                # Check exact match too
+                order_column = exp.Identifier(this=alias_mapping[column], quoted=True)
+            else:
+                # Use the column as-is
+                order_column = exp.Column(this=column)
+            
+            if desc:
+                parsed = exp.Ordered(this=order_column, desc=True)
+            else:
+                parsed = exp.Ordered(this=order_column, desc=False) if order_item.upper().endswith(" ASC") else order_column
+            
             order_by_items.append(parsed)
 
         if order_by_items:
@@ -526,6 +589,106 @@ class SqlglotQueryBuilder:
             SQL-safe alias for CTEs and table references
         """
         return self.model_sanitizer.sanitize(model_name)
+    
+    def _sanitize_alias(self, alias: str) -> str:
+        """
+        Sanitize an alias by replacing dots with pipes.
+        
+        The frontend expects dots in field names (e.g., props.x), but some SQL dialects
+        like BigQuery don't allow dots in aliases. We replace them with pipes here,
+        and the Aggregator converts them back to dots.
+        
+        Args:
+            alias: Original alias that may contain dots
+            
+        Returns:
+            Sanitized alias with pipes instead of dots
+        """
+        return alias.replace(".", "|")
+    
+    def _build_schema_from_dimensions(self) -> Optional[Dict[str, Dict[str, str]]]:
+        """
+        Build a schema dictionary from model dimensions for SQLGlot qualify.
+        
+        Returns:
+            Schema dict like {"table_name": {"column_name": "DATA_TYPE"}}
+        """
+        if not self.project:
+            return None
+        
+        schema = {}
+        
+        # Get all models from the project
+        from visivo.models.dag import all_descendants_of_type
+        from visivo.models.models.model import Model
+        
+        dag = self.project.dag()
+        all_models = all_descendants_of_type(type=Model, dag=dag)
+        
+        for model in all_models:
+            model_schema = {}
+            
+            # Add explicit dimensions
+            if hasattr(model, 'dimensions') and model.dimensions:
+                for dimension in model.dimensions:
+                    # Map dimension data types to SQL types
+                    sql_type = self._map_dimension_type_to_sql(dimension.data_type)
+                    # Strip quotes from dimension name for schema
+                    column_name = dimension.name.strip('"').strip("'")
+                    model_schema[column_name] = sql_type
+            
+            # Add implicit dimensions if they exist
+            if hasattr(model, '_implicit_dimensions') and model._implicit_dimensions:
+                for dimension in model._implicit_dimensions:
+                    sql_type = self._map_dimension_type_to_sql(dimension.data_type)
+                    # Strip quotes from dimension name for schema
+                    column_name = dimension.name.strip('"').strip("'")
+                    model_schema[column_name] = sql_type
+            
+            # Add to schema with both original and sanitized model names
+            if model_schema:
+                # Add with original name
+                schema[model.name] = model_schema
+                # Also add with sanitized name (for CTEs)
+                sanitized_name = self._get_model_alias(model.name)
+                schema[f"{sanitized_name}_cte"] = model_schema
+                # And base_model for single model queries
+                if hasattr(self, 'tokenized_trace') and self.tokenized_trace.sql == getattr(model, 'sql', None):
+                    schema["base_model"] = model_schema
+        
+        return schema if schema else None
+    
+    def _map_dimension_type_to_sql(self, dimension_type: Optional[str]) -> str:
+        """
+        Map dimension data types to SQL types for schema.
+        
+        Args:
+            dimension_type: Dimension data type (e.g., 'string', 'integer', 'date')
+            
+        Returns:
+            SQL type string
+        """
+        if not dimension_type:
+            return "VARCHAR"
+        
+        type_mapping = {
+            "string": "VARCHAR",
+            "text": "VARCHAR",
+            "integer": "INTEGER",
+            "int": "INTEGER",
+            "bigint": "BIGINT",
+            "float": "FLOAT",
+            "double": "DOUBLE",
+            "decimal": "DECIMAL",
+            "numeric": "NUMERIC",
+            "date": "DATE",
+            "datetime": "TIMESTAMP",
+            "timestamp": "TIMESTAMP",
+            "boolean": "BOOLEAN",
+            "bool": "BOOLEAN",
+        }
+        
+        return type_mapping.get(dimension_type.lower(), "VARCHAR")
 
     def _build_model_ctes(self, model_names: List[str]) -> List[exp.CTE]:
         """
@@ -642,8 +805,10 @@ class SqlglotQueryBuilder:
             for alias, expression in self.tokenized_trace.select_items.items():
                 # Qualify the expression with model names
                 qualified_expr = self._qualify_expression(expression, model_names)
+                # Sanitize the alias (replace dots with pipes)
+                sanitized_alias = self._sanitize_alias(alias)
                 select = select.select(
-                    exp.Alias(this=qualified_expr, alias=exp.Identifier(this=alias, quoted=True))
+                    exp.Alias(this=qualified_expr, alias=exp.Identifier(this=sanitized_alias, quoted=True))
                 )
         else:
             # Select all columns

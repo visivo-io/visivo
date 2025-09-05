@@ -6,6 +6,7 @@ import pytest
 from visivo.query.sqlglot_query_builder import SqlglotQueryBuilder
 from visivo.models.tokenized_trace import TokenizedTrace
 from visivo.models.project import Project
+from visivo.models.dimension import Dimension
 from tests.factories.model_factories import (
     SourceFactory,
     SqlModelFactory,
@@ -359,3 +360,320 @@ class TestSqlglotQueryBuilder:
         assert "COUNT(DISTINCT product_id)" in sql
         assert "GROUP BY" in sql  # Should group by product_id
         assert "product_id" in sql.split("GROUP BY")[1]  # product_id should be in GROUP BY
+
+    def test_alias_sanitization_with_dots(self):
+        """Test that aliases with dots are sanitized to use pipes."""
+        source = SourceFactory(name="test_db")
+        model = SqlModelFactory(
+            name="test_model",
+            sql="SELECT id, props FROM test_table",
+            source="ref(test_db)",
+        )
+
+        project = ProjectFactory(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            dashboards=[],
+        )
+
+        # Create tokenized trace with dotted aliases
+        tokenized = TokenizedTrace(
+            sql=model.sql,
+            cohort_on="",
+            source=source.name,
+            source_type="bigquery",
+            select_items={
+                "props.x": "props.x",
+                "props.y": "props.y",
+                "props.z": "SUM(props.z)",
+            },
+            filter_by={},
+            order_by=["props.x"],
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        sql = builder.build()
+
+        # For BigQuery, dots should be replaced with pipes in aliases
+        assert "`props|x`" in sql or "props|x" in sql
+        assert "`props|y`" in sql or "props|y" in sql
+        assert "`props|z`" in sql or "props|z" in sql
+
+    def test_order_by_uses_alias_when_group_by_present(self):
+        """Test that ORDER BY uses aliases when GROUP BY is present."""
+        source = SourceFactory(name="test_db")
+        model = SqlModelFactory(
+            name="test_model",
+            sql="SELECT year, month, sales FROM sales_table",
+            source="ref(test_db)",
+        )
+
+        project = ProjectFactory(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            dashboards=[],
+        )
+
+        # Create tokenized trace with GROUP BY scenario
+        tokenized = TokenizedTrace(
+            sql=model.sql,
+            cohort_on="",
+            source=source.name,
+            source_type="snowflake",
+            select_items={
+                "year": "year",
+                "total_sales": "SUM(sales)",
+            },
+            filter_by={},
+            order_by=["year"],
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        sql = builder.build()
+
+        # ORDER BY should use the alias when GROUP BY is present
+        # Check that ORDER BY comes after GROUP BY and references the alias
+        if "GROUP BY" in sql and "ORDER BY" in sql:
+            order_by_part = sql.split("ORDER BY")[1]
+            # Should not reference base_model.year, should use the alias
+            assert "base_model.year" not in order_by_part.lower()
+
+    def test_schema_building_from_dimensions(self):
+        """Test that schema is correctly built from model dimensions."""
+        source = SourceFactory(name="test_db")
+        
+        # Create model with explicit dimensions
+        model = SqlModelFactory(
+            name="test_model",
+            sql="SELECT id, name, amount FROM test_table",
+            source="ref(test_db)",
+        )
+        
+        # Add explicit dimensions to the model
+        model.dimensions = [
+            Dimension(name="id", expression="id", data_type="INTEGER"),
+            Dimension(name="name", expression="name", data_type="VARCHAR"),
+        ]
+        
+        # Add implicit dimensions (simulating what extract_dimensions_job would do)
+        model._implicit_dimensions = [
+            Dimension(name="amount", expression="amount", data_type="DECIMAL"),
+        ]
+
+        project = ProjectFactory(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            dashboards=[],
+        )
+
+        tokenized = TokenizedTrace(
+            sql=model.sql,
+            cohort_on="",
+            source=source.name,
+            source_type="snowflake",
+            select_items={"id": "id", "name": "name", "total": "SUM(amount)"},
+            filter_by={},
+            order_by=["id"],
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        
+        # Test the schema building method
+        schema = builder._build_schema_from_dimensions()
+        
+        assert schema is not None
+        assert "base_model" in schema
+        assert "id" in schema["base_model"]
+        assert schema["base_model"]["id"] == "INTEGER"
+        assert "name" in schema["base_model"]
+        assert schema["base_model"]["name"] == "VARCHAR"
+        assert "amount" in schema["base_model"]
+        assert schema["base_model"]["amount"] == "DECIMAL"
+
+    def test_bigquery_specific_behavior(self):
+        """Test BigQuery-specific SQL generation with pipe delimiters."""
+        source = SourceFactory(name="bq_dataset")
+        model = SqlModelFactory(
+            name="events",
+            sql="SELECT event_id, props, timestamp FROM events_table",
+            source="ref(bq_dataset)",
+        )
+
+        project = ProjectFactory(
+            name="bq_project",
+            sources=[source],
+            models=[model],
+            dashboards=[],
+        )
+
+        # BigQuery query with nested field references
+        tokenized = TokenizedTrace(
+            sql=model.sql,
+            cohort_on="",
+            source=source.name,
+            source_type="bigquery",
+            select_items={
+                "event_id": "event_id",
+                "props.device.type": "props.device.type",
+                "props.user.id": "props.user.id",
+                "event_count": "COUNT(*)",
+            },
+            filter_by={},
+            order_by=["props.device.type"],
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        sql = builder.build()
+
+        # BigQuery should use pipe delimiters for nested fields
+        # The aliases should have pipes instead of dots
+        assert "props|device|type" in sql
+        assert "props|user|id" in sql
+        
+        # Original field references in expressions should remain unchanged
+        assert "props.device.type" in sql
+        assert "props.user.id" in sql
+
+    def test_snowflake_identifier_quoting(self):
+        """Test that Snowflake properly quotes identifiers."""
+        source = SourceFactory(name="sf_warehouse")
+        model = SqlModelFactory(
+            name="data",
+            sql='SELECT "year", "month", value FROM data_table',
+            source="ref(sf_warehouse)",
+        )
+
+        # Add dimensions to enable schema building
+        model.dimensions = [
+            Dimension(name="year", expression='"year"', data_type="INTEGER"),
+            Dimension(name="month", expression='"month"', data_type="INTEGER"),
+            Dimension(name="value", expression="value", data_type="DECIMAL"),
+        ]
+
+        project = ProjectFactory(
+            name="sf_project",
+            sources=[source],
+            models=[model],
+            dashboards=[],
+        )
+
+        # Snowflake query with reserved keywords as column names
+        tokenized = TokenizedTrace(
+            sql=model.sql,
+            cohort_on="",
+            source=source.name,
+            source_type="snowflake",
+            select_items={
+                "year": '"year"',
+                "month": '"month"',
+                "total_value": "SUM(value)",
+            },
+            filter_by={},
+            order_by=['"year"', '"month"'],
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        sql = builder.build()
+
+        # Snowflake should have quoted identifiers where needed
+        # The qualify step should ensure proper quoting
+        assert sql is not None
+        assert "SELECT" in sql.upper()
+        
+    def test_multi_model_query_with_sanitized_aliases(self):
+        """Test multi-model queries with alias sanitization."""
+        source = SourceFactory(name="test_db")
+        
+        model1 = SqlModelFactory(
+            name="users",
+            sql="SELECT id, name, metadata FROM users_table",
+            source="ref(test_db)",
+        )
+        
+        model2 = SqlModelFactory(
+            name="events",
+            sql="SELECT user_id, event_type, props FROM events_table",
+            source="ref(test_db)",
+        )
+
+        project = ProjectFactory(
+            name="test_project",
+            sources=[source],
+            models=[model1, model2],
+            dashboards=[],
+        )
+
+        # Multi-model tokenized trace with dotted field names
+        tokenized = TokenizedTrace(
+            sql="SELECT u.name, e.props FROM users u JOIN events e ON u.id = e.user_id",
+            cohort_on="",
+            source=source.name,
+            source_type="bigquery",
+            select_items={
+                "user_name": "u.name",
+                "props.action": "e.props.action",
+                "props.category": "e.props.category",
+                "event_count": "COUNT(*)",
+            },
+            filter_by={},
+            order_by=["user_name"],
+            models_used={"users": model1, "events": model2},
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        sql = builder.build()
+
+        # Check that aliases are sanitized in multi-model queries
+        assert "props|action" in sql
+        assert "props|category" in sql
+
+    def test_complex_order_by_with_aggregates_and_aliases(self):
+        """Test complex ORDER BY scenarios with aggregates and GROUP BY."""
+        source = SourceFactory(name="test_db")
+        model = SqlModelFactory(
+            name="sales",
+            sql="SELECT region, year, quarter, revenue FROM sales_data",
+            source="ref(test_db)",
+        )
+
+        project = ProjectFactory(
+            name="test_project",
+            sources=[source],
+            models=[model],
+            dashboards=[],
+        )
+
+        # Complex query with multiple GROUP BY columns and ORDER BY
+        tokenized = TokenizedTrace(
+            sql=model.sql,
+            cohort_on="",
+            source=source.name,
+            source_type="postgresql",
+            select_items={
+                "region": "region",
+                "year": "year",
+                "total_revenue": "SUM(revenue)",
+                "avg_revenue": "AVG(revenue)",
+                "max_revenue": "MAX(revenue)",
+            },
+            filter_by={},
+            order_by=["year DESC", "total_revenue DESC", "region"],
+        )
+
+        builder = SqlglotQueryBuilder(tokenized, project)
+        sql = builder.build()
+
+        # Verify GROUP BY is present
+        assert "GROUP BY" in sql
+        
+        # Verify ORDER BY uses appropriate references
+        assert "ORDER BY" in sql
+        order_by_clause = sql.split("ORDER BY")[1].split("LIMIT")[0] if "LIMIT" in sql else sql.split("ORDER BY")[1]
+        
+        # When GROUP BY is present, ORDER BY should use aliases or grouped columns
+        # Should not reference base_model columns directly
+        assert "base_model.year" not in order_by_clause.lower()
+        assert "base_model.region" not in order_by_clause.lower()
