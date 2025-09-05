@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TYPE_STYLE_MAP, TYPE_VALUE_MAP } from '../../components/styled/VisivoObjectStyles';
 import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
 import useStore from '../../stores/store';
-import { testSourceConnection } from '../../api/explorer';
+import { testSourceConnectionFromConfig } from '../../api/explorer';
 
 const OPTIONAL_REQUIREMENTS = ["host", "username", "password", "warehouse", "account", "project"]
 
-const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'property', onSubmitCallback, hideFileOption = false }) => {
+const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'property', onSubmitCallback, showFileOption = true }) => {
   const [step, setStep] = useState(objStep); // 'property' | 'type' | 'name' | 'attributes'
   const [selectedProperty, setSelectedProperty] = useState(objSelectedProperty);
   const [selectedType, setSelectedType] = useState(null);
@@ -16,6 +16,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
   const [selectedSource, setSelectedSource] = useState(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionTestResult, setConnectionTestResult] = useState(null);
+  const [lastTestedConfig, setLastTestedConfig] = useState(null);
 
   const schema = useStore(state => state.schema);
   const openTab = useStore(state => state.openTab);
@@ -26,16 +27,17 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
 
   // Reset all state to initial values
   const resetState = useCallback(() => {
-  setStep(objStep);
-  setSelectedProperty(objSelectedProperty);
-  setSelectedType(null);
-  setObjectName('');
-  setAttributes({});
-  setSelectedFilePath('');
-  setSelectedSource(null);
-  setIsTestingConnection(false);
-  setConnectionTestResult(null);
-}, [objStep, objSelectedProperty]);
+    setStep(objStep);
+    setSelectedProperty(objSelectedProperty);
+    setSelectedType(null);
+    setObjectName('');
+    setAttributes({});
+    setSelectedFilePath('');
+    setSelectedSource(null);
+    setIsTestingConnection(false);
+    setConnectionTestResult(null);
+    setLastTestedConfig(null);
+  }, [objStep, objSelectedProperty]);
 
   // Add effect to reset state when modal closes
   useEffect(() => {
@@ -44,6 +46,25 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     }
   }, [isOpen, resetState]);
 
+  // Check if current config matches last tested config
+  const configHasChanged = () => {
+    if (!lastTestedConfig) return true;
+    
+    const currentConfig = {
+      name: objectName,
+      type: selectedSource?.value,
+      ...attributes
+    };
+    
+    return JSON.stringify(currentConfig) !== JSON.stringify(lastTestedConfig);
+  };
+
+  // Clear test result when config changes
+  useEffect(() => {
+    if (configHasChanged() && connectionTestResult) {
+      setConnectionTestResult(null);
+    }
+  }, [objectName, attributes, selectedSource]);
 
   const getValidTypesForProperty = prop => {
     if (!schema?.properties) return [];
@@ -118,15 +139,6 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     }
   };
 
-  const handleAttributesSubmit = () => {
-    // If this is a source, add test connection step
-    if (selectedProperty === 'sources') {
-      setStep('testConnection');
-    } else {
-      handleCreate();
-    }
-  };
-
   const handleTestConnection = async () => {
     if (!objectName) return;
     
@@ -134,33 +146,19 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     setConnectionTestResult(null);
     
     try {
-      // Create a temporary source object for testing
-      const tempSource = {
+      // Create a source configuration object for testing
+      // Do NOT interact with the store
+      const sourceConfig = {
         name: objectName,
-        type: selectedSource.value,
+        type: selectedSource?.value,
         ...attributes
       };
       
-      // First create the source in the store temporarily for testing
-      const tempNamedChildren = {
-        ...namedChildren,
-        [objectName]: {
-          type: selectedType,
-          type_key: selectedProperty,
-          config: tempSource,
-          status: 'Testing',
-          file_path: selectedFilePath || projectFilePath,
-          new_file_path: selectedFilePath || projectFilePath,
-          path: null
-        }
-      };
+      // Save the tested config
+      setLastTestedConfig(sourceConfig);
       
-      useStore.setState({
-        namedChildren: tempNamedChildren,
-      });
-      
-      // Test the connection
-      const result = await testSourceConnection(objectName);
+      // Test the connection using the API
+      const result = await testSourceConnectionFromConfig(sourceConfig);
       setConnectionTestResult(result);
       
     } catch (error) {
@@ -171,15 +169,6 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
     } finally {
       setIsTestingConnection(false);
     }
-  };
-
-  const handleTestConnectionNext = () => {
-    // Connection test passed, proceed to create
-    handleCreate();
-  };
-
-  const handleRetryTest = () => {
-    handleTestConnection();
   };
 
   const handleCreate = () => {
@@ -195,7 +184,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
       config: {
         name: objectName,
         ...attributes,
-        type: selectedSource.value
+        type: selectedSource?.value
       },
       status: 'New', // Set status to New for new objects
       file_path: selectedFilePath || projectFilePath, // defaults to existing project file path
@@ -306,7 +295,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
               />
             </div>
 
-            {!hideFileOption && (
+            {showFileOption && (
               <div>
                 <label className="block text-sm font-medium text-gray-700">File Path</label>
                 <select
@@ -368,7 +357,7 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
 
                 {((attr.type === 'string' || !attr.type) && attr.name === 'type') && (
                   <select
-                    value={selectedSource.value}
+                    value={selectedSource?.value}
                     disabled={true}
                     className="mt-1  block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   >
@@ -497,91 +486,59 @@ const CreateObjectModal = ({ isOpen, onClose, objSelectedProperty, objStep = 'pr
                 )}
               </div>
             ))}
+            
+            {/* Test Connection Section for Sources */}
+            {selectedProperty === 'sources' && (
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Connection Status</span>
+                  <button
+                    onClick={handleTestConnection}
+                    disabled={isTestingConnection || !objectName}
+                    className="px-4 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isTestingConnection ? 'Testing...' : 'Test Connection'}
+                  </button>
+                </div>
+                
+                {/* Connection Status Indicator */}
+                <div className="flex items-center space-x-2">
+                  {isTestingConnection ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      <span className="text-sm text-gray-600">Testing connection...</span>
+                    </>
+                  ) : connectionTestResult ? (
+                    connectionTestResult.status === 'connected' && !configHasChanged() ? (
+                      <>
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span className="text-sm text-green-600">Connection successful</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span className="text-sm text-red-600">
+                          {connectionTestResult.error || 'Connection failed'}
+                        </span>
+                      </>
+                    )
+                  ) : (
+                    <span className="text-sm text-gray-500 italic">Connection not tested</span>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <button
-              onClick={handleAttributesSubmit}
+              onClick={handleCreate}
               className="w-full bg-[#713B57] text-white py-2 px-4 rounded-lg hover:bg-[#5A2F46]"
             >
-              {selectedProperty === 'sources' ? 'Test Connection' : `Create ${displayName}`}
+              Create {displayName}
             </button>
-          </div>
-        )}
-
-        {step === 'testConnection' && (
-          <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Test Connection</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Let's test the connection to your {selectedSource?.label || selectedType} source before creating it.
-              </p>
-            </div>
-
-            {!connectionTestResult && !isTestingConnection && (
-              <div className="flex justify-center">
-                <button
-                  onClick={handleTestConnection}
-                  className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700"
-                >
-                  Test Connection
-                </button>
-              </div>
-            )}
-
-            {isTestingConnection && (
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#713B57] mx-auto mb-4"></div>
-                <p className="text-gray-600">Testing connection to {objectName}...</p>
-              </div>
-            )}
-
-            {connectionTestResult && (
-              <div className="text-center">
-                {connectionTestResult.status === 'connected' ? (
-                  <div className="mb-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </div>
-                    <h4 className="text-lg font-medium text-green-800 mb-2">Connection Successful!</h4>
-                    <p className="text-sm text-green-600 mb-4">
-                      Successfully connected to {objectName}. You can now create this source.
-                    </p>
-                    <button
-                      onClick={handleTestConnectionNext}
-                      className="bg-[#713B57] text-white py-2 px-6 rounded-lg hover:bg-[#5A2F46]"
-                    >
-                      Create {displayName}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mb-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
-                      <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    </div>
-                    <h4 className="text-lg font-medium text-red-800 mb-2">Connection Failed</h4>
-                    <p className="text-sm text-red-600 mb-4">
-                      {connectionTestResult.error || 'Unable to connect to the source. Please check your configuration.'}
-                    </p>
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={handleRetryTest}
-                        className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
-                      >
-                        Retry Test
-                      </button>
-                      <button
-                        onClick={() => setStep('attributes')}
-                        className="bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700"
-                      >
-                        Edit Configuration
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
