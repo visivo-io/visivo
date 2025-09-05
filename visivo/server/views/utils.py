@@ -33,7 +33,7 @@ def load_csv(conn, file_path, table_name):
             conn.execute(
                 f"CREATE TABLE \"{table_name}\" AS SELECT * FROM read_csv_auto('{file_path}', ignore_errors=true)"
             )
-            Logger.instance().warning(f"Loaded {os.path.basename(file_path)} with encoding errors.")
+            Logger.instance().info(f"Loaded {os.path.basename(file_path)} with encoding errors.")
 
 
 def create_source_dashboard(source):

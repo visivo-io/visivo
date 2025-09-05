@@ -15,6 +15,7 @@ def action(csv_script_model: CsvScriptModel, output_dir, working_dir=None):
     try:
         start_time = time()
         csv_script_model.insert_csv_to_duckdb(output_dir=output_dir, working_dir=working_dir)
+
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{csv_script_model.name}\033[0m",
             start_time=start_time,
