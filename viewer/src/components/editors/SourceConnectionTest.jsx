@@ -71,7 +71,7 @@ const SourceConnectionTest = ({
         <button
           onClick={handleTestConnection}
           disabled={isTestingConnection || !objectName}
-          className="px-4 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-1 text-sm bg-highlight text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isTestingConnection ? 'Testing...' : 'Test Connection'}
         </button>
