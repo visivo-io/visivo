@@ -196,7 +196,7 @@ def build_multi_model_query(tokenized_trace: TokenizedTrace) -> str:
    - Mixed aggregation levels
 
 ### Phase 2D: Polish and Optimization (Week 4)
-1. **Performance optimization**
+1. **Performance optimization (only if needed, skip if complexity is not worth changes)**
    - Use subqueries where appropriate
    - Optimize JOIN ordering
    - Cache resolved metrics

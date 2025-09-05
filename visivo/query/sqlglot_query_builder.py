@@ -255,7 +255,7 @@ class SqlglotQueryBuilder:
 
         # Set FROM clause to reference the CTE
         model_name = getattr(self.tokenized_trace, "model_name", "base_model")
-        select = select.from_(exp.Table(this=model_name))
+        select = select.from_(model_name)
 
         return select
 
@@ -608,7 +608,7 @@ class SqlglotQueryBuilder:
         base_table = f"{self._get_model_alias(base_model)}_cte"
 
         # Set FROM clause to base model CTE
-        select = select.from_(exp.Table(this=base_table))
+        select = select.from_(base_table)
 
         # Track which models have been joined
         joined_models = {base_model}
@@ -630,7 +630,7 @@ class SqlglotQueryBuilder:
             # Add JOIN to select with sanitized table name
             join_table = f"{self._get_model_alias(join_model)}_cte"
             select = select.join(
-                exp.Table(this=join_table),
+                join_table,
                 on=qualified_condition,
                 join_type="INNER",  # TODO: Get from relation
             )
