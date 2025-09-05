@@ -282,7 +282,7 @@ def gather_source_metadata(sources):
     return data
 
 
-def test_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
+def validate_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]:
     """Test a source connection from configuration using Pydantic models."""
     try:
         source_name = source_config.get("name", "test_source")
