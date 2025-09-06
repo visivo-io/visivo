@@ -1,4 +1,12 @@
 function getRelativePath(base, target) {
+  // Handle null, undefined, or non-string inputs
+  if (!base || typeof base !== 'string') {
+    return target || '';
+  }
+  if (!target || typeof target !== 'string') {
+    return '';
+  }
+  
   // Remove leading slashes and split by '/'
   const baseParts = base.replace(/^\//, '').split('/');
   const targetParts = target.replace(/^\//, '').split('/');

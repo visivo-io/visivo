@@ -235,6 +235,93 @@ class TestFlaskSourceEndpoints:
                 self.mock_project.sources, "test_source", "test_db", "users", "public"
             )
 
+    def test_test_source_connection_success(self):
+        """Test POST /api/sources/test-connection/ with valid config."""
+        with patch("visivo.server.views.sources_views.validate_source_from_config") as mock_test:
+            mock_test.return_value = {"status": "connected", "source": "test_source"}
+
+            source_config = {
+                "name": "test_source",
+                "type": "postgresql",
+                "host": "localhost",
+                "database": "test_db",
+            }
+
+            response = self.client.post(
+                "/api/sources/test-connection/",
+                json=source_config,
+                headers={"Content-Type": "application/json"},
+            )
+
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["status"] == "connected"
+            mock_test.assert_called_once_with(source_config)
+
+    def test_test_source_connection_failure(self):
+        """Test POST /api/sources/test-connection/ with connection failure."""
+        with patch("visivo.server.views.sources_views.validate_source_from_config") as mock_test:
+            mock_test.return_value = {"status": "connection_failed", "error": "Connection timeout"}
+
+            source_config = {
+                "name": "bad_source",
+                "type": "postgresql",
+                "host": "nonexistent",
+                "database": "test_db",
+            }
+
+            response = self.client.post(
+                "/api/sources/test-connection/",
+                json=source_config,
+                headers={"Content-Type": "application/json"},
+            )
+
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["status"] == "connection_failed"
+            assert "Connection timeout" in data["error"]
+            mock_test.assert_called_once_with(source_config)
+
+    def test_test_source_connection_no_config(self):
+        """Test POST /api/sources/test-connection/ with missing config."""
+        response = self.client.post(
+            "/api/sources/test-connection/", headers={"Content-Type": "application/json"}
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert "Source configuration is required" in data["error"]
+
+    def test_test_source_connection_invalid_json(self):
+        """Test POST /api/sources/test-connection/ with invalid JSON."""
+        response = self.client.post(
+            "/api/sources/test-connection/",
+            data="invalid json",
+            headers={"Content-Type": "application/json"},
+        )
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert "Invalid JSON in request body" in data["error"]
+
+    def test_test_source_connection_exception(self):
+        """Test POST /api/sources/test-connection/ with unexpected exception."""
+        with patch("visivo.server.views.sources_views.validate_source_from_config") as mock_test:
+            mock_test.side_effect = Exception("Unexpected error")
+
+            source_config = {"name": "test_source", "type": "postgresql", "host": "localhost"}
+
+            response = self.client.post(
+                "/api/sources/test-connection/",
+                json=source_config,
+                headers={"Content-Type": "application/json"},
+            )
+
+            assert response.status_code == 500
+            data = json.loads(response.data)
+            assert data["status"] == "connection_failed"
+            assert "Unexpected error" in data["error"]
+
     def test_sources_metadata_success(self):
         """Test GET /api/project/sources_metadata returns all metadata."""
         with patch("visivo.server.views.sources_views.gather_source_metadata") as mock_gather:
