@@ -1,8 +1,10 @@
+import hashlib
 import io
 from pathlib import Path
 import tempfile
 from unittest import mock
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlencode
 import pytest
 import json
 import os
@@ -588,3 +590,27 @@ def test_get_job_status_invalid_id(client):
 
     assert response.status_code == 404
     assert response.get_json()["error"] == "Invalid deploy ID"
+
+
+def serve_insight_data_by_hash(client, tmp_path: Path):
+    """Test serve insight data hash found"""
+    insight_name = "my_insight"
+    insight_dir = tmp_path / "insights" / insight_name
+    insight_dir.mkdir(parents=True)
+
+    insight_file = insight_dir / "insight.json"
+    insight_file.write_text(json.dumps({"hello": "world"}))
+
+    insight_hash = hashlib.md5(insight_name.encode()).hexdigest()
+
+    resp = client.get(f"/api/insights/{insight_hash}/")
+    assert resp.status_code == 200
+    assert resp.data == b'{"hello": "world"}'
+
+
+def test_serve_insight_data_by_hash_not_found(client):
+    """Test serve insight data hash not found"""
+    wrong_hash = hashlib.md5("unknown".encode()).hexdigest()
+    resp = client.get(f"/api/insights/{wrong_hash}/")
+    assert resp.status_code == 404
+    assert "Insight data not found" in resp.get_json()["message"]

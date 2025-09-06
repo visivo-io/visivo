@@ -1,14 +1,21 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, TypeAlias
 
 from visivo.models.base.selector_model import SelectorModel
+from visivo.models.insight import Insight
 from visivo.models.table_column_definition import TableColumnDefinition
 from visivo.models.trace import Trace
 from pydantic import Field
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
-from visivo.models.base.base_model import REF_REGEX, generate_ref_field
+from visivo.models.base.base_model import (
+    REF_REGEX,
+    generate_ref_field,
+)
 from pydantic import model_validator
 from enum import IntEnum
+
+TraceRef: TypeAlias = generate_ref_field(Trace)
+InsightRef: TypeAlias = generate_ref_field(Insight)
 
 
 class RowsPerPageEnum(IntEnum):
@@ -85,9 +92,13 @@ class Table(SelectorModel, NamedModel, ParentModel):
     Tables are built on the [material react table framework](https://www.material-react-table.com/).
     """
 
-    traces: List[generate_ref_field(Trace)] = Field(
+    traces: List[TraceRef] = Field(
         [],
-        description="A ref() to a trace or trace defined in line.  Data for the table will come from the trace.",
+        description="A ref() to a trace or trace defined in line. Data for the table will come from the trace.",
+    )
+    insights: List[InsightRef] = Field(
+        [],
+        description="A ref() to a insight or insight defined in line. Data for the table will come from the insight.",
     )
 
     column_defs: Optional[List[TableColumnDefinition]] = Field(
@@ -100,7 +111,8 @@ class Table(SelectorModel, NamedModel, ParentModel):
     )
 
     def child_items(self):
-        return self.traces + [self.selector]
+        """Return child items for DAG construction"""
+        return self.traces + self.insights + [self.selector]
 
     @model_validator(mode="before")
     @classmethod

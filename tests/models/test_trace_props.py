@@ -1,8 +1,7 @@
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.trace import Trace
 from pydantic import ValidationError
 import pytest
-
-from visivo.models.trace_props.trace_props import TraceProps
 
 
 def test_invalid_trace_prop_mesh3d():

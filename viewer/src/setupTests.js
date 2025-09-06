@@ -45,6 +45,24 @@ global.Response = Response;
 global.Headers = Headers;
 global.Request = Request;
 
+import { TextDecoder, TextEncoder } from "util";
+
+if (!global.TextDecoder) {
+  global.TextDecoder = TextDecoder;
+}
+
+if (!global.TextEncoder) {
+  global.TextEncoder = TextEncoder;
+}
+
+if (!global.Worker) {
+  global.Worker = class {
+    constructor() {}
+    postMessage() {}
+    terminate() {}
+  };
+}
+
 // Mock React Query to prevent network requests in tests
 jest.mock('@tanstack/react-query', () => {
   const actual = jest.requireActual('@tanstack/react-query');
