@@ -7,6 +7,7 @@ import { WorksheetProvider } from './contexts/WorksheetContext';
 import { QueryProvider } from './contexts/QueryContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StoreProvider } from './StoreProvider';
+import { DuckDBProvider } from './contexts/DuckDBContext';
 
 const queryClient = new QueryClient();
 
@@ -21,7 +22,9 @@ export default function LocalProviders({ fetchTraces, fetchInsights, fetchDashbo
         <URLProvider urlConfig={localURLConfig}>
           <WorksheetProvider>
             <StoreProvider>
-              <RouterProvider router={LocalRouter} future={futureFlags} />
+              <DuckDBProvider>
+                <RouterProvider router={LocalRouter} future={futureFlags} />
+              </DuckDBProvider>
             </StoreProvider>
           </WorksheetProvider>
         </URLProvider>

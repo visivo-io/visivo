@@ -16,6 +16,5 @@ export const DuckDBProvider = ({ children }) => {
   return <DuckDBContext.Provider value={db}>{children}</DuckDBContext.Provider>;
 };
 
-export const useDuckDB = () => {
-  return useContext(DuckDBContext);
-};
+export const useDuckDB = () => useContext(DuckDBContext);
+

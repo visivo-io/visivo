@@ -12,7 +12,7 @@ import MenuContainer from './MenuContainer';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
-import { useInsightsData } from '../../hooks/useInsightsData';
+// import { useInsightsData } from '../../hooks/useInsightsData';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -29,10 +29,9 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
 
   const traceNames = chart.traces.map(trace => trace.name);
   const tracesData = useTracesData(project.id, traceNames);
-  const insightNames = chart.insights.map(insight => insight.name);
-  const insightData = useInsightsData(project.id, insightNames);
 
-  console.log('insightData: ', insightData);
+  // const insightNames = chart.insights.map(insight => insight.name);
+  // const insightsData = useInsightsData(project.id, insightNames);
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
@@ -56,11 +55,15 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
         });
       })
       .flat();
-  }, [selectedCohortData, chart.traces]);
+  }, [selectedCohortData, chart.traces, chart.insights]);
 
   if (!tracesData) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
+
+  // if (!insightsData) {
+  //   return <Loading text={chart.name} width={itemWidth} />;
+  // }
 
   const onSelectedCohortChange = changedSelectedTracesData => {
     setIsLoading(true);
