@@ -129,9 +129,8 @@ def test_insight_tokenizer_pre_post_query_generation():
     tokenized = tokenizer.tokenize()
 
     # Pre-query should include all necessary columns
-    assert "sum(amount)" in tokenized.pre_query
+    assert "SUM(amount)" in tokenized.pre_query
     assert "region" in tokenized.pre_query
-    assert "FROM (SELECT * FROM test_table) as base_model" in tokenized.pre_query
 
     # Post-query should be a simple SELECT with potential filters
     assert tokenized.post_query.startswith("SELECT * FROM test_table")

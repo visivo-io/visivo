@@ -58,7 +58,7 @@ const renderDashboard = (project, dashboardName, path) => {
 };
 
 test('renders dashboard chart', async () => {
-  const project = getProject([{ width: 1, chart: { name: 'chart_name', traces: [] } }]);
+  const project = getProject([{ width: 1, chart: { name: 'chart_name', traces: [], insights: [] } }]);
 
   renderDashboard(project, 'dashboard', '/dashboard');
 

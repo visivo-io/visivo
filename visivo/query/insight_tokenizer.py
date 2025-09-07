@@ -311,15 +311,14 @@ class InsightTokenizer:
 
     def _generate_pre_query(self) -> str:
         """
-        Generate server-side SQL query with a precomputed CTE for duplicated expressions.
-        Detects duplicate expressions across columns.* and props.* and hoists them into a CTE.
+        Generate server-side SQL query with precomputed CTE for duplicated and complex expressions.
         """
-        base_sql = self.model.sql
+        base_sql_expr = parse_expression(self.model.sql, dialect=self.sqlglot_dialect)
 
         occurrences = {}
 
         def register(expr_sql: str, kind: str, target: str, preferred_alias: Optional[str] = None):
-            if expr_sql is None:
+            if not expr_sql:
                 return
             norm = self._normalize_expr_sql(expr_sql)
             if not norm:
@@ -332,10 +331,12 @@ class InsightTokenizer:
             if preferred_alias:
                 occ["preferred_aliases"].add(preferred_alias)
 
+        # Register column expressions
         for column_path, sql_expr in self.column_items.items():
             short = column_path.split(".", 1)[1]
             register(sql_expr, "column", column_path, preferred_alias=short)
 
+        # Register prop expressions
         for prop_path, sql_expr in self.select_items.items():
             short_prop = prop_path.split(".", 1)[1]
             if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
@@ -348,124 +349,104 @@ class InsightTokenizer:
             else:
                 register(sql_expr, "prop", prop_path, preferred_alias=short_prop)
 
+        # Register required columns
         for req in list(self.required_columns or []):
             register(req, "required", req, preferred_alias=req)
 
-        alias_map = {}
-        used_aliases = set()
+        # Build alias map
+        alias_map, used_aliases = {}, set()
         for norm, info in occurrences.items():
-            if info["count"] > 1:
+            # Always alias if expression is not a simple column
+            force_alias = "(" in info["orig"] or ")" in info["orig"] or " " in info["orig"]
+            if info["count"] > 1 or force_alias:
                 preferred_alias = None
                 if info["preferred_aliases"]:
                     preferred_alias = sorted(info["preferred_aliases"], key=len)[0]
-                alias = self._make_alias_name(preferred_alias, used_aliases, prefix="dedup")
+                alias = self._make_alias_name(preferred_alias, used_aliases, prefix="expr")
                 alias_map[norm] = alias
 
-        cte_lines = []
-        if alias_map:
-            for norm, alias in alias_map.items():
-                original = occurrences[norm]["orig"]
-                cte_lines.append(f"{original} as {alias}")
-
-            cte_sql = (
-                "WITH precomputed AS (\n  SELECT *,\n    "
-                + ",\n    ".join(cte_lines)
-                + f"\n  FROM ({base_sql}) as base_model\n)"
-            )
-        else:
-            cte_sql = None
-
-        outer_parts = []
+        # Projections for outer query (always reference aliases when available)
+        outer_projections = []
         for column_path, sql_expr in self.column_items.items():
             norm = self._normalize_expr_sql(sql_expr)
-            if norm in alias_map:
-                outer_parts.append(f'{alias_map[norm]} as "{column_path}"')
-            else:
-                outer_parts.append(f'{sql_expr} as "{column_path}"')
+            alias = alias_map.get(norm)
+            outer_projections.append(exp.column(alias or sql_expr))
 
         for prop_path, sql_expr in self.select_items.items():
-            norm = None
             if isinstance(sql_expr, str) and sql_expr.startswith("columns."):
                 col_expr = self.column_items.get(sql_expr)
                 if col_expr:
                     norm = self._normalize_expr_sql(col_expr)
-                    if norm in alias_map:
-                        outer_parts.append(f'{alias_map[norm]} as "{prop_path}"')
-                        continue
-                    else:
-                        outer_parts.append(f'{col_expr} as "{prop_path}"')
-                        continue
+                    alias = alias_map.get(norm)
+                    outer_projections.append(exp.column(alias or col_expr))
                 else:
                     short_prop = prop_path.split(".", 1)[1]
-                    outer_parts.append(f'{short_prop} as "{prop_path}"')
-                    continue
+                    outer_projections.append(exp.column(short_prop))
             else:
                 norm = self._normalize_expr_sql(sql_expr)
-                if norm in alias_map:
-                    outer_parts.append(f'{alias_map[norm]} as "{prop_path}"')
-                else:
-                    outer_parts.append(f'{sql_expr} as "{prop_path}"')
+                alias = alias_map.get(norm)
+                outer_projections.append(exp.column(alias or sql_expr))
 
-        if self.required_columns:
-            existing_alias_targets = {p.split(" as ")[0].strip() for p in outer_parts}
-            for col in self.required_columns:
-                if col not in existing_alias_targets:
-                    # if we have a CTE we can rely on SELECT *; otherwise add the column explicitly
-                    if not cte_sql:
-                        outer_parts.append(col)
-                    else:
-                        # outer projection can include the raw column (it is available via SELECT * in CTE)
-                        outer_parts.append(col)
+        for col in self.required_columns:
+            outer_projections.append(exp.column(col))
 
-        outer_select = "SELECT " + ",\n  ".join(outer_parts)
-        from_clause = "FROM precomputed" if cte_sql else f"FROM ({base_sql}) as base_model"
+        # Build query with CTE if needed
+        if alias_map:
+            cte_projections = [
+                exp.alias_(occurrences[n]["orig"], alias) for n, alias in alias_map.items()
+            ]
 
-        query = (
-            f"{cte_sql}\n{outer_select}\n{from_clause}"
-            if cte_sql
-            else f"{outer_select}\n{from_clause}"
-        )
+            base_model = exp.Subquery(this=base_sql_expr).as_("base_model")
+            precomputed_select = exp.Select().select("*", *cte_projections).from_(base_model)
 
-        # static filters
+            query = (
+                exp.Select()
+                .select(*outer_projections)
+                .from_("precomputed")
+                .with_("precomputed", as_=precomputed_select)
+            )
+        else:
+            base_model = exp.Subquery(this=base_sql_expr).as_("base_model")
+            query = exp.Select().select(*outer_projections).from_(base_model)
+
+        # Static filters
         static_filters = []
         for interaction in self.insight.interactions or []:
             if interaction.filter:
                 filter_expr = interaction.filter.get_value()
                 if filter_expr:
-                    static_filters.append(filter_expr)
-
-                if self._is_dynamic(filter_expr):
-                    self.is_dynamic_interactions = True
-
+                    static_filters.append(
+                        parse_expression(filter_expr, dialect=self.sqlglot_dialect)
+                    )
+                    if self._is_dynamic(filter_expr):
+                        self.is_dynamic_interactions = True
         if static_filters:
-            query += "\nWHERE " + " AND ".join(static_filters)
+            query = query.where(*static_filters)
 
-        # map groupby statements to aliases when possible
+        # Group by
         if self.groupby_statements:
             mapped_groupbys = []
             for g in self.groupby_statements:
                 norm_g = self._normalize_expr_sql(g)
-                if norm_g in alias_map:
-                    mapped_groupbys.append(alias_map[norm_g])
-                else:
-                    mapped_groupbys.append(g)
-            groupby_clause = "GROUP BY " + ", ".join(mapped_groupbys)
-            query += f"\n{groupby_clause}"
+                mapped_groupbys.append(exp.column(alias_map.get(norm_g, g)))
+            query = query.group_by(*mapped_groupbys)
 
-        # static sorts
+        # Static sorts (safe unwrap)
         static_sorts = []
         for interaction in self.insight.interactions or []:
             if interaction.sort:
                 sort_expr = interaction.sort.get_value()
                 if sort_expr:
-                    static_sorts.append(sort_expr)
-
-                if self._is_dynamic(sort_expr):
-                    self.is_dynamic_interactions = True
+                    parsed_sort = parse_expression(sort_expr, dialect=self.sqlglot_dialect)
+                    if isinstance(parsed_sort, exp.Alias):
+                        parsed_sort = parsed_sort.this
+                    static_sorts.append(parsed_sort)
+                    if self._is_dynamic(sort_expr):
+                        self.is_dynamic_interactions = True
         if static_sorts:
-            query += "\nORDER BY " + ", ".join(static_sorts)
+            query = query.order_by(*static_sorts)
 
-        return query
+        return query.sql(dialect=self.sqlglot_dialect, pretty=True)
 
     def _generate_post_query(self) -> str:
         """Generate client-side query with dynamic filters/sorts"""

@@ -5,7 +5,6 @@ import { fetchInsightsData } from '../queries/insightsData';
 import { tableDuckDBExists } from '../duckdb/queries';
 import { insertDuckDBFile } from '../duckdb/queries';
 import { useDuckDB } from '../contexts/DuckDBContext';
-import { AsyncDuckDB } from '@duckdb/duckdb-wasm';
 
 function filterObject(obj, keys) {
   return Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
@@ -57,7 +56,7 @@ export const useInsightsData = (projectId, insightNames) => {
 
 /**
  *
- * @param {AsyncDuckDB} db
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db
  * @param {string} insightName
  * @param {Object} dataObj
  */
@@ -68,7 +67,7 @@ const saveInsightData = async (db, insightName, dataObj) => {
 
 /**
  *
- * @param {AsyncDuckDB} db
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db
  * @param {string} insightName
  * @param {Object} dataObj
  */

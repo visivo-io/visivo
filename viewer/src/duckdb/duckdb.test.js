@@ -3,7 +3,6 @@ import * as duckdb from "@duckdb/duckdb-wasm";
 import { initDuckDB } from "./duckdb";
 
 global.Worker = class {
-  constructor() {}
   postMessage() {}
   terminate() {}
 };

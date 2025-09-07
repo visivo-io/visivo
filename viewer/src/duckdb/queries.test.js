@@ -1,5 +1,5 @@
 import * as queries from "./queries";
-import { insertDuckDBFile, runDuckDBQuery, tableDuckDBExists } from "./queries";
+import { insertDuckDBFile, runDuckDBQuery } from "./queries";
 
 jest.mock("@duckdb/duckdb-wasm", () => {
   return {

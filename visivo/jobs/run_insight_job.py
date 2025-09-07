@@ -33,7 +33,6 @@ def action(insight, dag, output_dir):
     insight_directory = f"{output_dir}/insights/{insight.name}"
     # Tokenize the insight to get pre-query and metadata
     tokenized_insight = _get_tokenized_insight(insight, dag, output_dir)
-
     try:
         start_time = time()
 
