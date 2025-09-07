@@ -8,9 +8,6 @@ from pydantic import ValidationError, TypeAdapter
 import json
 
 
-# Helper functions to reduce duplication
-
-
 def _find_source(sources: List[Any], source_name: str) -> Optional[SqlalchemySource]:
     """Find a SqlalchemySource by name."""
     for src in sources:
@@ -53,31 +50,16 @@ def _source_not_found_error(source_name: str) -> Tuple[dict, int]:
     return {"error": f"Source '{source_name}' not found"}, 404
 
 
-# Main functions refactored
-
-
 def _test_source_connection(source: BaseSource, source_name: str) -> Dict[str, Any]:
     """Common logic for testing a source connection."""
     try:
         Logger.instance().info(f"Testing connection for source: {source_name}")
 
-        # Use different testing approaches based on source type
-        if isinstance(source, SqlalchemySource):
-            # SQLAlchemy-based sources: use SQLAlchemy engine for testing
-            engine = _get_engine_with_read_only(source)
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-        else:
-            # Non-SQLAlchemy sources (Redshift, CSV, Excel): use read_sql method
-            # All BaseSource implementations have read_sql method
-            try:
-                # Use a simple query that should work across all SQL dialects
-                source.read_sql("SELECT 1 as test_column LIMIT 1")
-            except AttributeError:
-                # Fallback: if read_sql is not available, try get_connection
-                with source.connect() as conn:
-                    # Test that we can get a connection
-                    pass
+        try:
+            source.read_sql("SELECT 1 as test_column LIMIT 1")
+        except AttributeError:
+            with source.connect() as conn:
+                pass
 
         Logger.instance().info(f"Connection test successful for {source_name}")
         return {"source": source_name, "status": "connected"}
@@ -306,7 +288,11 @@ def validate_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]
 
     except ValidationError as e:
         Logger.instance().debug(f"Source configuration validation failed: {e}")
-        return {"status": "connection_failed", "error": f"Invalid source configuration: {str(e)}"}
+        first_error = e.errors()[0]
+        return {
+            "status": "connection_failed",
+            "error": f"Invalid source configuration: {str(first_error['loc'])}: {str(first_error['msg'])}",
+        }
     except Exception as e:
         Logger.instance().debug(f"Connection test failed: {e}")
         return {"status": "connection_failed", "error": str(e)}
