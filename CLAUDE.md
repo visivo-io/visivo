@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run CLI**: `visivo [command]`
 - **Ensure python file formatting**: ensure that all python files are formatted in accordance with our black settings
 - When editing the python in @visivo/ remember to run - `poetry run black .`
+- When writing tests always use @visivo/tests/test_utils.py to create test objects based on factory_boy objects that create real pydantic models
 
 ### JavaScript Viewer Development
 - **Install dependencies**: `yarn install` (in `viewer/` directory)
@@ -50,6 +51,12 @@ Visivo is a data visualization tool with two main components:
 - **Server**: `server/flask_app.py` - Flask app that serves the web interface and API
 - **Job system**: `jobs/` - DAG-based job runner for executing data transformations
 - **Query engine**: `query/` - SQL query building and execution
+
+#### SQL Parsing Rules
+- **ALWAYS use sqlglot for SQL parsing** - Never use regex to parse SQL statements
+- **Context resolution first**: When injecting context strings (e.g., `${ref(...)}`), resolve the context FIRST, then use sqlglot to parse the resulting SQL
+- **DAG for dependencies**: Use the DAG to understand model dependencies, not regex pattern matching
+- **No regex for SQL**: Regular expressions should NEVER be used to extract SQL components like table names, column names, or references
 
 #### CLI Command Structure
 Each CLI command follows a consistent pattern:
@@ -176,4 +183,6 @@ The CLI execution path is introspection-free to maintain performance:
   - For configuration: Update model docstrings, then regenerate with `python mkdocs/src/write_mkdocs_markdown_files.py`
   - For topics/guides: Edit files in `mkdocs/topics/` or `mkdocs/background/`
   - For CLI: Update Click command help text, docs auto-generate
+- always use generate_ref_field from @visivo/models/base/base_model.py to create references to other objects in pydantics models
 - Never run python based integration tests. If you need to run an integration test, ask the user for help and they will run the test and paste the output into the chat.
+- NEVER EVER EVER write regex to parse SQL. Always use sqlglot to parse SQL. Never create fall back logic for sql parsing if sqlglot fails then it fails.

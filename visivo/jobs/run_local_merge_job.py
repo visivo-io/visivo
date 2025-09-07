@@ -15,6 +15,7 @@ def action(local_merge_model: LocalMergeModel, output_dir, dag):
     try:
         start_time = time()
         local_merge_model.insert_duckdb_data(output_dir=output_dir, dag=dag)
+
         success_message = format_message_success(
             details=f"Updated data for model \033[4m{local_merge_model.name}\033[0m",
             start_time=start_time,

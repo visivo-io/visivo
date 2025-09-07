@@ -28,6 +28,9 @@ PROJECT_CHILDREN = [
     "charts",
     "dashboards",
     "destinations",
+    "metrics",
+    "relations",
+    "dimensions",
 ]
 
 

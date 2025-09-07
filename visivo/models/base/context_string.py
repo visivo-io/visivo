@@ -10,6 +10,9 @@ INLINE_REF_PROPS_PATH_REGEX = rf"\${{\s*ref\([{NAME_REGEX}]+?\)([\.\d\w\[\]]*)\s
 INLINE_PATH_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]]+?)\s*}}"
 CONTEXT_STRING_VALUE_REGEX = rf"\${{\s*([{NAME_REGEX}\.\[\]\)\()]+?)\s*}}"
 
+# Pattern to match ${ref(metric_name)} or ${ref(model).metric_name}
+METRIC_REF_PATTERN = r"\$\{\s*ref\(([^)]+)\)(?:\.([^}]+))?\s*\}"
+
 
 class ContextString:
     """
