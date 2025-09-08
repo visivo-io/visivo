@@ -1,205 +1,188 @@
-# Getting Started
+# Quick Start
 
 ## 🚀 Data to Dashboard in 90 Seconds
 
 Transform your data into interactive dashboards with a single command. No configuration files, no complex setup—just instant visualization.
 
+### Install Visivo
+
+```bash
+curl -fsSL https://visivo.sh | bash
+```
+
+!!! success "One command, all platforms"
+    Our installation script handles macOS, Linux, and Windows automatically. No Python required!
+
+### Choose Your Path
+
 <div class="grid cards" markdown>
 
--   :material-lightning-bolt:{ .lg .middle } **Quick Start with `visivo serve`**
+-   :material-lightning-bolt:{ .lg .middle } **Instant Dashboard with `visivo serve`**
 
     ---
 
-    Install Visivo and see your first dashboard in under 90 seconds. No Python required!
+    Start with a working example dashboard and customize it to your needs.
 
     ```bash
-    curl -fsSL https://visivo.sh | bash
     visivo serve
     ```
 
-    [:octicons-arrow-right-24: Jump to Quick Start](#quick-start)
+    [:octicons-arrow-right-24: Follow the serve path](#serve-path-example-dashboard)
 
--   :material-package-variant:{ .lg .middle } **Alternative Installation Methods**
+-   :material-robot:{ .lg .middle } **Agent AI-Powered with Claude Code**
 
     ---
 
-    Choose your preferred installation method: Python/pip, Docker, or Cloud deployment.
+    Use an AI Agent to iteratively build and refine your dashboard through conversation.
 
-    **Best for:** Teams, production deployments, or Python environments
+    **Perfect for:** Rapid prototyping and learning Visivo's capabilities
 
-    [:octicons-arrow-right-24: See all options](#alternative-installation-methods)
+    [:octicons-arrow-right-24: Follow the Agent AI path](#agent-ai-path-build-with-claude-code)
 
 </div>
 
 ---
 
-## Quick Start
+## Serve Path: Example Dashboard
 
-Get your first dashboard running in 90 seconds—no configuration needed!
+The simplest way to get started—run one command and explore a working dashboard!
 
-### 1. Install Visivo
-
-=== "macOS/Linux"
-
-    ```bash
-    curl -fsSL https://visivo.sh | bash
-    ```
-
-=== "Windows"
-
-    ```powershell
-    irm https://visivo.sh/install.ps1 | iex
-    ```
-
-=== "Python (pip)"
-
-    ```bash
-    pip install visivo
-    ```
-
-!!! success "What you get"
-    - ✅ Single binary, no dependencies
-    - ✅ Works on Mac, Linux, and Windows
-    - ✅ Instant hot-reload development
-    - ✅ Built-in SQLite for immediate use
-
-### 2. Launch Your First Dashboard
+### 1. Run the Command
 
 ```bash
 visivo serve
 ```
 
-That's it! Visivo will:
+### 2. Choose an Example
 
-1. **Open a template wizard** in your browser at `http://localhost:8000`
-2. **Let you choose** from pre-built templates (Sales, Analytics, Monitoring)
-3. **Create your project** with sample data automatically
-4. **Show your dashboard** immediately
+Visivo will prompt you to select from several example dashboards, then:
 
-!!! tip "What happens when you run `visivo serve`"
-    If no `project.visivo.yml` exists, Visivo launches an interactive wizard that helps you:
+- Initialize the chosen example into your current directory
+- Create a complete `project.visivo.yml` configuration file
+- Load sample data and refresh your browser to show the new configuration
+
+Each example includes:
+- Pre-configured sample data
+- Multiple chart types to explore
+- Interactive filters and controls
+- A complete configuration to learn from
+
+### 3. Make It Your Own
+
+The example dashboard is fully functional and editable:
+- Open the generated `project.visivo.yml` in your editor
+- Modify any part of the configuration
+- Save and watch your changes appear instantly
+
+!!! tip "What happens behind the scenes"
+    When you run `visivo serve` without a config file, Visivo:
     
-    - Select a template that matches your use case
-    - Configure your data source (or use the built-in SQLite)
-    - Customize your dashboard layout
-    - All through a friendly web interface—no YAML editing required!
+    1. Prompts you to choose from available examples
+    2. Initializes the selected example into your directory
+    3. Loads sample data into DuckDB
+    4. Renders the dashboard with hot-reload enabled
+    5. Opens your browser to show the result
 
-### 3. Experience Live Development Mode
+Now jump to [Experience Live Development](#experience-live-development) to see the magic of instant updates!
 
-Once your dashboard is running, try the magic of hot-reload:
+---
 
-1. **Open** `project.visivo.yml` in your favorite editor
-2. **Change** any value (try changing a chart title)
-3. **Save** the file
-4. **Watch** your dashboard update instantly—no refresh needed!
+## Agent AI Path: Build with Claude Code
+
+Use the power of an AI Agent to iteratively create and refine your dashboard configuration through conversation.
+
+### 1. Create Your Project Directory
+
+```bash
+mkdir my-dashboard
+cd my-dashboard
+```
+
+### 2. Use This Prompt with Claude Code
+
+Copy this prompt and paste it into Claude Code or similar AI Agent:
+
+!!! example "Dashboard Generation Prompt"
+    ```
+    Create a Visivo dashboard configuration file (project.visivo.yml) for a [YOUR USE CASE HERE].
+    
+    Requirements:
+    - Use DuckDB as the data source
+    - Download and store the data in the local DuckDB database
+    - Create at least 3 different charts
+    - Use Visivo's YAML configuration format
+    
+    Read the docs at docs.visivo.io to know how Visivo works, and test the visivo configuration with `visivo run`.
+    
+    Provide the complete project.visivo.yml file with inline comments explaining each section.
+    ```
+
+### 3. Iterate and Refine
+
+Work with the AI Agent to save, test, and refine the configuration:
+
+- Save the generated configuration as `project.visivo.yml`
+- Test it with `visivo run` as the Agent suggests
+- Ask the Agent to modify charts, add features, or fix any issues
+- Continue the conversation until your dashboard is perfect
+
+### 4. Launch Your Dashboard
+
+```bash
+visivo serve
+```
+
+!!! success "Why Agent AI Works Better"
+    AI Agents like Claude Code can read files, run commands, and iterate on solutions. This approach lets you:
+    
+    - Start with a working example tailored to your needs
+    - Test and validate configurations automatically
+    - Iterate quickly through conversation and feedback
+    - Learn Visivo's syntax through guided exploration
+
+
+Now jump to [Experience Live Development](#experience-live-development) to start customizing!
+
+---
+
+## Experience Live Development
+
+Once your dashboard is running (from either path), experience the magic of hot-reload. This is especially powerful when combined with Agent AI iteration:
+
+### The Development Cycle
+
+1. **:material-file-edit: Edit** - Open `project.visivo.yml` in your editor and make any change:
+   
+   ```yaml
+   charts:
+     - name: revenue_chart
+       layout:
+         title: Monthly Revenue  # ← Change this
+   ```
+
+2. **:material-content-save: Save** - Save the file (Cmd+S / Ctrl+S). That's it! No build command needed.
+
+3. **:material-eye: See** - Your dashboard updates instantly in the browser.
+   - ✅ No compilation
+   - ✅ No build step  
+   - ✅ No page refresh
 
 <figure markdown>
   ![Live reload demonstration](assets/interactivity-example.gif)
-  <figcaption>Every save triggers an instant update. No rebuilds. No waiting.</figcaption>
+  <figcaption>Every save triggers an instant update. Watch your dashboard evolve in real-time!</figcaption>
 </figure>
 
----
+### Why This Matters
 
-## Experience the Live Development Flow 🎯
+This instant feedback loop revolutionizes dashboard development:
 
-Visivo's `serve` command isn't just for viewing—it's your complete development environment:
+- **Experiment Freely** - Try different visualizations instantly
+- **Learn Faster** - See the impact of each change immediately  
+- **Debug Visually** - Spot issues as they happen
+- **Iterate Quickly** - From idea to implementation in seconds
 
-!!! example "The Development Cycle"
-
-    === "Edit"
-        Make changes to your YAML configuration
-        ```yaml
-        charts:
-          - name: revenue_chart
-            traces:
-              - ${ref(revenue_trace)}
-            layout:
-              title: Monthly Revenue  # ← Change this
-        ```
-
-    === "Save"
-        Save the file (Cmd+S / Ctrl+S)
-
-    === "See"
-        Dashboard updates instantly in your browser
-        
-        No compilation ✓  
-        No build step ✓  
-        No page refresh ✓
-
-This instant feedback loop means you can:
-
-- **Experiment freely** - Try different visualizations instantly
-- **Iterate quickly** - See changes as you type
-- **Debug visually** - Spot issues immediately
-- **Learn faster** - Understand the impact of each configuration
-
----
-
-## Choose Your Data Source
-
-Visivo works with your data, wherever it lives:
-
-=== "Quick Start (SQLite)"
-
-    Perfect for getting started—zero configuration needed!
-    
-    ```yaml
-    sources:
-      - name: local-data
-        type: sqlite
-        database: visivo.db
-    ```
-    
-    Visivo includes sample data to explore immediately.
-
-=== "PostgreSQL"
-
-    ```yaml
-    sources:
-      - name: postgres
-        type: postgresql
-        host: localhost
-        port: 5432
-        database: myapp
-        username: ${env_var('POSTGRES_USER')}
-        password: ${env_var('POSTGRES_PASSWORD')}
-    ```
-
-=== "Snowflake"
-
-    ```yaml
-    sources:
-      - name: snowflake
-        type: snowflake
-        account: ${env_var('SNOWFLAKE_ACCOUNT')}
-        warehouse: COMPUTE_WH
-        database: ANALYTICS
-        username: ${env_var('SNOWFLAKE_USER')}
-        password: ${env_var('SNOWFLAKE_PASSWORD')}
-    ```
-
-=== "BigQuery"
-
-    ```yaml
-    sources:
-      - name: bigquery
-        type: bigquery
-        project: my-project
-        dataset: analytics
-        credentials_path: ${env_var('GOOGLE_APPLICATION_CREDENTIALS')}
-    ```
-
-=== "CSV/Excel Files"
-
-    ```yaml
-    sources:
-      - name: csv-data
-        type: csv
-        path: ./data/sales.csv
-    ```
-
-[:octicons-book-24: Full source documentation](topics/sources.md)
+!!! tip "Pro Tip: Split Screen Development"
+    Open your editor and browser side-by-side. As you type and save, watch your dashboard transform in real-time. It's like having a conversation with your data!
 
 ---
 
@@ -241,149 +224,30 @@ Now that you have a running dashboard, explore what's possible:
     
     [:octicons-arrow-right-24: Deployment guide](topics/deployments.md)
 
-</div>
-
----
-
-## Alternative Installation Methods
-
-### Python Package (pip)
-
-Best for Python developers and data scientists who want to integrate Visivo into existing workflows.
-
-```bash
-pip install visivo
-```
-
-!!! note "Requirements"
-    - Python 3.10 or higher
-    - Virtual environment recommended
-
-[:octicons-book-24: Python setup guide](#manual-setup)
-
-### Docker
-
-Perfect for containerized deployments and CI/CD pipelines.
-
-```bash
-docker run -p 8000:8000 visivo/visivo serve
-```
-
-[:octicons-book-24: Docker documentation](topics/deployments.md)
-
-### Visivo Cloud
-
-Get a hosted instance with authentication, sharing, and automatic updates.
-
-1. Sign up at [app.visivo.io](https://app.visivo.io)
-2. Get your API key from your profile
-3. Deploy with: `visivo deploy -s production`
-
-[:octicons-book-24: Cloud deployment guide](topics/deployments.md)
-
----
-
-## Manual Setup
-
-For those who prefer complete control over their configuration:
-
-<details markdown>
-<summary>Click to expand manual setup instructions</summary>
-
-### Create a `project.visivo.yml` file
-
-The `project.visivo.yml` is your project's configuration file. Create it in your project root:
-
-```yaml title="project.visivo.yml"
-name: my-dashboard
-defaults:
-  source_name: main
-
-sources:
-  - name: main
-    type: sqlite
-    database: data.db
-
-models:
-  - name: sales_data
-    sql: select * from sales
-
-traces:
-  - name: revenue_trace
-    model: ${ref(sales_data)}
-    props:
-      type: scatter
-      x: ?{date}
-      y: ?{revenue}
-      mode: lines+markers
-
-charts:
-  - name: revenue_chart
-    traces:
-      - ${ref(revenue_trace)}
-    layout:
-      title: Revenue Over Time
-
-dashboards:
-  - name: main
-    rows:
-      - height: medium
-        items:
-          - chart: ${ref(revenue_chart)}
-```
-
-### Run your project
-
-```bash
-visivo serve
-```
-
-Your dashboard will be available at `http://localhost:8000`.
-
-</details>
-
----
-
-## Getting Help
-
-<div class="grid cards" markdown>
-
--   :material-book-open-variant:{ .lg .middle } **Documentation**
-
-    ---
-
-    Browse the complete reference documentation
-    
-    [:octicons-arrow-right-24: View docs](reference/cli.md)
-
 -   :material-github:{ .lg .middle } **Examples**
 
     ---
 
     Explore real-world examples and templates
     
-    [:octicons-arrow-right-24: GitHub examples](https://github.com/visivo/visivo/tree/main/examples)
-
--   :material-email:{ .lg .middle } **Contact Support**
-
-    ---
-
-    Questions? We're here to help!
-    
-    [:octicons-arrow-right-24: Email us](mailto:jared@visivo.io)
+    [:octicons-arrow-right-24: View examples](https://visivo.io/examples)
 
 </div>
 
 ---
 
+**Questions?** [Contact us](mailto:jared@visivo.io) - we're here to help!
+
+---
+
 !!! quote "Why Visivo?"
-    "Unlike other tools that require init, config, setup—Visivo just needs `serve`. From zero to dashboard in 90 seconds."
+    "Unlike other tools that require complex setup and configuration, Visivo gets you from zero to dashboard in 90 seconds. Whether you're using our interactive wizard or AI assistance, you'll have a working dashboard before your coffee gets cold."
 
 ---
 
 <div style="text-align: center; margin-top: 2rem;">
   <a href="https://github.com/visivo/visivo" class="md-button md-button--primary">
-    :fontawesome-brands-github: Star us on GitHub
+    :octicons-star-16: Star us on GitHub
   </a>
   <a href="https://app.visivo.io" class="md-button">
     :material-cloud: Try Visivo Cloud
