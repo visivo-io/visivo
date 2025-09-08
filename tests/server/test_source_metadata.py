@@ -520,7 +520,7 @@ class TestSourceMetadata:
                 mock_source = Mock()
                 mock_adapter.validate_python.return_value = mock_source
 
-                from visivo.models.sources.source import BaseSource
+                from visivo.models.sources.source import Source
 
                 with patch("visivo.server.source_metadata.isinstance") as mock_isinstance:
                     mock_isinstance.return_value = True
@@ -572,7 +572,7 @@ class TestSourceMetadata:
                 mock_source.read_sql = Mock(return_value=[{"test": 1}])
                 mock_adapter.validate_python.return_value = mock_source
 
-                from visivo.models.sources.source import BaseSource
+                from visivo.models.sources.source import Source
 
                 with patch("visivo.server.source_metadata.isinstance") as mock_isinstance:
                     mock_isinstance.return_value = True

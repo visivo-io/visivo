@@ -6,6 +6,7 @@ import pytest
 def test_TokenizedTrace_simple_data():
     data = {
         "sql": "select * from table",
+        "dialect": "duckdb",
         "cohort_on": "?{x}",
         "source": "name",
         "source_type": "bigquery",
@@ -28,6 +29,7 @@ def test_TokenizedTrace_missing_data():
 def test_TokenizedTrace_invalid_order_by_input():
     data = {
         "sql": "select * from table",
+        "dialect": "duckdb",
         "cohort_on": "widget",
         "groupby_statements": ["widget", "completed_at"],
         "select_items": {"y": "sum(amount)", "x": "completed_at"},

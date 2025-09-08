@@ -104,25 +104,25 @@ Copy this prompt and paste it into Claude Code or similar AI Agent:
 
 !!! example "Dashboard Generation Prompt"
     ```
-    Create a Visivo dashboard configuration file (project.visivo.yml) for a [YOUR USE CASE HERE].
+    Create a Visivo dashboard from my data located here: [YOUR DATA HERE].
     
     Requirements:
     - Use DuckDB as the data source
-    - Download and store the data in the local DuckDB database
-    - Create at least 3 different charts
-    - Use Visivo's YAML configuration format
-    
-    Read the docs at docs.visivo.io to know how Visivo works, and test the visivo configuration with `visivo run`.
-    
-    Provide the complete project.visivo.yml file with inline comments explaining each section.
+    - Load data from either:
+      * A CSV file I provide above, OR
+      * This sample retail dataset: https://raw.githubusercontent.com/visivo-io/visivo/main/mkdocs/assets/us_land_use.csv
+    - Analyze the data and create at least 3 different charts showing different insights
+    - Read the docs at docs.visivo.io to know how Visivo works and create a project.visivo.yml
+    - Validate the visivo configuration with `visivo run`.
+    - If the data is a csv use Visivo's [CSVFileSource](https://docs.visivo.io/reference/configuration/Sources/CSVFileSource/) to load that data. 
+    - Provide the complete project.visivo.yml file with inline comments explaining each section.
     ```
 
 ### 3. Iterate and Refine
 
 Work with the AI Agent to save, test, and refine the configuration:
 
-- Save the generated configuration as `project.visivo.yml`
-- Test it with `visivo run` as the Agent suggests
+- Serve the dashboard with `visivo serve`
 - Ask the Agent to modify charts, add features, or fix any issues
 - Continue the conversation until your dashboard is perfect
 

@@ -22,6 +22,9 @@ class TestListDatabasesImplementations:
         class TestSource(SqlalchemySource):
             type: Literal["test"] = "test"
 
+            def get_connection_dialect(self):
+                return "test"
+
             def get_dialect(self):
                 return "test"
 

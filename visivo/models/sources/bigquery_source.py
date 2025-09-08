@@ -121,6 +121,9 @@ class BigQuerySource(SqlalchemySource):
         8, description="The pool size that is used for this connection."
     )
 
+    def get_connection_dialect(self):
+        return "bigquery"
+
     def get_dialect(self):
         return "bigquery"
 

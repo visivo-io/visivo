@@ -6,6 +6,7 @@ class TokenizedTrace(BaseModel):
     sql: str
     cohort_on: str
     source: str
+    dialect: str
     source_type: str
     groupby_statements: Optional[List[str]] = None
     select_items: Optional[Dict] = None
