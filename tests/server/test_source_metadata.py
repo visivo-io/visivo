@@ -9,6 +9,7 @@ from visivo.server.source_metadata import (
     get_schema_tables,
     get_table_columns,
     gather_source_metadata,
+    validate_source_from_config,
 )
 
 
@@ -42,18 +43,8 @@ class TestSourceMetadata:
 
     def test_test_source_connection_success(self):
         """Test successful source connection test."""
-        # Setup
-        mock_engine = Mock()
-        mock_conn = Mock()
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
-        mock_engine.dialect.name = "postgresql"
-
-        # Set up get_engine without __code__ attribute check
-        def mock_get_engine(read_only=True):
-            return mock_engine
-
-        self.mock_source.get_engine = mock_get_engine
+        # Setup - the new simplified logic uses read_sql first
+        self.mock_source.read_sql = Mock(return_value=[{"test": 1}])
         sources = [self.mock_source]
 
         # Execute
@@ -62,22 +53,12 @@ class TestSourceMetadata:
 
         # Assert
         assert result == {"source": "test_source", "status": "connected"}
-        mock_conn.execute.assert_called_once()
+        self.mock_source.read_sql.assert_called_once_with("SELECT 1 as test_column LIMIT 1")
 
     def test_test_source_connection_with_read_only_param(self):
-        """Test connection test when get_engine accepts read_only parameter."""
-        # Setup
-        mock_engine = Mock()
-        mock_conn = Mock()
-        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
-        mock_engine.dialect.name = "postgresql"
-
-        # Mock get_engine with read_only parameter
-        def get_engine_with_read_only(read_only=True):
-            return mock_engine
-
-        self.mock_source.get_engine = get_engine_with_read_only
+        """Test connection test using read_sql method."""
+        # Setup - simplified logic now uses read_sql directly
+        self.mock_source.read_sql = Mock(return_value=[{"test": 1}])
         sources = [self.mock_source]
 
         # Execute
@@ -86,15 +67,13 @@ class TestSourceMetadata:
 
         # Assert
         assert result == {"source": "test_source", "status": "connected"}
+        self.mock_source.read_sql.assert_called_once_with("SELECT 1 as test_column LIMIT 1")
 
     def test_test_source_connection_failure(self):
         """Test failed source connection test."""
 
-        # Setup
-        def mock_get_engine(read_only=True):
-            raise OperationalError("Connection failed", None, None)
-
-        self.mock_source.get_engine = mock_get_engine
+        # Setup - the new simplified logic uses read_sql first, so make it fail
+        self.mock_source.read_sql = Mock(side_effect=Exception("Connection failed"))
         sources = [self.mock_source]
 
         # Execute
@@ -114,29 +93,28 @@ class TestSourceMetadata:
 
         assert result == ({"error": "Source 'non_existent' not found"}, 404)
 
-    def test_test_source_connection_different_dialects(self):
-        """Test connection test for different SQL dialects."""
-        dialects = ["snowflake", "mysql", "sqlite", "duckdb", "unknown_dialect"]
+    def test_test_source_connection_fallback_to_connect(self):
+        """Test connection test fallback to connect() when read_sql is not available."""
+        # Setup - no read_sql method, should fall back to connect()
+        self.mock_source.read_sql = Mock(
+            side_effect=AttributeError("'MockSource' object has no attribute 'read_sql'")
+        )
 
-        for dialect in dialects:
-            mock_engine = Mock()
-            mock_conn = Mock()
-            mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_conn)
-            mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
-            mock_engine.dialect.name = dialect
+        # Mock the connect method
+        mock_conn = Mock()
+        self.mock_source.connect.return_value.__enter__ = Mock(return_value=mock_conn)
+        self.mock_source.connect.return_value.__exit__ = Mock(return_value=None)
 
-            def mock_get_engine(read_only=True):
-                return mock_engine
+        sources = [self.mock_source]
 
-            self.mock_source.get_engine = mock_get_engine
-            sources = [self.mock_source]
+        # Execute
+        with patch("visivo.server.source_metadata.Logger"):
+            result = check_source_connection(sources, "test_source")
 
-            with patch("visivo.server.source_metadata.Logger"):
-                result = check_source_connection(sources, "test_source")
-
-            assert result == {"source": "test_source", "status": "connected"}
-            mock_conn.execute.assert_called_once()
-            mock_conn.reset_mock()  # Reset for next iteration
+        # Assert
+        assert result == {"source": "test_source", "status": "connected"}
+        self.mock_source.read_sql.assert_called_once_with("SELECT 1 as test_column LIMIT 1")
+        self.mock_source.connect.assert_called_once()
 
     def test_get_source_databases_success(self):
         """Test successful database listing."""
@@ -527,3 +505,81 @@ class TestSourceMetadata:
                 404,
             )
             assert gather_source_metadata(sources) == {"sources": []}
+
+    def test_validate_source_from_config_sqlite(self):
+        """Test validate_source_from_config with SQLite source."""
+        # Setup
+        source_config = {"name": "test_sqlite", "type": "sqlite", "database": ":memory:"}
+
+        # Execute
+        with patch("visivo.server.source_metadata.TypeAdapter") as mock_adapter_class:
+            with patch("visivo.server.source_metadata._test_source_connection") as mock_test:
+                mock_test.return_value = {"source": "test_sqlite", "status": "connected"}
+                mock_adapter = Mock()
+                mock_adapter_class.return_value = mock_adapter
+                mock_source = Mock()
+                mock_adapter.validate_python.return_value = mock_source
+
+                from visivo.models.sources.source import BaseSource
+
+                with patch("visivo.server.source_metadata.isinstance") as mock_isinstance:
+                    mock_isinstance.return_value = True
+
+                    result = validate_source_from_config(source_config)
+
+        # Assert
+        assert result["status"] == "connected"
+        assert result["source"] == "test_sqlite"
+        mock_adapter.validate_python.assert_called_once_with(source_config)
+        mock_test.assert_called_once()
+
+    def test_validate_source_from_config_invalid_type(self):
+        """Test validate_source_from_config with invalid source type."""
+        # Setup
+        source_config = {"name": "test_invalid", "type": "invalid_type", "database": "test_db"}
+
+        # Execute
+        with patch("visivo.server.source_metadata.TypeAdapter") as mock_adapter_class:
+            from pydantic import ValidationError
+
+            mock_adapter = Mock()
+            mock_adapter_class.return_value = mock_adapter
+
+            # Simulate a ValidationError - use a generic Exception that will be caught
+            mock_adapter.validate_python.side_effect = Exception("validation error")
+
+            with patch("visivo.server.source_metadata.Logger"):
+                result = validate_source_from_config(source_config)
+
+        # Assert
+        assert result["status"] == "connection_failed"
+        assert result["error"]  # Just verify some error is returned
+
+    def test_validate_source_from_config_csv(self):
+        """Test validate_source_from_config with CSV source."""
+        # Setup
+        source_config = {"name": "test_csv", "type": "csv", "file": "/path/to/test.csv"}
+
+        # Execute
+        with patch("visivo.server.source_metadata.TypeAdapter") as mock_adapter_class:
+            with patch("visivo.server.source_metadata._test_source_connection") as mock_test:
+                mock_test.return_value = {"source": "test_csv", "status": "connected"}
+                mock_adapter = Mock()
+                mock_adapter_class.return_value = mock_adapter
+
+                # Create a mock CSV source that has read_sql method
+                mock_source = Mock()
+                mock_source.read_sql = Mock(return_value=[{"test": 1}])
+                mock_adapter.validate_python.return_value = mock_source
+
+                from visivo.models.sources.source import BaseSource
+
+                with patch("visivo.server.source_metadata.isinstance") as mock_isinstance:
+                    mock_isinstance.return_value = True
+
+                    result = validate_source_from_config(source_config)
+
+        # Assert
+        assert result["status"] == "connected"
+        assert result["source"] == "test_csv"
+        mock_test.assert_called_once_with(mock_source, "test_csv")
