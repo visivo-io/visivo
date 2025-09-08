@@ -1,11 +1,11 @@
 from typing import Literal, Optional
-from visivo.models.sources.source import BaseSource
+from visivo.models.sources.source import Source
 from pydantic import Field
 import duckdb
 import click
 
 
-class CSVFileSource(BaseSource):
+class CSVFileSource(Source):
     type: Literal["csv"]
     file: str = Field(..., description="Path to the CSV file.")
     delimiter: Optional[str] = Field(",", description="CSV delimiter.")
@@ -44,6 +44,9 @@ class CSVFileSource(BaseSource):
 
     def get_dialect(self):
         return "duckdb"
+
+    def description(self):
+        return f"file: {self.file}"
 
 
 class CSVConnection:

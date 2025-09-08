@@ -1,5 +1,5 @@
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
-from visivo.models.sources.source import BaseSource
+from visivo.models.sources.source import Source
 from visivo.logger.logger import Logger
 from sqlalchemy import text
 from typing import Optional, Tuple, Any, List, Dict
@@ -50,7 +50,7 @@ def _source_not_found_error(source_name: str) -> Tuple[dict, int]:
     return {"error": f"Source '{source_name}' not found"}, 404
 
 
-def _test_source_connection(source: BaseSource, source_name: str) -> Dict[str, Any]:
+def _test_source_connection(source: Source, source_name: str) -> Dict[str, Any]:
     """Common logic for testing a source connection."""
     try:
         Logger.instance().info(f"Testing connection for source: {source_name}")
@@ -276,7 +276,7 @@ def validate_source_from_config(source_config: Dict[str, Any]) -> Dict[str, Any]
         source_adapter = TypeAdapter(SourceField)
         source = source_adapter.validate_python(source_config)
 
-        if not isinstance(source, BaseSource):
+        if not isinstance(source, Source):
             return {
                 "status": "connection_failed",
                 "error": "Source type does not support connection testing",

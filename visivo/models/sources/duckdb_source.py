@@ -151,6 +151,9 @@ class DuckdbSource(SqlalchemySource):
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
 
+    def get_connection_dialect(self):
+        return "duckdb"
+
     def get_dialect(self):
         return "duckdb"
 

@@ -1,263 +1,255 @@
-There's a few things that you will need to get configured to get started with your visivo project. We will walk through those together in this article to help get you up and running fast! 
-![type:video](https://www.youtube.com/embed/BWiwYpDCuek?si=jEFhQKq9kPEoFycl)
+# Quick Start
 
-_Still have questions after reading? Reach out to [jared@visivo.io](mailto:jared@visiov.io) and we'd be happy to help._
+## 🚀 Data to Dashboard in 90 Seconds
 
-### Install Visivo Python Package
-You can easily install visivo via `pip`:
+Transform your data into interactive dashboards with a single command. No configuration files, no complex setup—just instant visualization.
+
+### Install Visivo
+
+```bash
+curl -fsSL https://visivo.sh | bash
 ```
-pip install visivo
+
+!!! success "One command, all platforms"
+    Our installation script handles macOS, Linux, and Windows automatically. No Python required!
+
+### Choose Your Path
+
+<div class="grid cards" markdown>
+
+-   :material-lightning-bolt:{ .lg .middle } **Instant Dashboard with `visivo serve`**
+
+    ---
+
+    Start with a working example dashboard and customize it to your needs.
+
+    ```bash
+    visivo serve
+    ```
+
+    [:octicons-arrow-right-24: Follow the serve path](#serve-path-example-dashboard)
+
+-   :material-robot:{ .lg .middle } **Agent AI-Powered with Claude Code**
+
+    ---
+
+    Use an AI Agent to iteratively build and refine your dashboard through conversation.
+
+    **Perfect for:** Rapid prototyping and learning Visivo's capabilities
+
+    [:octicons-arrow-right-24: Follow the Agent AI path](#agent-ai-path-build-with-claude-code)
+
+</div>
+
+---
+
+## Serve Path: Example Dashboard
+
+The simplest way to get started—run one command and explore a working dashboard!
+
+### 1. Run the Command
+
+```bash
+visivo serve
 ```
 
-or a specific version:
+### 2. Choose an Example
 
-```
-pip install visivo==1.0.26
-```
-Now you have access to the `visivo` CLI! 
-!!! note
-    Visivo requires Python 3.10+ You may need to create a virtual environment using Python 3.10+ to run visivo.
+Visivo will prompt you to select from several example dashboards, then:
 
-## Get a Visivo API Key
-If you want to deploy your Visivo project to the Visivo cloud (recommended), you will need an API key. Here's how you can get one: 
+- Initialize the chosen example into your current directory
+- Create a complete `project.visivo.yml` configuration file
+- Load sample data and refresh your browser to show the new configuration
 
-1. Visit [app.visivo.io](https://app.visivo.io/accounts/register/) and register or login. There's a free trial with no credit card required. 
-2. On login you will be routed to [the profile page](https://app.visivo.io/profile). 
-3. Create a new token & copy the value down! You will need that value in the next section. 
+Each example includes:
+- Pre-configured sample data
+- Multiple chart types to explore
+- Interactive filters and controls
+- A complete configuration to learn from
 
-## Setup using `visivo init`
+### 3. Make It Your Own
 
-To quickly get up and running, you can run `visivo init` and that will create a `project folder`, `project.visivo.yml`, and `profile.yml` with a project skeleton. 
+The example dashboard is fully functional and editable:
+- Open the generated `project.visivo.yml` in your editor
+- Modify any part of the configuration
+- Save and watch your changes appear instantly
 
-When prompted enter in the API key value that you jotted down.
-
-You can manually edit everything that Visivo created _(more on that in the Manual Setup section)_. 
-
-{% raw %}
-??? tip
-
-    Want to get started quickly with dummy data? 
+!!! tip "What happens behind the scenes"
+    When you run `visivo serve` without a config file, Visivo:
     
-    Run `visivo init` and choose `sqlite` when prompted:
+    1. Prompts you to choose from available examples
+    2. Initializes the selected example into your directory
+    3. Loads sample data into DuckDB
+    4. Renders the dashboard with hot-reload enabled
+    5. Opens your browser to show the result
 
-    >? Database type (postgresql, sqlite, snowflake, mysql): sqlite
+Now jump to [Experience Live Development](#experience-live-development) to see the magic of instant updates!
+
+---
+
+## Agent AI Path: Build with Claude Code
+
+Use the power of an AI Agent to iteratively create and refine your dashboard configuration through conversation.
+
+### 1. Create Your Project Directory
+
+```bash
+mkdir my-dashboard
+cd my-dashboard
+```
+
+### 2. Use This Prompt with Claude Code
+
+Copy this prompt and paste it into Claude Code or similar AI Agent:
+
+!!! example "Dashboard Generation Prompt"
+    ```
+    Create a Visivo dashboard from my data located here: [YOUR DATA HERE].
     
-    Then you're good to go! 
+    Requirements:
+    - Use DuckDB as the data source
+    - Load data from either:
+      * A CSV file I provide above, OR
+      * This sample retail dataset: https://raw.githubusercontent.com/visivo-io/visivo/main/mkdocs/assets/us_land_use.csv
+    - Analyze the data and create at least 3 different charts showing different insights
+    - Read the docs at docs.visivo.io to know how Visivo works and create a project.visivo.yml
+    - Validate the visivo configuration with `visivo run`.
+    - If the data is a csv use Visivo's [CSVFileSource](https://docs.visivo.io/reference/configuration/Sources/CSVFileSource/) to load that data. 
+    - Provide the complete project.visivo.yml file with inline comments explaining each section.
+    ```
+
+### 3. Iterate and Refine
+
+Work with the AI Agent to save, test, and refine the configuration:
+
+- Serve the dashboard with `visivo serve`
+- Ask the Agent to modify charts, add features, or fix any issues
+- Continue the conversation until your dashboard is perfect
+
+### 4. Launch Your Dashboard
+
+```bash
+visivo serve
+```
+
+!!! success "Why Agent AI Works Better"
+    AI Agents like Claude Code can read files, run commands, and iterate on solutions. This approach lets you:
     
-    Run `visivo serve`, checkout your dashboard and start playing around with it. 
+    - Start with a working example tailored to your needs
+    - Test and validate configurations automatically
+    - Iterate quickly through conversation and feedback
+    - Learn Visivo's syntax through guided exploration
+
+
+Now jump to [Experience Live Development](#experience-live-development) to start customizing!
+
+---
+
+## Experience Live Development
+
+Once your dashboard is running (from either path), experience the magic of hot-reload. This is especially powerful when combined with Agent AI iteration:
+
+### The Development Cycle
+
+1. **:material-file-edit: Edit** - Open `project.visivo.yml` in your editor and make any change:
+   
+   ```yaml
+   charts:
+     - name: revenue_chart
+       layout:
+         title: Monthly Revenue  # ← Change this
+   ```
+
+2. **:material-content-save: Save** - Save the file (Cmd+S / Ctrl+S). That's it! No build command needed.
+
+3. **:material-eye: See** - Your dashboard updates instantly in the browser.
+   - ✅ No compilation
+   - ✅ No build step  
+   - ✅ No page refresh
+
+<figure markdown>
+  ![Live reload demonstration](assets/interactivity-example.gif)
+  <figcaption>Every save triggers an instant update. Watch your dashboard evolve in real-time!</figcaption>
+</figure>
+
+### Why This Matters
+
+This instant feedback loop revolutionizes dashboard development:
+
+- **Experiment Freely** - Try different visualizations instantly
+- **Learn Faster** - See the impact of each change immediately  
+- **Debug Visually** - Spot issues as they happen
+- **Iterate Quickly** - From idea to implementation in seconds
+
+!!! tip "Pro Tip: Split Screen Development"
+    Open your editor and browser side-by-side. As you type and save, watch your dashboard transform in real-time. It's like having a conversation with your data!
+
+---
+
+## What's Next?
+
+Now that you have a running dashboard, explore what's possible:
+
+<div class="grid cards" markdown>
+
+-   :material-palette:{ .lg .middle } **Customize Your Dashboard**
+
+    ---
+
+    Learn how to modify layouts, colors, and styling
     
-    You can always add a source with another connection later.
+    [:octicons-arrow-right-24: Dashboard customization](reference/configuration/Dashboards/Dashboard/index.md)
 
-{% endraw %}
+-   :material-chart-line:{ .lg .middle } **Add Charts & Visualizations**
 
+    ---
 
-## Run Your Project Locally With `visivo serve`
-Visivo gives you the ability to run your project locally and view dashboards on local host using the command `visivo serve`. 
+    Explore 40+ chart types with rich customization options
+    
+    [:octicons-arrow-right-24: Chart gallery](reference/configuration/Chart/index.md)
 
-Once you run that command you should see something similar to this:
-![](assets/visivo_serve_example.png)
+-   :material-database:{ .lg .middle } **Connect Your Data**
 
-Click through the the link after `Serving project at`, which in the example above was `http://localhost:8000`
+    ---
 
-every time you change your configurations in your project, Visivo will automatically update impacted items with a live reload. 
+    Set up connections to your production databases
+    
+    [:octicons-arrow-right-24: Data sources](topics/sources.md)
 
+-   :material-cloud-upload:{ .lg .middle } **Deploy & Share**
 
-## Deploy your Project to Remote With `visivo deploy`
-Now that you have a project that you are happy with, you can push it to a deployment where you will be able to share these insights with your team. 
+    ---
 
-We recommend setting up a CI process that performs production deploys after your transformations run and performs deploys for pull requests. However you can also deploy from local if you want to share development version of your work.
+    Share your dashboards with your team
+    
+    [:octicons-arrow-right-24: Deployment guide](topics/deployments.md)
 
-To deploy all you have to do is run `visivo deploy -s a-name-of-your-choice`. 
+-   :material-github:{ .lg .middle } **Examples**
 
-The `-s` flag tells Visivo which stage you want to deploy to. You can think of stages like environments where you house different versions of your project remotely. 
+    ---
 
+    Explore real-world examples and templates
+    
+    [:octicons-arrow-right-24: View examples](https://visivo.io/examples)
 
-## Manual setup 
+</div>
 
-### Create a `project.visivo.yml` file
-The `project.visivo.yml` is a special file that visivo uses for your project configurations. You will want to put the file at the root directory where you want your project to live. If you are using dbt, this will likely in the same folder as the `dbt_project.yml` file. 
+---
 
-The `project.visivo.yml` only requires that the name attribute is filled out however below is a taste of where we are heading to get a full project set up. Don't worry we will walk through all of these configurations one by one.
-``` yaml title="project_dir/project.visivo.yml"
-name: awesome-project
-defaults:
-  source_name: local-sqlite
-  alert_name: slack
+**Questions?** [Contact us](mailto:jared@visivo.io) - we're here to help!
 
-alerts:
-  - name: slack
-    type: slack
-    webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
+---
 
-sources:
-  - name: local-sqlite
-    database: target/local.db
-    type: sqlite
-  - name: local-postgres
-    database: postgres
-    type: postgresql
-    username: postgres
-    password: postgres
-    port: 5434
-  - name: remote-snowflake
-    type: snowflake
-    database: {% raw %}{{ env_var('DEV_DB') }}{% endraw %}
-    account: {% raw %}{{ env_var('SNOWFLAKE_ACCOUNT') }}{% endraw %}
-    db_schema: DEFAULT
-    username: {% raw %}{{ env_var('SNOWFLAKE_USER') }}{% endraw %}
-    warehouse: DEV
-    password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
+!!! quote "Why Visivo?"
+    "Unlike other tools that require complex setup and configuration, Visivo gets you from zero to dashboard in 90 seconds. Whether you're using our interactive wizard or AI assistance, you'll have a working dashboard before your coffee gets cold."
 
-models:
-  - name: widget_sales
-    sql: select * from widget_fact_table
-traces:
-  - name: simple_trace
-    model: ${ref(widget_sales)}
-    cohort_on: widget
-    props:
-      x: ?{ date_trunc('week', completed_at) }
-      y: ?{ sum(amount) }
-      marker: 
-        color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
-        shape: square
-      mode: 'lines'
-charts:
-  - name: simple_chart
-    traces:
-      - ${ref(simple_trace)}
-    layout:
-      - title: Widget Sales by Week
+---
 
-dashboards:
-  - name: simple_dashboard
-    rows:
-      - height: medium
-        items:
-          - width: 5
-            chart: ${ref(simple_chart)}
-          - width: 2
-            markdown: |
-              # Here is the first
-              1. Numbered
-              1. List
-```
-
-### Set up a Source & store secrets safely
-Sources are connections to your data warehouses and databases that Visivo will run queries against. You can set up sources by configuring them in your `project.visivo.yml`. 
-``` yaml title="project_dir/project.visivo.yml"
-sources:
-  - name: local-sqlite
-    database: target/local.db
-    type: sqlite
-  - name: local-postgres
-    database: postgres
-    type: postgresql
-    username: postgres
-    password: postgres
-    host: localhost
-    port: 5434
-  - name: remote-snowflake
-    type: snowflake
-    database: {% raw %}{{ env_var('DEV_DB') }}{% endraw %}
-    account: {% raw %}{{ env_var('SNOWFLAKE_ACCOUNT') }}{% endraw %}
-    db_schema: DEFAULT
-    username: {% raw %}{{ env_var('SNOWFLAKE_USER') }}{% endraw %}
-    warehouse: DEV
-    password: {% raw %}{{ env_var('SNOWFLAKE_PASSWORD') }}{% endraw %}
-```
-For some sources like the `local-sqlite` and `local-postgres` you may not need to store any secrets since they are just running locally. However remote connections like the `remote-snowflake` target, you will definitely want to make sure that you are not storing these attributes in plain text. 
-
-This is where the `env_var()` jinja function comes in handy. You can use this jinja function to reference environment variables that are either stored on your machine or in a `.env` file. 
-
-### Configure Defaults
-Defaults are also optional, but highly recommended configurations to run Visivo. 
-
-Without defaults you would need to specify the source and / or alert whenever you needed to use them. For example to run the `test` command you would need to pass the source and alert flag: `visivo test -t remote-snowflake -a slack`
-
-However, if you have defaults set like this: 
-``` yaml title="project_dir/project.visivo.yml"
-defaults:
-  source_name: remote-snowflake
-  alert_name: slack
-```
-Then you can just run `visivo test` and Visivo will default to remote-snowflake for the source and slack for the destination. 
-
-### Create a Trace
-You can think of traces like lines on a chart with specific configurations. With Visivo you can configure pretty much anything from the curve of a line, to if data should be represented as a bar, line or area. Additionally you can set these configurations based on attributes of your underlying data. 
-
-Here's a simple example of a trace:
-``` yaml title="project_dir/project.visivo.yml"
-traces:
-  - name: simple_trace
-    model: ${ref(widget_sales)}
-    cohort_on: widget
-    props:
-      type: scatter
-      x: ?{ date_trunc('week', completed_at) }
-      y: ?{ sum(amount) }
-      marker: 
-        color: ?{ case sum(amount) > 200 then 'green' else 'blue' end }
-        shape: square
-      mode: 'lines'
-```
-We won't go into all of the details of the trace here, but a few things to note: 
-
-* **`type`** tells Visivo how to plot the data. Visivo utilizes plotly.js and you can use most plotly trace types for this attribute. 
-* **`cohort_on`** let's Visivo know that you would like cut your chart by the `widget` column from the `widget_sales` table. Thus you will get as many lines as you have distinct `widget` types in the table from this trace. 
-* **`?{ }`** is a special function that lets Visivo know that the statement contained within the function should be passed as part of the select statement to a query against your source. Visivo will compile the full query so you don't have to worry about building and maintaining boilerplate sql. 
-* When **`?{}`** is not used, Visivo knows that you are simply passing static configuration to trace. This might make more sense for configurations that you would want to stay consistent across the whole trace like font. 
-
-Traces are able to be sourced from different sources. You can set the default source at the trace level by specifying a source name in the `source_name` attribute of the source. 
-
-### Create a Chart 
-Charts are objects that can contain one to many traces and traces can be present on many charts. This allows both modularity, the ability to connect traces of different grains on the same chart, and the ability to connect traces from different data sources on the same chart. 
-
-Here's a simple example of the chart configuration:
-``` yaml title="project_dir/project.visivo.yml"
-charts:
-  - name: simple_chart
-    traces:
-      - ${ref(simple_trace)}
-    layout:
-      - title: Widget Sales by Week
-```
-
-### Create a Dashboard
-Dashboards house `charts`, `tables` and `markdown`. They help you set up a highly flexible grid so that you can put all of your information exactly where you need it. 
-
-You can structure the grid by specifying rows that house many items. Items have a particular width that is evaluated relative to the other item widths in the row. So if for example you had 3 items in a row with widths of 5, 2 and 3. The first item would take up 50% of the row, the second 20% and the third 30%. 
-```
-Dashboard --> row --> item --> chart/table/markdown
-                 |        |
-                 |         --> width
-                  --> height 
-```
-Here's how that looks in yaml:
-``` yaml title="project_dir/project.visivo.yml"
-dashboards:
-  - name: simple_dashboard
-    rows:
-      - height: medium
-        items:
-          - width: 5
-            chart: ${ref(simple_chart)}
-          - width: 2
-            markdown: |
-              # Here is the first
-              1. Numbered
-              1. List
-```
-
-### Set up Alerts - Optional
-When you run `visivo test` you are able to validate assumptions that you have about your charts and traces. Sometimes you might want a notification about testing failures. This is where alerts come in! You can set up slack alerts using webhooks or email alerts. 
-
-To set up a slack alert destination you will first need to configure an incoming webhook in slack. You can follow [this guide](https://api.slack.com/messaging/webhooks) to get started there
-
-Once you have your webhook key you can set up the alert like this:
-```  yaml title="project_dir/project.visivo.yml"
-alerts:
-  - name: slack
-    type: slack
-    webhook_url: https://hooks.slack.com/services/your-slack-webhook-key
-```    
+<div style="text-align: center; margin-top: 2rem;">
+  <a href="https://github.com/visivo/visivo" class="md-button md-button--primary">
+    :octicons-star-16: Star us on GitHub
+  </a>
+  <a href="https://app.visivo.io" class="md-button">
+    :material-cloud: Try Visivo Cloud
+  </a>
+</div>

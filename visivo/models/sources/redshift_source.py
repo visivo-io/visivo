@@ -1,5 +1,5 @@
 from typing import Literal, Optional, Any
-from visivo.models.sources.source import Source
+from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 from visivo.logger.logger import Logger
 import json
@@ -7,7 +7,7 @@ import json
 RedshiftType = Literal["redshift"]
 
 
-class RedshiftSource(Source):
+class RedshiftSource(ServerSource):
     """
     RedshiftSources hold the connection information to Amazon Redshift data sources.
 
@@ -216,6 +216,9 @@ class RedshiftSource(Source):
             raise e
 
         return schemas_dict
+
+    def get_dialect(self):
+        return "redshift"
 
 
 class RedshiftConnection:

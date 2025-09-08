@@ -8,7 +8,7 @@ class DefaultSource:
     pass
 
 
-class BaseSource(ABC, NamedModel):
+class Source(ABC, NamedModel):
 
     @abstractmethod
     def get_connection(self):
@@ -18,11 +18,19 @@ class BaseSource(ABC, NamedModel):
     def read_sql(self, query: str, **kwargs):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
 
+    @abstractmethod
+    def description(self):
+        raise NotImplementedError(f"No description method implemented for {self.type}")
+
+    @abstractmethod
+    def get_dialect(self):
+        raise NotImplementedError(f"No get_dialect method implemented for {self.type}")
+
     def connect(self):
         return Connection(source=self)
 
 
-class Source(BaseSource):
+class ServerSource(Source):
     """
     Sources hold the connection information to your data sources.
     """
@@ -40,6 +48,9 @@ class Source(BaseSource):
         None, description="The schema that the Visivo project will use in queries."
     )
 
+    def description(self):
+        return f"host: {self.host}, port: {self.port}, username: {self.username}, database: {self.database}"
+
     def get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
 
@@ -51,7 +62,7 @@ class Source(BaseSource):
             username=self.username,
             password=self.get_password(),
             port=self.port,
-            drivername=self.get_dialect(),
+            drivername=self.get_connection_dialect(),
             database=self.database,
             query=None,
         )

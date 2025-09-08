@@ -27,7 +27,7 @@ def action(source_to_test: Source, working_dir=None):
         failure_message = format_message_failure(
             details=f"Failed connection for source \033[4m{source_to_test.name}\033[0m",
             start_time=start_time,
-            error_msg=f"Failed connection to host: {source_to_test.host}, port: {source_to_test.port}, username: {source_to_test.username}, database: {source_to_test.database}. {str(repr(e))}",
+            error_msg=f"Failed connection to source: {source_to_test.description()}. {str(repr(e))}",
             full_path=None,
         )
         return JobResult(item=source_to_test, success=False, message=failure_message)
