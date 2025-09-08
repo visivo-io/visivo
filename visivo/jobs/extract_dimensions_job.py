@@ -1,13 +1,20 @@
 """Job for extracting column dimensions from model schemas."""
 
 from typing import Optional, Any
-from visivo.jobs.job import Job, JobResult
+from visivo.jobs.job import (
+    Job, 
+    JobResult, 
+    format_message_success,
+    format_message_failure,
+    start_message
+)
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.dimension import Dimension
 from visivo.logger.logger import Logger
 from visivo.jobs.utils import get_source_for_model
+from time import time
 
 
 def extract_dimensions_for_model(model: Any, source: Any) -> None:
@@ -37,8 +44,10 @@ def extract_dimensions_for_model(model: Any, source: Any) -> None:
             )
             return
 
-        # Get explicitly defined dimension names
-        explicit_dimension_names = {dim.name for dim in model.dimensions}
+        # Get explicitly defined dimension names (if model has dimensions field)
+        explicit_dimension_names = set()
+        if hasattr(model, 'dimensions') and model.dimensions:
+            explicit_dimension_names = {dim.name for dim in model.dimensions}
 
         # Create implicit dimensions for columns not already defined
         implicit_dimensions = []
@@ -75,14 +84,18 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
     """
 
     def extract_dimensions(output_dir=output_dir):
+        Logger.instance().info(start_message("Dimension Extraction", model))
+        start_time = time()
+        
         try:
             # Skip if not a SQL-based model
             if not isinstance(model, (SqlModel, CsvScriptModel, LocalMergeModel)):
-                return JobResult(
-                    item=model,
-                    success=True,
-                    message=f"Skipping dimension extraction for non-SQL model {model.name}",
+                success_message = format_message_success(
+                    details=f"Skipped dimension extraction for non-SQL model \033[4m{model.name}\033[0m",
+                    start_time=start_time,
+                    full_path=None,
                 )
+                return JobResult(item=model, success=True, message=success_message)
 
             # Get the source for the model using common utility
             if not output_dir:
@@ -96,11 +109,12 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
                 Logger.instance().debug(
                     f"No source found for model {model.name}, skipping dimension extraction"
                 )
-                return JobResult(
-                    item=model,
-                    success=True,  # Don't fail the job, just skip dimension extraction
-                    message=f"Skipped dimension extraction for {model.name} (no source found)",
+                success_message = format_message_success(
+                    details=f"Skipped dimension extraction for \033[4m{model.name}\033[0m (no source found)",
+                    start_time=start_time,
+                    full_path=None,
                 )
+                return JobResult(item=model, success=True, message=success_message)
 
             # Get column metadata from the source
             if isinstance(model, SqlModel) or isinstance(model, LocalMergeModel):
@@ -116,14 +130,17 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
                 Logger.instance().debug(
                     f"Could not extract columns from model {model.name}, skipping dimension extraction"
                 )
-                return JobResult(
-                    item=model,
-                    success=True,  # Don't fail the job, just skip dimension extraction
-                    message=f"Skipped dimension extraction for {model.name} (no columns found)",
+                success_message = format_message_success(
+                    details=f"Skipped dimension extraction for \033[4m{model.name}\033[0m (no columns found)",
+                    start_time=start_time,
+                    full_path=None,
                 )
+                return JobResult(item=model, success=True, message=success_message)
 
-            # Get explicitly defined dimension names
-            explicit_dimension_names = {dim.name for dim in model.dimensions}
+            # Get explicitly defined dimension names (if model has dimensions field)
+            explicit_dimension_names = set()
+            if hasattr(model, 'dimensions') and model.dimensions:
+                explicit_dimension_names = {dim.name for dim in model.dimensions}
 
             # Create implicit dimensions for columns not already defined
             implicit_dimensions = []
@@ -147,18 +164,21 @@ def job(model: Any, dag: Any, output_dir: str = None) -> Optional[Job]:
                 f"Extracted {len(implicit_dimensions)} implicit dimensions from {model.name}"
             )
 
-            return JobResult(
-                item=model,
-                success=True,
-                message=f"Extracted {len(implicit_dimensions)} dimensions from {model.name}",
+            success_message = format_message_success(
+                details=f"Extracted {len(implicit_dimensions)} dimensions from \033[4m{model.name}\033[0m",
+                start_time=start_time,
+                full_path=None,
             )
+            return JobResult(item=model, success=True, message=success_message)
 
         except Exception as e:
-            return JobResult(
-                item=model,
-                success=False,
-                message=f"Failed to extract dimensions from {model.name}: {str(e)}",
+            failure_message = format_message_failure(
+                details=f"Failed to extract dimensions from \033[4m{model.name}\033[0m",
+                start_time=start_time,
+                full_path=None,
+                error_msg=str(e),
             )
+            return JobResult(item=model, success=False, message=failure_message)
 
     return Job(
         item=model,

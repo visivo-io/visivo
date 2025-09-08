@@ -1,7 +1,7 @@
 from typing import Optional
+import re
 from pydantic import Field, ConfigDict, field_validator
 from visivo.models.base.named_model import NamedModel
-import sqlglot
 
 
 class Metric(NamedModel):
@@ -50,53 +50,15 @@ class Metric(NamedModel):
     @field_validator("name")
     @classmethod
     def validate_sql_identifier(cls, v: Optional[str]) -> Optional[str]:
-        """Validate that the metric name is a valid SQL identifier."""
+        """Validate that the metric name is a valid identifier."""
         if v is None:
             return v
 
-        # Check for dangerous SQL patterns
-        if ";" in v or "--" in v or "/*" in v or "*/" in v:
-            raise ValueError(f"Metric name '{v}' contains potentially dangerous SQL characters.")
-
-        # Check for problematic characters that could cause SQL issues
-        if "'" in v:
-            raise ValueError(f"Metric name '{v}' contains invalid characters.")
-
-        # Check if it's a reserved SQL keyword (common ones)
-        reserved_keywords = {
-            "SELECT",
-            "FROM",
-            "WHERE",
-            "JOIN",
-            "GROUP",
-            "ORDER",
-            "HAVING",
-            "INSERT",
-            "UPDATE",
-            "DELETE",
-            "CREATE",
-            "DROP",
-            "ALTER",
-            "TABLE",
-            "INDEX",
-            "VIEW",
-            "UNION",
-            "AND",
-            "OR",
-            "NOT",
-            "IN",
-            "EXISTS",
-            "BETWEEN",
-            "LIKE",
-            "IS",
-            "NULL",
-            "AS",
-        }
-        if v.upper() in reserved_keywords:
-            raise ValueError(f"Metric name '{v}' is a reserved SQL keyword.")
-
-        # Check if name starts with a number (invalid without quotes)
-        if v and v[0].isdigit():
-            raise ValueError(f"Metric name '{v}' cannot start with a number.")
+        # Use regex to validate: alphanumeric and underscores only, no whitespace or dots
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', v):
+            raise ValueError(
+                f"Metric name '{v}' must contain only letters, numbers, and underscores, "
+                "and cannot start with a number."
+            )
 
         return v
