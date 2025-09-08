@@ -2,21 +2,12 @@ import { merge } from 'lodash';
 
 const COLUMN_REGEX = /column\((.+)\)(\[(-?\d*):?(-?\d*)\]|)/;
 
-export const traceNamesInData = tracesData => {
-  return Object.keys(tracesData);
+
+export const insightNamesInData = insightssData => {
+  return Object.keys(insightssData);
 };
 
-export const cohortNamesInData = tracesData => {
-  return Object.keys(tracesData)
-    .map(traceName => {
-      return Object.keys(tracesData[traceName]).map(cohortName => {
-        return cohortName;
-      });
-    })
-    .flat()
-    .sort();
-};
-
+// Reuse: convert dot.notation keys → nested objects
 const convertDotKeysToNestedObject = flatObject => {
   const nestedObject = {};
   for (let key in flatObject) {
@@ -40,7 +31,9 @@ const convertDotKeysToNestedObject = flatObject => {
   }
   return nestedObject;
 };
-export const replaceColumnRefWithData = (obj, data, parent = null, key = null) => {
+
+// Reuse: replace "column(...)" references with real data
+const replaceColumnRefWithData = (obj, data, parent = null, key = null) => {
   if (Array.isArray(obj)) {
     obj.forEach((item, index) => replaceColumnRefWithData(item, data, obj, index));
   } else if (typeof obj === 'object' && obj !== null) {
@@ -52,6 +45,7 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
     const columnName = match[1];
     const unparsedStart = match[3];
     const unparsedEnd = match[4];
+
     if (unparsedStart !== undefined && unparsedEnd !== undefined) {
       const start = unparsedStart ? parseInt(unparsedStart, 10) : 0;
       const end = unparsedEnd ? parseInt(unparsedEnd, 10) : null;
@@ -67,16 +61,37 @@ export const replaceColumnRefWithData = (obj, data, parent = null, key = null) =
     }
   }
 };
-export const mergeStaticPropertiesAndData = (traceProps, traceData, cohortOn) => {
-  replaceColumnRefWithData(traceProps, traceData);
-  const mergedTraceAndNestedData = merge({}, traceProps, traceData.props, { name: cohortOn });
-  return mergedTraceAndNestedData;
+
+// Merge config props + data-driven props
+const mergeStaticPropertiesAndData = (insightProps, insightData) => {
+  replaceColumnRefWithData(insightProps, insightData);
+  return merge({}, insightProps, insightData.props);
 };
 
-export const chartDataFromCohortData = (cohortData, trace, cohortName) => {
-  console.log("cohortData: ", cohortData)
-  const traceDatum = convertDotKeysToNestedObject(cohortData);
-  const duplicatedProps = structuredClone(trace.props);
+export const chartDataFromInsightData = (insightConfigs, insightData) => {
+  return insightConfigs.map(config => {
+    const dataBlock = insightData[config.name]?.insight ?? [];
 
-  return mergeStaticPropertiesAndData(duplicatedProps, traceDatum, cohortName);
+    // Transform rows into column-oriented structure like your other pipeline
+    const columns = {};
+    dataBlock.forEach(row => {
+      for (let key in row) {
+        if (!columns[key]) columns[key] = [];
+        columns[key].push(row[key]);
+      }
+    });
+
+    const duplicatedProps = structuredClone(config.props);
+    const traceDatum = convertDotKeysToNestedObject({ columns });
+
+    const insight = mergeStaticPropertiesAndData(duplicatedProps, traceDatum);
+
+    return {
+      name: config.name,
+      figure: {
+        data: [insight],
+        layout: { title: config.name }
+      }
+    };
+  });
 };

@@ -13,6 +13,7 @@ import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
 import { useInsightsData } from '../../hooks/useInsightsData';
+import { chartDataFromInsightData } from '../../models/Insight';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +34,9 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const insightNames = chart.insights.map(insight => insight.name);
   const insightsData = useInsightsData(project.id, insightNames);
 
-  console.log(insightsData)
+  console.log(insightsData);
+  console.log(chart.insights);
+  console.log('chart.traces: ', chart.traces);
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
@@ -58,6 +61,12 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       })
       .flat();
   }, [selectedCohortData, chart.traces]);
+
+  const selectedInsightPlotData = useMemo(() => {
+    return chartDataFromInsightData(chart.insights, insightsData);
+  }, [selectedCohortData, chart.insights]);
+
+  console.log('selectedInsightPlotData: ', selectedInsightPlotData);
 
   if (!tracesData) {
     return <Loading text={chart.name} width={itemWidth} />;
