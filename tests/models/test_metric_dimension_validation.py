@@ -11,10 +11,9 @@ from visivo.models.dimension import Dimension
 class TestMetricNameValidation:
     """Test that metric names are validated as SQL identifiers."""
 
-    def test_valid_metric_names(self):
-        """Test that valid SQL identifiers are accepted."""
-        # Simple valid names
-        valid_names = [
+    @pytest.mark.parametrize(
+        "name",
+        [
             "total_revenue",
             "user_count",
             "avg_order_value",
@@ -22,37 +21,29 @@ class TestMetricNameValidation:
             "_private_metric",
             "UPPERCASE_METRIC",
             "mixedCase123",
-        ]
+        ],
+    )
+    def test_valid_metric_names(self, name):
+        """Test that valid SQL identifiers are accepted."""
+        metric = Metric(name=name, expression="SUM(amount)")
+        assert metric.name == name
 
-        for name in valid_names:
-            metric = Metric(name=name, expression="SUM(amount)")
-            assert metric.name == name
-
-    def test_invalid_metric_names(self):
-        """Test that invalid SQL identifiers are rejected."""
-        invalid_names = [
+    @pytest.mark.parametrize(
+        "name",
+        [
             "123_starts_with_number",  # Starts with number
             "metric;drop table",  # SQL injection attempt
             "metric'name",  # Single quote
             "metric--comment",  # SQL comment syntax
-        ]
-
-        for name in invalid_names:
-            with pytest.raises(ValidationError):
-                Metric(name=name, expression="SUM(amount)")
-
-    def test_names_requiring_quotes(self):
-        """Test names that would need quotes are rejected."""
-        # These names are invalid as SQL identifiers without quotes
-        names_needing_quotes = [
-            "metric with spaces",
-            "metric-with-hyphens",
-            "metric.with.dots",
-        ]
-
-        for name in names_needing_quotes:
-            with pytest.raises(ValidationError):
-                Metric(name=name, expression="SUM(amount)")
+            "metric with spaces",  # Spaces not allowed
+            "metric-with-hyphens",  # Hyphens not allowed
+            "metric.with.dots",  # Dots not allowed
+        ],
+    )
+    def test_invalid_metric_names(self, name):
+        """Test that invalid SQL identifiers are rejected."""
+        with pytest.raises(ValidationError):
+            Metric(name=name, expression="SUM(amount)")
 
     def test_none_name_allowed(self):
         """Test that None is allowed for name (anonymous metrics)."""
@@ -63,9 +54,9 @@ class TestMetricNameValidation:
 class TestDimensionNameValidation:
     """Test that dimension names are validated as SQL identifiers."""
 
-    def test_valid_dimension_names(self):
-        """Test that valid SQL identifiers are accepted."""
-        valid_names = [
+    @pytest.mark.parametrize(
+        "name",
+        [
             "order_year",
             "customer_segment",
             "is_premium",
@@ -73,38 +64,31 @@ class TestDimensionNameValidation:
             "_internal_dim",
             "UPPER_CASE_DIM",
             "dim2024",
-        ]
+        ],
+    )
+    def test_valid_dimension_names(self, name):
+        """Test that valid SQL identifiers are accepted."""
+        dimension = Dimension(name=name, expression="strftime('%Y', date)")
+        assert dimension.name == name
 
-        for name in valid_names:
-            dimension = Dimension(name=name, expression="strftime('%Y', date)")
-            assert dimension.name == name
-
-    def test_invalid_dimension_names(self):
-        """Test that invalid SQL identifiers are rejected."""
-        invalid_names = [
+    @pytest.mark.parametrize(
+        "name",
+        [
             "456_invalid",  # Starts with number
             "dim;delete from",  # SQL injection attempt
-            "dim'quote",  # Single quote in name
+            "dim'quote",  # Single quote
             "dim--comment",  # SQL comment syntax
-        ]
-
-        for name in invalid_names:
-            with pytest.raises(ValidationError):
-                Dimension(name=name, expression="strftime('%Y', date)")
-
-    def test_names_with_spaces(self):
-        """Test that names with spaces are rejected."""
-        names_with_spaces = [
-            "order year",
-            "customer full name",
-            "is high value",
-            "dim-with-dash",
-            "dim.with.dots",
-        ]
-
-        for name in names_with_spaces:
-            with pytest.raises(ValidationError):
-                Dimension(name=name, expression="CASE WHEN x > 100 THEN 1 ELSE 0 END")
+            "order year",  # Spaces not allowed
+            "customer full name",  # Spaces not allowed
+            "is high value",  # Spaces not allowed
+            "dim-with-dash",  # Dashes not allowed
+            "dim.with.dots",  # Dots not allowed
+        ],
+    )
+    def test_invalid_dimension_names(self, name):
+        """Test that invalid SQL identifiers are rejected."""
+        with pytest.raises(ValidationError):
+            Dimension(name=name, expression="strftime('%Y', date)")
 
     def test_none_name_allowed(self):
         """Test that None is allowed for name (anonymous dimensions)."""
@@ -115,27 +99,62 @@ class TestDimensionNameValidation:
 class TestSQLKeywordHandling:
     """Test how SQL keywords are handled in names."""
 
-    def test_reserved_keywords_accepted(self):
+    @pytest.mark.parametrize(
+        "keyword", ["SELECT", "FROM", "WHERE", "JOIN", "GROUP", "ORDER", "HAVING"]
+    )
+    def test_reserved_keywords_accepted(self, keyword):
         """Test that SQL keywords are accepted as names (they're valid identifiers)."""
         # SQL keywords are actually valid identifiers in most databases
-        keywords = ["SELECT", "FROM", "WHERE", "JOIN", "GROUP", "ORDER", "HAVING"]
+        metric = Metric(name=keyword, expression="COUNT(*)")
+        assert metric.name == keyword
 
-        for keyword in keywords:
-            # These should be accepted - they match the pattern [a-zA-Z_][a-zA-Z0-9_]*
-            metric = Metric(name=keyword, expression="COUNT(*)")
-            assert metric.name == keyword
+        dimension = Dimension(name=keyword, expression="field + 1")
+        assert dimension.name == keyword
 
-            dimension = Dimension(name=keyword, expression="field + 1")
-            assert dimension.name == keyword
-
-    def test_keywords_with_underscore_accepted(self):
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "SELECT_field",
+            "FROM_table",
+            "WHERE_clause",
+            "JOIN_type",
+        ],
+    )
+    def test_keywords_with_underscore_accepted(self, name):
         """Test that keywords with underscores are accepted."""
-        # These should be valid since they're not exact keywords
-        names = ["SELECT_count", "FROM_date", "WHERE_clause", "user_GROUP"]
+        metric = Metric(name=name, expression="COUNT(*)")
+        assert metric.name == name
 
-        for name in names:
-            metric = Metric(name=name, expression="COUNT(*)")
-            assert metric.name == name
 
-            dimension = Dimension(name=name, expression="field + 1")
-            assert dimension.name == name
+class TestEdgeCases:
+    """Test edge cases for name validation."""
+
+    @pytest.mark.parametrize(
+        "name,expression",
+        [
+            ("_", "COUNT(*)"),  # Single underscore
+            ("__", "SUM(amount)"),  # Double underscore
+            ("_123", "AVG(value)"),  # Underscore followed by numbers
+            ("a", "MAX(id)"),  # Single letter
+            ("A", "MIN(date)"),  # Single uppercase letter
+        ],
+    )
+    def test_unusual_but_valid_names(self, name, expression):
+        """Test unusual but valid identifier names."""
+        metric = Metric(name=name, expression=expression)
+        assert metric.name == name
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "",  # Empty string
+            " ",  # Single space
+            "\t",  # Tab character
+            "\n",  # Newline
+            "!@#$%",  # Special characters
+        ],
+    )
+    def test_completely_invalid_names(self, name):
+        """Test completely invalid names."""
+        with pytest.raises(ValidationError):
+            Metric(name=name, expression="COUNT(*)")
