@@ -9,21 +9,25 @@
       
       
       
+        <link rel="prev" href="..">
       
       
-      <link rel="icon" href="../../../assets/favicon_io/favicon-32x32.png">
+        <link rel="next" href="../topics/linting/">
+      
+      
+      <link rel="icon" href="../assets/favicon_io/favicon-32x32.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
     
     
       
-        <title>Scattercarpet - Visivo Docs</title>
+        <title>Installation - Visivo Docs</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,11 +52,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../stylesheets/brand_colors.css">
+      <link rel="stylesheet" href="../stylesheets/brand_colors.css">
     
-      <link rel="stylesheet" href="../../../stylesheets/icon-colors.css">
+      <link rel="stylesheet" href="../stylesheets/icon-colors.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
   
@@ -191,7 +195,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#overview" class="md-skip">
+        <a href="#installation" class="md-skip">
           Skip to content
         </a>
       
@@ -207,9 +211,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Visivo Docs" class="md-header__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
+    <a href=".." title="Visivo Docs" class="md-header__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
       
-  <img src="../../../assets/favicon_io/android-chrome-192x192.png" alt="logo">
+  <img src="../assets/favicon_io/android-chrome-192x192.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -226,7 +230,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Scattercarpet
+              Installation
             
           </span>
         </div>
@@ -342,9 +346,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Visivo Docs" class="md-nav__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
+    <a href=".." title="Visivo Docs" class="md-nav__button md-logo" aria-label="Visivo Docs" data-md-component="logo">
       
-  <img src="../../../assets/favicon_io/android-chrome-192x192.png" alt="logo">
+  <img src="../assets/favicon_io/android-chrome-192x192.png" alt="logo">
 
     </a>
     Visivo Docs
@@ -371,7 +375,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -390,10 +394,32 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../installation/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -404,6 +430,254 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-install-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      Quick Install (Recommended)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-package-pip" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python Package (pip)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python Package (pip)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Standard Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify Installation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      Building from Source
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building from Source">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Steps
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-specific-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Platform-Specific Notes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Platform-Specific Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      macOS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linux" class="md-nav__link">
+    <span class="md-ellipsis">
+      Linux
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Windows
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#permission-denied" class="md-nav__link">
+    <span class="md-ellipsis">
+      Permission Denied
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-version-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python Version Issues
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behind-corporate-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behind Corporate Proxy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uninstallation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Uninstallation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Uninstallation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#binary-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Binary Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python Package
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -498,7 +772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/linting/" class="md-nav__link">
+      <a href="../topics/linting/" class="md-nav__link">
         
   
   
@@ -521,7 +795,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/including/" class="md-nav__link">
+      <a href="../topics/including/" class="md-nav__link">
         
   
   
@@ -544,7 +818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/sources/" class="md-nav__link">
+      <a href="../topics/sources/" class="md-nav__link">
         
   
   
@@ -567,7 +841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/deployments/" class="md-nav__link">
+      <a href="../topics/deployments/" class="md-nav__link">
         
   
   
@@ -590,7 +864,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/testing/" class="md-nav__link">
+      <a href="../topics/testing/" class="md-nav__link">
         
   
   
@@ -613,7 +887,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/interactivity/" class="md-nav__link">
+      <a href="../topics/interactivity/" class="md-nav__link">
         
   
   
@@ -636,7 +910,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/annotations/" class="md-nav__link">
+      <a href="../topics/annotations/" class="md-nav__link">
         
   
   
@@ -659,7 +933,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../topics/telemetry/" class="md-nav__link">
+      <a href="../topics/telemetry/" class="md-nav__link">
         
   
   
@@ -740,7 +1014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cli/" class="md-nav__link">
+      <a href="../reference/cli/" class="md-nav__link">
         
   
   
@@ -849,7 +1123,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Alert/" class="md-nav__link ">
+            <a href="../reference/configuration/Alert/" class="md-nav__link ">
               
   
   
@@ -909,7 +1183,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Chart/" class="md-nav__link ">
+            <a href="../reference/configuration/Chart/" class="md-nav__link ">
               
   
   
@@ -964,7 +1238,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Chart/Layout/" class="md-nav__link ">
+            <a href="../reference/configuration/Chart/Layout/" class="md-nav__link ">
               
   
   
@@ -1078,7 +1352,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Dashboards/Dashboard/" class="md-nav__link ">
+            <a href="../reference/configuration/Dashboards/Dashboard/" class="md-nav__link ">
               
   
   
@@ -1135,7 +1409,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Dashboards/Dashboard/Row/" class="md-nav__link ">
+            <a href="../reference/configuration/Dashboards/Dashboard/Row/" class="md-nav__link ">
               
   
   
@@ -1190,7 +1464,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Dashboards/Dashboard/Row/Item/" class="md-nav__link ">
+            <a href="../reference/configuration/Dashboards/Dashboard/Row/Item/" class="md-nav__link ">
               
   
   
@@ -1264,7 +1538,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Dashboards/ExternalDashboard/" class="md-nav__link ">
+            <a href="../reference/configuration/Dashboards/ExternalDashboard/" class="md-nav__link ">
               
   
   
@@ -1330,7 +1604,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Dbt/" class="md-nav__link ">
+            <a href="../reference/configuration/Dbt/" class="md-nav__link ">
               
   
   
@@ -1390,7 +1664,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Defaults/" class="md-nav__link ">
+            <a href="../reference/configuration/Defaults/" class="md-nav__link ">
               
   
   
@@ -1445,7 +1719,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Defaults/Level/" class="md-nav__link ">
+            <a href="../reference/configuration/Defaults/Level/" class="md-nav__link ">
               
   
   
@@ -1559,7 +1833,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Destinations/SlackDestination/" class="md-nav__link ">
+            <a href="../reference/configuration/Destinations/SlackDestination/" class="md-nav__link ">
               
   
   
@@ -1617,7 +1891,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Destinations/EmailDestination/" class="md-nav__link ">
+            <a href="../reference/configuration/Destinations/EmailDestination/" class="md-nav__link ">
               
   
   
@@ -1675,7 +1949,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Destinations/ConsoleDestination/" class="md-nav__link ">
+            <a href="../reference/configuration/Destinations/ConsoleDestination/" class="md-nav__link ">
               
   
   
@@ -1741,7 +2015,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Include/" class="md-nav__link ">
+            <a href="../reference/configuration/Include/" class="md-nav__link ">
               
   
   
@@ -1847,7 +2121,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Models/SqlModel/" class="md-nav__link ">
+            <a href="../reference/configuration/Models/SqlModel/" class="md-nav__link ">
               
   
   
@@ -1905,7 +2179,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Models/CsvScriptModel/" class="md-nav__link ">
+            <a href="../reference/configuration/Models/CsvScriptModel/" class="md-nav__link ">
               
   
   
@@ -1963,7 +2237,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Models/LocalMergeModel/" class="md-nav__link ">
+            <a href="../reference/configuration/Models/LocalMergeModel/" class="md-nav__link ">
               
   
   
@@ -2029,7 +2303,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Selector/" class="md-nav__link ">
+            <a href="../reference/configuration/Selector/" class="md-nav__link ">
               
   
   
@@ -2149,7 +2423,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/SqliteSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/SqliteSource/" class="md-nav__link ">
               
   
   
@@ -2204,7 +2478,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/SqliteSource/Attachment/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/SqliteSource/Attachment/" class="md-nav__link ">
               
   
   
@@ -2270,7 +2544,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/PostgresqlSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/PostgresqlSource/" class="md-nav__link ">
               
   
   
@@ -2328,7 +2602,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/MysqlSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/MysqlSource/" class="md-nav__link ">
               
   
   
@@ -2386,7 +2660,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/SnowflakeSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/SnowflakeSource/" class="md-nav__link ">
               
   
   
@@ -2444,7 +2718,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/BigQuerySource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/BigQuerySource/" class="md-nav__link ">
               
   
   
@@ -2502,7 +2776,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/RedshiftSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/RedshiftSource/" class="md-nav__link ">
               
   
   
@@ -2562,7 +2836,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/DuckdbSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/DuckdbSource/" class="md-nav__link ">
               
   
   
@@ -2617,7 +2891,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/DuckdbSource/DuckdbAttachment/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/DuckdbSource/DuckdbAttachment/" class="md-nav__link ">
               
   
   
@@ -2683,7 +2957,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/CSVFileSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/CSVFileSource/" class="md-nav__link ">
               
   
   
@@ -2741,7 +3015,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Sources/ExcelFileSource/" class="md-nav__link ">
+            <a href="../reference/configuration/Sources/ExcelFileSource/" class="md-nav__link ">
               
   
   
@@ -2809,7 +3083,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Table/" class="md-nav__link ">
+            <a href="../reference/configuration/Table/" class="md-nav__link ">
               
   
   
@@ -2866,7 +3140,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Table/TableColumnDefinition/" class="md-nav__link ">
+            <a href="../reference/configuration/Table/TableColumnDefinition/" class="md-nav__link ">
               
   
   
@@ -2923,7 +3197,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Table/TableColumnDefinition/TableColumn/" class="md-nav__link ">
+            <a href="../reference/configuration/Table/TableColumnDefinition/TableColumn/" class="md-nav__link ">
               
   
   
@@ -2978,7 +3252,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Table/TableColumnDefinition/TableColumn/AggregationEnum/" class="md-nav__link ">
+            <a href="../reference/configuration/Table/TableColumnDefinition/TableColumn/AggregationEnum/" class="md-nav__link ">
               
   
   
@@ -3068,7 +3342,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/" class="md-nav__link ">
               
   
   
@@ -3123,7 +3397,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/TraceColumns/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/TraceColumns/" class="md-nav__link ">
               
   
   
@@ -3181,7 +3455,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Model/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Model/" class="md-nav__link ">
               
   
   
@@ -3381,7 +3655,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatter/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatter/" class="md-nav__link ">
               
   
   
@@ -3439,7 +3713,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Bar/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Bar/" class="md-nav__link ">
               
   
   
@@ -3497,7 +3771,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Barpolar/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Barpolar/" class="md-nav__link ">
               
   
   
@@ -3555,7 +3829,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Box/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Box/" class="md-nav__link ">
               
   
   
@@ -3613,7 +3887,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Candlestick/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Candlestick/" class="md-nav__link ">
               
   
   
@@ -3671,7 +3945,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Carpet/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Carpet/" class="md-nav__link ">
               
   
   
@@ -3729,7 +4003,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Choropleth/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Choropleth/" class="md-nav__link ">
               
   
   
@@ -3787,7 +4061,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Choroplethmap/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Choroplethmap/" class="md-nav__link ">
               
   
   
@@ -3845,7 +4119,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Choroplethmapbox/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Choroplethmapbox/" class="md-nav__link ">
               
   
   
@@ -3903,7 +4177,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Cone/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Cone/" class="md-nav__link ">
               
   
   
@@ -3961,7 +4235,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Contour/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Contour/" class="md-nav__link ">
               
   
   
@@ -4019,7 +4293,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Contourcarpet/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Contourcarpet/" class="md-nav__link ">
               
   
   
@@ -4077,7 +4351,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Densitymap/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Densitymap/" class="md-nav__link ">
               
   
   
@@ -4135,7 +4409,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Densitymapbox/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Densitymapbox/" class="md-nav__link ">
               
   
   
@@ -4193,7 +4467,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Funnel/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Funnel/" class="md-nav__link ">
               
   
   
@@ -4251,7 +4525,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Funnelarea/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Funnelarea/" class="md-nav__link ">
               
   
   
@@ -4309,7 +4583,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Heatmap/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Heatmap/" class="md-nav__link ">
               
   
   
@@ -4367,7 +4641,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Histogram/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Histogram/" class="md-nav__link ">
               
   
   
@@ -4425,7 +4699,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Histogram2d/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Histogram2d/" class="md-nav__link ">
               
   
   
@@ -4483,7 +4757,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Histogram2dcontour/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Histogram2dcontour/" class="md-nav__link ">
               
   
   
@@ -4541,7 +4815,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Icicle/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Icicle/" class="md-nav__link ">
               
   
   
@@ -4599,7 +4873,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Image/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Image/" class="md-nav__link ">
               
   
   
@@ -4657,7 +4931,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Indicator/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Indicator/" class="md-nav__link ">
               
   
   
@@ -4715,7 +4989,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Isosurface/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Isosurface/" class="md-nav__link ">
               
   
   
@@ -4773,7 +5047,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatter/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatter/" class="md-nav__link ">
               
   
   
@@ -4831,7 +5105,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Mesh3d/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Mesh3d/" class="md-nav__link ">
               
   
   
@@ -4889,7 +5163,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Ohlc/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Ohlc/" class="md-nav__link ">
               
   
   
@@ -4947,7 +5221,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Parcats/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Parcats/" class="md-nav__link ">
               
   
   
@@ -5005,7 +5279,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Parcoords/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Parcoords/" class="md-nav__link ">
               
   
   
@@ -5063,7 +5337,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Pie/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Pie/" class="md-nav__link ">
               
   
   
@@ -5121,7 +5395,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Sankey/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Sankey/" class="md-nav__link ">
               
   
   
@@ -5179,7 +5453,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatter/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatter/" class="md-nav__link ">
               
   
   
@@ -5237,7 +5511,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatter3d/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatter3d/" class="md-nav__link ">
               
   
   
@@ -5295,7 +5569,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scattercarpet/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scattercarpet/" class="md-nav__link ">
               
   
   
@@ -5353,7 +5627,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scattergeo/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scattergeo/" class="md-nav__link ">
               
   
   
@@ -5411,7 +5685,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scattergl/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scattergl/" class="md-nav__link ">
               
   
   
@@ -5469,7 +5743,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scattermap/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scattermap/" class="md-nav__link ">
               
   
   
@@ -5527,7 +5801,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scattermapbox/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scattermapbox/" class="md-nav__link ">
               
   
   
@@ -5585,7 +5859,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatterpolar/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatterpolar/" class="md-nav__link ">
               
   
   
@@ -5643,7 +5917,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatterpolargl/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatterpolargl/" class="md-nav__link ">
               
   
   
@@ -5701,7 +5975,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scattersmith/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scattersmith/" class="md-nav__link ">
               
   
   
@@ -5759,7 +6033,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Scatterternary/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Scatterternary/" class="md-nav__link ">
               
   
   
@@ -5817,7 +6091,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Splom/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Splom/" class="md-nav__link ">
               
   
   
@@ -5875,7 +6149,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Streamtube/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Streamtube/" class="md-nav__link ">
               
   
   
@@ -5933,7 +6207,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Sunburst/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Sunburst/" class="md-nav__link ">
               
   
   
@@ -5991,7 +6265,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Surface/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Surface/" class="md-nav__link ">
               
   
   
@@ -6049,7 +6323,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Treemap/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Treemap/" class="md-nav__link ">
               
   
   
@@ -6107,7 +6381,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Violin/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Violin/" class="md-nav__link ">
               
   
   
@@ -6165,7 +6439,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Volume/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Volume/" class="md-nav__link ">
               
   
   
@@ -6223,7 +6497,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Props/Waterfall/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Props/Waterfall/" class="md-nav__link ">
               
   
   
@@ -6289,7 +6563,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../configuration/Trace/Test/" class="md-nav__link ">
+            <a href="../reference/configuration/Trace/Test/" class="md-nav__link ">
               
   
   
@@ -6415,7 +6689,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../functions/jinja/" class="md-nav__link ">
+            <a href="../reference/functions/jinja/" class="md-nav__link ">
               
   
   
@@ -6450,7 +6724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../functions/jinja/macros/" class="md-nav__link">
+      <a href="../reference/functions/jinja/macros/" class="md-nav__link">
         
   
   
@@ -6473,7 +6747,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../functions/jinja/loops/" class="md-nav__link">
+      <a href="../reference/functions/jinja/loops/" class="md-nav__link">
         
   
   
@@ -6496,7 +6770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../functions/jinja/variables/" class="md-nav__link">
+      <a href="../reference/functions/jinja/variables/" class="md-nav__link">
         
   
   
@@ -6547,7 +6821,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../functions/runtime_functions/" class="md-nav__link ">
+            <a href="../reference/functions/runtime_functions/" class="md-nav__link ">
               
   
   
@@ -6649,7 +6923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../viewpoint/" class="md-nav__link">
+      <a href="../viewpoint/" class="md-nav__link">
         
   
   
@@ -6672,7 +6946,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../how_it_works/" class="md-nav__link">
+      <a href="../how_it_works/" class="md-nav__link">
         
   
   
@@ -6712,6 +6986,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -6720,18 +6996,228 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#quick-install-recommended" class="md-nav__link">
     <span class="md-ellipsis">
-      Overview
+      Quick Install (Recommended)
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#examples" class="md-nav__link">
+  <a href="#python-package-pip" class="md-nav__link">
     <span class="md-ellipsis">
-      Examples
+      Python Package (pip)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python Package (pip)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Requirements
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Standard Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#development-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Development Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verify-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify Installation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      Building from Source
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Building from Source">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#build-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Build Steps
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-specific-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Platform-Specific Notes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Platform-Specific Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macos" class="md-nav__link">
+    <span class="md-ellipsis">
+      macOS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linux" class="md-nav__link">
+    <span class="md-ellipsis">
+      Linux
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#windows" class="md-nav__link">
+    <span class="md-ellipsis">
+      Windows
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#permission-denied" class="md-nav__link">
+    <span class="md-ellipsis">
+      Permission Denied
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-version-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python Version Issues
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behind-corporate-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Behind Corporate Proxy
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uninstallation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Uninstallation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Uninstallation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#binary-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Binary Installation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      Python Package
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
     </span>
   </a>
   
@@ -6756,235 +7242,163 @@
   
 
 
-  <h1>Scattercarpet</h1>
-
-<div><h2 id="overview">Overview</h2>
-<p>The <code>scattercarpet</code> trace type is used to create scatter plots on a 2D carpet axis, which allows for more complex and non-linear grids. This trace type is useful for visualizing relationships between variables when the x and y axes are not evenly spaced, such as in polar or distortion grids.</p>
-<p>You can customize the marker size, color, and line connections, similar to standard scatter plots but on a carpet axis.</p>
-<div class="admonition tip">
-<p class="admonition-title">Common Uses</p>
-<ul>
-<li><strong>Non-Linear Grids</strong>: Visualizing data points on non-standard grids where the x and y axes are distorted or uneven.</li>
-<li><strong>Data Visualization with Carpet Axes</strong>: Displaying data points in cases where the relationships between variables are non-linear or require a more flexible grid.</li>
-<li><strong>Heatmap-Like Data</strong>: Scatter plots combined with other traces like <code>carpet</code> for advanced visualizations.</li>
-</ul>
-</div>
-<p><em><strong>Check out the <a href="../configuration/Trace/Props/Scattercarpet/#attributes">Attributes</a> for the full set of configuration options</strong></em></p>
-<h2 id="examples">Examples</h2>
-<div class="admonition example">
-<p class="admonition-title">Common Configurations</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><input id="__tabbed_1_3" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">Simple Scattercarpet Plot</label><label for="__tabbed_1_2">Scattercarpet Plot with Lines</label><label for="__tabbed_1_3">Scattercarpet Plot with Custom Marker Sizes and Colors</label></div>
+<div><h1 id="installation">Installation</h1>
+<p>Visivo offers multiple installation methods to suit different needs and environments.</p>
+<h2 id="quick-install-recommended">Quick Install (Recommended)</h2>
+<p>The fastest way to get started with Visivo is using our installation script:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked id="__tabbed_1_1" name="__tabbed_1" type="radio"><input id="__tabbed_1_2" name="__tabbed_1" type="radio"><div class="tabbed-labels"><label for="__tabbed_1_1">macOS/Linux/Windows (WSL)</label><label for="__tabbed_1_2">Windows (PowerShell)</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>This example shows a <code>scattercarpet</code> plot with a visible carpet grid. The carpet trace defines the non-linear grid, and the scattercarpet trace plots points on that grid:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet-grid</span>
-<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">a,b,y</span>
-<span class="w">        </span><span class="no">4,1,2</span>
-<span class="w">        </span><span class="no">4,2,3.5</span>
-<span class="w">        </span><span class="no">4,3,4</span>
-<span class="w">        </span><span class="no">4.5,1,3</span>
-<span class="w">        </span><span class="no">4.5,2,4.5</span>
-<span class="w">        </span><span class="no">4.5,3,5</span>
-<span class="w">        </span><span class="no">5,1,5.5</span>
-<span class="w">        </span><span class="no">5,2,6.5</span>
-<span class="w">        </span><span class="no">5,3,7.5</span>
-<span class="w">        </span><span class="no">6,1,8</span>
-<span class="w">        </span><span class="no">6,2,8.5</span>
-<span class="w">        </span><span class="no">6,3,10</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattercarpet-data</span>
-<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">a,b,value</span>
-<span class="w">        </span><span class="no">4,1.5,15</span>
-<span class="w">        </span><span class="no">4.5,2.5,25</span>
-<span class="w">        </span><span class="no">5,1.5,30</span>
-<span class="w">        </span><span class="no">6,2.5,40</span>
-<span class="nt">traces</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Carpet Grid</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(carpet-grid)}</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet</span>
-<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{a}</span>
-<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{b}</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{y}</span>
-<span class="w">      </span><span class="nt">aaxis</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'a</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'</span>
-<span class="w">        </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'m'</span>
-<span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">minorgridcount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
-<span class="w">      </span><span class="nt">baxis</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'b</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'</span>
-<span class="w">        </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'Pa'</span>
-<span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">minorgridcount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattercarpet Plot</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattercarpet-data)}</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattercarpet</span>
-<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{a}</span>
-<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{b}</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"markers"</span>
-<span class="nt">charts</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattercarpet Chart</span>
-<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Carpet Grid)}</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Simple Scattercarpet Plot)}</span>
-<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Simple Scattercarpet Plot&lt;br&gt;&lt;sub&gt;2D Data Points on Carpet Axis&lt;/sub&gt;</span>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://visivo.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
 </code></pre></div>
 </div>
 <div class="tabbed-block">
-<p>This example shows a <code>scattercarpet</code> plot with lines+markers, using a unique carpet grid for context:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet-grid-lines</span>
-<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">a,b,y</span>
-<span class="w">        </span><span class="no">4,1,2</span>
-<span class="w">        </span><span class="no">4,2,3.5</span>
-<span class="w">        </span><span class="no">4,3,4</span>
-<span class="w">        </span><span class="no">4.5,1,3</span>
-<span class="w">        </span><span class="no">4.5,2,4.5</span>
-<span class="w">        </span><span class="no">4.5,3,5</span>
-<span class="w">        </span><span class="no">5,1,5.5</span>
-<span class="w">        </span><span class="no">5,2,6.5</span>
-<span class="w">        </span><span class="no">5,3,7.5</span>
-<span class="w">        </span><span class="no">6,1,8</span>
-<span class="w">        </span><span class="no">6,2,8.5</span>
-<span class="w">        </span><span class="no">6,3,10</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattercarpet-data-lines</span>
-<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">a,b,value</span>
-<span class="w">        </span><span class="no">4,1,7</span>
-<span class="w">        </span><span class="no">4.5,2,12</span>
-<span class="w">        </span><span class="no">5,1.5,10</span>
-<span class="w">        </span><span class="no">6,2.5,18</span>
-<span class="w">        </span><span class="no">5,2,17</span>
-<span class="nt">traces</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Carpet Grid Lines</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(carpet-grid-lines)}</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet</span>
-<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{a}</span>
-<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{b}</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{y}</span>
-<span class="w">      </span><span class="nt">aaxis</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'a</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'</span>
-<span class="w">        </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'m'</span>
-<span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">minorgridcount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
-<span class="w">      </span><span class="nt">baxis</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'b</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'</span>
-<span class="w">        </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'Pa'</span>
-<span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">minorgridcount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattercarpet Plot with Lines</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattercarpet-data-lines)}</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattercarpet</span>
-<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{a}</span>
-<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{b}</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"lines+markers"</span>
-<span class="nt">charts</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattercarpet Chart with Lines</span>
-<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Carpet Grid Lines)}</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattercarpet Plot with Lines)}</span>
-<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattercarpet Plot with Lines&lt;br&gt;&lt;sub&gt;Connecting Data Points on Carpet Axis&lt;/sub&gt;</span>
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<p>This example shows a <code>scattercarpet</code> plot with custom marker sizes and colors, using a unique carpet grid for context:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">models</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet-grid-markers</span>
-<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">a,b,y</span>
-<span class="w">        </span><span class="no">4,1,2</span>
-<span class="w">        </span><span class="no">4,2,3.5</span>
-<span class="w">        </span><span class="no">4,3,4</span>
-<span class="w">        </span><span class="no">4.5,1,3</span>
-<span class="w">        </span><span class="no">4.5,2,4.5</span>
-<span class="w">        </span><span class="no">4.5,3,5</span>
-<span class="w">        </span><span class="no">5,1,5.5</span>
-<span class="w">        </span><span class="no">5,2,6.5</span>
-<span class="w">        </span><span class="no">5,3,7.5</span>
-<span class="w">        </span><span class="no">6,1,8</span>
-<span class="w">        </span><span class="no">6,2,8.5</span>
-<span class="w">        </span><span class="no">6,3,10</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattercarpet-data-custom</span>
-<span class="w">    </span><span class="nt">args</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">echo</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">        </span><span class="no">a,b,size,color</span>
-<span class="w">        </span><span class="no">4,1,10,#1f77b4</span>
-<span class="w">        </span><span class="no">4.5,2,15,#ff7f0e</span>
-<span class="w">        </span><span class="no">5,1.5,20,#2ca02c</span>
-<span class="w">        </span><span class="no">6,2.5,25,#d62728</span>
-<span class="w">        </span><span class="no">5,2,30,#9467bd</span>
-<span class="nt">traces</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Carpet Grid Markers</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(carpet-grid-markers)}</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">carpet</span>
-<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{a}</span>
-<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{b}</span>
-<span class="w">      </span><span class="nt">y</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{y}</span>
-<span class="w">      </span><span class="nt">aaxis</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'a</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'</span>
-<span class="w">        </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'m'</span>
-<span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">minorgridcount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
-<span class="w">      </span><span class="nt">baxis</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">tickprefix</span><span class="p">:</span><span class="w"> </span><span class="s">'b</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">'</span>
-<span class="w">        </span><span class="nt">ticksuffix</span><span class="p">:</span><span class="w"> </span><span class="s">'Pa'</span>
-<span class="w">        </span><span class="nt">smoothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="w">        </span><span class="nt">minorgridcount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattercarpet Plot with Custom Markers</span>
-<span class="w">    </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(scattercarpet-data-custom)}</span>
-<span class="w">    </span><span class="nt">props</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scattercarpet</span>
-<span class="w">      </span><span class="nt">a</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{a}</span>
-<span class="w">      </span><span class="nt">b</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{b}</span>
-<span class="w">      </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="s">"markers"</span>
-<span class="w">      </span><span class="nt">marker</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{size}</span>
-<span class="w">        </span><span class="nt">color</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">?{color}</span>
-<span class="nt">charts</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattercarpet Chart with Custom Markers</span>
-<span class="w">    </span><span class="nt">traces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Carpet Grid Markers)}</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${ref(Scattercarpet Plot with Custom Markers)}</span>
-<span class="w">    </span><span class="nt">layout</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">title</span><span class="p">:</span>
-<span class="w">        </span><span class="nt">text</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Scattercarpet Plot with Custom Markers&lt;br&gt;&lt;sub&gt;Custom Sizes and Colors for Carpet Axis Data Points&lt;/sub&gt;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">irm </span><span class="n">https</span><span class="p">://</span><span class="n">visivo</span><span class="p">.</span><span class="n">sh</span><span class="p">/</span><span class="n">install</span><span class="p">.</span><span class="n">ps1</span> <span class="p">|</span> <span class="nb">iex</span>
 </code></pre></div>
 </div>
 </div>
 </div>
+<div class="admonition success">
+<p class="admonition-title">What you get</p>
+<ul>
+<li>✅ Single binary, no dependencies</li>
+<li>✅ Works on Mac, Linux, and Windows</li>
+<li>✅ Automatic updates available</li>
+<li>✅ Instant hot-reload development</li>
+</ul>
 </div>
-<!--end--></div>
+<h2 id="python-package-pip">Python Package (pip)</h2>
+<p>Best for Python developers and data scientists who want to integrate Visivo into existing workflows.</p>
+<h3 id="requirements">Requirements</h3>
+<ul>
+<li>Python 3.10 or higher</li>
+<li>Virtual environment recommended</li>
+</ul>
+<h3 id="standard-installation">Standard Installation</h3>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>visivo
+</code></pre></div>
+<h3 id="development-installation">Development Installation</h3>
+<p>For contributors or those who want the latest development features:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Clone the repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/visivo-io/visivo.git
+<span class="nb">cd</span><span class="w"> </span>visivo
+
+<span class="c1"># Install in development mode</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Virtual Environment</p>
+<p>We strongly recommend using a virtual environment:
+</p><div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>venv/bin/activate<span class="w">  </span><span class="c1"># On Windows: venv\Scripts\activate</span>
+pip<span class="w"> </span>install<span class="w"> </span>visivo
+</code></pre></div>
+</div>
+<h3 id="verify-installation">Verify Installation</h3>
+<div class="highlight"><pre><span></span><code>visivo<span class="w"> </span>--version
+</code></pre></div>
+<h2 id="building-from-source">Building from Source</h2>
+<p>For developers who want to contribute or customize Visivo:</p>
+<h3 id="prerequisites">Prerequisites</h3>
+<ul>
+<li>Python 3.10+</li>
+<li>Node.js 16+ (for frontend development)</li>
+<li>Git</li>
+</ul>
+<h3 id="build-steps">Build Steps</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Clone the repository</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/visivo-io/visivo.git
+<span class="nb">cd</span><span class="w"> </span>visivo
+
+<span class="c1"># Install Python dependencies</span>
+pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
+
+<span class="c1"># Install and build frontend (optional)</span>
+<span class="nb">cd</span><span class="w"> </span>viewer
+npm<span class="w"> </span>install
+npm<span class="w"> </span>run<span class="w"> </span>build
+<span class="nb">cd</span><span class="w"> </span>..
+
+<span class="c1"># Run development server</span>
+visivo<span class="w"> </span>serve
+</code></pre></div>
+<h2 id="platform-specific-notes">Platform-Specific Notes</h2>
+<h3 id="macos">macOS</h3>
+<ul>
+<li>Requires macOS 10.15 or later</li>
+<li>Apple Silicon (M1/M2) fully supported</li>
+</ul>
+<h3 id="linux">Linux</h3>
+<ul>
+<li>Tested on Ubuntu 20.04+, Debian 10+, RHEL 8+, Alpine</li>
+<li>Requires glibc 2.31+ for binary distribution</li>
+</ul>
+<h3 id="windows">Windows</h3>
+<ul>
+<li>Windows 10/11 recommended</li>
+<li>PowerShell 5.1+ required for install script</li>
+<li>WSL2 recommended for best experience</li>
+</ul>
+<h2 id="environment-variables">Environment Variables</h2>
+<p>Visivo respects standard environment variables:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set custom port</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VISIVO_PORT</span><span class="o">=</span><span class="m">3000</span>
+
+<span class="c1"># Set custom host</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VISIVO_HOST</span><span class="o">=</span><span class="m">0</span>.0.0.0
+
+<span class="c1"># Enable debug logging</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">VISIVO_LOG_LEVEL</span><span class="o">=</span>DEBUG
+</code></pre></div>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="permission-denied">Permission Denied</h3>
+<p>If you get a permission error during installation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># macOS/Linux</span>
+sudo<span class="w"> </span>curl<span class="w"> </span>-fsSL<span class="w"> </span>https://visivo.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
+
+<span class="c1"># Or install to user directory</span>
+curl<span class="w"> </span>-fsSL<span class="w"> </span>https://visivo.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash<span class="w"> </span>-s<span class="w"> </span>--<span class="w"> </span>--prefix<span class="o">=</span><span class="nv">$HOME</span>/.local
+</code></pre></div>
+<h3 id="python-version-issues">Python Version Issues</h3>
+<p>If you have multiple Python versions:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Specify Python version</span>
+python3.10<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>visivo
+
+<span class="c1"># Or use pyenv</span>
+pyenv<span class="w"> </span>install<span class="w"> </span><span class="m">3</span>.10.0
+pyenv<span class="w"> </span><span class="nb">local</span><span class="w"> </span><span class="m">3</span>.10.0
+pip<span class="w"> </span>install<span class="w"> </span>visivo
+</code></pre></div>
+<h3 id="behind-corporate-proxy">Behind Corporate Proxy</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Set proxy environment variables</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">HTTP_PROXY</span><span class="o">=</span>http://proxy.company.com:8080
+<span class="nb">export</span><span class="w"> </span><span class="nv">HTTPS_PROXY</span><span class="o">=</span>http://proxy.company.com:8080
+
+<span class="c1"># Then install</span>
+pip<span class="w"> </span>install<span class="w"> </span>visivo
+</code></pre></div>
+<h2 id="uninstallation">Uninstallation</h2>
+<h3 id="binary-installation">Binary Installation</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Remove binary</span>
+rm<span class="w"> </span>/usr/local/bin/visivo
+
+<span class="c1"># Or if installed with --prefix</span>
+rm<span class="w"> </span><span class="nv">$HOME</span>/.local/bin/visivo
+</code></pre></div>
+<h3 id="python-package">Python Package</h3>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>uninstall<span class="w"> </span>visivo
+</code></pre></div>
+<h2 id="next-steps">Next Steps</h2>
+<p>After installation, you're ready to create your first dashboard:</p>
+<ul>
+<li><a href="../#quick-start">Quick Start Guide</a> - Get your first dashboard running</li>
+</ul></div>
 
 
 
 
 
 
-
-  
-  
 
 
 
@@ -7031,10 +7445,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.tabs.link", "navigation.indexes", "navigation.sections", "content.tooltips", "content.code.annotate", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.tabs.link", "navigation.indexes", "navigation.sections", "content.tooltips", "content.code.annotate", "content.code.copy"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      <script src="../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
     
   </body>
