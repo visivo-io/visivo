@@ -55,7 +55,7 @@ class Metric(NamedModel):
             return v
 
         # Use regex to validate: alphanumeric and underscores only, no whitespace or dots
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', v):
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", v):
             raise ValueError(
                 f"Metric name '{v}' must contain only letters, numbers, and underscores, "
                 "and cannot start with a number."

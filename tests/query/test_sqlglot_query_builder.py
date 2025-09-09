@@ -457,7 +457,7 @@ class TestSqlglotQueryBuilder:
             Dimension(name="name", expression="name", data_type="VARCHAR"),
         ]
 
-        # Add implicit dimensions (simulating what extract_dimensions_job would do)
+        # Add implicit dimensions (simulating inferred dimensions from the model)
         model._implicit_dimensions = [
             Dimension(name="amount", expression="amount", data_type="DECIMAL"),
         ]

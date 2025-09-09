@@ -22,6 +22,8 @@ from visivo.models.row import Row, HeightEnum
 from visivo.jobs.job import Job
 from visivo.models.dbt import Dbt
 from visivo.models.trace_props.trace_props import TraceProps
+from visivo.models.metric import Metric
+from visivo.models.dimension import Dimension
 
 
 class DestinationFactory(factory.Factory):
@@ -137,6 +139,24 @@ class LocalMergeModelFactory(factory.Factory):
     name = "local_merge_model"
     sql = "select * from test_table"
     models = factory.List([factory.SubFactory(SqlModelFactory) for _ in range(1)])
+
+
+class MetricFactory(factory.Factory):
+    class Meta:
+        model = Metric
+
+    name = "test_metric"
+    expression = "SUM(value)"
+    description = "Test metric description"
+
+
+class DimensionFactory(factory.Factory):
+    class Meta:
+        model = Dimension
+
+    name = "test_dimension"
+    expression = "category"
+    description = "Test dimension description"
 
 
 class TraceFactory(factory.Factory):

@@ -20,7 +20,6 @@ from visivo.jobs.run_csv_script_job import job as csv_script_job
 from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
 from visivo.jobs.run_source_connection_job import job as source_connection_job
-from visivo.jobs.extract_dimensions_job import job as extract_dimensions_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
@@ -55,7 +54,7 @@ class DagRunner:
         complete = False
         job_tracker = JobTracker()
         start_time = time()
-        
+
         with ThreadPoolExecutor(max_workers=self.threads) as executor:
             while True:
                 complete = self.update_job_queue(job_tracker)
@@ -113,30 +112,6 @@ class DagRunner:
                 descendants = node_descendants(self.job_dag, terminal_node)
                 if job_tracker.is_job_name_done(terminal_node.name):
                     self.job_tracking_dag.remove_node(terminal_node)
-                    
-                    # Check if this completed model needs dimension extraction
-                    if isinstance(terminal_node, (CsvScriptModel, LocalMergeModel)):
-                        dimension_job_name = f"{terminal_node.name}_dimensions"
-                        if not job_tracker.is_job_name_enqueued(dimension_job_name) and not job_tracker.is_job_name_done(dimension_job_name):
-                            # Create dimension extraction job for this model
-                            from visivo.jobs.extract_dimensions_job import job as extract_dimensions_job
-                            dimension_job = extract_dimensions_job(
-                                model=terminal_node, dag=self.project_dag, output_dir=self.output_dir
-                            )
-                            if dimension_job:
-                                # Create a wrapper to change the job name
-                                class DimensionJobWrapper:
-                                    def __init__(self, original_model, job_name):
-                                        self.name = job_name
-                                        self._original_model = original_model
-                                        # Copy other attributes that might be needed
-                                        for attr in ['path', 'id']:
-                                            if hasattr(original_model, attr):
-                                                setattr(self, attr, getattr(original_model, attr))
-                                
-                                dimension_job.item = DimensionJobWrapper(terminal_node, dimension_job_name)
-                                job_tracker.track_job(dimension_job)
-                    
                     continue
                 elif any(
                     job_tracker.is_job_name_failed(descendant.name) for descendant in descendants
@@ -160,23 +135,17 @@ class DagRunner:
         if isinstance(item, Trace):
             return trace_job(trace=item, output_dir=self.output_dir, dag=self.project_dag)
         elif isinstance(item, CsvScriptModel):
-            # For CSV models, run the data generation job
-            # Dimension extraction happens later when needed
             return csv_script_job(
                 csv_script_model=item, output_dir=self.output_dir, working_dir=self.working_dir
             )
         elif isinstance(item, LocalMergeModel):
-            # For LocalMerge models, run the data generation job
-            # Dimension extraction happens later when needed
             return local_merge_job(
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
         elif isinstance(item, Source):
             return source_connection_job(source=item, working_dir=self.working_dir)
         elif isinstance(item, SqlModel):
-            # For SQL models, we can extract dimensions directly
-            # since they don't need data generation first
-            return extract_dimensions_job(
-                model=item, dag=self.project_dag, output_dir=self.output_dir
-            )
+            # SQL models don't have a specific job anymore
+            # They are handled as dependencies for traces
+            return None
         return None

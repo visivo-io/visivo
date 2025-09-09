@@ -64,7 +64,7 @@ class TestDimensionResolver:
             source="ref(test_db)",
         )
 
-        # Simulate implicit dimensions created by extract_dimensions_job
+        # Simulate implicit dimensions inferred from the model SQL
         model._implicit_dimensions = [
             Dimension(name="order_id", expression="order_id", data_type="INTEGER"),
             Dimension(name="customer_id", expression="customer_id", data_type="INTEGER"),

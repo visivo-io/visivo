@@ -11,6 +11,7 @@ from visivo.commands.parse_project_phase import parse_project_phase
 from visivo.validation.metric_validator import MetricValidator
 from visivo.query.metric_resolver import MetricResolver
 from visivo.query.dimension_resolver import DimensionResolver
+from visivo.query.schema_extractor import SchemaExtractor
 
 import_duration = round(time() - compile_import_start, 2)
 Logger.instance().debug(f"Compile Import completed in {import_duration}s")
@@ -25,6 +26,34 @@ def _collect_compile_telemetry(project):
     except Exception:
         # Silently ignore any telemetry errors
         pass
+
+
+def _extract_source_schemas(project):
+    """Extract schemas from sources for all models during compile phase.
+
+    This function gathers column metadata from sources for models that will
+    be used in the project. The schemas are cached for efficient access.
+
+    Args:
+        project: The project object containing sources and models.
+
+    Returns:
+        Dictionary mapping source names to model schemas, or None if extraction fails.
+    """
+    try:
+        extractor = SchemaExtractor(project)
+        schemas = extractor.extract_all_schemas()
+
+        # Log summary of extracted schemas
+        total_models = sum(len(model_schemas) for model_schemas in schemas.values())
+        Logger.instance().debug(
+            f"Extracted schemas for {total_models} models across {len(schemas)} sources"
+        )
+
+        return schemas
+    except Exception as e:
+        Logger.instance().debug(f"Schema extraction failed: {str(e)}")
+        return None
 
 
 def _resolve_and_validate_metrics(project):
@@ -244,6 +273,18 @@ def compile_phase(
     parse_duration = round(time() - parse_start, 2)
     Logger.instance().debug(f"Project parsing completed in {parse_duration}s")
 
+    # Extract source schemas for models
+    schema_start = time()
+    Logger.instance().debug("    Extracting source schemas...")
+    extracted_schemas = _extract_source_schemas(project)
+
+    # Store the schemas in the project for downstream use (not the extractor to avoid pickle errors)
+    if extracted_schemas:
+        project._extracted_schemas = extracted_schemas
+
+    schema_duration = round(time() - schema_start, 2)
+    Logger.instance().debug(f"Schema extraction completed in {schema_duration}s")
+
     # Resolve and validate metrics and relations
     validation_start = time()
     Logger.instance().debug("    Resolving and validating metrics...")
@@ -292,6 +333,7 @@ def compile_phase(
         f"Compile completed in {total_duration}s "
         f"imports: {import_duration}s, "
         f"parse: {parse_duration}s, "
+        f"schemas: {schema_duration}s, "
         f"validation: {validation_duration}s, "
         f"artifacts: {artifacts_duration}s, "
     )

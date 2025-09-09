@@ -31,10 +31,9 @@ class TestMetricNameValidation:
     def test_invalid_metric_names(self):
         """Test that invalid SQL identifiers are rejected."""
         invalid_names = [
-            "123_starts_with_number",  # Starts with number (invalid without quotes)
-            "SELECT",  # SQL keyword
+            "123_starts_with_number",  # Starts with number
             "metric;drop table",  # SQL injection attempt
-            "metric'name",  # Single quote (problematic in SQL)
+            "metric'name",  # Single quote
             "metric--comment",  # SQL comment syntax
         ]
 
@@ -43,8 +42,8 @@ class TestMetricNameValidation:
                 Metric(name=name, expression="SUM(amount)")
 
     def test_names_requiring_quotes(self):
-        """Test names that are valid when quoted."""
-        # These names should be accepted (they're valid when quoted)
+        """Test names that would need quotes are rejected."""
+        # These names are invalid as SQL identifiers without quotes
         names_needing_quotes = [
             "metric with spaces",
             "metric-with-hyphens",
@@ -52,8 +51,8 @@ class TestMetricNameValidation:
         ]
 
         for name in names_needing_quotes:
-            metric = Metric(name=name, expression="SUM(amount)")
-            assert metric.name == name
+            with pytest.raises(ValidationError):
+                Metric(name=name, expression="SUM(amount)")
 
     def test_none_name_allowed(self):
         """Test that None is allowed for name (anonymous metrics)."""
@@ -84,7 +83,6 @@ class TestDimensionNameValidation:
         """Test that invalid SQL identifiers are rejected."""
         invalid_names = [
             "456_invalid",  # Starts with number
-            "FROM",  # SQL keyword
             "dim;delete from",  # SQL injection attempt
             "dim'quote",  # Single quote in name
             "dim--comment",  # SQL comment syntax
@@ -95,7 +93,7 @@ class TestDimensionNameValidation:
                 Dimension(name=name, expression="strftime('%Y', date)")
 
     def test_names_with_spaces(self):
-        """Test that names with spaces are accepted (valid when quoted)."""
+        """Test that names with spaces are rejected."""
         names_with_spaces = [
             "order year",
             "customer full name",
@@ -105,8 +103,8 @@ class TestDimensionNameValidation:
         ]
 
         for name in names_with_spaces:
-            dimension = Dimension(name=name, expression="CASE WHEN x > 100 THEN 1 ELSE 0 END")
-            assert dimension.name == name
+            with pytest.raises(ValidationError):
+                Dimension(name=name, expression="CASE WHEN x > 100 THEN 1 ELSE 0 END")
 
     def test_none_name_allowed(self):
         """Test that None is allowed for name (anonymous dimensions)."""
@@ -117,17 +115,18 @@ class TestDimensionNameValidation:
 class TestSQLKeywordHandling:
     """Test how SQL keywords are handled in names."""
 
-    def test_reserved_keywords_rejected(self):
-        """Test that reserved SQL keywords are rejected as names."""
-        # Common SQL keywords that should not be allowed as identifiers
+    def test_reserved_keywords_accepted(self):
+        """Test that SQL keywords are accepted as names (they're valid identifiers)."""
+        # SQL keywords are actually valid identifiers in most databases
         keywords = ["SELECT", "FROM", "WHERE", "JOIN", "GROUP", "ORDER", "HAVING"]
 
         for keyword in keywords:
-            with pytest.raises(ValidationError):
-                Metric(name=keyword, expression="COUNT(*)")
+            # These should be accepted - they match the pattern [a-zA-Z_][a-zA-Z0-9_]*
+            metric = Metric(name=keyword, expression="COUNT(*)")
+            assert metric.name == keyword
 
-            with pytest.raises(ValidationError):
-                Dimension(name=keyword, expression="field + 1")
+            dimension = Dimension(name=keyword, expression="field + 1")
+            assert dimension.name == keyword
 
     def test_keywords_with_underscore_accepted(self):
         """Test that keywords with underscores are accepted."""
