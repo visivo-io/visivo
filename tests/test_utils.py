@@ -69,7 +69,7 @@ def test_load_yaml_file_with_backslash(monkeypatch):
         "name: \"{{ env_var('PASSWORD') }}\"",
     )
 
-    loaded = load_yaml_file(project_file)
+    loaded = load_config_file(project_file)
     assert loaded["name"] == password
 
 

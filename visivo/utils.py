@@ -1,6 +1,7 @@
 import hashlib
 import yaml
 import json
+import kson
 import os
 from pathlib import Path
 import re
@@ -146,6 +147,43 @@ def set_location_recursive_items(dictionary, file):
             if isinstance(value, list):
                 for item in value:
                     set_location_recursive_items(item, file)
+
+
+def load_config_file(file):
+    """
+    Load a configuration file, supporting both YAML (.yml/.yaml) and KSON (.kson) formats.
+    Automatically detects the format based on file extension.
+    """
+    file_str = str(file)
+    
+    # Check file extension to determine format
+    if file_str.endswith('.kson'):
+        return load_kson_file(file)
+    else:
+        # Default to YAML for .yml, .yaml, or any other extension
+        return load_yaml_file(file)
+
+
+def load_kson_file(file):
+    """Load a KSON file and convert it to Python objects."""
+    with open(file, "r") as stream:
+        kson_string = stream.read()
+        try:
+            yaml_result = kson.Kson.to_yaml(kson_string, retain_embed_tags=False)
+            if isinstance(yaml_result, kson.Success):
+                template_string = yaml_result.output()
+            else:
+                raise Exception(yaml_result)
+            loaded = yaml.safe_load(render_yaml(template_string))
+            set_location_recursive_items(loaded, str(file))
+            return loaded
+        except yaml.YAMLError as exc:
+            if hasattr(exc, "problem_mark"):
+                mark = exc.problem_mark
+                error_location = f"Invalid yaml in project\n  Location: {str(file)}:{mark.line + 1}[{mark.column + 1}]\n  Issue: {exc.problem}"
+                raise click.ClickException(error_location)
+            else:
+                raise click.ClickException(exc)
 
 
 def load_yaml_file(file):
