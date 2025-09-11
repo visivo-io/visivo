@@ -77,12 +77,18 @@ extra_css:
 nav:
   - Quick Start: index.md
   - Installation: installation.md
-  - Change Log: https://github.com/visivo-io/visivo/releases
   - Topics:
+      - Deployment:
+        - Overview: topics/deployment/overview.md
+        - Visivo Cloud: topics/deployment/visivo-cloud.md
+        - Static Hosting:
+            - Overview: topics/deployment/static-hosting.md
+            - Netlify: topics/deployment/netlify.md
+            - AWS Amplify: topics/deployment/aws-amplify.md
+            - Firebase: topics/deployment/firebase.md
       - Linting: topics/linting.md
       - Including: topics/including.md
       - Sources: topics/sources.md
-      - Deployment: topics/deployments.md
       - Testing: topics/testing.md
       - Interactivity: topics/interactivity.md
       - Annotations & Shapes: topics/annotations.md
@@ -278,3 +284,4 @@ nav:
   - Background:
       - Viewpoint: viewpoint.md
       - How It Works: how_it_works.md
+  - Change Log: https://github.com/visivo-io/visivo/releases
