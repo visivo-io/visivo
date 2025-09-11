@@ -12,7 +12,7 @@ from visivo.models.sources.redshift_source import RedshiftSource, RedshiftType
 from visivo.models.sources.snowflake_source import SnowflakeSource, SnowflakeType
 from visivo.models.sources.sqlite_source import SqliteSource, SqliteType
 from visivo.parsers.file_names import PROFILE_FILE_NAME
-from visivo.utils import load_yaml_file
+from visivo.utils import load_config_file
 
 
 def get_source_types():
@@ -50,7 +50,7 @@ def get_profile_token(profile_file):
 
     profile = None
     if profile_file:
-        profile = load_yaml_file(profile_file)
+        profile = load_config_file(profile_file)
 
     if not profile or "token" not in profile:
         raise click.ClickException(

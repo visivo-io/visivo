@@ -4,9 +4,9 @@ import fnmatch
 import re
 from pathlib import Path
 from typing import List
-from visivo.parsers.file_names import PROJECT_FILE_NAME
+from visivo.parsers.file_names import PROJECT_FILE_NAME, PROJECT_FILE_NAME_KSON
 from visivo.commands.utils import get_profile_file
-from visivo.utils import load_yaml_file
+from visivo.utils import load_config_file
 from visivo.logger.logger import Logger
 
 
@@ -32,7 +32,7 @@ class Discover:
     @property
     def files(self):
         if not os.path.exists(self.project_file):
-            raise click.ClickException(f'Project file "{PROJECT_FILE_NAME}" not found')
+            raise click.ClickException(f'Project file "{PROJECT_FILE_NAME}" or "{PROJECT_FILE_NAME_KSON}" not found')
         files = [self.project_file]
 
         self.__add_includes(files=files, file=self.project_file)
@@ -153,7 +153,7 @@ class Discover:
     def __add_includes(self, files, file):
         from visivo.models.include import Include
 
-        data = load_yaml_file(file)
+        data = load_config_file(file)
         base_path = os.path.dirname(file)
 
         output_file = self.__add_dbt(data=data)
@@ -206,15 +206,25 @@ class Discover:
                     self.__add_includes(files=files, file=include_path)
 
     def _get_any_project_file(self, dir):
+        # Check for legacy visivo_project.yml
         if os.path.exists(f"{dir}/visivo_project.yml"):
             return f"{dir}/visivo_project.yml"
-
+        
+        # Check for KSON format first (if user prefers new format)
+        if os.path.exists(f"{dir}/{PROJECT_FILE_NAME_KSON}"):
+            return f"{dir}/{PROJECT_FILE_NAME_KSON}"
+        
+        # Default to YAML format
         return f"{dir}/{PROJECT_FILE_NAME}"
 
     def _get_file_exists_status(self, dir):
         if dir == "":
-            return os.path.exists(f"{PROJECT_FILE_NAME}")
-        return os.path.exists(f"{dir}/{PROJECT_FILE_NAME}")
+            return (os.path.exists(f"{PROJECT_FILE_NAME}") or 
+                    os.path.exists(f"{PROJECT_FILE_NAME_KSON}") or
+                    os.path.exists("visivo_project.yml"))
+        return (os.path.exists(f"{dir}/{PROJECT_FILE_NAME}") or 
+                os.path.exists(f"{dir}/{PROJECT_FILE_NAME_KSON}") or
+                os.path.exists(f"{dir}/visivo_project.yml"))
 
     def __get_project_file_from_git(self, git_url):
         from git import Repo

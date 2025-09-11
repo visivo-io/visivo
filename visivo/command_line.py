@@ -27,6 +27,7 @@ from visivo.commands.aggregate import aggregate
 from visivo.commands.archive import archive
 from visivo.commands.authorize import authorize
 from visivo.commands.list import list
+from visivo.commands.yaml2kson import yaml2kson
 from visivo.version import VISIVO_VERSION
 
 
@@ -72,6 +73,7 @@ visivo.add_command(archive)
 visivo.add_command(authorize)
 visivo.add_command(create)
 visivo.add_command(list)
+visivo.add_command(yaml2kson)
 
 
 def load_env(env_file):
