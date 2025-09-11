@@ -10,13 +10,7 @@ from visivo.commands.options import project_dir
     help="Show what would be converted without making changes",
     default=False,
 )
-@click.option(
-    "--backup",
-    is_flag=True,
-    help="Create backup copies of original YAML files",
-    default=True,
-)
-def yaml2kson(project_dir, dry_run, backup):
+def yaml2kson(project_dir, dry_run):
     """
     Convert Visivo project YAML files to KSON format.
     
@@ -29,7 +23,7 @@ def yaml2kson(project_dir, dry_run, backup):
 
     from visivo.commands.yaml2kson_phase import yaml2kson_phase
 
-    yaml2kson_phase(project_dir, dry_run, backup)
+    yaml2kson_phase(project_dir, dry_run)
 
     if dry_run:
         Logger.instance().info("Dry run complete - no files were modified")

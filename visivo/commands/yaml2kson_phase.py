@@ -1,5 +1,4 @@
 import os
-import shutil
 from pathlib import Path
 from typing import Any
 
@@ -7,22 +6,21 @@ import yaml
 
 from visivo.discovery.discover import Discover
 from visivo.logger.logger import Logger
-from visivo.utils import get_output_dir
 
 
-def yaml2kson_phase(project_dir: str, dry_run: bool, backup: bool):
+def yaml2kson_phase(project_dir: str, dry_run: bool):
     """
     Convert Visivo project YAML files to KSON format.
     
     Args:
         project_dir: The project directory path
         dry_run: If True, only show what would be converted
-        backup: If True, create backup copies of original files
     """
     logger = Logger.instance()
     
     # Use Discover to find all project files including includes
-    output_dir = get_output_dir(project_dir)
+    # Output dir is typically .visivo in the project directory
+    output_dir = os.path.join(project_dir, ".visivo")
     discover = Discover(working_dir=project_dir, output_dir=output_dir)
     
     # Check if project file exists
@@ -34,8 +32,10 @@ def yaml2kson_phase(project_dir: str, dry_run: bool, backup: bool):
         # Get all project files including includes
         project_files = discover.files
     except Exception as e:
-        logger.error(f"Error discovering project files: {e}")
-        return
+        logger.warning(f"Error discovering included files: {e}")
+        logger.info("Converting only the main project file")
+        # If discovery fails, at least convert the main project file
+        project_files = [discover.project_file] if discover.project_file.exists() else []
     
     if not project_files:
         logger.info("No YAML files found in the project")
@@ -48,17 +48,16 @@ def yaml2kson_phase(project_dir: str, dry_run: bool, backup: bool):
     
     # Convert each file
     for yaml_file in yaml_files:
-        convert_file(yaml_file, dry_run, backup)
+        convert_file(yaml_file, dry_run)
 
 
-def convert_file(yaml_file: Path, dry_run: bool, backup: bool):
+def convert_file(yaml_file: Path, dry_run: bool):
     """
     Convert a single YAML file to KSON format.
     
     Args:
         yaml_file: Path to the YAML file
         dry_run: If True, only show what would be done
-        backup: If True, create a backup of the original file
     """
     logger = Logger.instance()
     
@@ -75,11 +74,18 @@ def convert_file(yaml_file: Path, dry_run: bool, backup: bool):
         with open(yaml_file, 'r') as f:
             yaml_content = yaml.safe_load(f)
         
-        # Create backup if requested
-        if backup:
-            backup_file = yaml_file.with_suffix(yaml_file.suffix + '.bak')
-            shutil.copy2(yaml_file, backup_file)
-            logger.debug(f"Created backup: {backup_file}")
+        # Special handling for project.visivo.yml files
+        if yaml_file.name in ['project.visivo.yml', 'project.visivo.yaml']:
+            # Update includes to point to .kson files if they're being converted
+            if yaml_content and 'includes' in yaml_content:
+                for include in yaml_content['includes']:
+                    if isinstance(include, dict) and 'path' in include:
+                        path = include['path']
+                        # Convert .yml/.yaml includes to .kson
+                        if path.endswith('.yml'):
+                            include['path'] = path[:-4] + '.kson'
+                        elif path.endswith('.yaml'):
+                            include['path'] = path[:-5] + '.kson'
         
         # Convert to KSON
         kson_content = yaml_to_kson(yaml_content)
