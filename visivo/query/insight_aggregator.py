@@ -188,6 +188,14 @@ class InsightAggregator:
         if tokenized_insight.column_items:
             insight_json["metadata"]["column_items"] = tokenized_insight.column_items
 
+        if tokenized_insight.columns:
+            insight_json["metadata"]["columns"] = tokenized_insight.columns
+
+        if tokenized_insight.selects:
+            insight_json["metadata"]["selects"] = tokenized_insight.selects
+
+        insight_json["metadata"]["props"] = tokenized_insight.props
+
         return insight_json
 
     @classmethod

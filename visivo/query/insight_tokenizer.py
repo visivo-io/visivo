@@ -12,6 +12,7 @@ from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.tokenized_insight import TokenizedInsight
 from visivo.models.base.base_model import BaseModel
 from visivo.models.base.query_string import QueryString
+from visivo.parsers.serializer import Serializer
 from visivo.query.sqlglot_utils import (
     extract_column_references,
     find_non_aggregated_columns,
@@ -39,6 +40,8 @@ class InsightTokenizer:
 
         # Analysis results
         self.select_items = {}  # prop_path -> sql_expression
+        self.selects = {}  # prop_path -> items
+        self.columns = {}  # column_name -> items
         self.column_items = {}  # column_name -> sql_expression
         self.interaction_dependencies = {}  # interaction -> dependencies
         self.input_dependencies = set()  # All input names referenced
@@ -73,6 +76,9 @@ class InsightTokenizer:
             post_query=post_query,
             select_items=self.select_items,
             column_items=self.column_items,
+            selects=self.selects,
+            columns=self.columns,
+            props=self.insight.props.model_dump(),
             interactions=self._serialize_interactions(),
             input_dependencies=list(self.input_dependencies),
             requires_groupby=len(self.groupby_statements) > 0,
@@ -370,6 +376,8 @@ class InsightTokenizer:
         for column_path, sql_expr in self.column_items.items():
             norm = self._normalize_expr_sql(sql_expr)
             alias = alias_map.get(norm)
+            if alias:
+                self.columns[column_path] = alias
             outer_projections.append(exp.column(alias or sql_expr))
 
         for prop_path, sql_expr in self.select_items.items():
@@ -386,6 +394,8 @@ class InsightTokenizer:
                 norm = self._normalize_expr_sql(sql_expr)
                 alias = alias_map.get(norm)
                 outer_projections.append(exp.column(alias or sql_expr))
+                if alias:
+                    self.columns[prop_path] = alias
 
         for col in self.required_columns:
             outer_projections.append(exp.column(col))

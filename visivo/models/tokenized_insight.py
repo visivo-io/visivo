@@ -2,6 +2,8 @@ from enum import Enum
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
+from visivo.models.props.insight_props import InsightProps
+
 
 class InteractionType(str, Enum):
     FILTER = "filter"
@@ -40,6 +42,12 @@ class TokenizedInsight(BaseModel):
     column_items: Dict[
         str, str
     ]  # column_name -> sql_expression (e.g. "columns.region" -> "region")
+
+    selects: Dict[str, str]
+
+    columns: Dict[str, str]
+
+    props: Dict[Any, Any]
 
     # Interaction metadata for client-side execution
     interactions: List[Dict[str, Any]]  # List of interaction definitions

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFetchInsights } from '../contexts/QueryContext';
 import { fetchInsightsData } from '../queries/insightsData';
@@ -17,48 +17,84 @@ export const useInsightsData = (projectId, insightNames) => {
   const {
     setInsights,
   } = useStore();
+  
   const insightData = useStore(state => state.insights);
+  const [isProcessingData, setIsProcessingData] = useState(false);
 
   const memoizedInsightNames = useMemo(
     () => insightNames,
     [insightNames?.join(',')]
   );
 
-  const { data: insights, isLoading } = useQuery({
+  const { data: insights, isLoading: isQueryLoading } = useQuery({
     queryKey: ['insight', projectId, memoizedInsightNames],
     queryFn: () => fetchInsight(projectId, memoizedInsightNames),
+    enabled: memoizedInsightNames && memoizedInsightNames.length > 0,
   });
 
   useEffect(() => {
     const waitForData = async () => {
-      const fetchedInsightsData = await fetchInsightsData(insights);
+      if (!insights || memoizedInsightNames.length === 0) return;
+      
+      setIsProcessingData(true);
+      
+      try {
+        const fetchedInsightsData = await fetchInsightsData(insights);
 
-      const orderedInsightData = memoizedInsightNames.reduce(
-        (orderedJson, insightName) => {
-          const insight = fetchedInsightsData[insightName]
-          orderedJson[insightName] = {
-            insight: insight.data ?? [],
-            post_query: insight.post_query ?? `SELECT * FROM ${insightName}`,
-          };
-          return orderedJson;
-        },
-        {}
-      );
+        const orderedInsightData = memoizedInsightNames.reduce(
+          (orderedJson, insightName) => {
+            const insight = fetchedInsightsData[insightName]
+            if (insight) {
+              orderedJson[insightName] = {
+                insight: insight.data ?? [],
+                post_query: insight.post_query ?? `SELECT * FROM ${insightName}`,
+                columns: insight.metadata?.columns || {},
+                props: insight.metadata?.props || {}
+              };
+            }
+            return orderedJson;
+          },
+          {}
+        );
 
-      // cache into DuckDB
-      for (const [insightName, dataObj] of Object.entries(orderedInsightData)) {
-        await saveInsightData(db, insightName, dataObj);
+        // cache into DuckDB
+        for (const [insightName, dataObj] of Object.entries(orderedInsightData)) {
+          await saveInsightData(db, insightName, dataObj);
+        }
+
+        setInsights(filterObject(orderedInsightData, memoizedInsightNames));
+      } catch (error) {
+        console.error('Error processing insights data:', error);
+      } finally {
+        setIsProcessingData(false);
       }
-
-      setInsights(filterObject(orderedInsightData, memoizedInsightNames));
     };
 
-    if (insights) {
+    if (insights && !isQueryLoading) {
       waitForData();
     }
-  }, [isLoading, insights, memoizedInsightNames, db]);
+  }, [insights, isQueryLoading, memoizedInsightNames, db, setInsights]);
 
-  return insightData;
+  // Check if we have all the required insight data
+  const hasAllInsightData = useMemo(() => {
+    if (!memoizedInsightNames || memoizedInsightNames.length === 0) return true;
+    if (!insightData) return false;
+    
+    return memoizedInsightNames.every(name => 
+      insightData[name] && 
+      insightData[name].insight && 
+      insightData[name].columns && 
+      insightData[name].props
+    );
+  }, [insightData, memoizedInsightNames]);
+
+  const isInsightsLoading = isQueryLoading || isProcessingData || !hasAllInsightData;
+
+  return {
+    insightsData: insightData,
+    isInsightsLoading,
+    hasAllInsightData
+  };
 };
 
 /**
@@ -79,19 +115,23 @@ const saveInsightData = async (db, insightName, dataObj) => {
  * @param {Object} dataObj
  */
 const cacheInsightData = async (db, insightName, dataObj) => {
-  const exists = await tableDuckDBExists(db, insightName);
-  if (exists) {
-    console.log(`Table ${insightName} already exists ✅`);
-    return;
+  try {
+    const exists = await tableDuckDBExists(db, insightName);
+    if (exists) {
+      console.log(`Table ${insightName} already exists ✅`);
+      return;
+    }
+
+    const jsonBlob = new Blob([JSON.stringify(dataObj.insight)], {
+      type: 'application/json',
+    });
+    const file = new File([jsonBlob], `${insightName}.json`, {
+      type: 'application/json',
+    });
+
+    await insertDuckDBFile(db, file, insightName);
+    console.log(`Inserted ${insightName} into DuckDB`);
+  } catch (error) {
+    console.error(`Error caching insight data for ${insightName}:`, error);
   }
-
-  const jsonBlob = new Blob([JSON.stringify(dataObj.insight)], {
-    type: 'application/json',
-  });
-  const file = new File([jsonBlob], `${insightName}.json`, {
-    type: 'application/json',
-  });
-
-  await insertDuckDBFile(db, file, insightName);
-  console.log(`Inserted ${insightName} into DuckDB`);
 };

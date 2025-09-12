@@ -32,11 +32,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const tracesData = useTracesData(project.id, traceNames);
 
   const insightNames = chart.insights.map(insight => insight.name);
-  const insightsData = useInsightsData(project.id, insightNames);
-
-  console.log(insightsData);
-  console.log(chart.insights);
-  console.log('chart.traces: ', chart.traces);
+  const { insightsData, isInsightsLoading } = useInsightsData(project.id, insightNames);
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
@@ -63,18 +59,16 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   }, [selectedCohortData, chart.traces]);
 
   const selectedInsightPlotData = useMemo(() => {
-    return chartDataFromInsightData(chart.insights, insightsData);
-  }, [selectedCohortData, chart.insights]);
+    return chart.insights.length > 0 ? chartDataFromInsightData(insightsData) : [];
+  }, [insightsData, chart.insights]);
 
-  console.log('selectedInsightPlotData: ', selectedInsightPlotData);
+  const hasInsights = chart.insights && chart.insights.length > 0;
 
-  if (!tracesData) {
+  const isDataLoading = !tracesData || (hasInsights && isInsightsLoading);
+
+  if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
-
-  // if (!insightsData) {
-  //   return <Loading text={chart.name} width={itemWidth} />;
-  // }
 
   const onSelectedCohortChange = changedSelectedTracesData => {
     setIsLoading(true);
@@ -125,7 +119,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
-        data={selectedPlotData}
+        data={[...selectedInsightPlotData, ...selectedPlotData]}
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
         config={{ displayModeBar: false }}

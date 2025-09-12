@@ -1,5 +1,5 @@
 const createInsightSlice = (set) => ({
-  insights: {},
+  insights: null,
 
   // add multiple insights
   setInsights: (newInsights) =>
