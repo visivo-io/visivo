@@ -63,7 +63,6 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     return table.traces.map(trace => trace.name);
   }, [table.traces, isDirectQueryResult]);
 
-  // Always call the hook, but with empty array if it's a direct query
   const tracesData = useTracesData(project.id, traceNames);
 
   const isInsightTable = table.insights?.length > 0;

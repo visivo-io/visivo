@@ -9,7 +9,6 @@ function filterObject(obj, keys) {
   return Object.fromEntries(Object.entries(obj).filter(([key]) => keys.includes(key)));
 }
 
-// Global cache to prevent duplicate operations across all instances
 const globalOperationCache = new Map();
 const globalResultCache = new Map();
 

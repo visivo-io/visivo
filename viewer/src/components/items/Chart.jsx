@@ -36,12 +36,14 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
     return chart.insights.map(insight => insight.name);
   }, [chart.insights]);
 
-  const isInsightChart = chart.insights?.length > 0;
+  const hasInsights = chart.insights && chart.insights.length > 0;
 
   const { insightsData, isInsightsLoading } = useInsightsData(
     project.id,
-    isInsightChart ? insightNames : []
+    hasInsights ? insightNames : []
   );
+
+  const isDataLoading = !tracesData || (hasInsights && isInsightsLoading);
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
@@ -49,31 +51,29 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const [selectedCohortData, setSelectedCohortData] = useState([]);
 
   const selectedPlotData = useMemo(() => {
-    return traceNamesInData(selectedCohortData)
-      .map(traceName => {
-        const trace = chart.traces.find(trace => trace.name === traceName);
-        if (!trace) {
-          return [];
-        }
-        return Object.keys(selectedCohortData[traceName]).map(cohortName => {
-          const chartData = chartDataFromCohortData(
-            selectedCohortData[traceName][cohortName],
-            trace,
-            cohortName
+    let data = [];
+
+    // Handle trace-based data
+    if (selectedCohortData && Object.keys(selectedCohortData).length > 0) {
+      const traceData = traceNamesInData(selectedCohortData)
+        .map(traceName => {
+          const trace = chart.traces.find(t => t.name === traceName);
+          if (!trace) return [];
+          return Object.keys(selectedCohortData[traceName]).map(cohortName =>
+            chartDataFromCohortData(selectedCohortData[traceName][cohortName], trace, cohortName)
           );
-          return chartData;
-        });
-      })
-      .flat();
-  }, [selectedCohortData, chart.traces]);
+        })
+        .flat();
+      data = [...data, ...traceData];
+    }
 
-  const selectedInsightPlotData = useMemo(() => {
-    return chart.insights.length > 0 ? chartDataFromInsightData(insightsData) : [];
-  }, [insightsData, chart.insights]);
+    if (hasInsights && insightsData) {
+      const insightData = chartDataFromInsightData(insightsData);
+      data = [...data, ...insightData];
+    }
 
-  const hasInsights = chart.insights && chart.insights.length > 0;
-
-  const isDataLoading = !tracesData || (hasInsights && isInsightsLoading);
+    return data;
+  }, [selectedCohortData, insightsData, chart.traces, hasInsights]);
 
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
@@ -128,7 +128,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
-        data={[...selectedInsightPlotData, ...selectedPlotData]}
+        data={[...selectedPlotData]}
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
         config={{ displayModeBar: false }}
