@@ -15,8 +15,8 @@ export const distURLConfig = createURLConfig({ environment: 'dist' });
 setGlobalURLConfig(distURLConfig);
 const root = distURLConfig.getRoute();
 
-const logo_path = root === "/" ? logo : root + logo;
-  
+const logo_path = root === '/' ? logo : root + logo;
+
 const DistRouter = createBrowserRouter(
   createRoutesFromElements(
     <Route

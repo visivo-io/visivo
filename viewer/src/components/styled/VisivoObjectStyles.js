@@ -8,39 +8,46 @@ import {
 import { MdScatterPlot, MdOutlineTableView } from 'react-icons/md';
 import { FaExternalLinkAlt } from 'react-icons/fa';
 import { FaGear } from 'react-icons/fa6';
-import { SiDuckdb, SiPostgresql, SiSnowflake, SiSqlite, SiGooglebigquery, SiAmazonredshift } from 'react-icons/si';
+import {
+  SiDuckdb,
+  SiPostgresql,
+  SiSnowflake,
+  SiSqlite,
+  SiGooglebigquery,
+  SiAmazonredshift,
+} from 'react-icons/si';
 import { TbAlertCircle, TbBrandMysql } from 'react-icons/tb';
 import { GrDocumentCsv, GrDocumentExcel } from 'react-icons/gr';
 
 export const TYPE_VALUE_MAP = {
   CSVFileSource: {
-    value: 'csv'
+    value: 'csv',
   },
   ExcelFileSource: {
-    value: 'xls'
+    value: 'xls',
   },
   BigQuerySource: {
-    value: 'bigquery'
+    value: 'bigquery',
   },
   SnowflakeSource: {
-    value: 'snowflake'
+    value: 'snowflake',
   },
   MysqlSource: {
-    value: 'mysql'
+    value: 'mysql',
   },
   PostgresqlSource: {
-    value: 'postgresql'
+    value: 'postgresql',
   },
   RedshiftSource: {
-    value: 'redshift'
+    value: 'redshift',
   },
   DuckdbSource: {
-    value: 'duckdb'
+    value: 'duckdb',
   },
   SqliteSource: {
-    value: 'sqlite'
-  }
-}
+    value: 'sqlite',
+  },
+};
 
 export const TYPE_STYLE_MAP = {
   Chart: {

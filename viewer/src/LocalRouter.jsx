@@ -20,7 +20,7 @@ setGlobalURLConfig(localURLConfig);
 const LocalRouter = createBrowserRouter(
   createRoutesFromElements(
     <>
-    <Route
+      <Route
         id="onboarding"
         path="/onboarding"
         element={<Onboarding />}
@@ -28,65 +28,65 @@ const LocalRouter = createBrowserRouter(
           crumb: () => <BreadcrumbLink to="/onboarding">Onboarding</BreadcrumbLink>,
         }}
       />
-    <Route
-      path="/"
-      element={<Home />}
-      loader={loadError}
-      handle={{ crumb: () => <a href="/">Home</a> }}
-    >
       <Route
-        id="lineage"
-        path="/lineage"
-        element={<Lineage />}
-        handle={{
-          crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
-        }}
-      />
-      <Route
-        id="explorer"
-        path="/explorer"
-        element={<Explorer />}
-        loader={loadProject}
-        handle={{
-          crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
-        }}
-      />
-      <Route
-        id="editor"
-        path="/editor"
-        element={<Editor />}
-        loader={loadProject}
-        handle={{
-          crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
-        }}
-      />
-      <Route
-        id="project"
-        path="/project"
-        element={<ProjectContainer />}
-        errorElement={<ErrorPage />}
-        shouldRevalidate={() => false}
-        loader={loadProject}
-        handle={{
-          crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink>,
-        }}
+        path="/"
+        element={<Home />}
+        loader={loadError}
+        handle={{ crumb: () => <a href="/">Home</a> }}
       >
-        <Route index element={<ProjectContainer />} />
         <Route
-          path=":dashboardName?/*"
-          element={<ProjectContainer />}
-          loader={loadProject}
-          shouldRevalidate={() => false}
+          id="lineage"
+          path="/lineage"
+          element={<Lineage />}
           handle={{
-            crumb: match => (
-              <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>
-                {match.params.dashboardName}
-              </BreadcrumbLink>
-            ),
+            crumb: () => <BreadcrumbLink to="/lineage">Lineage</BreadcrumbLink>,
           }}
         />
+        <Route
+          id="explorer"
+          path="/explorer"
+          element={<Explorer />}
+          loader={loadProject}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/explorer">Explorer</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="editor"
+          path="/editor"
+          element={<Editor />}
+          loader={loadProject}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/editor">Editor</BreadcrumbLink>,
+          }}
+        />
+        <Route
+          id="project"
+          path="/project"
+          element={<ProjectContainer />}
+          errorElement={<ErrorPage />}
+          shouldRevalidate={() => false}
+          loader={loadProject}
+          handle={{
+            crumb: () => <BreadcrumbLink to="/project">Project</BreadcrumbLink>,
+          }}
+        >
+          <Route index element={<ProjectContainer />} />
+          <Route
+            path=":dashboardName?/*"
+            element={<ProjectContainer />}
+            loader={loadProject}
+            shouldRevalidate={() => false}
+            handle={{
+              crumb: match => (
+                <BreadcrumbLink to={`/project/${match.params.dashboardName}`}>
+                  {match.params.dashboardName}
+                </BreadcrumbLink>
+              ),
+            }}
+          />
+        </Route>
       </Route>
-    </Route>
     </>
   ),
   {

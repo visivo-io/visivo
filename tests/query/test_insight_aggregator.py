@@ -32,7 +32,7 @@ def test_flat_structure_generation_basic():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     # Generate flat structure
@@ -70,7 +70,7 @@ def test_flat_structure_with_missing_values():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -106,7 +106,7 @@ def test_flat_structure_with_split_column():
         split_column="category",
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -172,7 +172,7 @@ def test_complete_insight_json_generation():
         split_column="region",
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -214,7 +214,7 @@ def test_aggregate_insight_data_file_creation():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     # Use temporary directory
@@ -286,7 +286,7 @@ def test_empty_data_handling():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -325,7 +325,7 @@ def test_large_dataset_handling():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -369,7 +369,7 @@ def test_special_characters_in_column_names():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -406,7 +406,7 @@ def test_mixed_data_types_in_columns():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -434,7 +434,7 @@ def test_very_long_column_names():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)
@@ -465,7 +465,7 @@ def test_unicode_data_handling():
         input_dependencies=[],
         selects={},
         columns={},
-        props={}
+        props={},
     )
 
     flat_data = InsightAggregator.generate_flat_structure(data, tokenized_insight)

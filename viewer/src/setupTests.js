@@ -9,7 +9,7 @@ import 'resize-observer-polyfill/dist/ResizeObserver.global';
 // Set up a default URL config for tests
 import { setGlobalURLConfig, createURLConfig } from './contexts/URLContext';
 
-import { TextDecoder, TextEncoder } from "util";
+import { TextDecoder, TextEncoder } from 'util';
 
 // This polyfill ensures react-cool-dimensions works properly in tests
 // Mock console.error to suppress react-cool-dimensions warnings in tests

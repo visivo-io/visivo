@@ -1,10 +1,10 @@
-import * as duckdb from "@duckdb/duckdb-wasm";
-import { getTempFilename } from "./duckdb";
+import * as duckdb from '@duckdb/duckdb-wasm';
+import { getTempFilename } from './duckdb';
 
 /**
- * 
- * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db 
- * @param {string} sql 
+ *
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db
+ * @param {string} sql
  * @returns {Promise}
  */
 export const runDuckDBQuery = async (db, sql) => {
@@ -15,25 +15,25 @@ export const runDuckDBQuery = async (db, sql) => {
 };
 
 /**
- * 
- * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db 
- * @param {File} file 
- * @param {string} tableName 
+ *
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db
+ * @param {File} file
+ * @param {string} tableName
  * @returns {Promise}
  */
 export const insertDuckDBFile = async (db, file, tableName) => {
   tableName = tableName || file.name; // fallback if no tableName provided
   const filename = file.name.toLowerCase();
-  const extension = filename.split(".").at(-1);
+  const extension = filename.split('.').at(-1);
 
   switch (extension) {
-    case "parquet":
+    case 'parquet':
       await _insertParquet(db, file, tableName);
       return;
-    case "csv":
+    case 'csv':
       await _insertCSV(db, file, tableName);
       return;
-    case "json":
+    case 'json':
       await _insertJSON(db, file, tableName);
       return;
     default:
@@ -43,17 +43,12 @@ export const insertDuckDBFile = async (db, file, tableName) => {
 
 const _insertParquet = async (db, file, tableName) => {
   try {
-    const tempFile = getTempFilename() + ".parquet";
-    await db.registerFileHandle(
-      tempFile,
-      file,
-      duckdb.DuckDBDataProtocol.BROWSER_FILEREADER,
-      true
-    );
+    const tempFile = getTempFilename() + '.parquet';
+    await db.registerFileHandle(tempFile, file, duckdb.DuckDBDataProtocol.BROWSER_FILEREADER, true);
     await runDuckDBQuery(db, `CREATE TABLE '${tableName}' AS SELECT * FROM '${tempFile}'`);
     await db.dropFile(tempFile);
   } catch (e) {
-    console.error("Failed to import parquet file:", e);
+    console.error('Failed to import parquet file:', e);
   }
 };
 
@@ -67,7 +62,7 @@ const _insertCSV = async (db, file, tableName) => {
     const conn = await db.connect();
     await conn.insertCSVFromPath(tempFile, {
       name: tableName,
-      schema: "main",
+      schema: 'main',
       detect: true,
     });
     await conn.close();
@@ -75,7 +70,7 @@ const _insertCSV = async (db, file, tableName) => {
 
     await inferTypes(db, tableName);
   } catch (e) {
-    console.error("Failed to import CSV file:", e);
+    console.error('Failed to import CSV file:', e);
     throw e;
   }
 };
@@ -84,7 +79,7 @@ const _insertJSON = async (db, file, tableName) => {
   try {
     const text = await file.text();
 
-    const tempFile = getTempFilename() + ".json";
+    const tempFile = getTempFilename() + '.json';
     await db.registerFileText(tempFile, text);
 
     const conn = await db.connect();
@@ -96,7 +91,7 @@ const _insertJSON = async (db, file, tableName) => {
 
     await db.dropFile(tempFile);
   } catch (e) {
-    console.error("Failed to import JSON file:", e);
+    console.error('Failed to import JSON file:', e);
     throw e;
   }
 };
@@ -124,7 +119,7 @@ const inferTypes = async (db, tableName) => {
 
   for (let i = 0; i < columns.length; i++) {
     const column = columns[i];
-    if (column.toLowerCase().includes("year")) {
+    if (column.toLowerCase().includes('year')) {
       await runDuckDBQuery(
         db,
         `ALTER TABLE "${tableName}" ALTER COLUMN "${column}" SET DATA TYPE VARCHAR`
@@ -134,9 +129,9 @@ const inferTypes = async (db, tableName) => {
 };
 
 /**
- * 
- * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db 
- * @param {string} tableName 
+ *
+ * @param {import("@duckdb/duckdb-wasm").AsyncDuckDB} db
+ * @param {string} tableName
  * @returns {Promise<boolean>}
  */
 export const tableDuckDBExists = async (db, tableName) => {

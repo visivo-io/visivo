@@ -1,45 +1,45 @@
-import React, { useState, useEffect } from "react";
-import logo from "../../images/logo.png";
-import ProjectModal from "./ProjectModal";
-import CreateObjectModal from "../editors/CreateObjectModal";
-import Loading from "../common/Loading";
-import { faArrowRight, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import useStore from "../../stores/store";
-import { Navigate } from "react-router-dom";
-import FeatureCard from "./FeatureCard";
-import { Toast } from "flowbite-react";
-import { HiExclamation, HiX } from "react-icons/hi";
-import { GiAmericanFootballBall } from "react-icons/gi";
+import React, { useState, useEffect } from 'react';
+import logo from '../../images/logo.png';
+import ProjectModal from './ProjectModal';
+import CreateObjectModal from '../editors/CreateObjectModal';
+import Loading from '../common/Loading';
+import { faArrowRight, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import useStore from '../../stores/store';
+import { Navigate } from 'react-router-dom';
+import FeatureCard from './FeatureCard';
+import { Toast } from 'flowbite-react';
+import { HiExclamation, HiX } from 'react-icons/hi';
+import { GiAmericanFootballBall } from 'react-icons/gi';
 
 const ACTIONS = {
-  DATA_SOURCE: "Data Source",
-  GITHUB_RELEASE: "github-releases",
-  EV_SALES: "ev-sales",
-  COLLEGE_FOOTBALL: "college-football",
+  DATA_SOURCE: 'Data Source',
+  GITHUB_RELEASE: 'github-releases',
+  EV_SALES: 'ev-sales',
+  COLLEGE_FOOTBALL: 'college-football',
 };
 
 const Onboarding = () => {
-  const [projectName, setProjectName] = useState("");
+  const [projectName, setProjectName] = useState('');
   const [showNameModal, setShowNameModal] = useState(false);
-  const [tempProjectName, setTempProjectName] = useState("");
+  const [tempProjectName, setTempProjectName] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState("Creating project ...");
-  const [loadingAction, setLoadingAction] = useState("");
-  const [showErrorToast, setShowErrorToast] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("");
+  const [loadingText, setLoadingText] = useState('Creating project ...');
+  const [loadingAction, setLoadingAction] = useState('');
+  const [showErrorToast, setShowErrorToast] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [selectedExample] = useState(ACTIONS.GITHUB_RELEASE);
 
-  const isNewProject = useStore((state) => state.isNewProject);
-  const isOnBoardingLoading = useStore((state) => state.isOnBoardingLoading);
-  const project = useStore((state) => state.project);
-  const projectDir = project?.project_json?.project_dir ?? "";
+  const isNewProject = useStore(state => state.isNewProject);
+  const isOnBoardingLoading = useStore(state => state.isOnBoardingLoading);
+  const project = useStore(state => state.project);
+  const projectDir = project?.project_json?.project_dir ?? '';
 
   useEffect(() => {
     if (!projectName) {
       setShowNameModal(true);
-      setTempProjectName("");
+      setTempProjectName('');
     }
   }, [projectName]);
 
@@ -51,8 +51,8 @@ const Onboarding = () => {
   }, [showErrorToast]);
 
   const closeLoading = () => {
-    setLoadingText("");
-    setLoadingAction("");
+    setLoadingText('');
+    setLoadingAction('');
     setIsLoading(false);
   };
 
@@ -65,70 +65,68 @@ const Onboarding = () => {
   };
 
   const handleToggleSourceModal = () => {
-    setIsCreateModalOpen((prev) => !prev);
+    setIsCreateModalOpen(prev => !prev);
   };
 
   const safeAppend = (key, value, formData) => {
-    formData.append(key, value ?? "");
+    formData.append(key, value ?? '');
   };
 
-  const createSource = async (config) => {
+  const createSource = async config => {
     const formData = new FormData();
-    safeAppend("project_name", projectName, formData);
-    safeAppend("source_name", config?.name, formData);
-    safeAppend("source_type", config?.type, formData);
-    safeAppend("port", config?.port, formData);
-    safeAppend("database", config?.database, formData);
-    safeAppend("host", config?.host, formData);
-    safeAppend("username", config?.username, formData);
-    safeAppend("password", config?.password, formData);
-    safeAppend("account", config?.account, formData);
-    safeAppend("warehouse", config?.warehouse, formData);
-    safeAppend("credentials_base64", config?.credentials_base64, formData);
-    safeAppend("project", config?.project, formData);
-    safeAppend("dataset", config?.dataset, formData);
-    safeAppend("project_dir", projectDir, formData);
+    safeAppend('project_name', projectName, formData);
+    safeAppend('source_name', config?.name, formData);
+    safeAppend('source_type', config?.type, formData);
+    safeAppend('port', config?.port, formData);
+    safeAppend('database', config?.database, formData);
+    safeAppend('host', config?.host, formData);
+    safeAppend('username', config?.username, formData);
+    safeAppend('password', config?.password, formData);
+    safeAppend('account', config?.account, formData);
+    safeAppend('warehouse', config?.warehouse, formData);
+    safeAppend('credentials_base64', config?.credentials_base64, formData);
+    safeAppend('project', config?.project, formData);
+    safeAppend('dataset', config?.dataset, formData);
+    safeAppend('project_dir', projectDir, formData);
 
-    const res = await fetch("/api/source/create/", {
-      method: "POST",
+    const res = await fetch('/api/source/create/', {
+      method: 'POST',
       body: formData,
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.message || "Failed to connect to the data source.");
+      throw new Error(data.message || 'Failed to connect to the data source.');
     }
 
-    return data.source; 
+    return data.source;
   };
 
-
-
-  const uploadSourceFile = async (config) => {
+  const uploadSourceFile = async config => {
     const formData = new FormData();
-    formData.append("file", config.file);
-    formData.append("project_dir", projectDir);
-    formData.append("source_type", config?.type);
+    formData.append('file', config.file);
+    formData.append('project_dir', projectDir);
+    formData.append('source_type', config?.type);
 
-    const res = await fetch("/api/source/upload/", {
-      method: "POST",
+    const res = await fetch('/api/source/upload/', {
+      method: 'POST',
       body: formData,
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.message || "Failed to upload the file.");
+      throw new Error(data.message || 'Failed to upload the file.');
     }
 
-    return data.dashboard; 
+    return data.dashboard;
   };
 
   const finalizeProject = async (config, source, dashboard) => {
-    const res = await fetch("/api/project/finalize/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/project/finalize/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         project_name: projectName,
         project_dir: projectDir,
@@ -140,48 +138,47 @@ const Onboarding = () => {
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.message || "Failed to finalize the project.");
+      throw new Error(data.message || 'Failed to finalize the project.');
     }
 
     return data;
   };
 
-  const handleAddDataSource = async (data) => {
+  const handleAddDataSource = async data => {
     const { config } = data;
     setLoadingAction(ACTIONS.DATA_SOURCE);
     setIsLoading(true);
 
     try {
-      setLoadingText("Connecting source...");
-      const source = await createSource(config); 
+      setLoadingText('Connecting source...');
+      const source = await createSource(config);
 
       let dashboard = null;
 
       if (config?.file) {
-        setLoadingText("Uploading file...");
-        dashboard = await uploadSourceFile(config); 
+        setLoadingText('Uploading file...');
+        dashboard = await uploadSourceFile(config);
       }
 
-      setLoadingText("Finalizing project...");
+      setLoadingText('Finalizing project...');
       await finalizeProject(config, source, dashboard);
       setIsLoading(true);
-      setLoadingText("Preparing dashboards...");
+      setLoadingText('Preparing dashboards...');
     } catch (err) {
-      const message = err?.message ?? "An unexpected error occurred.";
+      const message = err?.message ?? 'An unexpected error occurred.';
       setErrorMessage(message);
       setShowErrorToast(true);
-    } 
+    }
   };
-
 
   const handleLoadExample = async (exampleType = selectedExample) => {
     setLoadingAction(exampleType);
-    setLoadingText("Importing example...");
+    setLoadingText('Importing example...');
     setIsLoading(true);
 
-    const response = await fetch("/api/project/load_example/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch('/api/project/load_example/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         project_name: projectName,
         example_type: exampleType,
@@ -191,16 +188,16 @@ const Onboarding = () => {
 
     if (!response.ok) {
       const data = await response.json();
-      const message = data.message
-      setErrorMessage(message ?? "Failed to import the example dashboard.")
-      setShowErrorToast(true)
-      closeLoading()
+      const message = data.message;
+      setErrorMessage(message ?? 'Failed to import the example dashboard.');
+      setShowErrorToast(true);
+      closeLoading();
     } else {
-      setLoadingText("Preparing project ...");
+      setLoadingText('Preparing project ...');
     }
   };
 
-  const isLoadingAction = (action) => isLoading && loadingAction === action;
+  const isLoadingAction = action => isLoading && loadingAction === action;
 
   if (isOnBoardingLoading) {
     return (
@@ -238,9 +235,7 @@ const Onboarding = () => {
       <div className="fixed top-4 left-4 z-10">
         <div className="inline-flex items-center px-6 py-3 bg-white rounded-full shadow-lg border border-gray-200">
           <div className="w-3 h-3 bg-green-500 rounded-full mr-3 animate-pulse" />
-          <span className="text-lg font-semibold text-gray-700">
-            Project: {projectName}
-          </span>
+          <span className="text-lg font-semibold text-gray-700">Project: {projectName}</span>
         </div>
       </div>
 
@@ -251,9 +246,12 @@ const Onboarding = () => {
         </div>
         {/* Example Dashboards */}
         <div className="bg-white rounded-2xl shadow-xl p-4 mb-8 w-full">
-          <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">Jump right in and try an example</h3>
+          <h3 className="text-xl font-semibold text-center text-gray-800 mb-3">
+            Jump right in and try an example
+          </h3>
           <p className="text-center text-gray-600 mb-6">
-            A very easy way to get started and explore what is possible is to try one of our sample dashboards.
+            A very easy way to get started and explore what is possible is to try one of our sample
+            dashboards.
           </p>
 
           <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4">
@@ -276,7 +274,7 @@ const Onboarding = () => {
                         0-1.31.467-2.381 1.235-3.221-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23a11.5 11.5 0 0 1 3-.404c1.02.005 2.045.138 3
                         .404 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.911 1.23 3.221 0 4.61-2.807 5.625-5.48 5.921
                         .42.36.81 1.096.81 2.21 0 1.595-.015 2.88-.015 3.275 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.627-5.373-12-12-12z"
-                      />
+                    />
                   </svg>
                 </div>
                 <div>
@@ -316,7 +314,7 @@ const Onboarding = () => {
                     viewBox="0 0 24 24"
                     aria-hidden="true"
                   >
-                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+                    <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
                   </svg>
                 </div>
                 <div>
@@ -387,7 +385,8 @@ const Onboarding = () => {
               Or connect your data
             </h3>
             <p className="text-center text-gray-600 mb-6">
-              Start by adding your first data source. We support databases, APIs, CSV files, and more.
+              Start by adding your first data source. We support databases, APIs, CSV files, and
+              more.
             </p>
 
             <div className="flex justify-center">
@@ -413,7 +412,6 @@ const Onboarding = () => {
 
         {/* Feature Cards */}
         <FeatureCard />
-
       </div>
 
       {showNameModal && (

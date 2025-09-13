@@ -1,5 +1,5 @@
 import Loading from '../common/Loading';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   tableDataFromCohortData,
   tableColumnsWithDot,
@@ -44,17 +44,32 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import { itemNameToSlug } from './utils';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { useInsightsData } from '../../queries/insightsData';
 
 const Table = ({ table, project, itemWidth, height, width }) => {
   const isDirectQueryResult = table.traces[0]?.data !== undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
+  // Memoize insight names to prevent array recreation on every render
+  const insightNames = useMemo(() => {
+    if (!table.insights?.length) return [];
+    return table.insights.map(insight => insight.name);
+  }, [table.insights]);
+
+  // Memoize trace names to prevent array recreation
+  const traceNames = useMemo(() => {
+    if (isDirectQueryResult) return [];
+    return table.traces.map(trace => trace.name);
+  }, [table.traces, isDirectQueryResult]);
+
   // Always call the hook, but with empty array if it's a direct query
-  const tracesData = useTracesData(
-    project.id,
-    isDirectQueryResult ? [] : table.traces.map(trace => trace.name)
-  );
+  const tracesData = useTracesData(project.id, traceNames);
+
+  const isInsightTable = table.insights?.length > 0;
+
+  const { insightsData } = useInsightsData(project.id, isInsightTable ? insightNames : []);
+
   const [selectedTableCohort, setSelectedTableCohort] = useState(null);
   const [columns, setColumns] = useState([]);
   const [tableData, setTableData] = useState([]);
@@ -108,6 +123,35 @@ const Table = ({ table, project, itemWidth, height, width }) => {
       );
     }
   }, [selectedTableCohort, columns, table.traces, isDirectQueryResult]);
+
+  useEffect(() => {
+    if (isInsightTable && insightsData) {
+      const insightName = table.insights[0]?.name;
+      const insightObj = insightsData?.[insightName];
+
+      if (insightObj?.insight && insightObj?.columns) {
+        const insightColumns = Object.entries(insightObj.columns).map(([id, accessor]) => ({
+          id,
+          header: id.replace(/^columns\./, '').replace(/^props\./, ''), // pretty header
+          accessorKey: accessor.replace(/\./g, '___'),
+          enableGrouping: false,
+          markdown: accessor.startsWith('props.'),
+        }));
+
+        setColumns(insightColumns);
+
+        setTableData(
+          insightObj.insight.map((row, idx) => {
+            const transformedRow = {};
+            Object.entries(row).forEach(([key, value]) => {
+              transformedRow[key.replace(/\./g, '___')] = value;
+            });
+            return { id: idx, ...transformedRow };
+          })
+        );
+      }
+    }
+  }, [isInsightTable, insightsData, table.insights]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
@@ -186,9 +230,13 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     return <Loading text={table.name} width={itemWidth} />;
   }
 
+  if (isInsightTable && !insightsData) {
+    return <Loading text={table.name} width={itemWidth} />;
+  }
+
   const tableTheme = createTheme({
     palette: {
-      primary: { main: 'rgb(210, 89, 70)' },
+      primary: { main: 'rgba(252, 64, 35, 1)' },
       info: { main: 'rgb(79, 73, 76)' },
     },
   });
@@ -303,7 +351,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
                 </Tooltip>
               </Button>
 
-              {!isDirectQueryResult && tracesData && (
+              {!isDirectQueryResult && !isInsightTable && tracesData && (
                 <CohortSelect
                   tracesData={tracesData}
                   onChange={onSelectedCohortChange}

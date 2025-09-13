@@ -47,7 +47,7 @@ class TokenizedInsight(BaseModel):
 
     columns: Dict[str, str]
 
-    props: Dict[Any, Any]
+    props: Optional[Dict[Any, Any]] = None
 
     # Interaction metadata for client-side execution
     interactions: List[Dict[str, Any]]  # List of interaction definitions

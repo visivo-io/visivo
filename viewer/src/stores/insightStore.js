@@ -1,15 +1,15 @@
-const createInsightSlice = (set) => ({
-  insights: null,
-
-  // add multiple insights
-  setInsights: (newInsights) =>
-    set(() => ({
-      insights: { ...newInsights },
+const createInsightSlice = set => ({
+  insights: {},
+  setInsights: newInsights =>
+    set(state => ({
+      insights: {
+        ...state.insights,
+        ...newInsights,
+      },
     })),
 
-  // update a single insight by name
   updateInsight: (insightName, dataObj) =>
-    set((state) => ({
+    set(state => ({
       insights: {
         ...state.insights,
         [insightName]: dataObj,

@@ -117,16 +117,26 @@ class Table(SelectorModel, NamedModel, ParentModel):
     @model_validator(mode="before")
     @classmethod
     def validate_column_defs(cls, data: any):
-        traces, column_defs = (data.get("traces"), data.get("column_defs"))
+        traces, insights, column_defs = (
+            data.get("traces"),
+            data.get("insights"),
+            data.get("column_defs"),
+        )
 
         if not column_defs:
             return data
 
-        column_defs_trace_names = list(map(lambda cd: cd["trace_name"], column_defs))
-        traces_trace_names = list(map(lambda t: NamedModel.get_name(t), traces))
-        for column_defs_trace_name in column_defs_trace_names:
-            if not column_defs_trace_name in traces_trace_names:
+        trace_names = list(map(lambda t: NamedModel.get_name(t), traces or []))
+        insight_names = list(map(lambda i: NamedModel.get_name(i), insights or []))
+
+        for cd in column_defs:
+            if "trace_name" in cd and cd["trace_name"] not in trace_names:
                 raise ValueError(
-                    f"Column def trace name '{column_defs_trace_name}' is not present in trace list on table."
+                    f"Column def trace name '{cd['trace_name']}' is not present in trace list on table."
                 )
+            if "insight_name" in cd and cd["insight_name"] not in insight_names:
+                raise ValueError(
+                    f"Column def insight name '{cd['insight_name']}' is not present in insight list on table."
+                )
+
         return data

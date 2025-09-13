@@ -1,9 +1,8 @@
-import * as duckdb from "@duckdb/duckdb-wasm";
+import * as duckdb from '@duckdb/duckdb-wasm';
 import duckdb_wasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
 import mvp_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
 import duckdb_wasm_next from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
-import duckdb_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url";
-
+import duckdb_worker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 
 const DUCKDB_BUNDLES = {
   mvp: {
@@ -17,7 +16,7 @@ const DUCKDB_BUNDLES = {
 };
 
 /**
- * 
+ *
  * @returns {duckdb.AsyncDuckDB}
  */
 export const initDuckDB = async () => {
@@ -27,7 +26,7 @@ export const initDuckDB = async () => {
   const db = new duckdb.AsyncDuckDB(logger, worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
   return db;
-}
+};
 
 export const getTempFilename = () => {
   const timestamp = Date.now().toString();

@@ -16,8 +16,7 @@ const Home = () => {
   const location = useLocation();
   const isRoot = location.pathname === '/';
   const isProject = location.pathname.startsWith('/project');
-  const [isDeployOpen, setIsDeployOpen] = useState(false)
-
+  const [isDeployOpen, setIsDeployOpen] = useState(false);
 
   const isNewProject = useStore(state => state.isNewProject);
 
@@ -26,11 +25,10 @@ const Home = () => {
       <div className="flex items-center justify-center h-screen w-screen">
         <Loading />
       </div>
-    )
+    );
   }
 
   if (isNewProject && isRoot) return <Navigate to="/onboarding" />;
-
 
   const renderNavigationCards = () => (
     <div className="container mx-auto px-4 py-12">
@@ -91,8 +89,8 @@ const Home = () => {
   );
 
   const onDeployClick = () => {
-    setIsDeployOpen(!isDeployOpen)
-  }
+    setIsDeployOpen(!isDeployOpen);
+  };
 
   return (
     <div className="visivo-home min-h-screen bg-gray-50">

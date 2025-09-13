@@ -31,8 +31,17 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
   const traceNames = chart.traces.map(trace => trace.name);
   const tracesData = useTracesData(project.id, traceNames);
 
-  const insightNames = chart.insights.map(insight => insight.name);
-  const { insightsData, isInsightsLoading } = useInsightsData(project.id, insightNames);
+  const insightNames = useMemo(() => {
+    if (!chart.insights?.length) return [];
+    return chart.insights.map(insight => insight.name);
+  }, [chart.insights]);
+
+  const isInsightChart = chart.insights?.length > 0;
+
+  const { insightsData, isInsightsLoading } = useInsightsData(
+    project.id,
+    isInsightChart ? insightNames : []
+  );
 
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);

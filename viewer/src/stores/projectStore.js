@@ -58,8 +58,11 @@ const createProjectSlice = (set, get) => ({
         (dashboard.description &&
           dashboard.description.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesTags =
-        !selectedTags || selectedTags.length === 0 ||
-        (dashboard.tags && Array.isArray(selectedTags) && selectedTags.every(tag => dashboard.tags.includes(tag)));
+        !selectedTags ||
+        selectedTags.length === 0 ||
+        (dashboard.tags &&
+          Array.isArray(selectedTags) &&
+          selectedTags.every(tag => dashboard.tags.includes(tag)));
       return matchesSearch && matchesTags;
     });
 

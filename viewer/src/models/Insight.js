@@ -9,7 +9,7 @@ export function chartDataFromInsightData(insightsData) {
     const { insight, columns, props } = insightObj;
 
     const dataArrays = {};
-    for (const [alias, field] of Object.entries(columns)) {
+    for (const [, field] of Object.entries(columns)) {
       const keyName = field;
       dataArrays[keyName] = insight.map(row => row[keyName]);
     }
@@ -17,22 +17,21 @@ export function chartDataFromInsightData(insightsData) {
     const trace = JSON.parse(JSON.stringify(props));
     trace.name = insightName;
 
-    const resolveProps = (obj) => {
+    const resolveProps = obj => {
       for (const key of Object.keys(obj)) {
         const value = obj[key];
 
-        if (typeof value === "string") {
+        if (typeof value === 'string') {
           // Match column(fieldName)
           const match = value.match(/^column\((.+)\)$/);
           if (match) {
             const fieldName = match[1];
             obj[key] = dataArrays[fieldName] || [];
-          }
-          else if (value.startsWith("?{") && value.endsWith("}")) {
-            const colKey = Object.values(columns).find(c => c.includes("text"));
+          } else if (value.startsWith('?{') && value.endsWith('}')) {
+            const colKey = Object.values(columns).find(c => c.includes('text'));
             obj[key] = colKey ? dataArrays[colKey] : [];
           }
-        } else if (typeof value === "object" && value !== null) {
+        } else if (typeof value === 'object' && value !== null) {
           resolveProps(value);
         }
       }

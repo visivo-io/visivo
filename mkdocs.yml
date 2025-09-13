@@ -119,6 +119,17 @@ nav:
                   - reference/configuration/Destinations/ConsoleDestination/index.md
           - Include:
               - reference/configuration/Include/index.md
+          - Inputs:
+              - DropdownInput:
+                  - reference/configuration/Inputs/DropdownInput/index.md
+          - Insight:
+              - reference/configuration/Insight/index.md
+              - InsightColumns:
+                  - reference/configuration/Insight/InsightColumns/index.md
+              - InsightInteraction:
+                  - reference/configuration/Insight/InsightInteraction/index.md
+              - Model:
+                  - reference/configuration/Insight/Model/index.md
           - Models:
               - SqlModel:
                   - reference/configuration/Models/SqlModel/index.md

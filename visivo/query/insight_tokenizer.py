@@ -67,6 +67,11 @@ class InsightTokenizer:
         else:
             source_type = None
 
+        if self.insight.props:
+            props = self.insight.props.model_dump()
+        else:
+            props = None
+
         return TokenizedInsight(
             name=self.insight.name,
             source=self.source.name,
@@ -78,7 +83,7 @@ class InsightTokenizer:
             column_items=self.column_items,
             selects=self.selects,
             columns=self.columns,
-            props=self.insight.props.model_dump(),
+            props=props,
             interactions=self._serialize_interactions(),
             input_dependencies=list(self.input_dependencies),
             requires_groupby=len(self.groupby_statements) > 0,

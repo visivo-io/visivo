@@ -44,8 +44,8 @@ function FilterBar() {
                     size="xs"
                     onClick={() => {
                       setSelectedTags(
-                        selectedTags.includes(tag) 
-                          ? selectedTags.filter(t => t !== tag) 
+                        selectedTags.includes(tag)
+                          ? selectedTags.filter(t => t !== tag)
                           : [...selectedTags, tag]
                       );
                     }}

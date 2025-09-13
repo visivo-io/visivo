@@ -1,6 +1,9 @@
 const Loading = ({ text, width, w, h }) => {
   return (
-    <div role="status" className={`flex grow-${width} justify-center items-center loading-spinner ${w ? 'w-' + w : ''} ${h ? 'h-' + h : ''}`}>
+    <div
+      role="status"
+      className={`flex grow-${width} justify-center items-center loading-spinner ${w ? 'w-' + w : ''} ${h ? 'h-' + h : ''}`}
+    >
       <svg
         aria-hidden="true"
         className="w-8 h-8 text-gray-200 animate-spin fill-highlight-600"

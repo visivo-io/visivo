@@ -17,4 +17,3 @@ export const DuckDBProvider = ({ children }) => {
 };
 
 export const useDuckDB = () => useContext(DuckDBContext);
-

@@ -58,7 +58,7 @@ const URL_PATTERNS = {
     traceQuery: null,
     editorsInstalled: null,
     editorsOpen: null,
-  }
+  },
 };
 
 /**
@@ -82,9 +82,7 @@ class URLConfig {
     }
 
     // Normalize host
-    this.host = this.host.endsWith('/')
-      ? this.host.slice(0, -1)
-      : this.host;
+    this.host = this.host.endsWith('/') ? this.host.slice(0, -1) : this.host;
   }
 
   /**
