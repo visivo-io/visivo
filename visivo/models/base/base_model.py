@@ -63,6 +63,37 @@ class ModelStrDiscriminator:
             return None
 
 
+class TraceOrInsightDiscriminator:
+    """
+    Discriminator for union types that can be either Trace or Insight objects.
+    """
+
+    def __name__(self):
+        return "TraceOrInsightDiscriminator"
+
+    def __call__(self, value):
+        if isinstance(value, str) and re.search(CONTEXT_STRING_VALUE_REGEX, value):
+            return "Context"
+        elif isinstance(value, str):
+            return "Ref"
+        elif isinstance(value, dict):
+            # Check if this looks like an insight (has interactions field) or trace
+            if "interactions" in value:
+                return "Insight"
+            else:
+                return "Trace"
+        elif hasattr(value, "__class__"):
+            class_name = value.__class__.__name__
+            if class_name == "Insight":
+                return "Insight"
+            elif class_name == "Trace":
+                return "Trace"
+            else:
+                return None
+        else:
+            return None
+
+
 class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 

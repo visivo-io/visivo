@@ -12,6 +12,8 @@ import MenuContainer from './MenuContainer';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faShareAlt } from '@fortawesome/free-solid-svg-icons';
+import { useInsightsData } from '../../hooks/useInsightsData';
+import { chartDataFromInsightData } from '../../models/Insight';
 
 const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +30,10 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
 
   const traceNames = chart.traces.map(trace => trace.name);
   const tracesData = useTracesData(project.id, traceNames);
+
+  const insightNames = chart.insights.map(insight => insight.name);
+  const { insightsData, isInsightsLoading } = useInsightsData(project.id, insightNames);
+
   const [hovering, setHovering] = useState(false);
   const [cohortSelectVisible, setCohortSelectVisible] = useState(false);
 
@@ -52,7 +58,15 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       .flat();
   }, [selectedCohortData, chart.traces]);
 
-  if (!tracesData) {
+  const selectedInsightPlotData = useMemo(() => {
+    return chart.insights.length > 0 ? chartDataFromInsightData(insightsData) : [];
+  }, [insightsData, chart.insights]);
+
+  const hasInsights = chart.insights && chart.insights.length > 0;
+
+  const isDataLoading = !tracesData || (hasInsights && isInsightsLoading);
+
+  if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
   }
 
@@ -105,7 +119,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
-        data={selectedPlotData}
+        data={[...selectedInsightPlotData, ...selectedPlotData]}
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
         config={{ displayModeBar: false }}

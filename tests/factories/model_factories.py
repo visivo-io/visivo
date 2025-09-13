@@ -5,6 +5,7 @@ from visivo.models.destinations.console_destination import ConsoleDestination
 from visivo.models.models.csv_script_model import CsvScriptModel
 from visivo.models.models.local_merge_model import LocalMergeModel
 from visivo.models.models.sql_model import SqlModel
+from visivo.models.props.trace_props import TraceProps
 from visivo.models.selector import Selector
 from visivo.models.sources.snowflake_source import SnowflakeSource
 from visivo.models.sources.sqlite_source import SqliteSource
@@ -12,6 +13,7 @@ from visivo.models.sources.redshift_source import RedshiftSource
 from visivo.models.sources.bigquery_source import BigQuerySource
 from visivo.models.test import Test
 from visivo.models.trace import Trace
+from visivo.models.insight import Insight
 from visivo.models.chart import Chart
 from visivo.models.dashboard import Dashboard
 from visivo.models.dashboards.external_dashboard import ExternalDashboard
@@ -21,7 +23,6 @@ from visivo.models.table import Table
 from visivo.models.row import Row, HeightEnum
 from visivo.jobs.job import Job
 from visivo.models.dbt import Dbt
-from visivo.models.trace_props.trace_props import TraceProps
 
 
 class DestinationFactory(factory.Factory):
@@ -157,6 +158,18 @@ class TraceFactory(factory.Factory):
             ]
         )
         surface_props = factory.Trait(props=factory.SubFactory(SurfaceTracePropsFactory))
+
+
+class InsightFactory(factory.Factory):
+    class Meta:
+        model = Insight
+
+    name = "insight"
+    model = factory.SubFactory(SqlModelFactory)
+    props = factory.SubFactory(ScatterTracePropsFactory)
+
+    class Params:
+        model_ref = factory.Trait(model="ref(model_name)")
 
 
 class JobFactory(factory.Factory):

@@ -10,6 +10,7 @@ beforeEach(() => {
     name: 'name',
     selector: { type: 'single', name: 'selector', parent_name: 'name' },
     traces: [],
+    insights: [],
   };
 });
 

@@ -5,10 +5,8 @@ import json
 from importlib.resources import files
 from jsonschema_rs import ValidationError
 
-
-from enum import Enum
-
-from visivo.models.trace_props.json_schema_base import JsonSchemaBase, get_message_from_error
+from visivo.models.props.json_schema_base import JsonSchemaBase, get_message_from_error
+from visivo.models.props.types import PropType
 
 
 class TraceType(str, Enum):
@@ -64,7 +62,7 @@ class TraceType(str, Enum):
 
 class TraceProps(JsonSchemaBase):
 
-    type: TraceType = Field(..., description="Type of the trace")
+    type: PropType = Field(..., description="Type of the trace")
 
     @model_validator(mode="after")
     def validate_against_schema(self) -> "TraceProps":

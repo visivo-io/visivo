@@ -1,11 +1,13 @@
 import React, { createContext, useContext } from 'react';
 import { fetchTraces as defaultFetchTraces } from '../api/traces';
 import { fetchDashboard as defaultFetchDashboard } from '../api/dashboard';
+import { fetchInsights as defaultFetchInsight } from '../api/insights';
 
 // Default query functions
 const defaultQueries = {
   fetchTraces: defaultFetchTraces,
   fetchDashboard: defaultFetchDashboard,
+  fetchInsights: defaultFetchInsight,
 };
 
 // Create context
@@ -14,28 +16,26 @@ const QueryContext = createContext(defaultQueries);
 /**
  * Provider component for custom query functions
  * Allows the host application to inject authenticated API functions
- * 
+ *
  * @param {Object} props
  * @param {Function} props.fetchTraces - Custom traces fetch function
+ * @param {Function} props.fetchInsights - Custom traces fetch function
  * @param {Function} props.fetchDashboard - Custom dashboard fetch function
  * @param {ReactNode} props.children
  */
-export function QueryProvider({ fetchTraces, fetchDashboard, children }) {
+export function QueryProvider({ fetchTraces, fetchInsights, fetchDashboard, children }) {
   const queries = {
     fetchTraces: fetchTraces || defaultFetchTraces,
+    fetchInsights: fetchInsights || defaultFetchInsight,
     fetchDashboard: fetchDashboard || defaultFetchDashboard,
   };
 
-  return (
-    <QueryContext.Provider value={queries}>
-      {children}
-    </QueryContext.Provider>
-  );
+  return <QueryContext.Provider value={queries}>{children}</QueryContext.Provider>;
 }
 
 /**
  * Hook to access query functions
- * @returns {Object} Object containing fetchTraces and fetchDashboard functions
+ * @returns {Object} Object containing fetchTraces, fetchInsights and fetchDashboard functions
  */
 export function useQueries() {
   const context = useContext(QueryContext);
@@ -52,6 +52,15 @@ export function useQueries() {
 export function useFetchTraces() {
   const { fetchTraces } = useQueries();
   return fetchTraces;
+}
+
+/**
+ * Hook to get the fetchInsights function
+ * @returns {Function} fetchInsights function
+ */
+export function useFetchInsights() {
+  const { fetchInsights } = useQueries();
+  return fetchInsights;
 }
 
 /**
