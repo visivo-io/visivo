@@ -100,21 +100,20 @@ cd my-dashboard
 
 ### 2. Use This Prompt with Claude Code
 
-Copy this prompt and paste it into Claude Code or similar AI Agent:
+Copy the following prompt and paste it into Claude Code or similar AI Agent. This prompt is designed to accept CSV files as a data source, but feel free to modify.
 
 !!! example "Dashboard Generation Prompt"
     ```
     Create a Visivo dashboard from my data located here: [YOUR DATA HERE].
     
     Requirements:
-    - Use DuckDB as the data source
     - Load data from either:
-      * A CSV file I provide above, OR
+      * A CSV file(s) I provide above, OR
       * This sample retail dataset: https://raw.githubusercontent.com/visivo-io/visivo/main/mkdocs/assets/us_land_use.csv
     - Analyze the data and create at least 3 different charts showing different insights
-    - Read the docs at docs.visivo.io to know how Visivo works and create a project.visivo.yml
+    - Read the docs at docs.visivo.io to know how Visivo works and create a project.visivo.yml.  The general syntax is located under the configuration heading.
+    - If the data provided is a CSV use Visivo's CSVFileSource and the docs are located at: https://docs.visivo.io/reference/configuration/Sources/CSVFileSource/ to load that data. 
     - Validate the visivo configuration with `visivo run`.
-    - If the data is a csv use Visivo's [CSVFileSource](https://docs.visivo.io/reference/configuration/Sources/CSVFileSource/) to load that data. 
     - Provide the complete project.visivo.yml file with inline comments explaining each section.
     ```
 
