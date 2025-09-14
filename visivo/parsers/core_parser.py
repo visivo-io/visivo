@@ -4,7 +4,7 @@ from pathlib import Path
 from pydantic import ValidationError
 from visivo.parsers.line_validation_error import LineValidationError
 from visivo.parsers.yaml_ordered_dict import setup_yaml_ordered_dict
-from visivo.utils import load_yaml_file, PROJECT_CHILDREN
+from visivo.utils import load_config_file, PROJECT_CHILDREN
 from visivo.models.project import Project
 
 
@@ -21,7 +21,7 @@ class CoreParser:
         return self.__merged_project_data()
 
     def project_file_data(self):
-        return load_yaml_file(self.project_file)
+        return load_config_file(self.project_file)
 
     def __build_project(self):
         data = self.__merged_project_data()
@@ -39,7 +39,7 @@ class CoreParser:
         for file in self.files:
             if file == self.project_file:
                 continue
-            data_files[file] = load_yaml_file(file)
+            data_files[file] = load_config_file(file)
 
         return self.__merge_data_into_project(project_data=project_data, data_files=data_files)
 
