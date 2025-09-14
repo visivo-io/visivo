@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from visivo.models.base.base_model import generate_ref_field
 from pydantic import ConfigDict, Field
@@ -6,6 +6,8 @@ from visivo.models.base.parent_model import ParentModel
 from visivo.models.models.model import Model
 from visivo.models.sources.fields import SourceRefField
 from visivo.models.sources.source import DefaultSource
+from visivo.models.metric import Metric
+from visivo.models.dimension import Dimension
 
 
 class SqlModel(Model, ParentModel):
@@ -38,8 +40,23 @@ class SqlModel(Model, ParentModel):
         alias="target",
     )
 
+    metrics: List[Metric] = Field(
+        [], description="A list of model-scoped metrics that aggregate data from this model."
+    )
+
+    dimensions: List[Dimension] = Field(
+        [], description="A list of computed dimensions (row-level calculations) for this model."
+    )
+
     def child_items(self):
+        children = []
         if self.source:
-            return [self.source]
+            children.append(self.source)
         else:
-            return [DefaultSource()]
+            children.append(DefaultSource())
+
+        # Add metrics and dimensions as child items
+        children.extend(self.metrics)
+        children.extend(self.dimensions)
+
+        return children

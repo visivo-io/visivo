@@ -60,11 +60,8 @@ class SqliteSource(SqlalchemySource):
         description="List of other local SQLite database sources to attach in the connection that will be available in the base SQL query.",
     )
 
-    def get_connection_dialect(self):
-        return "sqlite+pysqlite"
-
     def get_dialect(self):
-        return "sqlite"
+        return "sqlite+pysqlite"
 
     def list_databases(self):
         """List databases for SQLite source.

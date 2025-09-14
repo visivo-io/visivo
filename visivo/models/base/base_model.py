@@ -45,6 +45,36 @@ def generate_ref_field(class_to_discriminate):
     )
 
 
+def generate_metric_ref_field(class_to_discriminate):
+    """Generate a reference field specifically for metrics that can be used in DAG relationships."""
+    return NewType(
+        f"{class_to_discriminate.__name__}Ref",
+        Annotated[
+            Union[
+                RefStringType,
+                ContextStringType,
+                Annotated[class_to_discriminate, Tag(class_to_discriminate.__name__)],
+            ],
+            Discriminator(ModelStrDiscriminator(class_to_discriminate)),
+        ],
+    )
+
+
+def generate_dimension_ref_field(class_to_discriminate):
+    """Generate a reference field specifically for dimensions that can be used in DAG relationships."""
+    return NewType(
+        f"{class_to_discriminate.__name__}Ref",
+        Annotated[
+            Union[
+                RefStringType,
+                ContextStringType,
+                Annotated[class_to_discriminate, Tag(class_to_discriminate.__name__)],
+            ],
+            Discriminator(ModelStrDiscriminator(class_to_discriminate)),
+        ],
+    )
+
+
 class ModelStrDiscriminator:
     def __init__(self, class_to_discriminate):
         self.class_name = class_to_discriminate.__name__
