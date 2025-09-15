@@ -174,16 +174,6 @@ class DuckdbSource(ServerSource, BaseDuckdbSource):
         conn = duckdb.connect(database_path)
         conn.close()
 
-    def dispose_engines(self):
-        """
-        No-op method for compatibility with tests.
-
-        The refactored DuckDB source uses direct connections without engines,
-        so there's nothing to dispose. This method exists for backward compatibility
-        with existing tests.
-        """
-        pass
-
     def introspect(self):
         """
         Legacy introspection method for backward compatibility with tests.

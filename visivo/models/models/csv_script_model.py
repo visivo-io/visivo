@@ -214,8 +214,6 @@ class CsvScriptModel(Model):
                 duckdb_conn.execute(f"INSERT INTO {self.table_name} SELECT * FROM data_frame")
                 Logger.instance().debug(f"CSV script model {self.name}: Data inserted successfully")
 
-            # Clean up engines to release locks
-            source.dispose_engines()
             Logger.instance().debug(f"CSV script model {self.name}: Completed successfully")
         except Exception as e:
             raise click.ClickException(

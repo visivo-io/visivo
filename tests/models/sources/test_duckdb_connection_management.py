@@ -37,9 +37,7 @@ class TestDuckDBConnectionManagement:
                     conn.execute("INSERT INTO test_table VALUES (2, 'should_fail')")
 
         finally:
-            # Cleanup engines and file
-            if "source" in locals():
-                source.dispose_engines()
+            # Cleanup file
             if os.path.exists(db_path):
                 os.unlink(db_path)
 
@@ -90,7 +88,6 @@ class TestDuckDBConnectionManagement:
             assert all(result == 3 for result in results)
 
         finally:
-            source.dispose_engines()
             if os.path.exists(db_path):
                 os.unlink(db_path)
 
@@ -125,7 +122,6 @@ class TestDuckDBConnectionManagement:
                 assert result[0] == 2
 
         finally:
-            source.dispose_engines()
             if os.path.exists(db_path):
                 os.unlink(db_path)
 
@@ -146,7 +142,6 @@ class TestDuckDBConnectionManagement:
                 conn.execute("INSERT INTO test_table VALUES (1)")
 
             # Dispose engines to release locks
-            source1.dispose_engines()
 
             # Create second source pointing to same file
             source2 = DuckdbSource(name="test_source2", database=db_path, type="duckdb")
@@ -155,8 +150,6 @@ class TestDuckDBConnectionManagement:
             with source2.connect(read_only=True) as conn:
                 result = conn.execute("SELECT COUNT(*) FROM test_table").fetchone()
                 assert result[0] == 1
-
-            source2.dispose_engines()
 
         finally:
             if os.path.exists(db_path):
@@ -205,12 +198,6 @@ class TestDuckDBConnectionManagement:
                 assert result2[0] == 2
 
         finally:
-            if "source1" in locals():
-                source1.dispose_engines()
-            if "source2" in locals():
-                source2.dispose_engines()
-            if "attached_source" in locals():
-                attached_source.dispose_engines()
             for path in [db1_path, db2_path]:
                 if os.path.exists(path):
                     os.unlink(path)
@@ -273,6 +260,5 @@ class TestDuckDBConnectionManagement:
             assert "name" in test_table["columns"]
 
         finally:
-            source.dispose_engines()
             if os.path.exists(db_path):
                 os.unlink(db_path)
