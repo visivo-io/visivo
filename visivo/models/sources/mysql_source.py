@@ -33,8 +33,11 @@ class MysqlSource(SqlalchemySource):
         1, description="The pool size that is used for this connection."
     )
 
-    def get_dialect(self):
+    def get_connection_dialect(self):
         return "mysql+pymysql"
+
+    def get_dialect(self):
+        return "mysql"
 
     def list_databases(self):
         """Return list of databases for MySQL server."""

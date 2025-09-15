@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 import click
 from pydantic import PrivateAttr
-from visivo.models.sources.source import Source
+from visivo.models.sources.source import ServerSource
 from sqlalchemy import create_engine, event, text, inspect
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
@@ -12,16 +12,16 @@ import pyarrow as pa
 import json
 
 
-class SqlalchemySource(Source, ABC):
+class SqlalchemySource(ServerSource, ABC):
 
     _engine: Any = PrivateAttr(default=None)
     after_connect: Optional[str] = None
 
     @abstractmethod
-    def get_dialect(self):
-        raise NotImplementedError(f"No dialect method implemented for {self.type}")
+    def get_connection_dialect(self):
+        raise NotImplementedError(f"No connection dialect method implemented for {self.type}")
 
-    def read_sql(self, query: str):
+    def read_sql(self, query: str, **kwargs):
         with self.connect() as connection:
             query = text(query)
             results = connection.execute(query)

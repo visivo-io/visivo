@@ -93,10 +93,16 @@ main() {
             *) echo "Error: Unsupported Linux architecture '$ARCH'." >&2; exit 1;;
         esac
         ;;
-    Darwin*)  
+    Darwin*)
+        # Check macOS version
+        MACOS_VERSION=$(sw_vers -productVersion)
+        if [[ ! "$MACOS_VERSION" =~ ^([0-9]+) ]] || [ "${BASH_REMATCH[1]}" -lt 15 ]; then
+            echo "Error: macOS version $MACOS_VERSION is not supported. Requires macOS 15 or later." >&2
+            exit 1
+        fi
         PLATFORM=darwin-x86
         if [ "$(uname -m)" = "arm64" ]; then
-            PLATFORM="darwin-arm64" 
+            PLATFORM="darwin-arm64"
         fi
         ;;
     MINGW*|CYGWIN*|MSYS*) PLATFORM=windows-x86;;

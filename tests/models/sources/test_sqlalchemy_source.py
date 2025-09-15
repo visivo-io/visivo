@@ -5,6 +5,9 @@ from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 class MockSqlAlchemySource(SqlalchemySource):
     type: Literal["mock"]
 
+    def get_connection_dialect(self):
+        return "sqlite"
+
     def get_dialect(self):
         return "sqlite"
 

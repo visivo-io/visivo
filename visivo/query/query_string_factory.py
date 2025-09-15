@@ -1,22 +1,22 @@
 from visivo.models.tokenized_trace import TokenizedTrace
-from visivo.query.sqlglot_utils import get_sqlglot_dialect
 import sqlglot
 
 
 class QueryStringFactory:
     def __init__(self, tokenized_trace: TokenizedTrace):
         self.tokenized_trace = tokenized_trace
-        self.dialect = get_sqlglot_dialect(tokenized_trace.source_type)
 
     def build(self) -> str:
         """Build the trace query using SQLGlot instead of Jinja template."""
 
         # Build the base CTE from the model SQL
-        base_cte = sqlglot.parse_one(self.tokenized_trace.sql, dialect=self.dialect)
+        base_cte = sqlglot.parse_one(self.tokenized_trace.sql, dialect=self.tokenized_trace.dialect)
 
         # Build the columnize_cohort_on CTE
         # Parse the cohort_on expression and create an alias properly
-        cohort_on_expr = sqlglot.parse_one(self.tokenized_trace.cohort_on, dialect=self.dialect)
+        cohort_on_expr = sqlglot.parse_one(
+            self.tokenized_trace.cohort_on, dialect=self.tokenized_trace.dialect
+        )
         cohort_on_alias = sqlglot.exp.Alias(
             this=cohort_on_expr, alias=sqlglot.exp.Identifier(this="cohort_on", quoted=True)
         )
@@ -32,7 +32,7 @@ class QueryStringFactory:
         )
 
         # Generate SQL
-        sql = final_query.sql(dialect=self.dialect)
+        sql = final_query.sql(dialect=self.tokenized_trace.dialect)
 
         # Add source comment
         sql += f"\n-- source: {self.tokenized_trace.source}"
@@ -49,7 +49,7 @@ class QueryStringFactory:
         if self.tokenized_trace.select_items:
             for key, value in self.tokenized_trace.select_items.items():
                 # Parse the value expression
-                value_expr = sqlglot.parse_one(value, dialect=self.dialect)
+                value_expr = sqlglot.parse_one(value, dialect=self.tokenized_trace.dialect)
 
                 # Format column alias
                 if self.tokenized_trace.source_type == "bigquery":

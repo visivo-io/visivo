@@ -75,7 +75,8 @@ extra_css:
   - stylesheets/brand_colors.css
   - stylesheets/icon-colors.css
 nav:
-  - Getting Started: index.md
+  - Quick Start: index.md
+  - Installation: installation.md
   - Change Log: https://github.com/visivo-io/visivo/releases
   - Topics:
       - Linting: topics/linting.md

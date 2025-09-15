@@ -1,4 +1,4 @@
-from flask import jsonify
+from flask import jsonify, request
 from visivo.logger.logger import Logger
 from visivo.server.source_metadata import (
     check_source_connection,
@@ -7,6 +7,7 @@ from visivo.server.source_metadata import (
     get_schema_tables,
     get_source_databases,
     get_table_columns,
+    validate_source_from_config,
 )
 
 
@@ -122,3 +123,21 @@ def register_source_views(app, flask_app, output_dir):
         except Exception as e:
             Logger.instance().error(f"Error listing columns: {str(e)}")
             return jsonify({"message": str(e)}), 500
+
+    @app.route("/api/sources/test-connection/", methods=["POST"])
+    def test_source_connection():
+        """Test a source connection from configuration without adding to project."""
+        try:
+            source_config = request.get_json(silent=True)
+            if source_config is None:
+                # Check if it's because of invalid JSON or missing body
+                if request.data and len(request.data) > 0:
+                    return jsonify({"error": "Invalid JSON in request body"}), 400
+                else:
+                    return jsonify({"error": "Source configuration is required"}), 400
+
+            result = validate_source_from_config(source_config)
+            return jsonify(result)
+        except Exception as e:
+            Logger.instance().error(f"Error testing source connection: {str(e)}")
+            return jsonify({"status": "connection_failed", "error": str(e)}), 500

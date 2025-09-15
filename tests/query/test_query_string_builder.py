@@ -12,6 +12,7 @@ def test_QueryStringBuilder_with_only_base_query():
         cohort_on="'value'",
         source="name",
         source_type="snowflake",
+        dialect="snowflake",
     )
     query_string = QueryStringFactory(tokenized_trace=tokenized_trace).build()
     assert format_sql(query_string) == format_sql(

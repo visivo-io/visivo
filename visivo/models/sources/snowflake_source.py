@@ -101,6 +101,9 @@ class SnowflakeSource(SqlalchemySource):
                 "private_key": pkb,
             }
 
+    def get_connection_dialect(self):
+        return "snowflake"
+
     def get_dialect(self):
         return "snowflake"
 

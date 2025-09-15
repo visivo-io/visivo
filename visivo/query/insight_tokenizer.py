@@ -35,7 +35,7 @@ class InsightTokenizer:
         self.source = source
         self.model = model
         self.source_type = source.type
-        self.sqlglot_dialect = get_sqlglot_dialect(source.type) if source.type else None
+        self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=self.source_type)
 
         # Analysis results

@@ -88,6 +88,7 @@ def run_phase(
         soft_failure=soft_failure,
         dag_filter=dag_filter,
         server_url=server_url,
+        working_dir=working_dir,
     )
     runner.run()
     return runner

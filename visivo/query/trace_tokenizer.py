@@ -29,7 +29,7 @@ class TraceTokenizer:
         self.source = source
         self.model = model
         self.source_type = source.type
-        self.sqlglot_dialect = get_sqlglot_dialect(source.type) if source.type else None
+        self.sqlglot_dialect = get_sqlglot_dialect(source.get_dialect()) if source.type else None
         self.statement_classifier = StatementClassifier(source_type=source.type)
         self.select_items = {}
         self._set_select_items()
@@ -48,6 +48,7 @@ class TraceTokenizer:
         data = {
             "sql": self.model.sql,
             "cohort_on": cohort_on,
+            "dialect": self.sqlglot_dialect,
             "select_items": self.select_items,
             "source": self.source.name,
             "source_type": source_type,

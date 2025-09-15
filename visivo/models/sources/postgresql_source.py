@@ -34,8 +34,11 @@ class PostgresqlSource(SqlalchemySource):
         1, description="The pool size that is used for this connection."
     )
 
-    def get_dialect(self):
+    def get_connection_dialect(self):
         return "postgresql+psycopg2"
+
+    def get_dialect(self):
+        return "postgres"
 
     def list_databases(self):
         """Return list of databases for PostgreSQL server."""

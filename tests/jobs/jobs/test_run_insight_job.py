@@ -30,6 +30,7 @@ def test_insight_job_action_success():
     source = Mock()
     source.name = "test_source"
     source.type = "snowflake"
+    source.get_dialect.return_value = "snowflake"
 
     # Test data to return from read_sql
     test_data = [{"x": 1, "y": 2}, {"x": 3, "y": 4}]
@@ -92,6 +93,7 @@ def test_insight_job_action_failure():
     source = Mock()
     source.name = "test_source"
     source.type = "snowflake"
+    source.get_dialect.return_value = "snowflake"
     source.read_sql.side_effect = Exception("SQL Error")
 
     dag = Mock()
@@ -131,6 +133,7 @@ def test_get_tokenized_insight():
     source = Mock()
     source.name = "test_source"
     source.type = "snowflake"
+    source.get_dialect.return_value = "snowflake"
 
     dag = Mock()
 

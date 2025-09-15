@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
@@ -104,13 +105,16 @@ class DuckdbSource(SqlalchemySource):
             return False
 
     # Usage
-    def get_connection(self, read_only: bool = False):
+    def get_connection(self, read_only: bool = False, working_dir=None):
         """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
         try:
             import duckdb
             import os
 
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
+
+            if working_dir:
+                self.database = str(working_dir / Path(self.database))
 
             # Ensure database file exists for write operations
             if not read_only and not os.path.exists(self.database):
@@ -147,12 +151,16 @@ class DuckdbSource(SqlalchemySource):
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
 
+    def get_connection_dialect(self):
+        return "duckdb"
+
     def get_dialect(self):
         return "duckdb"
 
-    def read_sql(self, query: str):
+    def read_sql(self, query: str, **kwargs):
+        working_dir = kwargs.get("working_dir")
         try:
-            with self.connect(read_only=True) as connection:
+            with self.connect(read_only=True, working_dir=working_dir) as connection:
                 # Execute query and get raw results
                 result = connection.execute(query)
 
@@ -174,9 +182,9 @@ class DuckdbSource(SqlalchemySource):
         except Exception as err:
             raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
 
-    def connect(self, read_only: bool = False):
+    def connect(self, read_only: bool = False, working_dir: str = None):
         """Create a context manager for DuckDB connections."""
-        return DuckDBConnection(source=self, read_only=read_only)
+        return DuckDBConnection(source=self, read_only=read_only, working_dir=working_dir)
 
     def connect_args(self):
         """Override to provide DuckDB-specific connection arguments for the default engine."""
@@ -249,13 +257,16 @@ class DuckdbSource(SqlalchemySource):
 
 
 class DuckDBConnection:
-    def __init__(self, source: DuckdbSource, read_only: bool = False):
+    def __init__(self, source: DuckdbSource, read_only: bool = False, **kwargs):
         self.source = source
         self.conn = None
         self.read_only = read_only
+        self.working_dir = kwargs.get("working_dir")
 
     def __enter__(self):
-        self.conn = self.source.get_connection(read_only=self.read_only)
+        self.conn = self.source.get_connection(
+            read_only=self.read_only, working_dir=self.working_dir
+        )
         return self.conn
 
     def __exit__(self, exc_type, exc_val, exc_tb):

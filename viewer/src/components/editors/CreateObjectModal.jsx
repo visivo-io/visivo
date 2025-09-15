@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { TYPE_STYLE_MAP, TYPE_VALUE_MAP } from '../../components/styled/VisivoObjectStyles';
 import { PROPERTY_STYLE_MAP } from '../../components/styled/PropertyStyles';
 import useStore from '../../stores/store';
+import SourceConnectionTest from './SourceConnectionTest';
 
 const OPTIONAL_REQUIREMENTS = ['host', 'username', 'password', 'warehouse', 'account', 'project'];
 
@@ -11,6 +12,7 @@ const CreateObjectModal = ({
   objSelectedProperty,
   objStep = 'property',
   onSubmitCallback,
+  showFileOption = true,
 }) => {
   const [step, setStep] = useState(objStep); // 'property' | 'type' | 'name' | 'attributes'
   const [selectedProperty, setSelectedProperty] = useState(objSelectedProperty);
@@ -35,6 +37,7 @@ const CreateObjectModal = ({
     setObjectName('');
     setAttributes({});
     setSelectedFilePath('');
+    setSelectedSource(null);
   }, [objStep, objSelectedProperty]);
 
   // Add effect to reset state when modal closes
@@ -117,10 +120,6 @@ const CreateObjectModal = ({
     }
   };
 
-  const handleAttributesSubmit = () => {
-    handleCreate();
-  };
-
   const handleCreate = () => {
     if (!objectName || !selectedType || !selectedProperty) return;
 
@@ -134,7 +133,7 @@ const CreateObjectModal = ({
       config: {
         name: objectName,
         ...attributes,
-        type: selectedSource.value,
+        type: selectedSource?.value,
       },
       status: 'New', // Set status to New for new objects
       file_path: selectedFilePath || projectFilePath, // defaults to existing project file path
@@ -245,25 +244,27 @@ const CreateObjectModal = ({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">File Path</label>
-              <select
-                value={selectedFilePath}
-                onChange={e => setSelectedFilePath(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              >
-                <option value="">Select a file...</option>
-                {projectFileObjects.map(pathObj => (
-                  <option key={pathObj.full_path} value={pathObj.full_path}>
-                    {pathObj.relative_path}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Select the file where you want to save this {displayName.toLowerCase()}. Default is
-                the project file path.
-              </p>
-            </div>
+            {showFileOption && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">File Path</label>
+                <select
+                  value={selectedFilePath}
+                  onChange={e => setSelectedFilePath(e.target.value)}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                >
+                  <option value="">Select a file...</option>
+                  {projectFileObjects.map(pathObj => (
+                    <option key={pathObj.full_path} value={pathObj.full_path}>
+                      {pathObj.relative_path}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select the file where you want to save this {displayName.toLowerCase()}. Default
+                  is the project file path.
+                </p>
+              </div>
+            )}
 
             <button
               onClick={handleNameSubmit}
@@ -310,7 +311,7 @@ const CreateObjectModal = ({
 
                 {(attr.type === 'string' || !attr.type) && attr.name === 'type' && (
                   <select
-                    value={selectedSource.value}
+                    value={selectedSource?.value}
                     disabled={true}
                     className="mt-1  block w-full border border-gray-300 rounded-md shadow-sm p-2"
                   >
@@ -441,8 +442,16 @@ const CreateObjectModal = ({
                 )}
               </div>
             ))}
+
+            <SourceConnectionTest
+              objectName={objectName}
+              selectedSource={selectedSource}
+              attributes={attributes}
+              isVisible={selectedProperty === 'sources'}
+            />
+
             <button
-              onClick={handleAttributesSubmit}
+              onClick={handleCreate}
               className="w-full bg-[#713B57] text-white py-2 px-4 rounded-lg hover:bg-[#5A2F46]"
             >
               Create {displayName}
