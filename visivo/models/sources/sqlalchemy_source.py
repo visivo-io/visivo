@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict, List
 import click
 from pydantic import PrivateAttr
-from visivo.models.sources.source import ServerSource
+from visivo.models.sources.source import Source
 from sqlalchemy import create_engine, event, text, inspect
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
@@ -17,18 +17,15 @@ from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
 
-class SqlalchemySource(ServerSource, ABC):
+class SqlalchemySource(Source, ABC):
 
     _engine: Any = PrivateAttr(default=None)
     after_connect: Optional[str] = None
 
     @abstractmethod
-    def get_dialect(self):
-        raise NotImplementedError(f"No dialect method implemented for {self.type}")
-
-    def description(self):
-        """Return a description of this source for logging and error messages."""
-        return f"{self.type} source '{self.name}' (host: {self.host}, database: {self.database})"
+    def url(self):
+        """Return the URL for this source."""
+        raise NotImplementedError(f"No url method implemented for {self.type}")
 
     def read_sql(self, query: str, **kwargs):
         with self.connect() as connection:

@@ -65,6 +65,10 @@ class ServerSource(Source):
         None, description="The schema that the Visivo project will use in queries."
     )
 
+    def description(self):
+        """Return a description of this source for logging and error messages."""
+        return f"{self.type} source '{self.name}' (host: {self.host}, database: {self.database})"
+
     def get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
 

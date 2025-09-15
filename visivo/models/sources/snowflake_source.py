@@ -5,7 +5,7 @@ from pydantic import Field, SecretStr
 SnowflakeType = Literal["snowflake"]
 
 
-class SnowflakeSource(SqlalchemySource):
+class SnowflakeSource(ServerSource, SqlalchemySource):
     """
     SnowflakeSources hold the connection information to Snowflake data sources.
 

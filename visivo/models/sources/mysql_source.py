@@ -5,7 +5,7 @@ from pydantic import Field
 MysqlType = Literal["mysql"]
 
 
-class MysqlSource(SqlalchemySource):
+class MysqlSource(ServerSource, SqlalchemySource):
     """
     MysqlSources hold the connection information to MySQL data sources.
 

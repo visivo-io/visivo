@@ -6,7 +6,7 @@ from pydantic import Field
 PostgresqlType = Literal["postgresql"]
 
 
-class PostgresqlSource(SqlalchemySource):
+class PostgresqlSource(ServerSource, SqlalchemySource):
     """
     PostgresqlSources hold the connection information to PostgreSQL data sources.
 

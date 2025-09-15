@@ -22,7 +22,7 @@ class DuckdbAttachment(BaseModel):
     )
 
 
-class DuckdbSource(SqlalchemySource):
+class DuckdbSource(ServerSource, SqlalchemySource):
     # Cache both read-only and read-write engines
     _read_only_engine: Any = PrivateAttr(default=None)
     """
