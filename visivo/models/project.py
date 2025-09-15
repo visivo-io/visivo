@@ -77,28 +77,6 @@ class Project(NamedModel, ParentModel):
             children.extend(items)
         return children
 
-    def get_model_schema(
-        self, model_name: str, source_name: Optional[str] = None
-    ) -> Optional[Dict[str, str]]:
-        """Get the extracted schema for a specific model.
-
-        Args:
-            model_name: Name of the model to get schema for.
-            source_name: Optional source name to narrow the search.
-
-        Returns:
-            Dictionary mapping column names to data types, or None if not found.
-        """
-        if self._extracted_schemas:
-            # Fallback to raw extracted schemas if extractor not available
-            if source_name and source_name in self._extracted_schemas:
-                return self._extracted_schemas[source_name].get(model_name)
-            else:
-                # Search all sources
-                for source_schemas in self._extracted_schemas.values():
-                    if model_name in source_schemas:
-                        return source_schemas[model_name]
-        return None
 
     def get_all_extracted_schemas(self) -> Optional[Dict[str, Dict[str, Dict[str, str]]]]:
         """Get all extracted schemas.

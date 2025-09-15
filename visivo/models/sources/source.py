@@ -19,16 +19,14 @@ class BaseSource(ABC, NamedModel):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
 
     @abstractmethod
-    def get_model_schema(self, model_sql: str = None, table_name: str = None) -> Dict[str, str]:
-        """Extract column metadata from a model's SQL or table.
+    def get_schema(self, table_names: List[str] = None):
+        """Extract table and column metadata from a model's SQL or tables.
 
         Args:
-            model_sql: SQL query defining the model (for SQL models)
-            table_name: Table name to query (for CSV/table models)
+            table_names: Table names to query (for CSV/table models)
 
         Returns:
             Dictionary mapping column names to their data types
-            Example: {'id': 'INTEGER', 'name': 'VARCHAR', 'amount': 'NUMERIC'}
         """
         raise NotImplementedError(f"No get_model_schema method implemented for {self.type}")
 
