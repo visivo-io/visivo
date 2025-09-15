@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Any
+from typing import Literal, Optional, Any, Dict, List
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 from visivo.logger.logger import Logger
@@ -219,6 +219,176 @@ class RedshiftSource(ServerSource):
 
     def get_dialect(self):
         return "redshift"
+
+    def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
+        """
+        Build SQLGlot schema for Redshift source.
+
+        Args:
+            table_names: Optional list of table names to include. If None, includes all tables.
+
+        Returns:
+            Dictionary containing:
+            - tables: Dict mapping table names to column info
+            - sqlglot_schema: SQLGlot MappingSchema for query optimization
+            - metadata: Additional metadata about the schema
+        """
+        from sqlglot.schema import MappingSchema
+        from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
+        from visivo.query.sqlglot_utils import get_sqlglot_dialect
+
+        try:
+            # Initialize result structure
+            result = {
+                "tables": {},
+                "sqlglot_schema": MappingSchema(),
+                "metadata": {
+                    "source_type": self.type,
+                    "source_dialect": "redshift",
+                    "database": self.database,
+                    "schema": getattr(self, "db_schema", None),
+                    "total_tables": 0,
+                    "total_columns": 0,
+                },
+            }
+
+            # Get available tables to process
+            available_tables = self._get_available_tables_for_schema(table_names)
+
+            # Process each table
+            for table_name in available_tables:
+                table_info = self._extract_table_schema_for_sqlglot(table_name)
+                if table_info:
+                    result["tables"][table_name] = table_info
+
+                    # Add to SQLGlot schema
+                    columns_dict = {}
+                    for col_name, col_info in table_info["columns"].items():
+                        if "sqlglot_datatype" in col_info:
+                            columns_dict[col_name] = col_info["sqlglot_datatype"]
+
+                    if columns_dict:
+                        result["sqlglot_schema"].add_table(table_name, columns_dict)
+
+            # Update metadata
+            result["metadata"]["total_tables"] = len(result["tables"])
+            result["metadata"]["total_columns"] = sum(
+                len(table_info["columns"]) for table_info in result["tables"].values()
+            )
+
+            Logger.instance().debug(
+                f"Built schema for Redshift source '{self.name}' with {result['metadata']['total_tables']} tables"
+            )
+
+            return result
+
+        except Exception as e:
+            Logger.instance().error(f"Error building schema for Redshift source {self.name}: {e}")
+            # Return minimal schema to avoid breaking downstream code
+            return {
+                "tables": {},
+                "sqlglot_schema": MappingSchema(),
+                "metadata": {"error": str(e), "total_tables": 0, "total_columns": 0},
+            }
+
+    def _get_available_tables_for_schema(self, table_names: List[str] = None) -> List[str]:
+        """Get list of tables to process for schema building."""
+        try:
+            with self.connect() as connection:
+                cursor = connection.cursor()
+
+                # Get all tables from information schema
+                if hasattr(self, "db_schema") and self.db_schema:
+                    # Query specific schema
+                    query = """
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = %s AND table_type = 'BASE TABLE'
+                    ORDER BY table_name
+                    """
+                    cursor.execute(query, (self.db_schema,))
+                else:
+                    # Query all schemas except system ones
+                    query = """
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    AND table_type = 'BASE TABLE'
+                    ORDER BY table_name
+                    """
+                    cursor.execute(query)
+
+                all_tables = [row[0] for row in cursor.fetchall()]
+                cursor.close()
+
+                # Filter to requested tables if specified
+                if table_names:
+                    return [t for t in all_tables if t in table_names]
+
+                return all_tables
+
+        except Exception as e:
+            Logger.instance().debug(f"Error getting tables for Redshift schema: {e}")
+            return []
+
+    def _extract_table_schema_for_sqlglot(self, table_name: str) -> Optional[Dict[str, Any]]:
+        """Extract schema information for a single table for SQLGlot format."""
+        try:
+            with self.connect() as connection:
+                cursor = connection.cursor()
+
+                # Get columns for this table
+                if hasattr(self, "db_schema") and self.db_schema:
+                    column_query = """
+                    SELECT column_name, data_type, is_nullable
+                    FROM information_schema.columns
+                    WHERE table_schema = %s AND table_name = %s
+                    ORDER BY ordinal_position
+                    """
+                    cursor.execute(column_query, (self.db_schema, table_name))
+                else:
+                    # Try to find the table in any schema
+                    column_query = """
+                    SELECT column_name, data_type, is_nullable
+                    FROM information_schema.columns
+                    WHERE table_name = %s
+                    AND table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+                    ORDER BY ordinal_position
+                    """
+                    cursor.execute(column_query, (table_name,))
+
+                columns_info = cursor.fetchall()
+                cursor.close()
+
+                if not columns_info:
+                    return None
+
+                # Process columns
+                table_schema = {
+                    "columns": {},
+                    "metadata": {"table_name": table_name, "column_count": len(columns_info)},
+                }
+
+                for col_info in columns_info:
+                    col_name = col_info[0]  # column_name
+                    col_type_str = col_info[1]  # data_type
+                    is_nullable = col_info[2] == "YES"  # is_nullable
+
+                    # Convert Redshift type string to SQLGlot DataType
+                    sqlglot_datatype = SqlglotTypeMapper._parse_type_string(col_type_str)
+
+                    table_schema["columns"][col_name] = {
+                        "type": col_type_str,
+                        "nullable": is_nullable,
+                        "sqlglot_datatype": sqlglot_datatype,
+                        "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
+                    }
+
+                return table_schema
+
+        except Exception as e:
+            Logger.instance().debug(f"Error extracting schema for Redshift table {table_name}: {e}")
+            return None
 
 
 class RedshiftConnection:
