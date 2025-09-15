@@ -100,7 +100,24 @@ class BaseDuckdbSource(Source):
                                 columns_dict[col_name] = col_info["sqlglot_datatype"]
 
                         if columns_dict:
-                            result["sqlglot_schema"].add_table(table_name, columns_dict)
+                            try:
+                                result["sqlglot_schema"].add_table(table_name, columns_dict)
+                            except Exception as e:
+                                Logger.instance().debug(
+                                    f"Failed to add table '{table_name}' to SQLGlot schema: {e}"
+                                )
+                                # Try with quoted identifier
+                                try:
+                                    quoted_name = f'"{table_name}"'
+                                    result["sqlglot_schema"].add_table(quoted_name, columns_dict)
+                                    Logger.instance().debug(
+                                        f"Successfully added quoted table '{quoted_name}' to SQLGlot schema"
+                                    )
+                                except Exception as e2:
+                                    Logger.instance().debug(
+                                        f"Failed to add quoted table '{quoted_name}' to SQLGlot schema: {e2}"
+                                    )
+                                    # Continue without adding to SQLGlot schema, but keep the table info
 
                 # Update metadata
                 result["metadata"]["total_tables"] = len(result["tables"])
@@ -134,27 +151,65 @@ class BaseDuckdbSource(Source):
     ) -> List[str]:
         """Get list of tables/views available in the DuckDB connection."""
         try:
-            # Query DuckDB's information schema
-            result = connection.execute(
+            # Query both tables and views from DuckDB's information schema
+            # CSV and Excel sources create views, not tables
+            # Exclude DuckDB system tables/views (they start with 'duckdb_', 'sqlite_', or 'pragma_')
+            tables_result = connection.execute(
                 """
-                SELECT table_name
+                SELECT table_name, 'table' as object_type
                 FROM information_schema.tables
                 WHERE table_schema = 'main'
+                AND table_name NOT LIKE 'duckdb_%'
+                AND table_name NOT LIKE 'sqlite_%'
+                AND table_name NOT LIKE 'pragma_%'
+                UNION ALL
+                SELECT table_name, 'view' as object_type
+                FROM information_schema.views
+                WHERE table_schema = 'main'
+                AND table_name NOT LIKE 'duckdb_%'
+                AND table_name NOT LIKE 'sqlite_%'
+                AND table_name NOT LIKE 'pragma_%'
                 ORDER BY table_name
             """
             )
 
-            all_tables = [row[0] for row in result.fetchall()]
+            all_tables = [row[0] for row in tables_result.fetchall()]
+
+            # Debug logging to help diagnose issues
+            Logger.instance().debug(f"Found tables/views in DuckDB: {all_tables}")
 
             # Filter to requested tables if specified
             if table_names:
-                return [t for t in all_tables if t in table_names]
+                filtered_tables = [t for t in all_tables if t in table_names]
+                Logger.instance().debug(f"Filtered to requested tables: {filtered_tables}")
+                return filtered_tables
 
             return all_tables
 
         except Exception as e:
-            Logger.instance().debug(f"Error getting tables from DuckDB: {e}")
-            return []
+            Logger.instance().error(f"Error getting tables from DuckDB: {e}")
+            # Fallback: try to get just tables if views query fails
+            try:
+                result = connection.execute(
+                    """
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'main'
+                    AND table_name NOT LIKE 'duckdb_%'
+                    AND table_name NOT LIKE 'sqlite_%'
+                    AND table_name NOT LIKE 'pragma_%'
+                    ORDER BY table_name
+                """
+                )
+                fallback_tables = [row[0] for row in result.fetchall()]
+                Logger.instance().debug(f"Fallback found tables: {fallback_tables}")
+
+                if table_names:
+                    return [t for t in fallback_tables if t in table_names]
+                return fallback_tables
+            except Exception as e2:
+                Logger.instance().debug(f"Fallback query also failed: {e2}")
+                return []
 
     def _extract_table_schema_from_duckdb(
         self, connection, table_name: str
@@ -162,7 +217,9 @@ class BaseDuckdbSource(Source):
         """Extract schema information for a single table using DuckDB's DESCRIBE."""
         try:
             # Use DuckDB's DESCRIBE to get column information
-            result = connection.execute(f"DESCRIBE {table_name}")
+            # Quote the table name to handle special characters like hyphens
+            quoted_table_name = f'"{table_name}"'
+            result = connection.execute(f"DESCRIBE {quoted_table_name}")
             columns_info = result.fetchall()
 
             if not columns_info:

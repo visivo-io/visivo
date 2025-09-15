@@ -39,7 +39,7 @@ class PostgresqlSource(ServerSource, SqlalchemySource):
         return "postgresql+psycopg2"
 
     def get_dialect(self):
-        return "postgres"
+        return "postgresql"
 
     def list_databases(self):
         """Return list of databases for PostgreSQL server."""

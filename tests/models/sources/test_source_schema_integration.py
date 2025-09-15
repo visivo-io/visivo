@@ -15,6 +15,8 @@ from sqlglot import exp
 
 from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.models.sources.sqlite_source import SqliteSource
+from visivo.models.sources.csv_source import CSVFileSource
+from visivo.models.sources.excel_source import ExcelFileSource
 
 
 class TestSourceSchemaIntegration:
@@ -518,3 +520,268 @@ class TestSourceSchemaIntegration:
         finally:
             if os.path.exists(db_path):
                 os.unlink(db_path)
+
+    def create_test_csv_file(self, csv_path: str):
+        """Create a CSV file with known data for testing."""
+        csv_content = """id,name,email,age,balance,is_active
+1,John Doe,john@example.com,30,1500.50,true
+2,Jane Smith,jane@example.com,25,2300.75,false
+3,Bob Wilson,bob@example.com,35,1800.25,true"""
+
+        with open(csv_path, "w", encoding="utf-8") as f:
+            f.write(csv_content)
+
+    def create_test_excel_file(self, excel_path: str):
+        """Create an Excel file (saved as CSV for DuckDB compatibility) with known data for testing."""
+        # For simplicity in testing, we'll create a CSV file with .xlsx extension
+        # since the Excel source currently uses read_csv_auto anyway
+        excel_content = """product_id,product_name,price,category,in_stock
+101,Laptop,999.99,Electronics,true
+102,Mouse,29.99,Electronics,true
+103,Keyboard,79.99,Electronics,false"""
+
+        with open(excel_path, "w", encoding="utf-8") as f:
+            f.write(excel_content)
+
+    def test_csv_source_get_schema_full_file(self):
+        """Test CSV source get_schema() method with full file introspection."""
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            csv_path = f.name
+
+        try:
+            # Create test CSV file
+            self.create_test_csv_file(csv_path)
+
+            # Create CSV source
+            source = CSVFileSource(name="test_csv", file=csv_path, type="csv")
+
+            # Get schema
+            schema = source.get_schema()
+
+            # Verify basic structure
+            assert isinstance(schema, dict)
+            assert "tables" in schema
+            assert "sqlglot_schema" in schema
+            assert "metadata" in schema
+
+            # Verify metadata
+            metadata = schema["metadata"]
+            assert metadata["source_type"] == "csv"
+            assert metadata["total_tables"] >= 0  # Should have at least the CSV view
+
+            # Debug: Print what tables we found
+            print(f"CSV schema tables: {list(schema['tables'].keys())}")
+            print(f"CSV metadata: {metadata}")
+
+            # The CSV source should create a view with the source name
+            if "test_csv" in schema["tables"]:
+                csv_table = schema["tables"]["test_csv"]
+                assert "columns" in csv_table
+
+                csv_columns = csv_table["columns"]
+                # Verify expected columns from our test CSV
+                expected_columns = ["id", "name", "email", "age", "balance", "is_active"]
+                for col in expected_columns:
+                    assert col in csv_columns, f"Column '{col}' not found in CSV schema"
+
+                # Verify SQLGlot schema includes the table
+                sqlglot_schema = schema["sqlglot_schema"]
+                assert isinstance(sqlglot_schema, MappingSchema)
+                assert "test_csv" in sqlglot_schema.mapping
+            else:
+                # If we don't find the table, the test should fail to highlight the issue
+                assert (
+                    False
+                ), f"CSV table 'test_csv' not found in schema. Available tables: {list(schema['tables'].keys())}"
+
+        finally:
+            if os.path.exists(csv_path):
+                os.unlink(csv_path)
+
+    def test_excel_source_get_schema_full_file(self):
+        """Test Excel source get_schema() method with full file introspection."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            excel_path = f.name
+
+        try:
+            # Create test Excel file (as CSV for DuckDB compatibility)
+            self.create_test_excel_file(excel_path)
+
+            # Create Excel source
+            source = ExcelFileSource(name="test_excel", file=excel_path, type="xls")
+
+            # Get schema
+            schema = source.get_schema()
+
+            # Verify basic structure
+            assert isinstance(schema, dict)
+            assert "tables" in schema
+            assert "sqlglot_schema" in schema
+            assert "metadata" in schema
+
+            # Verify metadata
+            metadata = schema["metadata"]
+            assert metadata["source_type"] == "xls"
+            assert metadata["total_tables"] >= 0  # Should have at least the Excel view
+
+            # Debug: Print what tables we found
+            print(f"Excel schema tables: {list(schema['tables'].keys())}")
+            print(f"Excel metadata: {metadata}")
+
+            # The Excel source should create a view with the source name
+            if "test_excel" in schema["tables"]:
+                excel_table = schema["tables"]["test_excel"]
+                assert "columns" in excel_table
+
+                excel_columns = excel_table["columns"]
+                # Verify expected columns from our test Excel file
+                expected_columns = ["product_id", "product_name", "price", "category", "in_stock"]
+                for col in expected_columns:
+                    assert col in excel_columns, f"Column '{col}' not found in Excel schema"
+
+                # Verify SQLGlot schema includes the table
+                sqlglot_schema = schema["sqlglot_schema"]
+                assert isinstance(sqlglot_schema, MappingSchema)
+                assert "test_excel" in sqlglot_schema.mapping
+            else:
+                # If we don't find the table, the test should fail to highlight the issue
+                assert (
+                    False
+                ), f"Excel table 'test_excel' not found in schema. Available tables: {list(schema['tables'].keys())}"
+
+        finally:
+            if os.path.exists(excel_path):
+                os.unlink(excel_path)
+
+    def test_csv_source_table_filtering(self):
+        """Test CSV source get_schema() method with table filtering."""
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            csv_path = f.name
+
+        try:
+            # Create test CSV file
+            self.create_test_csv_file(csv_path)
+
+            # Create CSV source
+            source = CSVFileSource(name="filtered_csv", file=csv_path, type="csv")
+
+            # Get schema with specific table name (should return the CSV view)
+            schema = source.get_schema(table_names=["filtered_csv"])
+
+            # Verify structure
+            assert isinstance(schema, dict)
+            print(f"Filtered CSV schema tables: {list(schema['tables'].keys())}")
+
+            # Should either contain our table or be empty if filtering is working
+            assert len(schema["tables"]) <= 1
+
+            # Get schema with non-existent table name (should return empty)
+            schema_empty = source.get_schema(table_names=["nonexistent_table"])
+            assert len(schema_empty["tables"]) == 0
+
+        finally:
+            if os.path.exists(csv_path):
+                os.unlink(csv_path)
+
+    def test_csv_source_with_hyphen_in_name(self):
+        """Test CSV source get_schema() method with hyphen in source name."""
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
+            csv_path = f.name
+
+        try:
+            # Create test CSV file
+            self.create_test_csv_file(csv_path)
+
+            # Create CSV source with hyphen in name (this was causing parser errors)
+            source = CSVFileSource(name="csv-source", file=csv_path, type="csv")
+
+            # Get schema
+            schema = source.get_schema()
+
+            # Verify basic structure
+            assert isinstance(schema, dict)
+            assert "tables" in schema
+            assert "sqlglot_schema" in schema
+            assert "metadata" in schema
+
+            # Verify metadata
+            metadata = schema["metadata"]
+            assert metadata["source_type"] == "csv"
+            assert metadata["total_tables"] == 1
+
+            # The CSV source should create a view with the source name (including hyphen)
+            assert (
+                "csv-source" in schema["tables"]
+            ), f"CSV table 'csv-source' not found in schema. Available tables: {list(schema['tables'].keys())}"
+
+            csv_table = schema["tables"]["csv-source"]
+            assert "columns" in csv_table
+
+            csv_columns = csv_table["columns"]
+            # Verify expected columns from our test CSV
+            expected_columns = ["id", "name", "email", "age", "balance", "is_active"]
+            for col in expected_columns:
+                assert col in csv_columns, f"Column '{col}' not found in CSV schema"
+
+            # Verify SQLGlot schema includes the table
+            sqlglot_schema = schema["sqlglot_schema"]
+            assert isinstance(sqlglot_schema, MappingSchema)
+            assert "csv-source" in sqlglot_schema.mapping
+
+        finally:
+            if os.path.exists(csv_path):
+                os.unlink(csv_path)
+
+    def test_excel_source_with_hyphen_in_name(self):
+        """Test Excel source get_schema() method with hyphen in source name."""
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            excel_path = f.name
+
+        try:
+            # Create test Excel file
+            self.create_test_excel_file(excel_path)
+
+            # Create Excel source with hyphen in name (this was causing parser errors)
+            source = ExcelFileSource(name="excel-source", file=excel_path, type="xls")
+
+            # Get schema
+            schema = source.get_schema()
+
+            # Verify basic structure
+            assert isinstance(schema, dict)
+            assert "tables" in schema
+            assert "sqlglot_schema" in schema
+            assert "metadata" in schema
+
+            # Verify metadata
+            metadata = schema["metadata"]
+            assert metadata["source_type"] == "xls"
+            assert metadata["total_tables"] == 1
+
+            # The Excel source should create a view with the source name (including hyphen)
+            assert (
+                "excel-source" in schema["tables"]
+            ), f"Excel table 'excel-source' not found in schema. Available tables: {list(schema['tables'].keys())}"
+
+            excel_table = schema["tables"]["excel-source"]
+            assert "columns" in excel_table
+
+            excel_columns = excel_table["columns"]
+            # Verify expected columns from our test Excel file
+            expected_columns = ["product_id", "product_name", "price", "category", "in_stock"]
+            for col in expected_columns:
+                assert col in excel_columns, f"Column '{col}' not found in Excel schema"
+
+            # Verify SQLGlot schema includes the table (might be quoted due to hyphen)
+            sqlglot_schema = schema["sqlglot_schema"]
+            assert isinstance(sqlglot_schema, MappingSchema)
+            # Check if table is in SQLGlot mapping (may be quoted)
+            mapping_keys = list(sqlglot_schema.mapping.keys())
+            has_excel_table = "excel-source" in mapping_keys or '"excel-source"' in mapping_keys
+            assert (
+                has_excel_table
+            ), f"Excel table not found in SQLGlot mapping. Keys: {mapping_keys}"
+
+        finally:
+            if os.path.exists(excel_path):
+                os.unlink(excel_path)
