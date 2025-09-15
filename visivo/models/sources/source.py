@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Any
 from visivo.models.base.named_model import NamedModel
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
@@ -19,16 +19,19 @@ class BaseSource(ABC, NamedModel):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
 
     @abstractmethod
-    def get_schema(self, table_names: List[str] = None):
-        """Extract table and column metadata from a model's SQL or tables.
+    def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
+        """Extract table and column metadata and build SQLGlot schema.
 
         Args:
-            table_names: Table names to query (for CSV/table models)
+            table_names: Optional list of table names to include. If None, includes all tables.
 
         Returns:
-            Dictionary mapping column names to their data types
+            Dictionary containing:
+            - tables: Dict mapping table names to column info
+            - sqlglot_schema: SQLGlot MappingSchema for query optimization
+            - metadata: Additional metadata about the schema
         """
-        raise NotImplementedError(f"No get_model_schema method implemented for {self.type}")
+        raise NotImplementedError(f"No get_schema method implemented for {self.type}")
 
     def connect(self):
         return Connection(source=self)

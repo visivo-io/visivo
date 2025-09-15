@@ -77,7 +77,6 @@ class Project(NamedModel, ParentModel):
             children.extend(items)
         return children
 
-
     def get_all_extracted_schemas(self) -> Optional[Dict[str, Dict[str, Dict[str, str]]]]:
         """Get all extracted schemas.
 

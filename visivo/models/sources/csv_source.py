@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Dict
+from typing import Literal, Optional, Dict, List, Any
 from visivo.models.sources.source import BaseSource
 from pydantic import Field
 import duckdb
@@ -6,6 +6,10 @@ import click
 from datetime import datetime, date, time
 from decimal import Decimal
 from visivo.logger.logger import Logger
+from sqlglot.schema import MappingSchema
+from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
+import os
+import pandas as pd
 
 
 class CSVFileSource(BaseSource):
@@ -47,6 +51,127 @@ class CSVFileSource(BaseSource):
 
     def get_dialect(self):
         return "duckdb"
+
+    def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
+        """
+        Build SQLGlot schema for this CSV source.
+
+        Args:
+            table_names: Optional list of table names to include. For CSV sources,
+                        this would typically be just the source name itself.
+
+        Returns:
+            Dictionary containing:
+            - tables: Dict mapping table names to column info
+            - sqlglot_schema: SQLGlot MappingSchema for query optimization
+            - metadata: Additional metadata about the schema
+        """
+        try:
+            # Check if file exists
+            if not os.path.exists(self.file):
+                return {
+                    "tables": {},
+                    "sqlglot_schema": MappingSchema(),
+                    "metadata": {
+                        "error": f"File not found: {self.file}",
+                        "total_tables": 0,
+                        "total_columns": 0,
+                    },
+                }
+
+            # If table_names is specified and doesn't include this source, return empty
+            if table_names and self.name not in table_names:
+                return {
+                    "tables": {},
+                    "sqlglot_schema": MappingSchema(),
+                    "metadata": {"total_tables": 0, "total_columns": 0},
+                }
+
+            # Read sample of CSV to infer schema
+            try:
+                # Read first few rows to infer column types
+                df_sample = pd.read_csv(
+                    self.file,
+                    delimiter=self.delimiter,
+                    encoding=self.encoding,
+                    header=0 if self.has_header else None,
+                    nrows=100,  # Sample first 100 rows for type inference
+                )
+
+                if not self.has_header:
+                    # Generate column names if no header
+                    df_sample.columns = [f"column_{i}" for i in range(len(df_sample.columns))]
+
+            except Exception as e:
+                return {
+                    "tables": {},
+                    "sqlglot_schema": MappingSchema(),
+                    "metadata": {
+                        "error": f"Error reading CSV file: {str(e)}",
+                        "total_tables": 0,
+                        "total_columns": 0,
+                    },
+                }
+
+            # Build schema for the CSV "table"
+            table_schema = {
+                "columns": {},
+                "metadata": {
+                    "table_name": self.name,
+                    "file_path": self.file,
+                    "column_count": len(df_sample.columns),
+                    "sample_rows": len(df_sample),
+                },
+            }
+
+            # Create SQLGlot schema
+            sqlglot_schema = MappingSchema()
+            columns_dict = {}
+
+            for col_name in df_sample.columns:
+                # Get sample values for type inference
+                sample_values = df_sample[col_name].dropna().head(10).tolist()
+
+                # Infer SQLGlot DataType
+                sqlglot_datatype = SqlglotTypeMapper.infer_file_column_type(sample_values, col_name)
+
+                table_schema["columns"][col_name] = {
+                    "type": sqlglot_datatype.sql(),
+                    "nullable": True,  # CSV columns are generally nullable
+                    "inferred_from_samples": len(sample_values),
+                    "sqlglot_datatype": sqlglot_datatype,
+                    "sqlglot_type_info": SqlglotTypeMapper.serialize_datatype(sqlglot_datatype),
+                }
+
+                columns_dict[col_name] = sqlglot_datatype
+
+            # Add table to SQLGlot schema
+            sqlglot_schema.add_table(self.name, columns_dict)
+
+            result = {
+                "tables": {self.name: table_schema},
+                "sqlglot_schema": sqlglot_schema,
+                "metadata": {
+                    "source_type": "csv",
+                    "file_path": self.file,
+                    "total_tables": 1,
+                    "total_columns": len(df_sample.columns),
+                },
+            }
+
+            Logger.instance().debug(
+                f"Built CSV schema for '{self.name}' with {len(df_sample.columns)} columns"
+            )
+
+            return result
+
+        except Exception as e:
+            Logger.instance().error(f"Error building schema for CSV source {self.name}: {e}")
+            return {
+                "tables": {},
+                "sqlglot_schema": MappingSchema(),
+                "metadata": {"error": str(e), "total_tables": 0, "total_columns": 0},
+            }
 
 
 class CSVConnection:
