@@ -1,5 +1,5 @@
 from typing import Literal, Optional, Dict, List, Any
-from visivo.models.sources.source import BaseSource
+from visivo.models.sources.source import Source
 from pydantic import Field
 import duckdb
 import click
@@ -12,7 +12,7 @@ import os
 import pandas as pd
 
 
-class CSVFileSource(BaseSource):
+class CSVFileSource(Source):
     type: Literal["csv"]
     file: str = Field(..., description="Path to the CSV file.")
     delimiter: Optional[str] = Field(",", description="CSV delimiter.")
@@ -51,6 +51,10 @@ class CSVFileSource(BaseSource):
 
     def get_dialect(self):
         return "duckdb"
+
+    def description(self):
+        """Return a description of this source for logging and error messages."""
+        return f"{self.type} source '{self.name}' (file: {self.file})"
 
     def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
         """

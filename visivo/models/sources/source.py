@@ -8,7 +8,7 @@ class DefaultSource:
     pass
 
 
-class BaseSource(ABC, NamedModel):
+class Source(ABC, NamedModel):
 
     @abstractmethod
     def get_connection(self):
@@ -33,11 +33,21 @@ class BaseSource(ABC, NamedModel):
         """
         raise NotImplementedError(f"No get_schema method implemented for {self.type}")
 
+    @abstractmethod
+    def description(self):
+        """Return a description of this source for logging and error messages."""
+        raise NotImplementedError(f"No description method implemented for {self.type}")
+
+    @abstractmethod
+    def get_dialect(self):
+        """Return the dialect string for this source (e.g., 'postgresql', 'mysql')."""
+        raise NotImplementedError(f"No get_dialect method implemented for {self.type}")
+
     def connect(self):
         return Connection(source=self)
 
 
-class Source(BaseSource):
+class ServerSource(Source):
     """
     Sources hold the connection information to your data sources.
     """

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional, List, Any, Dict
+from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from pydantic import Field, PrivateAttr
@@ -8,8 +8,6 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.pool import NullPool
 from visivo.logger.logger import Logger
 from threading import Lock
-from datetime import datetime, date, time
-from decimal import Decimal
 
 attach_function_lock = Lock()
 
@@ -152,6 +150,9 @@ class DuckdbSource(SqlalchemySource):
             raise click.ClickException(
                 f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
             )
+
+    def get_connection_dialect(self):
+        return "duckdb"
 
     def get_dialect(self):
         return "duckdb"
