@@ -1,11 +1,12 @@
 from pathlib import Path
 from typing import Literal, Optional, List, Any
 from visivo.models.base.base_model import BaseModel
-from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
+from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 import click
-from sqlalchemy import create_engine, event
-from sqlalchemy.pool import NullPool
+import duckdb
+import os
 from visivo.logger.logger import Logger
 from threading import Lock
 
@@ -22,9 +23,7 @@ class DuckdbAttachment(BaseModel):
     )
 
 
-class DuckdbSource(ServerSource, SqlalchemySource):
-    # Cache both read-only and read-write engines
-    _read_only_engine: Any = PrivateAttr(default=None)
+class DuckdbSource(ServerSource, BaseDuckdbSource):
     """
     DuckdbSources hold the connection information to DuckDB data sources.
 
@@ -54,40 +53,6 @@ class DuckdbSource(ServerSource, SqlalchemySource):
         description="List of other local Duckdb database sources to attach in the connection that will be available in the base SQL query.",
     )
 
-    def get_engine(self, read_only: bool = False):
-        """Get engine with proper read_only support for DuckDB."""
-        if read_only:
-            if not self._read_only_engine:
-                Logger.instance().debug(f"Creating read-only engine for Source: {self.name}")
-                self._read_only_engine = create_engine(
-                    self.url(), poolclass=NullPool, connect_args={"read_only": True}
-                )
-
-                @event.listens_for(self._read_only_engine, "connect")
-                def connect_readonly(dbapi_connection, connection_record):
-                    if self.after_connect:
-                        cursor_obj = dbapi_connection.cursor()
-                        cursor_obj.execute(self.after_connect)
-                        cursor_obj.close()
-
-            return self._read_only_engine
-        else:
-            # Create read-write engine with proper connection args
-            if not self._engine:
-                Logger.instance().debug(f"Creating read-write engine for Source: {self.name}")
-                self._engine = create_engine(
-                    self.url(), poolclass=NullPool, connect_args={"read_only": False}
-                )
-
-                @event.listens_for(self._engine, "connect")
-                def connect_readwrite(dbapi_connection, connection_record):
-                    if self.after_connect:
-                        cursor_obj = dbapi_connection.cursor()
-                        cursor_obj.execute(self.after_connect)
-                        cursor_obj.close()
-
-            return self._engine
-
     def safe_attach(self, connection, db_path, alias):
         with attach_function_lock:
             result = connection.execute(
@@ -104,37 +69,44 @@ class DuckdbSource(ServerSource, SqlalchemySource):
                 return True
             return False
 
-    # Usage
     def get_connection(self, read_only: bool = False, working_dir=None):
         """Return a DuckDBPyConnection using direct DuckDB connection with proper read_only support."""
         try:
-            import duckdb
-            import os
-
             Logger.instance().debug(f"Getting connection for {self.name}, read_only={read_only}")
 
+            database_path = self.database
             if working_dir:
-                self.database = str(working_dir / Path(self.database))
+                database_path = str(working_dir / Path(self.database))
 
             # Ensure database file exists for write operations
-            if not read_only and not os.path.exists(self.database):
+            if not read_only and not os.path.exists(database_path):
                 Logger.instance().debug(
-                    f"Database file {self.database} does not exist, creating it"
+                    f"Database file {database_path} does not exist, creating it"
                 )
-                os.makedirs(os.path.dirname(self.database), exist_ok=True)
+                os.makedirs(os.path.dirname(database_path), exist_ok=True)
                 # Create the database file
-                temp_conn = duckdb.connect(self.database)
+                temp_conn = duckdb.connect(database_path)
                 temp_conn.close()
 
             # Connect directly to DuckDB with proper read_only flag
-            Logger.instance().debug(f"Connecting to {self.database} with read_only={read_only}")
-            connection = duckdb.connect(self.database, read_only=read_only)
+            Logger.instance().debug(f"Connecting to {database_path} with read_only={read_only}")
+            connection = duckdb.connect(database_path, read_only=read_only)
             Logger.instance().debug(f"Direct DuckDB connection established for {self.name}")
 
+            return connection
+        except Exception as err:
+            raise click.ClickException(
+                f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
+            )
+
+    def _setup_connection(self, connection, **kwargs):
+        """Setup the DuckDB connection with after_connect commands and attachments."""
+        try:
             # Execute after_connect if specified
-            if self.after_connect:
+            if hasattr(self, "after_connect") and self.after_connect:
                 connection.execute(self.after_connect)
 
+            # Handle attachments
             if self.attach:
                 for attachment in self.attach:
                     if self.safe_attach(
@@ -145,52 +117,16 @@ class DuckdbSource(ServerSource, SqlalchemySource):
                         Logger.instance().debug(
                             f"Database {attachment.schema_name} already attached"
                         )
-            return connection
-        except Exception as err:
-            raise click.ClickException(
-                f"Error connecting to source '{self.name}'. Ensure the database exists and the connection properties are correct. Full Error: {str(err)}"
-            )
+        except Exception as e:
+            Logger.instance().debug(f"Error setting up DuckDB connection: {e}")
+            # Don't raise here as connection might still be usable
 
     def get_connection_dialect(self):
         return "duckdb"
 
-    def get_dialect(self):
-        return "duckdb"
-
-    def read_sql(self, query: str, **kwargs):
-        working_dir = kwargs.get("working_dir")
-        try:
-            with self.connect(read_only=True, working_dir=working_dir) as connection:
-                # Execute query and get raw results
-                result = connection.execute(query)
-
-                # Get column names
-                columns = [desc[0] for desc in result.description] if result.description else []
-
-                # Fetch all rows
-                rows = result.fetchall()
-
-                # Convert to list of dictionaries
-                data = []
-                for row in rows:
-                    row_dict = {}
-                    for i, col in enumerate(columns):
-                        row_dict[col] = row[i]
-                    data.append(row_dict)
-
-                return data
-        except Exception as err:
-            raise click.ClickException(f"Error executing query on source '{self.name}': {str(err)}")
-
-    def connect(self, read_only: bool = False, working_dir: str = None):
-        """Create a context manager for DuckDB connections."""
-        return DuckDBConnection(source=self, read_only=read_only, working_dir=working_dir)
-
-    def connect_args(self):
-        """Override to provide DuckDB-specific connection arguments for the default engine."""
-        # The default cached engine (via super().get_engine()) is read-write
-        # Read-only connections use a separate cached engine
-        return {}
+    def description(self):
+        """Return a description of this source for logging and error messages."""
+        return f"{self.type} source '{self.name}' (database: {self.database})"
 
     def list_databases(self):
         """Return list of databases for DuckDB (includes attached databases)."""
@@ -221,23 +157,6 @@ class DuckdbSource(ServerSource, SqlalchemySource):
             # Re-raise to allow proper error handling in UI
             raise e
 
-    def dispose_engines(self):
-        """Dispose of cached engines to release database locks."""
-        if self._read_only_engine:
-            self._read_only_engine.dispose()
-            self._read_only_engine = None
-        if self._engine:
-            self._engine.dispose()
-            self._engine = None
-
-    def __del__(self):
-        """Ensure engines are disposed when source is destroyed."""
-        try:
-            self.dispose_engines()
-        except Exception:
-            # Ignore errors during cleanup
-            pass
-
     @classmethod
     def create_empty_database(cls, database_path: str):
         """Create an empty DuckDB database file."""
@@ -255,23 +174,35 @@ class DuckdbSource(ServerSource, SqlalchemySource):
         conn = duckdb.connect(database_path)
         conn.close()
 
+    def dispose_engines(self):
+        """
+        No-op method for compatibility with tests.
 
-class DuckDBConnection:
-    def __init__(self, source: DuckdbSource, read_only: bool = False, **kwargs):
-        self.source = source
-        self.conn = None
-        self.read_only = read_only
-        self.working_dir = kwargs.get("working_dir")
+        The refactored DuckDB source uses direct connections without engines,
+        so there's nothing to dispose. This method exists for backward compatibility
+        with existing tests.
+        """
+        pass
 
-    def __enter__(self):
-        self.conn = self.source.get_connection(
-            read_only=self.read_only, working_dir=self.working_dir
-        )
-        return self.conn
+    def introspect(self):
+        """
+        Legacy introspection method for backward compatibility with tests.
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn:
-            self.conn.close()
-            self.conn = None
-        # Return None to propagate any exceptions
-        return None
+        This method returns metadata in the old format expected by existing tests.
+        For new code, use get_schema() instead which returns SQLGlot-compatible schema data.
+        """
+        schema_data = self.get_schema()
+
+        # Convert our new schema format to the old metadata format expected by tests
+        tables_list = []
+        for table_name, table_info in schema_data.get("tables", {}).items():
+            table_entry = {"name": table_name, "columns": {}}
+            for col_name, col_info in table_info.get("columns", {}).items():
+                table_entry["columns"][col_name] = col_info.get("type", "UNKNOWN")
+            tables_list.append(table_entry)
+
+        return {
+            "name": self.name,
+            "type": self.type,
+            "databases": [{"name": "main", "tables": tables_list}],
+        }

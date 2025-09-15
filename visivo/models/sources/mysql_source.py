@@ -1,5 +1,6 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import ServerSource
 from pydantic import Field
 
 MysqlType = Literal["mysql"]
