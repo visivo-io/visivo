@@ -3,6 +3,13 @@ from visivo.models.sources.sqlalchemy_source import SqlalchemySource
 from visivo.models.sources.source import ServerSource
 from pydantic import Field
 
+# Import pymysql and install it as MySQLdb for compatibility
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass  # pymysql not available
+
 MysqlType = Literal["mysql"]
 
 

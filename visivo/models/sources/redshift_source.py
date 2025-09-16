@@ -2,6 +2,7 @@ from typing import Literal, Optional, Any, Dict, List
 from visivo.models.sources.source import ServerSource
 from pydantic import Field, PrivateAttr
 from visivo.logger.logger import Logger
+from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
 import json
 
 RedshiftType = Literal["redshift"]
@@ -234,7 +235,6 @@ class RedshiftSource(ServerSource):
             - metadata: Additional metadata about the schema
         """
         from sqlglot.schema import MappingSchema
-        from visivo.query.sqlglot_type_mapper import SqlglotTypeMapper
         from visivo.query.sqlglot_utils import get_sqlglot_dialect
 
         try:
