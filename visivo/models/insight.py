@@ -11,31 +11,70 @@ from visivo.models.base.parent_model import ParentModel
 
 class Insight(NamedModel, ParentModel):
     """
-    Insights replace traces in Interactivity 2.0, providing a cleaner separation
-    between server-side data preparation and client-side interactivity.
+    The **Insight** is the central visualization object in Visivo Interactivity 2.0.
 
-    Unlike traces, insights generate flat JSON data structures and support
-    client-side interactions through DuckDB WASM execution.
+    Insights replace **Traces**, providing a cleaner separation between
+    **server-side data preparation** and **client-side interactivity**.
+    Unlike traces, insights generate flat JSON structures that can be manipulated
+    in the browser for responsive dashboards.
 
-    !!! example
-        ```yaml
-        insights:
-          - name: revenue-by-month
-            description: "Monthly revenue trends"
-            model: ${ref(orders_model)}
-            columns:
-              region: ?{ region }
-              category: ?{ category }
-            props:
-              type: scatter
-              mode: lines+markers
-              x: ?{ date_trunc('month', created_at) }
-              y: ?{ sum(amount) }
-            interactions:
-              - filter: ?{ month >= ${ref(date-range).start} }
-              - split: ?{ region }
-              - sort: ?{ month ASC }
-        ```
+    ## Why Insights?
+    * **Simpler Mental Model** – No more mixing cohort logic or trace naming rules
+    * **Interactive by Default** – Client-side filtering, splitting, and sorting
+    * **Reusable** – Insights can appear in multiple charts & tables
+    * **Fast** – Pre-computed data cached server-side, interactions run locally
+
+    ## Core Components
+    - **model**: The SQL model or reference that defines the server-side dataset
+    - **columns**: Extra fields exposed for client-side interactions
+    - **props**: Visualization config (chart type, axes, encodings)
+    - **interactions**: Client-side transformations (filter, split, sort)
+
+    ## Example
+    ```yaml
+    insights:
+      - name: revenue-by-month
+        description: "Monthly revenue trends"
+        model: ${ref(orders_model)}
+
+        columns:
+          region: ?{ region }
+          category: ?{ category }
+
+        props:
+          type: scatter
+          mode: lines+markers
+          x: ?{ date_trunc('month', created_at) }
+          y: ?{ sum(amount) }
+
+        interactions:
+          - filter: ?{ month >= ${ref(date-range).start} }
+          - split: ?{ region }
+          - sort: ?{ month ASC }
+    ```
+
+    In the example above:
+    - **Server-side**: Revenue is aggregated by month.
+    - **Client-side**: A date-range filter and region split are applied instantly in the browser.
+
+    ## Interactions
+    Interactions define how users can manipulate data locally:
+    - **Filter**: Subset rows by conditions (`WHERE` logic)
+    - **Split**: Break a single insight into multiple series (replaces `cohort_on`)
+    - **Sort**: Order data dynamically
+
+    Example:
+    ```yaml
+    interactions:
+      - filter: ?{ sales_amount > 1000 AND region = ${ref(sales-region).value} }
+      - split: ?{ product_category }
+      - sort: ?{ date DESC, amount ASC }
+    ```
+
+    ## Migration from Traces
+    - `cohort_on` → `split` interaction
+    - `columns` → strictly for client-side usage (not props)
+    - Flat JSON output → easier integration with DuckDB WASM & UI components
     """
 
     name: str = Field(description="The unique name of the insight across the entire project.")

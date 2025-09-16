@@ -60,6 +60,10 @@ def write_pydantic_md_files():
         shutil.rmtree(configuration_path)
     for model, path in mkdocs.model_to_path_map.items():
         content = mkdocs.get_md_content(model_name=model)
+        if "Trace/Props" in path:
+            write_file(path.replace("Trace/Props", "Insight/Props"), content)
+        if "Trace/Model" in path:
+            write_file(path.replace("Trace/Model", "Insight/Model"), content)
         write_file(path, content)
 
 

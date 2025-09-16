@@ -2,7 +2,7 @@ import json
 from visivo.models.project import Project
 from importlib.resources import files
 
-from visivo.models.props.trace_props import TraceType
+from visivo.models.props.types import PropType
 
 
 def generate_project_schema():
@@ -17,13 +17,13 @@ def generate_project_schema():
     return schema_string
 
 
-def generate_trace_prop_schemas():
+def generate_prop_types_schemas():
     """Generate schemas for all trace types"""
     schemas = {}
-    for trace_type in TraceType:
-        schema_path = files("visivo.schema").joinpath(f"{trace_type.value}.schema.json")
+    for prop_type in PropType:
+        schema_path = files("visivo.schema").joinpath(f"{prop_type.value}.schema.json")
         with open(schema_path) as f:
-            schemas[trace_type.value.capitalize()] = json.load(f)
+            schemas[prop_type.value.capitalize()] = json.load(f)
     return schemas
 
 
@@ -31,20 +31,26 @@ def generate_schema():
     """Generate both project and trace prop schemas"""
     project_schema = json.loads(generate_project_schema())
 
-    trace_schemas = generate_trace_prop_schemas()
+    prop_type_schemas = generate_prop_types_schemas()
 
     if "$defs" not in project_schema:
         project_schema["$defs"] = {}
 
-    for trace_type, schema in trace_schemas.items():
-        project_schema["$defs"][trace_type] = schema
+    for prop_type, schema in prop_type_schemas.items():
+        project_schema["$defs"][prop_type] = schema
 
     project_schema["$defs"]["Trace"]["properties"]["props"] = {
-        "oneOf": [{"$ref": f"#/$defs/{trace_type}"} for trace_type in trace_schemas.keys()]
+        "oneOf": [{"$ref": f"#/$defs/{trace_type}"} for trace_type in prop_type_schemas.keys()]
     }
+
+    project_schema["$defs"]["Insight"]["properties"]["props"] = {
+        "oneOf": [{"$ref": f"#/$defs/{insight_type}"} for insight_type in prop_type_schemas.keys()]
+    }
+
     layout_schema = json.loads(files("visivo.schema").joinpath("layout.schema.json").read_text())
     project_schema["$defs"]["Layout"] = layout_schema
     project_schema["$defs"]["Trace"]["properties"]["layout"] = {"$ref": "#/$defs/Layout"}
+    project_schema["$defs"]["Insight"]["properties"]["layout"] = {"$ref": "#/$defs/Layout"}
 
     # Move nested $defs to top level
     defs_to_add = {}
