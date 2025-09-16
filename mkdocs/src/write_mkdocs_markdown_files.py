@@ -59,11 +59,14 @@ def write_pydantic_md_files():
     if os.path.isdir(configuration_path):
         shutil.rmtree(configuration_path)
     for model, path in mkdocs.model_to_path_map.items():
-        content = mkdocs.get_md_content(model_name=model)
         if "Trace/Props" in path:
+            content = mkdocs.get_md_content(model_name=model, content_type="Insight")
             write_file(path.replace("Trace/Props", "Insight/Props"), content)
         if "Trace/Model" in path:
+            content = mkdocs.get_md_content(model_name=model)
             write_file(path.replace("Trace/Model", "Insight/Model"), content)
+
+        content = mkdocs.get_md_content(model_name=model)
         write_file(path, content)
 
 

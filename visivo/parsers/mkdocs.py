@@ -1,4 +1,5 @@
 from visivo.parsers.mkdocs_utils.markdown import (
+    from_insightprop_model,
     from_pydantic_model,
     from_traceprop_model,
     find_refs,
@@ -92,7 +93,7 @@ class Mkdocs:
         insight_prop_models = [i.split("/")[-1] for i in refs]
         return insight_prop_models
 
-    def get_md_content(self, model_name):
+    def get_md_content(self, model_name, content_type=""):
         path = self.model_to_path_map.get(model_name, {})
 
         trace_prop_models = self._get_trace_prop_models()
@@ -100,11 +101,15 @@ class Mkdocs:
 
         if not path:
             raise KeyError(f"model {model_name} not found in project")
-        if model_name in trace_prop_models or model_name in insight_prop_models:
-            md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
+        if model_name in trace_prop_models or model_name in model_name in insight_prop_models:
+            if content_type == "Insight":
+                md = from_insightprop_model(self.SCHEMA["$defs"], model_name)
+            else:
+                md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
         elif model_name == "Layout":
             md = from_traceprop_model(self.SCHEMA["$defs"], model_name)
         else:
             md = from_pydantic_model(self.SCHEMA["$defs"], model_name)
+
         md = self._replace_model_with_page(md=md)
         return md
