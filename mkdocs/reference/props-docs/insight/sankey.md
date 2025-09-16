@@ -58,7 +58,7 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
 
         This example demonstrates a `sankey` insight with custom node and link colors:
 
-        ![](../../assets/example-charts/props/sankey/custom-colors-sankey.png)
+        ![](../../../assets/example-charts/props/sankey/custom-colors-sankey.png)
 
         ```yaml
         models:
@@ -94,7 +94,7 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attribut
 
         This example shows a `sankey` insight where hover information displays both the value and the source-target relationship:
 
-        ![](../../assets/example-charts/props/sankey/sankey-hover-info.png)
+        ![](../../../assets/example-charts/props/sankey/sankey-hover-info.png)
 
         ```yaml
         models:

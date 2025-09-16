@@ -72,7 +72,7 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
 
     === "Heatmap with Categorical Axis"
 
-        ![](../../assets/example-charts/props/heatmap/categorical-heatmap.png)
+        ![](../../../assets/example-charts/props/heatmap/categorical-heatmap.png)
 
         ```yaml
         models:
@@ -123,7 +123,7 @@ _**Check out the [Attributes](../../configuration/Insight/Props/Heatmap/#attribu
 
     === "Heatmap with Text Annotations"
 
-        ![](../../assets/example-charts/props/heatmap/text-annoations.png)
+        ![](../../../assets/example-charts/props/heatmap/text-annoations.png)
 
         ```yaml
         models:
