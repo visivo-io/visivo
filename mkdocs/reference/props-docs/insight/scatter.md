@@ -18,7 +18,7 @@ You can customize the marker size, color, and add lines to connect the points to
 
 !!! tip "Common Uses" - **Relationship Analysis**: Exploring the relationship between two variables. - **Trend Detection**: Identifying trends or patterns in data. - **Outlier Identification**: Spotting outliers in data distributions.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Scatter/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Scatter/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -29,7 +29,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter/#attributes
 
         Here's a simple `scatter` insight showing data points on a 2D plane:
 
-        ![](../../assets/example-charts/props/scatter/simple-scatter.png)
+        ![](../../../assets/example-charts/props/scatter/simple-scatter.png)
 
         ```yaml
         models:
@@ -70,7 +70,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter/#attributes
 
         This example demonstrates a `scatter` insight with lines connecting the data points to show trends:
 
-        ![](../../assets/example-charts/props/scatter/lines-scatter.png)
+        ![](../../../assets/example-charts/props/scatter/lines-scatter.png)
 
         ```yaml
         models:
@@ -120,7 +120,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter/#attributes
 
         Here's a `scatter` insight with custom marker sizes and colors, giving more visual weight to each data point:
 
-        ![](../../assets/example-charts/props/scatter/custom-markers-scatter.png)
+        ![](../../../assets/example-charts/props/scatter/custom-markers-scatter.png)
 
         ```yaml
         models:
@@ -159,7 +159,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter/#attributes
 
         Here's a `scatter` insight used to create an area plot, filling the area under the line:
 
-        ![](../../assets/example-charts/props/scatter/area-plot.png)
+        ![](../../../assets/example-charts/props/scatter/area-plot.png)
 
         ```yaml
         models:

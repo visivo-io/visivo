@@ -18,7 +18,7 @@ They use a grid of **Z values** (with optional X and Y coordinates) to generate 
 - **Electromagnetic Fields**: Representing varying field strengths.
 - **Pressure Maps**: Displaying pressure levels in meteorology.
 
-_**See the [Attributes](../configuration/Insight/Props/Contour/#attributes) for the full list of configuration options.**_
+_**See the [Attributes](../../configuration/Insight/Props/Contour/#attributes) for the full list of configuration options.**_
 
 ---
 
@@ -31,7 +31,7 @@ _**See the [Attributes](../configuration/Insight/Props/Contour/#attributes) for 
 
         A basic contour insight using X, Y, and Z values:
 
-        ![](../../assets/example-charts/props/contour/simple-contour.png)
+        ![](../../../assets/example-charts/props/contour/simple-contour.png)
 
         ```yaml
         insights:
@@ -62,7 +62,7 @@ _**See the [Attributes](../configuration/Insight/Props/Contour/#attributes) for 
 
         Adds filled color regions between contour lines for better gradient visualization:
 
-        ![](../../assets/example-charts/props/contour/filled-contour.png)
+        ![](../../../assets/example-charts/props/contour/filled-contour.png)
 
         ```yaml
         insights:
@@ -96,7 +96,7 @@ _**See the [Attributes](../configuration/Insight/Props/Contour/#attributes) for 
 
         Demonstrates manual control over contour ranges and intervals:
 
-        ![](../../assets/example-charts/props/contour/multi-level-contour.png)
+        ![](../../../assets/example-charts/props/contour/multi-level-contour.png)
 
         ```yaml
         insights:

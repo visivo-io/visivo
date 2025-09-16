@@ -13,7 +13,7 @@ You can customize the axis scaling, color mapping, and line properties to repres
 
 !!! tip "Common Uses" - **Multivariate Data Analysis**: Visualizing relationships between multiple variables. - **Data Exploration**: Exploring patterns and outliers in high-dimensional datasets. - **Decision Making**: Identifying optimal points or anomalies in multi-variable data.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Parcoords/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Parcoords/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Parcoords/#attribut
 
         Here's a simple `parcoords` insight visualizing three numerical variables:
 
-        ![](../../assets/example-charts/props/parcoords/simple-parcoords.png)
+        ![](../../../assets/example-charts/props/parcoords/simple-parcoords.png)
 
         ```yaml
         models:
@@ -75,7 +75,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Parcoords/#attribut
 
         This example demonstrates a `parcoords` insight with custom axis ranges, allowing you to focus on specific data ranges:
 
-        ![](../../assets/example-charts/props/parcoords/custom-ranges-parcoords.png)
+        ![](../../../assets/example-charts/props/parcoords/custom-ranges-parcoords.png)
 
         ```yaml
         models:
@@ -129,7 +129,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Parcoords/#attribut
 
         Here's a `parcoords` insight with a custom colorscale for the lines, highlighting the variations across the third variable:
 
-        ![](../../assets/example-charts/props/parcoords/custom-colorscale-parcoords.png)
+        ![](../../../assets/example-charts/props/parcoords/custom-colorscale-parcoords.png)
 
         ```yaml
         models:

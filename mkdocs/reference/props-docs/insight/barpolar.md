@@ -18,7 +18,7 @@ You have extensive control over the appearance of the bars through the `marker` 
     - **Directional Data Representation**: Showcasing data that has a directional component (e.g., animal migration patterns).
     - **Cyclical Phenomena Visualization**: Illustrating patterns that repeat over a cycle (e.g., seasonal sales data).
 
-_**See the [Attributes](../configuration/Insight/Props/Barpolar/#attributes) for the full set of configuration options.**_
+_**See the [Attributes](../../configuration/Insight/Props/Barpolar/#attributes) for the full set of configuration options.**_
 
 ## Examples
 
@@ -29,7 +29,7 @@ _**See the [Attributes](../configuration/Insight/Props/Barpolar/#attributes) for
 
         Here's a simple barpolar chart showing activities over different compass directions:
 
-        ![](../../assets/example-charts/props/barpolar/simple-barpolar.png)
+        ![](../../../assets/example-charts/props/barpolar/simple-barpolar.png)
 
         ```yaml
         models:
@@ -87,7 +87,7 @@ _**See the [Attributes](../configuration/Insight/Props/Barpolar/#attributes) for
 
         A wind rose chart is a common use of barpolar to display wind speed and direction frequencies:
 
-        ![](../../assets/example-charts/props/barpolar/wind-rose.png)
+        ![](../../../assets/example-charts/props/barpolar/wind-rose.png)
 
         ```yaml
         models:
@@ -170,7 +170,7 @@ _**See the [Attributes](../configuration/Insight/Props/Barpolar/#attributes) for
 
         You can customize the radial range to represent data starting and ending at specific radial positions:
 
-        ![](../../assets/example-charts/props/barpolar/custom-radial.png)
+        ![](../../../assets/example-charts/props/barpolar/custom-radial.png)
 
         ```yaml
         models:

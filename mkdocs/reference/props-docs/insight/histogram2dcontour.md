@@ -13,7 +13,7 @@ You can customize the binning along both axes, contour lines, and the color mapp
 
 !!! tip "Common Uses" - **Density Contours**: Showing how data points are distributed and clustered. - **Joint Distribution Analysis**: Visualizing the relationship between two variables with density contours. - **Bivariate Statistical Analysis**: Analyzing two variables and their joint behavior.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Histogram2dcontour/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Histogram2dcontour/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram2dcontour/
 
         Here's a simple `histogram2dcontour` insight showing the density of data points using contour lines:
 
-        ![](../../assets/example-charts/props/histogram2dcontour/simple-histogram2dcontour.png)
+        ![](../../../assets/example-charts/props/histogram2dcontour/simple-histogram2dcontour.png)
 
         ```yaml
         models:
@@ -74,7 +74,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram2dcontour/
 
         Example with filled contour regions to better visualize data density:
 
-        ![](../../assets/example-charts/props/histogram2dcontour/filled-contour-histogram2dcontour.png)
+        ![](../../../assets/example-charts/props/histogram2dcontour/filled-contour-histogram2dcontour.png)
 
         ```yaml
         models:
@@ -124,7 +124,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram2dcontour/
 
         Example with custom bin sizes for both axes:
 
-        ![](../../assets/example-charts/props/histogram2dcontour/custom-bins-histogram2dcontour.png)
+        ![](../../../assets/example-charts/props/histogram2dcontour/custom-bins-histogram2dcontour.png)
 
         ```yaml
         models:

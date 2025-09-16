@@ -13,7 +13,7 @@ You can control the orientation, marker styles, and colors to better represent y
 
 !!! tip "Common Uses" - **Sales Funnels**: Tracking the stages from lead generation to closing a deal. - **Conversion Funnels**: Visualizing the steps in a user journey and where drop-offs occur. - **Progression Through Stages**: Representing data at different stages of a sequential process.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Funnel/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Funnel/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnel/#attributes)
 
         Here's a simple `funnel` insight showing data as it moves through various stages:
 
-        ![](../../assets/example-charts/props/funnel/simple-funnel.png)
+        ![](../../../assets/example-charts/props/funnel/simple-funnel.png)
 
         ```yaml
         models:
@@ -71,7 +71,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnel/#attributes)
 
         This example demonstrates a horizontal funnel chart, with stages represented along the x-axis:
 
-        ![](../../assets/example-charts/props/funnel/horizontal-funnel.png)
+        ![](../../../assets/example-charts/props/funnel/horizontal-funnel.png)
 
         ```yaml
         models:
@@ -115,7 +115,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnel/#attributes)
 
         Here's a funnel chart where each stage has a different color to highlight distinct phases in the process:
 
-        ![](../../assets/example-charts/props/funnel/custom-markers-funnel.png)
+        ![](../../../assets/example-charts/props/funnel/custom-markers-funnel.png)
 
         ```yaml
         models:
@@ -162,7 +162,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnel/#attributes)
 
         This example demonstrates a funnel chart using cohorts to compare the customer journey across different products:
 
-        ![](../../assets/example-charts/props/funnel/cohort-funnel.png)
+        ![](../../../assets/example-charts/props/funnel/cohort-funnel.png)
 
         ```yaml
         models:

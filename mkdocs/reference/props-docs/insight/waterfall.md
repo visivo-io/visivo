@@ -13,7 +13,7 @@ You can customize colors, connectors, and base values to represent your data eff
 
 !!! tip "Common Uses" - **Financial Analysis**: Visualizing profit and loss over time or across categories. - **Incremental Changes**: Showing how individual positive or negative changes affect a starting value. - **Part-to-Whole Visualization**: Highlighting how parts contribute to a cumulative total.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Waterfall/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Waterfall/#attributes) for the full set of configuration options**_
 
 ## Examples
 

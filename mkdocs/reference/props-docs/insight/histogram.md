@@ -13,7 +13,7 @@ You can customize bin size, orientation, and colors to fit your data. Histograms
 
 !!! tip "Common Uses" - **Data Distribution**: Visualizing how data points are distributed across different ranges. - **Frequency Analysis**: Showing the frequency of values within specific intervals. - **Statistical Summaries**: Understanding the spread, central tendency, and outliers in data.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Histogram/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Histogram/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram/#attribut
 
         Here's a simple `histogram` insight showing the distribution of data across different bins:
 
-        ![](../../assets/example-charts/props/histogram/simple-histogram.png)
+        ![](../../../assets/example-charts/props/histogram/simple-histogram.png)
 
         ```yaml
         models:
@@ -74,7 +74,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram/#attribut
 
         This example shows a horizontal `histogram` insight, where the bins are displayed along the y-axis:
 
-        ![](../../assets/example-charts/props/histogram/horizontal-histogram.png)
+        ![](../../../assets/example-charts/props/histogram/horizontal-histogram.png)
 
         ```yaml
         models:
@@ -138,7 +138,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram/#attribut
 
         Here's a stacked `histogram` insight showing the distribution of two different datasets stacked on top of each other:
 
-        ![](../../assets/example-charts/props/histogram/stacked-histogram.png)
+        ![](../../../assets/example-charts/props/histogram/stacked-histogram.png)
 
         ```yaml
         models:

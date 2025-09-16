@@ -26,7 +26,7 @@ The `choropleth` insight allows you to control the region coloring based on a va
 
         Here's a simple `choropleth` map showing population density across different countries:
 
-        ![](../../assets/example-charts/props/choropleth/simple-choropleth.png)
+        ![](../../../assets/example-charts/props/choropleth/simple-choropleth.png)
 
         You can copy this code below to create this chart in your project:
 

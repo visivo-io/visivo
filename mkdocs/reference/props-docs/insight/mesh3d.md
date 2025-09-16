@@ -13,7 +13,7 @@ You can customize the colors, vertex positions, and opacity to represent 3D data
 
 !!! tip "Common Uses" - **3D Geometries**: Visualizing surfaces and volumes in 3D space. - **Scientific Visualization**: Representing complex 3D data in fields like physics, engineering, and geology. - **3D Surface Rendering**: Displaying 3D surfaces from a set of points and connectivity information.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Mesh3d/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Mesh3d/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Mesh3d/#attributes)
 
         Here's a simple `mesh3d` insight visualizing a 3D mesh structure with vertices and connections:
 
-        ![](../../assets/example-charts/props/mesh3d/simple-mesh3d.png)
+        ![](../../../assets/example-charts/props/mesh3d/simple-mesh3d.png)
 
         You can copy this code below to create this chart in your project:
 

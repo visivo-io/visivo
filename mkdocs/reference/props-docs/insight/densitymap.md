@@ -13,7 +13,7 @@ You can customize the colorscale, radius of influence for each point, and other 
 
 !!! tip "Common Uses" - **Geospatial Data Analysis**: Identifying hotspots in geographic data, such as crime rates or customer locations. - **Event Density**: Visualizing the concentration of events or occurrences across regions. - **Heatmap for Geographic Points**: Creating heatmaps based on spatial data distributions on a map.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Densitymap/#attributes) for the full set of configuration options.**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Densitymap/#attributes) for the full set of configuration options.**_
 
 ## Examples
 

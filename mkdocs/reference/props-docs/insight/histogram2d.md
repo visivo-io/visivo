@@ -13,7 +13,7 @@ You can customize the binning along both axes, as well as the colorscale and agg
 
 !!! tip "Common Uses" - **Joint Distributions**: Visualizing the relationship between two variables. - **Density Plots**: Showing the density of data points across two dimensions. - **Statistical Analysis**: Identifying patterns, correlations, or anomalies in bivariate data.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Histogram2d/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Histogram2d/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram2d/#attrib
 
         Here's a simple `histogram2d` insight showing how data is distributed across two dimensions:
 
-        ![](../../assets/example-charts/props/histogram2d/simple-histogram2d.png)
+        ![](../../../assets/example-charts/props/histogram2d/simple-histogram2d.png)
 
         ```yaml
         models:
@@ -72,7 +72,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram2d/#attrib
 
         Example with custom binning along both axes:
 
-        ![](../../assets/example-charts/props/histogram2d/custom-bins-histogram2d.png)
+        ![](../../../assets/example-charts/props/histogram2d/custom-bins-histogram2d.png)
 
         ```yaml
         models:
@@ -124,7 +124,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Histogram2d/#attrib
 
         Example with relative density:
 
-        ![](../../assets/example-charts/props/histogram2d/density-histogram2d.png)
+        ![](../../../assets/example-charts/props/histogram2d/density-histogram2d.png)
 
         ```yaml
         models:

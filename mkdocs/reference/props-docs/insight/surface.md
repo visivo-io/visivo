@@ -13,7 +13,7 @@ You can customize the colorscale, lighting, and contours to represent your 3D da
 
 !!! tip "Common Uses" - **3D Data Visualization**: Showing relationships between three variables. - **Topographical Maps**: Representing elevation or landscape contours. - **3D Heatmaps**: Visualizing intensity or magnitude variations in three dimensions.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Surface/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Surface/#attributes) for the full set of configuration options**_
 
 ## Examples
 

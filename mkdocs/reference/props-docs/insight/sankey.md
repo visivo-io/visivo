@@ -13,7 +13,7 @@ You can customize the colors, labels, and flow paths to represent your data and 
 
 !!! tip "Common Uses" - **Flow of Resources**: Visualizing how resources (e.g., money, energy, or materials) move between stages. - **Part-to-Part Relationships**: Displaying how parts contribute to other parts rather than the whole. - **Energy or Supply Chains**: Showing energy transfers or supply chain processes.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Sankey/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Sankey/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Sankey/#attributes)
 
         Here's a simple `sankey` insight showing how values flow between different categories:
 
-        ![](../../assets/example-charts/props/sankey/simple-sankey.png)
+        ![](../../../assets/example-charts/props/sankey/simple-sankey.png)
 
         ```yaml
         models:

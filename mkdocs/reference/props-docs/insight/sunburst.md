@@ -13,7 +13,7 @@ You can customize labels, hierarchy, colors, and segment sizes to represent your
 
 !!! tip "Common Uses" - **Hierarchical Data Visualization**: Showing relationships between multiple levels of data. - **Part-to-Whole Relationships**: Visualizing contributions of parts to the whole. - **Categorical Data Breakdown**: Representing nested categories.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Sunburst/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Sunburst/#attributes) for the full set of configuration options**_
 
 ## Examples
 

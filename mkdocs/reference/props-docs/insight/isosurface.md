@@ -13,7 +13,7 @@ You can customize the colors, opacity, and surface rendering to visualize 3D dat
 
 !!! tip "Common Uses" - **Scientific Visualization**: Representing surfaces of constant values in a 3D volume. - **Medical Imaging**: Displaying 3D representations of structures, such as in MRI or CT scans. - **Geospatial and Engineering Data**: Visualizing 3D volumes and their properties.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Isosurface/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Isosurface/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Isosurface/#attribu
 
         Here's a simple `isosurface` insight showing a constant value surface within a 3D grid:
 
-        ![](../../assets/example-charts/props/isosurface/simple-isosurface.png)
+        ![](../../../assets/example-charts/props/isosurface/simple-isosurface.png)
 
         You can copy this code below to create this chart in your project:
 
@@ -78,7 +78,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Isosurface/#attribu
 
         This example demonstrates a more complex `isosurface` insight with a slice and custom camera angle:
 
-        ![](../../assets/example-charts/props/isosurface/complex-with-slice-isosurface.png)
+        ![](../../../assets/example-charts/props/isosurface/complex-with-slice-isosurface.png)
 
         Here's the code:
 

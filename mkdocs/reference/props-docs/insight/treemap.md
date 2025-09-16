@@ -16,7 +16,7 @@ You can customize the colors, labels, hierarchy, and tiling to represent your da
 !!! warning "Unexpected Behavior"
 The terminal values of a `treemap` must be unique. Values must be unique across all leaf nodes.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Treemap/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Treemap/#attributes) for the full set of configuration options**_
 
 ## Examples
 

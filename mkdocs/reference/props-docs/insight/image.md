@@ -13,7 +13,7 @@ You can customize the image size, position, and color scaling to represent image
 
 !!! tip "Common Uses" - **Raster Images**: Displaying raster images in data visualizations. - **Geographic Maps**: Visualizing maps or satellite images. - **Image Data**: Rendering images directly as part of data exploration and analysis.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Image/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Image/#attributes) for the full set of configuration options**_
 
 ## Examples
 

@@ -17,7 +17,7 @@ Cone plots are particularly useful in scientific and engineering applications, s
     - **Wind Data Representation**: Showing wind direction and speed in meteorology.
     - **Fluid Flow Analysis**: Visualizing fluid dynamics in simulations or experiments.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Cone/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Cone/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -28,7 +28,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Cone/#attributes) f
 
         Here's a simple `cone` plot showing a basic vector field:
 
-        ![](../../assets/example-charts/props/cone/simple-cone.png)
+        ![](../../../assets/example-charts/props/cone/simple-cone.png)
 
         ```yaml
         models:
@@ -85,7 +85,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Cone/#attributes) f
 
         Here's a `cone` plot showing wind direction and speed:
 
-        ![](../../assets/example-charts/props/cone/wind-cone.png)
+        ![](../../../assets/example-charts/props/cone/wind-cone.png)
 
         ```yaml
         models:

@@ -13,7 +13,7 @@ You can customize the colors, line widths, and category order to represent your 
 
 !!! tip "Common Uses" - **Categorical Data Visualization**: Visualizing relationships between different categorical variables. - **Flow Analysis**: Showing how data is distributed across multiple dimensions and comparing those paths. - **Segmentation**: Visualizing how different segments of data flow through categories.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Parcats/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Parcats/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Parcats/#attributes
 
         Here's a simple `parcats` insight showing how data flows across two categorical variables:
 
-        ![](../../assets/example-charts/props/parcats/simple-parcats.png)
+        ![](../../../assets/example-charts/props/parcats/simple-parcats.png)
 
         ```yaml
         models:
@@ -74,7 +74,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Parcats/#attributes
 
         This example demonstrates a `parcats` insight with multiple categorical dimensions, showing how data flows across three categories:
 
-        ![](../../assets/example-charts/props/parcats/multiple-dimensions-parcats.png)
+        ![](../../../assets/example-charts/props/parcats/multiple-dimensions-parcats.png)
 
         ```yaml
         models:
@@ -128,7 +128,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Parcats/#attributes
 
         This example shows a `parcats` insight with custom line widths based on a value, allowing the thickness of the lines to represent the volume of data:
 
-        ![](../../assets/example-charts/props/parcats/line-width-parcats.png)
+        ![](../../../assets/example-charts/props/parcats/line-width-parcats.png)
 
         ```yaml
         models:

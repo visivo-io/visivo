@@ -13,7 +13,7 @@ You can customize marker size, color, and lines to connect points, similar to sc
 
 !!! tip "Common Uses" - **Impedance and Reflection Coefficients**: Visualizing electrical properties in transmission lines. - **Complex Data Visualization**: Representing data points in terms of complex numbers. - **Electrical Engineering Analysis**: Useful for RF and microwave engineering applications.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Scattersmith/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Scattersmith/#attributes) for the full set of configuration options**_
 
 ## Examples
 

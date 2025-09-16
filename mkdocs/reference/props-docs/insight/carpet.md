@@ -17,7 +17,7 @@ Carpet insights provide you with control over the X and Y axes, as well as custo
     - **Bivariate Data Visualization**: Displaying complex relationships between two independent variables.
     - **Gridless Data Representation**: Visualizing data that doesn't fit neatly into grid-like structures.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Carpet/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Carpet/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -28,7 +28,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Carpet/#attributes)
 
         Here's a simple(ish) `carpet` plot showing data across two independent variables (A and B):
 
-        ![](../../assets/example-charts/props/carpet/carpet-example.png)
+        ![](../../../assets/example-charts/props/carpet/carpet-example.png)
 
         You can copy this code below to create this chart in your project:
 

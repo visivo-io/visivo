@@ -17,7 +17,7 @@ You can control the appearance of candlestick charts through attributes such as 
     - **Trend Identification**: Identifying market trends such as uptrends, downtrends, or reversals.
     - **Price Fluctuation Visualization**: Showing how stock prices move within a specific time period (daily, weekly, etc.).
 
-_**See the [Attributes](../configuration/Insight/Props/Candlestick/#attributes) for the full set of configuration options.**_
+_**See the [Attributes](../../configuration/Insight/Props/Candlestick/#attributes) for the full set of configuration options.**_
 
 ## Examples
 
@@ -28,7 +28,7 @@ _**See the [Attributes](../configuration/Insight/Props/Candlestick/#attributes) 
 
         Here's a simple `candlestick` plot showing stock price movements over a period:
 
-        ![](../../assets/example-charts/props/candlestick/simple-candlestick.png)
+        ![](../../../assets/example-charts/props/candlestick/simple-candlestick.png)
 
         ```yaml
         models:
@@ -81,7 +81,7 @@ _**See the [Attributes](../configuration/Insight/Props/Candlestick/#attributes) 
 
         This example includes both candlestick data and volume, providing additional insights into the market activity:
 
-        ![](../../assets/example-charts/props/candlestick/candlestick-plus-volume.png)
+        ![](../../../assets/example-charts/props/candlestick/candlestick-plus-volume.png)
 
         ```yaml
         models:
@@ -156,7 +156,7 @@ _**See the [Attributes](../configuration/Insight/Props/Candlestick/#attributes) 
 
         Here's a candlestick chart with customized colors for increasing and decreasing stock prices:
 
-        ![](../../assets/example-charts/props/candlestick/colored-candlestick.png)
+        ![](../../../assets/example-charts/props/candlestick/colored-candlestick.png)
 
         ```yaml
         models:

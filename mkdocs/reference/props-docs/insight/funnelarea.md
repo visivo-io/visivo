@@ -13,7 +13,7 @@ You can control the colors, labels, and orientation of the funnel area sections 
 
 !!! tip "Common Uses" - **Proportional Stages**: Showing the proportion of data at each stage in a circular format. - **Conversion Rates**: Visualizing the drop-off rates in different stages of a process. - **Sales and Marketing Funnels**: Representing funnels like leads-to-sales in a circular format.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Funnelarea/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Funnelarea/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnelarea/#attribu
 
         Here's a simple `funnelarea` insight showing data in a circular funnel format:
 
-        ![](../../assets/example-charts/props/funnelarea/simple-funnelarea.png)
+        ![](../../../assets/example-charts/props/funnelarea/simple-funnelarea.png)
 
         ```yaml
         models:
@@ -61,7 +61,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnelarea/#attribu
 
         This example shows a `funnelarea` insight where each stage has a custom color for better differentiation:
 
-        ![](../../assets/example-charts/props/funnelarea/custom-colors-funnelarea.png)
+        ![](../../../assets/example-charts/props/funnelarea/custom-colors-funnelarea.png)
 
         ```yaml
         models:
@@ -101,7 +101,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Funnelarea/#attribu
 
         This example demonstrates a `funnelarea` insight with hover information to show the value and percentage for each stage:
 
-        ![](../../assets/example-charts/props/funnelarea/funnelarea-hover.png)
+        ![](../../../assets/example-charts/props/funnelarea/funnelarea-hover.png)
 
         ```yaml
         models:

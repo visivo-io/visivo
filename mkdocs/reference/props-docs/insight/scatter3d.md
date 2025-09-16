@@ -13,7 +13,7 @@ You can customize the marker size, color, and add lines to connect points in 3D 
 
 !!! tip "Common Uses" - **3D Relationship Analysis**: Exploring the relationship between three numerical variables. - **Pattern Detection**: Identifying trends and clusters in three dimensions. - **High-Dimensional Data**: Visualizing higher-dimensional datasets.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Scatter3d/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Scatter3d/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter3d/#attribut
 
         Here's a simple `scatter3d` insight showing data points in 3D space:
 
-        ![](../../assets/example-charts/props/scatter3d/simple-scatter3d.png)
+        ![](../../../assets/example-charts/props/scatter3d/simple-scatter3d.png)
 
         ```yaml
         models:
@@ -63,7 +63,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter3d/#attribut
 
         This example demonstrates a `scatter3d` insight with lines connecting the data points in 3D space:
 
-        ![](../../assets/example-charts/props/scatter3d/lines-scatter3d.png)
+        ![](../../../assets/example-charts/props/scatter3d/lines-scatter3d.png)
 
         ```yaml
         models:
@@ -102,7 +102,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scatter3d/#attribut
 
         Here's a `scatter3d` insight with custom marker sizes and colors, giving more visual weight to each data point in 3D space:
 
-        ![](../../assets/example-charts/props/scatter3d/custom-markers-scatter3d.png)
+        ![](../../../assets/example-charts/props/scatter3d/custom-markers-scatter3d.png)
 
         ```yaml
         models:

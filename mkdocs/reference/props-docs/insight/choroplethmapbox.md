@@ -21,7 +21,7 @@ With `choroplethmapbox`, you can visualize data across geographic regions on Map
     - **Thematic Mapping with Interactivity**: Creating maps that can zoom, tilt, and rotate while visualizing variables like population or economic metrics.
     - **Map Projections**: Applying various Mapbox projections for advanced geographical data representation.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Choroplethmapbox/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Choroplethmapbox/#attributes) for the full set of configuration options**_
 
 ## Examples
 

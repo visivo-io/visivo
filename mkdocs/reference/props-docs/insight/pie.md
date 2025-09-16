@@ -13,7 +13,7 @@ You can customize the colors, labels, and hover information to display your data
 
 !!! tip "Common Uses" - **Part-to-Whole Relationships**: Visualizing how different parts contribute to the whole. - **Categorical Data**: Showing the proportions of different categories in a dataset. - **Survey Data**: Visualizing how responses are distributed among categories.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Pie/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Pie/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Pie/#attributes) fo
 
         Here's a simple `pie` insight showing the distribution of categories:
 
-        ![](../../assets/example-charts/props/pie/simple-pie.png)
+        ![](../../../assets/example-charts/props/pie/simple-pie.png)
 
         ```yaml
         models:
@@ -52,7 +52,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Pie/#attributes) fo
 
         This example demonstrates a `pie` insight with custom colors for each category:
 
-        ![](../../assets/example-charts/props/pie/custom-colors-pie.png)
+        ![](../../../assets/example-charts/props/pie/custom-colors-pie.png)
 
         ```yaml
         models:
@@ -83,7 +83,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Pie/#attributes) fo
 
         This example shows a `pie` insight with hover information that displays both the percentage and the value for each category:
 
-        ![](../../assets/example-charts/props/pie/pie-hover-info.png)
+        ![](../../../assets/example-charts/props/pie/pie-hover-info.png)
 
         ```yaml
         models:

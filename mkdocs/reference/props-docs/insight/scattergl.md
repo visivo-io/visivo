@@ -13,7 +13,7 @@ You can customize the marker size, color, and add lines to connect points, simil
 
 !!! tip "Common Uses" - **Large Datasets**: Efficiently visualizing datasets with thousands or millions of points. - **Performance Optimization**: Use when scatter plots with standard rendering struggle with performance. - **Real-Time Data**: Useful for real-time visualizations with large or dynamic datasets.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Scattergl/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Scattergl/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scattergl/#attribut
 
         Here's a simple `scattergl` insight showing data points using WebGL rendering:
 
-        ![](../../assets/example-charts/props/scattergl/simple-scattergl.png)
+        ![](../../../assets/example-charts/props/scattergl/simple-scattergl.png)
 
         ```yaml
         models:
@@ -65,7 +65,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scattergl/#attribut
 
         This example demonstrates a `scattergl` insight with lines connecting the data points using WebGL rendering:
 
-        ![](../../assets/example-charts/props/scattergl/lines-scattergl.png)
+        ![](../../../assets/example-charts/props/scattergl/lines-scattergl.png)
 
         ```yaml
         models:
@@ -106,7 +106,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scattergl/#attribut
 
         Here's a `scattergl` insight with custom marker sizes and colors, giving more visual weight to each data point, all rendered with WebGL:
 
-        ![](../../assets/example-charts/props/scattergl/custom-markers-scattergl.png)
+        ![](../../../assets/example-charts/props/scattergl/custom-markers-scattergl.png)
 
         ```yaml
         models:

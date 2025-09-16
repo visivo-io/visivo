@@ -17,7 +17,7 @@ You can control various aspects of the plot, such as orientation, box and whiske
     - **Outlier Detection**: Identifying outliers in quest performance metrics.
     - **Comparative Analysis**: Comparing the performance of knights on different quests.
 
-_**See the [Attributes](../configuration/Insight/Props/Box/#attributes) for the full set of configuration options.**_
+_**See the [Attributes](../../configuration/Insight/Props/Box/#attributes) for the full set of configuration options.**_
 
 ## Examples
 
@@ -28,7 +28,7 @@ _**See the [Attributes](../configuration/Insight/Props/Box/#attributes) for the 
 
         Here's a simple `box` plot showing the distribution of sample data:
 
-        ![](../../assets/example-charts/props/box/simple-box-plot.png)
+        ![](../../../assets/example-charts/props/box/simple-box-plot.png)
 
         ```yaml
         models:
@@ -81,7 +81,7 @@ _**See the [Attributes](../configuration/Insight/Props/Box/#attributes) for the 
 
         Here's a `box` plot showing the distribution of rewards earned by knights across different quests:
 
-        ![](../../assets/example-charts/props/box/horizontal-box-plot.png)
+        ![](../../../assets/example-charts/props/box/horizontal-box-plot.png)
 
         ```yaml
         models:
@@ -121,7 +121,7 @@ _**See the [Attributes](../configuration/Insight/Props/Box/#attributes) for the 
 
         In this example, we show how to display a box plot for the number of proclamations made across quests, split by person:
 
-        ![](../../assets/example-charts/props/box/cohorted-box-plot.png)
+        ![](../../../assets/example-charts/props/box/cohorted-box-plot.png)
 
         ```yaml
         models:

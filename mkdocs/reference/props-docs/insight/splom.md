@@ -13,7 +13,7 @@ You can customize marker size, color, and lines for each pair of variables in th
 
 !!! tip "Common Uses" - **Pairwise Relationship Analysis**: Exploring multiple variable relationships simultaneously. - **Correlation Visualization**: Identifying patterns, clusters, or outliers in high-dimensional data. - **Multivariate Data Exploration**: Useful in statistics, machine learning, and data science.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Splom/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Splom/#attributes) for the full set of configuration options**_
 
 ## Examples
 

@@ -19,7 +19,7 @@ You have broad control over the appearance of bars via the `marker` attributes. 
     - **Horizontal Bar Charts**: Comparing data where horizontal labels are more readable (e.g., ranking of countries by population).
     - **Time-Series Data (Categorical)**: Displaying data changes over time with categories as the x-axis (e.g., yearly revenue growth by product).
 
-_**See the [Attributes](../configuration/Insight/Props/Bar/#attributes) for the full set of configuration options.**_
+_**See the [Attributes](../../configuration/Insight/Props/Bar/#attributes) for the full set of configuration options.**_
 
 ## Examples
 
@@ -29,7 +29,7 @@ _**See the [Attributes](../configuration/Insight/Props/Bar/#attributes) for the 
     === "Simple Bar"
 
         Here's a really simple bar chart:
-        ![](../../assets/example-charts/props/bar/simple-bar.png)
+        ![](../../../assets/example-charts/props/bar/simple-bar.png)
 
         ```yaml
         models:
@@ -65,7 +65,7 @@ _**See the [Attributes](../configuration/Insight/Props/Bar/#attributes) for the 
     === "Split (Cohorted) Bar"
 
         Use the `interactions.split` key to create facets in your bar chart.
-        ![](../../assets/example-charts/props/bar/cohorted-bar.png)
+        ![](../../../assets/example-charts/props/bar/cohorted-bar.png)
 
         ```yaml
         models:
@@ -102,7 +102,7 @@ _**See the [Attributes](../configuration/Insight/Props/Bar/#attributes) for the 
     === "Horizontal Split Bar"
 
         Sometimes it’s useful to view data horizontally.
-        ![](../../assets/example-charts/props/bar/cohorted-horizontal-bar.png)
+        ![](../../../assets/example-charts/props/bar/cohorted-horizontal-bar.png)
 
         ```yaml
         models:

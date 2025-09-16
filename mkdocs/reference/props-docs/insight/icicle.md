@@ -13,7 +13,7 @@ You can customize the colors, labels, and depth of the icicle chart to represent
 
 !!! tip "Common Uses" - **Hierarchical Data Representation**: Visualizing categories and subcategories in a hierarchy. - **Part-to-Whole Relationships**: Showing how parts relate to the whole, with breakdowns for subcategories. - **Drill-Down Analysis**: Allowing users to explore different levels of data.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Icicle/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Icicle/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Icicle/#attributes)
 
         Here's a simple `icicle` insight showing hierarchical data, with branches representing categories:
 
-        ![](../../assets/example-charts/props/icicle/simple-icicle.png)
+        ![](../../../assets/example-charts/props/icicle/simple-icicle.png)
 
         ```yaml
         models:
@@ -70,7 +70,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Icicle/#attributes)
 
         This example demonstrates an `icicle` insight with custom colors for each branch and leaf node:
 
-        ![](../../assets/example-charts/props/icicle/custom-colors-icicle.png)
+        ![](../../../assets/example-charts/props/icicle/custom-colors-icicle.png)
 
         ```yaml
         models:
@@ -114,7 +114,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Icicle/#attributes)
 
         This example shows an `icicle` insight with depth limiting, allowing the user to only see the first two levels of the hierarchy:
 
-        ![](../../assets/example-charts/props/icicle/depth-limited-icicle.png)
+        ![](../../../assets/example-charts/props/icicle/depth-limited-icicle.png)
 
         ```yaml
         models:

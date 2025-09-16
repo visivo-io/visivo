@@ -13,7 +13,7 @@ You can control contour levels, colors, and other properties to display data pat
 
 !!! tip "Common Uses" - **Distorted Grids**: Visualizing data over irregular grids or non-linear spaces. - **Engineering Data**: Representing data that spans across irregular dimensions. - **Multivariate Visualization**: Handling data with multiple independent variables.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Contourcarpet/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Contourcarpet/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Contourcarpet/#attr
 
         Here's a simple `contourcarpet` insight showing a contour over a basic carpet plot:
 
-        ![](../../assets/example-charts/props/contourcarpet/simple-contourcarpet.png)
+        ![](../../../assets/example-charts/props/contourcarpet/simple-contourcarpet.png)
 
         ```yaml
         insights:
@@ -53,7 +53,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Contourcarpet/#attr
 
         This example shows a filled contourcarpet insight, where the contours are filled with colors:
 
-        ![](../../assets/example-charts/props/contourcarpet/filled-contourcarpet.png)
+        ![](../../../assets/example-charts/props/contourcarpet/filled-contourcarpet.png)
 
         ```yaml
         insights:
@@ -85,7 +85,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Contourcarpet/#attr
 
         This example demonstrates how to customize contour levels and coloring in a `contourcarpet` insight:
 
-        ![](../../assets/example-charts/props/contourcarpet/custom-contourcarpet.png)
+        ![](../../../assets/example-charts/props/contourcarpet/custom-contourcarpet.png)
 
         ```yaml
         insights:

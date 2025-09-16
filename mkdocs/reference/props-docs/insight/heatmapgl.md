@@ -13,7 +13,7 @@ You can customize the colorscale, text annotations, and other properties to crea
 
 !!! tip "Common Uses" - **High-Performance Heatmaps**: Visualizing large datasets efficiently. - **Big Data Visualization**: Rendering heatmaps with thousands or millions of points. - **Correlation Matrices & Density Maps**: Displaying data where relationships or density are critical to analyze.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Heatmapgl/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Heatmapgl/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Heatmapgl/#attribut
 
         Here's a simple `heatmapgl` insight, showing a grid of data values efficiently rendered using WebGL:
 
-        ![](../../assets/example-charts/props/heatmapgl/simple-heatmapgl.png)
+        ![](../../../assets/example-charts/props/heatmapgl/simple-heatmapgl.png)
 
         ```yaml
         models:
@@ -74,7 +74,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Heatmapgl/#attribut
 
         This example shows a `heatmapgl` insight with a custom colorscale, providing fine-grained control over the color mapping:
 
-        ![](../../assets/example-charts/props/heatmapgl/custom-colorscale-heatmapgl.png)
+        ![](../../../assets/example-charts/props/heatmapgl/custom-colorscale-heatmapgl.png)
 
         ```yaml
         models:
@@ -126,7 +126,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Heatmapgl/#attribut
 
         Here's a `heatmapgl` insight that demonstrates how WebGL allows efficient rendering of large datasets. This example simulates a larger data set with many points:
 
-        ![](../../assets/example-charts/props/heatmapgl/heatmapgl-large-dataset.png)
+        ![](../../../assets/example-charts/props/heatmapgl/heatmapgl-large-dataset.png)
 
         ```yaml
         models:

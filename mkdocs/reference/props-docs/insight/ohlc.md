@@ -13,7 +13,7 @@ You can customize the colors, bar widths, and date ranges to represent financial
 
 !!! tip "Common Uses" - **Stock Market Visualization**: Displaying price movement data for stocks, currencies, or commodities. - **Financial Time Series**: Visualizing price fluctuations over time. - **Trading Analysis**: Understanding market trends through candlestick-like visualizations.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Ohlc/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Ohlc/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Ohlc/#attributes) f
 
         Here's a simple `ohlc` insight showing the Open, High, Low, and Close prices of a stock over time:
 
-        ![](../../assets/example-charts/props/ohlc/simple-ohlc.png)
+        ![](../../../assets/example-charts/props/ohlc/simple-ohlc.png)
 
         ```yaml
         models:
@@ -79,7 +79,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Ohlc/#attributes) f
 
     === "OHLC Plot with Custom Bar Width"
 
-        ![](../../assets/example-charts/props/ohlc/custom-width-ohlc.png)
+        ![](../../../assets/example-charts/props/ohlc/custom-width-ohlc.png)
 
         ```yaml
         models:
@@ -136,7 +136,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Ohlc/#attributes) f
 
     === "OHLC Plot with Multiple Stocks"
 
-        ![](../../assets/example-charts/props/ohlc/multi-stock-ohlc.png)
+        ![](../../../assets/example-charts/props/ohlc/multi-stock-ohlc.png)
 
         ```yaml
         models:

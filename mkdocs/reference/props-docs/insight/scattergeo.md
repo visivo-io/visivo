@@ -13,7 +13,7 @@ You can customize the marker size, color, and geo-coordinates (longitude and lat
 
 !!! tip "Common Uses" - **Geospatial Data**: Visualizing points or patterns on a geographic map. - **Location-Based Analysis**: Exploring the distribution of data points across different locations. - **Mapping**: Plotting geographical points such as cities, events, or regions.
 
-_**Check out the [Attributes](../configuration/Insight/Props/Scattergeo/#attributes) for the full set of configuration options**_
+_**Check out the [Attributes](../../configuration/Insight/Props/Scattergeo/#attributes) for the full set of configuration options**_
 
 ## Examples
 
@@ -24,7 +24,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scattergeo/#attribu
 
         Here's a simple `scattergeo` insight showing data points at various geographic locations:
 
-        ![](../../assets/example-charts/props/scattergeo/simple-scattergeo.png)
+        ![](../../../assets/example-charts/props/scattergeo/simple-scattergeo.png)
 
         ```yaml
         models:
@@ -67,7 +67,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scattergeo/#attribu
 
         This example demonstrates a `scattergeo` insight with lines connecting geographic points:
 
-        ![](../../assets/example-charts/props/scattergeo/lines-scattergeo.png)
+        ![](../../../assets/example-charts/props/scattergeo/lines-scattergeo.png)
 
         ```yaml
         models:
@@ -110,7 +110,7 @@ _**Check out the [Attributes](../configuration/Insight/Props/Scattergeo/#attribu
 
         Here's a `scattergeo` insight with custom marker sizes and colors, giving more visual weight to each geographic data point:
 
-        ![](../../assets/example-charts/props/scattergeo/custom-markers-scattergeo.png)
+        ![](../../../assets/example-charts/props/scattergeo/custom-markers-scattergeo.png)
 
         ```yaml
         models:
