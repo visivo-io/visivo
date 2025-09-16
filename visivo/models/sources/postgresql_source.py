@@ -1,12 +1,13 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import ServerSource
 from visivo.logger.logger import Logger
 from pydantic import Field
 
 PostgresqlType = Literal["postgresql"]
 
 
-class PostgresqlSource(SqlalchemySource):
+class PostgresqlSource(ServerSource, SqlalchemySource):
     """
     PostgresqlSources hold the connection information to PostgreSQL data sources.
 
@@ -38,7 +39,7 @@ class PostgresqlSource(SqlalchemySource):
         return "postgresql+psycopg2"
 
     def get_dialect(self):
-        return "postgres"
+        return "postgresql"
 
     def list_databases(self):
         """Return list of databases for PostgreSQL server."""

@@ -1,8 +1,9 @@
 from typing import Literal
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import ServerSource
 
 
-class MockSqlAlchemySource(SqlalchemySource):
+class MockSqlAlchemySource(ServerSource, SqlalchemySource):
     type: Literal["mock"]
 
     def get_connection_dialect(self):

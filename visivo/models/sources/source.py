@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, List, Any
 from visivo.models.base.named_model import NamedModel
 from abc import ABC, abstractmethod
 from pydantic import Field, SecretStr
@@ -18,12 +18,28 @@ class Source(ABC, NamedModel):
     def read_sql(self, query: str, **kwargs):
         raise NotImplementedError(f"No read sql method implemented for {self.type}")
 
+    def get_schema(self, table_names: List[str] = None) -> Dict[str, Any]:
+        """Extract table and column metadata and build SQLGlot schema.
+
+        Args:
+            table_names: Optional list of table names to include. If None, includes all tables.
+
+        Returns:
+            Dictionary containing:
+            - tables: Dict mapping table names to column info
+            - sqlglot_schema: SQLGlot MappingSchema for query optimization
+            - metadata: Additional metadata about the schema
+        """
+        raise NotImplementedError(f"No get_schema method implemented for {self.type}")
+
     @abstractmethod
     def description(self):
+        """Return a description of this source for logging and error messages."""
         raise NotImplementedError(f"No description method implemented for {self.type}")
 
     @abstractmethod
     def get_dialect(self):
+        """Return the dialect string for this source (e.g., 'postgresql', 'mysql')."""
         raise NotImplementedError(f"No get_dialect method implemented for {self.type}")
 
     def connect(self):
@@ -49,7 +65,8 @@ class ServerSource(Source):
     )
 
     def description(self):
-        return f"host: {self.host}, port: {self.port}, username: {self.username}, database: {self.database}"
+        """Return a description of this source for logging and error messages."""
+        return f"{self.type} source '{self.name}' (host: {self.host}, database: {self.database})"
 
     def get_password(self):
         return self.password.get_secret_value() if self.password is not None else None
@@ -62,7 +79,7 @@ class ServerSource(Source):
             username=self.username,
             password=self.get_password(),
             port=self.port,
-            drivername=self.get_connection_dialect(),
+            drivername=self.get_dialect(),
             database=self.database,
             query=None,
         )

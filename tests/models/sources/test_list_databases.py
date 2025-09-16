@@ -6,6 +6,7 @@ from typing import Literal
 from visivo.models.sources.bigquery_source import BigQuerySource
 from visivo.models.sources.sqlite_source import SqliteSource
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import ServerSource
 from visivo.models.sources.duckdb_source import DuckdbSource
 from visivo.models.sources.mysql_source import MysqlSource
 from visivo.models.sources.postgresql_source import PostgresqlSource
@@ -19,7 +20,7 @@ class TestListDatabasesImplementations:
         """Test that base SqlalchemySource raises NotImplementedError."""
 
         # Create a concrete subclass for testing
-        class TestSource(SqlalchemySource):
+        class TestSource(ServerSource, SqlalchemySource):
             type: Literal["test"] = "test"
 
             def get_connection_dialect(self):
