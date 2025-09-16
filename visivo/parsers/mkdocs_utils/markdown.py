@@ -260,7 +260,7 @@ def from_traceprop_model(model_defs: dict, model_name: str) -> str:
         includes = (
             "{!"
             + f" include-markdown '"
-            + f"reference/props-docs/trace/{model_name.lower()}.md' "
+            + f"reference/props-docs/{model_name.lower()}.md' "
             + f"\nstart='<!--start-->'"
             + f"\nend='<!--end-->'"
             + "!}"
