@@ -84,7 +84,7 @@ class SqlglotTypeMapper:
                 return SqlglotTypeMapper._parse_type_string(type_name)
 
         except Exception as e:
-            Logger.instance().debug(f"Error mapping SQLAlchemy type {sa_type}: {e}")
+            Logger.instance().error(f"Error mapping SQLAlchemy type {sa_type}: {e}")
             return exp.DataType.build("VARCHAR")  # Safe fallback
 
     @staticmethod
