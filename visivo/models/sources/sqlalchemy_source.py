@@ -297,7 +297,11 @@ class SqlalchemySource(Source, ABC):
                             columns_dict[col_name] = col_info["sqlglot_datatype"]
 
                     if columns_dict:
-                        result["sqlglot_schema"].add_table(table_name, columns_dict)
+                        # Extract base table name for SQLGlot schema to avoid nesting level issues
+                        base_table_name = (
+                            table_name.split(".", 1)[-1] if "." in table_name else table_name
+                        )
+                        result["sqlglot_schema"].add_table(base_table_name, columns_dict)
 
             # Update metadata
             result["metadata"]["total_tables"] = len(result["tables"])

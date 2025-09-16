@@ -111,7 +111,7 @@ tasks:
     run: |
       cd test-projects/integration
       visivo run -s remote-snowflake
-      python validate_run_results.py
+      python validate_run_results.py --source remote-snowflake
     env:
       STACKTRACE: true
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
@@ -124,7 +124,7 @@ tasks:
     run: |
       cd test-projects/integration
       visivo run -s remote-bigquery
-      python validate_run_results.py
+      python validate_run_results.py --source remote-bigquery
     env:
       STACKTRACE: true
       BIGQUERY_BASE64_CREDENTIALS: ${{ secrets.BIGQUERY_BASE64_CREDENTIALS }}
@@ -168,7 +168,7 @@ tasks:
     run: |
       cd test-projects/integration
       visivo run -s local-duckdb
-      python validate_run_results.py
+      python validate_run_results.py --source local-duckdb
     env:
       STACKTRACE: true
     filter: [test-projects/integration]
@@ -208,7 +208,7 @@ tasks:
       PGPASSWORD=postgres psql -h localhost -p 5434 -U postgres -f tests/setup/populate_ci_postgres.sql
       cd test-projects/integration
       visivo run -s local-postgres --threads 1
-      python validate_run_results.py
+      python validate_run_results.py --source local-postgres
     env:
       PGPASSWORD: postgres
       PG_PASSWORD: postgres
@@ -235,7 +235,7 @@ tasks:
       mysql --protocol tcp -h localhost -u root -pmysql < tests/setup/populate_ci_mysql.sql
       cd test-projects/integration
       visivo run -s local-mysql --threads 1
-      python validate_run_results.py
+      python validate_run_results.py --source local-mysql
     env:
       MYSQL_PASSWORD: mysql
       IS_MYSQL: true

@@ -6,6 +6,7 @@ from pydantic import Field
 # Import pymysql and install it as MySQLdb for compatibility
 try:
     import pymysql
+
     pymysql.install_as_MySQLdb()
 except ImportError:
     pass  # pymysql not available
