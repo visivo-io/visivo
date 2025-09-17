@@ -14,8 +14,8 @@ export function chartDataFromInsightData(insightsData) {
       dataArrays[keyName] = insight.map(row => row[keyName]);
     }
 
-    const trace = JSON.parse(JSON.stringify(props));
-    trace.name = insightName;
+    const insight_props = JSON.parse(JSON.stringify(props));
+    insight_props.name = insightName;
 
     const resolveProps = obj => {
       for (const key of Object.keys(obj)) {
@@ -37,8 +37,8 @@ export function chartDataFromInsightData(insightsData) {
       }
     };
 
-    resolveProps(trace);
-    insights.push(trace);
+    resolveProps(insight_props);
+    insights.push(insight_props);
   }
 
   return insights;
