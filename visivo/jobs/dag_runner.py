@@ -20,7 +20,7 @@ from visivo.jobs.run_csv_script_job import job as csv_script_job
 from visivo.jobs.run_trace_job import job as trace_job
 from visivo.jobs.run_local_merge_job import job as local_merge_job
 from visivo.jobs.run_insight_job import job as insight_job
-from visivo.jobs.run_source_connection_job import job as source_connection_job
+from visivo.jobs.run_source_schema_job import job as source_schema_job
 from visivo.jobs.job_tracker import JobTracker
 from threading import Lock
 
@@ -145,5 +145,5 @@ class DagRunner:
                 local_merge_model=item, output_dir=self.output_dir, dag=self.project_dag
             )
         elif isinstance(item, Source):
-            return source_connection_job(source=item, working_dir=self.working_dir)
+            return source_schema_job(source=item, output_dir=self.output_dir)
         return None

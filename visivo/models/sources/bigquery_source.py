@@ -1,12 +1,13 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import ServerSource
 from pydantic import Field, SecretStr
 import os
 
 BigQueryType = Literal["bigquery"]
 
 
-class BigQuerySource(SqlalchemySource):
+class BigQuerySource(ServerSource, SqlalchemySource):
     """
     BigQuerySources hold the connection information to Google BigQuery instances.
 

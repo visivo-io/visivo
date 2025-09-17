@@ -113,10 +113,8 @@ class LocalMergeModel(Model, ParentModel):
                         f"Local merge model {self.name}: Inserted data for model {model.name}"
                     )
 
-                # Clean up engines to release locks
-                duckdb_source.dispose_engines()
                 Logger.instance().debug(
-                    f"Local merge model {self.name}: Disposed engines for model {model.name}"
+                    f"Local merge model {self.name}: Completed processing for model {model.name}"
                 )
 
     def insert_duckdb_data(self, output_dir, dag):
@@ -152,8 +150,6 @@ class LocalMergeModel(Model, ParentModel):
             )
             raise
         finally:
-            # Clean up engines to release locks
-            duckdb_source.dispose_engines()
             Logger.instance().debug(f"Local merge model {self.name}: Completed successfully")
 
     def _get_duckdb_from_model(self, model, output_dir, dag) -> DuckdbSource:

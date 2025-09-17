@@ -1,11 +1,13 @@
-from typing import Literal, Optional
-from visivo.models.sources.source import Source
+from typing import Literal, Optional, Dict, List, Any
+from visivo.models.sources.base_duckdb_source import BaseDuckdbSource
 from pydantic import Field
 import duckdb
 import click
+import os
+from visivo.logger.logger import Logger
 
 
-class CSVFileSource(Source):
+class CSVFileSource(BaseDuckdbSource):
     type: Literal["csv"]
     file: str = Field(..., description="Path to the CSV file.")
     delimiter: Optional[str] = Field(",", description="CSV delimiter.")
@@ -13,53 +15,31 @@ class CSVFileSource(Source):
     has_header: Optional[bool] = Field(True, description="Whether CSV has a header row.")
 
     def get_connection(self, read_only: bool = False):
+        """Create an in-memory DuckDB connection with the CSV loaded as a view."""
         try:
+            # Check if file exists
+            if not os.path.exists(self.file):
+                raise click.ClickException(f"CSV file not found: {self.file}")
+
             connection = duckdb.connect(":memory:")
-            connection.execute(
-                f"""
-                CREATE VIEW "{self.name}" AS
-                SELECT * FROM read_csv_auto('{self.file}', delim='{self.delimiter}', header={str(self.has_header).upper()})
-                """
-            )
             return connection
         except Exception as err:
             raise click.ClickException(
                 f"Error connecting to CSV source '{self.name}'. Full Error: {str(err)}"
             )
 
-    def read_sql(self, query: str, **kwargs):
+    def _setup_connection(self, connection, **kwargs):
+        """Setup the DuckDB connection by creating a view from the CSV file."""
         try:
-            with self.connect(read_only=True) as connection:
-                result = connection.execute(query)
-                columns = [desc[0] for desc in result.description] if result.description else []
-                rows = result.fetchall()
-                return [dict(zip(columns, row)) for row in rows]
-        except Exception as err:
-            raise click.ClickException(
-                f"Error executing query on CSV source '{self.name}': {str(err)}"
+            connection.execute(
+                f"""
+                CREATE VIEW "{self.name}" AS
+                SELECT * FROM read_csv_auto('{self.file}', delim='{self.delimiter}', header={str(self.has_header).upper()})
+                """
             )
-
-    def connect(self, read_only: bool = False):
-        return CSVConnection(source=self, read_only=read_only)
-
-    def get_dialect(self):
-        return "duckdb"
+        except Exception as e:
+            raise click.ClickException(f"Error setting up CSV view: {e}")
 
     def description(self):
-        return f"file: {self.file}"
-
-
-class CSVConnection:
-    def __init__(self, source: CSVFileSource, read_only: bool = False):
-        self.source = source
-        self.conn = None
-        self.read_only = read_only
-
-    def __enter__(self):
-        self.conn = self.source.get_connection(read_only=self.read_only)
-        return self.conn
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.conn:
-            self.conn.close()
-            self.conn = None
+        """Return a description of this source for logging and error messages."""
+        return f"{self.type} source '{self.name}' (file: {self.file})"

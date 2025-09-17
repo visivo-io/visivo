@@ -5,9 +5,11 @@ from visivo.models.fields import QueryOrStringField
 from visivo.models.models.fields import ModelRefField
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.parent_model import ParentModel
+from visivo.models.base.base_model import generate_ref_field
 from visivo.models.props.trace_props import TraceProps
 from visivo.models.test import Test
 from visivo.models.trace_columns import TraceColumns
+from visivo.models.relation import Relation
 from typing import Optional, List
 
 
@@ -114,6 +116,13 @@ class Trace(NamedModel, ParentModel):
     props: TraceProps = Field(
         None,
         description="Trace props are the properties that are used to configure the trace.",
+    )
+    relations: Optional[List[generate_ref_field(Relation)]] = Field(
+        None,
+        description="List of relations to use when joining models for metrics. Can be relation names using ref() syntax "
+        "(e.g., 'ref(orders_to_users)'), context references (e.g., '${orders_to_users}'), "
+        "or inline Relation objects with 'left_model', 'right_model', 'condition', etc. "
+        "These define the preferred join paths when metrics from different models are used together.",
     )
 
     def child_items(self):

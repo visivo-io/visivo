@@ -25,16 +25,13 @@ class TestDuckDBModelIntegration:
 
             # Verify the data was created
             source = csv_model.get_duckdb_source(output_dir=temp_dir)
-            try:
-                with source.connect(read_only=True) as conn:
-                    result = conn.execute("SELECT COUNT(*) FROM test_table").fetchone()
-                    assert result[0] == 2
+            with source.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM test_table").fetchone()
+                assert result[0] == 2
 
-                    data = conn.execute("SELECT * FROM test_table ORDER BY id").fetchall()
-                    assert data[0] == (1, "test")
-                    assert data[1] == (2, "example")
-            finally:
-                source.dispose_engines()
+                data = conn.execute("SELECT * FROM test_table ORDER BY id").fetchall()
+                assert data[0] == (1, "test")
+                assert data[1] == (2, "example")
 
     def test_csv_script_model_concurrent_access(self):
         """Test that CSV script models don't hang with concurrent access."""
@@ -86,32 +83,28 @@ class TestDuckDBModelIntegration:
                 name="test_source", database=f"{temp_dir}/test_source.duckdb", type="duckdb"
             )
 
-            try:
-                # Test write operations
-                with source.connect(read_only=False) as conn:
-                    conn.execute("CREATE TABLE test_data (id INTEGER, value TEXT)")
-                    conn.execute("INSERT INTO test_data VALUES (1, 'data1'), (2, 'data2')")
+            # Test write operations
+            with source.connect(read_only=False) as conn:
+                conn.execute("CREATE TABLE test_data (id INTEGER, value TEXT)")
+                conn.execute("INSERT INTO test_data VALUES (1, 'data1'), (2, 'data2')")
 
-                # Test read operations immediately after write
-                with source.connect(read_only=True) as conn:
-                    result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
-                    assert result[0] == 2
+            # Test read operations immediately after write
+            with source.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
+                assert result[0] == 2
 
-                    data = conn.execute("SELECT * FROM test_data ORDER BY id").fetchall()
-                    assert data[0] == (1, "data1")
-                    assert data[1] == (2, "data2")
+                data = conn.execute("SELECT * FROM test_data ORDER BY id").fetchall()
+                assert data[0] == (1, "data1")
+                assert data[1] == (2, "data2")
 
-                # Test additional write operations
-                with source.connect(read_only=False) as conn:
-                    conn.execute("INSERT INTO test_data VALUES (3, 'data3')")
+            # Test additional write operations
+            with source.connect(read_only=False) as conn:
+                conn.execute("INSERT INTO test_data VALUES (3, 'data3')")
 
-                # Test read after additional write
-                with source.connect(read_only=True) as conn:
-                    result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
-                    assert result[0] == 3
-
-            finally:
-                source.dispose_engines()
+            # Test read after additional write
+            with source.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
+                assert result[0] == 3
 
     def test_mixed_read_write_operations_no_hang(self):
         """Test mixed read/write operations don't cause hanging."""
@@ -130,24 +123,20 @@ class TestDuckDBModelIntegration:
             # Get the source and test read operations immediately after write
             source = csv_model.get_duckdb_source(output_dir=temp_dir)
 
-            try:
-                # Multiple read operations should not hang
-                for i in range(5):
-                    with source.connect(read_only=True) as conn:
-                        result = conn.execute("SELECT COUNT(*) FROM csv_data").fetchone()
-                        assert result[0] == 2
-
-                # Write operation followed by reads
-                with source.connect(read_only=False) as conn:
-                    conn.execute("INSERT INTO csv_data VALUES (3, 'additional')")
-
-                # Immediate read should work
+            # Multiple read operations should not hang
+            for i in range(5):
                 with source.connect(read_only=True) as conn:
                     result = conn.execute("SELECT COUNT(*) FROM csv_data").fetchone()
-                    assert result[0] == 3
+                    assert result[0] == 2
 
-            finally:
-                source.dispose_engines()
+            # Write operation followed by reads
+            with source.connect(read_only=False) as conn:
+                conn.execute("INSERT INTO csv_data VALUES (3, 'additional')")
+
+            # Immediate read should work
+            with source.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM csv_data").fetchone()
+                assert result[0] == 3
 
     def test_database_file_cleanup_and_reuse(self):
         """Test that database files can be cleaned up and reused without hanging."""
@@ -162,28 +151,23 @@ class TestDuckDBModelIntegration:
                 conn.execute("INSERT INTO test_data VALUES (1)")
 
             # Dispose engines to release locks
-            source1.dispose_engines()
 
             # Create second source with same path
             source2 = DuckdbSource(name="source2", database=db_path, type="duckdb")
 
-            try:
-                # Should be able to read existing data
-                with source2.connect(read_only=True) as conn:
-                    result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
-                    assert result[0] == 1
+            # Should be able to read existing data
+            with source2.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
+                assert result[0] == 1
 
-                # Should be able to write additional data
-                with source2.connect(read_only=False) as conn:
-                    conn.execute("INSERT INTO test_data VALUES (2)")
+            # Should be able to write additional data
+            with source2.connect(read_only=False) as conn:
+                conn.execute("INSERT INTO test_data VALUES (2)")
 
-                # Verify both records exist
-                with source2.connect(read_only=True) as conn:
-                    result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
-                    assert result[0] == 2
-
-            finally:
-                source2.dispose_engines()
+            # Verify both records exist
+            with source2.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM test_data").fetchone()
+                assert result[0] == 2
 
     def test_rapid_connection_cycling(self):
         """Test rapid opening/closing of connections doesn't cause resource leaks."""
@@ -192,28 +176,24 @@ class TestDuckDBModelIntegration:
                 name="rapid_test", database=f"{temp_dir}/rapid_test.duckdb", type="duckdb"
             )
 
-            try:
-                # Create initial data
-                with source.connect(read_only=False) as conn:
-                    conn.execute("CREATE TABLE rapid_data (id INTEGER)")
-                    conn.execute("INSERT INTO rapid_data VALUES (1)")
+            # Create initial data
+            with source.connect(read_only=False) as conn:
+                conn.execute("CREATE TABLE rapid_data (id INTEGER)")
+                conn.execute("INSERT INTO rapid_data VALUES (1)")
 
-                # Rapidly cycle through connections
-                for i in range(20):
-                    # Read operation
-                    with source.connect(read_only=True) as conn:
-                        result = conn.execute("SELECT COUNT(*) FROM rapid_data").fetchone()
-                        assert result[0] >= 1
-
-                    # Write operation every few iterations
-                    if i % 5 == 0:
-                        with source.connect(read_only=False) as conn:
-                            conn.execute(f"INSERT INTO rapid_data VALUES ({i + 2})")
-
-                # Final verification
+            # Rapidly cycle through connections
+            for i in range(20):
+                # Read operation
                 with source.connect(read_only=True) as conn:
                     result = conn.execute("SELECT COUNT(*) FROM rapid_data").fetchone()
-                    assert result[0] >= 5  # At least original + 4 more
+                    assert result[0] >= 1
 
-            finally:
-                source.dispose_engines()
+                # Write operation every few iterations
+                if i % 5 == 0:
+                    with source.connect(read_only=False) as conn:
+                        conn.execute(f"INSERT INTO rapid_data VALUES ({i + 2})")
+
+            # Final verification
+            with source.connect(read_only=True) as conn:
+                result = conn.execute("SELECT COUNT(*) FROM rapid_data").fetchone()
+                assert result[0] >= 5  # At least original + 4 more

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from visivo.models.alert import Alert
 from visivo.models.dag import all_descendants_of_type
 
@@ -10,6 +10,9 @@ from visivo.models.models.fields import ModelField
 from visivo.models.models.sql_model import SqlModel
 from visivo.models.selector import Selector, SelectorType
 from visivo.models.sources.fields import SourceField
+from visivo.models.metric import Metric
+from visivo.models.relation import Relation
+from visivo.models.dimension import Dimension
 
 from visivo.models.base.parent_model import ParentModel
 from visivo.models.base.base_model import REF_REGEX
@@ -24,7 +27,7 @@ from visivo.models.dbt import Dbt
 from typing import List
 from visivo.models.base.named_model import NamedModel
 from visivo.models.base.base_model import BaseModel
-from pydantic import ConfigDict, Field, model_validator
+from pydantic import ConfigDict, Field, model_validator, PrivateAttr
 from visivo.utils import PROJECT_CHILDREN
 from click import ClickException
 from visivo.version import VISIVO_VERSION
@@ -32,6 +35,9 @@ from visivo.version import VISIVO_VERSION
 
 class Project(NamedModel, ParentModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    # Private attributes for schema extraction caching (don't store extractor object to avoid pickle errors)
+    _extracted_schemas: Optional[Dict[str, Dict[str, Dict[str, str]]]] = PrivateAttr(default=None)
 
     defaults: Optional[Defaults] = None
     dbt: Optional[Dbt] = None
@@ -57,6 +63,15 @@ class Project(NamedModel, ParentModel):
     selectors: List[Selector] = []
     inputs: List[InputField] = []
     dashboards: List[DashboardField] = []
+    metrics: List[Metric] = Field(
+        [], description="A list of global metric objects that can reference multiple models."
+    )
+    relations: List[Relation] = Field(
+        [], description="A list of relation objects defining how models can be joined."
+    )
+    dimensions: List[Dimension] = Field(
+        [], description="A list of project-level dimension objects that can be used across models."
+    )
 
     def child_items(self) -> List:
         project_children = PROJECT_CHILDREN.copy()
@@ -65,6 +80,14 @@ class Project(NamedModel, ParentModel):
             items = getattr(self, child_type, [])
             children.extend(items)
         return children
+
+    def get_all_extracted_schemas(self) -> Optional[Dict[str, Dict[str, Dict[str, str]]]]:
+        """Get all extracted schemas.
+
+        Returns:
+            Dictionary mapping source names to model names to column schemas.
+        """
+        return self._extracted_schemas
 
     def named_child_nodes(self) -> dict:
         """

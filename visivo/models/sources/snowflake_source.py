@@ -1,11 +1,12 @@
 from typing import Literal, Optional
 from visivo.models.sources.sqlalchemy_source import SqlalchemySource
+from visivo.models.sources.source import ServerSource
 from pydantic import Field, SecretStr
 
 SnowflakeType = Literal["snowflake"]
 
 
-class SnowflakeSource(SqlalchemySource):
+class SnowflakeSource(ServerSource, SqlalchemySource):
     """
     SnowflakeSources hold the connection information to Snowflake data sources.
 
