@@ -157,3 +157,95 @@ jobs:
           token: ${{ secrets.CORE_DEPLOY_TOKEN }}
           repository: visivo-io/core
           event-type: visivo-release
+
+  test-linux-installers:
+    name: "Test Linux Installers"
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: ${{ inputs.dryrun == false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - ubuntu:22.04      # Most popular Linux distro
+          - ubuntu:20.04      # LTS version still widely used
+          - debian:12         # Stable base for many distros
+          - fedora:39         # Red Hat family
+          - centos:stream9    # Enterprise Linux
+          - alpine:3.19       # Lightweight/container-focused
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: visivo-linux-x86
+          path: ./linux-artifact
+
+      - name: Test artifact installation on ${{ matrix.distro }}
+        run: |
+          echo "Testing Visivo artifact installation on ${{ matrix.distro }}"
+
+          # Run the installation test in the specified distro container
+          docker run --rm -v "$PWD:/workspace" -w /workspace ${{ matrix.distro }} /bin/bash -c "
+            set -e
+
+            # Update package manager and install required tools
+            if command -v apt-get >/dev/null 2>&1; then
+              apt-get update
+              apt-get install -y unzip
+            elif command -v yum >/dev/null 2>&1; then
+              yum update -y
+              yum install -y unzip
+            elif command -v dnf >/dev/null 2>&1; then
+              dnf update -y
+              dnf install -y unzip
+            elif command -v apk >/dev/null 2>&1; then
+              apk update
+              apk add unzip bash
+            elif command -v pacman >/dev/null 2>&1; then
+              pacman -Syu --noconfirm
+              pacman -S --noconfirm unzip
+            elif command -v zypper >/dev/null 2>&1; then
+              zypper refresh
+              zypper install -y unzip
+            fi
+
+            # Set up environment
+            export HOME=/tmp/test-home
+            mkdir -p \$HOME/.visivo/bin
+
+            # Manually install the artifact (simulating what the installer script does)
+            echo 'Installing Visivo artifact...'
+            cp /workspace/linux-artifact/visivo \$HOME/.visivo/bin/visivo
+            chmod +x \$HOME/.visivo/bin/visivo
+
+            # Add Visivo to PATH for this session
+            export PATH=\"\$HOME/.visivo/bin:\$PATH\"
+
+            # Test that visivo command works
+            echo 'Testing visivo --version...'
+            visivo --version
+
+            # Verify the version matches
+            INSTALLED_VERSION=\$(visivo --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
+            EXPECTED_VERSION='${{ inputs.version }}'
+
+            echo \"Installed version: \$INSTALLED_VERSION\"
+            echo \"Expected version: \$EXPECTED_VERSION\"
+
+            if [ \"\$INSTALLED_VERSION\" = \"\$EXPECTED_VERSION\" ]; then
+              echo '✅ Version verification passed'
+            else
+              echo '❌ Version verification failed'
+              exit 1
+            fi
+
+            # Test basic functionality
+            echo 'Testing visivo --help...'
+            visivo --help
+
+            echo '✅ Artifact installation test passed for ${{ matrix.distro }}'
+          "
