@@ -37,7 +37,7 @@ curl -fsSL https://visivo.sh | bash
 
     **Perfect for:** Rapid prototyping and learning Visivo's capabilities
 
-    [:octicons-arrow-right-24: Follow the Agent AI path](#agent-ai-path-build-with-claude-code)
+    [:octicons-arrow-right-24: Follow the Agent AI path](ai-usage.md)
 
 </div>
 
@@ -85,62 +85,6 @@ The example dashboard is fully functional and editable:
 
 Now jump to [Experience Live Development](#experience-live-development) to see the magic of instant updates!
 
----
-
-## Agent AI Path: Build with Claude Code
-
-Use the power of an AI Agent to iteratively create and refine your dashboard configuration through conversation.
-
-### 1. Create Your Project Directory
-
-```bash
-mkdir my-dashboard
-cd my-dashboard
-```
-
-### 2. Use This Prompt with Claude Code
-
-Copy the following prompt and paste it into Claude Code or similar AI Agent. This prompt is designed to accept CSV files as a data source, but feel free to modify.
-
-!!! example "Dashboard Generation Prompt"
-    ```
-    Create a Visivo dashboard from my data located here: [YOUR DATA HERE].
-    
-    Requirements:
-    - Load data from either:
-      * A CSV file(s) I provide above, OR
-      * This sample retail dataset: https://raw.githubusercontent.com/visivo-io/visivo/main/mkdocs/assets/us_land_use.csv
-    - Analyze the data and create at least 3 different charts showing different insights
-    - Read the docs at docs.visivo.io to know how Visivo works and create a project.visivo.yml.  The general syntax is located under the configuration heading.
-    - If the data provided is a CSV use Visivo's CSVFileSource and the docs are located at: https://docs.visivo.io/reference/configuration/Sources/CSVFileSource/ to load that data. 
-    - Validate the visivo configuration with `visivo run`.
-    - Provide the complete project.visivo.yml file with inline comments explaining each section.
-    ```
-
-### 3. Iterate and Refine
-
-Work with the AI Agent to save, test, and refine the configuration:
-
-- Serve the dashboard with `visivo serve`
-- Ask the Agent to modify charts, add features, or fix any issues
-- Continue the conversation until your dashboard is perfect
-
-### 4. Launch Your Dashboard
-
-```bash
-visivo serve
-```
-
-!!! success "Why Agent AI Works Better"
-    AI Agents like Claude Code can read files, run commands, and iterate on solutions. This approach lets you:
-    
-    - Start with a working example tailored to your needs
-    - Test and validate configurations automatically
-    - Iterate quickly through conversation and feedback
-    - Learn Visivo's syntax through guided exploration
-
-
-Now jump to [Experience Live Development](#experience-live-development) to start customizing!
 
 ---
 

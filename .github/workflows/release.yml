@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-latest
+          - os: macos-14
             artifact_name: darwin-arm64
             version_file: visivo/version.py
           - os: macos-13
@@ -30,7 +30,7 @@ jobs:
             artifact_name: windows-x86
             version_file: visivo\\version.py
             shell: bash
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             artifact_name: linux-x86
             version_file: visivo/version.py
 
