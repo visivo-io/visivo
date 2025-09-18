@@ -64,16 +64,18 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
           );
         })
         .flat();
-      data = [...data, ...traceData];
+      data.push(...traceData);
     }
 
+    // Handle insight-based data
     if (hasInsights && insightsData) {
+      const insightName = chart.insights[0]?.name;
       const insightData = chartDataFromInsightData(insightsData);
-      data = [...data, ...insightData];
+      data.push(...insightData.filter(insight => insight.name === insightName));
     }
 
     return data;
-  }, [selectedCohortData, insightsData, chart.traces, hasInsights]);
+  }, [selectedCohortData, insightsData, chart.traces, chart.insights, hasInsights]);
 
   if (isDataLoading) {
     return <Loading text={chart.name} width={itemWidth} />;
@@ -128,7 +130,7 @@ const Chart = React.forwardRef(({ chart, project, itemWidth, height, width }, re
       <Plot
         key={`chart_${chart.name}`}
         data-testid={`chart_${chart.name}`}
-        data={[...selectedPlotData]}
+        data={selectedPlotData}
         layout={{ ...layout, height, width }}
         useResizeHandler={true}
         config={{ displayModeBar: false }}

@@ -127,14 +127,16 @@ const Table = ({ table, project, itemWidth, height, width }) => {
     if (isInsightTable && insightsData) {
       const insightName = table.insights[0]?.name;
       const insightObj = insightsData?.[insightName];
+      const insightColObj =
+        table.column_defs.filter(column => column.insight_name === insightName)[0]?.columns ?? [];
 
-      if (insightObj?.insight && insightObj?.columns) {
-        const insightColumns = Object.entries(insightObj.columns).map(([id, accessor]) => ({
-          id,
-          header: id.replace(/^columns\./, '').replace(/^props\./, ''), // pretty header
-          accessorKey: accessor.replace(/\./g, '___'),
+      if (insightObj?.insight && insightColObj) {
+        const insightColumns = insightColObj.map((col, idx) => ({
+          id: col.id ?? `col_${idx}`,
+          header: col.header,
+          accessorKey: col.key.replace(/^columns\./, '').replace(/^props\./, ''),
           enableGrouping: false,
-          markdown: accessor.startsWith('props.'),
+          markdown: col.markdown,
         }));
 
         setColumns(insightColumns);
@@ -150,7 +152,7 @@ const Table = ({ table, project, itemWidth, height, width }) => {
         );
       }
     }
-  }, [isInsightTable, insightsData, table.insights]);
+  }, [isInsightTable, insightsData, table.insights, table.column_defs]);
 
   const handleExportData = () => {
     const csv = generateCsv(csvConfig)(tableData);
