@@ -9,15 +9,8 @@ PROFILE_UPDATED=0
 PROFILE_FILE=""
 VERSION="" # Version to install (empty means latest)
 
-# Tested Linux distributions - these are the distributions we actively test in CI/CD
-TESTED_DISTROS=(
-  "ubuntu:22.04"
-  "ubuntu:20.04"
-  "debian:12"
-  "fedora:39"
-  "centos:stream9"
-  "alpine:3.19"
-)
+# Minimum required GLIBC version for Visivo
+MIN_GLIBC_VERSION="2.35"
 
 # Clean up on exit
 cleanup() {
@@ -61,25 +54,19 @@ Options:
   -h, --help             Show this help message
 
 Environment Variables:
-  VISIVO_FORCE_INSTALL   Set to '1' to bypass distribution validation
-                         Use this if your Linux distribution is not officially tested
+  VISIVO_FORCE_INSTALL   Set to '1' to bypass GLIBC version check
+                         Use this only if you're confident about compatibility
 
 Examples:
   $0                                    # Install latest version
   $0 -v v1.0.64                        # Install specific version v1.0.64
   $0 --version 1.0.64                  # Install specific version 1.0.64 (v prefix optional)
-  VISIVO_FORCE_INSTALL=1 $0            # Force install on untested distribution
+  VISIVO_FORCE_INSTALL=1 $0            # Force install bypassing GLIBC check
 
-Tested Linux Distributions:
-EOF
+Requirements:
+  - Linux x86_64 architecture
+  - GLIBC version $MIN_GLIBC_VERSION or higher
 
-  for distro in "${TESTED_DISTROS[@]}"; do
-    echo "  - $distro"
-  done
-
-  cat << EOF
-
-For other distributions, installation may work but is not officially supported.
 Report issues at: https://github.com/$REPO/issues
 
 EOF
@@ -100,102 +87,57 @@ validate_version() {
   fi
 }
 
-# Detect current Linux distribution
-detect_distribution() {
-  local distro_name=""
-  local distro_version=""
+# Check GLIBC version compatibility
+check_glibc_version() {
+  echo "Checking GLIBC compatibility..."
 
-  if [ -f /etc/os-release ]; then
-    # Parse /etc/os-release for distribution info
-    . /etc/os-release
-    distro_name="$ID"
-    distro_version="$VERSION_ID"
-  elif [ -f /etc/lsb-release ]; then
-    # Parse /etc/lsb-release for Ubuntu systems
-    . /etc/lsb-release
-    distro_name="$(echo "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]')"
-    distro_version="$DISTRIB_RELEASE"
-  elif [ -f /etc/redhat-release ]; then
-    # Parse /etc/redhat-release for RHEL/CentOS systems
-    if grep -q "CentOS Stream" /etc/redhat-release; then
-      distro_name="centos"
-      distro_version="stream$(grep -o 'Stream [0-9]\+' /etc/redhat-release | grep -o '[0-9]\+')"
-    elif grep -q "CentOS" /etc/redhat-release; then
-      distro_name="centos"
-      distro_version="$(grep -o '[0-9]\+' /etc/redhat-release | head -1)"
-    elif grep -q "Red Hat" /etc/redhat-release; then
-      distro_name="rhel"
-      distro_version="$(grep -o '[0-9]\+\.[0-9]\+' /etc/redhat-release | head -1)"
-    fi
-  elif [ -f /etc/alpine-release ]; then
-    # Alpine Linux
-    distro_name="alpine"
-    distro_version="$(cat /etc/alpine-release | cut -d'.' -f1,2)"
-  else
-    echo "Warning: Could not detect Linux distribution" >&2
-    return 1
+  # Try to get GLIBC version using ldd
+  local glibc_version=""
+  if command -v ldd >/dev/null 2>&1; then
+    glibc_version=$(ldd --version 2>&1 | head -n1 | grep -o '[0-9]\+\.[0-9]\+' | head -1)
   fi
 
-  echo "${distro_name}:${distro_version}"
-}
+  # Alternative method: check libc.so.6 directly
+  if [ -z "$glibc_version" ] && [ -f /lib/x86_64-linux-gnu/libc.so.6 ]; then
+    glibc_version=$(/lib/x86_64-linux-gnu/libc.so.6 2>&1 | grep -o 'release version [0-9]\+\.[0-9]\+' | grep -o '[0-9]\+\.[0-9]\+')
+  fi
 
-# Validate distribution against tested distributions
-validate_distribution() {
-  local current_distro="$1"
+  # Another alternative: check /lib64/libc.so.6
+  if [ -z "$glibc_version" ] && [ -f /lib64/libc.so.6 ]; then
+    glibc_version=$(/lib64/libc.so.6 2>&1 | grep -o 'release version [0-9]\+\.[0-9]\+' | grep -o '[0-9]\+\.[0-9]\+')
+  fi
 
-  if [ -z "$current_distro" ]; then
-    echo "Warning: Could not detect current distribution. Proceeding with installation..." >&2
-    echo "If you encounter issues, please report them at: https://github.com/$REPO/issues" >&2
+  # Final fallback: getconf
+  if [ -z "$glibc_version" ] && command -v getconf >/dev/null 2>&1; then
+    glibc_version=$(getconf GNU_LIBC_VERSION 2>/dev/null | grep -o '[0-9]\+\.[0-9]\+')
+  fi
+
+  if [ -z "$glibc_version" ]; then
+    echo "⚠️  Warning: Could not detect GLIBC version" >&2
+    echo "   Visivo requires GLIBC >= $MIN_GLIBC_VERSION" >&2
+    echo "   Installation will proceed, but may fail if GLIBC is too old" >&2
+    echo "   If you encounter issues, please report them at: https://github.com/$REPO/issues" >&2
     return 0
   fi
 
-  local distro_name="${current_distro%:*}"
-  local distro_version="${current_distro#*:}"
+  echo "Detected GLIBC version: $glibc_version"
 
-  # Check if current distribution is in our tested list
-  local is_tested=false
-  local closest_match=""
-
-  for tested in "${TESTED_DISTROS[@]}"; do
-    local tested_name="${tested%:*}"
-    local tested_version="${tested#*:}"
-
-    if [ "$distro_name" = "$tested_name" ]; then
-      if [ "$distro_version" = "$tested_version" ]; then
-        # Exact match
-        is_tested=true
-        break
-      else
-        # Same distro family, different version
-        closest_match="$tested"
-      fi
-    fi
-  done
-
-  if [ "$is_tested" = true ]; then
-    echo "✅ Distribution $current_distro is officially tested and supported."
-    return 0
-  elif [ -n "$closest_match" ]; then
-    echo "⚠️  Warning: Your distribution ($current_distro) is not exactly tested." >&2
-    echo "   We test $closest_match, which may be compatible." >&2
-    echo "   Installation will proceed, but if you encounter issues," >&2
-    echo "   please report them at: https://github.com/$REPO/issues" >&2
+  # Compare versions using sort -V (version sort)
+  if printf '%s\n%s\n' "$MIN_GLIBC_VERSION" "$glibc_version" | sort -V -C; then
+    echo "✅ GLIBC version $glibc_version meets minimum requirement ($MIN_GLIBC_VERSION)"
     return 0
   else
-    echo "❌ Error: Unsupported Linux distribution: $current_distro" >&2
+    echo "❌ Error: GLIBC version $glibc_version is below minimum requirement ($MIN_GLIBC_VERSION)" >&2
     echo "" >&2
-    echo "Visivo is currently tested and supported on the following distributions:" >&2
-    for tested in "${TESTED_DISTROS[@]}"; do
-      echo "  - $tested" >&2
-    done
+    echo "Visivo requires GLIBC version $MIN_GLIBC_VERSION or higher." >&2
+    echo "Your system has GLIBC $glibc_version." >&2
     echo "" >&2
-    echo "Your distribution may still work, but it hasn't been tested." >&2
-    echo "To proceed anyway, you can:" >&2
-    echo "  1. Try installing on a tested distribution" >&2
-    echo "  2. Report compatibility issues at: https://github.com/$REPO/issues" >&2
-    echo "  3. Request support for your distribution" >&2
+    echo "To resolve this, you can:" >&2
+    echo "  1. Upgrade your Linux distribution to a newer version" >&2
+    echo "  2. Use a distribution with newer GLIBC (Ubuntu 22.04+, Debian 12+, Fedora 36+)" >&2
+    echo "  3. Report compatibility issues at: https://github.com/$REPO/issues" >&2
     echo "" >&2
-    echo "To force installation (not recommended), set VISIVO_FORCE_INSTALL=1:" >&2
+    echo "To force installation (may not work), set VISIVO_FORCE_INSTALL=1:" >&2
     echo "  VISIVO_FORCE_INSTALL=1 curl -fsSL https://visivo.sh | bash" >&2
     exit 1
   fi
@@ -221,13 +163,11 @@ main() {
             *) echo "Error: Unsupported Linux architecture '$ARCH'." >&2; exit 1;;
         esac
 
-        # Validate Linux distribution unless force install is set
+        # Check GLIBC version unless force install is set
         if [ "$VISIVO_FORCE_INSTALL" != "1" ]; then
-          echo "Checking Linux distribution compatibility..."
-          CURRENT_DISTRO=$(detect_distribution)
-          validate_distribution "$CURRENT_DISTRO"
+          check_glibc_version
         else
-          echo "⚠️  Force installation enabled - skipping distribution validation"
+          echo "⚠️  Force installation enabled - skipping GLIBC version check"
         fi
         ;;
     Darwin*)

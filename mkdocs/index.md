@@ -4,7 +4,7 @@
 
 Transform your data into interactive dashboards with a single command. No configuration files, no complex setup—just instant visualization.
 
-### Install Visivo
+### 1. Install Visivo
 
 ```bash
 curl -fsSL https://visivo.sh | bash
@@ -13,47 +13,15 @@ curl -fsSL https://visivo.sh | bash
 !!! success "One command, all platforms"
     Our installation script handles macOS, Linux, and Windows automatically. No Python required!
 
-### Choose Your Path
-
-<div class="grid cards" markdown>
-
--   :material-lightning-bolt:{ .lg .middle } **Instant Dashboard with `visivo serve`**
-
-    ---
-
-    Start with a working example dashboard and customize it to your needs.
-
-    ```bash
-    visivo serve
-    ```
-
-    [:octicons-arrow-right-24: Follow the serve path](#serve-path-example-dashboard)
-
--   :material-robot:{ .lg .middle } **Agent AI-Powered with Claude Code**
-
-    ---
-
-    Use an AI Agent to iteratively build and refine your dashboard through conversation.
-
-    **Perfect for:** Rapid prototyping and learning Visivo's capabilities
-
-    [:octicons-arrow-right-24: Follow the Agent AI path](ai-usage.md)
-
-</div>
-
----
-
-## Serve Path: Example Dashboard
-
-The simplest way to get started—run one command and explore a working dashboard!
-
-### 1. Run the Command
+### 2. Get Started in Seconds
 
 ```bash
 visivo serve
 ```
 
-### 2. Choose an Example
+This single command gives you a complete dashboard in seconds!
+
+### 3. Choose an Example
 
 Visivo will prompt you to select from several example dashboards, then:
 
@@ -67,7 +35,7 @@ Each example includes:
 - Interactive filters and controls
 - A complete configuration to learn from
 
-### 3. Make It Your Own
+### 4. Make It Your Own
 
 The example dashboard is fully functional and editable:
 - Open the generated `project.visivo.yml` in your editor
@@ -126,6 +94,14 @@ This instant feedback loop revolutionizes dashboard development:
 
 !!! tip "Pro Tip: Split Screen Development"
     Open your editor and browser side-by-side. As you type and save, watch your dashboard transform in real-time. It's like having a conversation with your data!
+
+---
+
+## Alternative: AI-Powered Development
+
+**Want a more conversational approach?** Try using AI agents like Claude Code to build your dashboard through natural language. AI can analyze your data, suggest visualizations, and write the complete configuration for you.
+
+[:material-robot: Explore AI-powered dashboard creation](ai-usage.md){ .md-button }
 
 ---
 
